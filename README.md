@@ -15,6 +15,24 @@ keeps it alive with tiny binary updates over a WebSocket. The result is a smooth
 reactive UI — delivered by the backend team, without npm, bundlers, an extra build
 pipeline, or a separate frontend.
 
+## Pathland is a protocol
+
+The server-rendered path above is the **flagship way to use Pathland today** — not
+the whole of it. Underneath, Pathland is a **binary UI protocol**: your view
+declaration compiles to tiny fixed-size opcodes that any renderer can apply to
+native elements.
+
+That makes it **language- and renderer-agnostic** — a view written in Java, C#, or
+Rust produces the same opcode stream, and any renderer (browser DOM, native GTK,
+and on-device ones to come) can apply it. The protocol already drives a **native
+GTK4 desktop renderer**, and the goal is for your UI code to also run on the
+device itself — compiled to WASM in the browser, on a dedicated core of an embedded
+chip, or on native mobile and desktop. Because your views are protocol-defined,
+they can move to those surfaces later without a rewrite.
+
+Start with the SSR path below and keep it simple — the rest of the protocol is
+there when you need it (see [Where it's headed](#where-its-headed)).
+
 ## What it removes
 
 Today's server team pays for a BFF, a client-side state model, a SPA framework, and
@@ -110,10 +128,12 @@ resources. It's shipped, not maintained — all the real logic lives in your bac
 
 ## Where it runs today
 
-- **Java** — Spring Boot and Quarkus, with SSR + WebSocket demos.
-- **Rust** — a native GTK4 desktop renderer.
+- **Java** — Spring Boot and Quarkus, with SSR + WebSocket demos (the flagship, getting-started path).
+- **Rust** — a native GTK4 desktop renderer (same protocol, a second surface).
 
 ## Where it's headed
+
+The SSR path above is the on-ramp — the protocol isn't limited to it.
 
 Write the app logic once, run it on embedded, mobile, desktop, and browser. Pathland
 is an open protocol, so the same code that drives the server-rendered UI today can
@@ -145,6 +165,9 @@ mvn -q package && java -jar target/pathland-spring-boot-demo-0.1.0.jar
 cd lib/java/pathland-quarkus-demo
 mvn quarkus:dev
 # → http://localhost:8080
+
+# Same protocol, native GTK desktop renderer (no browser)
+cd lib/rust && cargo run -p pathland-render-gtk-demo
 ```
 
 ## The technical details
