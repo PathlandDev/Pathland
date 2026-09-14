@@ -151,6 +151,10 @@ even on small devices.
 
 ## Try it
 
+Each demo also has a ready-made script in [`scripts/`](./scripts/): `run-spring-demo.sh`,
+`run-quarkus-demo.sh`, `run-rust-gtk-demo.sh`, `run-java-gtk-demo.sh` (they build
+their prerequisites and launch). The same commands manually:
+
 ```bash
 # one-time: build the Rust HTML renderer (embedded in the jar), then the Java reactor
 cd lib/rust && cargo build -p pathland-render-html

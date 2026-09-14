@@ -144,8 +144,12 @@ public final class PathlandCore {
 
     /** Allocate bytes into the bump arena, returning the absolute offset (or {@code u32::MAX}). */
     public int arenaAlloc(Pointer handle, byte[] bytes) {
-        Memory buf = new Memory(bytes.length);
-        buf.write(0, bytes, 0, bytes.length);
+        // JNA rejects a zero-sized Memory; an empty string is a valid arena entry
+        // ([u32 len=0][0 bytes]), so back it with a 1-byte buffer and pass the real length.
+        Memory buf = new Memory(Math.max(1, bytes.length));
+        if (bytes.length > 0) {
+            buf.write(0, bytes, 0, bytes.length);
+        }
         return nativeCore.pathland_core_arena_alloc(handle, buf, bytes.length);
     }
 

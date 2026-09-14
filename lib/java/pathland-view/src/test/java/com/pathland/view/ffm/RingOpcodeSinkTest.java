@@ -74,6 +74,34 @@ class RingOpcodeSinkTest {
         }
     }
 
+    @Test
+    void emptyTextAllocatesAValidZeroLengthArenaEntry() {
+        PathlandCore core;
+        try {
+            core = PathlandCore.instance();
+        } catch (Throwable t) {
+            Assumptions.assumeTrue(false,
+                    "libpathland_core unavailable on java.library.path; JNA ring test skipped: " + t);
+            return;
+        }
+
+        try (RingOpcodeSink sink = new RingOpcodeSink(core)) {
+            // The ring path must not crash on an empty SET_TEXT (JNA Memory(0)); the
+            // arena entry is [u32 len=0][0 bytes] and the opcode references it.
+            sink.beginFrame();
+            sink.setText(3, "");
+            sink.endFrame();
+
+            long len = core.ringLen(sink.handle());
+            byte[] buf = core.ringPtr(sink.handle()).getByteArray(0, (int) len);
+
+            int arenaOff = readIntLE(buf, 0x12);
+            int ref = readIntLE(buf, arenaOff);
+            int entryLen = readIntLE(buf, arenaOff + ref);
+            assertEquals(0, entryLen, "empty string arena entry has len 0");
+        }
+    }
+
     private static int readIntLE(byte[] buf, int offset) {
         return (buf[offset] & 0xFF)
                 | ((buf[offset + 1] & 0xFF) << 8)
