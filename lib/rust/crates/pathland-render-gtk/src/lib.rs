@@ -964,7 +964,12 @@ fn build_widget(node: &HostNode) -> gtk::Widget {
         WidgetKind::Slider => {
             let min = f64::from(node.f32_property(property_id::MIN_VALUE, 0.0));
             let max = f64::from(node.f32_property(property_id::MAX_VALUE, 1.0));
-            let scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, min, max, 0.0);
+            // GTK requires a non-zero step (`gtk_scale_new_with_range` asserts it);
+            // a STEP_VALUE of 0 means "continuous" in the DSL, so derive a small
+            // increment instead of panicking.
+            let step = f64::from(node.f32_property(property_id::STEP_VALUE, 0.0));
+            let step = if step > 0.0 { step } else { ((max - min) / 100.0).max(0.001) };
+            let scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, min, max, step);
             scale.set_draw_value(false);
             scale.set_hexpand(true);
             scale.upcast()
@@ -1404,6 +1409,23 @@ pub fn run_with_pump<P, F>(
     P: Pump + 'static,
     F: FnMut(Rc<RefCell<P>>) + 'static,
 {
+    run_with_pump_sized(app_id, title, pump, args, on_event, 420, 220);
+}
+
+/// [`run_with_pump`] with an explicit default window size (embedding hosts that
+/// know the UI needs more room, e.g. a master-detail layout, pass their own).
+pub fn run_with_pump_sized<P, F>(
+    app_id: &str,
+    title: &str,
+    pump: Rc<RefCell<P>>,
+    args: &[&str],
+    on_event: F,
+    default_width: i32,
+    default_height: i32,
+) where
+    P: Pump + 'static,
+    F: FnMut(Rc<RefCell<P>>) + 'static,
+{
     let app_id = app_id.to_string();
     let title = title.to_string();
     let on_event = Rc::new(RefCell::new(on_event));
@@ -1414,8 +1436,8 @@ pub fn run_with_pump<P, F>(
         let window = gtk::ApplicationWindow::builder()
             .application(app)
             .title(&title)
-            .default_width(420)
-            .default_height(220)
+            .default_width(default_width)
+            .default_height(default_height)
             .build();
 
         let renderer = Rc::new(RefCell::new(GtkRenderer::new()));
@@ -1441,14 +1463,28 @@ pub fn run_with_pump<P, F>(
         // `emit` is the shared path for every raw input the renderer reports —
         // pointer/control events from the sink below, and platform back /
         // Escape-key navigation from the window-level key controller.
+        //
+        // A frame apply borrows the pump zero-copy (the batch aliases the shared
+        // ring). Applying a value-bearing control's *programmatic* value
+        // (e.g. `GtkScale::set_value`) fires its connected GTK signal
+        // synchronously, re-entering `emit` while the pump is borrowed. Such
+        // events are deferred to the idle pump (flushed before the next frame),
+        // which also avoids a control echo loop when the host writes the same
+        // value back.
+        let pending: Rc<RefCell<Vec<Event>>> = Rc::new(RefCell::new(Vec::new()));
         let emit = {
             let pump = pump.clone();
             let wake = on_event.clone();
-            move |ev: Event| {
-                let mut p = pump.borrow_mut();
-                let _ = p.send_input(&ev);
-                drop(p);
-                wake.borrow_mut()(pump.clone());
+            let pending = pending.clone();
+            move |ev: Event| match pump.try_borrow_mut() {
+                Ok(mut p) => {
+                    let _ = p.send_input(&ev);
+                    drop(p);
+                    wake.borrow_mut()(pump.clone());
+                }
+                Err(_) => {
+                    pending.borrow_mut().push(ev);
+                }
             }
         };
         {
@@ -1482,19 +1518,25 @@ pub fn run_with_pump<P, F>(
             window.add_controller(key);
         }
 
-        // Initial render + window root.
+        // Initial render + window root. Deferred control signals from the mount
+        // apply are flushed before the idle pump takes over.
         pump_once(&renderer, &pump);
+        flush_pending(&pump, &pending, &on_event);
         let root = renderer.borrow().root_widget();
         if let Some(root) = root {
             window.set_child(Some(&root));
         }
         window.present();
 
-        // Idle pump: apply pending frames to the renderer. Events are drained by
-        // the host (woken from the sink above), not here.
+        // Idle pump: flush any deferred (re-entrant) events, then apply pending
+        // frames to the renderer. Events are drained by the host (woken from the
+        // sink above), not here.
         let idle_renderer = renderer.clone();
         let idle_pump = pump.clone();
+        let idle_pending = pending.clone();
+        let idle_wake = on_event.clone();
         glib::idle_add_local(move || {
+            flush_pending(&idle_pump, &idle_pending, &idle_wake);
             pump_once(&idle_renderer, &idle_pump);
             glib::ControlFlow::Continue
         });
@@ -1511,6 +1553,28 @@ fn window_has_text_focus(window: &impl IsA<gtk::Window>) -> bool {
         .upcast_ref::<gtk::Window>()
         .property::<Option<gtk::Widget>>("focus-widget");
     focused.map_or(false, |w| w.is::<gtk::Entry>() || w.is::<gtk::TextView>())
+}
+
+/// Flush events deferred during a frame apply (re-entrant control signals) into
+/// the pump and wake the host. Runs between frames, so the pump is free.
+fn flush_pending<P, F>(
+    pump: &Rc<RefCell<P>>,
+    pending: &Rc<RefCell<Vec<Event>>>,
+    wake: &Rc<RefCell<F>>,
+) where
+    P: Pump,
+    F: FnMut(Rc<RefCell<P>>),
+{
+    if pending.borrow().is_empty() {
+        return;
+    }
+    let events = std::mem::take(&mut *pending.borrow_mut());
+    let mut p = pump.borrow_mut();
+    for ev in events {
+        let _ = p.send_input(&ev);
+    }
+    drop(p);
+    wake.borrow_mut()(pump.clone());
 }
 
 /// Apply pending frames to the renderer. (Events flow the other way: the

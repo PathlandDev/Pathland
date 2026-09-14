@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.pathland</groupId>
+        <artifactId>pathland-parent</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>pathland-gtk-demo</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Pathland GTK Desktop Demo</name>
+    <description>
+        Runs the shared framework-agnostic demo views (com.pathland.demo) under the
+        native GTK4 renderer (libpathland_gtk). The Java DSL emits opcodes into the
+        libpathland_core shared ring (RingOpcodeSink); pathland_gtk_run_ring pumps the
+        same ring in place (zero-copy); native inputs round-trip as EVENT opcodes that
+        this host drains and dispatches into the app's bindings.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.pathland</groupId>
+            <artifactId>pathland-view</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.pathland</groupId>
+            <artifactId>pathland-demo-views</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.pathland.demo.gtk.GtkHost</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

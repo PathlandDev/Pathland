@@ -3,6 +3,7 @@ package com.pathland.view.emit;
 import com.pathland.view.Color;
 import com.pathland.view.Environment;
 import com.pathland.view.EnvironmentValues;
+import com.pathland.view.Properties;
 import com.pathland.view.ThemeData;
 import com.pathland.view.ValueTypes;
 import com.pathland.view.View;
@@ -221,6 +222,14 @@ public final class Emitter {
         if (node.dateBinding != null) {
             sink.setDate(node.id, node.days, node.millisOfDay);
         }
+        // The GTK renderer gates TEXT_CHANGED / VALUE_CHANGED on a BINDING_ID
+        // (transport-aware event guard). The ring/desktop path emits one per bound
+        // control so those events round-trip; the frame (SSR) path never needs it.
+        // The value is the node's own id — unique, and the host already routes
+        // events by target id.
+        if (ringSink() && (node.textInput != null || node.valueInput != null || node.dateInput != null)) {
+            node.properties.computeIfAbsent(Properties.BINDING_ID, k -> node.id);
+        }
         for (Map.Entry<Integer, Object> entry : node.properties.entrySet()) {
             emitProperty(node.id, entry.getKey(), entry.getValue());
         }
@@ -228,6 +237,10 @@ public final class Emitter {
             emitNode(child);
             sink.insertChild(node.id, child.id, -1);
         }
+    }
+
+    private boolean ringSink() {
+        return sink instanceof com.pathland.view.ffm.RingOpcodeSink;
     }
 
     private void emitProperty(int nodeId, int property, Object value) {

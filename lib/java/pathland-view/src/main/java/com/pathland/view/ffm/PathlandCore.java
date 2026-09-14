@@ -52,6 +52,7 @@ public final class PathlandCore {
         int pathland_core_frame_count(Pointer handle);
         Pointer pathland_core_ring_ptr(Pointer handle);
         long pathland_core_ring_len(Pointer handle);
+        Pointer pathland_core_ring_mut(Pointer handle);
         int pathland_core_drain_events(Pointer handle, Pointer out, int max);
         boolean pathland_core_send_event(Pointer handle, Pointer opcode);
     }
@@ -143,8 +144,12 @@ public final class PathlandCore {
 
     /** Allocate bytes into the bump arena, returning the absolute offset (or {@code u32::MAX}). */
     public int arenaAlloc(Pointer handle, byte[] bytes) {
-        Memory buf = new Memory(bytes.length);
-        buf.write(0, bytes, 0, bytes.length);
+        // JNA rejects a zero-sized Memory; an empty string is a valid arena entry
+        // ([u32 len=0][0 bytes]), so back it with a 1-byte buffer and pass the real length.
+        Memory buf = new Memory(Math.max(1, bytes.length));
+        if (bytes.length > 0) {
+            buf.write(0, bytes, 0, bytes.length);
+        }
         return nativeCore.pathland_core_arena_alloc(handle, buf, bytes.length);
     }
 
@@ -168,6 +173,15 @@ public final class PathlandCore {
     /** Byte length of the shared linear memory. */
     public long ringLen(Pointer handle) {
         return nativeCore.pathland_core_ring_len(handle);
+    }
+
+    /**
+     * Borrow the underlying shared ring for a same-process consumer (e.g. the GTK
+     * renderer pumps it in place). The returned pointer is opaque to Java; hand it
+     * to {@code pathland_gtk_run_ring}. The handle must outlive the consumer.
+     */
+    public Pointer ringMut(Pointer handle) {
+        return nativeCore.pathland_core_ring_mut(handle);
     }
 
     // --- events (host → guest) ---

@@ -27,6 +27,7 @@
         <module>pathland-spring-boot-starter</module>
         <module>pathland-quarkus-starter</module>
         <module>pathland-demo-views</module>
+        <module>pathland-gtk-demo</module>
         <module>pathland-quarkus-demo</module>
         <module>pathland-spring-boot-demo</module>
     </modules>

@@ -1,6 +1,6 @@
 # pathland-core-capi — implementation status
 
-**Last updated:** August 28, 2026
+**Last updated:** September 14, 2026
 
 The **minimal ring C ABI** (`libpathland_core`) used by the Java DSL via JNA.
 Protocol contract: `spec/OPCODE.md`.
@@ -12,6 +12,9 @@ Protocol contract: `spec/OPCODE.md`.
   (`begin_frame`/`end_frame`, `frame_count`).
 - `pathland_core_arena_alloc` (guest arena).
 - Zero-copy `ring_ptr` / `ring_len`.
+- `pathland_core_ring_mut` — borrow the underlying `RingTransport` for a
+  same-process consumer (the GTK renderer pumps it in place via
+  `pathland_gtk_run_ring`); null-guarded.
 - Event drain / send.
 
 ## Not implemented / gaps
