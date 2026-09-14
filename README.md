@@ -151,9 +151,29 @@ even on small devices.
 
 ## Try it
 
-Each demo also has a ready-made script in [`scripts/`](./scripts/): `run-spring-demo.sh`,
-`run-quarkus-demo.sh`, `run-rust-gtk-demo.sh`, `run-java-gtk-demo.sh` (they build
-their prerequisites and launch). The same commands manually:
+Each demo has a one-command launcher in [`scripts/`](./scripts/). Run one from the
+repository root — it builds its own prerequisites (Rust dylibs, the Java reactor)
+and launches:
+
+| Script | Demo | What you get |
+|--------|------|--------------|
+| `./scripts/run-spring-demo.sh` | Spring Boot SSR + WebSocket | http://localhost:8080 |
+| `./scripts/run-quarkus-demo.sh` | Quarkus SSR + WebSocket (hot reload) | http://localhost:8080 |
+| `./scripts/run-rust-gtk-demo.sh` | Rust DSL → GTK4 desktop renderer | a native window |
+| `./scripts/run-java-gtk-demo.sh` | Java DSL → GTK4 desktop renderer (the shared `SplitNavDemo`) | a native window |
+
+```bash
+# e.g. the Spring Boot demo
+./scripts/run-spring-demo.sh
+```
+
+Notes:
+- The web demos need a JDK 17+ (the whole stack runs on every LTS from 17).
+- The GTK demos need the GTK4 + libadwaita system libraries.
+- On macOS the Java GTK demo hands GTK the main thread automatically
+  (`-XstartOnFirstThread`); Linux needs nothing special.
+
+The same commands without the scripts:
 
 ```bash
 # one-time: build the Rust HTML renderer (embedded in the jar), then the Java reactor
