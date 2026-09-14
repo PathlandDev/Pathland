@@ -138,6 +138,19 @@ pub unsafe extern "C" fn pathland_core_ring_len(handle: CoreHandle) -> u64 {
     as_host(handle).ring.buffer().len() as u64
 }
 
+/// Borrow the underlying shared ring for a same-process consumer (e.g. the GTK
+/// renderer, which pumps it in place). Returns NULL for a null handle.
+///
+/// The caller must not destroy the core handle until the consumer is done with
+/// the ring. The pointer is only valid inside this process.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_core_ring_mut(handle: CoreHandle) -> *mut RingTransport {
+    if handle.is_null() {
+        return std::ptr::null_mut();
+    }
+    &mut as_host(handle).ring
+}
+
 // ---------------------------------------------------------------------------
 // Events (host → guest)
 // ---------------------------------------------------------------------------

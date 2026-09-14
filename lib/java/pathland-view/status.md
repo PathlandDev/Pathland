@@ -1,6 +1,6 @@
 # pathland-view (Java) — implementation status
 
-**Last updated:** September 3, 2026
+**Last updated:** September 14, 2026
 
 The hand-written, framework-agnostic Java 17+ DSL (`com.pathland.view`):
 SwiftUI-style views, Angular-style signals, fine-grained emitter, `PLPL` wire
@@ -152,7 +152,20 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (`isEnvironment`/`decodeEnvironment` → `EnvironmentData` — the platform
   environment: viewport + initial route; SSR synthesizes it from the request,
   the DOM client sends/enriches it over the WebSocket).
-- **JNA ring interop** (`ffm`): lazy `libpathland_core` binding, zero JNI.
+- **JNA ring interop** (`ffm`): lazy `libpathland_core` binding, zero JNI;
+  `PathlandCore.ringMut(handle)` borrows the underlying ring for the in-process
+  GTK renderer (`pathland_gtk_run_ring`), and `RingOpcodeSink` is the zero-copy
+  guest writer.
+- **Input dispatch** (`emit.InputDispatcher`): routes raw `EVENT`s into the
+  `RenderResult` registries (tap / navigate / text / value / date, `NAVIGATE`
+  URL → active path, back → router). Shared by the server session
+  (`PathlandSession.dispatch`) and the native GTK host, so both route events
+  identically and neither reaches into view internals.
+- **`BINDING_ID` on the ring path**: for a `RingOpcodeSink`, the emitter sets
+  `BINDING_ID` (= the node's id) on every text/value/date-bound control so the
+  GTK renderer's transport-aware event guard fires (`TEXT_CHANGED` /
+  `VALUE_CHANGED`). The frame (SSR) path never emits it, keeping server output
+  unchanged.
 - **State** (`state`): `StateStore`/`PersistentState`/`State`, auto-wired by
   `pathland-view-processor`.
 - **Design tokens**: `Color` is `(argb, token)` — `Color.token("color.primary")`
@@ -173,9 +186,11 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 
 ## Not implemented / gaps
 
-- `ACTION_ID`/`BINDING_ID` are usable as modifiers (`actionId`/`bindingId`) but
-  the Java model routes events by node id through the emitter's registries
-  (`RenderResult`), so controls don't set them automatically.
+- `ACTION_ID`/`BINDING_ID` are usable as modifiers (`actionId`/`bindingId`); the
+  Java model routes events by node id through the emitter's registries
+  (`RenderResult`), so the frame (SSR) path does not set them automatically.
+  On the ring (desktop) path the emitter auto-sets `BINDING_ID` for bound
+  controls (see Implemented) — the GTK renderer gates value/text events on it.
 - Structural reconcile does not emit `SET_PROPERTY` for a *removed* property on
   a matched node (the wire has no unset; the renderer keeps the last value) —
   consistent with the Rust engine.

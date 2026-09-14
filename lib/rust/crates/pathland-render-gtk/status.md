@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** September 8, 2026
+**Last updated:** September 14, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -88,6 +88,32 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   - The generative `space.<N>` family resolves `space.base` × N.
   - Since GTK CSS has no custom properties, tokens resolve to **concrete**
     values (rgba/px/Pango) before the existing CSS-provider / text-style paths.
+- **C ABI for foreign hosts (`capi.rs`)**:
+  - `pathland_gtk_run(host, on_event)` — pump a `pathland-view-native`
+    `NativeHost`'s ring in-process.
+  - `pathland_gtk_run_ring(ring, on_event, width, height)` — pump a
+    **`libpathland_core` ring borrowed in-process** (from
+    `pathland_core_ring_mut`): the route for hosts that emit opcodes themselves
+    (the Java DSL writes into the ring via `RingOpcodeSink` and the renderer
+    pumps the same ring in place — zero-copy, no `pathland-view-native` host).
+    `width`/`height` size the default window.
+  - Both block until the GTK main loop exits and share `run_with_pump_sized`
+    (the 420×220 default lives in `run_with_pump`).
+- **Robustness fixes (exercised by the Java `SplitNavDemo`, which uses controls
+  the Rust demo never did)**:
+  - **Slider step**: GTK's `gtk_scale_new_with_range` asserts a non-zero step;
+    the renderer previously passed `0.0` unconditionally (a `SLIDER` crashed the
+    process). A `STEP_VALUE` of 0 ("continuous" in the DSL) now derives a small
+    increment (`(max-min)/100`, min `0.001`).
+  - **Lazy stacks**: `LAZY_VSTACK`/`LAZY_HSTACK` map to `WidgetKind::Stack`, but
+    `stack_orientation` only accepted `VSTACK`/`HSTACK` — a lazy stack panicked
+    at `stack_widget`. They now map to the same eager `GtkBox` orientations.
+  - **Re-entrant control signals**: applying a frame borrows the pump
+    zero-copy; a *programmatic* value change (e.g. `GtkScale::set_value`) fires
+    the connected GTK signal synchronously and re-entered `emit`, double-borrowing
+    the pump (`RefCell already borrowed`) and panicking. Such events are now
+    **deferred to the idle pump** (`flush_pending` before each frame), which also
+    prevents a control-echo loop when the host writes the same value back.
 
 ## Not implemented / gaps
 

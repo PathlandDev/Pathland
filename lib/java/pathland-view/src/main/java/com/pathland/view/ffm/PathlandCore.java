@@ -52,6 +52,7 @@ public final class PathlandCore {
         int pathland_core_frame_count(Pointer handle);
         Pointer pathland_core_ring_ptr(Pointer handle);
         long pathland_core_ring_len(Pointer handle);
+        Pointer pathland_core_ring_mut(Pointer handle);
         int pathland_core_drain_events(Pointer handle, Pointer out, int max);
         boolean pathland_core_send_event(Pointer handle, Pointer opcode);
     }
@@ -168,6 +169,15 @@ public final class PathlandCore {
     /** Byte length of the shared linear memory. */
     public long ringLen(Pointer handle) {
         return nativeCore.pathland_core_ring_len(handle);
+    }
+
+    /**
+     * Borrow the underlying shared ring for a same-process consumer (e.g. the GTK
+     * renderer pumps it in place). The returned pointer is opaque to Java; hand it
+     * to {@code pathland_gtk_run_ring}. The handle must outlive the consumer.
+     */
+    public Pointer ringMut(Pointer handle) {
+        return nativeCore.pathland_core_ring_mut(handle);
     }
 
     // --- events (host → guest) ---

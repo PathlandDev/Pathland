@@ -13,10 +13,13 @@ use crate::host::HostNode;
 use pathland_core::{component_type, property_id};
 
 /// Map a component type to its native stack orientation.
+///
+/// `LAZY_VSTACK`/`LAZY_HSTACK` render as eager stacks (no GTK windowing), so
+/// they share the stack orientation mapping.
 pub fn stack_orientation(component_type: u16) -> Option<Orientation> {
     match component_type {
-        component_type::VSTACK => Some(Orientation::Vertical),
-        component_type::HSTACK => Some(Orientation::Horizontal),
+        component_type::VSTACK | component_type::LAZY_VSTACK => Some(Orientation::Vertical),
+        component_type::HSTACK | component_type::LAZY_HSTACK => Some(Orientation::Horizontal),
         _ => None,
     }
 }
@@ -175,6 +178,15 @@ mod tests {
         );
         assert_eq!(
             stack_orientation(component_type::HSTACK),
+            Some(Orientation::Horizontal)
+        );
+        // Lazy stacks render eagerly (no GTK windowing) — same orientation.
+        assert_eq!(
+            stack_orientation(component_type::LAZY_VSTACK),
+            Some(Orientation::Vertical)
+        );
+        assert_eq!(
+            stack_orientation(component_type::LAZY_HSTACK),
             Some(Orientation::Horizontal)
         );
         assert_eq!(stack_orientation(component_type::TEXT), None);
