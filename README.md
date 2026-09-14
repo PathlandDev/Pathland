@@ -215,5 +215,6 @@ conformance vectors, and the implementation notes — lives in [`spec/`](./spec/
 ## Status & license
 
 Proof of concept. See [CONTRIBUTING.md](./CONTRIBUTING.md),
-[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md), and [SECURITY.md](./SECURITY.md).
+[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md), [SECURITY.md](./SECURITY.md), and
+[GENAI.md](./GENAI.md) (generative-AI transparency).
 Licensed under the [Apache License 2.0](LICENSE).
