@@ -128,7 +128,7 @@ resources. It's shipped, not maintained — all the real logic lives in your bac
 
 ## Where it runs today
 
-- **Java** — Spring Boot and Quarkus, with SSR + WebSocket demos (the flagship, getting-started path).
+- **Java** — Spring Boot and Quarkus, with SSR + WebSocket demos (the flagship, getting-started path), and the same shared demo views under the native GTK4 desktop renderer (`pathland-gtk-demo`).
 - **Rust** — a native GTK4 desktop renderer (same protocol, a second surface).
 
 ## Where it's headed
@@ -168,6 +168,14 @@ mvn quarkus:dev
 
 # Same protocol, native GTK desktop renderer (no browser)
 cd lib/rust && cargo run -p pathland-render-gtk-demo
+
+# Same protocol via Java: the shared demo views (SplitNavDemo) under the GTK renderer
+cd lib/rust && cargo build -p pathland-core-capi -p pathland-render-gtk
+cd lib/java/pathland-gtk-demo
+MAVEN_OPTS="-XstartOnFirstThread" mvn -q compile exec:java \
+  -Dpathland.core.lib=$PWD/../../lib/rust/target/debug/libpathland_core.dylib \
+  -Dpathland.gtk.lib=$PWD/../../lib/rust/target/debug/libpathland_gtk.dylib
+# (macOS needs -XstartOnFirstThread; Linux can drop it)
 ```
 
 ## The technical details
