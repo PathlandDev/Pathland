@@ -109,10 +109,10 @@ future phases.
 | WP | Deliverable | Issue | Effort (h) | Cost @€45/h |
 |----|-------------|-------|-----------|-------------|
 | WP1 | `spec/README.md` index + consolidated `0x0000–0xFFFF` property-key registry (derived, cross-checked against all language surfaces) | #48 | 30 | €1,350 |
-| WP2 | Machine-readable ID schema + cross-language validator CLI (drift guard) + expanded golden conformance vectors (validation only — codegen deferred) | #43 | 70 | €3,150 |
-| WP3 | Coverage-guided fuzz harnesses (Rust/JS/Java), remaining decoder bounds hardening, one Miri pass on the C ABI — the hardening baseline for an independent security audit | #37, #38 | 70 | €3,150 |
+| WP2 | Machine-readable ID schema + cross-language validator CLI (drift guard) + expanded golden conformance vectors (incl. the DOM renderer full-catalog pass and HTML golden vectors; validation only — codegen deferred) | #43, #73, #57 | 70 | €3,150 |
+| WP3 | Coverage-guided fuzz harnesses (Rust/JS/Java), remaining decoder bounds hardening, one Miri pass on the C ABI, zero-allocation/no-leak profiling for the `no_std` surface — the hardening baseline for an independent security audit | #37, #38, #39 | 70 | €3,150 |
 | WP4 | Benchmark suite: 16-byte vs JSON/Protobuf SDUI, and vs htmx + BFF/JSON SPA (payload size, decode latency, memory) + one CI chart | #41, #68 | 30 | €1,350 |
-| WP5 | CI completion (rust + java), **WCAG/ARIA compliance on the SSR HTML renderer** (an acceptance criterion on all web deliverables), hosted SSR HTML demo (URL + screenshots), evidence pack | #44, #65, #71, #76 | 45 | €2,025 |
+| WP5 | CI completion (rust + java, incl. demo modules), **WCAG/ARIA compliance on the SSR HTML renderer** (an acceptance criterion on all web deliverables, incl. form semantics + the formal audit/statement), hosted SSR HTML demo (URL + screenshots), evidence pack | #44, #65, #64, #71, #69, #76, #70 | 45 | €2,025 |
 | PM / reporting (10%) | NLnet reporting, MoU tracking | — | 15 | €675 |
 | **Total** | | | **260 h** | **€11,700** |
 
