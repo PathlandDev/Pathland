@@ -106,6 +106,23 @@ directly addresses enterprise Java teams. The core deliverable is the open
 additional DSLs or renderers in this grant; embedded/native/mobile surfaces are
 future phases.
 
+### Out of scope this grant — post-grant roadmap
+
+**Web evidence / adoption (tracked in the *Enterprise SRE · HTMX & BFF
+replacement* milestone; done during the assessment window and as the hosted
+demo + docs story grows):** #45 SEO-hardened SSR, #46 View Transitions, #47
+publishable web client, #58 reconnect/heartbeat, #59 batch coalescing, #60 no-JS
+degradation, #61 class-toggle, #62 observability, #63 web security, #66 docs
+bundle (getting-started + migration + enterprise deployment), #67
+production-shaped Spring/Quarkus reference apps.
+
+**Later grants (the future scaling path):** #42 Visual Inspector and #72
+governance/release/RFC + docs site; the embedded/LVGL renderer and the `no_std`
+embedded target (from #39); desktop and mobile renderers. These are the
+candidates for a subsequent, larger Restack project — the >€50k path whose
+prerequisites (WCAG-compliant deliverables, satisfied security audit) WP3/WP5
+explicitly build.
+
 | WP | Deliverable | Issue | Effort (h) | Cost @€45/h |
 |----|-------------|-------|-----------|-------------|
 | WP1 | `spec/README.md` index + consolidated `0x0000–0xFFFF` property-key registry (derived, cross-checked against all language surfaces) | #48 | 30 | €1,350 |
