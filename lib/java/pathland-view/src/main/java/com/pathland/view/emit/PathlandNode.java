@@ -137,7 +137,7 @@ public final class PathlandNode {
     public final java.util.List<java.util.function.Consumer<String>> pathChangeListeners = new ArrayList<>();
 
     /** The active-path signal ({@code Platform.ACTIVE_PATH}) captured at render; null when not provided. */
-    public com.pathland.view.signal.WritableSignal<String> activePath;
+    public com.pathland.view.signal.Signal<String> activePath;
 
     public PathlandNode(int component) {
         this.component = component;

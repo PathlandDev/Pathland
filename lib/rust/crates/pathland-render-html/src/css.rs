@@ -52,6 +52,12 @@ img, svg, video, canvas, audio, iframe, embed, object { display: block; vertical
 img, video { max-width: 100%; height: auto; }
 [hidden] { display: none; }
 
+/* ===== Adjust body ===== */
+body  {
+  display: flex;
+  height: 100vh;
+}
+
 /* ===== Design tokens (protocol retheme via SET_DESIGN_TOKEN) ===== */
 :root {
   /* Core colors (Tier 1, spec/TOKENS.md) */

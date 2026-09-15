@@ -1,4 +1,4 @@
-package com.pathland.demo;
+package com.pathland.demo.counter;
 
 import com.pathland.view.Color;
 import com.pathland.view.Text;

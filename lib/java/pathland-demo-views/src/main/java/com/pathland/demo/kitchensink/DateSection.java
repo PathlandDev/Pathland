@@ -1,4 +1,4 @@
-package com.pathland.demo;
+package com.pathland.demo.kitchensink;
 
 import com.pathland.view.DatePicker;
 import com.pathland.view.DatePickerMode;

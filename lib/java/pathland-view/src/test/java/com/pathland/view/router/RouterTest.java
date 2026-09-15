@@ -21,6 +21,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -470,7 +471,7 @@ class RouterTest {
         View probe = new View() {
             @Override
             public com.pathland.view.emit.PathlandNode render(Environment env) {
-                seen.add(com.pathland.view.Environment.value(key));
+                seen.add(com.pathland.view.Environment.value(key).get());
                 return new com.pathland.view.emit.PathlandNode(com.pathland.view.Components.TEXT);
             }
         };
@@ -485,7 +486,110 @@ class RouterTest {
 
         assertEquals("inner", seen.get(0), "nearest (innermost) binding wins");
         assertEquals("outer", seen.get(1), "the outer binding applies without an inner override");
-        assertEquals(null, com.pathland.view.Environment.value(key), "no leak after render (restored)");
+        assertEquals(null, com.pathland.view.Environment.value(key).get(), "no leak after render (restored)");
+    }
+
+    @Test
+    void environmentValueReturnsSignal() {
+        // Environment.value always returns a signal: a plain injected value is wrapped
+        // (so `.get()` gives the value), and an injected signal comes back as the same
+        // instance (so a node bound to it stays reactive).
+        com.pathland.view.EnvironmentKey<String> plainKey = com.pathland.view.EnvironmentKey.of("plain");
+        com.pathland.view.EnvironmentKey<String> sigKey = com.pathland.view.EnvironmentKey.of("sig");
+        com.pathland.view.signal.WritableSignal<String> host =
+                com.pathland.view.signal.Signals.signal("/");
+        java.util.List<String> plainSeen = new java.util.ArrayList<>();
+        java.util.List<com.pathland.view.signal.Signal<String>> sigSeen = new java.util.ArrayList<>();
+
+        View probe = new View() {
+            @Override
+            public com.pathland.view.emit.PathlandNode render(Environment env) {
+                plainSeen.add(com.pathland.view.Environment.value(plainKey).get());
+                sigSeen.add(com.pathland.view.Environment.value(sigKey));
+                return new com.pathland.view.emit.PathlandNode(com.pathland.view.Components.TEXT);
+            }
+        };
+        View root = probe
+                .environment(plainKey, "hello")
+                .environment(sigKey, host);
+
+        new Emitter(sink()).mount(root, Environment.DEFAULT);
+        assertEquals("hello", plainSeen.get(0), "a plain value is wrapped and readable via .get()");
+        assertSame(host, sigSeen.get(0), "an injected signal is returned as the same instance (reactive)");
+
+        // Absent key: the read still yields a signal whose .get() is null.
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        View missingProbe = new View() {
+            @Override
+            public com.pathland.view.emit.PathlandNode render(Environment env) {
+                missing.add(com.pathland.view.Environment.value(plainKey).get());
+                return new com.pathland.view.emit.PathlandNode(com.pathland.view.Components.TEXT);
+            }
+        };
+        new Emitter(sink()).mount(missingProbe, Environment.DEFAULT);
+        assertEquals(null, missing.get(0), "no binding → a constant signal yielding null");
+    }
+
+    @Test
+    void environmentValueReadsInsideBody() {
+        // A composite reads the injected router in body(), via Environment.value(.get()).
+        Router router = Navigation.navigator().route("/", Text.of("x")).build();
+        java.util.List<Router> seen = new java.util.ArrayList<>();
+
+        View composite = new View() {
+            @Override
+            public View body() {
+                seen.add(com.pathland.view.Environment.value(Navigation.ROUTER).get());
+                return Text.of("x");
+            }
+        };
+
+        new Emitter(sink()).mount(composite.environment(Navigation.ROUTER, router), Environment.DEFAULT);
+        assertEquals(1, seen.size());
+        assertEquals(router, seen.get(0), "the env value is visible through the signal read");
+
+        // Without the modifier the read yields null (no scope binding).
+        seen.clear();
+        new Emitter(sink()).mount(composite, Environment.DEFAULT);
+        assertEquals(1, seen.size());
+        assertEquals(null, seen.get(0), "no binding → null");
+    }
+
+    @Test
+    void environmentValueFieldResolvesLazilyAtRenderTime() {
+        // The @Environment field style: Environment.value is read in a field initializer,
+        // BEFORE the enclosing `.environment(...)` scope is pushed, so it returns a lazy
+        // signal that captures the binding when .get() runs inside body(), during render.
+        Router router = Navigation.navigator().route("/", Text.of("x")).build();
+        java.util.List<Router> seen = new java.util.ArrayList<>();
+
+        class SidebarLike implements View {
+            private final com.pathland.view.signal.Signal<Router> routerField =
+                    com.pathland.view.Environment.value(Navigation.ROUTER);
+
+            @Override
+            public View body() {
+                seen.add(routerField.get());
+                return Text.of("x");
+            }
+        }
+
+        new Emitter(sink()).mount(new SidebarLike().environment(Navigation.ROUTER, router), Environment.DEFAULT);
+        assertEquals(1, seen.size());
+        assertEquals(router, seen.get(0), "a field read before the scope resolves at render time");
+
+        // Reuse the same view instance: the lazy signal re-captures on the next render.
+        seen.clear();
+        Router other = Navigation.navigator().route("/", Text.of("y")).build();
+        new Emitter(sink()).mount(new SidebarLike().environment(Navigation.ROUTER, other), Environment.DEFAULT);
+        assertEquals(1, seen.size());
+        assertEquals(other, seen.get(0), "a fresh render under a different binding resolves it");
+
+        // Without any binding the field resolves to null.
+        seen.clear();
+        new Emitter(sink()).mount(new SidebarLike(), Environment.DEFAULT);
+        assertEquals(1, seen.size());
+        assertEquals(null, seen.get(0), "no binding → the lazy field yields null");
     }
 
     @Test

@@ -46,6 +46,30 @@ function nodeOf(el: Element | null): HTMLElement | null {
 }
 
 /**
+ * The element an input event belongs to: the nearest element (self or ancestor)
+ * that has a `data-pathland-id` AND a `data-event-listeners` mask including `bit`.
+ * Unlike {@link nodeOf} (which returns the deepest id-bearing element), this walks
+ * up so a gesture declared on a container (e.g. a tap on a `VStack` row whose child
+ * `Text` is what's actually clicked) is attributed to the node that listens — the
+ * contract the GTK renderer follows (gesture attached to any widget with the bits).
+ * Elements that declare no listeners are skipped, so non-listening children never
+ * steal an event from a listening ancestor.
+ */
+function eventNodeOf(target: Element | null, bit: number): HTMLElement | null {
+  let el: Element | null = target;
+  while (el && el !== document.body) {
+    if (el.hasAttribute("data-pathland-id")) {
+      const raw = el.getAttribute("data-event-listeners");
+      if (raw !== null && (Number(raw) & bit) !== 0) {
+        return el as HTMLElement;
+      }
+    }
+    el = el.parentElement;
+  }
+  return null;
+}
+
+/**
  * EVENT_LISTENERS gating: emit an event only if the node's `data-event-listeners`
  * mask (from the SSR HTML, mirroring the Rust renderer's event attrs) requests it.
  * When the attribute is absent there is no gating information — be permissive.
@@ -138,22 +162,22 @@ function boot(): void {
 
   // --- pointer: down / move (hover) / up (tap) ---
   document.addEventListener("pointerdown", (event) => {
-    const node = nodeOf(event.target as Element);
-    if (!transport.open || !listens(node, LISTEN_POINTER_DOWN)) {
+    const node = eventNodeOf(event.target as Element, LISTEN_POINTER_DOWN);
+    if (!transport.open || !node) {
       return;
     }
-    const id = Number(node!.getAttribute("data-pathland-id"));
+    const id = Number(node.getAttribute("data-pathland-id"));
     const secondary = event.button !== 0 ? FLAG_POINTER_SECONDARY : 0;
     transport.send(encodePointerDown(id, event.clientX, event.clientY, secondary));
   });
 
   document.addEventListener("pointermove", (event) => {
     const target = event.target as Element;
-    const node = nodeOf(target);
-    if (!transport.open || !listens(node, LISTEN_POINTER_MOVE)) {
+    const node = eventNodeOf(target, LISTEN_POINTER_MOVE);
+    if (!transport.open || !node) {
       return;
     }
-    const id = Number(node!.getAttribute("data-pathland-id"));
+    const id = Number(node.getAttribute("data-pathland-id"));
     if (!hovered.has(target)) {
       hovered.add(target);
       transport.send(encodePointerMove(id, event.clientX, event.clientY, FLAG_HOVER_ENTER));
@@ -161,11 +185,11 @@ function boot(): void {
   });
   document.addEventListener("pointerout", (event) => {
     const target = event.target as Element;
-    const node = nodeOf(target);
+    const node = eventNodeOf(target, LISTEN_POINTER_MOVE);
     if (hovered.has(target)) {
       hovered.delete(target);
-      if (transport.open && listens(node, LISTEN_POINTER_MOVE)) {
-        const id = Number(node!.getAttribute("data-pathland-id"));
+      if (transport.open && node) {
+        const id = Number(node.getAttribute("data-pathland-id"));
         transport.send(encodePointerMove(id, event.clientX, event.clientY, FLAG_HOVER_LEAVE));
       }
     }
@@ -176,9 +200,11 @@ function boot(): void {
     if (!target) {
       return;
     }
-    const button = nodeOf(target);
-    if (button && button.matches("button") && transport.open && listens(button, LISTEN_POINTER_UP)) {
-      const id = Number(button.getAttribute("data-pathland-id"));
+    // Tap: the nearest listening node (any element, not just <button>) — a tap
+    // gesture on a non-button container resolves to the container that declared it.
+    const node = eventNodeOf(target, LISTEN_POINTER_UP);
+    if (node && transport.open) {
+      const id = Number(node.getAttribute("data-pathland-id"));
       const secondary = (event as MouseEvent).button !== 0 ? FLAG_POINTER_SECONDARY : 0;
       transport.send(encodePointerUp(id, (event as MouseEvent).clientX, (event as MouseEvent).clientY, secondary));
       return;

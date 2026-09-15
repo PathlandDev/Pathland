@@ -49,6 +49,20 @@ public final class EnvironmentValues {
         return null;
     }
 
+    /**
+     * Whether {@code key} is bound anywhere in the chain (nearest-wins). Distinguishes
+     * an explicit {@code null} binding from an absent one — used by the lazy
+     * {@code Environment.value} signal to know when to (re)capture.
+     */
+    public boolean contains(EnvironmentKey<?> key) {
+        for (EnvironmentValues node = this; node != null; node = node.parent) {
+            if (node.key == key) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** A flattened view of the nearest bindings (for debugging/tests). */
     Map<EnvironmentKey<?>, Object> flattened() {
         Map<EnvironmentKey<?>, Object> out = new HashMap<>();

@@ -17,6 +17,22 @@ public final class FrameMod implements ViewModifier {
         this.bounds = bounds;
     }
 
+    /**
+     * A frame of a fixed {@code width} with **no height hint** and no content
+     * alignment: the view keeps its natural height and, as a flex child, stretches
+     * to its container's cross axis (e.g. a sidebar column filling a row's full
+     * height). Alignment is left untouched, so a stack's own cross-axis alignment
+     * (constructor {@code Alignment}) is not overwritten.
+     */
+    public static FrameMod of(float width) {
+        return new FrameMod(width, null, null, null);
+    }
+
+    /** A frame of {@code width} x {@code height} with no content alignment. */
+    public static FrameMod of(float width, float height) {
+        return new FrameMod(width, height, null, null);
+    }
+
     /** A frame of {@code width} x {@code height} at {@code alignment}. */
     public static FrameMod of(float width, float height, Alignment alignment) {
         return new FrameMod(width, height, (float) alignment.wire(), null);

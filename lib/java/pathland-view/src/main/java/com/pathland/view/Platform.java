@@ -1,7 +1,5 @@
 package com.pathland.view;
 
-import com.pathland.view.signal.WritableSignal;
-
 /**
  * Platform-level environment values and helpers (spec DSL.md §4.5). Unlike
  * {@code Navigation.ROUTER} (the router *instance*, only present when navigation is
@@ -21,8 +19,13 @@ import com.pathland.view.signal.WritableSignal;
  */
 public final class Platform {
 
-    /** The environment key for the app's active platform path (a writable signal). */
-    public static final EnvironmentKey<WritableSignal<String>> ACTIVE_PATH = EnvironmentKey.of("platform.activePath");
+    /**
+     * The environment key for the app's active platform path. The host injects a
+     * writable signal; {@code Environment.value(ACTIVE_PATH)} returns it as a
+     * {@code Signal<String>} (the same instance, so it stays reactive), and a bound
+     * router reads it for external writes and mirrors navigation back into it.
+     */
+    public static final EnvironmentKey<String> ACTIVE_PATH = EnvironmentKey.of("platform.activePath");
 
     private Platform() {}
 }

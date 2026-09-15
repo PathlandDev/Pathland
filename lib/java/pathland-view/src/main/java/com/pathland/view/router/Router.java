@@ -59,16 +59,17 @@ public final class Router {
      *       are re-routed through the guard-aware path ({@link #handlePlatformNavigation}) —
      *       guards are never bypassed;</li>
      *   <li>the router's own navigation ({@code navigate}/{@code push}/{@code pop}/
-     *       {@code replace}) is mirrored back into the signal;</li>
+     *       {@code replace}) is mirrored back into the signal when it is writable
+     *       (the host's {@code Platform.ACTIVE_PATH} always is);</li>
      *   <li>the initial value is guard-processed on construction.</li>
      * </ul>
      */
-    public Router(RouteTable table, WritableSignal<String> activePath) {
+    public Router(RouteTable table, Signal<String> activePath) {
         this.table = Objects.requireNonNull(table, "table");
         Objects.requireNonNull(activePath, "activePath");
         String initial = activePath.get();
         this.current = Signals.signal(Route.of(pathOf(initial == null ? "/" : initial)));
-        this.boundPath = activePath;
+        this.boundPath = activePath instanceof WritableSignal<String> ws ? ws : null;
         // External writes to the signal are platform navigation → re-route guard-aware.
         // Its initial run guard-processes the current value. Self-writes are skipped.
         // allowWrites: re-routing sets the router's own signals (current + the bound path).
