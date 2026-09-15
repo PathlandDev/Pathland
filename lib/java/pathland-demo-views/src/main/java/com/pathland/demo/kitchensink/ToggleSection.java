@@ -1,4 +1,4 @@
-package com.pathland.demo;
+package com.pathland.demo.kitchensink;
 
 import com.pathland.view.Text;
 import com.pathland.view.Toggle;
@@ -8,7 +8,6 @@ import com.pathland.view.View;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
 import com.pathland.view.state.State;
-import com.pathland.view.Button;
 import com.pathland.view.Padding;
 
 

@@ -92,9 +92,19 @@ public interface View {
      * Scope an environment value down this subtree (SwiftUI {@code .environment}):
      * the binding is active only while this subtree renders — nearest wins, so an
      * inner binding overrides an outer one for its subtree. Read it with
-     * {@code env.value(key)} / {@code Environment.value(key)}.
+     * {@code Environment.value(key)}, which always returns a signal (a plain value
+     * is wrapped; a signal value is returned as-is and stays reactive).
      */
     default <T> View environment(EnvironmentKey<T> key, T value) {
+        return modifier(EnvironmentMod.of(key, value));
+    }
+
+    /**
+     * Scope a reactive environment value down this subtree: the signal is returned
+     * as-is by {@code Environment.value(key)}, so a node bound to it (e.g.
+     * {@code Text.of(Environment.value(key))}) re-emits when it changes.
+     */
+    default <T> View environment(EnvironmentKey<T> key, Signal<T> value) {
         return modifier(EnvironmentMod.of(key, value));
     }
 

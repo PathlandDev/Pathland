@@ -1,5 +1,6 @@
-package com.pathland.demo;
+package com.pathland.demo.kitchensink;
 
+import com.pathland.demo.DemoTheme;
 import com.pathland.view.Categories;
 import com.pathland.view.Commands;
 import com.pathland.view.Components;

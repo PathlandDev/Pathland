@@ -20,6 +20,8 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,
   `Border.of(color, width)`, `FrameMod.of(w, h, align)`, …) applied via
   `.modifier(...)` (single) or `.modifiers(...)` (several, innermost-first);
+  `FrameMod.of(w)` / `of(w, h)` leave `ALIGNMENT` unset (alignment optional, so a
+  stack's own cross-axis alignment is preserved);
   the `View` interface has no per-modifier factory methods. Built-in and
   application-authored modifiers share the exact same surface (spec `DSL.md`
   §5.6); `buttonStyle` is the `ButtonStyleMod` value. Reactive overloads
@@ -119,11 +121,19 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `Environment.value(key)` — SwiftUI `.environment` style, hierarchical nearest-
   wins; a `NavigationContainer` scopes `Navigation.ROUTER` to its destination
   subtree and structural slots re-apply the incoming scope on re-render via
-  `PathlandNode.environmentForChildren`/`Emitter.reconcileSlot`), plus the
+  `PathlandNode.environmentForChildren`/`Emitter.reconcileSlot`; **reads always
+  return a signal** — `Environment.value(key)` → `Signal<T>`, a value injected as
+  a `Signal` comes back as the same instance (bindable for reactive updates) and a
+  plain value is wrapped in a constant signal; a read made before the key is bound
+  returns a **lazy signal** that captures the binding on the first `.get()` during
+  render, enabling the SwiftUI `@Environment` **field style**
+  (`private final Signal<Router> router = Environment.value(Navigation.ROUTER);`);
+  inject reactive values with `view.environment(key, signal)`), plus the
   **universal active platform path** (`Platform.ACTIVE_PATH` =
-  `EnvironmentKey<WritableSignal<String>>`, provided by the host for every app —
-  with or without navigation — and observed via `View.onPathChange(Consumer)` /
-  reading the signal; fires on every change incl. the initial value),
+  `EnvironmentKey<String>`, the host injects a writable signal — provided for every
+  app with or without navigation — read via `Environment.value` and observed via
+  `View.onPathChange(Consumer)` / reading the signal; fires on every change incl.
+  the initial value),
   `NavigationContainer` (structural
   slot emitting the `ROUTE` property coalesced into the same frame as the
   destination swap, plus a `NAV_DEPTH` U32 back-stack-depth property
