@@ -452,9 +452,21 @@ Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
   `Environment.value(Navigation.ROUTER)` during render — no constructor threading,
   nearest binding wins (nested containers override), and structural slots re-apply
   the scope when they re-render their destination.
+- **Environment reads always return a signal** (`Environment.value(key)` →
+  `Signal<T>`): a value injected as a `Signal` comes back as the same instance, so a
+  node bound to it (e.g. `Text.of(Environment.value(key))`) re-emits when it changes;
+  a plain value is wrapped in a constant signal (`.get()` gives the value). Inject a
+  reactive value with `view.environment(key, signal)`. A read made **before the key is
+  bound** (e.g. in a field initializer, before the enclosing `.environment(...)` scope
+  is pushed) returns a **lazy signal** that captures the binding on the first `.get()`
+  during render — the SwiftUI `@Environment` field style:
+  ```java
+  private final Signal<Router> router = Environment.value(Navigation.ROUTER);
+  @Override public View body() { ... menuRow(router.get(), ...) ... }
+  ```
 
 **The active platform path is universal** — `Platform.ACTIVE_PATH` is an
-`EnvironmentKey<WritableSignal<String>>` the host provides for **every** app (with
+`EnvironmentKey<String>` the host provides for **every** app (with
 or without navigation), like SwiftUI's `onOpenURL` generalized across platforms:
 ```java
 // host (always):
@@ -465,10 +477,12 @@ RenderResult result = emitter.mount(
 activePath.set(env.route());   // or from a NAVIGATE event URL
 ```
 - **An app with navigation** builds a **router bound to the signal**:
-  `Navigation.navigator().route(...).build(activePath)`. The signal is the source of
-  truth: external writes (deep links/popstate) are re-routed **through guards** (never
-  bypassed), and the router's own `navigate`/`push`/`pop`/`replace` are mirrored back
-  into the signal. The initial value is guard-processed.
+  `Navigation.navigator().route(...).build(Environment.value(Platform.ACTIVE_PATH))`.
+  The signal is the source of truth: external writes (deep links/popstate) are
+  re-routed **through guards** (never bypassed), and the router's own
+  `navigate`/`push`/`pop`/`replace` are mirrored back into the signal when it is
+  writable (the host's `Platform.ACTIVE_PATH` always is). The initial value is
+  guard-processed.
 - **An app without navigation** just observes the signal — read it, or register
   `View.onPathChange(path -> …)` (fires on every change, including the initial value).
 - `NAVIGATE` events: a URL updates `activePath` (→ bound router re-routes guard-aware,
@@ -585,7 +599,7 @@ surface ([§5.6](#56-custom-modifiers-developer-authored)).
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `frame` | `.frame(width:height:alignment:)` | `.modifier(FrameMod.of(float width, float height, Alignment))` | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 |
+| `frame` | `.frame(width:height:alignment:)` | `.modifier(FrameMod.of(float width))` / `.modifier(FrameMod.of(float width, float height))` / `.modifier(FrameMod.of(float width, float height, Alignment))` — alignment optional (omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved) | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
 | `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.modifier(FrameMod.of(float, float, float, float, float, float))` (NaN = unset) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
 | `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.modifier(Padding.of(int))` / `.modifier(Padding.of(float))` / `.modifier(Padding.of(int top, int right, int bottom, int left))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
 | `offset` | `.offset(x:y:)` | `.modifier(Offset.of(float x, float y))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
@@ -1034,7 +1048,7 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 | `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.modifier(ForegroundStyle.of(Color))` | `.foreground_style(Color(0xFF0000FF))` |
 | `.background(.gray)` | `.background(Color)` | `.modifier(Background.of(Color))` | `.background(Color(0xFFEEEEEE))` |
 | `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.modifier(Border.of(Color, 2))` | `.border(Color, 2.0)` |
-| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.modifier(FrameMod.of(100, 24, Alignment.CENTER))` | `.frame(Some(100.0), Some(24.0), None)` |
+| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.modifier(FrameMod.of(100, 24))` | `.frame(Some(100.0), Some(24.0), None)` |
 | `.padding(16)` | `.padding(16)` | `.modifier(Padding.of(16))` | `.padding(16.0)` |
 | `.font(.system(size: 28))` | `.font(size: 28)` | `.modifier(FontSize.of(28))` | `.font_size(28.0)` |
 | `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.modifier(FontWeightMod.of(FontWeight.BOLD))` | `.font_weight(700.0)` |

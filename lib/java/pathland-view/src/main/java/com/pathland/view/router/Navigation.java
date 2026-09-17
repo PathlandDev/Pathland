@@ -4,7 +4,6 @@ import com.pathland.view.EnvironmentKey;
 import com.pathland.view.View;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
-import com.pathland.view.signal.WritableSignal;
 
 import java.util.function.Predicate;
 
@@ -31,7 +30,8 @@ import java.util.function.Predicate;
  * <p>The active router is also available as a scoped environment value
  * ({@link #ROUTER}): provide it at the app root via {@code view.environment(ROUTER,
  * router)} (or a {@code NavigationContainer} scopes it to its destination subtree),
- * and any component reads {@code env.value(ROUTER)} — no constructor threading.
+ * and any component reads {@code Environment.value(ROUTER)} during render — no
+ * constructor threading.
  */
 public final class Navigation {
 
@@ -124,13 +124,14 @@ public final class Navigation {
         }
 
         /**
-         * Build the router over the route list **bound to an external active-path signal**
-         * (the host-provided {@code Platform.ACTIVE_PATH}): the signal is the source of
-         * truth — external writes are guard-processed, and the router's navigation is
-         * mirrored back into it. The initial value of the signal (not {@code initialPath})
-         * drives the first route.
+         * Build the router over the route list **bound to an external active-path
+         * signal** (the host-provided {@code Platform.ACTIVE_PATH}, read via
+         * {@code Environment.value}): the signal is the source of truth — external
+         * writes are guard-processed, and the router's navigation is mirrored back
+         * into it when it is writable. The initial value of the signal (not
+         * {@code initialPath}) drives the first route.
          */
-        public Router build(WritableSignal<String> activePath) {
+        public Router build(Signal<String> activePath) {
             return new Router(table.build(), activePath);
         }
     }

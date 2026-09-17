@@ -1,5 +1,6 @@
-package com.pathland.demo;
+package com.pathland.demo.kitchensink;
 
+import com.pathland.demo.DemoTheme;
 import com.pathland.view.Alignment;
 import com.pathland.view.Color;
 import com.pathland.view.HStack;

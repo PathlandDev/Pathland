@@ -94,7 +94,13 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   once at boot from the SSR HTML via `updateNavBackButtons`.
 - **`EVENT_LISTENERS` gating**: `src/index.ts` reads the SSR `data-event-listeners`
   mask (mirroring the Rust renderer's event attrs) and emits an event only when
-  the node opted into it; absent attribute = permissive (no gating info).
+  the node opted into it; absent attribute = permissive (no gating info). Pointer
+  events (down/move/up) resolve to the **nearest listening ancestor**
+  (`eventNodeOf`): a gesture declared on a container (e.g. a tap on a `VStack` row
+  whose child `Text` is clicked) is attributed to the node that declared the mask,
+  and `POINTER_UP` on `click` is sent for **any** listening element — not just
+  `<button>` — so `onTapGesture` works on non-button nodes (matching the GTK
+  renderer's gesture-on-any-widget behavior; also repairs composite-label buttons).
 - **Hydration-aware TREE reconciliation** (`src/apply.ts`): `CREATE_NODE` reuses an
   existing hydrated element (id already in the registry) and `INSERT_CHILD` skips
   when the child is already in the parent's container — so a resync'd full

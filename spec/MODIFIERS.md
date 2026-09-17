@@ -80,7 +80,7 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 
 | SwiftUI modifier | Protocol property(ies) | Type | Emission |
 | ------------------ | ------------------------ | ------ | ---------- |
-| `.frame(width:height:alignment:)` | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 | F32, F32, ENUM | one `SET_PROPERTY` per provided axis/alignment |
+| `.frame(width:height:alignment:)` | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 | F32, F32, ENUM | one `SET_PROPERTY` per provided axis/alignment; `ALIGNMENT` is optional — when omitted (width-only / width+height frames), a stack's own cross-axis alignment is preserved |
 | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `MIN_WIDTH` 0x0012, `IDEAL_WIDTH` 0x0013, `MAX_WIDTH` 0x0014, `MIN_HEIGHT` 0x0015, `IDEAL_HEIGHT` 0x0016, `MAX_HEIGHT` 0x0017 | F32 | one `SET_PROPERTY` per provided bound |
 | `.padding(_:)`, `.padding(edges:)`, `.padding(_:edges:)` | `PADDING` 0x1011, `PADDING_TOP` 0x1012, `PADDING_RIGHT` 0x1013, `PADDING_BOTTOM` 0x1014, `PADDING_LEFT` 0x1015 | F32 | uniform → one; per-edge → per-edge |
 | `.offset(x:y:)` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F | F32 | two |

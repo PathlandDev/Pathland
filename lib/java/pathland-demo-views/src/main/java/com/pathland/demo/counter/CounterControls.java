@@ -1,4 +1,4 @@
-package com.pathland.demo;
+package com.pathland.demo.counter;
 
 import com.pathland.view.Button;
 import com.pathland.view.HStack;

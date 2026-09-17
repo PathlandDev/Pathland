@@ -1,4 +1,4 @@
-package com.pathland.demo;
+package com.pathland.demo.settings;
 
 import com.pathland.view.FontSize;
 import com.pathland.view.FontWeight;

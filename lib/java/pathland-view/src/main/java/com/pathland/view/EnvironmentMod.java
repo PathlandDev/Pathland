@@ -12,7 +12,7 @@ public final class EnvironmentMod implements ViewModifier {
     private final Object value;
 
     @SuppressWarnings("unchecked")
-    static <T> EnvironmentMod of(EnvironmentKey<T> key, T value) {
+    static <T> EnvironmentMod of(EnvironmentKey<T> key, Object value) {
         return new EnvironmentMod((EnvironmentKey<Object>) key, value);
     }
 
