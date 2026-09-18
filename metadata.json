@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M2ST84952HC4G8Q53SV6XD3X",
+  "strategy": "manual-commit",
+  "branch": "feat/environment-only",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ButtonStyleMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Environment.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/EnvironmentView.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/router/RouterTest.java",
+    "lib/java/pathland-view/status.md",
+    "spec/DSL.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 614656,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 6603520,
+    "output_tokens": 43162,
+    "api_call_count": 83
+  }
+}

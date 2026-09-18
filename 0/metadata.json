@@ -1,0 +1,54 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M2ST84952HC4G8Q53SV6XD3X",
+  "session_id": "ses_f80535627ffe0oRq2rzjS3zIFI",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-18T08:31:17.698394Z",
+  "branch": "feat/environment-only",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Environment.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ButtonStyleMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/EnvironmentView.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/router/RouterTest.java",
+    "spec/DSL.md",
+    "lib/java/pathland-view/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "c14da5be653b",
+  "checkpoint_transcript_start": 1282,
+  "transcript_lines_at_start": 1282,
+  "compact_transcript_start": 1282,
+  "token_usage": {
+    "input_tokens": 614656,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 6603520,
+    "output_tokens": 43162,
+    "api_call_count": 83
+  },
+  "session_metrics": {
+    "turn_count": 104
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-18T08:31:16.940183Z",
+    "agent_lines": 125,
+    "agent_removed": 27,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 125,
+    "total_lines_changed": 187,
+    "agent_percentage": 81.28342245989305,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
