@@ -3,15 +3,18 @@ package com.pathland.view;
 import com.pathland.view.signal.Signal;
 
 /**
- * The rendering environment. Carries implicit, thread-local values that a parent
- * injects down the entire child tree (e.g. an active {@link ButtonStyle}), plus a
- * generic, hierarchical scope of {@link EnvironmentValues} keyed by
- * {@link EnvironmentKey} (SwiftUI {@code EnvironmentValues} style).
+ * The rendering environment — the single inheritance/scoping mechanism in the DSL.
+ * Carries a hierarchical scope of {@link EnvironmentValues} keyed by
+ * {@link EnvironmentKey} (SwiftUI {@code EnvironmentValues} style): a parent injects
+ * a value down the entire child tree via {@code .environment(key, value)}, and any
+ * descendant reads it with {@link #value(EnvironmentKey)}.
  *
  * <p>A {@code .environment(key, value)} modifier binds a value for the subtree it
  * wraps — nearest wins, so an inner binding overrides an outer one. The mount render
  * is synchronous and single-threaded, so a {@link ThreadLocal} is equivalent to
- * ScopedValue here while keeping the library on every LTS from Java 17.
+ * ScopedValue here while keeping the library on every LTS from Java 17. This
+ * thread-local is the <em>implementation</em> of the environment, never a parallel
+ * mechanism: no modifier may scope values by any other route.
  *
  * <p>Reads always return a signal ({@link #value(EnvironmentKey)}): a value injected
  * as a {@link Signal} comes back as the same instance (bindable for reactive updates),
@@ -21,11 +24,17 @@ import com.pathland.view.signal.Signal;
  * <p>Structural slots re-render their destination outside the container's render
  * path ({@code Emitter.reconcileSlot}); each node captures its incoming scope
  * ({@code PathlandNode.environmentForChildren}) so destinations that read a value
- * keep working on every re-render.
+ * keep working on every re-render — including scoped styles like {@link #BUTTON_STYLE}.
  */
 public final class Environment {
 
-    static final ThreadLocal<ButtonStyle> BUTTON_STYLE = new ThreadLocal<>();
+    /**
+     * The environment key for the active {@link ButtonStyle} (SwiftUI
+     * {@code .buttonStyle}). {@code ButtonStyleMod} binds it down the wrapped subtree
+     * via the generic environment; {@link Button} reads it with {@link #buttonStyle()}
+     * (defaulting to {@link PlainButtonStyle}).
+     */
+    public static final EnvironmentKey<ButtonStyle> BUTTON_STYLE = EnvironmentKey.of("buttonStyle");
     private static final ThreadLocal<EnvironmentValues> VALUES = ThreadLocal.withInitial(EnvironmentValues::empty);
 
     /** The default environment (no persistent state; buttons render with {@link PlainButtonStyle}). */
@@ -37,9 +46,13 @@ public final class Environment {
         this.state = state;
     }
 
-    /** The button style active for the current render, defaulting to {@link PlainButtonStyle}. */
+    /**
+     * The button style active for the current render — the scoped environment value
+     * {@link #BUTTON_STYLE}, defaulting to {@link PlainButtonStyle} when no scope
+     * binds it.
+     */
     public ButtonStyle buttonStyle() {
-        ButtonStyle style = BUTTON_STYLE.get();
+        ButtonStyle style = Environment.value(BUTTON_STYLE).get();
         return style != null ? style : PlainButtonStyle.INSTANCE;
     }
 

@@ -446,6 +446,11 @@ Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
   "is this the active route" signal derived from the router's route signal —
   style an active menu row or gate conditional content:
   `Signals.computed(() -> Navigation.isActive(router, path).get() ? ACTIVE : CLEAR)`.
+- **The environment is the one scoping system** (SwiftUI `.environment`): values
+  are bound down a subtree with `View.environment(key, value)` and read with
+  `Environment.value(key)`; nearest wins. Styles use it too — `buttonStyle`
+  binds `Environment.BUTTON_STYLE` (`EnvironmentKey<ButtonStyle>`), so a style
+  scoped above a structural container survives its destination re-render.
 - **The router as a scoped environment value** (SwiftUI `.environment` style):
   `Navigation.ROUTER` is an `EnvironmentKey<Router>`. A `NavigationContainer` scopes
   it to its destination subtree; any component reads
@@ -690,7 +695,7 @@ anchors. Transforms do not affect layout.
 | `accessibilityRole` | `.accessibilityRole(_:)` | `.modifier(AccessibilityRole.of(int))` | `ROLE` 0x2001 |
 | `accessibilityState` | `.accessibilityState(_:)` | `.modifier(AccessibilityState.of(int))` | `STATE` 0x2002 |
 | `modifier` (custom) | `.modifier(_:)` | `.modifier(ViewModifier)` | composes core modifiers |
-| `buttonStyle` | `.buttonStyle(_:)` | `.modifier(ButtonStyleMod.of(ButtonStyle))` | environment-scoped (thread-local) |
+| `buttonStyle` | `.buttonStyle(_:)` | `.modifier(ButtonStyleMod.of(ButtonStyle))` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins) |
 | `focusable` | `.focusable(_:)` | (via the `PointerEvents` modifier) | **no property** — declares `FOCUS` listener bit 5; observe `FOCUS_CHANGED` |
 | raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifier(PointerEvents.of(int))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
 
@@ -743,8 +748,9 @@ emission stays diff-based, and a renderer that cannot apply a modifier
 - **Java** — fully conformant: every core modifier is a `ViewModifier` value
   (`Padding.of(16)`, `ForegroundStyle.of(color)`, …) applied via `.modifier(...)`;
   `View` has no modifier sugar, and `buttonStyle` is the `ButtonStyleMod`
-  modifier value. Application-authored `ViewModifier.body(View)` is
-  SwiftUI-shaped and can wrap content with structure.
+  modifier value (which binds the `Environment.BUTTON_STYLE` key down the
+  subtree — subtree scoping is environment-only). Application-authored
+  `ViewModifier.body(View)` is SwiftUI-shaped and can wrap content with structure.
 
 ---
 
@@ -773,9 +779,18 @@ A conformant DSL follows these conventions:
    come from MODIFIERS.md's appendix; the DSL resolves them.
 5. **`Spacer`/`Color` as views**: `Spacer()` is a flexible expanding filler;
    `Color(...)` in a tree is a layout-greedy fill.
-6. **Environment scoping**: styles and state that must reach a whole subtree
-   (`ButtonStyle`, the session's persisted state) are injected via the
-   environment (Java: thread-local), never threaded through constructors.
+6. **The environment is the only inheritance mechanism.** Any value that must
+   reach a whole subtree — a style (`ButtonStyle`), the router, the active path,
+   the session's persisted state — is injected through the environment, never
+   threaded through constructors and never through a second scoping system. The
+   environment is a hierarchical, nearest-wins scope of typed `EnvironmentKey`
+   values (`View.environment(key, value)` / `Environment.value(key)`, Java;
+   §4.5). A language MAY implement the scope with a thread-local over the
+   synchronous render pass (Java does) — but that is the implementation of the
+   one mechanism, not an additional one. A subtree-scoping modifier MUST be
+   expressed as an `EnvironmentKey` binding: `buttonStyle` binds
+   `Environment.BUTTON_STYLE` (`EnvironmentKey<ButtonStyle>`), exactly like the
+   router and the active path.
 7. **Reactivity discipline**: `body()` is evaluated once; a signal read during
    mount records a dependency; a later write re-emits only the bound node.
    Never mutate signals during mount. The only structural re-evaluation is a
@@ -913,12 +928,13 @@ Adopted conventions:
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`) applied
   via `.modifier(...)` — there is **no sugar on `View`**; several modifiers at
   once use `.modifiers(...)`, innermost-first. Parameterized modifier values use
-  `.of(...)`; `buttonStyle` is the `ButtonStyleMod` value.
+  `.of(...)`; `buttonStyle` is the `ButtonStyleMod` value (an environment
+  binding: it scopes `Environment.BUTTON_STYLE` down the subtree).
 - **Full `ShapeKind` coverage.** `Circle.of()`, `Capsule.of()`, `Ellipse.of()`,
   `RoundedRectangle.of(cornerRadius:)`, generic `Shape.of(ShapeKind)` (for
   `Path`).
-- *Optional*: a `ButtonStyle`/`environment` path letting the trailing-action
-  form (`Button(label) { action }`) read the action from the environment, if a
+- *Optional*: an environment path letting the trailing-action form
+  (`Button(label) { action }`) read the action from the environment, if a
   Java-idiomatic trailing lambda is desirable.
 - *Optional*: a `Date`-shaped `DatePicker` binding (see table).
 - Implementation status: `lib/java/pathland-view/status.md`.

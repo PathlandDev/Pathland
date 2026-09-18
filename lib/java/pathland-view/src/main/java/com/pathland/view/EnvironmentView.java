@@ -3,10 +3,9 @@ package com.pathland.view;
 import com.pathland.view.emit.PathlandNode;
 
 /**
- * A view scoped to an environment value via the thread-local scope: the binding is
- * active only for this subtree's render, so values below inherit it without threading
- * a parameter through every {@link View#render} call (the {@code ButtonStyle} pattern,
- * generalized).
+ * A view scoped to an environment value: the binding is active only for this subtree's
+ * render, so values below inherit it without threading a parameter through every
+ * {@link View#render} call.
  */
 final class EnvironmentView implements View {
 
