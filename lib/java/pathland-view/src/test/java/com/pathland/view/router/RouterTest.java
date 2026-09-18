@@ -1,9 +1,13 @@
 package com.pathland.view.router;
 
-import com.pathland.view.Categories;
+import com.pathland.view.BorderedButtonStyle;
 import com.pathland.view.Button;
+import com.pathland.view.ButtonStyle;
+import com.pathland.view.ButtonStyleMod;
+import com.pathland.view.Categories;
 import com.pathland.view.Commands;
 import com.pathland.view.Environment;
+import com.pathland.view.PlainButtonStyle;
 import com.pathland.view.Properties;
 import com.pathland.view.Text;
 import com.pathland.view.ValueTypes;
@@ -590,6 +594,67 @@ class RouterTest {
         new Emitter(sink()).mount(new SidebarLike(), Environment.DEFAULT);
         assertEquals(1, seen.size());
         assertEquals(null, seen.get(0), "no binding → the lazy field yields null");
+    }
+
+    @Test
+    void buttonStyleIsAKeyedEnvironmentValue() {
+        // A `.buttonStyle(...)` scope rides the generic environment: the style is the
+        // `Environment.BUTTON_STYLE` keyed value — readable via Environment.value inside
+        // the subtree, absent outside it.
+        java.util.List<ButtonStyle> seen = new java.util.ArrayList<>();
+        View probe = new View() {
+            @Override
+            public com.pathland.view.emit.PathlandNode render(Environment env) {
+                seen.add(env.buttonStyle());
+                seen.add(com.pathland.view.Environment.value(Environment.BUTTON_STYLE).get());
+                return new com.pathland.view.emit.PathlandNode(com.pathland.view.Components.TEXT);
+            }
+        };
+
+        new Emitter(sink()).mount(
+                probe.modifier(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE)),
+                Environment.DEFAULT);
+        assertEquals(BorderedButtonStyle.INSTANCE, seen.get(0), "buttonStyle() reads the scoped style");
+        assertEquals(BorderedButtonStyle.INSTANCE, seen.get(1), "Environment.value(BUTTON_STYLE) returns it");
+
+        // Without any scope: buttonStyle() falls back, Environment.value yields null.
+        seen.clear();
+        new Emitter(sink()).mount(probe, Environment.DEFAULT);
+        assertEquals(PlainButtonStyle.INSTANCE, seen.get(0), "unset → the PlainButtonStyle default");
+        assertEquals(null, seen.get(1), "unset → Environment.value yields null");
+    }
+
+    @Test
+    void buttonStyleScopedAboveAStructuralSlotSurvivesReRender() {
+        // A `.buttonStyle(...)` scope lives in the generic environment, so a structural
+        // slot re-rendering its destination outside the container's render path (a
+        // navigation destination swap) still sees it — a destination reading
+        // `env.buttonStyle()` gets the scoped style, not the plain default.
+        java.util.List<ButtonStyle> seen = new java.util.ArrayList<>();
+        Router router = Navigation.navigator()
+                .route("/", p -> probeButton(seen, "One"))
+                .route("/two", p -> probeButton(seen, "Two"))
+                .build();
+        new Emitter(sink()).mount(
+                NavigationContainer.of(router).modifier(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE)),
+                Environment.DEFAULT);
+
+        seen.clear(); // mount renders the initial destination (once or twice); only the swap matters
+        router.navigate("/two"); // structural swap re-renders the destination via reconcileSlot
+        assertEquals(1, seen.size());
+        assertEquals(BorderedButtonStyle.INSTANCE, seen.get(0),
+                "a destination re-rendered via the slot keeps the scoped style");
+    }
+
+    /** A destination that records the button style it renders with. */
+    private static View probeButton(java.util.List<ButtonStyle> seen, String label) {
+        return new View() {
+            @Override
+            public com.pathland.view.emit.PathlandNode render(Environment env) {
+                seen.add(env.buttonStyle());
+                return Button.of(label, () -> { }).render(env);
+            }
+        };
     }
 
     @Test

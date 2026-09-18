@@ -24,7 +24,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   stack's own cross-axis alignment is preserved);
   the `View` interface has no per-modifier factory methods. Built-in and
   application-authored modifiers share the exact same surface (spec `DSL.md`
-  §5.6); `buttonStyle` is the `ButtonStyleMod` value. Reactive overloads
+  §5.6); `buttonStyle` is the `ButtonStyleMod` value (an **environment**
+  binding — it scopes `Environment.BUTTON_STYLE`, an `EnvironmentKey<ButtonStyle>`,
+  down the subtree). Reactive overloads
   (`ForegroundStyle.of(Signal)`, `Background.of(Signal)`, `FontSize.of(Signal)`)
   re-emit only the bound node. Enum-collision modifier names use the `Mod`
   suffix (`FontWeightMod`, `TextAlignmentMod`, `TruncationMod`, `TextCaseMod`,
@@ -39,7 +41,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `ProgressView`, `Gauge`, `Divider`, `Grid`, `ScrollView`, `LazyVStack`,
   `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `Picker`, `Menu`, `ColorPicker`,
   `DatePicker`; `body()` composition; `ButtonStyle`/`ViewModifier`/`Environment`
-  (thread-local environment, Java 17+).
+  (the environment is the **only** inheritance mechanism, Java 17+ — a
+  hierarchical `EnvironmentKey`/`EnvironmentValues` scope over the synchronous
+  render pass; no modifier scopes values by any other route).
 - **Component IDs**: synced to the spec's grouped ranges (`Components.java`:
   `TEXT 0x01`, `IMAGE 0x02`, `COLOR 0x03`, `SHAPE 0x04`, `DIVIDER 0x05`,
   `SPACER 0x06`, `PROGRESS_VIEW 0x07`, `GAUGE 0x08`, `VSTACK 0x10`,
