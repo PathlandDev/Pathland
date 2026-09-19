@@ -2,6 +2,7 @@ package com.pathland.demo;
 
 import com.pathland.view.Categories;
 import com.pathland.view.Commands;
+import com.pathland.view.Components;
 import com.pathland.view.Environment;
 import com.pathland.view.Platform;
 import com.pathland.view.Properties;
@@ -62,6 +63,9 @@ class SplitNavDemoTest {
         assertTrue(anySetText(frame, "Home"), "the home menu row is rendered");
         assertTrue(anySetText(frame, "Kitchen sink"), "the kitchen sink menu row is rendered");
         assertTrue(anySetText(frame, "Settings"), "the settings menu row is rendered");
+        assertTrue(anyCreateNode(frame, Components.IMAGE), "the menu rows render their Label icons");
+        assertTrue(anySetPropertyString(frame, Properties.LABEL, "Home"),
+                "a menu row carries its title as the accessibility label");
         assertTrue(anySetText(frame,
                 "A master-detail (split) navigation demo: the menu on the left drives the content area on the right."),
                 "the home content area rendered on the right");
@@ -181,6 +185,27 @@ class SplitNavDemoTest {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT
                     && text.equals(frame.stringAt(op.b()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean anyCreateNode(Frame frame, int component) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE
+                    && op.b() == component) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean anySetPropertyString(Frame frame, int property, String value) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == property
+                    && value.equals(frame.stringAt(op.c()))) {
                 return true;
             }
         }

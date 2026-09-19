@@ -26,7 +26,10 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   application-authored modifiers share the exact same surface (spec `DSL.md`
   §5.6); `buttonStyle` is the `ButtonStyleMod` value (an **environment**
   binding — it scopes `Environment.BUTTON_STYLE`, an `EnvironmentKey<ButtonStyle>`,
-  down the subtree). Reactive overloads
+  down the subtree). `labelStyle` is the `LabelStyleMod` value (it scopes
+  `Environment.LABEL_STYLE`, an `EnvironmentKey<LabelStyle>` — `TITLE_AND_ICON`/
+  `TITLE_ONLY`/`ICON_ONLY`; DSL-only control flow, never a wire property).
+  Reactive overloads
   (`ForegroundStyle.of(Signal)`, `Background.of(Signal)`, `FontSize.of(Signal)`)
   re-emit only the bound node. Enum-collision modifier names use the `Mod`
   suffix (`FontWeightMod`, `TextAlignmentMod`, `TruncationMod`, `TextCaseMod`,
@@ -40,7 +43,10 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `Button`, `TextField`, `Spacer`, `TextEditor`, `Toggle`, `Slider`, `Stepper`,
   `ProgressView`, `Gauge`, `Divider`, `Grid`, `ScrollView`, `LazyVStack`,
   `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `Picker`, `Menu`, `ColorPicker`,
-  `DatePicker`; `body()` composition; `ButtonStyle`/`ViewModifier`/`Environment`
+  `DatePicker`, **`Label`** (a composite — an `HStack` of an optional `Image` and
+  an optional `Text`, title always driving the accessibility label; static and
+  reactive `Signal<String>` title/icon overloads; the scoped `LabelStyle` decides
+  which parts render); `body()` composition; `ButtonStyle`/`LabelStyle`/`ViewModifier`/`Environment`
   (the environment is the **only** inheritance mechanism, Java 17+ — a
   hierarchical `EnvironmentKey`/`EnvironmentValues` scope over the synchronous
   render pass; no modifier scopes values by any other route).
@@ -80,7 +86,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `AllowsHitTesting`, `ControlSizeMod`,
   `AccessibilityLabel`/`AccessibilityRole`/`AccessibilityState`, `ImageSource`,
   `PointerEvents` (OR-in), `ActionId`/`BindingId`, `TapGesture` (onTapGesture),
-  `ButtonStyleMod` — `Color` is never a modifier.
+  `ButtonStyleMod`, `LabelStyleMod` — `Color` is never a modifier.
+  `AccessibilityLabel`/`Image` accept reactive `Signal<String>` overloads
+  (node-level `LABEL`/`IMAGE_SOURCE` bindings).
 - **Value types**: `ValueTypes.forProperty` mirrors `value_type_for` —
   `COLOR` family → `COLOR`; `VISIBLE`/`ENABLED`/`CLIPS_TO_BOUNDS`/`UNDERLINE`/
   `STRIKETHROUGH`/`COLOR_INVERT`/`ALLOWS_HIT_TESTING`/`IS_SECURE`/

@@ -281,12 +281,16 @@ Component ids and wire behavior come from
 | `Spacer` | `Spacer()` | `Spacer.of()` | `SPACER` 0x06 |
 | `ProgressView` | `ProgressView(value:)` / `ProgressView()` | `ProgressView.of(float)` / `ProgressView.of()` | `PROGRESS_VIEW` 0x07; `PROGRESS` 0x200E / `IS_INDETERMINATE` 0x200F |
 | `Gauge` | `Gauge(value:in:)` | `Gauge.of(float value, float min, float max)` | `GAUGE` 0x08; `VALUE`/`MIN_VALUE`/`MAX_VALUE` |
+| `Label` | `Label("title", systemImage:)` (composite) | `Label.of(String title)` / `Label.of(String title, String icon)` / `Label.of(Signal<String>…)` | a composite `HSTACK` + `IMAGE` + `TEXT` (PRIMITIVES.md "Composite views") — no component ID |
 
 **Deltas (Java)**: primitives are constructed with `<ViewName>.of(...)`
 factories (`Text.of("…")`). Full `ShapeKind` coverage ships as named views
 (`Rectangle.of()`, `Circle.of()`, `Capsule.of()`, `Ellipse.of()`,
 `RoundedRectangle.of(cornerRadius:)`) plus generic `Shape.of(ShapeKind)` for
-`Path`.
+`Path`. `Label` is a **composite** (PRIMITIVES.md): an `HStack` of an optional
+`IMAGE` and an optional `TEXT`; the scoped `labelStyle` ([§5.5](#55-interaction--state))
+decides which parts render, and the title always drives the composite's
+accessibility label.
 
 ### 4.2 Layout & container nodes
 
@@ -696,6 +700,7 @@ anchors. Transforms do not affect layout.
 | `accessibilityState` | `.accessibilityState(_:)` | `.modifier(AccessibilityState.of(int))` | `STATE` 0x2002 |
 | `modifier` (custom) | `.modifier(_:)` | `.modifier(ViewModifier)` | composes core modifiers |
 | `buttonStyle` | `.buttonStyle(_:)` | `.modifier(ButtonStyleMod.of(ButtonStyle))` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins) |
+| `labelStyle` | `.labelStyle(_:)` | `.modifier(LabelStyleMod.of(LabelStyle))` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
 | `focusable` | `.focusable(_:)` | (via the `PointerEvents` modifier) | **no property** — declares `FOCUS` listener bit 5; observe `FOCUS_CHANGED` |
 | raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifier(PointerEvents.of(int))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
 
