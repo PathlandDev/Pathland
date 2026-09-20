@@ -90,9 +90,9 @@ jobs:
           name: pathland-render-html-native
           path: lib/rust/target/debug
 
-      - name: Test reactor (demo modules excluded to keep CI fast)
+      - name: Test reactor (incl. the SSR web demos)
         working-directory: lib/java
-        run: mvn -q -B test -pl '!pathland-quarkus-demo,!pathland-spring-boot-demo'
+        run: mvn -q -B test
 
   web-client:
     name: Web client (TypeScript DOM renderer)
