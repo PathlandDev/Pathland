@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M304QXYNDGD8FCAFYKZKH7TM",
+  "session_id": "ses_f80535627ffe0oRq2rzjS3zIFI",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-20T19:30:07.027848Z",
+  "branch": "pre-application",
+  "checkpoints_count": 15,
+  "save_step_count": 1,
+  "files_touched": [],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "1e77be59cc83",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 37418548,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 404464512,
+    "output_tokens": 807089,
+    "api_call_count": 1462
+  },
+  "session_metrics": {
+    "turn_count": 135
+  }
+}
