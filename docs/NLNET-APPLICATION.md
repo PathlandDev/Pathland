@@ -34,7 +34,7 @@ https://apaq.dk
 > - **WP2 – Schema + validator (70 h).** A machine-readable ID schema and a cross-language validator CLI that fails CI on any drift between the language surfaces; expanded golden conformance vectors. Validation first; codegen deferred.
 > - **WP3 – Hardening (70 h).** Coverage-guided fuzzing of the three binary decoders (Rust, Java, TypeScript), remaining bounds hardening, and one Miri pass over the C ABI — the baseline that lets the Restack independent security audit pass.
 > - **WP4 – Benchmark suite (30 h).** 16-byte opcodes vs JSON/Protobuf SDUI and vs htmx + BFF/JSON SPA: payload size, decode latency, memory; a CI chart and a `BENCHMARKS.md`.
-> - **WP5 – Evidence (45 h).** WCAG/ARIA compliance on the SSR HTML renderer (an acceptance criterion on all web deliverables), hosted SSR HTML demo with screenshots, and the evidence pack.
+> - **WP5 – WCAG + evidence (45 h).** WCAG/ARIA compliance on the SSR HTML renderer (an acceptance criterion on all web deliverables, incl. form semantics + the formal audit/statement) and the evidence pack. CI, the hosted demo, and screenshots pre-date the grant (application evidence).
 > - **PM – Reporting (15 h).** NLnet reporting and MoU tracking.
 >
 > Rate: €45/h, cost-recovery for a solo maintainer. Total: 260 h / €11,700.

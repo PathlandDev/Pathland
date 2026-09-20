@@ -46,7 +46,10 @@ public final class SplitNavDemo implements View {
                 .build(Environment.value(Platform.ACTIVE_PATH));
         // The split: a fixed sidebar column + the structural navigation slot (detail).
         // onPathChange demonstrates observing the active platform path without a router.
-        return HStack.of(new Sidebar(), Navigation.of(router))
+        return HStack.of(Alignment.FILL,0,
+                        new Sidebar(),
+                        ScrollView.of(Navigation.of(router))
+                )
                 .onPathChange(path -> System.out.println("[split] active path: " + path))
                 .environment(Navigation.ROUTER, router);
     }
