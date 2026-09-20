@@ -23,9 +23,9 @@ public class Sidebar implements View {
         return VStack.of(Alignment.FILL, 8,
                         Text.of("Pathland").modifiers(
                                 FontSize.of(18), FontWeightMod.of(FontWeight.BOLD)),
-                        menuRow("/home", "Home"),
-                        menuRow("/kitchen", "Kitchen sink"),
-                        menuRow("/settings", "Settings"),
+                        menuRow("/home", "Home", "icons/home.svg"),
+                        menuRow("/kitchen", "Kitchen sink", "icons/kitchen.svg"),
+                        menuRow("/settings", "Settings", "icons/settings.svg"),
                         Spacer.of()
                 ).modifiers(Padding.of(16))
                 // Fixed-width sidebar with no height hint: as a flex child of the split
@@ -37,11 +37,12 @@ public class Sidebar implements View {
                 .modifier(Border.of(SIDEBAR_BORDER, 1f));
     }
 
-    /** A sidebar menu row: navigates the router (direct selection — no back-stack growth).
-     *  The sidebar sits outside the {@code NavigationContainer} (it is the developer's own
-     *  nav chrome), so it captures the router explicitly — the nearest-enclosing-router
-     *  mechanism (spec DSL.md §4.5) resolves intents for components *inside* a container. */
-    private View menuRow(String path, String label) {
+    /** A sidebar menu row (a {@link Label}): navigates the router (direct selection — no
+     *  back-stack growth). The sidebar sits outside the {@code NavigationContainer} (it is
+     *  the developer's own nav chrome), so it captures the router explicitly — the
+     *  nearest-enclosing-router mechanism (spec DSL.md §4.5) resolves intents for
+     *  components *inside* a container. */
+    private View menuRow(String path, String label, String icon) {
         // Reactive active-item highlight via Navigation.isActive: a computed signal from
         // the route signal, so a selection re-emits only this row's background/color.
         var router = this.router.get();
@@ -49,7 +50,7 @@ public class Sidebar implements View {
         Signal<Color> bg = Signals.computed(() -> active.get() ? ACTIVE_BG : Color.CLEAR);
         Signal<Color> fg = Signals.computed(() -> active.get() ? ACTIVE_FG : Color.BLACK);
 
-        return VStack.of(Text.of(label))
+        return Label.of(label, icon)
                 .modifiers(
                         TapGesture.of(() -> router.navigate(path)),
                         Background.of(bg), ForegroundStyle.of(fg)

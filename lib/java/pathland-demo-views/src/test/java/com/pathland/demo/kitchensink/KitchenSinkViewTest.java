@@ -48,13 +48,16 @@ class KitchenSinkViewTest {
         assertTrue(anySetText(frame, "Value: 75.0"), "value controls reflect the persisted value");
         assertTrue(allSetText(frame).contains("Dark: true"), "toggle summary reflects the persisted state");
         assertTrue(anySetText(frame, "Choice: 2"), "picker section reflects the persisted choice");
+        assertTrue(anySetText(frame, "Settings"), "label section renders a default title + icon label");
+        assertTrue(anySetText(frame, "Save changes"), "label section renders a title-only label");
 
         for (int component : new int[] {
                 Components.SCROLLVIEW, Components.GRID, Components.DIVIDER,
                 Components.TOGGLE, Components.SLIDER, Components.STEPPER,
                 Components.PROGRESS_VIEW, Components.GAUGE, Components.TEXT_EDITOR,
                 Components.PICKER, Components.MENU, Components.COLOR_PICKER,
-                Components.DATE_PICKER, Components.ZSTACK, Components.SHAPE, Components.COLOR}) {
+                Components.DATE_PICKER, Components.ZSTACK, Components.SHAPE, Components.COLOR,
+                Components.IMAGE}) {
             assertTrue(anyCreateNode(frame, component), "frame contains component 0x"
                     + Integer.toHexString(component));
         }

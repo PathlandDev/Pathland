@@ -35,6 +35,14 @@ public final class Environment {
      * (defaulting to {@link PlainButtonStyle}).
      */
     public static final EnvironmentKey<ButtonStyle> BUTTON_STYLE = EnvironmentKey.of("buttonStyle");
+
+    /**
+     * The environment key for the active {@link LabelStyle} (SwiftUI
+     * {@code .labelStyle}). {@code LabelStyleMod} binds it down the wrapped subtree
+     * via the generic environment; {@link Label} reads it with {@link #labelStyle()}
+     * (defaulting to {@link LabelStyle#TITLE_AND_ICON}).
+     */
+    public static final EnvironmentKey<LabelStyle> LABEL_STYLE = EnvironmentKey.of("labelStyle");
     private static final ThreadLocal<EnvironmentValues> VALUES = ThreadLocal.withInitial(EnvironmentValues::empty);
 
     /** The default environment (no persistent state; buttons render with {@link PlainButtonStyle}). */
@@ -59,6 +67,16 @@ public final class Environment {
     /** The session's persistent state (null for a stateless environment). */
     public com.pathland.view.state.PersistentState state() {
         return state;
+    }
+
+    /**
+     * The label style active for the current render — the scoped environment value
+     * {@link #LABEL_STYLE}, defaulting to {@link LabelStyle#TITLE_AND_ICON} when no
+     * scope binds it.
+     */
+    public LabelStyle labelStyle() {
+        LabelStyle style = Environment.value(LABEL_STYLE).get();
+        return style != null ? style : LabelStyle.TITLE_AND_ICON;
     }
 
     // --- generic environment values ---
