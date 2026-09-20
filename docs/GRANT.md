@@ -129,7 +129,7 @@ explicitly build.
 | WP2 | Machine-readable ID schema + cross-language validator CLI (drift guard) + expanded golden conformance vectors (incl. the DOM renderer full-catalog pass and HTML golden vectors; validation only — codegen deferred) | #43, #73, #57 | 70 | €3,150 |
 | WP3 | Coverage-guided fuzz harnesses (Rust/JS/Java), remaining decoder bounds hardening, one Miri pass on the C ABI, zero-allocation/no-leak profiling for the `no_std` surface — the hardening baseline for an independent security audit | #37, #38, #39 | 70 | €3,150 |
 | WP4 | Benchmark suite: 16-byte vs JSON/Protobuf SDUI, and vs htmx + BFF/JSON SPA (payload size, decode latency, memory) + one CI chart | #41, #68 | 30 | €1,350 |
-| WP5 | CI completion (rust + java, incl. demo modules), **WCAG/ARIA compliance on the SSR HTML renderer** (an acceptance criterion on all web deliverables, incl. form semantics + the formal audit/statement), hosted SSR HTML demo (URL + screenshots), evidence pack | #44, #65, #64, #71, #69, #76, #70 | 45 | €2,025 |
+| WP5 | **WCAG/ARIA compliance on the SSR HTML renderer** (an acceptance criterion on all web deliverables, incl. form semantics + the formal audit/statement) + evidence pack (CI, the hosted demo, and screenshots pre-date the grant — delivered as application evidence) | #44, #65, #64, #70 | 45 | €2,025 |
 | PM / reporting (10%) | NLnet reporting, MoU tracking | — | 15 | €675 |
 | **Total** | | | **260 h** | **€11,700** |
 
@@ -154,10 +154,11 @@ protocol:
 | Native GTK4 desktop (Java DSL, shared ring) | `lib/java/pathland-gtk-demo` |
 
 Two DSLs (Rust `pathland-view`, Java `com.pathland.view`) drive the same
-renderers over the same opcode stream, proving the polyglot claim. WP5 makes
-this visible cheaply: host the existing Quarkus SSR demo at a public URL,
-include screenshots and the WP4 comparison chart. Reviewers can click a working
-multi-renderer demo without the core work being a "black box".
+renderers over the same opcode stream, proving the polyglot claim. The hosted
+Quarkus SSR demo, screenshots, and CI already exist as application evidence
+(submitted with the proposal). WP5 adds the **WCAG/ARIA compliance pass** and the
+evidence pack, so reviewers can click a working multi-renderer demo without the
+core work being a "black box".
 
 ## 8. Prior-art comparison
 
@@ -221,7 +222,8 @@ project).
 - [ ] Fuzz harnesses (Rust/JS/Java) + decoder bounds + C ABI Miri pass (WP3)
 - [ ] Benchmark suite + comparison chart (WP4)
 - [ ] **WCAG/ARIA compliance on the SSR HTML renderer** (WP5)
-- [ ] CI green (rust + java, incl. demo modules), hosted demo URL, screenshots (WP5)
+- [ ] Pre-existing application evidence (verified at submission): CI green incl.
+  demo modules, hosted demo URL, screenshots
 - [ ] NLnet final report + MoU deliverables (PM)
 
 ## 12. Two-page narrative (copy-ready for the NLnet form)
@@ -245,10 +247,10 @@ registry; (2) a machine-readable ID schema and cross-language validator so the
 language surfaces cannot drift; (3) coverage-guided fuzzing and a Miri pass
 proving the decoders and the C ABI are robust against malformed input — the
 baseline for an independent security audit; (4) a benchmark suite quantifying
-the 16-byte-vs-JSON/Protobuf and vs-htmx/BFF claims; and (5) CI, **WCAG/ARIA
-compliance on the HTML renderer**, and a hosted SSR HTML demo as live evidence.
-A solo maintainer delivers this in six months at 260 hours (cost-recovery,
-€11,700).
+the 16-byte-vs-JSON/Protobuf and vs-htmx/BFF claims; and (5) **WCAG/ARIA
+compliance on the HTML renderer** and the evidence pack (CI, a hosted SSR HTML
+demo, and screenshots already exist as application evidence). A solo maintainer
+delivers this in six months at 260 hours (cost-recovery, €11,700).
 
 **Why it matters.** An open UI *protocol* — rather than another UI *framework* —
 lets any vendor build renderers and DSLs against one spec, reducing lock-in to
