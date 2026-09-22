@@ -13,6 +13,8 @@ state. Adding the starter dependency + a `PathlandApp` CDI bean gives a running 
   negative lookahead) + `session` cookie.
 - **`PathlandRegistryProducer`** — CDI `@Produces @Singleton` `PathlandRegistry` from the
   app's `PathlandApp` bean + default store (Redis-or-in-memory); `@Disposes` shuts it down.
+  Reads the `pathland.debug-html` config property (default `false`) to enable per-node
+  HTML comments in SSR output.
 - **`QuarkusConnection`** — adapts `WebSocketConnection` to `PathlandConnection`.
 - `META-INF/beans.xml` so Quarkus discovers the starter.
 

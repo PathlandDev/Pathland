@@ -22,6 +22,11 @@ starters.
   `open`/`environment`/`dispatch`/`resync`/`close`/`renderHtml`/`shutdown`.
 - **`StateStores`** — default state store: Redis when reachable, else the supplied
   fallback.
+- **SSR debug comments (property-gated)**: `PathlandSession`/`PathlandRegistry` take a
+  `debugHtml` flag (constructor + `isDebugHtml()`); when set, `renderHtml` uses the
+  renderer's debug mode so every rendered node is prefixed with an HTML comment naming
+  its component and the modifiers applied. The Spring/Quarkus starters bind it to the
+  `pathland.debug-html` property (default `false`).
 
 ## Not implemented / gaps
 

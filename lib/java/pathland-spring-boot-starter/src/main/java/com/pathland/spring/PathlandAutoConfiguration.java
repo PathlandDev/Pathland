@@ -41,8 +41,11 @@ public class PathlandAutoConfiguration {
     /** The per-session registry (shut down with the application context). */
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnMissingBean
-    public PathlandRegistry pathlandRegistry(PathlandApp app, StateStore store) {
-        return new PathlandRegistry(app, store);
+    public PathlandRegistry pathlandRegistry(
+            PathlandApp app,
+            StateStore store,
+            @org.springframework.beans.factory.annotation.Value("${pathland.debug-html:false}") boolean debugHtml) {
+        return new PathlandRegistry(app, store, debugHtml);
     }
 
     /** The {@code /ws} WebSocket handler. */

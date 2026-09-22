@@ -16,6 +16,9 @@ app.
   - `PathlandSocket` + a `WebSocketConfigurer` registering `/ws`,
   - `PathlandIndexController` (SSR catch-all + `session` cookie + static JS bundle +
     `/ws`-Upgrade exclusion).
+- **SSR debug comments**: the `PathlandRegistry` bean reads the
+  `pathland.debug-html` property (`@Value("${pathland.debug-html:false}")`) and forwards
+  it to the registry, enabling per-node HTML comments in SSR output when set.
 - **`SpringConnection`** — adapts `WebSocketSession` to `PathlandConnection`.
 
 ## App DX
