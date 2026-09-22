@@ -104,6 +104,13 @@ single `style` attribute — no external compiler, no class system, no safelist:
   `_free`) for cross-language hosts (Java JNA shim). The `_tailwind_compile`
   entry point, `tw.rs`, `tailwind.rs`, `build.rs`, `scripts/fetch-tailwind.mjs`,
   `vendor/`, and the `tailwind-embed` feature are **deleted**.
+- **Debug comments** (`HtmlRenderer::with_debug_comments(true)`; C ABI
+  `pathland_html_render_debug` / `_fragment_debug`): every rendered node is
+  prefixed with an HTML comment naming its component type and the modifiers
+  applied (`<!-- #1 VStack: spacing=4, alignment=Fill, width=FILL -->`) — values
+  decoded by protocol type (FILL/HUG sentinels, well-known enums, colors,
+  strings, bitmasks); opt-in so default output is unchanged, and comments stay
+  valid HTML (content scrubbed of `--`).
 
 ## Not implemented / gaps
 

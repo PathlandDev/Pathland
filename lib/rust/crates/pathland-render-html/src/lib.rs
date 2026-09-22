@@ -23,6 +23,7 @@ use pathland_core::{
 
 mod capi;
 mod css;
+mod debug;
 
 /// A decoded node in the retained description.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -766,21 +767,44 @@ fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings
 /// self-contained snapshot batch into a transient map, walks it once, and
 /// streams HTML text out — zero state retained across calls. A pure function
 /// of the opcode stream (Renderer Statelessness).
-#[derive(Debug, Default, Clone, Copy)]
-pub struct HtmlRenderer;
+#[derive(Debug, Clone, Copy)]
+pub struct HtmlRenderer {
+    /// When enabled, every rendered node is prefixed with an HTML comment
+    /// describing its component type and the modifiers (style properties)
+    /// applied to it (`<!-- #1 VStack: spacing=4, alignment=Fill -->`). A
+    /// debugging aid — off by default so production SSR stays lean.
+    debug_comments: bool,
+}
 
 impl HtmlRenderer {
     /// Create a renderer (stateless; the same value serves every render).
     #[must_use]
     pub fn new() -> Self {
-        Self
+        Self {
+            debug_comments: false,
+        }
+    }
+
+    /// Enable/disable debug comments. When on, each rendered node is prefixed
+    /// with an HTML comment naming its component and the modifiers applied
+    /// (see [`crate::debug`]).
+    #[must_use]
+    pub fn with_debug_comments(mut self, on: bool) -> Self {
+        self.debug_comments = on;
+        self
+    }
+
+    /// Whether debug comments are enabled.
+    #[must_use]
+    pub fn debug_comments(&self) -> bool {
+        self.debug_comments
     }
 
     /// Render the subtree rooted at `root` as a full HTML document.
     #[must_use]
     pub fn render_document(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
         let (nodes, tokens) = decode(opcodes, strings);
-        let body = render_node(&nodes, root);
+        let body = self.render_node(&nodes, root);
         // Token overrides render as their own `<style data-pathland-tokens>`
         // element AFTER the built-in block so their `:root` variables win the
         // cascade (same specificity, later wins) — matching the JS DOM client's
@@ -810,18 +834,17 @@ impl HtmlRenderer {
     #[must_use]
     pub fn render_fragment(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
         let (nodes, _) = decode(opcodes, strings);
-        render_node(&nodes, root)
+        self.render_node(&nodes, root)
     }
-}
 
-    fn render_node(nodes: &BTreeMap<u32, Node>, id: u32) -> String {
+    fn render_node(&self, nodes: &BTreeMap<u32, Node>, id: u32) -> String {
         let Some(node) = nodes.get(&id) else {
             return String::new();
         };
         let children: String = node
             .children
             .iter()
-            .map(|&child| render_node(nodes, child))
+            .map(|&child| self.render_node(nodes, child))
             .collect();
         let mut data_id = format!(" data-pathland-id=\"{id}\"");
         data_id.push_str(&slot_attrs(node));
@@ -830,7 +853,7 @@ impl HtmlRenderer {
         let event = event_attrs(node);
         let aria = aria_attrs(node);
 
-        match node.component {
+        let element = match node.component {
             component_type::VSTACK => wrap_stack(id, "column", node, &children, &css, &event, &aria),
             component_type::HSTACK => wrap_stack(id, "row", node, &children, &css, &event, &aria),
             component_type::LAZY_VSTACK => {
@@ -957,22 +980,19 @@ impl HtmlRenderer {
                     size_css(h),
                     rgba(fill)
                 );
-                let shape_css = match kind {
-                    0 | 4 => "border-radius:50%;",
+                match kind {
+                    0 | 4 => format!("<div{data_id}{event}{aria} style=\"{base}border-radius:50%;\"></div>"),
                     2 => {
                         let r = node.f32_property(property_id::BORDER_RADIUS, 8.0);
-                        return format!("<div{data_id}{event}{aria} style=\"{base}border-radius:{r}px;\"></div>");
+                        format!("<div{data_id}{event}{aria} style=\"{base}border-radius:{r}px;\"></div>")
                     }
-                    3 => "border-radius:9999px;",
-                    5 => {
-                        return format!(
-                            "<svg{data_id}{event}{aria} width=\"100\" height=\"100\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" fill=\"{}\"/></svg>",
-                            rgba(fill)
-                        );
-                    }
-                    _ => "",
-                };
-                format!("<div{data_id}{event}{aria} style=\"{base}{shape_css}\"></div>")
+                    3 => format!("<div{data_id}{event}{aria} style=\"{base}border-radius:9999px;\"></div>"),
+                    5 => format!(
+                        "<svg{data_id}{event}{aria} width=\"100\" height=\"100\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" fill=\"{}\"/></svg>",
+                        rgba(fill)
+                    ),
+                    _ => format!("<div{data_id}{event}{aria} style=\"{base}\"></div>"),
+                }
             }
             component_type::DIVIDER => {
                 let width = node.f32_property(property_id::BORDER_WIDTH, 1.0);
@@ -1031,7 +1051,7 @@ if indeterminate {
                     .children
                     .iter()
                     .map(|&child| {
-                        let child_html = render_node(nodes, child);
+                        let child_html = self.render_node(nodes, child);
                         if child_html.is_empty() {
                             String::new()
                         } else {
@@ -1112,8 +1132,14 @@ if indeterminate {
             }
             component_type::COMMENT => String::new(),
             _ => String::new(),
+        };
+        if self.debug_comments {
+            format!("{}{}", debug::node_comment(id, node), element)
+        } else {
+            element
         }
     }
+}
 
     fn wrap_stack(
         id: u32,
@@ -1893,6 +1919,46 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("width:100%;height:100%;"), "FILL expands: {}", html);
+    }
+
+    #[test]
+    fn debug_comments_are_opt_in() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::SPACING as u32,
+            4.0f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
+            3.0f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+
+        // Default renderer: no comments.
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(!html.contains("<!--"), "comments off by default: {html}");
+
+        // with_debug_comments(true): a comment before each node naming its
+        // component and the modifiers applied (sentinels + enums decoded).
+        let renderer = HtmlRenderer::new().with_debug_comments(true);
+        assert!(renderer.debug_comments());
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(
+            html.contains("<!-- #1 VStack: spacing=4, alignment=Fill -->"),
+            "{html}"
+        );
+        assert!(html.contains("<!-- #2 Text -->"), "{html}");
     }
 
     #[test]

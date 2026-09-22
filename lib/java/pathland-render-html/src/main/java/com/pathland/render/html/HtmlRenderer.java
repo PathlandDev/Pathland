@@ -23,6 +23,8 @@ import java.io.FileOutputStream;
  * <pre>
  * const char* pathland_html_render(const uint8_t* batch, uint32 len, uint32 root);
  * const char* pathland_html_render_fragment(const uint8_t* batch, uint32 len, uint32 root);
+ * const char* pathland_html_render_debug(const uint8_t* batch, uint32 len, uint32 root, uint8 debug);
+ * const char* pathland_html_render_fragment_debug(const uint8_t* batch, uint32 len, uint32 root, uint8 debug);
  * void        pathland_html_free(const char* ptr);
  * </pre>
  */
@@ -39,6 +41,8 @@ public final class HtmlRenderer {
     private interface NativeRenderHtml extends Library {
         Pointer pathland_html_render(Pointer batch, int len, int root);
         Pointer pathland_html_render_fragment(Pointer batch, int len, int root);
+        Pointer pathland_html_render_debug(Pointer batch, int len, int root, byte debug);
+        Pointer pathland_html_render_fragment_debug(Pointer batch, int len, int root, byte debug);
         void pathland_html_free(Pointer ptr);
     }
 
@@ -183,13 +187,48 @@ public final class HtmlRenderer {
         return renderFrame(frame, root, false);
     }
 
+    /**
+     * Render a full snapshot frame as a complete HTML document with **debug
+     * comments** on every node: each element is prefixed with an HTML comment
+     * naming its component type and the modifiers applied (e.g.
+     * {@code <!-- #1 VStack: spacing=4, alignment=Fill -->}). Debugging aid —
+     * opt-in; the plain {@link #render} output is unchanged.
+     */
+    public String renderDebug(Frame frame, int root) {
+        return renderFrameDebug(frame, root, true);
+    }
+
+    /**
+     * Render a snapshot frame as an HTML fragment with **debug comments** on
+     * every node (see {@link #renderDebug}).
+     */
+    public String renderFragmentDebug(Frame frame, int root) {
+        return renderFrameDebug(frame, root, false);
+    }
+
     private String renderFrame(Frame frame, int root, boolean fullDocument) {
+        return renderFrame(frame, root, fullDocument, false);
+    }
+
+    private String renderFrameDebug(Frame frame, int root, boolean fullDocument) {
+        return renderFrame(frame, root, fullDocument, true);
+    }
+
+    private String renderFrame(Frame frame, int root, boolean fullDocument, boolean debug) {
         byte[] bytes = FrameCodec.encodeFrame(frame);
         try (com.sun.jna.Memory memory = new com.sun.jna.Memory(bytes.length)) {
             memory.write(0, bytes, 0, bytes.length);
-            Pointer result = fullDocument
-                    ? nativeRenderer.pathland_html_render(memory, bytes.length, root)
-                    : nativeRenderer.pathland_html_render_fragment(memory, bytes.length, root);
+            Pointer result;
+            if (debug) {
+                byte flag = 1;
+                result = fullDocument
+                        ? nativeRenderer.pathland_html_render_debug(memory, bytes.length, root, flag)
+                        : nativeRenderer.pathland_html_render_fragment_debug(memory, bytes.length, root, flag);
+            } else {
+                result = fullDocument
+                        ? nativeRenderer.pathland_html_render(memory, bytes.length, root)
+                        : nativeRenderer.pathland_html_render_fragment(memory, bytes.length, root);
+            }
             return take(result);
         }
     }

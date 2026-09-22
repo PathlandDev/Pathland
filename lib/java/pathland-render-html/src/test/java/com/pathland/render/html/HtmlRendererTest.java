@@ -117,6 +117,24 @@ class HtmlRendererTest {
     }
 
     @Test
+    void debugRenderEmitsNodeCommentsButDefaultDoesNot() {
+        View root = VStack.of(
+                com.pathland.view.Text.of("Hello"),
+                com.pathland.view.Button.of("Go", () -> { }));
+        Frame frame = frameOf(root);
+
+        // Default render: no comments.
+        assertFalse(renderer().renderFragment(frame, 1).contains("<!--"));
+
+        // Debug render: a per-node comment naming the component + modifiers.
+        String debug = renderer().renderFragmentDebug(frame, 1);
+        assertTrue(debug.contains("<!-- #1 VStack -->"), "stack comment: " + debug);
+        assertTrue(debug.contains("<!-- #2 Text \"Hello\""), "text comment: " + debug);
+        assertTrue(debug.contains("<!-- #3 Button \"Go\": eventListeners=0x00000005"),
+                "button comment decodes its modifiers: " + debug);
+    }
+
+    @Test
     void embeddedNativeLibraryIsExtractedAndLoads() {
         // The renderer dylib is embedded in the jar (META-INF/native/) and extracted
         // via JNA. Assert the resource is on the classpath (platform extension) and
