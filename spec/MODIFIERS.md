@@ -64,6 +64,13 @@ the frame's string section; `C` holds the arena offset.
 Special `WIDTH`/`HEIGHT` values: `-1.0` = `FILL` (expand to available), `-2.0` =
 `HUG_CONTENT` (native intrinsic size).
 
+> **`maxWidth`/`maxHeight: .infinity`**: SwiftUI's flexible frame is expressed as
+> the `FILL` sentinel on `WIDTH`/`HEIGHT`. DSLs accept `∞` (e.g. Rust
+> `f32::INFINITY`, Java `Float.POSITIVE_INFINITY`) and normalize it to `FILL`
+> before emission, so `.frame(maxWidth: .infinity)` ⇔ `WIDTH = FILL`. The
+> renderer then expands the element to the available space (GTK `hexpand`/`Fill`
+> alignment, CSS `width:100%`).
+
 > **Token references**: every property typed `COLOR` / `F32` / `STRING` / `ENUM`
 > in the tables below MAY instead carry the `DESIGN_TOKEN` value type (`0x08`),
 > with `C` = arenaRef to a token path — so modifiers like `.foregroundStyle`,

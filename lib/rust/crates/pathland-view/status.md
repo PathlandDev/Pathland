@@ -20,6 +20,9 @@ trees. Protocol contract: `spec/`.
   `opacity`, `hidden`, `corner_radius`, `line_limit`, `text_alignment`,
   `truncation_mode`, `offset`, `position`, `z_index`, `pointer_events`,
   `on_tap_gesture`.
+- **`frame` infinity sugar**: infinite `width`/`height` hints (`f32::INFINITY`,
+  SwiftUI `maxWidth/maxHeight: .infinity`) normalize to the `size::FILL`
+  sentinel on emission.
 - **Composition**: blanket `ViewExt::modifier` + `ViewModifier` for custom
   modifiers; `Modified<V, M>` wrapper.
 - **Alignment enum** (`Align`): Leading/Center/Trailing/Fill.

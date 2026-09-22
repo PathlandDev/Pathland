@@ -21,7 +21,10 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `Border.of(color, width)`, `FrameMod.of(w, h, align)`, …) applied via
   `.modifier(...)` (single) or `.modifiers(...)` (several, innermost-first);
   `FrameMod.of(w)` / `of(w, h)` leave `ALIGNMENT` unset (alignment optional, so a
-  stack's own cross-axis alignment is preserved);
+  stack's own cross-axis alignment is preserved); `FrameMod.of(...)` width/height
+  overloads accept `Float.POSITIVE_INFINITY` (SwiftUI `maxWidth/maxHeight:
+  .infinity`) normalized to `Commands.Size.FILL`, and an infinite min/ideal/max
+  bound is omitted;
   the `View` interface has no per-modifier factory methods. Built-in and
   application-authored modifiers share the exact same surface (spec `DSL.md`
   §5.6); `buttonStyle` is the `ButtonStyleMod` value (an **environment**

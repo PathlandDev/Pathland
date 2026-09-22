@@ -155,19 +155,21 @@ impl Node {
                 }
             }
         }
-        // WIDTH/HEIGHT: only non-sentinel (arbitrary) values inline; FILL/HUG are classes.
+        // WIDTH/HEIGHT: fixed values inline as px; FILL (-1) → `100%` (expand to
+        // the available space in a flex parent — SwiftUI `maxWidth/maxHeight:
+        // .infinity`). HUG_CONTENT (-2) is left to the intrinsic size.
         if let Some(v) = self.token_ref(property_id::WIDTH) {
             css.push_str(&format!("width:{v};"));
         } else if let Some(v) = f32p(property_id::WIDTH) {
-            if v != pathland_core::size::FILL && v != pathland_core::size::HUG_CONTENT {
-                css.push_str(&format!("width:{};", px(v)));
+            if v != pathland_core::size::HUG_CONTENT {
+                css.push_str(&format!("width:{};", size_css(v)));
             }
         }
         if let Some(v) = self.token_ref(property_id::HEIGHT) {
             css.push_str(&format!("height:{v};"));
         } else if let Some(v) = f32p(property_id::HEIGHT) {
-            if v != pathland_core::size::FILL && v != pathland_core::size::HUG_CONTENT {
-                css.push_str(&format!("height:{};", px(v)));
+            if v != pathland_core::size::HUG_CONTENT {
+                css.push_str(&format!("height:{};", size_css(v)));
             }
         }
         if let (Some(x), Some(y)) = (f32p(property_id::OFFSET_X), f32p(property_id::OFFSET_Y)) {
@@ -1860,6 +1862,37 @@ mod tests {
         assert!(html.contains("color:rgba(17,34,51,1)"));
         assert!(html.contains("font-size:18px"), "font-size inline (dp): {}", html);
         assert!(html.contains("hidden"), "visible=0 -> hidden class");
+    }
+
+    #[test]
+    fn style_css_expands_fill_hints_to_percent() {
+        use pathland_core::size;
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            size::FILL.to_bits(),
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::HEIGHT as u32,
+            size::FILL.to_bits(),
+        ));
+
+        // A FILL hint expands to the available space (`100%`); a fixed value
+        // stays in px (see `size_css`), and the HUG_CONTENT sentinel is left
+        // intrinsic.
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("width:100%;height:100%;"), "FILL expands: {}", html);
     }
 
     #[test]

@@ -244,7 +244,9 @@ pub trait ViewExt: View + Sized {
     ///
     /// `width`/`height` use the `size::FILL` (-1.0) and `size::HUG_CONTENT`
     /// (-2.0) sentinels, or `None` to leave that axis to the native renderer.
-    /// When an alignment is provided it is emitted as the `ALIGNMENT` property.
+    /// A positive/negative infinite value (e.g. `f32::INFINITY`, SwiftUI
+    /// `maxWidth: .infinity`) is normalized to `size::FILL`. When an alignment
+    /// is provided it is emitted as the `ALIGNMENT` property.
     fn frame(
         self,
         width: Option<f32>,
@@ -412,7 +414,8 @@ pub struct Tint(pub Color);
 /// Emits `WIDTH`, `HEIGHT`, and optionally `ALIGNMENT` as ordinary
 /// `SET_PROPERTY` values. `width`/`height` use the `size::FILL` (-1.0) and
 /// `size::HUG_CONTENT` (-2.0) sentinels; `None` leaves that axis to the native
-/// renderer.
+/// renderer. Infinite values (SwiftUI `maxWidth/maxHeight: .infinity`) are
+/// normalized to `size::FILL` when applied.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Frame {
     pub width: Option<f32>,
@@ -486,16 +489,26 @@ impl ViewModifier for Frame {
     fn apply(&self, node: &mut Node) {
         if let Some(w) = self.width {
             node.properties
-                .insert(property_id::WIDTH, w.to_bits());
+                .insert(property_id::WIDTH, fill_or(w).to_bits());
         }
         if let Some(h) = self.height {
             node.properties
-                .insert(property_id::HEIGHT, h.to_bits());
+                .insert(property_id::HEIGHT, fill_or(h).to_bits());
         }
         if let Some(a) = self.alignment {
             node.properties
                 .insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
         }
+    }
+}
+
+/// Normalize an infinite size hint (SwiftUI `maxWidth/maxHeight: .infinity`)
+/// to the `size::FILL` sentinel; finite values pass through unchanged.
+fn fill_or(v: f32) -> f32 {
+    if v.is_infinite() {
+        pathland_core::size::FILL
+    } else {
+        v
     }
 }
 
@@ -1433,6 +1446,39 @@ mod tests {
         );
         assert!(!node.properties.contains_key(&property_id::HEIGHT));
         assert!(!node.properties.contains_key(&property_id::ALIGNMENT));
+    }
+
+    #[test]
+    fn frame_infinite_hint_normalizes_to_fill() {
+        use pathland_core::size;
+        // SwiftUI `frame(maxWidth: .infinity, maxHeight: .infinity)`.
+        let node = text("x")
+            .frame(Some(f32::INFINITY), Some(f32::INFINITY), Some(Align::Leading))
+            .build();
+        assert_eq!(
+            node.properties.get(&property_id::WIDTH),
+            Some(&size::FILL.to_bits())
+        );
+        assert_eq!(
+            node.properties.get(&property_id::HEIGHT),
+            Some(&size::FILL.to_bits())
+        );
+        assert_eq!(
+            node.properties.get(&property_id::ALIGNMENT),
+            Some(&(Align::Leading.value() as f32).to_bits())
+        );
+        // Negative infinity behaves the same; finite values are untouched.
+        let node = text("x")
+            .frame(Some(f32::NEG_INFINITY), Some(24.0), None)
+            .build();
+        assert_eq!(
+            node.properties.get(&property_id::WIDTH),
+            Some(&size::FILL.to_bits())
+        );
+        assert_eq!(
+            node.properties.get(&property_id::HEIGHT),
+            Some(&24.0f32.to_bits())
+        );
     }
 
     #[test]

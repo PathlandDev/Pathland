@@ -623,8 +623,12 @@ surface ([§5.6](#56-custom-modifiers-developer-authored)).
 
 **Semantics**: `WIDTH`/`HEIGHT` use the sentinels `FILL` (−1.0 = expand) and
 `HUG_CONTENT` (−2.0 = intrinsic); omitting an axis leaves it to the native
-renderer. `OFFSET` is a post-layout translation; `POSITION` is absolute
-placement within the parent.
+renderer. SwiftUI's `.frame(maxWidth: .infinity)` / `maxHeight: .infinity` is
+written by passing `Float.POSITIVE_INFINITY` (Java) / `f32::INFINITY` (Rust) to
+the width/height overloads, which is normalized to `FILL` before emission. In
+the min/ideal/max overload an infinite `maxWidth`/`maxHeight` means *no limit*
+(the bound is omitted). `OFFSET` is a post-layout translation; `POSITION` is
+absolute placement within the parent.
 
 ### 5.2 Text formatting
 
