@@ -1,0 +1,77 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M37K4QZC67QYT976NX7RXY9X",
+  "session_id": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-23T16:56:22.898591Z",
+  "branch": "feat/qt-renderer",
+  "checkpoints_count": 5,
+  "save_step_count": 2,
+  "files_touched": [
+    "lib/rust/Cargo.lock",
+    "lib/rust/Cargo.toml",
+    "lib/rust/crates/pathland-core-transport/Cargo.toml",
+    "lib/rust/crates/pathland-core-transport/src/batch.rs",
+    "lib/rust/crates/pathland-render-core/Cargo.toml",
+    "lib/rust/crates/pathland-render-core/src/host.rs",
+    "lib/rust/crates/pathland-render-core/src/lib.rs",
+    "lib/rust/crates/pathland-render-core/status.md",
+    "lib/rust/crates/pathland-render-gtk/Cargo.toml",
+    "lib/rust/crates/pathland-render-gtk/src/host.rs",
+    "lib/rust/crates/pathland-render-gtk/src/layout.rs",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/src/tokens.rs",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/rust/crates/pathland-view-native/Cargo.toml",
+    "lib/rust/crates/pathland-view-native/tests/native.rs"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "20c7dc71616c",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 692168,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 21304064,
+    "output_tokens": 122274,
+    "api_call_count": 174
+  },
+  "session_metrics": {
+    "turn_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-23T16:56:22.76943Z",
+    "agent_lines": 696,
+    "agent_removed": 581,
+    "human_added": 1515,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 2211,
+    "total_lines_changed": 2797,
+    "agent_percentage": 45.65606006435466,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1051,
+      "agent_lines_removed": 581
+    }
+  ]
+}

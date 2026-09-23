@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M37K4QZC67QYT976NX7RXY9X",
+  "strategy": "manual-commit",
+  "branch": "feat/qt-renderer",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "lib/rust/Cargo.lock",
+    "lib/rust/Cargo.toml",
+    "lib/rust/crates/pathland-core-transport/Cargo.toml",
+    "lib/rust/crates/pathland-core-transport/src/batch.rs",
+    "lib/rust/crates/pathland-render-core/Cargo.toml",
+    "lib/rust/crates/pathland-render-core/src/host.rs",
+    "lib/rust/crates/pathland-render-core/src/lib.rs",
+    "lib/rust/crates/pathland-render-core/status.md",
+    "lib/rust/crates/pathland-render-gtk/Cargo.toml",
+    "lib/rust/crates/pathland-render-gtk/src/host.rs",
+    "lib/rust/crates/pathland-render-gtk/src/layout.rs",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/src/tokens.rs",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/rust/crates/pathland-view-native/Cargo.toml",
+    "lib/rust/crates/pathland-view-native/tests/native.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 692168,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 21304064,
+    "output_tokens": 122274,
+    "api_call_count": 174
+  }
+}
