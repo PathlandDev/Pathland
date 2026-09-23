@@ -7,9 +7,11 @@ members = [
     "crates/pathland-core-transport",
     "crates/pathland-view-native",
     "crates/pathland-core-capi",
+    "crates/pathland-render-core",
     "crates/pathland-render-gtk",
     "crates/pathland-render-gtk-demo",
     "crates/pathland-render-html",
+    "crates/pathland-render-qt",
 ]
 
 [workspace.package]

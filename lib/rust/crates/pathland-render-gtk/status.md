@@ -1,10 +1,18 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** September 14, 2026
+**Last updated:** September 23, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
 `spec/TOKENS.md`.
+
+**Note (2026-09-23):** the toolkit-free decode core (`RenderTree`/`HostNode`,
+`apply_frame`, token tables + resolution, `concrete_default_tables`,
+`render_tree_from_frame`, `describe`) moved to the shared
+`pathland-render-core` crate; this crate now consumes it and keeps the
+GTK-specific layers (`tokens.rs` native-theme enrichment, `layout.rs`,
+`capi.rs`). `pathland_gtk::RenderTree` etc. remain re-exported for
+compatibility.
 
 ## Implemented
 

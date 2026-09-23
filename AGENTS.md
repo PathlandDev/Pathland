@@ -75,9 +75,20 @@ crates/pathland-engine/   # EMITTER — retained tree types (Node/Component) + t
                           #   reactive emitter + signals.
 crates/pathland-core-transport/ # TRANSPORT — shared-memory ring owner (RingTransport) +
                           #   network batch encode/decode + batching policy (std)
-crates/pathland-render-gtk/ # RENDERER — host reader (RenderTree) + maps opcode frames onto
-                          #   native GTK widgets incrementally; the only crate that touches
-                          #   GTK/glib/pango. Exposes pathland_gtk_run for Java (JNA) hosts.
+crates/pathland-render-core/ # RENDERER CORE (shared, toolkit-free) — opcode-frame decode into a
+                          #   native-element description (RenderTree/HostNode), design-token
+                          #   tables + resolution, concrete Tier-1 defaults. No GTK/Qt: every
+                          #   renderer shares one tested decode path.
+crates/pathland-render-gtk/ # RENDERER — maps opcode frames onto native GTK widgets incrementally;
+                          #   the only crate that touches GTK/glib/pango. Exposes
+                          #   pathland_gtk_run for Java (JNA) hosts.
+crates/pathland-render-qt/ # RENDERER (hybrid Rust + C++) — maps opcode frames onto a Qt Quick
+                          #   scene graph (Row/Column/Text + Qt Quick Controls). Rust owns the
+                          #   shared decode core + a sent-state delta diff + the Pump/C ABI;
+                          #   a thin C++ layer (src/qt/, built via cc + moc) owns the Qt shell
+                          #   and applies the delta command batch to QML items. The crate needs
+                          #   Qt6 dev libs (Homebrew: qtbase qtdeclarative) to build/test; its
+                          #   headless tests use QT_QPA_PLATFORM=offscreen.
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
 #   stacks, spans, buttons) as a pure function of the stream; the
                            #   server-side/remote-projection target (Goal #15).

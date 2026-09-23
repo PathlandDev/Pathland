@@ -12,8 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The workspace includes pathland-render-gtk (GTK4 + libadwaita), so the runner
-      # needs the GTK4 and libadwaita system libraries before `cargo test` can link them.
+      # The workspace includes pathland-render-gtk (GTK4 + libadwaita) and
+      # pathland-render-qt (Qt Quick), so the runner needs the system libraries
+      # before `cargo test` can link them.
       - name: Install GTK4 + libadwaita system dependencies
         run: |
           sudo apt-get update
@@ -25,6 +26,12 @@ jobs:
             libpango1.0-dev \
             libgdk-pixbuf-2.0-dev \
             libgraphene-1.0-dev
+
+      - name: Install Qt6 (QML/Quick) system dependencies
+        run: |
+          sudo apt-get install -y \
+            qt6-base-dev \
+            qt6-declarative-dev
 
       - name: Install Rust (stable + wasm32 target)
         uses: dtolnay/rust-toolchain@stable

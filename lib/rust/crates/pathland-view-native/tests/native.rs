@@ -1,7 +1,7 @@
 //! End-to-end test of the native host: flat builder → emit → zero-copy ring →
 //! render-tree decode.
 
-use pathland_gtk::RenderTree;
+use pathland_render_core::RenderTree;
 use pathland_native::{component_from_id, NativeHost};
 use pathland_core::{property_id, SharedHeader, style};
 use pathland_engine::SignalValue;

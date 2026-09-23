@@ -38,6 +38,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cc"
+version = "1.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54413ede23c2daf518f35156dfde027feb2374004d63bd497f983c8db9c0e313"
+dependencies = [
+ "find-msvc-tools",
+ "shlex",
+]
+
+[[package]]
 name = "cfg-expr"
 version = "0.20.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -62,6 +72,12 @@ dependencies = [
  "memoffset",
  "rustc_version",
 ]
+
+[[package]]
+name = "find-msvc-tools"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef25905e51abafe4dcea6c15fec58c57b601cdbd0ee53d22ea1d3016c587d39b"
 
 [[package]]
 name = "futures-channel"
@@ -489,7 +505,7 @@ version = "0.1.0"
 dependencies = [
  "pathland-core",
  "pathland-engine",
- "pathland-render-gtk",
+ "pathland-render-core",
  "pathland-view",
 ]
 
@@ -498,6 +514,15 @@ name = "pathland-engine"
 version = "0.1.0"
 dependencies = [
  "pathland-core",
+]
+
+[[package]]
+name = "pathland-render-core"
+version = "0.1.0"
+dependencies = [
+ "pathland-core",
+ "pathland-engine",
+ "pathland-view",
 ]
 
 [[package]]
@@ -511,6 +536,7 @@ dependencies = [
  "pathland-core",
  "pathland-core-transport",
  "pathland-engine",
+ "pathland-render-core",
  "pathland-view",
  "pathland-view-native",
 ]
@@ -535,6 +561,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pathland-render-qt"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "pathland-core",
+ "pathland-core-transport",
+ "pathland-engine",
+ "pathland-render-core",
+ "pathland-view",
+ "pathland-view-native",
+]
+
+[[package]]
 name = "pathland-view"
 version = "0.1.0"
 dependencies = [
@@ -549,7 +588,7 @@ dependencies = [
  "pathland-core",
  "pathland-core-transport",
  "pathland-engine",
- "pathland-render-gtk",
+ "pathland-render-core",
  "pathland-view",
 ]
 
@@ -635,6 +674,12 @@ checksum = "6662b5879511e06e8999a8a235d848113e942c9124f211511b16466ee2995f26"
 dependencies = [
  "serde_core",
 ]
+
+[[package]]
+name = "shlex"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "slab"

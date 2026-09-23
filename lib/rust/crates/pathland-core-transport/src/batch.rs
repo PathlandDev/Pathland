@@ -432,9 +432,9 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
     #[test]
     fn decoded_batch_feeds_render_tree() {
         // Emit a real frame from the engine, serialize it as a network batch,
-        // decode it, and apply to pathland-render-gtk's RenderTree — proving the
+        // decode it, and apply to the shared RenderTree — proving the
         // network path is interchangeable with the shared-memory ring.
-        use pathland_gtk::RenderTree;
+        use pathland_render_core::RenderTree;
         use pathland_engine::Engine;
         use pathland_core::{init_memory, Guest, MemoryLayout};
         use pathland_view::{assign_ids, text, vstack, View};
