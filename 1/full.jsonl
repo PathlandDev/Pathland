@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.7752251160000001,
+    "cost": 0.7782156540000001,
     "tokens": {
-      "input": 2353494,
-      "output": 255205,
+      "input": 2353725,
+      "output": 255855,
       "reasoning": 0,
       "cache": {
-        "read": 89692672,
+        "read": 90547968,
         "write": 0
       }
     },
     "time": {
       "created": 1790139506456,
-      "updated": 1790191647691
+      "updated": 1790191708279
     }
   },
   "messages": [
@@ -288540,21 +288540,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.00144021,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 427848,
+          "input": 87,
+          "output": 241,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 427520
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1790191647685
+          "created": 1790191647685,
+          "completed": 1790191708252
         },
+        "finish": "tool-calls",
         "id": "msg_0cfbcbbc500295rfrzXb1NBGAW",
         "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc"
       },
@@ -288571,20 +288574,126 @@
           "tool": "bash",
           "callID": "call_04687ee66af048ccad65aef7",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -q -m \"feat(qt): control widget parity (Phase B)\n\n- Factory additions: PROGRESS_VIEW/GAUGE -> ProgressBar (fraction via PROGRESS,\n  activity via IS_INDETERMINATE), STEPPER -> SpinBox, PICKER -> ComboBox,\n  MENU -> Button trigger (Qt 6 has no MenuButton), DATE_PICKER/COLOR_PICKER ->\n  TextField/Button approximations.\n- PICKER: option children populate the ComboBox model (ordered by insertion,\n  tracked via components/parents/picker_children maps; rebuilt on insert/remove/\n  option-text change), SELECTION -> currentIndex, onActivated -> VALUE_CHANGED.\n- 2 new offscreen tests (control construction + props, picker model); fixed the\n  wake-counter test race (thread-local).\" && git log --oneline -3"
             },
+            "output": "45b7d42d feat(qt): control widget parity (Phase B)\n39c39e8c feat(qt): interactive parity + CI hardening (Phases E + A)\n34b4ef09 feat(qt): MVP widget mapping + Qt Quick demo (M3-M4)\n",
+            "metadata": {
+              "output": "45b7d42d feat(qt): control widget parity (Phase B)\n39c39e8c feat(qt): interactive parity + CI hardening (Phases E + A)\n34b4ef09 feat(qt): MVP widget mapping + Qt Quick demo (M3-M4)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -q -m \"feat(qt): control widget parity (Phase B)\n\n- Factory additions: PROGRESS_VIEW/GAUGE -> ProgressBar (fraction via PROGRESS,\n  activity via IS_INDETERMINATE), STEPPER -> SpinBox, PICKER -> ComboBox,\n  MENU -> Button trigger (Qt 6 has no MenuButton), DATE_PICKER/COLOR_PICKER ->\n  TextField/Button approximations.\n- PICKER: option children populate the ComboBox model (ordered by insertion,\n  tracked via components/parents/picker_children maps; rebuilt on insert/remove/\n  option-text change), SELECTION -> currentIndex, onActivated -> VALUE_CHANGED.\n- 2 new offscreen tests (control construction + props, picker model); fixed the\n  wake-counter test race (thread-local).\" && git log --oneline -3",
             "time": {
-              "start": 1790191652162
+              "start": 1790191652162,
+              "end": 1790191708180
             }
           },
           "id": "prt_0cfbcc55b0018Ru8Frl9CfHovp",
           "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
           "messageID": "msg_0cfbcbbc500295rfrzXb1NBGAW"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "ccd7909ac6d5757ffa1837dc2c7b3b8145f577df",
+          "type": "step-finish",
+          "tokens": {
+            "total": 427848,
+            "input": 87,
+            "output": 241,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 427520
+            }
+          },
+          "cost": 0.00144021,
+          "id": "prt_0cfbda838001TGed5O69ghYBBC",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cfbcbbc500295rfrzXb1NBGAW"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0cfa6c249001AemY3rEUUUK67I",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001550328,
+        "tokens": {
+          "total": 428329,
+          "input": 144,
+          "output": 409,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 427776
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790191708278,
+          "completed": 1790191743357
+        },
+        "finish": "stop",
+        "id": "msg_0cfbda876002UU6gYCWj9qHifA",
+        "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc"
+      },
+      "parts": [
+        {
+          "snapshot": "ccd7909ac6d5757ffa1837dc2c7b3b8145f577df",
+          "type": "step-start",
+          "id": "prt_0cfbdb0ef001EGqjZPVGKYYh78",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cfbda876002UU6gYCWj9qHifA"
+        },
+        {
+          "type": "reasoning",
+          "text": "Phase B committed. Let me give the user a concise summary. The commit is done, working tree clean.",
+          "time": {
+            "start": 1790191710450,
+            "end": 1790191710652
+          },
+          "id": "prt_0cfbdb0f2001doDo4skw23IFLr",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cfbda876002UU6gYCWj9qHifA"
+        },
+        {
+          "type": "text",
+          "text": "Phase B committed (`45b7d42d`).\n\n## What landed\n\n**Phase B — widget/control parity**\n- **New components** → QML: `PROGRESS_VIEW`/`GAUGE` → `ProgressBar` (fraction via `PROGRESS`, activity via `IS_INDETERMINATE`), `STEPPER` → `SpinBox`, `PICKER` → `ComboBox`, `MENU` → `Button` trigger, `DATE_PICKER`/`COLOR_PICKER` → `TextField`/`Button` approximations.\n- **PICKER model**: option children populate the `ComboBox` model ordered by insertion (new `components`/`parents`/`picker_children` maps), rebuilt on insert/remove/option-text change; `SELECTION` → `currentIndex`, `onActivated` → `VALUE_CHANGED`.\n- Found and fixed a Qt 6 gotcha: `MenuButton` doesn't exist in Qt 6 (Qt 5 only) — mapped MENU to a `Button`, popup Menu documented as a gap (matching the GTK renderer's).\n- Fixed a test race: the wake counter is now thread-local (the scheme test failed only under parallel runs).\n- 2 new offscreen tests (`control_widgets_construct_and_apply_props`, `picker_builds_model_from_option_children`) → **17 render-qt tests green**, full workspace clean, `check-wasm.sh` intact, demo runs offscreen. `status.md` updated.\n\nDeferred (documented): `BACKGROUND_COLOR`/border via Qt's background delegate, `SHAPE` paths, MENU popup items, native date/color dialogs.\n\nReady for Phase C (StackView navigation adapter) when you are.",
+          "time": {
+            "start": 1790191710653,
+            "end": 1790191743280
+          },
+          "id": "prt_0cfbdb1bd001LZvqRGvRAAEY1p",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cfbda876002UU6gYCWj9qHifA"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "ccd7909ac6d5757ffa1837dc2c7b3b8145f577df",
+          "type": "step-finish",
+          "tokens": {
+            "total": 428329,
+            "input": 144,
+            "output": 409,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 427776
+            }
+          },
+          "cost": 0.001550328,
+          "id": "prt_0cfbe315b0018FEfRl0rxGTT5C",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cfbda876002UU6gYCWj9qHifA"
         }
       ]
     }
