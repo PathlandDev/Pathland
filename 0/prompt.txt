@@ -1,0 +1,23 @@
+Explore the Pathland codebase at /Users/michael/Development/michaelkrog/Pathland, focusing on the RENDERER implementations, to help assess feasibility of a Qt renderer.
+
+Please investigate very thoroughly:
+
+1. The GTK4 renderer crate `lib/rust/crates/pathland-render-gtk/`:
+   - Its public API surface (what functions it exposes, how `GtkRenderer::run` works)
+   - How it maps opcode frames to native GTK widgets (the RenderTree / id → widget map)
+   - How it applies STYLE properties, TREE ops, and handles events
+   - The C ABI export (pathland_gtk_run, JNA entry points) — look in src/ffi or similar
+   - Its Cargo.toml dependencies (which GTK/glib crates, versions)
+   - Its status.md
+
+2. The HTML renderer `lib/rust/crates/pathland-render-html/` — briefly, for the pure-function style.
+
+3. `lib/rust/crates/pathland-render-gtk-demo/` — how a demo consumes the renderer.
+
+4. The Java side: how `lib/java/pathland-view/` uses JNA to call into renderers (com.pathland.view.ffm), and how the Java demo (`pathland-render-gtk` via JNA) works — look for pathland_gtk_run usage.
+
+5. `lib/rust/crates/pathland-view-native/` and `lib/rust/crates/pathland-core-capi/` — the C ABI surface that a native host would link against.
+
+6. The opcode surface a renderer must consume: look at `spec/OPCODE.md`, `spec/PRIMITIVES.md`, `spec/MODIFIERS.md`, `spec/EVENTS.md` and `lib/rust/crates/pathland-core/src/` for the frame structure, TREE ops, STYLE property IDs, EVENT category, META category. Summarize the complete set of commands/properties/events a renderer must implement.
+
+Report back a structured summary covering: (a) the exact public/C-ABI surface a Qt renderer would need to match, (b) the full opcode command set a renderer must handle, (c) how the GTK renderer is organized internally (key files, key types), (d) any Qt-relevant observations (e.g. signal handling, threading, main-loop integration, the explicit empty argv to GTK pattern), (e) test infrastructure used by renderers. Include file paths and line numbers for key items.
