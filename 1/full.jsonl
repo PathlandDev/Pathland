@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.634932168,
+    "cost": 0.6392502360000001,
     "tokens": {
-      "input": 1933448,
-      "output": 228905,
+      "input": 1934734,
+      "output": 230019,
       "reasoning": 0,
       "cache": {
-        "read": 69190656,
+        "read": 70342912,
         "write": 0
       }
     },
     "time": {
       "created": 1790139506456,
-      "updated": 1790185878663
+      "updated": 1790185895816
     }
   },
   "messages": [
@@ -228910,21 +228910,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001443414,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 384370,
+          "input": 525,
+          "output": 357,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 383488
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1790185878662
+          "created": 1790185878662,
+          "completed": 1790185890857
         },
+        "finish": "tool-calls",
         "id": "msg_0cf64b4860020POFsq4IUhlD5q",
         "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc"
       },
@@ -228941,20 +228944,282 @@
           "tool": "bash",
           "callID": "call_e13a9ca49e4d4acaa6eec16d",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -q -m \"feat(qt): interactive parity + CI hardening (Phases E + A)\n\nPhase E (CI):\n- Install the QML runtime modules (qml6-module-qtquick[-controls,-templates,-window2])\n  the offscreen tests need, and add a dedicated offscreen render-qt smoke step.\n\nPhase A (interactive parity):\n- Pointer event streams: EVENT_LISTENERS-gated QML MouseArea overlay per node\n  -> POINTER_DOWN/MOVE/UP through the Bridge (bypassing the BINDING_ID gate),\n  encoded by Rust into the ring + wake. Attached/detached on mask/reset/delete.\n- Native back: window-level KeyFilter maps Escape -> Event::Navigate { url: None }.\n- Scheme detection: QStyleHints::colorSchemeChanged -> QtRenderer::set_scheme ->\n  token re-resolution + re-apply (SET_PROPERTY), no host wake.\n- META::RESET: both pump paths scan frames and reset the scene.\n- Demo: marks the slider bound (BINDING_ID) and handles ValueChanged to re-emit,\n  proving the value round-trip (echo-suppressed, VALUE-last) end to end.\n- 6 new tests (decode mapping, ring write+wake, scheme no-wake, length-prefixed\n  text, frame_has_reset, MouseArea attachment).\" && git log --oneline -3"
             },
+            "output": "39c39e8c feat(qt): interactive parity + CI hardening (Phases E + A)\n34b4ef09 feat(qt): MVP widget mapping + Qt Quick demo (M3-M4)\n861a55b1 feat(qt): shared render-core + Qt Quick renderer skeleton (M0-M2)\n",
+            "metadata": {
+              "output": "39c39e8c feat(qt): interactive parity + CI hardening (Phases E + A)\n34b4ef09 feat(qt): MVP widget mapping + Qt Quick demo (M3-M4)\n861a55b1 feat(qt): shared render-core + Qt Quick renderer skeleton (M0-M2)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -q -m \"feat(qt): interactive parity + CI hardening (Phases E + A)\n\nPhase E (CI):\n- Install the QML runtime modules (qml6-module-qtquick[-controls,-templates,-window2])\n  the offscreen tests need, and add a dedicated offscreen render-qt smoke step.\n\nPhase A (interactive parity):\n- Pointer event streams: EVENT_LISTENERS-gated QML MouseArea overlay per node\n  -> POINTER_DOWN/MOVE/UP through the Bridge (bypassing the BINDING_ID gate),\n  encoded by Rust into the ring + wake. Attached/detached on mask/reset/delete.\n- Native back: window-level KeyFilter maps Escape -> Event::Navigate { url: None }.\n- Scheme detection: QStyleHints::colorSchemeChanged -> QtRenderer::set_scheme ->\n  token re-resolution + re-apply (SET_PROPERTY), no host wake.\n- META::RESET: both pump paths scan frames and reset the scene.\n- Demo: marks the slider bound (BINDING_ID) and handles ValueChanged to re-emit,\n  proving the value round-trip (echo-suppressed, VALUE-last) end to end.\n- 6 new tests (decode mapping, ring write+wake, scheme no-wake, length-prefixed\n  text, frame_has_reset, MouseArea attachment).\" && git log --oneline -3",
             "time": {
-              "start": 1790185885423
+              "start": 1790185885423,
+              "end": 1790185890782
             }
           },
           "id": "prt_0cf64bddb001i2Fd7ZLvEqGaWh",
           "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
           "messageID": "msg_0cf64b4860020POFsq4IUhlD5q"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "f2c8fbce30a30c4eecddc55f55c8f1e89f2ad4da",
+          "type": "step-finish",
+          "tokens": {
+            "total": 384370,
+            "input": 525,
+            "output": 357,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 383488
+            }
+          },
+          "cost": 0.001443414,
+          "id": "prt_0cf64e402001IorqxgRNniUvEw",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cf64b4860020POFsq4IUhlD5q"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0cf4fb0b9001MaGi30DWLM0FX5",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001372518,
+        "tokens": {
+          "total": 384767,
+          "input": 193,
+          "output": 318,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 384256
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790185890879,
+          "completed": 1790185895795
+        },
+        "finish": "tool-calls",
+        "id": "msg_0cf64e43f0021ulcpfwb6re73n",
+        "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc"
+      },
+      "parts": [
+        {
+          "snapshot": "f2c8fbce30a30c4eecddc55f55c8f1e89f2ad4da",
+          "type": "step-start",
+          "id": "prt_0cf64ed45001Z8alqXV4yrgCGg",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cf64e43f0021ulcpfwb6re73n"
+        },
+        {
+          "type": "reasoning",
+          "text": "Phases E + A committed. Let me update the todos and give the user a summary.",
+          "time": {
+            "start": 1790185893191,
+            "end": 1790185894007
+          },
+          "id": "prt_0cf64ed47001HMb4hnuxx1Ol9p",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cf64e43f0021ulcpfwb6re73n"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "call_300d48888a5841028f7cfe1e",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "Phase E: CI — add QML runtime modules + offscreen render-qt smoke step",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase A1: pointer event streams (EVENT_LISTENERS-gated MouseArea -> POINTER_DOWN/MOVE/UP)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase A2: Escape -> NAVIGATE back (window-level key handling)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase A3: scheme detection (colorSchemeChanged) -> renderer.set_scheme -> token re-apply",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase A4: META::RESET handled by the pump (both paths)",
+                  "priority": "medium",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase A5: demo slider value binding round-trip",
+                  "priority": "medium",
+                  "status": "completed"
+                },
+                {
+                  "content": "Verify: cargo test -p pathland-render-qt + full workspace + check-wasm.sh; status.md",
+                  "priority": "high",
+                  "status": "completed"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"Phase E: CI — add QML runtime modules + offscreen render-qt smoke step\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase A1: pointer event streams (EVENT_LISTENERS-gated MouseArea -> POINTER_DOWN/MOVE/UP)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase A2: Escape -> NAVIGATE back (window-level key handling)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase A3: scheme detection (colorSchemeChanged) -> renderer.set_scheme -> token re-apply\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase A4: META::RESET handled by the pump (both paths)\",\n    \"status\": \"completed\",\n    \"priority\": \"medium\"\n  },\n  {\n    \"content\": \"Phase A5: demo slider value binding round-trip\",\n    \"status\": \"completed\",\n    \"priority\": \"medium\"\n  },\n  {\n    \"content\": \"Verify: cargo test -p pathland-render-qt + full workspace + check-wasm.sh; status.md\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "Phase E: CI — add QML runtime modules + offscreen render-qt smoke step",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase A1: pointer event streams (EVENT_LISTENERS-gated MouseArea -> POINTER_DOWN/MOVE/UP)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase A2: Escape -> NAVIGATE back (window-level key handling)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase A3: scheme detection (colorSchemeChanged) -> renderer.set_scheme -> token re-apply",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase A4: META::RESET handled by the pump (both paths)",
+                  "status": "completed",
+                  "priority": "medium"
+                },
+                {
+                  "content": "Phase A5: demo slider value binding round-trip",
+                  "status": "completed",
+                  "priority": "medium"
+                },
+                {
+                  "content": "Verify: cargo test -p pathland-render-qt + full workspace + check-wasm.sh; status.md",
+                  "status": "completed",
+                  "priority": "high"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "0 todos",
+            "time": {
+              "start": 1790185895581,
+              "end": 1790185895583
+            }
+          },
+          "id": "prt_0cf64f07a001Bwg94yzT3esH4L",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cf64e43f0021ulcpfwb6re73n"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "f2c8fbce30a30c4eecddc55f55c8f1e89f2ad4da",
+          "type": "step-finish",
+          "tokens": {
+            "total": 384767,
+            "input": 193,
+            "output": 318,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 384256
+            }
+          },
+          "cost": 0.001372518,
+          "id": "prt_0cf64f754001eFyHgcU8pNlNgn",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cf64e43f0021ulcpfwb6re73n"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0cf4fb0b9001MaGi30DWLM0FX5",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001502136,
+        "tokens": {
+          "total": 385519,
+          "input": 568,
+          "output": 439,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 384512
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790185895815,
+          "completed": 1790185929022
+        },
+        "finish": "stop",
+        "id": "msg_0cf64f787002YzQm3BwIHAglsm",
+        "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc"
+      },
+      "parts": [
+        {
+          "snapshot": "f2c8fbce30a30c4eecddc55f55c8f1e89f2ad4da",
+          "type": "step-start",
+          "id": "prt_0cf6509ab0018noh2yZcDGtX4m",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cf64f787002YzQm3BwIHAglsm"
+        },
+        {
+          "type": "text",
+          "text": "Phases E + A complete and committed (`39c39e8c`).\n\n## What landed\n\n**Phase E — CI hardening**\n- Added the QML runtime modules the offscreen tests need (`qml6-module-qtquick[-controls,-templates,-window2]` — dev headers alone don't ship them) + a dedicated offscreen `cargo test -p pathland-render-qt` step. (Actual green-run verification needs a CI run on push.)\n\n**Phase A — interactive parity**\n- **Pointer streams**: `EVENT_LISTENERS`-gated QML `MouseArea` overlay per node → `POINTER_DOWN`/`MOVE`/`UP` through the Bridge (bypasses the `BINDING_ID` gate — any element can emit raw inputs). Attached/detached on mask change/reset/delete.\n- **Native back**: window-level `KeyFilter` maps Escape → `Event::Navigate { url: None }` (BackSpace deferred, needs text-focus detection).\n- **Scheme**: `QStyleHints::colorSchemeChanged` → `QtRenderer::set_scheme` → token re-resolution + `SET_PROPERTY` re-apply, no host wake.\n- **META::RESET**: both pump paths scan frames and reset the decoded tree + C++ scene.\n- **Demo**: slider marked bound (`BINDING_ID`) + host handles `ValueChanged` → re-emit, proving the echo-suppressed, VALUE-last round-trip in a running app.\n\n**Verification**: 15 render-qt tests green (6 new), full workspace clean, `check-wasm.sh` intact, demo runs offscreen. `status.md` updated.\n\nTwo honest notes: the Rust DSL still lacks signal *property* bindings (that's a DSL/engine feature, not renderer) — the demo marks the slider bound on the retained tree; and the CI green-run can't be proven from this machine — it'll confirm on the next push. Ready for Phase B (widget parity) whenever you are.",
+          "time": {
+            "start": 1790185901176,
+            "end": 1790185928952
+          },
+          "id": "prt_0cf650c78001yFLC8KKlWfZGMP",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cf64f787002YzQm3BwIHAglsm"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "f2c8fbce30a30c4eecddc55f55c8f1e89f2ad4da",
+          "type": "step-finish",
+          "tokens": {
+            "total": 385519,
+            "input": 568,
+            "output": 439,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 384512
+            }
+          },
+          "cost": 0.001502136,
+          "id": "prt_0cf65791f001CjXh7Tk14Uh1Ie",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0cf64f787002YzQm3BwIHAglsm"
         }
       ]
     }
