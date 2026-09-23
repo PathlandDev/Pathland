@@ -332,13 +332,20 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::Cell;
     use std::ffi::c_char;
-    use std::sync::atomic::{AtomicUsize, Ordering};
 
-    static WAKES: AtomicUsize = AtomicUsize::new(0);
+    // Thread-local so parallel tests don't share wake counts.
+    thread_local! {
+        static WAKES: Cell<usize> = const { Cell::new(0) };
+    }
 
     extern "C" fn count_wake() {
-        WAKES.fetch_add(1, Ordering::SeqCst);
+        WAKES.with(|w| w.set(w.get() + 1));
+    }
+
+    fn wakes() -> usize {
+        WAKES.with(|w| w.get())
     }
 
     fn qt_event(kind: u8, node_id: u32, value: f32) -> QtEvent {
@@ -392,7 +399,7 @@ mod tests {
     #[test]
     fn ring_event_writes_pointer_into_ring_and_wakes() {
         let ring = Rc::new(RefCell::new(RingTransport::new()));
-        WAKES.store(0, Ordering::SeqCst);
+        WAKES.with(|w| w.set(0));
         let mut runner = RingRunner {
             ring: ring.clone(),
             renderer: QtRenderer::new(),
@@ -404,7 +411,7 @@ mod tests {
         ring_event(&raw, user);
 
         // The event landed in the ring and the host was woken.
-        assert_eq!(WAKES.load(Ordering::SeqCst), 1);
+        assert_eq!(wakes(), 1);
         let events = ring.borrow_mut().drain_events();
         assert_eq!(events.len(), 1);
         assert!(matches!(
@@ -416,7 +423,7 @@ mod tests {
     #[test]
     fn scheme_event_reapplies_without_waking() {
         let ring = Rc::new(RefCell::new(RingTransport::new()));
-        WAKES.store(0, Ordering::SeqCst);
+        WAKES.with(|w| w.set(0));
         let mut runner = RingRunner {
             ring: ring.clone(),
             renderer: QtRenderer::new(),
@@ -428,7 +435,7 @@ mod tests {
         ring_event(&raw, user);
 
         // No ring write, no host wake — only a renderer-internal re-apply.
-        assert_eq!(WAKES.load(Ordering::SeqCst), 0);
+        assert_eq!(wakes(), 0);
         assert!(ring.borrow_mut().drain_events().is_empty());
     }
 

@@ -29,6 +29,7 @@
 #include <QtCore/QDebug>
 #include <QtCore/QVariant>
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <unordered_map>
@@ -61,6 +62,11 @@ enum {
     PL_COMP_TEXT_EDITOR = 0x22,
     PL_COMP_TOGGLE = 0x24,
     PL_COMP_SLIDER = 0x25,
+    PL_COMP_STEPPER = 0x26,
+    PL_COMP_DATE_PICKER = 0x27,
+    PL_COMP_PICKER = 0x28,
+    PL_COMP_MENU = 0x29,
+    PL_COMP_COLOR_PICKER = 0x2A,
     PL_COMP_COMMENT = 0x7F,
 };
 
@@ -99,6 +105,9 @@ enum {
     PL_PROP_ACTION_ID = 0x2016,
     PL_PROP_BINDING_ID = 0x2017,
     PL_PROP_EVENT_LISTENERS = 0x2005,
+    PL_PROP_PROGRESS = 0x200E,
+    PL_PROP_IS_INDETERMINATE = 0x200F,
+    PL_PROP_SELECTION = 0x2010,
 };
 
 namespace {
@@ -120,6 +129,12 @@ struct LayerState {
 
     // The renderer's rendered-output cache: id -> QML item.
     std::unordered_map<uint32_t, QQuickItem *> widgets;
+    // id -> component type (for control-specific behaviour, e.g. pickers).
+    std::unordered_map<uint32_t, uint16_t> components;
+    // id -> parent node id (for picker model rebuilds on option text changes).
+    std::unordered_map<uint32_t, uint32_t> parents;
+    // PICKER parent -> ordered option child ids (drive the ComboBox model).
+    std::unordered_map<uint32_t, std::vector<uint32_t>> picker_children;
     // Nodes that may report interactions (carry BINDING_ID / ACTION_ID).
     std::unordered_set<uint32_t> gated_ids;
     // EVENT_LISTENERS mask per node (raw pointer stream gating).
@@ -198,6 +213,43 @@ QString qmlFor(uint16_t component, uint32_t id) {
         return QStringLiteral(
                    "import QtQuick 2.15\nImage { objectName: \"pl%1\"; "
                    "fillMode: Image.PreserveAspectFit }")
+            .arg(id);
+    case PL_COMP_PROGRESS:
+    case PL_COMP_GAUGE:
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
+                   "ProgressBar { objectName: \"pl%1\" }")
+            .arg(id);
+    case PL_COMP_STEPPER:
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
+                   "SpinBox { objectName: \"pl%1\" }")
+            .arg(id);
+    case PL_COMP_PICKER:
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
+                   "ComboBox { objectName: \"pl%1\"; "
+                   "onActivated: bridge.valueChanged(%2, index) }")
+            .arg(id)
+            .arg(id);
+    case PL_COMP_MENU:
+        // Qt 6 removed MenuButton; a Button is the trigger (a popup Menu of the
+        // option children is a documented gap, matching the GTK renderer).
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
+                   "Button { objectName: \"pl%1\" }")
+            .arg(id);
+    case PL_COMP_DATE_PICKER:
+        // Qt Quick Controls has no native date picker; MVP approximation.
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
+                   "TextField { objectName: \"pl%1\"; placeholderText: \"date\" }")
+            .arg(id);
+    case PL_COMP_COLOR_PICKER:
+        // Qt Quick Controls has no native color picker; MVP approximation.
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
+                   "Button { objectName: \"pl%1\"; text: \"color\" }")
             .arg(id);
     case PL_COMP_BUTTON:
         return QStringLiteral(
@@ -412,6 +464,15 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
     case PL_PROP_IS_SECURE:
         item->setProperty("echoMode", value != 0 ? 2 : 0); // TextField.Password / Normal
         break;
+    case PL_PROP_PROGRESS:
+        item->setProperty("value", static_cast<double>(f32(value)));
+        break;
+    case PL_PROP_IS_INDETERMINATE:
+        item->setProperty("indeterminate", value != 0);
+        break;
+    case PL_PROP_SELECTION:
+        item->setProperty("currentIndex", static_cast<int>(value));
+        break;
     case PL_PROP_EVENT_LISTENERS:
         attachPointerArea(id, value);
         break;
@@ -468,10 +529,47 @@ void resetNode(uint32_t id) {
     item->setProperty("visible", true);
 }
 
+// Rebuild a PICKER's ComboBox model from its ordered option children's text.
+void rebuildPickerModel(uint32_t parentId) {
+    auto cit = g.components.find(parentId);
+    if (cit == g.components.end() || cit->second != PL_COMP_PICKER) {
+        return;
+    }
+    QQuickItem *picker = findWidget(parentId);
+    if (!picker) {
+        return;
+    }
+    QStringList model;
+    for (uint32_t optId : g.picker_children[parentId]) {
+        QQuickItem *opt = findWidget(optId);
+        model << (opt ? opt->property("text").toString() : QString());
+    }
+    picker->setProperty("model", model);
+}
+
 void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
-    QQuickItem *parent = findWidget(parentId);
     QQuickItem *child = findWidget(childId);
-    if (!parent || !child) {
+    if (!child) {
+        return;
+    }
+    const bool isPicker = g.components[parentId] == PL_COMP_PICKER;
+    g.parents[childId] = parentId;
+
+    if (isPicker) {
+        // Picker options drive the ComboBox model; they are not reparented
+        // visually (the popup renders the model).
+        auto &opts = g.picker_children[parentId];
+        if (index == UINT32_MAX || index >= opts.size()) {
+            opts.push_back(childId);
+        } else {
+            opts.insert(opts.begin() + index, childId);
+        }
+        rebuildPickerModel(parentId);
+        return;
+    }
+
+    QQuickItem *parent = findWidget(parentId);
+    if (!parent) {
         return;
     }
     child->setParentItem(parent);
@@ -497,6 +595,13 @@ void deleteNode(uint32_t id) {
     item->setParentItem(nullptr);
     item->deleteLater();
     g.widgets.erase(it);
+    g.components.erase(id);
+    g.parents.erase(id);
+    for (auto &kv : g.picker_children) {
+        auto &opts = kv.second;
+        opts.erase(std::remove(opts.begin(), opts.end(), id), opts.end());
+    }
+    g.picker_children.erase(id);
     g.gated_ids.erase(id);
     detachPointerArea(id);
 }
@@ -618,6 +723,7 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
             QQuickItem *item = createComponent(g.engine, g.root, qmlFor(component, c.a).toUtf8());
             if (item) {
                 g.widgets[c.a] = item;
+                g.components[c.a] = component;
             }
             break;
         }
@@ -628,9 +734,18 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
             insertChild(c.a, c.b, c.c);
             break;
         case PLQT_REMOVE_CHILD: {
-            QQuickItem *child = findWidget(c.b);
-            if (child) {
-                child->setParentItem(nullptr); // keep alive (may be reinserted)
+            const uint32_t parentId = c.a;
+            const uint32_t childId = c.b;
+            g.parents.erase(childId);
+            if (g.components[parentId] == PL_COMP_PICKER) {
+                auto &opts = g.picker_children[parentId];
+                opts.erase(std::remove(opts.begin(), opts.end(), childId), opts.end());
+                rebuildPickerModel(parentId);
+            } else {
+                QQuickItem *child = findWidget(childId);
+                if (child) {
+                    child->setParentItem(nullptr); // keep alive (may be reinserted)
+                }
             }
             break;
         }
@@ -643,6 +758,11 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
                 g.suppress = true;
                 item->setProperty("text", QString::fromUtf8(c.str, static_cast<int>(c.str_len)));
                 g.suppress = false;
+            }
+            // A picker option's label feeds its parent's ComboBox model.
+            auto pit = g.parents.find(c.a);
+            if (pit != g.parents.end() && g.components[pit->second] == PL_COMP_PICKER) {
+                rebuildPickerModel(pit->second);
             }
             // Record for the test hook.
             if (c.str && c.str_len > 0) {
@@ -683,6 +803,9 @@ void pathland_qt_layer_reset(void) {
         kv.second->deleteLater();
     }
     g.widgets.clear();
+    g.components.clear();
+    g.parents.clear();
+    g.picker_children.clear();
     g.gated_ids.clear();
     g.listener_masks.clear();
     g.mouse_areas.clear();
@@ -752,6 +875,9 @@ void pathland_qt_layer_shutdown(void) {
         kv.second->deleteLater();
     }
     g.widgets.clear();
+    g.components.clear();
+    g.parents.clear();
+    g.picker_children.clear();
     g.mouse_areas.clear();
     g.listener_masks.clear();
     delete g.window;

@@ -41,13 +41,20 @@ Design-token contract: `spec/TOKENS.md`.
   unknown → `Item`, `DIVIDER` → `Rectangle`, `COLOR`/`SHAPE` → `Rectangle`,
   `IMAGE` → `Image`, `BUTTON` → `Button`, `TEXT_FIELD` → `TextField`, `SLIDER`
   → `Slider`, `TOGGLE` → `Switch` (controls embed `onX: bridge.<event>(id, …)`
-  handlers). Property application via generic `setProperty` (Qt ignores
-  unknown props): spacing/`align`/padding+edges, width/height (`-1` FILL →
-  `anchors.fill`, `-2` HUG → implicit), color, font size/weight/family, opacity,
-  visible, z, value/min/max/step, selected→checked, enabled, `IS_SECURE` →
-  `echoMode`, prompt/label→placeholder, image source. `RESET_NODE` resets
-  renderer-owned style defaults (value props untouched so a slider/toggle
-  doesn't lose position on echo).
+  handlers), `PROGRESS_VIEW`/`GAUGE` → `ProgressBar` (fraction via `PROGRESS`,
+  activity via `IS_INDETERMINATE`), `STEPPER` → `SpinBox`, `PICKER` → `ComboBox`
+  (option children populate the model ordered by insertion; `SELECTION` →
+  `currentIndex`; `onActivated` → `VALUE_CHANGED`), `MENU` → `Button` trigger
+  (Qt 6 has no MenuButton; a popup Menu is a documented gap), `DATE_PICKER` /
+  `COLOR_PICKER` → `TextField`/`Button` approximations (Qt Quick Controls has no
+  native date/color pickers). Property application via generic `setProperty`
+  (Qt ignores unknown props): spacing/`align`/padding+edges, width/height (`-1`
+  FILL → `anchors.fill`, `-2` HUG → implicit), color, font size/weight/family,
+  opacity, visible, z, value/min/max/step, selected→checked, enabled,
+  `IS_SECURE` → `echoMode`, progress/indeterminate, selection→currentIndex,
+  prompt/label→placeholder, image source. `RESET_NODE` resets renderer-owned
+  style defaults (value props untouched so a slider/toggle doesn't lose
+  position on echo).
 - **Events** (spec/EVENTS.md guards): the `Bridge` reports control inputs
   (`tap` → `POINTER_UP`, `valueChanged` → `VALUE_CHANGED`, `textChanged` →
   `TEXT_CHANGED`) to Rust, which encodes the `Event`, writes it into the event
@@ -93,8 +100,8 @@ Design-token contract: `spec/TOKENS.md`.
   tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.
 - `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their
   background delegate; mapping is a follow-up), `SHAPE` path approximation,
-  `PROGRESS_VIEW`/`GAUGE`/`STEPPER`/`DATE_PICKER`/`PICKER`/`MENU`/`COLOR_PICKER`
-  not mapped yet.
+  `MENU` popup item list, `DATE_PICKER`/`COLOR_PICKER` native dialogs, and
+  `PICKER` option styling not yet mapped.
 - No nav adapter (`ROUTE`/`NAV_DEPTH`/`NAV_CHROME`) yet; no Java JNA demo yet.
 - Lazy views render eagerly.
 
@@ -106,8 +113,10 @@ tests) — the delta diff suite, the end-to-end FFI batch
 (`renderer_drives_live_qml_scene`: DSL → engine → frame → shared decode →
 delta diff → FFI → live QML `Column`/`Text`/`Button`/`Slider` with spacing/value
 applied and a delta re-applied), pointer-listener MouseArea attachment
-(`pointer_listeners_attach_mousearea`), and the event path
+(`pointer_listeners_attach_mousearea`), the event path
 (`decode_maps_pointer_and_global_events`, `ring_event_writes_pointer_into_ring_and_wakes`,
 `scheme_event_reapplies_without_waking`, `text_event_string_is_length_prefixed`,
-`frame_has_reset_detects_meta_reset`). Full workspace: `cd lib/rust && cargo test`.
+`frame_has_reset_detects_meta_reset`), and Phase-B control coverage
+(`control_widgets_construct_and_apply_props`, `picker_builds_model_from_option_children`).
+Full workspace: `cd lib/rust && cargo test`.
 Demo: `scripts/run-rust-qt-demo.sh`.

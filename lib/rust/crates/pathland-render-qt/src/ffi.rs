@@ -187,8 +187,11 @@ mod tests {
     use crate::{renderer::QtRenderer, CONTENT_ITEM};
     use pathland_core::{init_memory, Frame, Guest, Host, MemoryLayout};
     use pathland_engine::Engine;
-    use pathland_view::{assign_ids, button, text, vstack, Node, Slider, View, ViewExt};
+    use pathland_view::{
+    assign_ids, button, text, vstack, Node, Slider, View, ViewExt,
+};
     use pathland_core::listener;
+    use pathland_view::{Component, Gauge, Menu, ProgressView, Stepper};
     use std::ffi::CStr;
     use std::sync::Mutex;
 
@@ -382,6 +385,82 @@ mod tests {
             assert_eq!(unsafe { pathland_qt_layer_root_child_count() }, 1);
             assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 1);
             assert_eq!(unsafe { pathland_qt_layer_widget_child_count(2) }, 1);
+        });
+    }
+
+    /// The Phase-B controls construct into their QML counterparts and apply
+    /// their value/progress properties.
+    #[test]
+    fn control_widgets_construct_and_apply_props() {
+        with_qt(|| {
+            let mut view = vstack![
+                ProgressView(Some(0.5)),
+                Stepper {
+                    value: 3.0,
+                    min: 0.0,
+                    max: 10.0,
+                },
+                Gauge {
+                    value: 4.0,
+                    min: 0.0,
+                    max: 10.0,
+                },
+                Menu,
+            ]
+            .build();
+            assign_ids(&mut view, &mut 1);
+
+            let mut h = Harness::new();
+            let mut r = QtRenderer::new();
+            {
+                let (slots, arena) = h.emit(&view);
+                let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+                r.apply_frame(&frame);
+            }
+
+            assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 4);
+            // node 2 = ProgressBar with the fraction applied.
+            let mut buf = [0i8; 64];
+            unsafe {
+                pathland_qt_layer_widget_prop_text(2, c"value".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
+            };
+            assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "0.5");
+            // node 3 = SpinBox with the (int-cast) value applied.
+            unsafe {
+                pathland_qt_layer_widget_prop_text(3, c"value".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
+            };
+            assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "3");
+            // node 5 = MenuButton (has no text by default).
+            assert_eq!(read_text(5), "");
+        });
+    }
+
+    /// A PICKER's option children populate its ComboBox model (ordered by
+    /// insertion), so `SELECTION`/activation drive the model.
+    #[test]
+    fn picker_builds_model_from_option_children() {
+        with_qt(|| {
+            let mut root = Node::from_component(&Component::VStack);
+            let mut picker = Node::from_component(&Component::Picker);
+            picker.children.push(text("One").build());
+            picker.children.push(text("Two").build());
+            root.children.push(picker);
+            assign_ids(&mut root, &mut 1);
+
+            let mut h = Harness::new();
+            let mut r = QtRenderer::new();
+            {
+                let (slots, arena) = h.emit(&root);
+                let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+                r.apply_frame(&frame);
+            }
+
+            // node 2 = Picker; its ComboBox model has both options.
+            let mut buf = [0i8; 64];
+            unsafe {
+                pathland_qt_layer_widget_prop_text(2, c"count".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
+            };
+            assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "2");
         });
     }
 }
