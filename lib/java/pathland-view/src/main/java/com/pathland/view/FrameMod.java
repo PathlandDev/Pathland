@@ -23,17 +23,27 @@ public final class FrameMod implements ViewModifier {
      * to its container's cross axis (e.g. a sidebar column filling a row's full
      * height). Alignment is left untouched, so a stack's own cross-axis alignment
      * (constructor {@code Alignment}) is not overwritten.
+     * <p>
+     * Pass {@link Float#POSITIVE_INFINITY} (SwiftUI {@code maxWidth: .infinity})
+     * to expand to the available width; it is normalized to {@code Commands.Size.FILL}.
      */
     public static FrameMod of(float width) {
         return new FrameMod(width, null, null, null);
     }
 
-    /** A frame of {@code width} x {@code height} with no content alignment. */
+    /**
+     * A frame of {@code width} x {@code height} with no content alignment.
+     * Infinite axes ({@link Float#POSITIVE_INFINITY}) expand to the available
+     * space ({@code Commands.Size.FILL}).
+     */
     public static FrameMod of(float width, float height) {
         return new FrameMod(width, height, null, null);
     }
 
-    /** A frame of {@code width} x {@code height} at {@code alignment}. */
+    /**
+     * A frame of {@code width} x {@code height} at {@code alignment}. Infinite
+     * axes ({@link Float#POSITIVE_INFINITY}) expand to the available space.
+     */
     public static FrameMod of(float width, float height, Alignment alignment) {
         return new FrameMod(width, height, (float) alignment.wire(), null);
     }
@@ -42,12 +52,19 @@ public final class FrameMod implements ViewModifier {
      * A frame of a fixed {@code width} at {@code alignment} with **no height hint**:
      * the view keeps its natural height and, as a flex child, stretches to its
      * container's cross axis (e.g. a sidebar column filling a row's full height).
+     * An infinite {@code width} expands to the available space.
      */
     public static FrameMod of(float width, Alignment alignment) {
         return new FrameMod(width, null, (float) alignment.wire(), null);
     }
 
-    /** A min/ideal/max frame; pass {@link Float#NaN} for any unset bound. */
+    /**
+     * A min/ideal/max frame; pass {@link Float#NaN} for any unset bound. An
+     * infinite {@code maxWidth}/{@code maxHeight} means <em>no limit</em> (the
+     * bound is omitted). To expand a view to fill available space use an infinite
+     * {@code width}/{@code height} in the width/height factories above, which is
+     * normalized to {@code Commands.Size.FILL}.
+     */
     public static FrameMod of(float minWidth, float idealWidth, float maxWidth,
                               float minHeight, float idealHeight, float maxHeight) {
         return new FrameMod(null, null, null,
@@ -68,10 +85,10 @@ public final class FrameMod implements ViewModifier {
         }
         java.util.List<Modified.Prop> props = new java.util.ArrayList<>();
         if (width != null) {
-            props.add(Modified.prop(Properties.WIDTH, width));
+            props.add(Modified.prop(Properties.WIDTH, fillOr(width)));
         }
         if (height != null) {
-            props.add(Modified.prop(Properties.HEIGHT, height));
+            props.add(Modified.prop(Properties.HEIGHT, fillOr(height)));
         }
         if (alignment != null) {
             props.add(Modified.prop(Properties.ALIGNMENT, alignment));
@@ -80,8 +97,16 @@ public final class FrameMod implements ViewModifier {
     }
 
     private static void addBound(java.util.List<Modified.Prop> props, int property, float value) {
-        if (!Float.isNaN(value)) {
+        if (!Float.isNaN(value) && !Float.isInfinite(value)) {
             props.add(Modified.prop(property, value));
         }
+    }
+
+    /**
+     * Normalize an infinite size hint (SwiftUI {@code maxWidth: .infinity}) to the
+     * {@code Commands.Size.FILL} sentinel; finite values pass through unchanged.
+     */
+    private static float fillOr(float value) {
+        return Float.isInfinite(value) ? Commands.Size.FILL : value;
     }
 }

@@ -43,4 +43,35 @@ class FrameModTest {
         assertTrue(node.properties.containsKey(Properties.WIDTH));
         assertEquals((float) Alignment.LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
     }
+
+    @Test
+    void infiniteWidthNormalizesToFill() {
+        PathlandNode node = render(FrameMod.of(Float.POSITIVE_INFINITY));
+        assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
+        assertFalse(node.properties.containsKey(Properties.HEIGHT));
+    }
+
+    @Test
+    void infiniteAxesNormalizeToFillWithAlignment() {
+        PathlandNode node = render(FrameMod.of(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Alignment.LEADING));
+        assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
+        assertEquals(Commands.Size.FILL, node.properties.get(Properties.HEIGHT));
+        assertEquals((float) Alignment.LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
+    }
+
+    @Test
+    void negativeInfinityAlsoNormalizesToFill() {
+        PathlandNode node = render(FrameMod.of(Float.NEGATIVE_INFINITY, 24f));
+        assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
+        assertEquals(24f, node.properties.get(Properties.HEIGHT));
+    }
+
+    @Test
+    void infiniteMaxBoundsAreOmitted() {
+        PathlandNode node = render(FrameMod.of(Float.NaN, Float.NaN, Float.POSITIVE_INFINITY,
+                Float.NaN, 0f, Float.NEGATIVE_INFINITY));
+        assertFalse(node.properties.containsKey(Properties.MAX_WIDTH));
+        assertFalse(node.properties.containsKey(Properties.MAX_HEIGHT));
+        assertTrue(node.properties.containsKey(Properties.IDEAL_HEIGHT));
+    }
 }

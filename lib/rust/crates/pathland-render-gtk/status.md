@@ -37,6 +37,10 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `CONTENT_MARGINS`, `PADDING` + per-edge, `BACKGROUND_COLOR`, `BORDER_WIDTH`/
   `COLOR`/`RADIUS`, `FONT_FAMILY`/`FONT_WEIGHT` (CSS provider), `COLOR`,
   `FONT_SIZE`.
+- **`FILL` expansion**: a `WIDTH`/`HEIGHT` of `FILL` (-1.0, SwiftUI
+  `maxWidth/maxHeight: .infinity`) now sets `hexpand`/`vexpand` + `Fill` axis
+  alignment so arbitrary elements truly expand to the available space; a finite
+  value is a size request and `HUG_CONTENT` leaves the natural size.
 - **Events**: pointer `POINTER_DOWN`/`MOVE`/`UP` via `GestureClick`/
   `EventControllerMotion` (`EVENT_LISTENERS`-driven), plus **value/text events**
   (`VALUE_CHANGED` from toggle/slider/picker, `TEXT_CHANGED` from text field)

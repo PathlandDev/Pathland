@@ -1,15 +1,6 @@
 package com.pathland.demo.kitchensink;
 
-import com.pathland.view.Color;
-import com.pathland.view.FontWeight;
-import com.pathland.view.ScrollView;
-import com.pathland.view.Text;
-import com.pathland.view.VStack;
-import com.pathland.view.View;
-import com.pathland.view.FontSize;
-import com.pathland.view.FontWeightMod;
-import com.pathland.view.ForegroundStyle;
-import com.pathland.view.Padding;
+import com.pathland.view.*;
 
 
 /**
@@ -21,8 +12,8 @@ public final class KitchenSinkView implements View {
 
     @Override
     public View body() {
-        return ScrollView.of(VStack.of(
-                Text.of("Pathland Kitchensink").modifiers(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD), Padding.of(8)),
+        return ScrollView.of(VStack.of(Alignment.LEADING, 10,
+                Text.of("Pathland Kitchensink").modifiers(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD), Padding.of(8, 0 ,8 ,0)),
                 Text.of("Every protocol primitive, control, modifier, and state binding")
                         .modifier(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88))),
                 new CounterSection(),

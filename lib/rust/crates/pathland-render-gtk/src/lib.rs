@@ -38,7 +38,7 @@ use gtk::{
     PropagationPhase,
 };
 use pathland_core::tokens::Scheme;
-use pathland_core::{component_type, listener, property_id, Event, Frame};
+use pathland_core::{component_type, listener, property_id, size, Event, Frame};
 use pathland_core_transport::{DriverTransport, FrameSource, OpcodeBatch, RingTransport, TransportError};
 use glib::translate::IntoGlib;
 
@@ -1275,6 +1275,30 @@ fn apply_padding(widget: &gtk::Widget, node: &HostNode) {
     widget.set_margin_start(e.left);
 }
 
+/// How a `WIDTH`/`HEIGHT` property maps to GTK sizing.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum SizeHint {
+    /// No hint: leave the widget's natural size and default expand state.
+    None,
+    /// Expand to the available space (`size::FILL`, i.e. SwiftUI `.infinity`).
+    Fill,
+    /// A fixed size request.
+    Fixed(i32),
+}
+
+/// Map a stored `WIDTH`/`HEIGHT` property (bit pattern) to a sizing hint.
+/// `FILL` (-1.0) → `Fill`; a positive finite value → `Fixed`; `HUG_CONTENT`
+/// (-2.0), zero, and non-finite (defensive: the ring path never normalizes) →
+/// `None`.
+fn size_hint(bits: Option<u32>) -> SizeHint {
+    match bits.map(f32::from_bits) {
+        None => SizeHint::None,
+        Some(v) if v == size::FILL => SizeHint::Fill,
+        Some(v) if v.is_finite() && v > 0.0 => SizeHint::Fixed(v as i32),
+        Some(_) => SizeHint::None,
+    }
+}
+
 /// Apply the directly-mappable style properties to any widget: visibility,
 /// opacity, size hints, content margins, plus CSS-backed decoration
 /// (background, border, font family/weight).
@@ -1285,12 +1309,38 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
     if let Some(bits) = node.properties.get(&property_id::OPACITY) {
         widget.set_opacity(f64::from(f32::from_bits(*bits)));
     }
-    let w = node.properties.get(&property_id::WIDTH).map(|b| f32::from_bits(*b));
-    let h = node.properties.get(&property_id::HEIGHT).map(|b| f32::from_bits(*b));
+    let w = node.properties.get(&property_id::WIDTH).copied();
+    let h = node.properties.get(&property_id::HEIGHT).copied();
+    let sw = size_hint(w);
+    let sh = size_hint(h);
+    // FILL (-1.0) means "expand to available space": grow on the axis and align
+    // the widget into it (SwiftUI `maxWidth/maxHeight: .infinity`). A finite
+    // value becomes a size request; HUG_CONTENT / absence leaves the natural size.
+    // A present-but-not-FILL axis resets a previous expansion so updates are
+    // idempotent; an absent axis is left untouched (preserves widget defaults
+    // such as Spacer's built-in expand).
+    if let SizeHint::Fill = sw {
+        widget.set_hexpand(true);
+        widget.set_halign(Align::Fill);
+    } else if w.is_some() {
+        widget.set_hexpand(false);
+    }
+    if let SizeHint::Fill = sh {
+        widget.set_vexpand(true);
+        widget.set_valign(Align::Fill);
+    } else if h.is_some() {
+        widget.set_vexpand(false);
+    }
     if w.is_some() || h.is_some() {
         widget.set_size_request(
-            w.filter(|v| *v > 0.0).map(|v| v as i32).unwrap_or(-1),
-            h.filter(|v| *v > 0.0).map(|v| v as i32).unwrap_or(-1),
+            match sw {
+                SizeHint::Fixed(v) => v,
+                _ => -1,
+            },
+            match sh {
+                SizeHint::Fixed(v) => v,
+                _ => -1,
+            },
         );
     }
     if let Some(bits) = node.properties.get(&property_id::CONTENT_MARGINS) {
@@ -1602,6 +1652,17 @@ mod tests {
     use pathland_core::tokens::Scheme;
     use pathland_core::{init_memory, property_id, value_type, Guest, Host, MemoryLayout};
     use pathland_view::{assign_ids, text, vstack, View, ViewExt};
+
+    #[test]
+    fn size_hint_maps_width_height_sentinels() {
+        assert_eq!(size_hint(None), SizeHint::None);
+        assert_eq!(size_hint(Some(size::FILL.to_bits())), SizeHint::Fill);
+        assert_eq!(size_hint(Some(24.0f32.to_bits())), SizeHint::Fixed(24));
+        // HUG_CONTENT (-2.0), zero, and non-finite values are natural size.
+        assert_eq!(size_hint(Some(size::HUG_CONTENT.to_bits())), SizeHint::None);
+        assert_eq!(size_hint(Some(0.0f32.to_bits())), SizeHint::None);
+        assert_eq!(size_hint(Some(f32::INFINITY.to_bits())), SizeHint::None);
+    }
 
     #[test]
     fn render_tree_decodes_a_frame() {
