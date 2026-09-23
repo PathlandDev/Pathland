@@ -9,6 +9,7 @@ import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * CDI wiring for Pathland: builds the {@link PathlandRegistry} from the app's
@@ -21,6 +22,10 @@ import jakarta.inject.Singleton;
  *     public View newRoot() { return new MyHomeView(); }
  * }
  * }</pre>
+ *
+ * <p>SSR debug comments are opt-in via the {@code pathland.debug-html} config property
+ * (default {@code false}); when enabled every rendered node is prefixed with an HTML
+ * comment naming its component type and the modifiers applied.
  */
 @ApplicationScoped
 public class PathlandRegistryProducer {
@@ -28,10 +33,14 @@ public class PathlandRegistryProducer {
     @Inject
     PathlandApp app;
 
+    @Inject
+    @ConfigProperty(name = "pathland.debug-html", defaultValue = "false")
+    boolean debugHtml;
+
     @Produces
     @Singleton
     PathlandRegistry registry() {
-        return new PathlandRegistry(app, StateStores.redisOrFallback(new InMemoryStateStore()));
+        return new PathlandRegistry(app, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml);
     }
 
     void shutdown(@Disposes PathlandRegistry registry) {

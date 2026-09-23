@@ -30,6 +30,7 @@ public final class PathlandRegistry {
 
     private final PathlandApp app;
     private final StateStore store;
+    private final boolean debugHtml;
 
     private final ExecutorService actor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "pathland-actor");
@@ -41,13 +42,23 @@ public final class PathlandRegistry {
     private final Map<String, PathlandConnection> pending = new ConcurrentHashMap<>();
 
     public PathlandRegistry(PathlandApp app, StateStore store) {
+        this(app, store, false);
+    }
+
+    public PathlandRegistry(PathlandApp app, StateStore store, boolean debugHtml) {
         this.app = app;
         this.store = store;
+        this.debugHtml = debugHtml;
+    }
+
+    /** Whether SSR HTML is rendered with per-node debug comments. */
+    public boolean isDebugHtml() {
+        return debugHtml;
     }
 
     /** Render the SSR HTML for a session (request thread), seeding the router from the request path. */
     public String renderHtml(String sessionId, String route) {
-        PathlandSession session = new PathlandSession(sessionId, store, app, EnvironmentData.of(route));
+        PathlandSession session = new PathlandSession(sessionId, store, app, EnvironmentData.of(route), debugHtml);
         try {
             return session.renderHtml();
         } finally {
@@ -110,7 +121,7 @@ public final class PathlandRegistry {
         PathlandSession session = sessions.get(sessionId);
         if (session == null) {
             PathlandConnection connection = pending.remove(sessionId);
-            session = new PathlandSession(sessionId, store, app, env);
+            session = new PathlandSession(sessionId, store, app, env, debugHtml);
             if (connection != null) {
                 session.connect(connection);
             }

@@ -15,6 +15,10 @@ Java renderer is removed. Protocol contract: `spec/`.
   HTML in one pass (no retained tree, no `applyFrame`); `pathland_html_free`
   releases native strings. Lazy-loaded; skipped (test assumption) when the dylib
   is absent from `java.library.path`.
+- **Debug comments**: `renderDebug(frame, root)` / `renderFragmentDebug(...)`
+  bind the Rust `pathland_html_render_debug` exports — each rendered node is
+  prefixed with an HTML comment naming its component type and the modifiers
+  applied (opt-in; the plain `render` output is unchanged).
 - **Full Rust renderer surface** (canonical): all spec components render inline
   (structural + decorative CSS in a single `style` attribute), ARIA/event
   attributes, `IS_SECURE` → password, `TOGGLE_STYLE` variants,

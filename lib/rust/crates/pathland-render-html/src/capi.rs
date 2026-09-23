@@ -14,7 +14,13 @@ use pathland_core_transport::decode_frame;
 
 use crate::HtmlRenderer;
 
-fn render_bytes(batch: *const c_uchar, len: u32, root: u32, fragment: bool) -> *const c_char {
+fn render_bytes(
+    batch: *const c_uchar,
+    len: u32,
+    root: u32,
+    fragment: bool,
+    debug: bool,
+) -> *const c_char {
     if batch.is_null() {
         return std::ptr::null();
     }
@@ -23,7 +29,7 @@ fn render_bytes(batch: *const c_uchar, len: u32, root: u32, fragment: bool) -> *
         Ok(decoded) => decoded,
         Err(_) => return std::ptr::null(),
     };
-    let renderer = HtmlRenderer::new();
+    let renderer = HtmlRenderer::new().with_debug_comments(debug);
     let html = if fragment {
         renderer.render_fragment(&opcodes, &strings, root)
     } else {
@@ -44,7 +50,7 @@ fn render_bytes(batch: *const c_uchar, len: u32, root: u32, fragment: bool) -> *
 /// bounds-checked before any rendering.
 #[no_mangle]
 pub unsafe extern "C" fn pathland_html_render(batch: *const c_uchar, len: u32, root: u32) -> *const c_char {
-    render_bytes(batch, len, root, false)
+    render_bytes(batch, len, root, false, false)
 }
 
 /// Render a self-contained PLPL batch as an **HTML fragment** (no `<html>`).
@@ -55,7 +61,33 @@ pub unsafe extern "C" fn pathland_html_render_fragment(
     len: u32,
     root: u32,
 ) -> *const c_char {
-    render_bytes(batch, len, root, true)
+    render_bytes(batch, len, root, true, false)
+}
+
+/// Render a self-contained PLPL batch as a **full HTML document** with
+/// **debug comments** on every node (a non-zero `debug` enables them — see
+/// [`crate::debug`]). Ownership and safety as [`pathland_html_render`].
+#[no_mangle]
+pub unsafe extern "C" fn pathland_html_render_debug(
+    batch: *const c_uchar,
+    len: u32,
+    root: u32,
+    debug: u8,
+) -> *const c_char {
+    render_bytes(batch, len, root, false, debug != 0)
+}
+
+/// Render a self-contained PLPL batch as an **HTML fragment** with **debug
+/// comments** on every node (a non-zero `debug` enables them). Ownership and
+/// safety as [`pathland_html_render`].
+#[no_mangle]
+pub unsafe extern "C" fn pathland_html_render_fragment_debug(
+    batch: *const c_uchar,
+    len: u32,
+    root: u32,
+    debug: u8,
+) -> *const c_char {
+    render_bytes(batch, len, root, true, debug != 0)
 }
 
 /// Release a string returned by [`pathland_html_render`] /
@@ -153,6 +185,33 @@ mod tests {
         assert!(html.contains("data-pathland-nav-chrome=\"custom\""), "{html}");
         assert!(html.contains("data-pathland-depth=\"2\""), "{html}");
         unsafe { pathland_html_free(frag) };
+    }
+
+    #[test]
+    fn capi_debug_render_emits_node_comments() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            (0x04u32 << 16) | property_id::SPACING as u32,
+            4.0f32.to_bits(),
+        ));
+        let bytes = encode_frame(&opcodes, &[]);
+
+        // Debug on: a per-node comment naming component + modifiers.
+        let ptr = unsafe { pathland_html_render_debug(bytes.as_ptr(), bytes.len() as u32, 1, 1) };
+        let html = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+        assert!(html.contains("<!-- #1 VStack: spacing=4 -->"), "{html}");
+        unsafe { pathland_html_free(ptr) };
+
+        // Debug off is byte-identical to the plain export (no comments).
+        let ptr = unsafe { pathland_html_render_debug(bytes.as_ptr(), bytes.len() as u32, 1, 0) };
+        let html = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+        assert!(!html.contains("<!--"), "{html}");
+        unsafe { pathland_html_free(ptr) };
     }
 
     #[test]

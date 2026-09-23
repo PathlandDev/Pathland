@@ -39,6 +39,7 @@ public final class PathlandSession {
     private final Emitter emitter;
     private final InputDispatcher inputDispatcher;
     private final int rootId;
+    private final boolean debugHtml;
 
     private float viewportWidth = -1f;
     private float viewportHeight = -1f;
@@ -46,6 +47,16 @@ public final class PathlandSession {
     private volatile PathlandConnection connection;
 
     public PathlandSession(String sessionId, StateStore store, PathlandApp app, EnvironmentData env) {
+        this(sessionId, store, app, env, false);
+    }
+
+    public PathlandSession(
+            String sessionId,
+            StateStore store,
+            PathlandApp app,
+            EnvironmentData env,
+            boolean debugHtml) {
+        this.debugHtml = debugHtml;
         this.state = new PersistentState(store, sessionId);
         // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the
         // app reads it, and a bound Router re-routes guard-aware on external changes.
@@ -129,8 +140,10 @@ public final class PathlandSession {
                     + "<p>Build the Rust crate so libpathland_render_html is embedded in the "
                     + "pathland-render-html jar.</p></body></html>";
         }
-        return renderer.render(sink.frame(), rootId)
-                .replace("</body>", "<script src=\"/pathland-dom-renderer.js\" defer></script></body>");
+        String html = debugHtml
+                ? renderer.renderDebug(sink.frame(), rootId)
+                : renderer.render(sink.frame(), rootId);
+        return html.replace("</body>", "<script src=\"/pathland-dom-renderer.js\" defer></script></body>");
     }
 
     /** Tear down: close the persistent state, unsubscribe the emitter, drop the connection. */
