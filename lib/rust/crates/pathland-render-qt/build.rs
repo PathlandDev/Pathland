@@ -155,8 +155,10 @@ fn main() {
             println!("cargo:rustc-link-search=native={libs}");
             println!("cargo:rustc-link-lib=framework={f}");
         }
-        // Frameworks are found via -F, not -L.
-        println!("cargo:rustc-link-arg=-F{libs}");
+        // Framework search path must reach every consumer (the demo binary
+        // links the Qt frameworks transitively), so use the `framework` kind
+        // (emits -F and, unlike rustc-link-arg, is transitive).
+        println!("cargo:rustc-link-search=framework={libs}");
     } else {
         // Plain shared lib layout (Linux): -L + -lQt6* + rpath.
         println!("cargo:rustc-link-search=native={libs}");

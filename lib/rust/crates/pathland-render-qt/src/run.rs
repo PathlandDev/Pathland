@@ -10,14 +10,17 @@
 //!   wake callback on the same thread (the ring is the decoupling buffer, so a
 //!   control signal firing during frame apply needs no deferred flush).
 
+use std::cell::RefCell;
 use std::ffi::c_void;
 use std::ffi::CString;
+use std::rc::Rc;
 
 use pathland_core::Event;
 use pathland_core_transport::{
     DriverTransport, FrameSource, OpcodeBatch, RingTransport, TransportError,
 };
 
+use crate::ffi::{ev, QtEvent};
 use crate::renderer::QtRenderer;
 
 /// The bidirectional transport surface the renderer pumps: frames in
@@ -42,6 +45,10 @@ impl Pump for RingTransport {
 /// has written a raw input into the host → guest event ring. The host drains
 /// the ring itself.
 pub type EventCallback = extern "C" fn();
+
+// ---------------------------------------------------------------------------
+// C-ABI path: a boxed `Pump` over an opaque host/ring pointer (capi.rs).
+// ---------------------------------------------------------------------------
 
 /// The per-run state held on the stack of [`run_with_pump_sized`]; the C++
 /// shell receives an opaque pointer to it.
@@ -83,6 +90,49 @@ pub extern "C" fn qt_wake(user: *mut c_void) {
     }
 }
 
+/// Qt raw input (C++ → Rust): encode the `Event`, write it into the ring, then
+/// wake the host. The host drains its own ring — the renderer never drains.
+pub extern "C" fn qt_event(ev: *const QtEvent, user: *mut c_void) {
+    if ev.is_null() || user.is_null() {
+        return;
+    }
+    // SAFETY: single-threaded (Qt main thread); `ev` is valid for the call.
+    let raw = unsafe { &*ev };
+    let runner = unsafe { &mut *(user as *mut Runner) };
+
+    let event = match raw.kind {
+        ev::POINTER_UP => Some(Event::PointerUp {
+            target: raw.node_id,
+            x: raw.x,
+            y: raw.y,
+            secondary: false,
+        }),
+        ev::VALUE_CHANGED => Some(Event::ValueChanged {
+            target: raw.node_id,
+            value: raw.value,
+        }),
+        ev::TEXT_CHANGED => {
+            // The string is length-prefixed, not guaranteed NUL-terminated.
+            let slice =
+                unsafe { std::slice::from_raw_parts(raw.str_ as *const u8, raw.str_len as usize) };
+            Some(Event::TextChanged {
+                target: raw.node_id,
+                value: String::from_utf8_lossy(slice).into_owned(),
+            })
+        }
+        _ => None,
+    };
+
+    if let Some(event) = event {
+        if let Err(e) = runner.pump.send_input(&event) {
+            eprintln!("pathland-render-qt: send_input failed: {e:?}");
+        }
+    }
+    if let Some(cb) = runner.on_event {
+        cb();
+    }
+}
+
 /// Run the Qt renderer over any `Pump`, blocking until the Qt event loop exits.
 pub fn run_with_pump_sized(
     title: &str,
@@ -106,6 +156,137 @@ pub fn run_with_pump_sized(
             height,
             qt_wake,
             qt_tick,
+            qt_event,
+            user,
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Rust-demo path: a shared `Rc<RefCell<RingTransport>>` + a host closure
+// (mirrors `pathland_render_gtk::run`). The pump borrow is held across frame
+// application, so the batch's zero-copy view of the shared ring stays valid.
+// ---------------------------------------------------------------------------
+
+/// Per-run state for the shared-ring convenience path.
+struct RingRunner {
+    ring: Rc<RefCell<RingTransport>>,
+    renderer: QtRenderer,
+    on_event: Option<EventCallback>,
+}
+
+// The host's drain-and-respond closure, stored for the wake trampoline
+// (a regular comment: `thread_local!` doesn't carry doc comments).
+thread_local! {
+    static RING_HOST: RefCell<Option<Box<dyn FnMut()>>> = const { RefCell::new(None) };
+}
+
+fn pump_once_ring(runner: &mut RingRunner) {
+    let guard = runner.ring.try_borrow_mut();
+    if let Ok(mut p) = guard {
+        if let Ok(Some(batch)) = FrameSource::next_frame(&mut *p) {
+            runner.renderer.apply_frame(batch.frame());
+        }
+    }
+}
+
+extern "C" fn ring_tick(user: *mut c_void) {
+    if user.is_null() {
+        return;
+    }
+    // SAFETY: single-threaded (Qt main thread); `RingRunner` outlives `run`.
+    let runner = unsafe { &mut *(user as *mut RingRunner) };
+    pump_once_ring(runner);
+}
+
+extern "C" fn ring_host_wake(user: *mut c_void) {
+    if user.is_null() {
+        return;
+    }
+    // SAFETY: as above.
+    let runner = unsafe { &*(user as *const RingRunner) };
+    if let Some(cb) = runner.on_event {
+        cb();
+    }
+}
+
+extern "C" fn ring_event(ev: *const QtEvent, user: *mut c_void) {
+    if ev.is_null() || user.is_null() {
+        return;
+    }
+    // SAFETY: single-threaded (Qt main thread).
+    let raw = unsafe { &*ev };
+    let runner = unsafe { &mut *(user as *mut RingRunner) };
+
+    let event = match raw.kind {
+        ev::POINTER_UP => Some(Event::PointerUp {
+            target: raw.node_id,
+            x: raw.x,
+            y: raw.y,
+            secondary: false,
+        }),
+        ev::VALUE_CHANGED => Some(Event::ValueChanged {
+            target: raw.node_id,
+            value: raw.value,
+        }),
+        ev::TEXT_CHANGED => {
+            let slice =
+                unsafe { std::slice::from_raw_parts(raw.str_ as *const u8, raw.str_len as usize) };
+            Some(Event::TextChanged {
+                target: raw.node_id,
+                value: String::from_utf8_lossy(slice).into_owned(),
+            })
+        }
+        _ => None,
+    };
+
+    if let Some(event) = event {
+        let guard = runner.ring.try_borrow_mut();
+        if let Ok(mut p) = guard {
+            let _ = DriverTransport::send_input(&mut *p, &event);
+        }
+    }
+    if let Some(cb) = runner.on_event {
+        cb();
+    }
+}
+
+/// Run the Qt renderer over a shared `RingTransport`, calling `on_event` (with
+/// the ring) whenever the renderer wrote raw inputs. Mirrors
+/// `pathland_render_gtk::run`. Blocks until the window closes.
+pub fn run<F>(_app_id: &str, title: &str, ring: Rc<RefCell<RingTransport>>, on_event: F)
+where
+    F: FnMut(Rc<RefCell<RingTransport>>) + 'static,
+{
+    // A Rust closure can't be an `extern "C" fn`; store it for the trampoline.
+    let ring_for_host = ring.clone();
+    RING_HOST.with(|h| {
+        let mut cb = on_event;
+        *h.borrow_mut() = Some(Box::new(move || cb(ring_for_host.clone())));
+    });
+    extern "C" fn host_trampoline() {
+        RING_HOST.with(|h| {
+            if let Some(cb) = h.borrow_mut().as_mut() {
+                cb();
+            }
+        });
+    }
+
+    let mut runner = RingRunner {
+        ring,
+        renderer: QtRenderer::new(),
+        on_event: Some(host_trampoline),
+    };
+    let user = &mut runner as *mut RingRunner as *mut c_void;
+    let title = CString::new(title).unwrap_or_else(|_| CString::new("Pathland").unwrap());
+    unsafe {
+        crate::ffi::pathland_qt_layer_run(
+            title.as_ptr(),
+            420,
+            220,
+            ring_host_wake,
+            ring_tick,
+            ring_event,
             user,
         );
     }

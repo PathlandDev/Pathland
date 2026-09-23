@@ -120,7 +120,13 @@ impl QtRenderer {
             }
             if node.properties != s.props || node.strings != s.strings {
                 cmds.push(Command::reset_node(id));
-                for (prop, value) in &node.properties {
+                // Emit numeric props in a deterministic order with VALUE last:
+                // Qt Quick clamps a control's `value` when `from`/`to` aren't
+                // configured yet, so min/max must land before the value.
+                let mut props: Vec<(u16, u32)> =
+                    node.properties.iter().map(|(k, v)| (*k, *v)).collect();
+                props.sort_by_key(|(p, _)| (*p == pathland_core::property_id::VALUE, *p));
+                for (prop, value) in &props {
                     let vt = value_type_for(*prop);
                     cmds.push(Command::set_property(id, *prop, vt, *value));
                 }

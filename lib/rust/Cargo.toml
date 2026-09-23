@@ -12,6 +12,7 @@ members = [
     "crates/pathland-render-gtk-demo",
     "crates/pathland-render-html",
     "crates/pathland-render-qt",
+    "crates/pathland-render-qt-demo",
 ]
 
 [workspace.package]

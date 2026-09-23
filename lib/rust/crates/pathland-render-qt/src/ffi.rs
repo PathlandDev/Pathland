@@ -98,6 +98,26 @@ impl Command {
 
 pub type Wake = extern "C" fn(*mut c_void);
 pub type Tick = extern "C" fn(*mut c_void);
+pub type EventFn = extern "C" fn(*const QtEvent, *mut c_void);
+
+/// One raw input reported by the C++ Qt layer (mirrors `PathlandQtEvent`).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct QtEvent {
+    pub kind: u8,
+    pub node_id: u32,
+    pub x: f32,
+    pub y: f32,
+    pub value: f32,
+    pub str_len: u32,
+    pub str_: *const c_char,
+}
+
+pub mod ev {
+    pub const POINTER_UP: u8 = 1;
+    pub const VALUE_CHANGED: u8 = 2;
+    pub const TEXT_CHANGED: u8 = 3;
+}
 
 extern "C" {
     /// Own the Qt application shell; blocks until the window closes.
@@ -107,6 +127,7 @@ extern "C" {
         height: c_int,
         wake: Wake,
         tick: Tick,
+        event_fn: EventFn,
         user: *mut c_void,
     ) -> c_int;
     /// Apply a batch of delta commands to the Qt Quick scene.
@@ -114,12 +135,35 @@ extern "C" {
     /// Reset the whole scene (META::RESET).
     pub fn pathland_qt_layer_reset();
     /// Quit the event loop (host-initiated shutdown).
+    #[allow(dead_code)] // part of the C ABI surface for foreign hosts
     pub fn pathland_qt_layer_quit();
 
-    // Test hooks (init without an event loop; record what `apply` received).
-    pub fn pathland_qt_layer_init(wake: Wake, tick: Tick, user: *mut c_void) -> c_int;
+    // Test hooks (init without an event loop; query the live scene).
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_init(
+        wake: Wake,
+        tick: Tick,
+        event_fn: EventFn,
+        user: *mut c_void,
+    ) -> c_int;
+    #[allow(dead_code)]
     pub fn pathland_qt_layer_apply_count() -> u32;
+    #[allow(dead_code)]
     pub fn pathland_qt_layer_last_text(out: *mut c_char, cap: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_root_child_count() -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_widget_child_count(id: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_widget_text(id: u32, out: *mut c_char, cap: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_widget_prop_text(
+        id: u32,
+        prop: *const c_char,
+        out: *mut c_char,
+        cap: u32,
+    ) -> u32;
+    #[allow(dead_code)] // test-only hook
     pub fn pathland_qt_layer_shutdown();
 }
 
@@ -136,27 +180,91 @@ pub fn apply(cmds: &[Command]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CONTENT_ITEM;
+    use crate::{renderer::QtRenderer, CONTENT_ITEM};
+    use pathland_core::{init_memory, Frame, Guest, Host, MemoryLayout};
+    use pathland_engine::Engine;
+    use pathland_view::{assign_ids, button, text, vstack, Node, Slider, View, ViewExt};
     use std::ffi::CStr;
+    use std::sync::Mutex;
 
     extern "C" fn noop_wake(_user: *mut c_void) {}
     extern "C" fn noop_tick(_user: *mut c_void) {}
+    extern "C" fn noop_event(_ev: *const QtEvent, _user: *mut c_void) {}
+
+    /// QGuiApplication is process-global: serialize every Qt-touching test.
+    static QT_LOCK: Mutex<()> = Mutex::new(());
+
+    fn with_qt(f: impl FnOnce()) {
+        let _guard = QT_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        std::env::set_var("QT_QPA_PLATFORM", "offscreen");
+        std::env::set_var("QT_QUICK_BACKEND", "software");
+        unsafe {
+            assert_eq!(
+                pathland_qt_layer_init(noop_wake, noop_tick, noop_event, std::ptr::null_mut()),
+                0
+            );
+            pathland_qt_layer_reset(); // isolate test state (counters + widgets)
+            f();
+            pathland_qt_layer_shutdown();
+        }
+    }
+
+    /// One persistent engine + ring memory, so consecutive emits are deltas.
+    struct Harness {
+        layout: MemoryLayout,
+        mem: Vec<u8>,
+        engine: Engine,
+    }
+
+    impl Harness {
+        fn new() -> Self {
+            let layout = MemoryLayout::default();
+            let mut mem = vec![0u8; layout.total_bytes()];
+            init_memory(&mut mem, &layout);
+            Self {
+                layout,
+                mem,
+                engine: Engine::new(),
+            }
+        }
+
+        fn emit(&mut self, root: &Node) -> (Vec<u8>, Vec<u8>) {
+            let layout = self.layout;
+            {
+                let mut guest = Guest::new(&mut self.mem, &layout);
+                guest.begin_frame();
+                self.engine.emit(root, &mut guest).unwrap();
+                guest.end_frame();
+            }
+            let mut host = Host::new(&mut self.mem, &layout);
+            let frames = host.frames();
+            let Some(f) = frames.first() else {
+                return (Vec::new(), Vec::new());
+            };
+            let mut slots = Vec::with_capacity(f.len() * 16);
+            for op in f.opcodes() {
+                slots.extend_from_slice(&op.to_bytes());
+            }
+            let arena = f.arena().to_vec();
+            (slots, arena)
+        }
+    }
+
+    fn read_text(id: u32) -> String {
+        let mut buf = [0i8; 256];
+        let n = unsafe { pathland_qt_layer_widget_text(id, buf.as_mut_ptr(), buf.len() as u32) };
+        if n == 0 {
+            return String::new();
+        }
+        unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy().into_owned()
+    }
 
     /// End-to-end FFI: a Rust command batch (create / insert / set_text with a
     /// string) crosses into the C++ Qt layer headless (offscreen) and comes
-    /// back verified. Proves the boundary the whole renderer is built on.
+    /// back verified.
     #[test]
     fn command_batch_crosses_into_cpp_offscreen() {
-        std::env::set_var("QT_QPA_PLATFORM", "offscreen");
-        std::env::set_var("QT_QUICK_BACKEND", "software");
-
-        unsafe {
-            assert_eq!(
-                pathland_qt_layer_init(noop_wake, noop_tick, std::ptr::null_mut()),
-                0,
-                "Qt shell initializes offscreen"
-            );
-
+        with_qt(|| unsafe {
             let text = "hello";
             let cmds = [
                 Command::create_node(1, 0x10), // VSTACK
@@ -171,7 +279,77 @@ mod tests {
             assert_eq!(n, text.len() as u32);
             assert_eq!(CStr::from_ptr(buf.as_ptr()).to_string_lossy(), text);
 
-            pathland_qt_layer_shutdown();
-        }
+            // The VSTACK widget exists as a child of the content item.
+            assert_eq!(pathland_qt_layer_root_child_count(), 1);
+            assert_eq!(pathland_qt_layer_widget_child_count(1), 0);
+        });
+    }
+
+    /// Full pipeline: DSL -> engine -> frame -> shared decode -> delta diff ->
+    /// FFI -> live QML scene. Asserts the real widgets in the offscreen scene.
+    #[test]
+    fn renderer_drives_live_qml_scene() {
+        with_qt(|| {
+            let mut view = vstack![
+                text("hello"),
+                button("Press"),
+                Slider {
+                    value: 5.0,
+                    min: 0.0,
+                    max: 10.0,
+                }
+            ]
+            .spacing(8.0)
+            .build();
+            assign_ids(&mut view, &mut 1);
+
+            let mut h = Harness::new();
+            let mut r = QtRenderer::new();
+            {
+                let (slots, arena) = h.emit(&view);
+                let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+                r.apply_frame(&frame); // tree.apply_frame + diff + FFI forward
+            }
+
+            // Root stack is the single content child, with three children.
+            assert_eq!(unsafe { pathland_qt_layer_root_child_count() }, 1);
+            assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 3);
+
+            // Node 2 is the Text with the DSL content.
+            assert_eq!(read_text(2), "hello");
+            // Node 3 is the Button (label rides SET_TEXT).
+            assert_eq!(read_text(3), "Press");
+            // Node 4 is the Slider with value/min/max applied.
+            assert_eq!(read_text(4), ""); // Slider has no text
+            let mut buf = [0i8; 64];
+            let n = unsafe {
+                pathland_qt_layer_widget_prop_text(4, c"value".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
+            };
+            assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "5");
+            assert_eq!(n, 1);
+
+            // Root spacing applied.
+            let mut buf2 = [0i8; 64];
+            unsafe {
+                pathland_qt_layer_widget_prop_text(1, c"spacing".as_ptr(), buf2.as_mut_ptr(), buf2.len() as u32)
+            };
+            assert_eq!(unsafe { CStr::from_ptr(buf2.as_ptr()) }.to_string_lossy(), "8");
+
+            // Delta: spacing 8 -> 16 only re-sends the root's prop.
+            let mut view2 = vstack![text("hello"), button("Press")]
+                .spacing(16.0)
+                .build();
+            assign_ids(&mut view2, &mut 1);
+            let (slots, arena) = h.emit(&view2);
+            let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+            r.apply_frame(&frame);
+
+            assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 2);
+            let mut buf3 = [0i8; 64];
+            unsafe {
+                pathland_qt_layer_widget_prop_text(1, c"spacing".as_ptr(), buf3.as_mut_ptr(), buf3.len() as u32)
+            };
+            assert_eq!(unsafe { CStr::from_ptr(buf3.as_ptr()) }.to_string_lossy(), "16");
+        });
     }
 }

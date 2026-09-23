@@ -24,4 +24,4 @@ pub mod renderer;
 mod run;
 
 pub use renderer::{QtRenderer, CONTENT_ITEM};
-pub use run::{run_with_pump_sized, EventCallback, Pump};
+pub use run::{run, run_with_pump_sized, EventCallback, Pump};
