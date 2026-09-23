@@ -1,6 +1,6 @@
 # pathland-render-qt — implementation status
 
-**Last updated:** September 23, 2026
+**Last updated:** September 24, 2026
 
 The **Qt Quick renderer**: maps opcode frames incrementally onto a Qt Quick
 scene graph (shared-memory desktop path). Protocol contract: `spec/`.
@@ -53,6 +53,23 @@ Design-token contract: `spec/TOKENS.md`.
   `TEXT_CHANGED`) to Rust, which encodes the `Event`, writes it into the event
   ring, and wakes the host (renderer never drains). Interactions are gated by
   `BINDING_ID`/`ACTION_ID` and programmatic value sets suppress echoes.
+- **Pointer event streams**: an `EVENT_LISTENERS`-gated QML `MouseArea` overlay
+  is attached to any node carrying pointer listener bits (down/move/up), and
+  its handlers report `POINTER_DOWN`/`POINTER_MOVE`/`POINTER_UP` through the
+  Bridge (bypassing the `BINDING_ID` gate — any element can emit raw inputs,
+  spec/EVENTS.md). Attached/detached on listener-mask changes / `RESET` /
+  `DELETE`.
+- **Native back / `NAVIGATE`**: a window-level `KeyFilter` maps Escape to
+  `Event::Navigate { url: None }` (global, never node-keyed), matching the GTK
+  renderer. BackSpace is deferred (needs text-focus detection).
+- **Color-scheme detection (spec/TOKENS.md)**: `QStyleHints::colorSchemeChanged`
+  fires a scheme event to Rust, which calls `QtRenderer::set_scheme` — the
+  shared core re-resolves design tokens and the diff re-emits the changed
+  concrete values (`SET_PROPERTY`) with no host wake. Initial scheme applied at
+  init.
+- **`META::RESET`**: both pump paths scan each frame for `META::RESET` and call
+  `QtRenderer::reset()` (clears the decoded tree, sent-state cache, and the
+  C++ scene incl. listener overlays).
 - **Qt shell**: init/run split (headless tests drive `init` + `apply` without
   an event loop); `pathland_qt_layer_run` owns the window + a zero-millisecond
   idle `QTimer` that ticks Rust's pump (Qt analogue of GTK's idle pump).
@@ -68,27 +85,29 @@ Design-token contract: `spec/TOKENS.md`.
 
 ## Not implemented / gaps
 
-- Pointer *streams* (down/move) gated by `EVENT_LISTENERS` are not yet emitted
-  (only taps via Button `clicked`); `EVENT_LISTENERS` is carried but not yet
-  consumed by the Qt layer.
+- Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving) and
+  `KEY_DOWN`/`KEY_UP` listener bits are not yet reported; BackSpace as native
+  back (text-focus detection) is deferred.
+- The Rust DSL does not yet expose signal property bindings (the Java DSL
+  does), so the demo marks the slider bound via a `BINDING_ID` on the retained
+  tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.
 - `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their
   background delegate; mapping is a follow-up), `SHAPE` path approximation,
   `PROGRESS_VIEW`/`GAUGE`/`STEPPER`/`DATE_PICKER`/`PICKER`/`MENU`/`COLOR_PICKER`
   not mapped yet.
-- Design-token scheme detection (`QGuiApplication::styleHints`) + `SET_SCHEME`
-  handling is not wired (values resolve in the shared core; a re-apply on
-  scheme change is a follow-up).
-- `META::RESET` resets the C++ scene (widgets + gated set) but the run shell
-  doesn't watch for it; no Java JNA demo yet.
-- Lazy views render eagerly; duplicate same-route pushes / nav adapter not
-  implemented.
+- No nav adapter (`ROUTE`/`NAV_DEPTH`/`NAV_CHROME`) yet; no Java JNA demo yet.
+- Lazy views render eagerly.
 
 ## Verified by
 
 `cargo test -p pathland-render-qt` (needs Qt6 dev libs; offscreen for the FFI
 tests) — the delta diff suite, the end-to-end FFI batch
-(`command_batch_crosses_into_cpp_offscreen`), and the **full pipeline**
+(`command_batch_crosses_into_cpp_offscreen`), the **full pipeline**
 (`renderer_drives_live_qml_scene`: DSL → engine → frame → shared decode →
 delta diff → FFI → live QML `Column`/`Text`/`Button`/`Slider` with spacing/value
-applied and a delta re-applied). Full workspace: `cd lib/rust && cargo test`.
+applied and a delta re-applied), pointer-listener MouseArea attachment
+(`pointer_listeners_attach_mousearea`), and the event path
+(`decode_maps_pointer_and_global_events`, `ring_event_writes_pointer_into_ring_and_wakes`,
+`scheme_event_reapplies_without_waking`, `text_event_string_is_length_prefixed`,
+`frame_has_reset_detects_meta_reset`). Full workspace: `cd lib/rust && cargo test`.
 Demo: `scripts/run-rust-qt-demo.sh`.

@@ -53,6 +53,15 @@ impl QtRenderer {
         &self.tree
     }
 
+    /// Set the effective color scheme (renderer-derived, never carried by the
+    /// protocol) and re-resolve every design token — re-emitting the changed
+    /// nodes' concrete values to the C++ layer.
+    pub fn set_scheme(&mut self, scheme: pathland_core::tokens::Scheme) {
+        self.tree.set_scheme(scheme);
+        let cmds = self.diff();
+        crate::ffi::apply(&cmds);
+    }
+
     /// Apply one opcode frame and forward the resulting delta batch to the
     /// C++ layer. Unchanged nodes produce no commands.
     pub fn apply_frame(&mut self, frame: &Frame<'_>) {

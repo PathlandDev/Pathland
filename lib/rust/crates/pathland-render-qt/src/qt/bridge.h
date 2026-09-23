@@ -31,6 +31,14 @@ public slots:
     void tap(quint32 nodeId, qreal x, qreal y);
     void valueChanged(quint32 nodeId, qreal value);
     void textChanged(quint32 nodeId, const QString &text);
+    // Raw pointer streams from an EVENT_LISTENERS MouseArea (`kind` is a
+    // PLQT_EV_POINTER_* value); NOT gated by BINDING_ID — the listener mask
+    // already filtered which handlers were attached.
+    void pointer(quint32 nodeId, quint32 kind, qreal x, qreal y);
+    // Global native back request (Escape) — never node-keyed.
+    void navigateBack();
+    // Platform color-scheme changed (value 0 = light, 1 = dark).
+    void schemeChanged(quint32 scheme);
 };
 
 #endif // PATHLAND_QT_BRIDGE_H

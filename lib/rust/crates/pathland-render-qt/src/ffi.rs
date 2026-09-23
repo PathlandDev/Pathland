@@ -117,6 +117,10 @@ pub mod ev {
     pub const POINTER_UP: u8 = 1;
     pub const VALUE_CHANGED: u8 = 2;
     pub const TEXT_CHANGED: u8 = 3;
+    pub const POINTER_DOWN: u8 = 4;
+    pub const POINTER_MOVE: u8 = 5;
+    pub const NAVIGATE_BACK: u8 = 6;
+    pub const SCHEME_CHANGED: u8 = 7;
 }
 
 extern "C" {
@@ -184,6 +188,7 @@ mod tests {
     use pathland_core::{init_memory, Frame, Guest, Host, MemoryLayout};
     use pathland_engine::Engine;
     use pathland_view::{assign_ids, button, text, vstack, Node, Slider, View, ViewExt};
+    use pathland_core::listener;
     use std::ffi::CStr;
     use std::sync::Mutex;
 
@@ -350,6 +355,33 @@ mod tests {
                 pathland_qt_layer_widget_prop_text(1, c"spacing".as_ptr(), buf3.as_mut_ptr(), buf3.len() as u32)
             };
             assert_eq!(unsafe { CStr::from_ptr(buf3.as_ptr()) }.to_string_lossy(), "16");
+        });
+    }
+
+    /// EVENT_LISTENERS pointer bits attach a MouseArea overlay to the node's
+    /// QML item (spec/EVENTS.md: any element can emit raw inputs).
+    #[test]
+    fn pointer_listeners_attach_mousearea() {
+        with_qt(|| {
+            let mut view = vstack![
+                text("listener").pointer_events(listener::POINTER_DOWN | listener::POINTER_UP)
+            ]
+            .build();
+            assign_ids(&mut view, &mut 1);
+
+            let mut h = Harness::new();
+            let mut r = QtRenderer::new();
+            {
+                let (slots, arena) = h.emit(&view);
+                let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+                r.apply_frame(&frame);
+            }
+
+            // Root stack has one child (the Text, node 2); the Text gained a
+            // MouseArea overlay child for its pointer listeners.
+            assert_eq!(unsafe { pathland_qt_layer_root_child_count() }, 1);
+            assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 1);
+            assert_eq!(unsafe { pathland_qt_layer_widget_child_count(2) }, 1);
         });
     }
 }

@@ -43,9 +43,13 @@ typedef struct PathlandQtCommand {
 /* One raw input reported by the Qt layer (C++ -> Rust). */
 typedef enum PathlandQtEventKind {
     PLQT_EV_NONE = 0,
-    PLQT_EV_POINTER_UP = 1,   /* a control was tapped (x,y in item coords)      */
+    PLQT_EV_POINTER_UP = 1,   /* a control was tapped / pointer released (x,y)   */
     PLQT_EV_VALUE_CHANGED = 2, /* a control's semantic value changed (f32)      */
     PLQT_EV_TEXT_CHANGED = 3, /* a text field's value changed (str)             */
+    PLQT_EV_POINTER_DOWN = 4, /* pointer pressed on a listener node (x,y)       */
+    PLQT_EV_POINTER_MOVE = 5, /* pointer moved on a listener node (x,y)         */
+    PLQT_EV_NAVIGATE_BACK = 6, /* native back request (Escape), global           */
+    PLQT_EV_SCHEME_CHANGED = 7, /* platform color scheme changed (value 0/1)     */
 } PathlandQtEventKind;
 
 typedef struct PathlandQtEvent {

@@ -14,6 +14,8 @@
 #include "pathland_qt.h"
 
 #include <QtGui/QGuiApplication>
+#include <QtGui/QStyleHints>
+#include <QtGui/QKeyEvent>
 #include <QtQuick/QQuickWindow>
 #include <QtQuick/QQuickItem>
 #include <QtQml/QQmlEngine>
@@ -96,6 +98,7 @@ enum {
     PL_PROP_IS_SECURE = 0x200D,
     PL_PROP_ACTION_ID = 0x2016,
     PL_PROP_BINDING_ID = 0x2017,
+    PL_PROP_EVENT_LISTENERS = 0x2005,
 };
 
 namespace {
@@ -119,6 +122,10 @@ struct LayerState {
     std::unordered_map<uint32_t, QQuickItem *> widgets;
     // Nodes that may report interactions (carry BINDING_ID / ACTION_ID).
     std::unordered_set<uint32_t> gated_ids;
+    // EVENT_LISTENERS mask per node (raw pointer stream gating).
+    std::unordered_map<uint32_t, uint32_t> listener_masks;
+    // EVENT_LISTENERS MouseArea overlay per node (id -> MouseArea item).
+    std::unordered_map<uint32_t, QQuickItem *> mouse_areas;
     // While the renderer sets a value, control signals must not echo.
     bool suppress = false;
 
@@ -230,6 +237,48 @@ QQuickItem *findWidget(uint32_t id) {
     }
     auto it = g.widgets.find(id);
     return it == g.widgets.end() ? nullptr : it->second;
+}
+
+// Remove a node's EVENT_LISTENERS MouseArea overlay (if any).
+void detachPointerArea(uint32_t id) {
+    auto it = g.mouse_areas.find(id);
+    if (it != g.mouse_areas.end()) {
+        it->second->deleteLater();
+        g.mouse_areas.erase(it);
+    }
+    g.listener_masks.erase(id);
+}
+
+// Attach a MouseArea overlay for a node's EVENT_LISTENERS pointer mask. Only
+// the requested handler kinds are wired (each already gated by the mask), so
+// the Bridge's pointer path needs no extra gating.
+void attachPointerArea(uint32_t id, uint32_t mask) {
+    detachPointerArea(id);
+    const uint32_t bits = mask & (1 | 2 | 4); // POINTER_DOWN | POINTER_MOVE | POINTER_UP
+    if (bits == 0) {
+        return;
+    }
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return;
+    }
+    QString handlers;
+    if (mask & 1) { // POINTER_DOWN -> PLQT_EV_POINTER_DOWN = 4
+        handlers += QStringLiteral("onPressed: bridge.pointer(%1, 4, mouse.x, mouse.y)\n").arg(id);
+    }
+    if (mask & 2) { // POINTER_MOVE -> PLQT_EV_POINTER_MOVE = 5
+        handlers += QStringLiteral("onPositionChanged: bridge.pointer(%1, 5, mouse.x, mouse.y)\n").arg(id);
+    }
+    if (mask & 4) { // POINTER_UP -> PLQT_EV_POINTER_UP = 1
+        handlers += QStringLiteral("onReleased: bridge.pointer(%1, 1, mouse.x, mouse.y)\n").arg(id);
+    }
+    const QString qml =
+        QStringLiteral("import QtQuick 2.15\nMouseArea { anchors.fill: parent;\n%1}").arg(handlers);
+    QQuickItem *area = createComponent(g.engine, item, qml.toUtf8());
+    if (area) {
+        g.mouse_areas[id] = area;
+        g.listener_masks[id] = mask;
+    }
 }
 
 // Pathland cross-axis alignment (0=Start,1=Center,2=End,else Fill) -> Qt's
@@ -363,6 +412,9 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
     case PL_PROP_IS_SECURE:
         item->setProperty("echoMode", value != 0 ? 2 : 0); // TextField.Password / Normal
         break;
+    case PL_PROP_EVENT_LISTENERS:
+        attachPointerArea(id, value);
+        break;
     case PL_PROP_ACTION_ID:
     case PL_PROP_BINDING_ID:
         g.gated_ids.insert(id);
@@ -403,6 +455,9 @@ void resetNode(uint32_t id) {
     if (!item) {
         return;
     }
+    // Listener overlays are renderer-owned; the full property set that follows
+    // RESET re-attaches them from the (re-sent) EVENT_LISTENERS value.
+    detachPointerArea(id);
     item->setProperty("spacing", 0.0);
     item->setProperty("padding", 0.0);
     item->setProperty("topPadding", 0.0);
@@ -443,6 +498,38 @@ void deleteNode(uint32_t id) {
     item->deleteLater();
     g.widgets.erase(it);
     g.gated_ids.erase(id);
+    detachPointerArea(id);
+}
+
+// Native back: Escape is a platform back request (global, never node-keyed),
+// matching the GTK renderer's window-level key controller. BackSpace is
+// deferred (needs text-focus detection).
+class KeyFilter : public QObject {
+public:
+    using QObject::QObject;
+protected:
+    bool eventFilter(QObject *obj, QEvent *ev) override {
+        if (ev->type() == QEvent::KeyPress) {
+            auto *ke = static_cast<QKeyEvent *>(ev);
+            if (ke->key() == Qt::Key_Escape) {
+                if (g.bridge) {
+                    g.bridge->navigateBack();
+                }
+                return true;
+            }
+        }
+        return QObject::eventFilter(obj, ev);
+    }
+};
+
+// Report the effective platform color scheme (0 = light, 1 = dark) through the
+// Bridge; Rust re-resolves design tokens and re-applies (spec/TOKENS.md).
+void reportScheme() {
+    if (!g.app || !g.bridge) {
+        return;
+    }
+    const bool dark = g.app->styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+    g.bridge->schemeChanged(dark ? 1 : 0);
 }
 
 } // namespace
@@ -475,6 +562,16 @@ int pathland_qt_layer_init(PathlandQtWake wake, PathlandQtTick tick,
     g.window->setTitle(QString::fromUtf8("Pathland"));
     g.window->resize(420, 220);
     g.root = g.window->contentItem();
+
+    // Native back: Escape on the window is a global back request (see KeyFilter).
+    g.window->installEventFilter(new KeyFilter(g.window));
+
+    // Color-scheme detection (spec/TOKENS.md): the renderer derives the
+    // effective scheme from the platform and re-resolves tokens when it
+    // changes. Scheme is never carried by the protocol.
+    QObject::connect(g.app->styleHints(), &QStyleHints::colorSchemeChanged, g.app,
+                     []() { reportScheme(); });
+    reportScheme();
 
     // Idle tick: pump the ring on the Qt main thread between frames, like the
     // GTK renderer's glib idle pump.
@@ -587,6 +684,8 @@ void pathland_qt_layer_reset(void) {
     }
     g.widgets.clear();
     g.gated_ids.clear();
+    g.listener_masks.clear();
+    g.mouse_areas.clear();
     g.apply_count = 0;
     g.last_text_len = 0;
     g.last_text[0] = '\0';
@@ -653,6 +752,8 @@ void pathland_qt_layer_shutdown(void) {
         kv.second->deleteLater();
     }
     g.widgets.clear();
+    g.mouse_areas.clear();
+    g.listener_masks.clear();
     delete g.window;
     g.window = nullptr;
     delete g.engine;

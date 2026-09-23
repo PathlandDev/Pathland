@@ -30,11 +30,25 @@ const APP_ID: &str = "org.pathland.QtDemo";
 /// node id → tap callback, collected from the built tree after `assign_ids`.
 type TapHandlers = BTreeMap<u32, Rc<RefCell<dyn FnMut() + 'static>>>;
 
-/// Build the DSL tree for the current counter value. This is the developer's
-/// authoring surface.
-fn build_tree(count: &Rc<RefCell<u32>>) -> Node {
+/// Mark a node as a value-reporting control (`BINDING_ID`), so the renderer
+/// gates its `VALUE_CHANGED` events back to the app. The Rust DSL does not yet
+/// expose signal property bindings, so the demo marks the slider directly on
+/// the retained tree (the protocol's "this node reports" marker).
+fn mark_value_bound(node: &mut Node) {
+    if node.component == pathland_view::Component::Slider {
+        node.properties
+            .insert(pathland_core::property_id::BINDING_ID, 1);
+    }
+    for child in &mut node.children {
+        mark_value_bound(child);
+    }
+}
+
+/// Build the DSL tree for the current counter + slider value. This is the
+/// developer's authoring surface.
+fn build_tree(count: &Rc<RefCell<u32>>, slider_value: &Rc<RefCell<f32>>) -> Node {
     let tap_count = count.clone();
-    vstack![
+    let mut tree = vstack![
         hstack![
             text(format!("Count: {}", *count.borrow()).as_str()),
             button("Increment").on_tap_gesture(move || *tap_count.borrow_mut() += 1),
@@ -47,8 +61,9 @@ fn build_tree(count: &Rc<RefCell<u32>>) -> Node {
         text("I am a Text with raw pointer listeners")
             .pointer_events(listener::POINTER_DOWN | listener::POINTER_UP)
             .foreground_style(Color::argb(0xFF_0000AA)),
+        text(format!("Slider: {:.1}", *slider_value.borrow()).as_str()),
         Slider {
-            value: 5.0,
+            value: *slider_value.borrow(),
             min: 0.0,
             max: 10.0,
         },
@@ -62,13 +77,16 @@ fn build_tree(count: &Rc<RefCell<u32>>) -> Node {
     ]
     .spacing(12.0)
     .padding(24.0)
-    .build()
+    .build();
+    mark_value_bound(&mut tree);
+    tree
 }
 
 fn main() {
     let engine = Rc::new(RefCell::new(Engine::new()));
     let ring = Rc::new(RefCell::new(RingTransport::new()));
     let count = Rc::new(RefCell::new(0u32));
+    let slider_value = Rc::new(RefCell::new(5.0f32));
     let handlers = Rc::new(RefCell::new(TapHandlers::new()));
 
     // Build + emit the current tree, refreshing the id → tap-callback map.
@@ -76,9 +94,10 @@ fn main() {
         let engine = engine.clone();
         let ring = ring.clone();
         let count = count.clone();
+        let slider_value = slider_value.clone();
         let handlers = handlers.clone();
         move || {
-            let mut tree = build_tree(&count);
+            let mut tree = build_tree(&count, &slider_value);
             assign_ids(&mut tree, &mut 1);
             let mut h = handlers.borrow_mut();
             h.clear();
@@ -103,12 +122,13 @@ fn main() {
     pathland_qt::run(APP_ID, "Pathland Qt Demo", ring.clone(), {
         let emit = emit;
         let handlers = handlers.clone();
+        let slider_value = slider_value.clone();
         let start = Instant::now();
         let mut recognizer = pathland_view::TapRecognizer::new();
         move |ring| {
             let events = ring.borrow_mut().drain_events();
             let now_ms = start.elapsed().as_millis() as u64;
-            let mut tapped = false;
+            let mut changed = false;
             for ev in &events {
                 // Platform back (Escape/back key) arrives as a global NAVIGATE
                 // request with no URL. There is no Rust router yet, so this is
@@ -116,15 +136,22 @@ fn main() {
                 if matches!(ev, pathland_core::Event::Navigate { url: None }) {
                     eprintln!("[demo] NAVIGATE back requested");
                 }
+                // A bound control's value changed (the slider): update the app
+                // state and re-emit — the echo-suppressed, VALUE-last renderer
+                // path applies it back without a loop.
+                if let pathland_core::Event::ValueChanged { value, .. } = ev {
+                    *slider_value.borrow_mut() = *value;
+                    changed = true;
+                }
                 if let Some(target) = recognizer.feed(ev, now_ms) {
                     if let Some(handler) = handlers.borrow().get(&target) {
                         let mut cb = handler.borrow_mut();
                         (&mut *cb)();
-                        tapped = true;
+                        changed = true;
                     }
                 }
             }
-            if tapped {
+            if changed {
                 emit();
             }
         }

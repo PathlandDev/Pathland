@@ -31,7 +31,14 @@ jobs:
         run: |
           sudo apt-get install -y \
             qt6-base-dev \
-            qt6-declarative-dev
+            qt6-declarative-dev \
+            qml6-module-qtquick \
+            qml6-module-qtquick-controls \
+            qml6-module-qtquick-templates \
+            qml6-module-qtquick-window2
+        # The dev headers alone don't ship the QML runtime modules; the Qt
+        # renderer's offscreen tests instantiate Qt Quick Controls via
+        # QQmlComponent, so the qml6-module-* runtime files are required too.
 
       - name: Install Rust (stable + wasm32 target)
         uses: dtolnay/rust-toolchain@stable
@@ -46,6 +53,13 @@ jobs:
       - name: Test workspace
         working-directory: lib/rust
         run: cargo test
+
+      - name: Qt renderer headless smoke
+        working-directory: lib/rust
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+        run: cargo test -p pathland-render-qt
 
       - name: Build the C ABI (cdylib, used by the Java JNA ring interop / native hosts)
         working-directory: lib/rust

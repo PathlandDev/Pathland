@@ -15,7 +15,8 @@ use std::ffi::c_void;
 use std::ffi::CString;
 use std::rc::Rc;
 
-use pathland_core::Event;
+use pathland_core::tokens::Scheme;
+use pathland_core::{category, meta, Event};
 use pathland_core_transport::{
     DriverTransport, FrameSource, OpcodeBatch, RingTransport, TransportError,
 };
@@ -46,6 +47,66 @@ impl Pump for RingTransport {
 /// the ring itself.
 pub type EventCallback = extern "C" fn();
 
+/// What to do with a Qt raw input.
+enum QtAction {
+    /// Encode + write into the event ring, then wake the host.
+    Send(Event),
+    /// A platform color-scheme change: re-resolve tokens in the renderer
+    /// (no host wake — the re-apply flows back as `SET_PROPERTY` commands).
+    Scheme(Scheme),
+    None,
+}
+
+/// Decode a `QtEvent` (C++ → Rust) into an action.
+fn decode_event(raw: &QtEvent) -> QtAction {
+    match raw.kind {
+        ev::POINTER_DOWN => QtAction::Send(Event::PointerDown {
+            target: raw.node_id,
+            x: raw.x,
+            y: raw.y,
+            secondary: false,
+        }),
+        ev::POINTER_MOVE => QtAction::Send(Event::PointerMove {
+            target: raw.node_id,
+            x: raw.x,
+            y: raw.y,
+            hovering: false,
+            leaving: false,
+        }),
+        ev::POINTER_UP => QtAction::Send(Event::PointerUp {
+            target: raw.node_id,
+            x: raw.x,
+            y: raw.y,
+            secondary: false,
+        }),
+        ev::VALUE_CHANGED => QtAction::Send(Event::ValueChanged {
+            target: raw.node_id,
+            value: raw.value,
+        }),
+        ev::TEXT_CHANGED => {
+            // The string is length-prefixed, not guaranteed NUL-terminated.
+            let slice =
+                unsafe { std::slice::from_raw_parts(raw.str_ as *const u8, raw.str_len as usize) };
+            QtAction::Send(Event::TextChanged {
+                target: raw.node_id,
+                value: String::from_utf8_lossy(slice).into_owned(),
+            })
+        }
+        ev::NAVIGATE_BACK => QtAction::Send(Event::Navigate { url: None }),
+        ev::SCHEME_CHANGED => {
+            QtAction::Scheme(if raw.value >= 0.5 { Scheme::Dark } else { Scheme::Light })
+        }
+        _ => QtAction::None,
+    }
+}
+
+/// Whether a frame carries `META::RESET` (clear all output).
+fn frame_has_reset(frame: &pathland_core::Frame<'_>) -> bool {
+    frame
+        .opcodes()
+        .any(|op| op.category() == category::META && op.command() == meta::RESET)
+}
+
 // ---------------------------------------------------------------------------
 // C-ABI path: a boxed `Pump` over an opaque host/ring pointer (capi.rs).
 // ---------------------------------------------------------------------------
@@ -61,7 +122,14 @@ struct Runner {
 /// Pump one tick: flush the next pending frame into the renderer.
 fn pump_once(runner: &mut Runner) {
     match runner.pump.next_frame() {
-        Ok(Some(batch)) => runner.renderer.apply_frame(batch.frame()),
+        Ok(Some(batch)) => {
+            let frame = batch.frame();
+            if frame_has_reset(frame) {
+                runner.renderer.reset();
+            } else {
+                runner.renderer.apply_frame(frame);
+            }
+        }
         Ok(None) => {}
         Err(_) => {}
     }
@@ -92,6 +160,7 @@ pub extern "C" fn qt_wake(user: *mut c_void) {
 
 /// Qt raw input (C++ → Rust): encode the `Event`, write it into the ring, then
 /// wake the host. The host drains its own ring — the renderer never drains.
+/// A scheme change instead re-resolves tokens in the renderer (no host wake).
 pub extern "C" fn qt_event(ev: *const QtEvent, user: *mut c_void) {
     if ev.is_null() || user.is_null() {
         return;
@@ -100,36 +169,17 @@ pub extern "C" fn qt_event(ev: *const QtEvent, user: *mut c_void) {
     let raw = unsafe { &*ev };
     let runner = unsafe { &mut *(user as *mut Runner) };
 
-    let event = match raw.kind {
-        ev::POINTER_UP => Some(Event::PointerUp {
-            target: raw.node_id,
-            x: raw.x,
-            y: raw.y,
-            secondary: false,
-        }),
-        ev::VALUE_CHANGED => Some(Event::ValueChanged {
-            target: raw.node_id,
-            value: raw.value,
-        }),
-        ev::TEXT_CHANGED => {
-            // The string is length-prefixed, not guaranteed NUL-terminated.
-            let slice =
-                unsafe { std::slice::from_raw_parts(raw.str_ as *const u8, raw.str_len as usize) };
-            Some(Event::TextChanged {
-                target: raw.node_id,
-                value: String::from_utf8_lossy(slice).into_owned(),
-            })
+    match decode_event(raw) {
+        QtAction::Send(event) => {
+            if let Err(e) = runner.pump.send_input(&event) {
+                eprintln!("pathland-render-qt: send_input failed: {e:?}");
+            }
+            if let Some(cb) = runner.on_event {
+                cb();
+            }
         }
-        _ => None,
-    };
-
-    if let Some(event) = event {
-        if let Err(e) = runner.pump.send_input(&event) {
-            eprintln!("pathland-render-qt: send_input failed: {e:?}");
-        }
-    }
-    if let Some(cb) = runner.on_event {
-        cb();
+        QtAction::Scheme(scheme) => runner.renderer.set_scheme(scheme),
+        QtAction::None => {}
     }
 }
 
@@ -185,7 +235,12 @@ fn pump_once_ring(runner: &mut RingRunner) {
     let guard = runner.ring.try_borrow_mut();
     if let Ok(mut p) = guard {
         if let Ok(Some(batch)) = FrameSource::next_frame(&mut *p) {
-            runner.renderer.apply_frame(batch.frame());
+            let frame = batch.frame();
+            if frame_has_reset(frame) {
+                runner.renderer.reset();
+            } else {
+                runner.renderer.apply_frame(frame);
+            }
         }
     }
 }
@@ -218,36 +273,18 @@ extern "C" fn ring_event(ev: *const QtEvent, user: *mut c_void) {
     let raw = unsafe { &*ev };
     let runner = unsafe { &mut *(user as *mut RingRunner) };
 
-    let event = match raw.kind {
-        ev::POINTER_UP => Some(Event::PointerUp {
-            target: raw.node_id,
-            x: raw.x,
-            y: raw.y,
-            secondary: false,
-        }),
-        ev::VALUE_CHANGED => Some(Event::ValueChanged {
-            target: raw.node_id,
-            value: raw.value,
-        }),
-        ev::TEXT_CHANGED => {
-            let slice =
-                unsafe { std::slice::from_raw_parts(raw.str_ as *const u8, raw.str_len as usize) };
-            Some(Event::TextChanged {
-                target: raw.node_id,
-                value: String::from_utf8_lossy(slice).into_owned(),
-            })
+    match decode_event(raw) {
+        QtAction::Send(event) => {
+            let guard = runner.ring.try_borrow_mut();
+            if let Ok(mut p) = guard {
+                let _ = DriverTransport::send_input(&mut *p, &event);
+            }
+            if let Some(cb) = runner.on_event {
+                cb();
+            }
         }
-        _ => None,
-    };
-
-    if let Some(event) = event {
-        let guard = runner.ring.try_borrow_mut();
-        if let Ok(mut p) = guard {
-            let _ = DriverTransport::send_input(&mut *p, &event);
-        }
-    }
-    if let Some(cb) = runner.on_event {
-        cb();
+        QtAction::Scheme(scheme) => runner.renderer.set_scheme(scheme),
+        QtAction::None => {}
     }
 }
 
@@ -289,5 +326,162 @@ where
             ring_event,
             user,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::c_char;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static WAKES: AtomicUsize = AtomicUsize::new(0);
+
+    extern "C" fn count_wake() {
+        WAKES.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn qt_event(kind: u8, node_id: u32, value: f32) -> QtEvent {
+        QtEvent {
+            kind,
+            node_id,
+            x: 3.0,
+            y: 4.0,
+            value,
+            str_len: 0,
+            str_: std::ptr::null(),
+        }
+    }
+
+    #[test]
+    fn decode_maps_pointer_and_global_events() {
+        // Pointer down/move/up -> raw pointer events.
+        match decode_event(&qt_event(ev::POINTER_DOWN, 7, 0.0)) {
+            QtAction::Send(Event::PointerDown { target, x, y, secondary }) => {
+                assert_eq!(target, 7);
+                assert_eq!((x, y), (3.0, 4.0));
+                assert!(!secondary);
+            }
+            _ => panic!("POINTER_DOWN must map to Event::PointerDown"),
+        }
+        match decode_event(&qt_event(ev::POINTER_MOVE, 7, 0.0)) {
+            QtAction::Send(Event::PointerMove { target, .. }) => assert_eq!(target, 7),
+            _ => panic!("POINTER_MOVE must map to Event::PointerMove"),
+        }
+        match decode_event(&qt_event(ev::POINTER_UP, 7, 0.0)) {
+            QtAction::Send(Event::PointerUp { target, .. }) => assert_eq!(target, 7),
+            _ => panic!("POINTER_UP must map to Event::PointerUp"),
+        }
+        // Global back request.
+        match decode_event(&qt_event(ev::NAVIGATE_BACK, 0, 0.0)) {
+            QtAction::Send(Event::Navigate { url: None }) => {}
+            _ => panic!("NAVIGATE_BACK must map to Event::Navigate {{ url: None }}"),
+        }
+        // Scheme change -> renderer-side action, not a ring write.
+        assert!(matches!(
+            decode_event(&qt_event(ev::SCHEME_CHANGED, 0, 1.0)),
+            QtAction::Scheme(Scheme::Dark)
+        ));
+        assert!(matches!(
+            decode_event(&qt_event(ev::SCHEME_CHANGED, 0, 0.0)),
+            QtAction::Scheme(Scheme::Light)
+        ));
+        assert!(matches!(decode_event(&qt_event(99, 0, 0.0)), QtAction::None));
+    }
+
+    #[test]
+    fn ring_event_writes_pointer_into_ring_and_wakes() {
+        let ring = Rc::new(RefCell::new(RingTransport::new()));
+        WAKES.store(0, Ordering::SeqCst);
+        let mut runner = RingRunner {
+            ring: ring.clone(),
+            renderer: QtRenderer::new(),
+            on_event: Some(count_wake),
+        };
+        let user = &mut runner as *mut RingRunner as *mut c_void;
+
+        let raw = qt_event(ev::POINTER_DOWN, 7, 0.0);
+        ring_event(&raw, user);
+
+        // The event landed in the ring and the host was woken.
+        assert_eq!(WAKES.load(Ordering::SeqCst), 1);
+        let events = ring.borrow_mut().drain_events();
+        assert_eq!(events.len(), 1);
+        assert!(matches!(
+            &events[0],
+            Event::PointerDown { target: 7, .. }
+        ));
+    }
+
+    #[test]
+    fn scheme_event_reapplies_without_waking() {
+        let ring = Rc::new(RefCell::new(RingTransport::new()));
+        WAKES.store(0, Ordering::SeqCst);
+        let mut runner = RingRunner {
+            ring: ring.clone(),
+            renderer: QtRenderer::new(),
+            on_event: Some(count_wake),
+        };
+        let user = &mut runner as *mut RingRunner as *mut c_void;
+
+        let raw = qt_event(ev::SCHEME_CHANGED, 0, 1.0);
+        ring_event(&raw, user);
+
+        // No ring write, no host wake — only a renderer-internal re-apply.
+        assert_eq!(WAKES.load(Ordering::SeqCst), 0);
+        assert!(ring.borrow_mut().drain_events().is_empty());
+    }
+
+    #[test]
+    fn text_event_string_is_length_prefixed() {
+        let ring = Rc::new(RefCell::new(RingTransport::new()));
+        let mut runner = RingRunner {
+            ring: ring.clone(),
+            renderer: QtRenderer::new(),
+            on_event: None,
+        };
+        let user = &mut runner as *mut RingRunner as *mut c_void;
+
+        let text = b"hello"; // deliberately not NUL-terminated
+        let raw = QtEvent {
+            kind: ev::TEXT_CHANGED,
+            node_id: 9,
+            x: 0.0,
+            y: 0.0,
+            value: 0.0,
+            str_len: text.len() as u32,
+            str_: text.as_ptr() as *const c_char,
+        };
+        ring_event(&raw, user);
+        let events = ring.borrow_mut().drain_events();
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            Event::TextChanged { target, value } => {
+                assert_eq!(*target, 9);
+                assert_eq!(value, "hello");
+            }
+            other => panic!("expected TextChanged, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn frame_has_reset_detects_meta_reset() {
+        use pathland_core::Opcode;
+
+        let reset = Opcode::from_bytes(&[
+            category::META, meta::RESET, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ]);
+        let mut slots = Vec::new();
+        slots.extend_from_slice(&reset.to_bytes());
+        let frame = pathland_core::Frame::from_parts(&slots, &[], 0, slots.len());
+        assert!(frame_has_reset(&frame), "META::RESET must be detected");
+
+        let create = Opcode::from_bytes(&[
+            category::TREE, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ]);
+        let mut slots2 = Vec::new();
+        slots2.extend_from_slice(&create.to_bytes());
+        let frame2 = pathland_core::Frame::from_parts(&slots2, &[], 0, slots2.len());
+        assert!(!frame_has_reset(&frame2), "non-reset frames must not reset");
     }
 }
