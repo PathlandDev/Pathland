@@ -108,6 +108,10 @@ enum {
     PL_PROP_PROGRESS = 0x200E,
     PL_PROP_IS_INDETERMINATE = 0x200F,
     PL_PROP_SELECTION = 0x2010,
+    PL_PROP_ROUTE = 0x2019,
+    PL_PROP_NAV_DEPTH = 0x201A,
+    PL_PROP_NAV_CHROME = 0x201B,
+    PL_PROP_TRANSITION = 0x1031,
 };
 
 namespace {
@@ -131,10 +135,21 @@ struct LayerState {
     std::unordered_map<uint32_t, QQuickItem *> widgets;
     // id -> component type (for control-specific behaviour, e.g. pickers).
     std::unordered_map<uint32_t, uint16_t> components;
-    // id -> parent node id (for picker model rebuilds on option text changes).
+    // id -> parent node id (for picker model rebuilds / nav reconcile).
     std::unordered_map<uint32_t, uint32_t> parents;
-    // PICKER parent -> ordered option child ids (drive the ComboBox model).
-    std::unordered_map<uint32_t, std::vector<uint32_t>> picker_children;
+    // parent -> ordered child ids (the renderer's structural mirror; drives
+    // PICKER ComboBox models and the nav slot's destination lookup).
+    std::unordered_map<uint32_t, std::vector<uint32_t>> children_of;
+    // Navigation slots (VSTACK/HSTACK promoted to a StackView on ROUTE):
+    // slot -> StackView, per-slot ROUTE / NAV_DEPTH / custom-chrome flag,
+    // and the adapter's page-stack mirror + per-page route tags.
+    std::unordered_set<uint32_t> nav_slots;
+    std::unordered_map<uint32_t, QQuickItem *> nav_stacks;
+    std::unordered_map<uint32_t, QString> nav_route;
+    std::unordered_map<uint32_t, uint32_t> nav_depth;
+    std::unordered_set<uint32_t> nav_custom_chrome;
+    std::unordered_map<uint32_t, std::vector<QQuickItem *>> nav_pages;
+    std::unordered_map<uint32_t, std::vector<QString>> nav_page_tags;
     // Nodes that may report interactions (carry BINDING_ID / ACTION_ID).
     std::unordered_set<uint32_t> gated_ids;
     // EVENT_LISTENERS mask per node (raw pointer stream gating).
@@ -289,6 +304,197 @@ QQuickItem *findWidget(uint32_t id) {
     }
     auto it = g.widgets.find(id);
     return it == g.widgets.end() ? nullptr : it->second;
+}
+
+// ---------------------------------------------------------------------------
+// Navigation adapter (spec DSL.md §4.5): a VSTACK/HSTACK slot carrying ROUTE
+// renders as a StackView; the adapter reconciles its page stack by NAV_DEPTH.
+// ---------------------------------------------------------------------------
+
+bool isStackComponent(uint16_t component) {
+    return component == PL_COMP_VSTACK || component == PL_COMP_HSTACK ||
+           component == PL_COMP_LAZY_VSTACK || component == PL_COMP_LAZY_HSTACK;
+}
+
+// The nav container: a plain Item page stack. Qt Quick has no native
+// navigation container, and StackView's push/pop are QML-callable-only (not
+// invokable from C++ via QMetaObject), so the renderer manages its page cache
+// itself: pages are children of this Item, only the top is visible.
+QQuickItem *createNavContainer(QQuickItem *parent) {
+    return createComponent(g.engine, parent, "import QtQuick 2.15\nItem { clip: true }");
+}
+
+// Promote a slot's Column/Row to the nav container (first non-empty ROUTE).
+// Children are inserted after props, so the slot has none yet — safe to swap.
+void promoteNavSlot(uint32_t slotId) {
+    auto it = g.widgets.find(slotId);
+    if (it == g.widgets.end()) {
+        return;
+    }
+    QQuickItem *old = it->second;
+    QQuickItem *container = createNavContainer(old->parentItem());
+    if (!container) {
+        return;
+    }
+    QObject *anchors = container->property("anchors").value<QObject *>();
+    if (anchors && old->parentItem()) {
+        anchors->setProperty("fill", QVariant::fromValue(old->parentItem()));
+    }
+    g.widgets[slotId] = container;
+    g.nav_slots.insert(slotId);
+    g.nav_stacks[slotId] = container;
+    old->deleteLater();
+}
+
+// PlatformDefault chrome: a page wrapper with a header back button (visible
+// except on the root page) over a content placeholder. The back button reports
+// a native back request directly; the app pops its own back-stack and re-emits.
+QQuickItem *navPageWrapper(bool isRoot) {
+    return createComponent(
+        g.engine, nullptr,
+        QStringLiteral(
+            "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
+            "Item {\n"
+            "  property bool showBack: %1\n"
+            "  Column { anchors.fill: parent\n"
+            "    Row { id: header; height: showBack ? 32 : 0; visible: showBack\n"
+            "      Button { text: \"\\u2190\"; onClicked: bridge.navigateBack() } }\n"
+            "    Item { id: content; objectName: \"content\";\n"
+            "      width: parent.width; height: parent.height - header.height } } }")
+            .arg(isRoot ? "false" : "true")
+            .toUtf8());
+}
+
+// Place a destination subtree root into a container, filling it.
+void placeDestination(QQuickItem *dest, QQuickItem *container) {
+    if (!dest || !container) {
+        return;
+    }
+    dest->setParentItem(container);
+    QObject *anchors = dest->property("anchors").value<QObject *>();
+    if (anchors) {
+        anchors->setProperty("fill", QVariant::fromValue(container));
+    }
+}
+
+// Reconcile a nav slot's page stack against the app's current destination
+// (single child) + ROUTE + NAV_DEPTH, mirroring the GTK renderer's depth logic:
+// pop down to depth, then Refresh (same route) / Push (deeper) / Replace
+// (same depth, new route). The back-stack stays app-owned; this stack is the
+// renderer's rendered-output cache. Only the top page is visible.
+void reconcileNav(uint32_t slotId) {
+    auto sit = g.nav_stacks.find(slotId);
+    if (sit == g.nav_stacks.end()) {
+        return;
+    }
+    QQuickItem *container = sit->second;
+    auto rit = g.nav_route.find(slotId);
+    const QString route = rit != g.nav_route.end() ? rit->second : QString();
+    const uint32_t depth = std::max(g.nav_depth[slotId], 1u);
+    const bool custom = g.nav_custom_chrome.count(slotId) > 0;
+
+    // The destination subtree root: the slot's single child.
+    QQuickItem *dest = nullptr;
+    for (uint32_t childId : g.children_of[slotId]) {
+        dest = findWidget(childId);
+        if (dest) {
+            break;
+        }
+    }
+
+    auto &pages = g.nav_pages[slotId];
+    auto &tags = g.nav_page_tags[slotId];
+
+    // Pop down to the app's depth (renderer-driven; no NAVIGATE emitted).
+    while (pages.size() > depth) {
+        QQuickItem *page = pages.back();
+        pages.pop_back();
+        tags.pop_back();
+        if (custom) {
+            // The page IS the destination widget (app-owned); just detach it.
+            page->setParentItem(nullptr);
+            page->setVisible(false);
+        } else {
+            // Detach any destination the wrapper owns so the app-owned widget
+            // survives the wrapper's destruction.
+            if (QQuickItem *c = page->findChild<QQuickItem *>("content")) {
+                const auto kids = c->childItems();
+                for (QQuickItem *kid : kids) {
+                    kid->setParentItem(nullptr);
+                }
+            }
+            page->setParentItem(nullptr);
+            page->deleteLater();
+        }
+    }
+
+    auto showTop = [&]() {
+        for (size_t i = 0; i < pages.size(); ++i) {
+            pages[i]->setVisible(i + 1 == pages.size());
+        }
+    };
+
+    if (pages.empty()) {
+        if (custom && !dest) {
+            return; // nothing to show yet (reconcile re-fires on the child)
+        }
+        QQuickItem *page = custom ? dest : navPageWrapper(/*isRoot=*/true);
+        if (custom) {
+            placeDestination(dest, container);
+        } else if (dest) {
+            placeDestination(dest, page->findChild<QQuickItem *>("content"));
+            page->setParentItem(container);
+        } else {
+            page->setParentItem(container);
+        }
+        page->setVisible(true);
+        pages.push_back(page);
+        tags.push_back(route);
+        return;
+    }
+
+    QQuickItem *top = pages.back();
+    const QString topTag = tags.back();
+    if (topTag == route) {
+        // Refresh in place (signal update / re-emit after a user back).
+        if (!custom && dest) {
+            placeDestination(dest, top->findChild<QQuickItem *>("content"));
+        }
+    } else if (pages.size() < depth) {
+        // Deeper -> push a new page.
+        if (custom && !dest) {
+            return;
+        }
+        QQuickItem *page = custom ? dest : navPageWrapper(/*isRoot=*/false);
+        if (custom) {
+            placeDestination(dest, container);
+        } else if (dest) {
+            placeDestination(dest, page->findChild<QQuickItem *>("content"));
+            page->setParentItem(container);
+        } else {
+            page->setParentItem(container);
+        }
+        if (top != page) {
+            top->setVisible(false);
+        }
+        page->setVisible(true);
+        pages.push_back(page);
+        tags.push_back(route);
+    } else {
+        // Same depth, new route -> replace the top page's content.
+        if (custom) {
+            if (dest && dest != top) {
+                top->setParentItem(nullptr);
+                placeDestination(dest, container);
+                dest->setVisible(true);
+                pages.back() = dest;
+            }
+        } else if (dest) {
+            placeDestination(dest, top->findChild<QQuickItem *>("content"));
+        }
+        tags.back() = route;
+    }
+    showTop();
 }
 
 // Remove a node's EVENT_LISTENERS MouseArea overlay (if any).
@@ -473,6 +679,18 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
     case PL_PROP_SELECTION:
         item->setProperty("currentIndex", static_cast<int>(value));
         break;
+    case PL_PROP_NAV_DEPTH:
+        g.nav_depth[id] = value;
+        reconcileNav(id);
+        break;
+    case PL_PROP_NAV_CHROME:
+        if (f32(value) >= 0.5f) {
+            g.nav_custom_chrome.insert(id);
+        } else {
+            g.nav_custom_chrome.erase(id);
+        }
+        reconcileNav(id);
+        break;
     case PL_PROP_EVENT_LISTENERS:
         attachPointerArea(id, value);
         break;
@@ -502,6 +720,14 @@ void applyStringProperty(uint32_t id, uint16_t prop, const char *str, uint32_t l
     case PL_PROP_PROMPT:
     case PL_PROP_LABEL:
         item->setProperty("placeholderText", value);
+        break;
+    case PL_PROP_ROUTE:
+        g.nav_route[id] = value;
+        // Promote a stack slot to a StackView on the first non-empty ROUTE.
+        if (!value.isEmpty() && !g.nav_slots.count(id) && isStackComponent(g.components[id])) {
+            promoteNavSlot(id);
+        }
+        reconcileNav(id);
         break;
     default:
         break;
@@ -540,7 +766,7 @@ void rebuildPickerModel(uint32_t parentId) {
         return;
     }
     QStringList model;
-    for (uint32_t optId : g.picker_children[parentId]) {
+    for (uint32_t optId : g.children_of[parentId]) {
         QQuickItem *opt = findWidget(optId);
         model << (opt ? opt->property("text").toString() : QString());
     }
@@ -552,20 +778,23 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
     if (!child) {
         return;
     }
-    const bool isPicker = g.components[parentId] == PL_COMP_PICKER;
     g.parents[childId] = parentId;
+    // Maintain the ordered structural mirror for every parent.
+    auto &siblings = g.children_of[parentId];
+    siblings.erase(std::remove(siblings.begin(), siblings.end(), childId), siblings.end());
+    if (index == UINT32_MAX || index >= siblings.size()) {
+        siblings.push_back(childId);
+    } else {
+        siblings.insert(siblings.begin() + index, childId);
+    }
 
-    if (isPicker) {
-        // Picker options drive the ComboBox model; they are not reparented
-        // visually (the popup renders the model).
-        auto &opts = g.picker_children[parentId];
-        if (index == UINT32_MAX || index >= opts.size()) {
-            opts.push_back(childId);
-        } else {
-            opts.insert(opts.begin() + index, childId);
-        }
-        rebuildPickerModel(parentId);
+    if (g.components[parentId] == PL_COMP_PICKER) {
+        rebuildPickerModel(parentId); // options drive the model, not the visual tree
         return;
+    }
+    if (g.nav_slots.count(parentId)) {
+        reconcileNav(parentId); // destination subtree swap -> refresh/replace the top page
+        return; // the destination is placed by the nav adapter, not visually here
     }
 
     QQuickItem *parent = findWidget(parentId);
@@ -576,10 +805,10 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
     if (index == UINT32_MAX) {
         return; // append (already last)
     }
-    QList<QQuickItem *> siblings = parent->childItems();
-    siblings.removeAll(child);
-    if (static_cast<int>(index) < siblings.size()) {
-        QQuickItem *after = siblings.at(static_cast<int>(index));
+    QList<QQuickItem *> siblingsList = parent->childItems();
+    siblingsList.removeAll(child);
+    if (static_cast<int>(index) < siblingsList.size()) {
+        QQuickItem *after = siblingsList.at(static_cast<int>(index));
         if (after != child) {
             child->stackBefore(after);
         }
@@ -597,11 +826,18 @@ void deleteNode(uint32_t id) {
     g.widgets.erase(it);
     g.components.erase(id);
     g.parents.erase(id);
-    for (auto &kv : g.picker_children) {
+    for (auto &kv : g.children_of) {
         auto &opts = kv.second;
         opts.erase(std::remove(opts.begin(), opts.end(), id), opts.end());
     }
-    g.picker_children.erase(id);
+    g.children_of.erase(id);
+    g.nav_slots.erase(id);
+    g.nav_stacks.erase(id);
+    g.nav_route.erase(id);
+    g.nav_depth.erase(id);
+    g.nav_custom_chrome.erase(id);
+    g.nav_pages.erase(id);
+    g.nav_page_tags.erase(id);
     g.gated_ids.erase(id);
     detachPointerArea(id);
 }
@@ -737,10 +973,12 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
             const uint32_t parentId = c.a;
             const uint32_t childId = c.b;
             g.parents.erase(childId);
+            auto &siblings = g.children_of[parentId];
+            siblings.erase(std::remove(siblings.begin(), siblings.end(), childId), siblings.end());
             if (g.components[parentId] == PL_COMP_PICKER) {
-                auto &opts = g.picker_children[parentId];
-                opts.erase(std::remove(opts.begin(), opts.end(), childId), opts.end());
                 rebuildPickerModel(parentId);
+            } else if (g.nav_slots.count(parentId)) {
+                reconcileNav(parentId);
             } else {
                 QQuickItem *child = findWidget(childId);
                 if (child) {
@@ -805,7 +1043,14 @@ void pathland_qt_layer_reset(void) {
     g.widgets.clear();
     g.components.clear();
     g.parents.clear();
-    g.picker_children.clear();
+    g.children_of.clear();
+    g.nav_slots.clear();
+    g.nav_stacks.clear();
+    g.nav_route.clear();
+    g.nav_depth.clear();
+    g.nav_custom_chrome.clear();
+    g.nav_pages.clear();
+    g.nav_page_tags.clear();
     g.gated_ids.clear();
     g.listener_masks.clear();
     g.mouse_areas.clear();
@@ -843,6 +1088,11 @@ uint32_t pathland_qt_layer_widget_child_count(uint32_t id) {
     return item ? static_cast<uint32_t>(item->childItems().size()) : 0;
 }
 
+uint32_t pathland_qt_layer_nav_depth(uint32_t slot) {
+    auto it = g.nav_pages.find(slot);
+    return it == g.nav_pages.end() ? 0 : static_cast<uint32_t>(it->second.size());
+}
+
 uint32_t pathland_qt_layer_widget_text(uint32_t id, char *out, uint32_t cap) {
     QQuickItem *item = findWidget(id);
     if (!item || !out || cap == 0) {
@@ -877,7 +1127,14 @@ void pathland_qt_layer_shutdown(void) {
     g.widgets.clear();
     g.components.clear();
     g.parents.clear();
-    g.picker_children.clear();
+    g.children_of.clear();
+    g.nav_slots.clear();
+    g.nav_stacks.clear();
+    g.nav_route.clear();
+    g.nav_depth.clear();
+    g.nav_custom_chrome.clear();
+    g.nav_pages.clear();
+    g.nav_page_tags.clear();
     g.mouse_areas.clear();
     g.listener_masks.clear();
     delete g.window;

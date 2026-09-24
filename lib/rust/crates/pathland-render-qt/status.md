@@ -90,6 +90,20 @@ Design-token contract: `spec/TOKENS.md`.
   the pump borrow is held across frame application (zero-copy batch view of the
   shared ring).
 
+- **Navigation adapter (spec DSL.md §4.5)**: a VSTACK/HSTACK slot carrying the
+  `ROUTE` property promotes to the renderer's nav container and reconciles a
+  page stack **by depth** (`NAV_DEPTH`): pop down to the app's depth, then
+  `Refresh` (same route), `Push` (deeper + new route), or `Replace` (same
+  depth, new route) — mirroring the GTK `AdwNavigationView` adapter. `PlatformDefault`
+  chrome wraps each page in a header with a native back button (`→`
+  `navigateBack` → `Event::Navigate { url: None }`); `NAV_CHROME=1` (`Custom`)
+  pushes the bare destination. The back-stack stays app-owned; the page stack
+  is the renderer's rendered-output cache. **Implementation note:** Qt Quick
+  has no native navigation container and `StackView`'s `push`/`pop` are
+  QML-callable-only (not invokable from C++ via `QMetaObject`), so the nav
+  container is a plain `Item` whose pages the renderer manages (only the top
+  visible) — a renderer-owned page cache, same statelessness contract.
+
 ## Not implemented / gaps
 
 - Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving) and
@@ -98,6 +112,12 @@ Design-token contract: `spec/TOKENS.md`.
 - The Rust DSL does not yet expose signal property bindings (the Java DSL
   does), so the demo marks the slider bound via a `BINDING_ID` on the retained
   tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.
+- The Rust DSL has no `NavigationContainer` either (the spec table is
+  aspirational) — the renderer consumes ROUTE/NAV_DEPTH, but the Rust demo
+  can't exercise nav without a DSL feature; Java/SplitNavDemo is the nav demo
+  vehicle (Phase D).
+- `TRANSITION`-hint animation, back-swipe gestures, multi-step deep-link
+  intermediate pages (same gaps as the GTK renderer).
 - `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their
   background delegate; mapping is a follow-up), `SHAPE` path approximation,
   `MENU` popup item list, `DATE_PICKER`/`COLOR_PICKER` native dialogs, and
@@ -117,6 +137,8 @@ applied and a delta re-applied), pointer-listener MouseArea attachment
 (`decode_maps_pointer_and_global_events`, `ring_event_writes_pointer_into_ring_and_wakes`,
 `scheme_event_reapplies_without_waking`, `text_event_string_is_length_prefixed`,
 `frame_has_reset_detects_meta_reset`), and Phase-B control coverage
-(`control_widgets_construct_and_apply_props`, `picker_builds_model_from_option_children`).
-Full workspace: `cd lib/rust && cargo test`.
+(`control_widgets_construct_and_apply_props`, `picker_builds_model_from_option_children`),
+and the nav adapter (`nav_slot_promotes_and_pushes_root_page`,
+`nav_depth_push_and_pop`, `nav_replace_same_depth_new_route`,
+`nav_custom_chrome_bare_pages`). Full workspace: `cd lib/rust && cargo test`.
 Demo: `scripts/run-rust-qt-demo.sh`.

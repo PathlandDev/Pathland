@@ -159,6 +159,8 @@ extern "C" {
     #[allow(dead_code)]
     pub fn pathland_qt_layer_widget_child_count(id: u32) -> u32;
     #[allow(dead_code)]
+    pub fn pathland_qt_layer_nav_depth(slot: u32) -> u32;
+    #[allow(dead_code)]
     pub fn pathland_qt_layer_widget_text(id: u32, out: *mut c_char, cap: u32) -> u32;
     #[allow(dead_code)]
     pub fn pathland_qt_layer_widget_prop_text(
@@ -190,7 +192,7 @@ mod tests {
     use pathland_view::{
     assign_ids, button, text, vstack, Node, Slider, View, ViewExt,
 };
-    use pathland_core::listener;
+    use pathland_core::{component_type, listener, property_id, value_type};
     use pathland_view::{Component, Gauge, Menu, ProgressView, Stepper};
     use std::ffi::CStr;
     use std::sync::Mutex;
@@ -461,6 +463,153 @@ mod tests {
                 pathland_qt_layer_widget_prop_text(2, c"count".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
             };
             assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "2");
+        });
+    }
+
+    // -- Navigation adapter (Phase C): hand-built command batches drive the C++
+    //    page-stack reconcile by ROUTE / NAV_DEPTH / NAV_CHROME. ---------------
+
+    fn nav_depth() -> u32 {
+        unsafe { pathland_qt_layer_nav_depth(1) }
+    }
+
+    /// A slot carrying ROUTE promotes to a StackView and pushes its root page
+    /// (the destination subtree stays alive inside the page).
+    #[test]
+    fn nav_slot_promotes_and_pushes_root_page() {
+        with_qt(|| {
+            let cmds = [
+                Command::create_node(1, component_type::VSTACK),
+                Command::create_node(2, component_type::VSTACK),
+                Command::create_node(3, component_type::TEXT),
+                Command::set_string_property(1, property_id::ROUTE, "/home"),
+                Command::set_property(1, property_id::NAV_DEPTH, value_type::U32, 1),
+                Command::insert_child(2, 3, u32::MAX),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::set_text(3, "hello"),
+            ];
+            unsafe { pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32) };
+
+            assert_eq!(nav_depth(), 1, "slot promoted to a nav container with one page");
+            assert_eq!(read_text(3), "hello", "destination subtree alive in the page");
+        });
+    }
+
+    /// Deeper NAV_DEPTH pushes a page; a shallower depth pops back down.
+    #[test]
+    fn nav_depth_push_and_pop() {
+        with_qt(|| {
+            let base = [
+                Command::create_node(1, component_type::VSTACK),
+                Command::create_node(2, component_type::VSTACK),
+                Command::create_node(3, component_type::TEXT),
+                Command::set_string_property(1, property_id::ROUTE, "/home"),
+                Command::set_property(1, property_id::NAV_DEPTH, value_type::U32, 1),
+                Command::insert_child(2, 3, u32::MAX),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::set_text(3, "home"),
+            ];
+            unsafe { pathland_qt_layer_apply(base.as_ptr(), base.len() as u32) };
+            assert_eq!(nav_depth(), 1);
+
+            // Push: depth 2 with a new destination subtree (4 -> 5).
+            // Deeper + new route -> push (a same-route frame is a Refresh).
+            let push = [
+                Command::create_node(4, component_type::VSTACK),
+                Command::create_node(5, component_type::TEXT),
+                Command::set_property(1, property_id::NAV_DEPTH, value_type::U32, 2),
+                Command::set_string_property(1, property_id::ROUTE, "/detail"),
+                Command::insert_child(4, 5, u32::MAX),
+                Command::remove_child(1, 2),
+                Command::insert_child(1, 4, u32::MAX),
+                Command::set_text(5, "detail"),
+            ];
+            unsafe { pathland_qt_layer_apply(push.as_ptr(), push.len() as u32) };
+            assert_eq!(nav_depth(), 2);
+            assert_eq!(read_text(5), "detail");
+
+            // Pop: back to depth 1 and the previous destination.
+            let pop = [
+                Command::set_property(1, property_id::NAV_DEPTH, value_type::U32, 1),
+                Command::remove_child(1, 4),
+                Command::insert_child(1, 2, u32::MAX),
+            ];
+            unsafe { pathland_qt_layer_apply(pop.as_ptr(), pop.len() as u32) };
+            assert_eq!(nav_depth(), 1);
+            assert_eq!(read_text(3), "home");
+        });
+    }
+
+    /// Same depth with a new route replaces the top page's content in place.
+    #[test]
+    fn nav_replace_same_depth_new_route() {
+        with_qt(|| {
+            let base = [
+                Command::create_node(1, component_type::VSTACK),
+                Command::create_node(2, component_type::VSTACK),
+                Command::create_node(3, component_type::TEXT),
+                Command::set_string_property(1, property_id::ROUTE, "/home"),
+                Command::set_property(1, property_id::NAV_DEPTH, value_type::U32, 1),
+                Command::insert_child(2, 3, u32::MAX),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::set_text(3, "home"),
+            ];
+            unsafe { pathland_qt_layer_apply(base.as_ptr(), base.len() as u32) };
+            assert_eq!(nav_depth(), 1);
+
+            // Depth 2 + new route -> push.
+            let push = [
+                Command::create_node(4, component_type::VSTACK),
+                Command::create_node(5, component_type::TEXT),
+                Command::set_property(1, property_id::NAV_DEPTH, value_type::U32, 2),
+                Command::set_string_property(1, property_id::ROUTE, "/detail"),
+                Command::insert_child(4, 5, u32::MAX),
+                Command::remove_child(1, 2),
+                Command::insert_child(1, 4, u32::MAX),
+                Command::set_text(5, "detail"),
+            ];
+            unsafe { pathland_qt_layer_apply(push.as_ptr(), push.len() as u32) };
+            assert_eq!(nav_depth(), 2);
+
+            // Same depth, new route -> replace the top page content.
+            let replace = [
+                Command::create_node(6, component_type::VSTACK),
+                Command::create_node(7, component_type::TEXT),
+                Command::set_string_property(1, property_id::ROUTE, "/settings"),
+                Command::remove_child(1, 4),
+                Command::insert_child(1, 6, u32::MAX),
+                Command::set_text(7, "settings"),
+            ];
+            unsafe { pathland_qt_layer_apply(replace.as_ptr(), replace.len() as u32) };
+            assert_eq!(nav_depth(), 2, "replace keeps the stack depth");
+            assert_eq!(read_text(7), "settings");
+        });
+    }
+
+    /// NAV_CHROME=1 (custom) pushes the bare destination as the page (no
+    /// renderer-supplied chrome wrapper).
+    #[test]
+    fn nav_custom_chrome_bare_pages() {
+        with_qt(|| {
+            let cmds = [
+                Command::create_node(1, component_type::VSTACK),
+                Command::create_node(2, component_type::VSTACK),
+                Command::create_node(3, component_type::TEXT),
+                Command::set_string_property(1, property_id::ROUTE, "/custom"),
+                Command::set_property(1, property_id::NAV_DEPTH, value_type::U32, 1),
+                Command::set_property(1, property_id::NAV_CHROME, value_type::F32, 1.0f32.to_bits()),
+                Command::insert_child(2, 3, u32::MAX),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::set_text(3, "custom"),
+            ];
+            unsafe { pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32) };
+
+            assert_eq!(nav_depth(), 1, "custom chrome still uses the nav container");
+            assert_eq!(read_text(3), "custom");
         });
     }
 }

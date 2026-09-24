@@ -238,6 +238,8 @@ fn is_f32_property(prop: u16) -> bool {
             | pathland_core::property_id::MAX_VALUE
             | pathland_core::property_id::STEP_VALUE
             | pathland_core::property_id::PROGRESS
+            | pathland_core::property_id::NAV_CHROME
+            | pathland_core::property_id::TRANSITION
     )
 }
 
