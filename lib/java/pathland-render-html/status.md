@@ -1,6 +1,6 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** September 1, 2026
+**Last updated:** September 25, 2026
 
 The **Java binding to the Rust HTML renderer** (`com.pathland.render.html`) — a
 thin **JNA shim** over `libpathland_render_html`. There is a **single renderer**
@@ -48,6 +48,10 @@ Java renderer is removed. Protocol contract: `spec/`.
   through it, so no Java-side font serving is needed. The font is **not bundled**
   with the renderer jar; self-hosting a subsetted, OFL-licensed woff2 is a
   planned follow-up for offline and enterprise deployments.
+- The shim is unaffected by the Rust renderer's September 2026 shell alignment
+  (SPACER/MENU/STEPPER/GAUGE/PICKER markup now matches the DOM client's runtime
+  shells); the demos' SSR output reflects the Rust renderer as-is, pinned by the
+  `pathland-html-golden` conformance harness.
 
 ## Verified by
 

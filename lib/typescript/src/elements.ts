@@ -45,6 +45,8 @@ export function createElement(component: number): Node {
     case COMPONENT_ZSTACK: {
       const el = document.createElement("div");
       el.style.position = "relative";
+      el.style.width = "100%";
+      el.style.height = "100%";
       return el;
     }
     case COMPONENT_GRID:
@@ -52,6 +54,12 @@ export function createElement(component: number): Node {
     case COMPONENT_LAZY_HGRID: {
       const el = document.createElement("div");
       el.style.display = "grid";
+      // Lazy horizontal grids flow into auto columns (mirrors the Rust SSR
+      // renderer's `grid-auto-flow:column;grid-auto-columns:1fr`).
+      if (component === COMPONENT_LAZY_HGRID) {
+        el.style.gridAutoFlow = "column";
+        el.style.gridAutoColumns = "1fr";
+      }
       return el;
     }
     case COMPONENT_SCROLLVIEW: {
@@ -71,7 +79,15 @@ export function createElement(component: number): Node {
       el.alt = "";
       return el;
     }
-    case COMPONENT_COLOR:
+    case COMPONENT_COLOR: {
+      // Layout-greedy (SwiftUI Color): expands to the available space unless a
+      // size modifier constrains it (mirrors the Rust SSR renderer's
+      // `flex:1 1 auto;align-self:stretch`).
+      const el = document.createElement("div");
+      el.style.flex = "1 1 auto";
+      el.style.alignSelf = "stretch";
+      return el;
+    }
     case COMPONENT_SHAPE:
       return document.createElement("div");
     case COMPONENT_GAUGE: {
@@ -82,8 +98,16 @@ export function createElement(component: number): Node {
       el.append(document.createElement("div"));
       return el;
     }
-    case COMPONENT_DIVIDER:
-      return document.createElement("hr");
+    case COMPONENT_DIVIDER: {
+      // `<div style="height:0;border-top:1px solid rgba(0,0,0,0.2)">` — mirrors
+      // the Rust SSR renderer's default divider (a div with only a top border, so
+      // it is free of the `<hr>` element's UA margins/styles). BORDER_WIDTH /
+      // COLOR deltas override border-top at apply time.
+      const el = document.createElement("div");
+      el.style.height = "0";
+      el.style.borderTop = "1px solid rgba(0,0,0,0.2)";
+      return el;
+    }
     case COMPONENT_SPACER: {
       const el = document.createElement("div");
       el.style.flex = "1";
@@ -97,6 +121,7 @@ export function createElement(component: number): Node {
     case COMPONENT_TEXT_EDITOR: {
       const el = document.createElement("textarea");
       el.className = "pathland-input";
+      el.setAttribute("rows", "4"); // mirrors the Rust SSR renderer
       return el;
     }
     case COMPONENT_TEXT_FIELD:
@@ -132,6 +157,9 @@ function flexBox(direction: "column" | "row"): HTMLElement {
   const el = document.createElement("div");
   el.style.display = "flex";
   el.style.flexDirection = direction;
+  // Cross-axis default is stretch (the Rust SSR renderer's `align-items` when no
+  // ALIGNMENT property is set); an ALIGNMENT delta overrides it.
+  el.style.alignItems = "stretch";
   return el;
 }
 

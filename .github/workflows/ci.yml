@@ -40,6 +40,21 @@ jobs:
         working-directory: lib/rust
         run: cargo test
 
+      # The DOM renderer's constants/token conventions and the cross-renderer SSR
+      # golden fixtures are GENERATED from Rust (pathland-ts-codegen /
+      # pathland-html-golden). Regenerate them here and fail if the committed
+      # files drifted — so a renumbered constant or a changed SSR shape can't land
+      # without its TS/fixture counterparts.
+      - name: Verify generated TS + golden fixtures are current (no drift)
+        working-directory: lib/rust
+        run: |
+          cargo run -p pathland-ts-codegen
+          cargo run -p pathland-html-golden -- --emit
+          git diff --exit-code -- \
+            lib/typescript/src/constants.ts \
+            lib/typescript/src/generated \
+            lib/typescript/test/fixtures/ssr
+
       - name: Build the C ABI (cdylib, used by the Java JNA ring interop / native hosts)
         working-directory: lib/rust
         run: cargo build -p pathland-core-capi

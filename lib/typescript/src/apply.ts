@@ -18,9 +18,17 @@ import {
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
+  COMPONENT_COLOR,
+  COMPONENT_GRID,
+  COMPONENT_LAZY_HGRID,
+  COMPONENT_LAZY_VGRID,
+  COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
+  COMPONENT_SHAPE,
+  COMPONENT_TEXT,
   COMPONENT_ZSTACK,
   PROP_BINDING_ID,
+  PROP_COLOR,
   PROP_COLOR_VALUE,
   PROP_ENABLED,
   PROP_FONT_FAMILY,
@@ -36,6 +44,7 @@ import {
   PROP_SELECTION,
   PROP_TEXT,
   PROP_VALUE,
+  PROP_WIDTH,
   VAL_DESIGN_TOKEN,
   VAL_STRING,
   VAL_U8,
@@ -45,7 +54,7 @@ import { readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
 import { applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";
-import { argbToHex, daysToIso, f32FromBits, millisToTime } from "./format";
+import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 
 /** Component type per retained node, so STYLE/TREE application can special-case
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
@@ -108,6 +117,45 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
   }
 }
 
+/** The node actually inserted into a parent's container: ZStack children are
+ *  wrapped in `<div style="position:absolute;inset:0">` (mirrors the Rust SSR
+ *  renderer's per-child wrapper), everything else inserts directly. */
+function placedChild(parent: Node, child: Node): Node {
+  if (componentByNode.get(parent) === COMPONENT_ZSTACK && child instanceof HTMLElement) {
+    // Set via the style attribute so `inset:0` survives verbatim (the CSSOM
+    // drops the property in some engines); mirrors the Rust SSR wrapper exactly.
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("style", "position:absolute;inset:0");
+    wrapper.appendChild(child);
+    return wrapper;
+  }
+  return child;
+}
+
+/** Materialize a PICKER's child TEXT node as a native `<option>` (the Rust SSR
+ *  renderer emits `<option data-pathland-id="{child}" value="{index}">` per
+ *  child). The option keeps the child's id so its STYLE deltas resolve to it. */
+function pickerOption(child: HTMLElement): HTMLElement {
+  const opt = document.createElement("option");
+  opt.textContent = child.textContent ?? "";
+  const id = child.getAttribute("data-pathland-id");
+  if (id) {
+    opt.setAttribute("data-pathland-id", id);
+  }
+  return opt;
+}
+
+/** Keep a PICKER's option `value` attributes aligned with their index (the SSR
+ *  renderer's `<option value="{i}">` scheme). */
+function renumberPickerOptions(container: Node): void {
+  if (!(container instanceof HTMLSelectElement)) {
+    return;
+  }
+  Array.from(container.options).forEach((o, i) => {
+    o.value = String(i);
+  });
+}
+
 function applyTree(op: Opcode, r: DomRenderer): void {
   switch (op.command) {
     case CMD_CREATE_NODE: {
@@ -143,16 +191,18 @@ function applyTree(op: Opcode, r: DomRenderer): void {
         // Hydration/idempotent-replay guard: skip when the child is already there
         // (the SSR DOM already holds the initial tree; a resync replays it).
         if (container && !container.contains(child)) {
-          if (componentByNode.get(parent) === COMPONENT_ZSTACK && child instanceof HTMLElement) {
-            // ZStack children overlap: fill the stack (mirrors the Rust renderer's
-            // per-child `position:absolute;inset:0` wrapper).
-            child.style.position = "absolute";
-            child.style.inset = "0";
-            child.style.width = "100%";
-            child.style.height = "100%";
+          let placed = placedChild(parent, child);
+          if (componentByNode.get(parent) === COMPONENT_PICKER && child instanceof HTMLElement) {
+            // Picker children are option labels → materialize native `<option>`s.
+            placed = pickerOption(child);
+            r.byId.set(op.b, placed);
+            componentByNode.set(placed, COMPONENT_TEXT);
           }
-          insertAt(container, child, op.c);
-          maybeAnimateInsert(parent, child);
+          insertAt(container, placed, op.c);
+          if (componentByNode.get(parent) === COMPONENT_PICKER) {
+            renumberPickerOptions(container);
+          }
+          maybeAnimateInsert(parent, placed);
         }
       }
       break;
@@ -169,14 +219,32 @@ function applyTree(op: Opcode, r: DomRenderer): void {
       if (!child) {
         break;
       }
-      if (child.parentNode) {
-        child.parentNode.removeChild(child);
-      }
       const parent = r.byId.get(op.a);
       if (parent) {
         const container = childrenContainer(parent);
         if (container) {
-          insertAt(container, child, op.c);
+          // Detach the child (and its now-empty ZStack wrapper, if any) so the
+          // wrapper-count stays in sync with the Rust SSR structure.
+          const oldParent = child.parentNode;
+          child.parentNode?.removeChild(child);
+          if (
+            oldParent instanceof HTMLElement &&
+            oldParent !== container &&
+            oldParent.childElementCount === 0 &&
+            oldParent.style.position === "absolute"
+          ) {
+            oldParent.remove();
+          }
+          let placed = placedChild(parent, child);
+          if (componentByNode.get(parent) === COMPONENT_PICKER && child instanceof HTMLElement) {
+            placed = pickerOption(child);
+            r.byId.set(op.b, placed);
+            componentByNode.set(placed, COMPONENT_TEXT);
+          }
+          insertAt(container, placed, op.c);
+          if (componentByNode.get(parent) === COMPONENT_PICKER) {
+            renumberPickerOptions(container);
+          }
         }
       }
       break;
@@ -385,6 +453,11 @@ export function setNodeText(el: HTMLElement, text: string): void {
     textarea.value = text;
     return;
   }
+  const trigger = el.querySelector(".pathland-menu-trigger");
+  if (trigger) {
+    trigger.textContent = text;
+    return;
+  }
   const span = el.querySelector(".pathland-text");
   if (span) {
     span.textContent = text;
@@ -435,7 +508,10 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       if (input) {
         const on = (valueType === 0x01 ? bits & 0xff : bits) !== 0;
         input.checked = on;
-        if (input.getAttribute("role") === "checkbox" || input.getAttribute("role") === "switch") {
+        // Button-style toggles are rendered with `role=checkbox` + `aria-pressed`
+        // (the Rust SSR renderer's TOGGLE_STYLE=Button); switch/checkbox styles
+        // carry only the native `checked` state.
+        if (input.getAttribute("role") === "checkbox") {
           input.setAttribute("aria-pressed", on ? "true" : "false");
         }
       }
@@ -450,13 +526,18 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       if (stepText) {
         stepText.textContent = String(Math.round(f32FromBits(bits) * 100) / 100);
       }
-      const gauge = el.querySelector<HTMLElement>(".pathland-gauge > div");
+      const gauge = el.matches(".pathland-gauge")
+        ? el
+        : el.querySelector<HTMLElement>(".pathland-gauge");
       if (gauge) {
-        const max = Number(el.querySelector<HTMLElement>(".pathland-gauge")?.dataset.max ?? 1);
-        const min = Number(el.querySelector<HTMLElement>(".pathland-gauge")?.dataset.min ?? 0);
+        const max = Number(gauge.dataset.max ?? 1);
+        const min = Number(gauge.dataset.min ?? 0);
         const span = max - min;
         const pct = span <= 0 ? 0 : ((f32FromBits(bits) - min) / span) * 100;
-        gauge.style.width = pct + "%";
+        const bar = gauge.firstElementChild;
+        if (bar instanceof HTMLElement) {
+          bar.style.width = pct + "%";
+        }
       }
       break;
     }
@@ -465,7 +546,8 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
         ? (el as HTMLSelectElement)
         : el.querySelector<HTMLSelectElement>("select");
       if (select) {
-        select.value = String(bits);
+        // Index-based, matching the SSR `<option value="{index}">` scheme.
+        select.selectedIndex = bits;
       }
       break;
     }
@@ -482,9 +564,32 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       el.dataset.bindingId = String(bits >>> 0);
       break;
     }
+    case PROP_COLOR: {
+      // A COLOR / SHAPE node's COLOR property is its fill: it renders as a
+      // background (the generic handler below sets the text color, which the
+      // Rust SSR renderer also emits alongside the fill).
+      const comp = componentByNode.get(el);
+      if (comp === COMPONENT_COLOR || comp === COMPONENT_SHAPE) {
+        el.style.backgroundColor = argbToRgba(bits);
+      }
+      applyProperty(el, propId, valueType, bits);
+      break;
+    }
     case PROP_ENABLED:
       applyEnabled(el, bits);
       break;
+    case PROP_WIDTH: {
+      // A GRID's WIDTH property is the cell-axis count, mirrored into
+      // `grid-template-columns` (the Rust SSR renderer's `grid_style`); the
+      // width is still applied literally by the generic handler below.
+      const comp = componentByNode.get(el);
+      if (comp === COMPONENT_GRID || comp === COMPONENT_LAZY_VGRID || comp === COMPONENT_LAZY_HGRID) {
+        const n = f32FromBits(bits);
+        el.style.gridTemplateColumns = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
+      }
+      applyProperty(el, propId, valueType, bits);
+      break;
+    }
     default:
       applyProperty(el, propId, valueType, bits);
       break;
@@ -526,6 +631,11 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
         return p;
       })();
   for (const attr of Array.from(el.attributes)) {
+    // A spinner is a plain div — it carries no `max`/`value` (the Rust SSR
+    // renderer's `<div class="pathland-spinner">`).
+    if (wantSpinner && (attr.name === "max" || attr.name === "value")) {
+      continue;
+    }
     fresh.setAttribute(attr.name, attr.value);
   }
   if (el.parentNode) {

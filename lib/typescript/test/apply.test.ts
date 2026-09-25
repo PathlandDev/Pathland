@@ -503,7 +503,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     expect(slot.querySelector(".pathland-nav-back")).not.toBeNull();
   });
 
-  it("absolutely positions children inserted into a ZStack (runtime overlap)", () => {
+  it("wraps children inserted into a ZStack in an absolute-positioned div (runtime overlap)", () => {
     const r = renderer();
     const batch = parseBatch(
       buildBatch([
@@ -515,11 +515,20 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
       ]),
     );
     applyBatch(batch, r);
+    const zstack = r.byId.get(1) as HTMLElement;
     const first = r.byId.get(2) as HTMLElement;
     const second = r.byId.get(3) as HTMLElement;
-    expect(first.style.position).toBe("absolute");
-    expect(first.style.inset).toBe("0");
-    expect(second.style.position).toBe("absolute");
+    // Mirrors the Rust SSR renderer's per-child `<div style="position:absolute;inset:0">` wrapper.
+    const wrappers = Array.from(zstack.children).filter((el) => el instanceof HTMLElement);
+    expect(wrappers).toHaveLength(2);
+    for (const wrapper of wrappers) {
+      const el = wrapper as HTMLElement;
+      expect(el.getAttribute("style")).toBe("position:absolute;inset:0");
+      expect(el.tagName).toBe("DIV");
+    }
+    expect(zstack.contains(first)).toBe(true);
+    expect(zstack.contains(second)).toBe(true);
+    expect(first.parentElement).not.toBe(zstack);
   });
 
   it("morphs a ProgressView between spinner and determinate progress", () => {

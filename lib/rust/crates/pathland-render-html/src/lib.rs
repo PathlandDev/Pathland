@@ -24,6 +24,7 @@ use pathland_core::{
 mod capi;
 mod css;
 mod debug;
+pub mod token_spec;
 
 /// A decoded node in the retained description.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -429,12 +430,12 @@ fn rgba(argb: u32) -> String {
 }
 
 /// A `WIDTH`/`HEIGHT` hint as CSS: `FILL` (-1) → `100%`, `HUG_CONTENT` (-2) →
-/// `max-content`, otherwise pixels.
+/// `fit-content`, otherwise pixels.
 fn size_css(v: f32) -> String {
     if v == pathland_core::size::FILL {
         "100%".to_string()
     } else if v == pathland_core::size::HUG_CONTENT {
-        "max-content".to_string()
+        "fit-content".to_string()
     } else {
         format!("{v}px")
     }
@@ -491,7 +492,9 @@ fn event_attrs(node: &Node) -> String {
     attrs
 }
 
-/// ARIA attributes from `ROLE` / `STATE` / `ENABLED`.
+/// ARIA attributes from `ROLE` / `STATE` / `ENABLED`. The ROLE/STATE maps are
+/// canonical with the DOM client (`lib/typescript/src/classes.ts` `roleAttr` /
+/// `PROP_STATE`): same code → same attribute.
 fn aria_attrs(node: &Node) -> String {
     let mut attrs = String::new();
     if let Some(bits) = node.properties.get(&property_id::ROLE) {
@@ -499,13 +502,22 @@ fn aria_attrs(node: &Node) -> String {
             1 => "button",
             2 => "link",
             3 => "heading",
+            4 => "text",
+            5 => "img",
             6 => "textbox",
             7 => "slider",
             8 => "switch",
             9 => "checkbox",
+            10 => "radio",
+            11 => "spinbutton",
             12 => "tab",
+            13 => "tablist",
+            14 => "list",
+            15 => "grid",
             16 => "scrollbar",
-            19 => "menuitem",
+            17 => "adjustable",
+            18 => "region",
+            19 => "menu",
             _ => "",
         };
         if !role.is_empty() {
@@ -515,9 +527,10 @@ fn aria_attrs(node: &Node) -> String {
     if let Some(bits) = node.properties.get(&property_id::STATE) {
         match f32::from_bits(*bits) as u8 {
             1 => attrs.push_str(" aria-disabled=\"true\""),
-            2 => attrs.push_str(" aria-current=\"true\""),
             3 => attrs.push_str(" aria-pressed=\"true\""),
             4 => attrs.push_str(" aria-selected=\"true\""),
+            5 => attrs.push_str(" aria-expanded=\"true\""),
+            6 => attrs.push_str(" aria-busy=\"true\""),
             _ => {}
         }
     }
@@ -626,37 +639,36 @@ impl Tokens {
 
 /// The canonical CSS custom property for a token path: `--pl-` prefix, `.` →
 /// `-`. The `dark.` scheme prefix is stripped — the dark variant overrides the
-/// same variable inside the media query (spec/TOKENS.md).
+/// same variable inside the media query (spec/TOKENS.md; the naming rules live
+/// in [`token_spec`], which `pathland-ts-codegen` mirrors into the DOM client).
 fn token_to_css_var(path: &str) -> String {
-    let name: String = path
+    let bare = path.strip_prefix(token_spec::DARK_PREFIX).unwrap_or(path);
+    let name: String = bare
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
         .collect();
-    format!("--pl-{name}")
+    format!("{}{name}", token_spec::VAR_PREFIX)
 }
 
 /// Token paths whose F32 values are CSS lengths (emitted with `px`).
 fn is_length_token(path: &str) -> bool {
-    if path.starts_with("space.")
-        || path.starts_with("radius.")
-        || path.starts_with("border.width.")
-        || path.starts_with("size.control.")
-        || path.starts_with("control.padding.")
-        || path.starts_with("control.height.")
-    {
-        return true;
+    for prefix in token_spec::LENGTH_PREFIXES {
+        if path.starts_with(prefix) {
+            return true;
+        }
     }
-    if path.starts_with("control.font.") && path.ends_with(".size") {
-        return true;
+    for (prefix, suffix) in token_spec::LENGTH_PREFIX_SUFFIX {
+        if path.starts_with(prefix) && path.ends_with(suffix) {
+            return true;
+        }
     }
-    if path == "font.body.size" || path == "font.caption.size" {
-        return true;
-    }
-    if path.starts_with("font.heading.") && path.ends_with(".size") {
+    if token_spec::LENGTH_EXACT.contains(&path) {
         return true;
     }
     path.starts_with("elevation.")
-        && (path.ends_with(".radius") || path.ends_with(".x") || path.ends_with(".y") || path.ends_with(".blur"))
+        && token_spec::LENGTH_ELEVATION_SUFFIXES
+            .iter()
+            .any(|s| path.ends_with(s))
 }
 
 /// Render a token override value as a CSS value string: `STRING` values are
@@ -682,8 +694,8 @@ fn token_css_value(path: &str, _value_type: u8, value: &TokenValue) -> String {
 /// generative `space.<N>` family resolves to `calc(var(--pl-space-base) * N)`;
 /// every other token resolves to `var(--pl-<path>)`.
 fn resolve_token_ref(path: &str) -> String {
-    let bare = path.strip_prefix("dark.").unwrap_or(path);
-    if let Some(rest) = bare.strip_prefix("space.") {
+    let bare = path.strip_prefix(token_spec::DARK_PREFIX).unwrap_or(path);
+    if let Some(rest) = bare.strip_prefix(token_spec::SPACE_FAMILY) {
         if rest.parse::<f64>().is_ok() {
             return format!("calc(var(--pl-space-base) * {rest})");
         }
@@ -704,7 +716,13 @@ fn apply_tree(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode) {
         tree::INSERT_CHILD => {
             let (parent, child) = (op.a(), op.b());
             if let Some(node) = nodes.get_mut(&parent) {
-                node.children.push(child);
+                let index = op.c();
+                if index == pathland_core::APPEND {
+                    node.children.push(child);
+                } else {
+                    let index = (index as usize).min(node.children.len());
+                    node.children.insert(index, child);
+                }
             }
         }
         tree::REMOVE_CHILD => {
@@ -904,7 +922,9 @@ impl HtmlRenderer {
                 }
             }
             component_type::SPACER => {
-                format!("<div{data_id}{event}{aria} class=\"flex-1\"{style}></div>")
+                let combined = format!("flex:1;{css}");
+                let spacer_style = style_attr(&combined);
+                format!("<div{data_id}{event}{aria}{spacer_style}></div>")
             }
             component_type::SLIDER => {
                 let min = node.f32_property(property_id::MIN_VALUE, 0.0);
@@ -1030,8 +1050,11 @@ if indeterminate {
                     0.0
                 };
                 let gauge_class = class_attr("pathland-gauge");
+                // The bounds ride as `data-min`/`data-max` so the DOM client can
+                // recompute the percentage when VALUE changes (its gauge handler
+                // reads them), mirroring the stepper's `.pathland-stepper-range`.
                 format!(
-                    "<div{data_id}{event}{aria}{gauge_class}{style}><div style=\"width:{pct}%\"></div></div>"
+                    "<div{data_id}{event}{aria}{gauge_class} data-min=\"{min}\" data-max=\"{max}\"{style}><div style=\"width:{pct}%\"></div></div>"
                 )
             }
             component_type::GRID | component_type::LAZY_VGRID | component_type::LAZY_HGRID => {
@@ -1068,8 +1091,15 @@ if indeterminate {
                 let max = node.f32_property(property_id::MAX_VALUE, 100.0);
                 let value = node.f32_property(property_id::VALUE, min);
                 let step = node.f32_property(property_id::STEP_VALUE, 1.0);
+                // Composite shell matching the DOM client's `stepperShell()`
+                // (lib/typescript/src/elements.ts): the +/- buttons and a hidden
+                // `.pathland-stepper-range` span carrying the bounds for the
+                // client's click math. The value is displayed in the first span,
+                // rounded to 2 decimals like the client.
+                let display = format!("{}", (value * 100.0).round() / 100.0);
+                let stepper_class = class_attr("pathland-stepper");
                 format!(
-                    "<input{data_id}{event}{aria} type=\"number\" min=\"{min}\" max=\"{max}\" step=\"{step}\" value=\"{value}\"{style}>"
+                    "<div{data_id}{event}{aria}{stepper_class}{style}><button type=\"button\" data-step=\"-1\">−</button><span>{display}</span><button type=\"button\" data-step=\"1\">+</button><span class=\"pathland-stepper-range\" hidden data-min=\"{min}\" data-max=\"{max}\" data-step=\"{step}\"></span></div>"
                 )
             }
             component_type::DATE_PICKER => {
@@ -1109,15 +1139,27 @@ if indeterminate {
                             .and_then(|n| n.text.clone())
                             .unwrap_or_default();
                         let sel = if i as u32 == selected { " selected" } else { "" };
-                        format!("<option value=\"{i}\"{sel}>{}</option>", escape(&label))
+                        // Each option carries the child node's id so the DOM
+                        // client can hydrate/reconcile it against the child's
+                        // own TREE/STYLE deltas.
+                        format!(
+                            "<option data-pathland-id=\"{child}\" value=\"{i}\"{sel}>{}</option>",
+                            escape(&label)
+                        )
                     })
                     .collect();
                 format!("<select{data_id}{event}{aria}{style}>{options}</select>")
             }
             component_type::MENU => {
+                // Composite shell matching the DOM client's `menuShell()`
+                // (lib/typescript/src/elements.ts): the trigger holds the label,
+                // and TREE children are routed into `.pathland-menu-items` (the
+                // client's `childrenContainer`). The `role="menu"` ARIA attribute
+                // comes from the `ROLE` property, not the shell.
                 let label = escape(node.text.as_deref().unwrap_or_default());
+                let menu_class = class_attr("pathland-menu");
                 format!(
-                    "<div{data_id}{event}{aria} role=\"menu\"{style}><button type=\"button\">{label}</button>{children}</div>"
+                    "<div{data_id}{event}{aria}{menu_class}{style}><div class=\"pathland-menu-trigger\">{label}</div><div class=\"pathland-menu-items\">{children}</div></div>"
                 )
             }
             component_type::COLOR_PICKER => {
@@ -1725,7 +1767,7 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
         assert!(html.contains("<select"));
-        assert!(html.contains("<option value=\"0\" selected>Red</option>"));
+        assert!(html.contains("<option data-pathland-id=\"2\" value=\"0\" selected>Red</option>"));
     }
 
     #[test]

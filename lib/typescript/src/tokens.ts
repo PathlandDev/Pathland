@@ -5,50 +5,24 @@
 // natively. A managed <style> element is used instead of inline
 // `documentElement.style` — an inline dark override would beat the media query
 // and break light mode.
+//
+// The token *conventions* (`tokenToCssVar`, `isDarkToken`, `isLengthToken`,
+// `resolveTokenCssRef` and the length-token tables) are generated from
+// `pathland-render-html::token_spec` by `pathland-ts-codegen` — see
+// `generated/tokens-core.ts`.
 
 import type { Batch, Opcode } from "./plpl";
 import { readString } from "./plpl";
 import { VAL_COLOR, VAL_F32, VAL_I32, VAL_STRING, VAL_U8, VAL_U32 } from "./constants";
 import { argbToRgba, f32FromBits } from "./format";
+import {
+  isDarkToken,
+  isLengthToken,
+  tokenToCssVar,
+} from "./generated/tokens-core";
 
-const DARK_PREFIX = "dark.";
-
-/** The canonical CSS custom property for a token path (spec/TOKENS.md): `--pl-`
- *  prefix, `.` → `-`. The `dark.` scheme prefix is stripped — the dark variant
- *  overrides the same variable inside a media query. */
-export function tokenToCssVar(path: string): string {
-  const bare = path.startsWith(DARK_PREFIX) ? path.slice(DARK_PREFIX.length) : path;
-  return "--pl-" + bare.replace(/[^A-Za-z0-9_-]/g, "-");
-}
-
-/** Whether a token path selects the dark variant. */
-export function isDarkToken(path: string): boolean {
-  return path.startsWith(DARK_PREFIX);
-}
-
-/** Token paths whose F32 values are CSS lengths (emitted with `px`). */
-function isLengthToken(path: string): boolean {
-  if (
-    path.startsWith("space.") ||
-    path.startsWith("radius.") ||
-    path.startsWith("border.width.") ||
-    path.startsWith("size.control.") ||
-    path.startsWith("control.padding.") ||
-    path.startsWith("control.height.")
-  ) {
-    return true;
-  }
-  if (path.startsWith("control.font.") && path.endsWith(".size")) {
-    return true;
-  }
-  if (path === "font.body.size" || path === "font.caption.size") {
-    return true;
-  }
-  if (/^font\.heading\.\d+\.size$/.test(path)) {
-    return true;
-  }
-  return /^elevation\.(low|high)\.(radius|x|y|blur)$/.test(path);
-}
+// Re-exported for callers that use the token conventions directly.
+export { isDarkToken, resolveTokenCssRef, tokenToCssVar } from "./generated/tokens-core";
 
 /** Render a token value as a CSS value string per the value type. */
 export function tokenCssValue(valueType: number, c: number): string {
@@ -76,19 +50,6 @@ function tokenCssOverride(path: string, valueType: number, value: number | strin
   }
   const v = tokenCssValue(valueType, value);
   return isLengthToken(path) && valueType === VAL_F32 ? v + "px" : v;
-}
-
-const SPACE_FAMILY = /^space\.(\d+(?:\.\d+)?)$/;
-
-/** Resolve a token *reference* (in a property) to a CSS expression. The
- *  generative `space.<N>` family resolves to `calc(var(--pl-space-base) * N)`;
- *  every other token resolves to `var(--pl-<path>)`. */
-export function resolveTokenCssRef(path: string): string {
-  const m = SPACE_FAMILY.exec(path);
-  if (m) {
-    return `calc(var(--pl-space-base) * ${m[1]})`;
-  }
-  return `var(${tokenToCssVar(path)})`;
 }
 
 export interface DesignTokenSink {

@@ -10,6 +10,8 @@ members = [
     "crates/pathland-render-gtk",
     "crates/pathland-render-gtk-demo",
     "crates/pathland-render-html",
+    "crates/pathland-html-golden",
+    "crates/pathland-ts-codegen",
 ]
 
 [workspace.package]
