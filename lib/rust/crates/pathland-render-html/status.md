@@ -41,6 +41,19 @@ Statelessness). Protocol contract: `spec/`.
   menu, incl. `text`/`img`/`radio`/`spinbutton`/`tablist`/`list`/`grid`/
   `region`/`menu`) and the `STATE` semantics (one true `aria-*` per state) are
   canonical with `lib/typescript/src/classes.ts`.
+- **Semantic HTML elements from `ROLE`** (spec/OPCODE.md §semantic properties):
+  a semantic role retags a **generic `div`/`span` shell** to its native element
+  — the landmark/structural roles (`BANNER`→`<header>`, `NAVIGATION`→`<nav>`,
+  `MAIN`→`<main>`, `CONTENT_INFO`→`<footer>`, `COMPLEMENTARY`→`<aside>`,
+  `ARTICLE`→`<article>`, `SECTION`→`<section>`, `SEARCH`→`<search>`,
+  `LIST`→`<ul>`, `LIST_ITEM`→`<li>`, `PARAGRAPH`→`<p>`), plus `HEADER`→`<h2>`
+  (heading level is design-system-driven, interim default) and `SUMMARY`→
+  `<section>`. **Control components keep their native element** (`<button>`,
+  `<input>`, …) and emit no redundant ARIA role; roles with no element
+  (`LINK`, `CHECKBOX`, `SLIDER`, `MENU`, …) fall back to an ARIA `role`
+  attribute. The mapping lives in **`src/role_spec.rs`** (canonical with the DOM
+  client — `pathland-ts-codegen` emits `generated/role-spec.ts`), with the role
+  codes centralized in `pathland_core::constants::role`.
 - **`TREE::INSERT_CHILD` honors its `C` index** (`u32::MAX` = append), matching
   the protocol and the DOM client's `insertAt`.
 - **Event surfacing**: `data-event-listeners` / `data-action-id` /

@@ -18,7 +18,6 @@ import {
   PROP_LINE_LIMIT,
   PROP_OPACITY,
   PROP_PROGRESS,
-  PROP_ROLE,
   PROP_ROTATION_DEGREES,
   PROP_SHADOW_COLOR,
   PROP_SHADOW_RADIUS,
@@ -157,12 +156,6 @@ describe("Option A style appliers", () => {
 });
 
 describe("semantic + control variants", () => {
-  it("role -> role attribute", () => {
-    const el = document.createElement("div");
-    applyProperty(el, PROP_ROLE, VAL_F32, bitsFromF32(1)); // Button
-    expect(el.getAttribute("role")).toBe("button");
-  });
-
   it("state -> aria attributes", () => {
     const el = document.createElement("div");
     applyProperty(el, PROP_STATE, VAL_F32, bitsFromF32(STATE_DISABLED));

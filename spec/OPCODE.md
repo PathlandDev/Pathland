@@ -253,7 +253,7 @@ delivery (see [EVENTS.md](./EVENTS.md#transport-aware-event-guards-must)).
 | 0 | `None` (no semantic role) |
 | 1 | `Button` |
 | 2 | `Link` |
-| 3 | `Header` |
+| 3 | `Header` (a heading; the web renderer maps it to `<hN>`) |
 | 4 | `Text` |
 | 5 | `Image` |
 | 6 | `TextField` |
@@ -270,6 +270,22 @@ delivery (see [EVENTS.md](./EVENTS.md#transport-aware-event-guards-must)).
 | 17 | `Adjustable` (value the user can adjust) |
 | 18 | `Summary` |
 | 19 | `Menu` / `PopUpButton` |
+| 20 | `Banner` (site header landmark; web → `<header>`) |
+| 21 | `Navigation` (site nav landmark; web → `<nav>`) |
+| 22 | `Main` (main content landmark; web → `<main>`) |
+| 23 | `ContentInfo` (site footer landmark; web → `<footer>`) |
+| 24 | `Complementary` (aside landmark; web → `<aside>`) |
+| 25 | `Article` (web → `<article>`) |
+| 26 | `Section` (web → `<section>`) |
+| 27 | `Search` (web → `<search>`) |
+| 28 | `ListItem` (web → `<li>`) |
+| 29 | `Paragraph` (web → `<p>`) |
+
+> A role is a **semantic/accessibility** property — the web renderer reflects it
+> with a native semantic element where one exists (the landmark/structural roles
+> above), and falls back to an ARIA `role` attribute otherwise. Control
+> components keep their native element (a `BUTTON` stays a `<button>`); a role
+> only upgrades a generic `div`/`span` shell.
 
 **`STATE` enumerated values** (control/interaction state; carried as an `F32` numeric code, `value_type::F32`):
 

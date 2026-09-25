@@ -1,10 +1,12 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.AccessibilityRole;
 import com.pathland.view.Alignment;
 import com.pathland.view.Color;
 import com.pathland.view.Commands;
 import com.pathland.view.Divider;
 import com.pathland.view.FontWeight;
+import com.pathland.view.Roles;
 import com.pathland.view.Text;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
@@ -39,7 +41,9 @@ public final class SectionCard implements View {
     @Override
     public View body() {
         return VStack.of(
-                Text.of(title).modifiers(FontSize.of(14), FontWeightMod.of(FontWeight.SEMIBOLD), ForegroundStyle.of(TITLE_COLOR)),
+                // A section title is a heading → `<h2>`.
+                Text.of(title).modifiers(FontSize.of(14), FontWeightMod.of(FontWeight.SEMIBOLD), ForegroundStyle.of(TITLE_COLOR))
+                        .modifier(AccessibilityRole.of(Roles.HEADER)),
                 Divider.of().modifier(Padding.of(0, 0, 8, 0)),
                 content
         ).modifiers(

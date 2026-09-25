@@ -92,6 +92,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `ButtonStyleMod`, `LabelStyleMod` — `Color` is never a modifier.
   `AccessibilityLabel`/`Image` accept reactive `Signal<String>` overloads
   (node-level `LABEL`/`IMAGE_SOURCE` bindings).
+- **`Roles` constants** (`com.pathland.view.Roles`): the canonical `ROLE` enum
+  catalog (mirrors `pathland_core::constants::role` / `spec/OPCODE.md`) — the 20
+  classic accessibility roles plus the landmark/structural roles (`BANNER`,
+  `NAVIGATION`, `MAIN`, `CONTENT_INFO`, `COMPLEMENTARY`, `ARTICLE`, `SECTION`,
+  `SEARCH`, `LIST_ITEM`, `PARAGRAPH`) for use with
+  `AccessibilityRole.of(Roles.X)`. The web renderer reflects these as native
+  semantic HTML elements (`<nav>`, `<main>`, `<h2>`, …).
 - **Value types**: `ValueTypes.forProperty` mirrors `value_type_for` —
   `COLOR` family → `COLOR`; `VISIBLE`/`ENABLED`/`CLIPS_TO_BOUNDS`/`UNDERLINE`/
   `STRIKETHROUGH`/`COLOR_INVERT`/`ALLOWS_HIT_TESTING`/`IS_SECURE`/

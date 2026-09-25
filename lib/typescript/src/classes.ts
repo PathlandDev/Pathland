@@ -166,29 +166,6 @@ function textCaseCss(code: number): string {
     default: return "none";
   }
 }
-function roleAttr(code: number): string | null {
-  switch (code) {
-    case P.ROLE_BUTTON: return "button";
-    case P.ROLE_LINK: return "link";
-    case P.ROLE_HEADER: return "heading";
-    case P.ROLE_TEXT: return "text";
-    case P.ROLE_IMAGE: return "img";
-    case P.ROLE_TEXT_FIELD: return "textbox";
-    case P.ROLE_SLIDER: return "slider";
-    case P.ROLE_TOGGLE: return "switch";
-    case P.ROLE_CHECKBOX: return "checkbox";
-    case P.ROLE_RADIO_BUTTON: return "radio";
-    case P.ROLE_STEPPER: return "spinbutton";
-    case P.ROLE_TAB: return "tab";
-    case P.ROLE_TAB_BAR: return "tablist";
-    case P.ROLE_LIST: return "list";
-    case P.ROLE_GRID: return "grid";
-    case P.ROLE_SCROLL_VIEW: return "scrollbar";
-    case P.ROLE_SUMMARY: return "region";
-    case P.ROLE_MENU: return "menu";
-    default: return null;
-  }
-}
 
 // --- structural control variants (shell reconfiguration) ---
 
@@ -449,14 +426,8 @@ const HANDLERS: Record<number, Handler> = {
   [P.PROP_ALLOWS_HIT_TESTING]: (el, vt, c) => (el.style.pointerEvents = isOn(vt, c) ? "auto" : "none"),
 
   // Semantic
-  [P.PROP_ROLE]: (el, vt, c) => {
-    const role = roleAttr(enumCode(vt, c));
-    if (role) {
-      el.setAttribute("role", role);
-    } else {
-      el.removeAttribute("role");
-    }
-  },
+  // PROP_ROLE is handled component-aware in apply.ts (semantic-tag retag via
+  // the generated role-spec); the STATE handler below sets the ARIA state attrs.
   [P.PROP_STATE]: (el, vt, c) => {
     const state = enumCode(vt, c);
     el.setAttribute("aria-disabled", String(state === P.STATE_DISABLED));

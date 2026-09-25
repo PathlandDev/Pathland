@@ -1,5 +1,6 @@
 package com.pathland.render.html;
 
+import com.pathland.view.AccessibilityRole;
 import com.pathland.view.Button;
 import com.pathland.view.DatePicker;
 import com.pathland.view.DatePickerMode;
@@ -8,6 +9,7 @@ import com.pathland.view.Environment;
 import com.pathland.view.Picker;
 import com.pathland.view.PickerStyle;
 import com.pathland.view.ProgressView;
+import com.pathland.view.Roles;
 import com.pathland.view.Slider;
 import com.pathland.view.Text;
 import com.pathland.view.TextEditor;
@@ -102,8 +104,8 @@ class HtmlRendererTest {
 
         assertTrue(html.contains("type=\"checkbox\""), "toggle checkbox");
         assertTrue(html.contains("type=\"range\""), "slider");
-        assertTrue(html.contains("<option value=\"0\" selected>A</option>"), "picker options");
-        assertTrue(html.contains("<option value=\"1\">B</option>"), "picker options");
+        assertTrue(html.contains("value=\"0\" selected>A</option>"), "picker options (first)");
+        assertTrue(html.contains("value=\"1\">B</option>"), "picker options (second)");
         assertTrue(html.contains("<progress"), "progress bar");
         assertTrue(html.contains("border-top:"), "divider (border-top div)");
         assertTrue(html.contains("<textarea"), "text editor");
@@ -114,6 +116,27 @@ class HtmlRendererTest {
     void escapesText() {
         String html = renderer().renderFragment(frameOf(VStack.of(Text.of("<a & b>"))), 1);
         assertTrue(html.contains("&lt;a &amp; b&gt;"));
+    }
+
+    @Test
+    void rendersSemanticRoleElements() {
+        // A generic stack with a NAVIGATION role renders as a <nav> landmark; the
+        // element conveys the role, so no redundant ARIA attribute is emitted.
+        View nav = VStack.of(Text.of("Menu"))
+                .modifier(AccessibilityRole.of(Roles.NAVIGATION));
+        String navHtml = renderer().renderFragment(frameOf(nav), 1);
+        assertTrue(navHtml.contains("<nav "), "navigation role -> <nav>");
+        assertFalse(navHtml.contains("role=\"navigation\""), "nav conveys the role (no ARIA attr)");
+
+        // A generic Text with a HEADER (heading) role renders as <h2>.
+        View heading = Text.of("Title").modifier(AccessibilityRole.of(Roles.HEADER));
+        String headingHtml = renderer().renderFragment(frameOf(heading), 1);
+        assertTrue(headingHtml.contains("<h2 "), "header role -> <h2>");
+
+        // An ARIA-only role (LINK) stays on the element as a role attribute.
+        View link = Text.of("Home").modifier(AccessibilityRole.of(Roles.LINK));
+        String linkHtml = renderer().renderFragment(frameOf(link), 1);
+        assertTrue(linkHtml.contains("role=\"link\""), "link role -> role attribute");
     }
 
     @Test

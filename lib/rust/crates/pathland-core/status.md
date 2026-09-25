@@ -1,6 +1,6 @@
 # pathland-core — implementation status
 
-**Last updated:** September 3, 2026
+**Last updated:** September 25, 2026
 
 The **protocol core**: 16-byte opcode, SPSC ring buffers (both directions),
 bump arenas (both directions), memory layout, typed events, and the golden
@@ -65,6 +65,12 @@ tracks what this crate implements.
   (`0x08`) is available per-instance on `SET_PROPERTY`.
 - **Listener bits**: 0–9 (`POINTER_*`, `KEY_*`, `FOCUS`, `EDITING`, `SUBMIT`,
   `SCROLL`, `WHEEL`).
+- **`constants::role`** — the canonical **`ROLE` enum catalog** (spec/OPCODE.md
+  §semantic properties): the 20 classic accessibility roles (0–19) plus the
+  landmark/structural roles `BANNER`/`NAVIGATION`/`MAIN`/`CONTENT_INFO`/
+  `COMPLEMENTARY`/`ARTICLE`/`SECTION`/`SEARCH`/`LIST_ITEM`/`PARAGRAPH`
+  (20–29). Single source the renderers, DSLs, and `pathland-ts-codegen` bind
+  to (the TS `ROLE_*` constants are generated from it).
 - **Shared linear memory**: 80-byte header, guest→host ring, host→guest event
   ring, guest arena, host→guest **event arena** (two-way string section — a
   host `send_event(TextChanged)` round-trips text over the shared ring).
@@ -82,7 +88,9 @@ tracks what this crate implements.
   field) and a native emitter are not wired yet — the web path encodes/decodes
   it in the TS client + Java `FrameCodec` (batch string section).
 - Enum *value* codes (e.g. `TOGGLE_STYLE=Switch=0`) are used inline; there are
-  no named value constants.
+  no named value constants. (`ROLE` is now the canonical exception — see
+  `constants::role` above; the remaining enum codes live in the specs + the
+  `pathland-ts-codegen` enum table.)
 - No **general STRING-property diff path** in `pathland-engine` (the engine
   stores numeric properties + design-token refs only). `ROUTE` (STRING) will
   need a small string-property capability when the Rust router lands (Phase 3);
