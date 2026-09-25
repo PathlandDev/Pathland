@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 1.5221536679999998,
+    "cost": 1.5284791919999998,
     "tokens": {
-      "input": 5216754,
-      "output": 373789,
+      "input": 5217580,
+      "output": 374950,
       "reasoning": 0,
       "cache": {
-        "read": 171789056,
+        "read": 173624064,
         "write": 0
       }
     },
     "time": {
       "created": 1790139506456,
-      "updated": 1790329874016
+      "updated": 1790329895274
     }
   },
   "messages": [
@@ -391801,21 +391801,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.002044284,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 611803,
+          "input": 166,
+          "output": 309,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 611328
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1790329874015
+          "created": 1790329874015,
+          "completed": 1790329886242
         },
+        "finish": "tool-calls",
         "id": "msg_0d7f9e65f0023G47wOgNybhLt9",
         "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc"
       },
@@ -391832,20 +391835,262 @@
           "tool": "bash",
           "callID": "call_e81a0ba48fdc4c4897cc017d",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -q -m \"feat(java): pathland-qt-demo JNA host (Phase D)\n\n- New lib/java/pathland-qt-demo module: QtHost mirrors GtkHost — mounts the\n  shared SplitNavDemo (incl. native navigation) via RingOpcodeSink, pumps the\n  same libpathland_core ring in place through pathland_qt_run_ring, drains EVENT\n  opcodes and dispatches into the app's bindings. QtRendererNative is the JNA\n  binding to libpathland_qt (pathland.qt.lib). RingEventReader + headless\n  RingEventReaderTest mirror the GTK demo's.\n- scripts/run-java-qt-demo.sh + lib.sh build_qt_dylibs; module added to the\n  Java reactor (headless tests only, no Qt needed on CI).\n- renderer: defer FILL (anchors) until a widget gains its final parent and skip\n  positioners (Row/Column/Grid reject anchors) — removes the FILL-in-Row\n  warning for the common stack pattern; placeDestination/promote guarded.\n- status.md + AGENTS.md updated.\" && git log --oneline -4"
             },
+            "output": "205f19e3 feat(java): pathland-qt-demo JNA host (Phase D)\n276946ab feat(qt): navigation adapter by depth (Phase C)\n45b7d42d feat(qt): control widget parity (Phase B)\n39c39e8c feat(qt): interactive parity + CI hardening (Phases E + A)\n",
+            "metadata": {
+              "output": "205f19e3 feat(java): pathland-qt-demo JNA host (Phase D)\n276946ab feat(qt): navigation adapter by depth (Phase C)\n45b7d42d feat(qt): control widget parity (Phase B)\n39c39e8c feat(qt): interactive parity + CI hardening (Phases E + A)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -q -m \"feat(java): pathland-qt-demo JNA host (Phase D)\n\n- New lib/java/pathland-qt-demo module: QtHost mirrors GtkHost — mounts the\n  shared SplitNavDemo (incl. native navigation) via RingOpcodeSink, pumps the\n  same libpathland_core ring in place through pathland_qt_run_ring, drains EVENT\n  opcodes and dispatches into the app's bindings. QtRendererNative is the JNA\n  binding to libpathland_qt (pathland.qt.lib). RingEventReader + headless\n  RingEventReaderTest mirror the GTK demo's.\n- scripts/run-java-qt-demo.sh + lib.sh build_qt_dylibs; module added to the\n  Java reactor (headless tests only, no Qt needed on CI).\n- renderer: defer FILL (anchors) until a widget gains its final parent and skip\n  positioners (Row/Column/Grid reject anchors) — removes the FILL-in-Row\n  warning for the common stack pattern; placeDestination/promote guarded.\n- status.md + AGENTS.md updated.\" && git log --oneline -4",
             "time": {
-              "start": 1790329880543
+              "start": 1790329880543,
+              "end": 1790329886165
             }
           },
           "id": "prt_0d7f9eede001yMEzYA6HvIIGXS",
           "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
           "messageID": "msg_0d7f9e65f0023G47wOgNybhLt9"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "bfcce52eaa1888ffd266ef0e792037d95a8db2e9",
+          "type": "step-finish",
+          "tokens": {
+            "total": 611803,
+            "input": 166,
+            "output": 309,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 611328
+            }
+          },
+          "cost": 0.002044284,
+          "id": "prt_0d7fa15f9001o2QUw86g5mDxLY",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0d7f9e65f0023G47wOgNybhLt9"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0d7ebe9ea0013ZaBrm5nZS4wzV",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002084052,
+        "tokens": {
+          "total": 612229,
+          "input": 306,
+          "output": 339,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 611584
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790329886277,
+          "completed": 1790329895237
+        },
+        "finish": "tool-calls",
+        "id": "msg_0d7fa1645002BhUSZWE7g3qgNb",
+        "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc"
+      },
+      "parts": [
+        {
+          "snapshot": "bfcce52eaa1888ffd266ef0e792037d95a8db2e9",
+          "type": "step-start",
+          "id": "prt_0d7fa2b8c001UwYyswUvSyMPZk",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0d7fa1645002BhUSZWE7g3qgNb"
+        },
+        {
+          "type": "reasoning",
+          "text": "All 5 phases (E, A, B, C, D) are complete and committed. Let me update the todo list and give the final summary.\n\nLet me also do a final full-workspace verification to be safe (rust + java). Actually I already verified:\n- rust workspace: green (21 render-qt tests, no failures/warnings)\n- java reactor: installed + qt-demo tests pass\n- java demo runs end-to-end offscreen via JNA\n- wasm guard: intact\n\nLet me mark the todos done and give a concise wrap-up.",
+          "time": {
+            "start": 1790329891728,
+            "end": 1790329892996
+          },
+          "id": "prt_0d7fa2b90001ubiLrpwKbD0NXB",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0d7fa1645002BhUSZWE7g3qgNb"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "call_9a154ffcd1ab4832b587e137",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "Phase E: CI — QML runtime modules + offscreen render-qt smoke step",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase A: interactive parity (pointer streams, Escape back, scheme, RESET, slider round-trip)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase B: control widget parity (ProgressBar/SpinBox/ComboBox/…)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase C: navigation adapter by depth (page stack, chrome modes)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Phase D: Java JNA demo (pathland-qt-demo, SplitNavDemo + nav)",
+                  "priority": "medium",
+                  "status": "completed"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"Phase E: CI — QML runtime modules + offscreen render-qt smoke step\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase A: interactive parity (pointer streams, Escape back, scheme, RESET, slider round-trip)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase B: control widget parity (ProgressBar/SpinBox/ComboBox/…)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase C: navigation adapter by depth (page stack, chrome modes)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase D: Java JNA demo (pathland-qt-demo, SplitNavDemo + nav)\",\n    \"status\": \"completed\",\n    \"priority\": \"medium\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "Phase E: CI — QML runtime modules + offscreen render-qt smoke step",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase A: interactive parity (pointer streams, Escape back, scheme, RESET, slider round-trip)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase B: control widget parity (ProgressBar/SpinBox/ComboBox/…)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase C: navigation adapter by depth (page stack, chrome modes)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase D: Java JNA demo (pathland-qt-demo, SplitNavDemo + nav)",
+                  "status": "completed",
+                  "priority": "medium"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "0 todos",
+            "time": {
+              "start": 1790329895066,
+              "end": 1790329895068
+            }
+          },
+          "id": "prt_0d7fa3085001aXKJwOe2EUkqPg",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0d7fa1645002BhUSZWE7g3qgNb"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "bfcce52eaa1888ffd266ef0e792037d95a8db2e9",
+          "type": "step-finish",
+          "tokens": {
+            "total": 612229,
+            "input": 306,
+            "output": 339,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 611584
+            }
+          },
+          "cost": 0.002084052,
+          "id": "prt_0d7fa3921001yVU3I93aztAnxL",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0d7fa1645002BhUSZWE7g3qgNb"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0d7ebe9ea0013ZaBrm5nZS4wzV",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002197188,
+        "tokens": {
+          "total": 612963,
+          "input": 354,
+          "output": 513,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 612096
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790329895273,
+          "completed": 1790329912970
+        },
+        "finish": "stop",
+        "id": "msg_0d7fa3969002s6IuAuVUqujMPp",
+        "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc"
+      },
+      "parts": [
+        {
+          "snapshot": "bfcce52eaa1888ffd266ef0e792037d95a8db2e9",
+          "type": "step-start",
+          "id": "prt_0d7fa618f001ob0LPp61N6VgXU",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0d7fa3969002s6IuAuVUqujMPp"
+        },
+        {
+          "type": "text",
+          "text": "## All five phases complete — Qt renderer full plan delivered\n\n**5 commits on `feat/qt-renderer`** (E→A→B→C→D), each verified green:\n\n| Commit | Phase | What landed |\n|---|---|---|\n| `39c39e8c` | **E + A** | CI Qt6 runtime modules + offscreen smoke; pointer streams (MouseArea → `POINTER_DOWN/MOVE/UP`), Escape→`NAVIGATE`, scheme detection→token re-apply, `META::RESET`, slider round-trip |\n| `45b7d42d` | **B** | Control parity: `ProgressBar`/`SpinBox`/`ComboBox`/`Menu`+pickers; picker option model |\n| `276946ab` | **C** | Nav adapter: ROUTE/`NAV_DEPTH` page-stack reconcile by depth (push/pop/replace/refresh), PlatformDefault chrome w/ native back + Custom chrome |\n| `205f19e3` | **D** | Java JNA demo (`pathland-qt-demo`) running **SplitNavDemo + native navigation** via `pathland_qt_run_ring` |\n\n**Key outcomes:**\n- **Rust demo** and **Java demo** both render the DSL → ring → Qt Quick end-to-end (Rust counter + slider; Java SplitNavDemo with sidebar nav). 21 render-qt tests, full workspace clean, `check-wasm.sh` intact, Java reactor green (headless tests).\n- Honest findings documented in `status.md`: StackView's `push/pop` are QML-callable-only (pivoted to a renderer-managed Item page stack); the Rust DSL still lacks `NavigationContainer`/value bindings (the Java demo is the nav vehicle); FILL-in-positioner is a fidelity gap (deferred-FILL improvement landed); Qt's anchor-positioner notes at `/home` are cosmetic.\n\n**Run them:** `scripts/run-rust-qt-demo.sh` · `scripts/run-java-qt-demo.sh`\n\nThe remaining follow-up options (from the earlier list) are the deferred renderer gaps (background/border, MENU popup items, native date/color pickers) plus the Rust DSL `NavigationContainer`/signal-binding features — all documented for later. Branch ready for review.",
+          "time": {
+            "start": 1790329905553,
+            "end": 1790329912893
+          },
+          "id": "prt_0d7fa6191001QHlvAU2wTyXTLh",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0d7fa3969002s6IuAuVUqujMPp"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "bfcce52eaa1888ffd266ef0e792037d95a8db2e9",
+          "type": "step-finish",
+          "tokens": {
+            "total": 612963,
+            "input": 354,
+            "output": 513,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 612096
+            }
+          },
+          "cost": 0.002197188,
+          "id": "prt_0d7fa7e66001TfZiQvW20PJRRf",
+          "sessionID": "ses_f335ee0e8ffePgG12yXm2YUBVc",
+          "messageID": "msg_0d7fa3969002s6IuAuVUqujMPp"
         }
       ]
     }
