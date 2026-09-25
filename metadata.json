@@ -1,0 +1,57 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3C53JH7H905PSB4HZFMZ45A",
+  "strategy": "manual-commit",
+  "branch": "feat/html-semantic-role-tags",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/home/HomeView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/KitchenSinkView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/SectionCard.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/settings/SettingsView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/sidebar/Sidebar.java",
+    "lib/java/pathland-demo-views/status.md",
+    "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Roles.java",
+    "lib/java/pathland-view/status.md",
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/rust/crates/pathland-core/status.md",
+    "lib/rust/crates/pathland-html-golden/src/lib.rs",
+    "lib/rust/crates/pathland-html-golden/status.md",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/src/role_spec.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/rust/crates/pathland-ts-codegen/src/main.rs",
+    "lib/rust/crates/pathland-ts-codegen/status.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/classes.ts",
+    "lib/typescript/src/constants.ts",
+    "lib/typescript/src/generated/role-spec.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/classes.test.ts",
+    "lib/typescript/test/fixtures/ssr/delta_change.plpl",
+    "lib/typescript/test/fixtures/ssr/delta_result.html",
+    "lib/typescript/test/fixtures/ssr/semantics.html",
+    "lib/typescript/test/fixtures/ssr/semantics.plpl",
+    "lib/typescript/test/ssr-conformance.test.ts",
+    "spec/OPCODE.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 852646,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 62870528,
+    "output_tokens": 89720,
+    "api_call_count": 157
+  }
+}
