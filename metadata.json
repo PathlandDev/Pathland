@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3BZM077YCT3CG7CQ6ZGGGTJ",
+  "strategy": "manual-commit",
+  "branch": "feat/qt-renderer",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-qt-demo/hs_err_pid20903.log",
+    "lib/java/pathland-qt-demo/pom.xml",
+    "lib/java/pathland-qt-demo/src/main/java/com/pathland/demo/qt/QtHost.java",
+    "lib/java/pathland-qt-demo/src/main/java/com/pathland/demo/qt/QtRendererNative.java",
+    "lib/java/pathland-qt-demo/src/main/java/com/pathland/demo/qt/RingEventReader.java",
+    "lib/java/pathland-qt-demo/src/test/java/com/pathland/demo/qt/RingEventReaderTest.java",
+    "lib/java/pom.xml",
+    "lib/rust/crates/pathland-render-qt/src/qt/qt_layer.cpp",
+    "scripts/lib.sh",
+    "scripts/run-java-qt-demo.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1848392,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 45644032,
+    "output_tokens": 50337,
+    "api_call_count": 85
+  }
+}
