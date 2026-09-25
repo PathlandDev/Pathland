@@ -122,7 +122,16 @@ Design-token contract: `spec/TOKENS.md`.
   background delegate; mapping is a follow-up), `SHAPE` path approximation,
   `MENU` popup item list, `DATE_PICKER`/`COLOR_PICKER` native dialogs, and
   `PICKER` option styling not yet mapped.
-- No nav adapter (`ROUTE`/`NAV_DEPTH`/`NAV_CHROME`) yet; no Java JNA demo yet.
+- **FILL in Qt positioners**: `Row`/`Column`/`Grid` reject `anchors.fill` on
+  their children, so a `WIDTH`/`HEIGHT` `FILL` inside a stack defers and is
+  skipped (the positioner sizes it) — cross-axis stretch would need Qt Quick
+  Layouts (`RowLayout`/`ColumnLayout`). Qt may print "Cannot specify ...
+  anchors for items inside Row" notes for DSL FILL/alignment patterns; the UI
+  renders regardless (this is a fidelity gap, not a crash).
+- **Java JNA demo** (`lib/java/pathland-qt-demo`) runs the shared
+  `SplitNavDemo` (incl. native navigation) via `pathland_qt_run_ring` — the
+  cross-language nav demo vehicle, since the Rust DSL lacks a
+  `NavigationContainer`.
 - Lazy views render eagerly.
 
 ## Verified by
@@ -141,4 +150,6 @@ applied and a delta re-applied), pointer-listener MouseArea attachment
 and the nav adapter (`nav_slot_promotes_and_pushes_root_page`,
 `nav_depth_push_and_pop`, `nav_replace_same_depth_new_route`,
 `nav_custom_chrome_bare_pages`). Full workspace: `cd lib/rust && cargo test`.
+Java JNA demo: `scripts/run-java-qt-demo.sh` (headless `RingEventReaderTest`
+runs in the Maven reactor; the live host mounts `SplitNavDemo`).
 Demo: `scripts/run-rust-qt-demo.sh`.

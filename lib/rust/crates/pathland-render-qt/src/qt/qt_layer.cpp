@@ -156,6 +156,10 @@ struct LayerState {
     std::unordered_map<uint32_t, uint32_t> listener_masks;
     // EVENT_LISTENERS MouseArea overlay per node (id -> MouseArea item).
     std::unordered_map<uint32_t, QQuickItem *> mouse_areas;
+    // Deferred FILL dimensions (bit0=width, bit1=height) for widgets whose
+    // props arrived before they gained their final parent. Applied on insert
+    // (skipped when the parent is a positioner — Row/Column reject anchors).
+    std::unordered_map<QQuickItem *, uint8_t> pending_fill;
     // While the renderer sets a value, control signals must not echo.
     bool suppress = false;
 
@@ -316,6 +320,18 @@ bool isStackComponent(uint16_t component) {
            component == PL_COMP_LAZY_VSTACK || component == PL_COMP_LAZY_HSTACK;
 }
 
+// Whether a parent item is a Qt Quick positioner (Row/Column/Grid). Positioners
+// manage child placement themselves, so `anchors.fill` is rejected on their
+// children — FILL there falls back to the positioner's default sizing.
+bool isPositioner(QQuickItem *parent) {
+    if (!parent) {
+        return false;
+    }
+    const char *cls = parent->metaObject()->className();
+    return cls && (strstr(cls, "QQuickRow") || strstr(cls, "QQuickColumn") ||
+                   strstr(cls, "QQuickGrid"));
+}
+
 // The nav container: a plain Item page stack. Qt Quick has no native
 // navigation container, and StackView's push/pop are QML-callable-only (not
 // invokable from C++ via QMetaObject), so the renderer manages its page cache
@@ -336,9 +352,13 @@ void promoteNavSlot(uint32_t slotId) {
     if (!container) {
         return;
     }
-    QObject *anchors = container->property("anchors").value<QObject *>();
-    if (anchors && old->parentItem()) {
-        anchors->setProperty("fill", QVariant::fromValue(old->parentItem()));
+    // Fill the slot's parent when it is a plain container (a positioner like
+    // Row/Column rejects anchors on its children and sizes them itself).
+    if (old->parentItem() && !isPositioner(old->parentItem())) {
+        QObject *anchors = container->property("anchors").value<QObject *>();
+        if (anchors) {
+            anchors->setProperty("fill", QVariant::fromValue(old->parentItem()));
+        }
     }
     g.widgets[slotId] = container;
     g.nav_slots.insert(slotId);
@@ -370,6 +390,7 @@ void placeDestination(QQuickItem *dest, QQuickItem *container) {
     if (!dest || !container) {
         return;
     }
+    g.pending_fill.erase(dest);
     dest->setParentItem(container);
     QObject *anchors = dest->property("anchors").value<QObject *>();
     if (anchors) {
@@ -584,11 +605,40 @@ int weightFor(float weight) {
 
 // WIDTH/HEIGHT special values: -1 = FILL (anchors.fill parent), -2 = HUG
 // (implicit size). Positive values set an explicit size.
+// Apply a pending FILL (anchors.fill) once a widget gains its final parent.
+// Skipped for positioners (Row/Column/Grid reject anchors on their children).
+void flushFill(QQuickItem *item, QQuickItem *container) {
+    auto it = g.pending_fill.find(item);
+    if (it == g.pending_fill.end()) {
+        return;
+    }
+    if (container && !isPositioner(container)) {
+        QObject *anchors = item->property("anchors").value<QObject *>();
+        if (anchors) {
+            if (it->second & 1u) {
+                anchors->setProperty("width", QVariant::fromValue(container));
+            }
+            if (it->second & 2u) {
+                anchors->setProperty("height", QVariant::fromValue(container));
+            }
+        }
+    }
+    g.pending_fill.erase(it);
+}
+
 void applySize(QQuickItem *item, const char *dimension, float value) {
     if (value == -1.0f) {
-        QObject *anchors = item->property("anchors").value<QObject *>();
-        if (anchors && item->parentItem()) {
-            anchors->setProperty(dimension, QVariant::fromValue(item->parentItem()));
+        // FILL: apply once the widget is in its final parent. Props arrive
+        // before children are inserted, so if the parent is unknown (or a
+        // positioner that rejects anchors) defer to insert time.
+        QQuickItem *parent = item->parentItem();
+        if (parent && !isPositioner(parent)) {
+            QObject *anchors = item->property("anchors").value<QObject *>();
+            if (anchors) {
+                anchors->setProperty(dimension, QVariant::fromValue(parent));
+            }
+        } else {
+            g.pending_fill[item] |= (*dimension == 'w') ? 1u : 2u;
         }
         return;
     }
@@ -802,6 +852,7 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
         return;
     }
     child->setParentItem(parent);
+    flushFill(child, parent);
     if (index == UINT32_MAX) {
         return; // append (already last)
     }
@@ -821,6 +872,7 @@ void deleteNode(uint32_t id) {
         return;
     }
     QQuickItem *item = it->second;
+    g.pending_fill.erase(item);
     item->setParentItem(nullptr);
     item->deleteLater();
     g.widgets.erase(it);
@@ -1054,6 +1106,7 @@ void pathland_qt_layer_reset(void) {
     g.gated_ids.clear();
     g.listener_masks.clear();
     g.mouse_areas.clear();
+    g.pending_fill.clear();
     g.apply_count = 0;
     g.last_text_len = 0;
     g.last_text[0] = '\0';
@@ -1137,6 +1190,7 @@ void pathland_qt_layer_shutdown(void) {
     g.nav_page_tags.clear();
     g.mouse_areas.clear();
     g.listener_masks.clear();
+    g.pending_fill.clear();
     delete g.window;
     g.window = nullptr;
     delete g.engine;
