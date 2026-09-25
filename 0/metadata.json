@@ -1,0 +1,120 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3C3A4CN8YQDN20PY4G02EBJ",
+  "session_id": "ses_f27fabffeffeQsxIMe0lnI2kzj",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-25T10:55:56.113378Z",
+  "branch": "feat/align-html-ts-renderers",
+  "checkpoints_count": 5,
+  "save_step_count": 4,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    "lib/java/pathland-render-html/status.md",
+    "lib/rust/Cargo.lock",
+    "lib/rust/Cargo.toml",
+    "lib/rust/crates/pathland-html-golden/Cargo.toml",
+    "lib/rust/crates/pathland-html-golden/src/lib.rs",
+    "lib/rust/crates/pathland-html-golden/src/main.rs",
+    "lib/rust/crates/pathland-html-golden/status.md",
+    "lib/rust/crates/pathland-html-golden/tests/guard.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/src/token_spec.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/rust/crates/pathland-ts-codegen/Cargo.toml",
+    "lib/rust/crates/pathland-ts-codegen/src/main.rs",
+    "lib/rust/crates/pathland-ts-codegen/status.md",
+    "lib/typescript/package-lock.json",
+    "lib/typescript/package.json",
+    "lib/typescript/scripts/regen.mjs",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/classes.ts",
+    "lib/typescript/src/constants.ts",
+    "lib/typescript/src/elements.ts",
+    "lib/typescript/src/generated/tokens-core.ts",
+    "lib/typescript/src/tokens.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/elements.test.ts",
+    "lib/typescript/test/fixtures/ssr/composite_controls.html",
+    "lib/typescript/test/fixtures/ssr/composite_controls.plpl",
+    "lib/typescript/test/fixtures/ssr/counter.html",
+    "lib/typescript/test/fixtures/ssr/counter.plpl",
+    "lib/typescript/test/fixtures/ssr/delta_base.html",
+    "lib/typescript/test/fixtures/ssr/delta_base.plpl",
+    "lib/typescript/test/fixtures/ssr/delta_change.html",
+    "lib/typescript/test/fixtures/ssr/delta_change.plpl",
+    "lib/typescript/test/fixtures/ssr/delta_result.html",
+    "lib/typescript/test/fixtures/ssr/delta_result.plpl",
+    "lib/typescript/test/fixtures/ssr/form.html",
+    "lib/typescript/test/fixtures/ssr/form.plpl",
+    "lib/typescript/test/fixtures/ssr/layout.html",
+    "lib/typescript/test/fixtures/ssr/layout.plpl",
+    "lib/typescript/test/fixtures/ssr/tokens.html",
+    "lib/typescript/test/fixtures/ssr/tokens.plpl",
+    "lib/typescript/test/ssr-conformance.test.ts",
+    "lib/typescript/tsconfig.json"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "39fcc8aa1a02",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 627112,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 44206080,
+    "output_tokens": 159081,
+    "api_call_count": 220
+  },
+  "session_metrics": {
+    "turn_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-25T10:55:55.840597Z",
+    "agent_lines": 2031,
+    "agent_removed": 202,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 2031,
+    "total_lines_changed": 2233,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2031,
+      "agent_lines_removed": 202
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2031,
+      "agent_lines_removed": 202
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2031,
+      "agent_lines_removed": 202
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2031,
+      "agent_lines_removed": 202
+    }
+  ]
+}

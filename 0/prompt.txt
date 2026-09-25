@@ -1,0 +1,1 @@
+Please investigate how the rust-html renderer can be more aligned with the typescript dom renderer. So it does not drift. Mayby some typescript can be generated from rust automatically?
