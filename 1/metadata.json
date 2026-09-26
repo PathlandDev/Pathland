@@ -1,0 +1,188 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3ERWZ0KP90C0Q9J3B4FNZRT",
+  "session_id": "ses_f27fabffeffeQsxIMe0lnI2kzj",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-26T11:51:49.334316Z",
+  "branch": "feat/assets-and-reserved-path",
+  "checkpoints_count": 35,
+  "save_step_count": 17,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/ToggleSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/settings/SettingsView.java",
+    "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/AccessibilityLabel.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Audio.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Background.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/FontSize.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ForegroundStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Image.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Label.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Text.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Toggle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Video.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/Emitter.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/signal/ConstantSignal.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/signal/Signals.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/EmitterTest.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/signal/SignalsTest.java",
+    "lib/java/pathland-view/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "6ecadfc5dfc4",
+  "checkpoint_transcript_start": 389,
+  "transcript_lines_at_start": 389,
+  "compact_transcript_start": 389,
+  "token_usage": {
+    "input_tokens": 13783567,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 291475712,
+    "output_tokens": 244756,
+    "api_call_count": 449
+  },
+  "session_metrics": {
+    "turn_count": 44
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-26T11:51:47.997342Z",
+    "agent_lines": 358,
+    "agent_removed": 137,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 358,
+    "total_lines_changed": 495,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 564,
+      "agent_lines_removed": 286
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 831,
+      "agent_lines_removed": 381
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 854,
+      "agent_lines_removed": 381
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 541,
+      "agent_lines_removed": 65
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 545,
+      "agent_lines_removed": 67
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 545,
+      "agent_lines_removed": 67
+    },
+    {
+      "checkpoint_number": 11,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 556,
+      "agent_lines_removed": 77
+    },
+    {
+      "checkpoint_number": 12,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 13,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 18,
+      "agent_lines_removed": 31
+    },
+    {
+      "checkpoint_number": 14,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 18,
+      "agent_lines_removed": 31
+    },
+    {
+      "checkpoint_number": 15,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 18,
+      "agent_lines_removed": 31
+    },
+    {
+      "checkpoint_number": 16,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 224,
+      "agent_lines_removed": 158
+    },
+    {
+      "checkpoint_number": 17,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 224,
+      "agent_lines_removed": 158
+    },
+    {
+      "checkpoint_number": 18,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 225,
+      "agent_lines_removed": 148
+    }
+  ]
+}
