@@ -39,6 +39,16 @@ public final class Signals {
         return new WritableSignalImpl<>(initial, Objects::equals, name);
     }
 
+    /**
+     * An immutable signal whose value never changes. Used to give a view a single
+     * {@link Signal} field while still authoring static values ergonomically
+     * ({@code Text.of("…")} ≡ {@code Text.of(Signals.constant("…"))}). The emitter
+     * treats a constant as a plain (non-reactive) property — no binding/effect.
+     */
+    public static <T> Signal<T> constant(T value) {
+        return new ConstantSignal<>(value);
+    }
+
     /** A lazy, memoized derived signal. */
     public static <T> Signal<T> computed(Supplier<T> fn) {
         return new ComputedSignal<>(Objects.requireNonNull(fn, "computed body"), Objects::equals);

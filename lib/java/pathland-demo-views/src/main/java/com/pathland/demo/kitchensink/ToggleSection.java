@@ -28,9 +28,9 @@ public final class ToggleSection implements View {
     public View body() {
         return new SectionCard("Toggle · Switch / Checkbox / Button",
                 VStack.of(
-                        Toggle.of(ToggleStyle.SWITCH, dark.get(), dark.signal(), "Dark mode"),
-                        Toggle.of(ToggleStyle.CHECKBOX, notify.get(), notify.signal(), "Notify me"),
-                        Toggle.of(ToggleStyle.BUTTON, bold.get(), bold.signal(), "Bold toggle"),
+                        Toggle.of(ToggleStyle.SWITCH, dark.signal(), "Dark mode"),
+                        Toggle.of(ToggleStyle.CHECKBOX, notify.signal(), "Notify me"),
+                        Toggle.of(ToggleStyle.BUTTON, bold.signal(), "Bold toggle"),
                         Text.of(summary).modifier(Padding.of(4))
                 ).modifier(Padding.of(4))
         );

@@ -7,6 +7,7 @@ import com.pathland.view.Properties;
 import com.pathland.view.ThemeData;
 import com.pathland.view.ValueTypes;
 import com.pathland.view.View;
+import com.pathland.view.signal.ConstantSignal;
 import com.pathland.view.signal.EffectRef;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
@@ -274,8 +275,12 @@ public final class Emitter {
         }
     }
 
+    private static boolean isConstant(Signal<?> signal) {
+        return signal instanceof ConstantSignal;
+    }
+
     private void registerNodeBindings(PathlandNode node) {
-        if (node.textBinding != null) {
+        if (node.textBinding != null && !isConstant(node.textBinding)) {
             EffectRef effect = Signals.effect(() -> {
                 String value = node.textBinding.get();
                 if (!Objects.equals(value, node.text)) {
@@ -288,7 +293,7 @@ public final class Emitter {
             bindings.add(effect);
             nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);
         }
-        if (node.dateBinding != null) {
+        if (node.dateBinding != null && !isConstant(node.dateBinding)) {
             EffectRef effect = Signals.effect(() -> {
                 int days = node.dateBinding.get();
                 if (days != node.days) {
@@ -304,6 +309,11 @@ public final class Emitter {
         for (Map.Entry<Integer, Signal<?>> entry : node.propertyBindings.entrySet()) {
             int property = entry.getKey();
             Signal<?> signal = entry.getValue();
+            // A constant signal never changes — its value was already written to the
+            // node at mount, so no re-emit effect is needed.
+            if (isConstant(signal)) {
+                continue;
+            }
             EffectRef effect = Signals.effect(() -> {
                 Object value = ReactiveValues.from(property, signal);
                 if (!Objects.equals(value, node.properties.get(property))) {

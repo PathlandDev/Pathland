@@ -34,7 +34,7 @@ public final class SettingsView implements View {
                         .modifier(AccessibilityRole.of(Roles.HEADER)),
                 Text.of("A few controls bound to plain signals — the content area is "
                         + "just another destination view.").modifier(Padding.of(8)),
-                Toggle.of(ToggleStyle.SWITCH, dark.get(), dark, "Dark mode"),
+                Toggle.of(ToggleStyle.SWITCH, dark, "Dark mode"),
                 Text.of(volumeLabel).modifier(Padding.of(8)),
                 Slider.of(volume, 0f, 100f)
         )

@@ -121,7 +121,10 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   circular-dependency detection.
 - **Emitter** (`emit`): mounts once, stable ids, node-level binding effects
   (a signal change re-emits only that node), `FrameOpcodeSink` /
-  `RingOpcodeSink`.
+  `RingOpcodeSink`. **`Signals.constant` / `ConstantSignal`**: a view or
+  modifier holds one `Signal<T>` per reactive value (the raw `of(T)` overload is
+  sugar for a constant); the emitter treats a constant as a plain, non-reactive
+  property (no binding/effect).
 - **Structural reactivity** (spec DSL.md §3.4): `Conditional.when(Signal<Boolean>,
   then, else)` and `when(Signal<T>, Case.of(...)...) / Case.otherwise(...)` —
   statically importable lowercase factories on a final class (mirrors

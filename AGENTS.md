@@ -244,6 +244,15 @@ apps. Components and modifiers:
 Consistency with `pathland_core::constants` is enforced by the emitter/HTML
 tests (golden byte layout + round-trips), replacing the old codegen assert pass.
 
+- **Single signal value convention**: a view or modifier holds **one `Signal<T>`
+  field** for a reactive value — never a raw field *plus* a signal field for the
+  same value. Static values are authored through the raw `of(T)` overload, which
+  wraps them in `Signals.constant(...)` (e.g. `Text.of("Hello")` ≡
+  `Text.of(Signals.constant("Hello"))`); the emitter treats a `ConstantSignal` as
+  a plain, non-reactive property (no binding/effect), so statics carry zero
+  binding overhead. Controls' config fields for *distinct* properties
+  (`min`/`max`/`step`/`placeholder`/`mode`/`style`) stay raw.
+
 ### POC Goals (issues #12–#18)
 
 | # | Goal | Status |

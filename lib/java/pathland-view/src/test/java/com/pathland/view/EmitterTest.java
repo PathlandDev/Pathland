@@ -107,6 +107,31 @@ class EmitterTest {
     }
 
     @Test
+    void constantPropertyEmitsAtMountButRegistersNoReemit() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        // A constant-bound property (Background.of(Color) ≡ a constant signal)
+        // and a reactive text: changing the text re-emits ONLY the text.
+        WritableSignal<String> text = Signals.signal("a");
+        View root = VStack.of(
+                Text.of("x").modifier(Background.of(Color.RED)),
+                Text.of(text));
+        emitter.mount(root, Environment.DEFAULT);
+
+        Frame initial = sink.frame();
+        assertTrue(countOps(initial, Categories.STYLE, Commands.Style.SET_PROPERTY) >= 1,
+                "constant background emitted at mount");
+        assertEquals(2, countOps(initial, Categories.STYLE, Commands.Style.SET_TEXT));
+
+        text.set("b");
+        Frame delta = sink.frame();
+        assertEquals(1, delta.opcodes().size(), "constant bound no re-emit effect");
+        Opcode only = delta.opcodes().get(0);
+        assertEquals(Commands.Style.SET_TEXT, only.command());
+        assertEquals("b", delta.stringAt(only.b()));
+    }
+
+    @Test
     void newModifiersEmitSpecValueTypes() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
@@ -382,7 +407,7 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> on = Signals.signal(false);
-        RenderResult result = emitter.mount(Toggle.of(ToggleStyle.CHECKBOX, false, on, "Go"), Environment.DEFAULT);
+        RenderResult result = emitter.mount(Toggle.of(ToggleStyle.CHECKBOX, on, "Go"), Environment.DEFAULT);
 
         result.valueInputs().values().iterator().next().accept(1f);
         assertEquals(Boolean.TRUE, on.get(), "VALUE_CHANGED 0/1 writes into the boolean binding");
