@@ -65,12 +65,17 @@ tracks what this crate implements.
   (`0x08`) is available per-instance on `SET_PROPERTY`.
 - **Listener bits**: 0–9 (`POINTER_*`, `KEY_*`, `FOCUS`, `EDITING`, `SUBMIT`,
   `SCROLL`, `WHEEL`).
-- **`constants::role`** — the canonical **`ROLE` enum catalog** (spec/OPCODE.md
-  §semantic properties): the 20 classic accessibility roles (0–19) plus the
-  landmark/structural roles `BANNER`/`NAVIGATION`/`MAIN`/`CONTENT_INFO`/
-  `COMPLEMENTARY`/`ARTICLE`/`SECTION`/`SEARCH`/`LIST_ITEM`/`PARAGRAPH`
-  (20–29). Single source the renderers, DSLs, and `pathland-ts-codegen` bind
-  to (the TS `ROLE_*` constants are generated from it).
+- **`constants::role`** — the canonical **`ROLE` semantic-structure catalog**
+  (spec/OPCODE.md §semantic properties), **renumbered dense** (0–13): `HEADER`
+  (heading), `PARAGRAPH`, `LIST`, `LIST_ITEM`, `SUMMARY`, `BANNER`,
+  `NAVIGATION`, `MAIN`, `CONTENT_INFO`, `COMPLEMENTARY`, `ARTICLE`, `SECTION`,
+  `SEARCH`. Interactive/control roles are **not roles** — they are intrinsic to
+  the control components; the DSL rejects codes outside this catalog. Single
+  source the renderers, DSLs, and `pathland-ts-codegen` bind to.
+- **`constants::text_style`** — the canonical **`TEXT_STYLE` predefined
+  typographies** (spec/MODIFIERS.md): `LARGE_TITLE`…`HEADLINE` (heading styles →
+  `<h1>`–`<h5>` on a `TEXT`), plus `SUBHEADLINE`/`BODY`/`CALLOUT`/`FOOTNOTE`/
+  `CAPTION`/`CAPTION2` (plain `<span>` text). `TEXT_STYLE = 0x1032`.
 - **Shared linear memory**: 80-byte header, guest→host ring, host→guest event
   ring, guest arena, host→guest **event arena** (two-way string section — a
   host `send_event(TextChanged)` round-trips text over the shared ring).
@@ -88,9 +93,10 @@ tracks what this crate implements.
   field) and a native emitter are not wired yet — the web path encodes/decodes
   it in the TS client + Java `FrameCodec` (batch string section).
 - Enum *value* codes (e.g. `TOGGLE_STYLE=Switch=0`) are used inline; there are
-  no named value constants. (`ROLE` is now the canonical exception — see
-  `constants::role` above; the remaining enum codes live in the specs + the
-  `pathland-ts-codegen` enum table.)
+  no named value constants. (`ROLE` and `TEXT_STYLE` are now the canonical
+  exceptions — see `constants::role` / `constants::text_style` above; the
+  remaining enum codes live in the specs + the `pathland-ts-codegen` enum
+  table.)
 - No **general STRING-property diff path** in `pathland-engine` (the engine
   stores numeric properties + design-token refs only). `ROUTE` (STRING) will
   need a small string-property capability when the Rust router lands (Phase 3);

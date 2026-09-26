@@ -36,7 +36,10 @@ public class Sidebar implements View {
                 .modifier(Background.of(SIDEBAR_BG))
                 .modifier(Border.of(SIDEBAR_BORDER, 1f))
                 // The sidebar is the app's primary navigation region → a `<nav>` landmark.
-                .modifier(AccessibilityRole.of(Roles.NAVIGATION));
+                .modifier(AccessibilityRole.of(Roles.NAVIGATION))
+                // Custom-looking buttons: real `Button`s styled with a `ButtonStyle`
+                // (control semantics are intrinsic to the component, not a `ROLE`).
+                .modifier(ButtonStyleMod.of(PlainButtonStyle.INSTANCE));
     }
 
     /** A sidebar menu row (a {@link Label}): navigates the router (direct selection — no
@@ -52,13 +55,10 @@ public class Sidebar implements View {
         Signal<Color> bg = Signals.computed(() -> active.get() ? ACTIVE_BG : Color.CLEAR);
         Signal<Color> fg = Signals.computed(() -> active.get() ? ACTIVE_FG : Color.BLACK);
 
-        return Label.of(label, icon)
-                .modifiers(
-                        TapGesture.of(() -> router.navigate(path)),
-                        Background.of(bg), ForegroundStyle.of(fg),
-                        // Each menu row is a pressable nav item → a `<button>`.
-                        AccessibilityRole.of(Roles.BUTTON)
-                );
+        return Button.of(
+                Label.of(label, icon).modifiers(Background.of(bg), ForegroundStyle.of(fg)),
+                () -> router.navigate(path)
+        );
         //return Button.of(label, () -> router.navigate(path))
         //        .modifiers(Background.of(bg), ForegroundStyle.of(fg));
     }

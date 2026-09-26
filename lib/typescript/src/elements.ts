@@ -225,6 +225,9 @@ function stepperShell(): HTMLElement {
 function menuShell(): HTMLElement {
   const el = document.createElement("div");
   el.className = "pathland-menu";
+  // `role="menu"` is the control's intrinsic semantics (mirrors the Rust SSR
+  // renderer); the `ROLE` property no longer carries control roles.
+  el.setAttribute("role", "menu");
   const trigger = document.createElement("div");
   trigger.className = "pathland-menu-trigger";
   const items = document.createElement("div");

@@ -412,6 +412,12 @@ pub mod property_id {
     /// by a `NavigationContainer`/`Conditional.when` slot; the renderer may
     /// animate the swap and must render normally when it ignores the hint.
     pub const TRANSITION: u16 = 0x1031;
+    /// **Draft.** Predefined typography (ENUM code, see [`crate::text_style`]):
+    /// `.font(.title2)` picks a whole design-system typography; the heading
+    /// styles (LargeTitle…Headline) imply a heading element on a `TEXT`.
+    /// Raw font modifiers (`FONT_SIZE`/`FONT_WEIGHT`/`FONT_FAMILY`/…) override
+    /// the visual on top and never imply a heading.
+    pub const TEXT_STYLE: u16 = 0x1032;
     // Semantic (0x2000 range)
     pub const ROLE: u16 = 0x2001;
     pub const STATE: u16 = 0x2002;
@@ -532,75 +538,79 @@ pub mod size {
     pub const HUG_CONTENT: f32 = -2.0;
 }
 
-/// Accessibility role codes for the `ROLE` semantic property (`0x2001`).
+/// Semantic-role codes for the `ROLE` semantic property (`0x2001`).
 ///
 /// Roles are protocol-semantic (carried as an `F32` enum code; see
-/// `spec/OPCODE.md` §semantic properties). The first twenty are the classic
-/// accessibility set; `BANNER` and above are the landmark/structural roles that
-/// a web renderer maps onto native semantic HTML elements. Values MUST NOT be
-/// renumbered once released (wire version stays 1).
+/// `spec/OPCODE.md` §semantic properties). The catalog is **semantic structure
+/// only** — interactive/control roles (button, link, checkbox, …) are NOT roles:
+/// they are intrinsic to the control components (a `BUTTON` renders as
+/// `<button>`, a `TOGGLE` as `<input type="checkbox">`, a `MENU` as
+/// `role="menu"`), and a custom-looking button is expressed with `Button` +
+/// `ButtonStyle`. The web renderer maps each semantic role onto its native
+/// element. Values MUST NOT be renumbered once released (wire version stays 1).
 pub mod role {
     /// No semantic role (the default).
     pub const NONE: u8 = 0;
-    /// A button/pressable action.
-    pub const BUTTON: u8 = 1;
-    /// A link to another destination.
-    pub const LINK: u8 = 2;
-    /// A heading (ARIA `heading`; the HTML renderer uses `<hN>`).
-    pub const HEADER: u8 = 3;
-    /// Plain text content.
-    pub const TEXT: u8 = 4;
-    /// An image.
-    pub const IMAGE: u8 = 5;
-    /// A single-line text input.
-    pub const TEXT_FIELD: u8 = 6;
-    /// A continuous/stepped numeric range control.
-    pub const SLIDER: u8 = 7;
-    /// A toggle (switch/checkbox/button styles).
-    pub const TOGGLE: u8 = 8;
-    /// A checkbox.
-    pub const CHECKBOX: u8 = 9;
-    /// A radio button.
-    pub const RADIO_BUTTON: u8 = 10;
-    /// A discrete increment/decrement control.
-    pub const STEPPER: u8 = 11;
-    /// A tab within a tab bar.
-    pub const TAB: u8 = 12;
-    /// A tab bar (ARIA `tablist`).
-    pub const TAB_BAR: u8 = 13;
-    /// A list container (the HTML renderer uses `<ul>`).
-    pub const LIST: u8 = 14;
-    /// A 2D matrix grid.
-    pub const GRID: u8 = 15;
-    /// A scrollable content region.
-    pub const SCROLL_VIEW: u8 = 16;
-    /// A value the user can adjust.
-    pub const ADJUSTABLE: u8 = 17;
-    /// A summarising/complementary region (ARIA `region`).
-    pub const SUMMARY: u8 = 18;
-    /// A menu / pop-up button.
-    pub const MENU: u8 = 19;
-    // ── Landmark / structural roles (20+) ──────────────────────────────────
-    /// Site banner (HTML `<header>`).
-    pub const BANNER: u8 = 20;
-    /// Site navigation (HTML `<nav>`).
-    pub const NAVIGATION: u8 = 21;
-    /// The page's main content (HTML `<main>`).
-    pub const MAIN: u8 = 22;
-    /// Site footer / content info (HTML `<footer>`).
-    pub const CONTENT_INFO: u8 = 23;
-    /// Complementary/aside content (HTML `<aside>`).
-    pub const COMPLEMENTARY: u8 = 24;
-    /// A self-contained article (HTML `<article>`).
-    pub const ARTICLE: u8 = 25;
-    /// A thematically grouped section (HTML `<section>`).
-    pub const SECTION: u8 = 26;
-    /// A search region (HTML `<search>`).
-    pub const SEARCH: u8 = 27;
-    /// An item within a list (HTML `<li>`).
-    pub const LIST_ITEM: u8 = 28;
+    /// A heading (ARIA `heading`; the HTML renderer uses `<hN>`, the level
+    /// driven by a `TEXT_STYLE` typography when present, default `<h2>`).
+    pub const HEADER: u8 = 1;
     /// A paragraph (HTML `<p>`).
-    pub const PARAGRAPH: u8 = 29;
+    pub const PARAGRAPH: u8 = 2;
+    /// A list container (the HTML renderer uses `<ul>`).
+    pub const LIST: u8 = 3;
+    /// An item within a list (HTML `<li>`).
+    pub const LIST_ITEM: u8 = 4;
+    /// A summarising/complementary region (HTML `<section>`).
+    pub const SUMMARY: u8 = 5;
+    /// Site banner (HTML `<header>`).
+    pub const BANNER: u8 = 6;
+    /// Site navigation (HTML `<nav>`).
+    pub const NAVIGATION: u8 = 7;
+    /// The page's main content (HTML `<main>`).
+    pub const MAIN: u8 = 8;
+    /// Site footer / content info (HTML `<footer>`).
+    pub const CONTENT_INFO: u8 = 9;
+    /// Complementary/aside content (HTML `<aside>`).
+    pub const COMPLEMENTARY: u8 = 10;
+    /// A self-contained article (HTML `<article>`).
+    pub const ARTICLE: u8 = 11;
+    /// A thematically grouped section (HTML `<section>`).
+    pub const SECTION: u8 = 12;
+    /// A search region (HTML `<search>`).
+    pub const SEARCH: u8 = 13;
+}
+
+/// Predefined typography codes for the `TEXT_STYLE` property (see
+/// `spec/MODIFIERS.md`). Each value selects a whole typography from the design
+/// system (font size/weight/design). The **heading** styles (LargeTitle through
+/// Headline) imply a heading element when applied to a `TEXT`: the renderer
+/// emits `<h1>`–`<h5>` (the level comes from the style — no `ROLE` needed). The
+/// non-heading styles render as plain `<span>` text. A raw font modifier
+/// (`FONT_SIZE`, `FONT_WEIGHT`, `FONT_FAMILY`, …) never implies a heading — it
+/// only overrides the typography's visual.
+pub mod text_style {
+    /// The largest title style (heading level 1).
+    pub const LARGE_TITLE: u8 = 0;
+    /// A primary title (heading level 2).
+    pub const TITLE: u8 = 1;
+    /// A secondary title (heading level 3).
+    pub const TITLE2: u8 = 2;
+    /// A tertiary title (heading level 4).
+    pub const TITLE3: u8 = 3;
+    /// A headline (heading level 5).
+    pub const HEADLINE: u8 = 4;
+    /// A sub-headline (NOT a heading — plain `<span>` text).
+    pub const SUBHEADLINE: u8 = 5;
+    /// Body text (the default).
+    pub const BODY: u8 = 6;
+    /// A callout (slightly larger than body).
+    pub const CALLOUT: u8 = 7;
+    /// Footnote text.
+    pub const FOOTNOTE: u8 = 8;
+    /// Caption text.
+    pub const CAPTION: u8 = 9;
+    /// A second, smaller caption.
+    pub const CAPTION2: u8 = 10;
 }
 
 /// Sentinel for append positions (`index = u32::MAX`).

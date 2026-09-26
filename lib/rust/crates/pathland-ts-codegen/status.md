@@ -10,19 +10,20 @@ Rust sources, so the TS side cannot drift silently.
 - **`constants.ts`** (`lib/typescript/src/constants.ts`): every wire constant is
   bound to its `pathland_core::constants` source (a rename breaks compilation, a
   revalue changes the emitted file); the protocol-semantic enum codes (alignment,
-  shape kind, role, state, …) are enumerated from `spec/` — `ROLE_*` is bound to
-  `pathland_core::constants::role`, the canonical catalog incl. the landmark
-  roles (20–29).
+  shape kind, state, …) are enumerated from `spec/` — `ROLE_*` is bound to
+  `pathland_core::constants::role` (the semantic-only catalog, dense 0–13) and
+  `TEXT_STYLE_*` to `pathland_core::constants::text_style`.
 - **`generated/tokens-core.ts`** (`lib/typescript/src/generated/tokens-core.ts`):
   the design-token conventions (`tokenToCssVar`, `isDarkToken`,
   `isLengthToken`, `resolveTokenCssRef` + length-token tables) emitted from
   `pathland_render_html::token_spec` — the single source the Rust renderer and
   the DOM client share. `src/tokens.ts` imports it.
 - **`generated/role-spec.ts`** (`lib/typescript/src/generated/role-spec.ts`):
-  the `ROLE` → semantic-element conventions emitted from
-  `pathland_render_html::role_spec` — `ROLE_TAGS`/`ROLE_ARIA`/`ShellKind` and
-  the `semanticTag`/`ariaRole` resolvers — so semantic-tag / ARIA decisions
-  cannot drift between the Rust SSR renderer and the DOM client.
+  the semantic `ROLE` → element + typography → heading conventions emitted from
+  `pathland_render_html::role_spec` — `ROLE_TAGS`, `HEADING_STYLES`,
+  `ShellKind`, and the `semanticTag`/`textTag`/`ariaRole`/`headingLevel`
+  resolvers — so semantic-tag / ARIA / heading decisions cannot drift between
+  the Rust SSR renderer and the DOM client.
 - **`npm run regen`** (`lib/typescript/scripts/regen.mjs`) runs both generators
   (and the golden-fixture emitter); CI's `rust` job runs them and fails on
   `git diff --exit-code` drift.

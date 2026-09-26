@@ -133,8 +133,10 @@ map them to their native text attributes.
 | SwiftUI modifier | Protocol property(ies) | Type | Emission |
 | ------------------ | ------------------------ | ------ | ---------- |
 | `.font(.system(size:))` | `FONT_SIZE` 0x1007 | F32 | one |
+| `.font(.headline)` / `.font(TextStyle)` | `TEXT_STYLE` 0x1032 | ENUM (`LargeTitle`=0 … `Caption2`=10) | one |
+| `.font(.custom(name:size:))` | `FONT_FAMILY` 0x1009 + `FONT_SIZE` 0x1007 | STRING + F32 | two |
+| `.font(.system(size:weight:design:))` | `FONT_SIZE` + `FONT_WEIGHT` + `FONT_DESIGN` | F32 × 3 | three |
 | `.fontWeight(_:)` | `FONT_WEIGHT` 0x1008 | F32 (100–900) | one |
-| `.font(.custom(name:size:))` | `FONT_FAMILY` 0x1009 | STRING | one (arenaRef) |
 | `.italic()` / `.fontStyle(_:)` | `FONT_STYLE` 0x1017 | ENUM (`Normal`=0, `Italic`=1) | one |
 | `.fontDesign(_:)` | `FONT_DESIGN` 0x1018 | ENUM (`Default`=0, `Serif`=1, `Rounded`=2, `Monospaced`=3) | one |
 | `.fontWidth(_:)` | `FONT_WIDTH` 0x1019 | F32 (0.5–1.5, 1.0 default) | one |
@@ -269,9 +271,22 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
 - **`.focusable`** has no property: the app requests focus events via the
   `FOCUS` listener bit (`EVENT_LISTENERS`, bit 5) and observes
   `EVENT::FOCUS_CHANGED` — see [EVENTS.md](./EVENTS.md).
-- **`ROLE`/`STATE`** are accessibility enums; their enumerated values are
-  defined in [OPCODE.md](./OPCODE.md#semantic-properties), not here. `STATE` is
-  a semantic accessibility property — it never describes visual styling.
+- **`ROLE`** is **semantic structure only** — its enumerated values are defined
+  in [OPCODE.md](./OPCODE.md#semantic-properties), not here. Interactive/control
+  roles (button, link, checkbox, …) are **not roles**: they are intrinsic to the
+  control components (a `BUTTON` is a `<button>`, a `TOGGLE` a checkbox/switch, a
+  `MENU` `role="menu"`), and a custom-looking button uses `Button` +
+  `ButtonStyle`. The DSL rejects role codes outside the semantic catalog.
+- **`STATE`** is a semantic accessibility property — it never describes visual
+  styling.
+- **`.font(_:)`** is the single font modifier (SwiftUI `Font`): a predefined
+  typography (`Font.headline()` → `TEXT_STYLE`), a custom family + size
+  (`Font.custom(name, size)` → `FONT_FAMILY` + `FONT_SIZE`), or a system
+  size/weight/design (`Font.system(size, weight, design)` → `FONT_SIZE` +
+  `FONT_WEIGHT` + `FONT_DESIGN`). A heading typography (LargeTitle…Headline)
+  implies a heading element on a `TEXT` (`<h1>`–`<h5>`); a custom/system font
+  never implies a heading — it only styles the text. Individual raw modifiers
+  (`FontSize`, `FontWeightMod`, …) layer on top.
 - **`LABEL`** is a `STRING` property (the accessibility label), distinct from a
   `TEXT_FIELD`'s caption label.
 

@@ -24,11 +24,13 @@ import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
 import com.pathland.view.signal.WritableSignal;
 import com.pathland.view.ButtonStyleMod;
+import com.pathland.view.Font;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** DSL -> emitter -> frame -> Rust HtmlRenderer shim (the SSR round-trip). */
@@ -133,10 +135,22 @@ class HtmlRendererTest {
         String headingHtml = renderer().renderFragment(frameOf(heading), 1);
         assertTrue(headingHtml.contains("<h2 "), "header role -> <h2>");
 
-        // An ARIA-only role (LINK) stays on the element as a role attribute.
-        View link = Text.of("Home").modifier(AccessibilityRole.of(Roles.LINK));
-        String linkHtml = renderer().renderFragment(frameOf(link), 1);
-        assertTrue(linkHtml.contains("role=\"link\""), "link role -> role attribute");
+        // A heading TEXT_STYLE typography makes a Text a heading even without a
+        // role (Font.title2() -> <h3>); a non-heading style stays a <span>.
+        View title = Text.of("Sub").font(Font.title2());
+        String titleHtml = renderer().renderFragment(frameOf(title), 1);
+        assertTrue(titleHtml.contains("<h3 "), "title2 typography -> <h3>");
+
+        View sub = Text.of("Sub").font(Font.subheadline());
+        String subHtml = renderer().renderFragment(frameOf(sub), 1);
+        assertTrue(subHtml.contains("<span "), "subheadline typography stays a <span>");
+    }
+
+    @Test
+    void rejectsControlRoles() {
+        // Interactive/control roles are NOT roles — they are intrinsic to the
+        // control components, so the DSL rejects them.
+        assertThrows(IllegalArgumentException.class, () -> AccessibilityRole.of(20), "reserved code rejected");
     }
 
     @Test

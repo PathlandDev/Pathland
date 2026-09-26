@@ -51,7 +51,9 @@ Java renderer is removed. Protocol contract: `spec/`.
 - The shim is unaffected by the Rust renderer's September 2026 shell alignment
   (SPACER/MENU/STEPPER/GAUGE/PICKER markup now matches the DOM client's runtime
   shells); the demos' SSR output reflects the Rust renderer as-is, pinned by the
-  `pathland-html-golden` conformance harness.
+  `pathland-html-golden` conformance harness. `HtmlRendererTest` covers the
+  semantic-role → element mapping (`NAVIGATION`→`<nav>`, `HEADER`→`<h2>`,
+  `TEXT_STYLE` headings) and the DSL's rejection of non-semantic role codes.
 
 ## Verified by
 

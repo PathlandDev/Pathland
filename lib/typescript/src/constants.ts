@@ -156,6 +156,7 @@ export const PROP_SCALE = 0x102e;
 export const PROP_ALLOWS_HIT_TESTING = 0x102f;
 export const PROP_TINT = 0x1030;
 export const PROP_TRANSITION = 0x1031;
+export const PROP_TEXT_STYLE = 0x1032;
 export const PROP_ROLE = 0x2001;
 export const PROP_STATE = 0x2002;
 export const PROP_ENABLED = 0x2003;
@@ -259,37 +260,34 @@ export const STATE_SELECTED = 4;
 export const STATE_EXPANDED = 5;
 export const STATE_BUSY = 6;
 
-// ROLE (semantic role, spec/OPCODE.md — bound to `pathland_core::role`)
+// ROLE (semantic structure, spec/OPCODE.md — bound to `pathland_core::role`)
 export const ROLE_NONE = 0;
-export const ROLE_BUTTON = 1;
-export const ROLE_LINK = 2;
-export const ROLE_HEADER = 3;
-export const ROLE_TEXT = 4;
-export const ROLE_IMAGE = 5;
-export const ROLE_TEXT_FIELD = 6;
-export const ROLE_SLIDER = 7;
-export const ROLE_TOGGLE = 8;
-export const ROLE_CHECKBOX = 9;
-export const ROLE_RADIO_BUTTON = 10;
-export const ROLE_STEPPER = 11;
-export const ROLE_TAB = 12;
-export const ROLE_TAB_BAR = 13;
-export const ROLE_LIST = 14;
-export const ROLE_GRID = 15;
-export const ROLE_SCROLL_VIEW = 16;
-export const ROLE_ADJUSTABLE = 17;
-export const ROLE_SUMMARY = 18;
-export const ROLE_MENU = 19;
-export const ROLE_BANNER = 20;
-export const ROLE_NAVIGATION = 21;
-export const ROLE_MAIN = 22;
-export const ROLE_CONTENT_INFO = 23;
-export const ROLE_COMPLEMENTARY = 24;
-export const ROLE_ARTICLE = 25;
-export const ROLE_SECTION = 26;
-export const ROLE_SEARCH = 27;
-export const ROLE_LIST_ITEM = 28;
-export const ROLE_PARAGRAPH = 29;
+export const ROLE_HEADER = 1;
+export const ROLE_PARAGRAPH = 2;
+export const ROLE_LIST = 3;
+export const ROLE_LIST_ITEM = 4;
+export const ROLE_SUMMARY = 5;
+export const ROLE_BANNER = 6;
+export const ROLE_NAVIGATION = 7;
+export const ROLE_MAIN = 8;
+export const ROLE_CONTENT_INFO = 9;
+export const ROLE_COMPLEMENTARY = 10;
+export const ROLE_ARTICLE = 11;
+export const ROLE_SECTION = 12;
+export const ROLE_SEARCH = 13;
+
+// TEXT_STYLE (predefined typographies, spec/MODIFIERS.md — bound to `pathland_core::text_style`)
+export const TEXT_STYLE_LARGE_TITLE = 0;
+export const TEXT_STYLE_TITLE = 1;
+export const TEXT_STYLE_TITLE2 = 2;
+export const TEXT_STYLE_TITLE3 = 3;
+export const TEXT_STYLE_HEADLINE = 4;
+export const TEXT_STYLE_SUBHEADLINE = 5;
+export const TEXT_STYLE_BODY = 6;
+export const TEXT_STYLE_CALLOUT = 7;
+export const TEXT_STYLE_FOOTNOTE = 8;
+export const TEXT_STYLE_CAPTION = 9;
+export const TEXT_STYLE_CAPTION2 = 10;
 
 // Components (spec/PRIMITIVES.md)
 export const COMPONENT_TEXT = 0x0001;
