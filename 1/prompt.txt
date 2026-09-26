@@ -1,0 +1,23 @@
+Explore /Users/michael/Development/michaelkrog/Pathland to map how the two SSR demo servers route requests and serve assets today. I'm designing a reserved-path strategy for system endpoints (websocket, JS bundle, assets) vs app routes.
+
+Report thoroughly with exact code + file:line references:
+
+1. **Spring Boot demo/starter routing** (`lib/java/pathland-spring-boot-starter` and `lib/java/pathland-spring-boot-demo`):
+   - `PathlandIndexController` — the `/{*path}` catch-all: full code. How does it decide what to serve (SSR vs skip `/ws`, `/pathland-dom-renderer.js`, static paths)? Quote the path-matching logic and any exclusions.
+   - The WebSocket endpoint: where is it registered (config class, `@EnableWebSocket`, `WebSocketConfigurer`)? What URL path does it use (e.g. `/ws`)?
+   - Any static-resource config (`WebMvcConfigurer.addResourceHandlers`, `spring.web.resources`)? How does `/pathland-dom-renderer.js` get served (controller or static)?
+   - `application.properties` relevant lines (server port, context path, resources).
+
+2. **Quarkus demo/starter routing** (`lib/java/pathland-quarkus-starter` and `lib/java/pathland-quarkus-demo`):
+   - `IndexResource` (JAX-RS catch-all): full code + path regex (`{path:(?!ws).*}` or similar).
+   - The WebSocket endpoint registration (path used, e.g. `/ws`).
+   - How static resources (`META-INF/resources/pathland-dom-renderer.js`) are served by Quarkus.
+   - `application.properties` relevant lines.
+
+3. **The TS DOM client's WebSocket URL** (`lib/typescript/src/transport.ts`, `index.ts`): how the WS URL is constructed (default `/ws`? derived from `location`?), and how the script bundle is injected (`PathlandSession.renderHtml` in `lib/java/pathland-server-core` — the `</body>` replace).
+
+4. **Any existing "system path" / reserved path / asset-serving concept** anywhere (search for `pathland/`, `_pathland`, `/ws`, `assets` in the starters/session/server-core).
+
+5. **How the demos are served end-to-end**: from `PathlandSession.renderHtml()` (server-core) → the Spring/Quarkus controllers — quote the full chain for one deep-link request (e.g. `/home`) and for `/ws`.
+
+Be very thorough.
