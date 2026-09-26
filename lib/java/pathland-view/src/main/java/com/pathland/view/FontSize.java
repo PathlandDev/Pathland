@@ -1,30 +1,30 @@
 package com.pathland.view;
 
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
+
 /**
- * text font size in points.
+ * text font size in points ({@code FONT_SIZE}); a single {@link Signal<Float>} —
+ * a static size is sugar for a constant signal.
  */
 public final class FontSize implements ViewModifier {
 
-    private final Float size;
-    private final com.pathland.view.signal.Signal<Float> signal;
+    private final Signal<Float> signal;
 
-    private FontSize(Float size, com.pathland.view.signal.Signal<Float> signal) {
-        this.size = size;
+    private FontSize(Signal<Float> signal) {
         this.signal = signal;
     }
 
     public static FontSize of(float size) {
-        return new FontSize(size, null);
+        return new FontSize(Signals.constant(size));
     }
 
-    public static FontSize of(com.pathland.view.signal.Signal<Float> signal) {
-        return new FontSize(null, signal);
+    public static FontSize of(Signal<Float> signal) {
+        return new FontSize(signal);
     }
 
     @Override
     public View body(View content) {
-        return signal != null
-                ? Modified.props(content, Modified.prop(Properties.FONT_SIZE, signal))
-                : Modified.props(content, Modified.prop(Properties.FONT_SIZE, size));
+        return Modified.props(content, Modified.prop(Properties.FONT_SIZE, signal));
     }
 }

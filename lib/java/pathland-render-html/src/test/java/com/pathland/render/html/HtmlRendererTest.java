@@ -100,7 +100,7 @@ class HtmlRendererTest {
         WritableSignal<Boolean> on = Signals.signal(true);
         WritableSignal<Integer> choice = Signals.signal(0);
         View root = VStack.of(
-                Toggle.of(ToggleStyle.CHECKBOX, true, on, "Go"),
+                Toggle.of(ToggleStyle.CHECKBOX, on, "Go"),
                 Slider.of(value, 0f, 1f),
                 Picker.of(PickerStyle.MENU, choice, Text.of("A"), Text.of("B")),
                 ProgressView.of(0.4f),

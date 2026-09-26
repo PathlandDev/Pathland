@@ -207,4 +207,24 @@ class SignalsTest {
         assertEquals(5, ro.get());
         assertTrue(ro instanceof Signal, "readonly view is read-only");
     }
+
+    // --- constant ---
+
+    @Test
+    void constantIsImmutableAndDependencyFree() {
+        Signal<String> c = Signals.constant("Hello");
+        assertEquals("Hello", c.get());
+        assertEquals("Hello", c.get(), "constant never changes");
+        assertTrue(c instanceof ConstantSignal, "constant is a ConstantSignal (emitter treats it as non-reactive)");
+
+        // A computed reading only constants runs exactly once (no dependency to track).
+        AtomicInteger runs = new AtomicInteger();
+        Signal<Integer> derived = Signals.computed(() -> {
+            runs.incrementAndGet();
+            return c.get().length();
+        });
+        assertEquals(5, derived.get());
+        assertEquals(5, derived.get());
+        assertEquals(1, runs.get(), "no re-computation for an immutable constant");
+    }
 }
