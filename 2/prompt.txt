@@ -1,0 +1,19 @@
+Explore the repo /Users/michael/Development/michaelkrog/Pathland to map how "assets" (images today; audio/video not yet supported) flow through every layer. I'm planning how to handle assets (images, audio, video) in the Pathland protocol.
+
+Report back thoroughly on:
+
+1. **IMAGE component + IMAGE_SOURCE (0x1002)**: how it's declared in `lib/rust/crates/pathland-core/src/constants.rs`, and how the HTML renderer (`lib/rust/crates/pathland-render-html/src/lib.rs`, the IMAGE arm), the TS DOM client (`lib/typescript/src/elements.ts`, `apply.ts`, `classes.ts` — image shell, IMAGE_SOURCE apply, CONTENT_MODE objectFit), the GTK renderer (`lib/rust/crates/pathland-render-gtk/src/lib.rs` — GtkPicture), and the Java DSL (`lib/java/pathland-view/src/main/java/com/pathland/view/Image.java`) each handle it. Quote the relevant code.
+
+2. **CONTENT_MODE (0x001C), ASPECT_RATIO (0x001B), WIDTH/HEIGHT FILL/HUG sizing** as they apply to images today (objectFit, aspect-ratio, sizeCss).
+
+3. **How the demos serve asset bytes**: search `lib/java/pathland-quarkus-demo` and `lib/java/pathland-spring-boot-demo` for how icons/images (`icons/*.svg`, etc.) are served (static resource dirs, controllers, META-INF/resources, src/main/resources). What paths do the demo views reference (e.g. `Image.of("icons/home.svg")`)?
+
+4. **Any existing audio/video/media/asset component or property** anywhere (spec/, core constants, renderers, DSLs) — I believe none exist; confirm.
+
+5. **The Java DSL Image API** (Image.java: factories, Signal overloads, modifiers used on images), and the `Label`/icon usage in `lib/java/pathland-demo-views/src/main/java/com/pathland/demo/sidebar/Sidebar.java`.
+
+6. **Alt text / accessibility label** on images: how `LABEL` (0x200A) / `.accessibilityLabel` flows to HTML `alt` (if at all). Check `lib/rust/crates/pathland-render-html/src/lib.rs` IMAGE arm for `alt=`.
+
+7. **The value_type mapping for IMAGE_SOURCE** (STRING) in `pathland_core::constants::value_type_for` and the Java `ValueTypes.forProperty`.
+
+Be very thorough and quote exact code with file:line references.
