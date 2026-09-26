@@ -1,0 +1,13 @@
+In /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-view/src/main/java/com/pathland/view, enumerate every class that holds BOTH a raw/static value field AND a `Signal<T>` field for the SAME logical property (e.g. `private final String value; private final Signal<String> valueSignal;`), with `of(...)` factory overloads for each.
+
+Check these files and report the exact pattern for each: Text.java, Label.java, Image.java, Audio.java, Video.java, Slider.java, Toggle.java, TextField.java, TextEditor.java, DatePicker.java, ColorPicker.java, Stepper.java, Picker.java, Menu.java, Background.java, ForegroundStyle.java, AccessibilityLabel.java, FontSize.java, FontWeightMod.java, FontDesignMod.java, and any others you find (search all of com/pathland/view).
+
+For each class report:
+1. The raw field name + type and the signal field name + type.
+2. The exact `public static ... of(...)` overloads (raw, signal, no-arg).
+3. In `render(...)`, how the raw value vs signal value is written to the PathlandNode (properties vs propertyBindings).
+4. Whether the class is a primitive/leaf View (renders a node), a composite View (body()), or a ViewModifier (sets a property).
+
+Also check: `lib/java/pathland-demo-views` and `lib/java/pathland-view/src/test` for ALL call sites of the raw-value overloads of these classes (e.g. `Text.of("...")`, `Slider.of(0f, ...)` vs `Slider.of(signal, ...)`, `Background.of(Color...)`, `Toggle.of(..., true, on, ...)`, etc.) — quote each call site with file:line.
+
+Be exhaustive and precise. Quote exact code.

@@ -1,0 +1,69 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3ERWZ0KP90C0Q9J3B4FNZRT",
+  "session_id": "ses_f22887ab0ffepRGnujdgeYZTVd",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-26T11:51:39.08901Z",
+  "branch": "feat/assets-and-reserved-path",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Audio.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Video.java"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "87f1afd9a66a",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 97430,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1394176,
+    "output_tokens": 30760,
+    "api_call_count": 24
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-26T11:51:39.049291Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 155,
+    "human_modified": 29,
+    "human_removed": 0,
+    "total_committed": 160,
+    "total_lines_changed": 308,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 18,
+      "user_lines_removed": 31,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/MediaSection.java": 3,
+        "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java": 2,
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Audio.java": 6,
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Video.java": 7
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/MediaSection.java": 2,
+        "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java": 2,
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Audio.java": 13,
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Video.java": 14
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 18,
+      "agent_lines_removed": 31
+    }
+  ]
+}
