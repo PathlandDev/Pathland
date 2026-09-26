@@ -28,7 +28,11 @@ import {
   PROP_SELECTED,
   PROP_SPACING,
   PROP_TEXT,
+  PROP_ROLE,
   PROP_VALUE,
+  ROLE_BANNER,
+  ROLE_BUTTON,
+  ROLE_HEADER,
   VAL_DESIGN_TOKEN,
   VAL_F32,
   VAL_STRING,
@@ -558,5 +562,45 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     expect(progress).toBeInstanceOf(HTMLProgressElement);
     expect((progress as HTMLProgressElement).value).toBeCloseTo(0.5);
     expect((progress as HTMLProgressElement).max).toBe(1);
+  });
+});
+
+describe("applyBatch · semantic roles (generated role-spec)", () => {
+  const roleBatch = (id: number, component: number, role: number) =>
+    buildBatch([
+      [CAT_TREE, CMD_CREATE_NODE, 0, id, component],
+      [CAT_STYLE, CMD_SET_PROPERTY, 0, id, (VAL_F32 << 16) | PROP_ROLE, f32bits(role)],
+    ]);
+
+  it("retags a generic Text with role=HEADER to an <h2> (no redundant role attr)", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_TEXT, ROLE_HEADER)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("h2");
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("retags a generic stack with role=BANNER to a <header>", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_VSTACK, ROLE_BANNER)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("header");
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("keeps an ARIA-only role as a role attribute on a generic shell", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_TEXT, ROLE_BUTTON)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("span"); // no semantic element for button
+    expect(el.getAttribute("role")).toBe("button");
+  });
+
+  it("keeps a control component's native element and no role attribute", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_BUTTON, ROLE_BUTTON)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("button");
+    expect(el.getAttribute("role")).toBeNull();
   });
 });

@@ -131,7 +131,71 @@ fn scenarios() -> Vec<Scenario> {
         composite_controls(),
         layout(),
         tokens(),
+        semantics(),
     ]
+}
+
+fn semantics() -> Scenario {
+    use pathland_core::role;
+    let mut b = Builder::new();
+    // root nav: a generic VStack retagged to <nav>.
+    b.create(1, component_type::VSTACK);
+    b.create(2, component_type::TEXT);
+    b.create(3, component_type::TEXT);
+    b.create(4, component_type::HSTACK);
+    b.create(5, component_type::TEXT);
+    b.create(6, component_type::TEXT);
+    b.create(7, component_type::VSTACK);
+    b.create(8, component_type::TEXT);
+    b.create(9, component_type::VSTACK);
+    b.create(10, component_type::TEXT);
+    b.create(11, component_type::VSTACK);
+    b.create(12, component_type::TEXT);
+    b.create(13, component_type::TEXT);
+    b.create(14, component_type::BUTTON);
+    b.insert(1, 2);
+    b.insert(1, 3);
+    b.insert(1, 4);
+    b.insert(4, 5);
+    b.insert(4, 6);
+    b.insert(1, 7);
+    b.insert(7, 8);
+    b.insert(1, 9);
+    b.insert(9, 10);
+    b.insert(1, 11);
+    b.insert(11, 12);
+    b.insert(1, 13);
+    b.insert(1, 14);
+    b.set_prop(1, value_type::F32, property_id::ROLE, (role::NAVIGATION as f32).to_bits());
+    b.set_text(2, "Home");
+    b.set_prop(2, value_type::F32, property_id::ROLE, (role::LINK as f32).to_bits());
+    b.set_text(3, "Heading");
+    b.set_prop(3, value_type::F32, property_id::ROLE, (role::HEADER as f32).to_bits());
+    // A list container (children stay plain — container tag only).
+    b.set_prop(4, value_type::F32, property_id::ROLE, (role::LIST as f32).to_bits());
+    b.set_text(5, "Item A");
+    b.set_text(6, "Item B");
+    // A main landmark with a paragraph child.
+    b.set_prop(7, value_type::F32, property_id::ROLE, (role::MAIN as f32).to_bits());
+    b.set_text(8, "Body");
+    b.set_prop(8, value_type::F32, property_id::ROLE, (role::PARAGRAPH as f32).to_bits());
+    // Banner + content info landmarks.
+    b.set_prop(9, value_type::F32, property_id::ROLE, (role::BANNER as f32).to_bits());
+    b.set_text(10, "Site");
+    b.set_prop(11, value_type::F32, property_id::ROLE, (role::CONTENT_INFO as f32).to_bits());
+    b.set_text(12, "© Pathland");
+    // ARIA-only role on a generic shell.
+    b.set_text(13, "Checkable");
+    b.set_prop(13, value_type::F32, property_id::ROLE, (role::CHECKBOX as f32).to_bits());
+    // A control keeps its native element and emits no redundant role attribute.
+    b.set_text(14, "Go");
+    b.set_prop(14, value_type::F32, property_id::ROLE, (role::BUTTON as f32).to_bits());
+    Scenario {
+        name: "semantics",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
 }
 
 fn counter() -> Scenario {
@@ -403,6 +467,13 @@ fn delta_scenario() -> (Scenario, Scenario) {
     let base_len = b.opcodes.len();
     // Follow-up delta.
     b.set_text(2, "Changed");
+    // A semantic-role change: the hydrated <span> is retagged to <h2>.
+    b.set_prop(
+        2,
+        value_type::F32,
+        property_id::ROLE,
+        (pathland_core::role::HEADER as f32).to_bits(),
+    );
     b.set_prop(1, value_type::F32, property_id::SPACING, 16f32.to_bits());
     b.create(4, component_type::TEXT);
     b.insert(1, 4);
@@ -533,6 +604,7 @@ pub const FIXTURE_NAMES: &[&str] = &[
     "composite_controls",
     "layout",
     "tokens",
+    "semantics",
     "delta_base",
     "delta_change",
     "delta_result",

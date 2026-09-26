@@ -24,6 +24,7 @@ use pathland_core::{
 mod capi;
 mod css;
 mod debug;
+pub mod role_spec;
 pub mod token_spec;
 
 /// A decoded node in the retained description.
@@ -65,6 +66,15 @@ impl Node {
             .copied()
             .unwrap_or(0)
             != 0
+    }
+
+    /// The decoded `ROLE` semantic code (0 = none when absent), from its `F32`
+    /// wire value.
+    fn role_code(&self) -> u8 {
+        self.properties
+            .get(&property_id::ROLE)
+            .map(|b| f32::from_bits(*b) as u8)
+            .unwrap_or(0)
     }
 
     /// An `F32` property value, or a default when absent.
@@ -492,35 +502,17 @@ fn event_attrs(node: &Node) -> String {
     attrs
 }
 
-/// ARIA attributes from `ROLE` / `STATE` / `ENABLED`. The ROLE/STATE maps are
-/// canonical with the DOM client (`lib/typescript/src/classes.ts` `roleAttr` /
-/// `PROP_STATE`): same code → same attribute.
+/// ARIA attributes from `ROLE` / `STATE` / `ENABLED`. The `ROLE` map is the
+/// canonical `role_spec` (also generated into the DOM client), so a role
+/// resolves to the same ARIA attribute on both renderers; roles that render as
+/// a semantic element (or are conveyed by a native control element) emit no
+/// attribute.
 fn aria_attrs(node: &Node) -> String {
     let mut attrs = String::new();
     if let Some(bits) = node.properties.get(&property_id::ROLE) {
-        let role = match f32::from_bits(*bits) as u8 {
-            1 => "button",
-            2 => "link",
-            3 => "heading",
-            4 => "text",
-            5 => "img",
-            6 => "textbox",
-            7 => "slider",
-            8 => "switch",
-            9 => "checkbox",
-            10 => "radio",
-            11 => "spinbutton",
-            12 => "tab",
-            13 => "tablist",
-            14 => "list",
-            15 => "grid",
-            16 => "scrollbar",
-            17 => "adjustable",
-            18 => "region",
-            19 => "menu",
-            _ => "",
-        };
-        if !role.is_empty() {
+        let code = f32::from_bits(*bits) as u8;
+        let kind = role_spec::shell_kind(node.component);
+        if let Some(role) = role_spec::aria_role(kind, code) {
             attrs.push_str(&format!(" role=\"{role}\""));
         }
     }
@@ -870,19 +862,24 @@ impl HtmlRenderer {
         let style = style_attr(&css);
         let event = event_attrs(node);
         let aria = aria_attrs(node);
+        // A semantic role may retag a generic div/span shell (role_spec);
+        // control components keep their native element.
+        let kind = role_spec::shell_kind(node.component);
+        let semantic = role_spec::semantic_tag(kind, node.role_code());
 
         let element = match node.component {
-            component_type::VSTACK => wrap_stack(id, "column", node, &children, &css, &event, &aria),
-            component_type::HSTACK => wrap_stack(id, "row", node, &children, &css, &event, &aria),
+            component_type::VSTACK => wrap_stack(id, "column", semantic, node, &children, &css, &event, &aria),
+            component_type::HSTACK => wrap_stack(id, "row", semantic, node, &children, &css, &event, &aria),
             component_type::LAZY_VSTACK => {
-                wrap_stack(id, "column", node, &children, &css, &event, &aria)
+                wrap_stack(id, "column", semantic, node, &children, &css, &event, &aria)
             }
             component_type::LAZY_HSTACK => {
-                wrap_stack(id, "row", node, &children, &css, &event, &aria)
+                wrap_stack(id, "row", semantic, node, &children, &css, &event, &aria)
             }
             component_type::TEXT => {
+                let tag = semantic.unwrap_or("span");
                 let text = escape(node.text.as_deref().unwrap_or_default());
-                format!("<span{data_id}{event}{aria}{style}>{text}</span>")
+                format!("<{tag}{data_id}{event}{aria}{style}>{text}</{tag}>")
             }
             component_type::BUTTON => {
                 // Composite Override Mode: children present → custom body.
@@ -922,9 +919,10 @@ impl HtmlRenderer {
                 }
             }
             component_type::SPACER => {
+                let tag = semantic.unwrap_or("div");
                 let combined = format!("flex:1;{css}");
                 let spacer_style = style_attr(&combined);
-                format!("<div{data_id}{event}{aria}{spacer_style}></div>")
+                format!("<{tag}{data_id}{event}{aria}{spacer_style}></{tag}>")
             }
             component_type::SLIDER => {
                 let min = node.f32_property(property_id::MIN_VALUE, 0.0);
@@ -981,11 +979,12 @@ impl HtmlRenderer {
                 format!("<img{data_id}{event}{aria} src=\"{src}\"{style}>")
             }
             component_type::COLOR => {
+                let tag = semantic.unwrap_or("div");
                 let color = node.u32_property(property_id::COLOR, 0xFF00_0000);
                 // Layout-greedy (SwiftUI Color): expands to the available space
                 // unless a size modifier constrains it.
                 format!(
-                    "<div{data_id}{event}{aria} style=\"flex:1 1 auto;align-self:stretch;background-color:{};{css}\">{children}</div>",
+                    "<{tag}{data_id}{event}{aria} style=\"flex:1 1 auto;align-self:stretch;background-color:{};{css}\">{children}</{tag}>",
                     rgba(color)
                 )
             }
@@ -1000,18 +999,21 @@ impl HtmlRenderer {
                     size_css(h),
                     rgba(fill)
                 );
+                // A semantic role retags the CSS-shape divs; the Path branch is an
+                // `<svg>` and ignores the role.
+                let tag = semantic.unwrap_or("div");
                 match kind {
-                    0 | 4 => format!("<div{data_id}{event}{aria} style=\"{base}border-radius:50%;\"></div>"),
+                    0 | 4 => format!("<{tag}{data_id}{event}{aria} style=\"{base}border-radius:50%;\"></{tag}>"),
                     2 => {
                         let r = node.f32_property(property_id::BORDER_RADIUS, 8.0);
-                        format!("<div{data_id}{event}{aria} style=\"{base}border-radius:{r}px;\"></div>")
+                        format!("<{tag}{data_id}{event}{aria} style=\"{base}border-radius:{r}px;\"></{tag}>")
                     }
-                    3 => format!("<div{data_id}{event}{aria} style=\"{base}border-radius:9999px;\"></div>"),
+                    3 => format!("<{tag}{data_id}{event}{aria} style=\"{base}border-radius:9999px;\"></{tag}>"),
                     5 => format!(
                         "<svg{data_id}{event}{aria} width=\"100\" height=\"100\" viewBox=\"0 0 100 100\"><rect width=\"100\" height=\"100\" fill=\"{}\"/></svg>",
                         rgba(fill)
                     ),
-                    _ => format!("<div{data_id}{event}{aria} style=\"{base}\"></div>"),
+                    _ => format!("<{tag}{data_id}{event}{aria} style=\"{base}\"></{tag}>"),
                 }
             }
             component_type::DIVIDER => {
@@ -1058,18 +1060,21 @@ if indeterminate {
                 )
             }
             component_type::GRID | component_type::LAZY_VGRID | component_type::LAZY_HGRID => {
+                let tag = semantic.unwrap_or("div");
                 let cols = grid_columns(node);
                 let grid_css = grid_style(cols, node.component == component_type::LAZY_HGRID);
                 let combined = format!("{grid_css}{css}");
                 let grid_style = style_attr(&combined);
-                format!("<div{data_id}{event}{aria}{grid_style}>{children}</div>")
+                format!("<{tag}{data_id}{event}{aria}{grid_style}>{children}</{tag}>")
             }
             component_type::SCROLLVIEW => {
+                let tag = semantic.unwrap_or("div");
                 let combined = format!("overflow:auto;{css}");
                 let scroll_style = style_attr(&combined);
-                format!("<div{data_id}{event}{aria}{scroll_style}>{children}</div>")
+                format!("<{tag}{data_id}{event}{aria}{scroll_style}>{children}</{tag}>")
             }
             component_type::ZSTACK => {
+                let tag = semantic.unwrap_or("div");
                 let inner: String = node
                     .children
                     .iter()
@@ -1084,7 +1089,7 @@ if indeterminate {
                     .collect();
                 let combined = format!("position:relative;width:100%;height:100%;{css}");
                 let zstyle = style_attr(&combined);
-                format!("<div{data_id}{event}{aria}{zstyle}>{inner}</div>")
+                format!("<{tag}{data_id}{event}{aria}{zstyle}>{inner}</{tag}>")
             }
             component_type::STEPPER => {
                 let min = node.f32_property(property_id::MIN_VALUE, 0.0);
@@ -1186,12 +1191,14 @@ if indeterminate {
     fn wrap_stack(
         id: u32,
         direction: &str,
+        semantic: Option<&'static str>,
         node: &Node,
         children: &str,
         css: &str,
         event: &str,
         aria: &str,
     ) -> String {
+        let tag = semantic.unwrap_or("div");
         let alignment = node
             .properties
             .get(&property_id::ALIGNMENT)
@@ -1208,7 +1215,7 @@ if indeterminate {
         );
         let stack_style = style_attr(&combined);
         format!(
-            "<div data-pathland-id=\"{id}\"{}{event}{aria}{stack_style}>{children}</div>",
+            "<{tag} data-pathland-id=\"{id}\"{}{event}{aria}{stack_style}>{children}</{tag}>",
             slot_attrs(node),
         )
     }

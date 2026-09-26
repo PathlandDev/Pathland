@@ -63,6 +63,14 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   - `SettingsView` — a switch + volume slider on local signals (`/settings`).
   - A `fallback` ("Not Found") for any other path.
 
+- **Semantic accessibility roles** (`AccessibilityRole.of(Roles.*)`,
+  `com.pathland.view.Roles`): the demo root views carry the `MAIN` landmark
+  (`HomeView`/`SettingsView`/`KitchenSinkView`/`CounterView`), the sidebar is
+  `NAVIGATION` with its menu rows `BUTTON`, destination/section titles are
+  `HEADER` headings, and `SectionCard` titles are `HEADER` — the web renderer
+  reflects these as native semantic elements (`<nav>`, `<main>`, `<h2>`,
+  `<button>`).
+
 ## Not implemented / gaps
 
 - The browser experience depends on the `@pathland/dom-renderer` client

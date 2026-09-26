@@ -39,6 +39,7 @@ import {
   PROP_NAV_DEPTH,
   PROP_PROGRESS,
   PROP_PROMPT,
+  PROP_ROLE,
   PROP_ROUTE,
   PROP_SELECTED,
   PROP_SELECTION,
@@ -54,6 +55,12 @@ import { readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
 import { applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";
+import {
+  GENERIC_COMPONENTS,
+  NATIVE_ROLE_COMPONENTS,
+  ariaRole,
+  semanticTag,
+} from "./generated/role-spec";
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 
 /** Component type per retained node, so STYLE/TREE application can special-case
@@ -371,6 +378,63 @@ function maybeAnimateInsert(parent: Node, child: Node): void {
   }, { once: true });
 }
 
+/** Resolve an element's role shell kind: from the component when known (fresh
+ *  nodes), else from its tag (SSR-hydrated nodes have no component). */
+function shellKind(el: HTMLElement): "generic" | "native" | "other" {
+  const comp = componentByNode.get(el);
+  if (comp !== undefined) {
+    if (GENERIC_COMPONENTS.includes(comp)) {
+      return "generic";
+    }
+    if (NATIVE_ROLE_COMPONENTS.includes(comp)) {
+      return "native";
+    }
+    return "other";
+  }
+  const t = el.tagName.toLowerCase();
+  if (t === "div" || t === "span") {
+    return el.classList.contains("pathland-menu") || el.classList.contains("pathland-stepper")
+      ? "other"
+      : "generic";
+  }
+  if (
+    t === "button" ||
+    t === "input" ||
+    t === "label" ||
+    t === "select" ||
+    t === "textarea" ||
+    t === "progress" ||
+    t === "img"
+  ) {
+    return "native";
+  }
+  return "other";
+}
+
+/** Replace an element with one of a different tag (a semantic role retag),
+ *  preserving attributes, children, and the registry entry. */
+function morphRole(el: HTMLElement, tag: string, r: DomRenderer): HTMLElement {
+  const fresh = document.createElement(tag);
+  for (const attr of Array.from(el.attributes)) {
+    fresh.setAttribute(attr.name, attr.value);
+  }
+  while (el.firstChild) {
+    fresh.appendChild(el.firstChild);
+  }
+  if (el.parentNode) {
+    el.parentNode.replaceChild(fresh, el);
+  }
+  const id = Number(el.getAttribute("data-pathland-id"));
+  if (id) {
+    r.byId.set(id, fresh);
+  }
+  const comp = componentByNode.get(el);
+  if (comp !== undefined) {
+    componentByNode.set(fresh, comp);
+  }
+  return fresh;
+}
+
 function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   if (op.command === CMD_SET_DESIGN_TOKEN) {
     applyDesignToken(op, strings, r.tokenSink ?? createTokenSink());
@@ -418,6 +482,23 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
       } else if (componentByNode.get(el) === COMPONENT_PROGRESS_VIEW
               && (propId === PROP_IS_INDETERMINATE || propId === PROP_PROGRESS)) {
         applyProgress(el, r, propId, valueType, op.c);
+      } else if (propId === PROP_ROLE) {
+        // Semantic role → native element where one exists (generated role-spec):
+        // a generic shell is retagged to its semantic element; the ARIA `role`
+        // attribute is set only when the element does not already convey it.
+        const code = Math.round(f32FromBits(op.c)) & 0xff;
+        const kind = shellKind(el);
+        const tag = semanticTag(kind, code);
+        let current = el;
+        if (tag && current.tagName.toLowerCase() !== tag) {
+          current = morphRole(current, tag, r);
+        }
+        const aria = ariaRole(kind, code);
+        if (aria) {
+          current.setAttribute("role", aria);
+        } else {
+          current.removeAttribute("role");
+        }
       } else if (propId === PROP_NAV_DEPTH) {
         // Back-stack depth on a nav slot → the renderer's default back button.
         el.setAttribute("data-pathland-depth", String(op.c));

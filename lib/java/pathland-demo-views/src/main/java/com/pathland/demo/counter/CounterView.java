@@ -1,6 +1,8 @@
 package com.pathland.demo.counter;
 
+import com.pathland.view.AccessibilityRole;
 import com.pathland.view.Color;
+import com.pathland.view.Roles;
 import com.pathland.view.Text;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
@@ -22,6 +24,9 @@ public final class CounterView implements View {
                 new NameField(),
                 Text.of("Pathland · per-session · 16-byte deltas")
                         .modifier(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88)))
-        ).modifier(Padding.of(24));
+        )
+        // The app's main content region → `<main>`.
+        .modifier(AccessibilityRole.of(Roles.MAIN))
+        .modifier(Padding.of(24));
     }
 }

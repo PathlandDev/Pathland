@@ -532,5 +532,76 @@ pub mod size {
     pub const HUG_CONTENT: f32 = -2.0;
 }
 
+/// Accessibility role codes for the `ROLE` semantic property (`0x2001`).
+///
+/// Roles are protocol-semantic (carried as an `F32` enum code; see
+/// `spec/OPCODE.md` §semantic properties). The first twenty are the classic
+/// accessibility set; `BANNER` and above are the landmark/structural roles that
+/// a web renderer maps onto native semantic HTML elements. Values MUST NOT be
+/// renumbered once released (wire version stays 1).
+pub mod role {
+    /// No semantic role (the default).
+    pub const NONE: u8 = 0;
+    /// A button/pressable action.
+    pub const BUTTON: u8 = 1;
+    /// A link to another destination.
+    pub const LINK: u8 = 2;
+    /// A heading (ARIA `heading`; the HTML renderer uses `<hN>`).
+    pub const HEADER: u8 = 3;
+    /// Plain text content.
+    pub const TEXT: u8 = 4;
+    /// An image.
+    pub const IMAGE: u8 = 5;
+    /// A single-line text input.
+    pub const TEXT_FIELD: u8 = 6;
+    /// A continuous/stepped numeric range control.
+    pub const SLIDER: u8 = 7;
+    /// A toggle (switch/checkbox/button styles).
+    pub const TOGGLE: u8 = 8;
+    /// A checkbox.
+    pub const CHECKBOX: u8 = 9;
+    /// A radio button.
+    pub const RADIO_BUTTON: u8 = 10;
+    /// A discrete increment/decrement control.
+    pub const STEPPER: u8 = 11;
+    /// A tab within a tab bar.
+    pub const TAB: u8 = 12;
+    /// A tab bar (ARIA `tablist`).
+    pub const TAB_BAR: u8 = 13;
+    /// A list container (the HTML renderer uses `<ul>`).
+    pub const LIST: u8 = 14;
+    /// A 2D matrix grid.
+    pub const GRID: u8 = 15;
+    /// A scrollable content region.
+    pub const SCROLL_VIEW: u8 = 16;
+    /// A value the user can adjust.
+    pub const ADJUSTABLE: u8 = 17;
+    /// A summarising/complementary region (ARIA `region`).
+    pub const SUMMARY: u8 = 18;
+    /// A menu / pop-up button.
+    pub const MENU: u8 = 19;
+    // ── Landmark / structural roles (20+) ──────────────────────────────────
+    /// Site banner (HTML `<header>`).
+    pub const BANNER: u8 = 20;
+    /// Site navigation (HTML `<nav>`).
+    pub const NAVIGATION: u8 = 21;
+    /// The page's main content (HTML `<main>`).
+    pub const MAIN: u8 = 22;
+    /// Site footer / content info (HTML `<footer>`).
+    pub const CONTENT_INFO: u8 = 23;
+    /// Complementary/aside content (HTML `<aside>`).
+    pub const COMPLEMENTARY: u8 = 24;
+    /// A self-contained article (HTML `<article>`).
+    pub const ARTICLE: u8 = 25;
+    /// A thematically grouped section (HTML `<section>`).
+    pub const SECTION: u8 = 26;
+    /// A search region (HTML `<search>`).
+    pub const SEARCH: u8 = 27;
+    /// An item within a list (HTML `<li>`).
+    pub const LIST_ITEM: u8 = 28;
+    /// A paragraph (HTML `<p>`).
+    pub const PARAGRAPH: u8 = 29;
+}
+
 /// Sentinel for append positions (`index = u32::MAX`).
 pub const APPEND: u32 = u32::MAX;

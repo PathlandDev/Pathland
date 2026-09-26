@@ -34,7 +34,9 @@ public class Sidebar implements View {
                 // the menu rows) is preserved.
                 .modifier(FrameMod.of(200f))
                 .modifier(Background.of(SIDEBAR_BG))
-                .modifier(Border.of(SIDEBAR_BORDER, 1f));
+                .modifier(Border.of(SIDEBAR_BORDER, 1f))
+                // The sidebar is the app's primary navigation region → a `<nav>` landmark.
+                .modifier(AccessibilityRole.of(Roles.NAVIGATION));
     }
 
     /** A sidebar menu row (a {@link Label}): navigates the router (direct selection — no
@@ -53,7 +55,9 @@ public class Sidebar implements View {
         return Label.of(label, icon)
                 .modifiers(
                         TapGesture.of(() -> router.navigate(path)),
-                        Background.of(bg), ForegroundStyle.of(fg)
+                        Background.of(bg), ForegroundStyle.of(fg),
+                        // Each menu row is a pressable nav item → a `<button>`.
+                        AccessibilityRole.of(Roles.BUTTON)
                 );
         //return Button.of(label, () -> router.navigate(path))
         //        .modifiers(Background.of(bg), ForegroundStyle.of(fg));

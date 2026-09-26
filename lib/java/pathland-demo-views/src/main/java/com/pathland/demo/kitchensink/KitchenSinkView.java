@@ -13,7 +13,9 @@ public final class KitchenSinkView implements View {
     @Override
     public View body() {
         return ScrollView.of(VStack.of(Alignment.LEADING, 10,
-                Text.of("Pathland Kitchensink").modifiers(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD), Padding.of(8, 0 ,8 ,0)),
+                // The kitchen-sink title is a heading → `<h2>`.
+                Text.of("Pathland Kitchensink").modifiers(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD), Padding.of(8, 0 ,8 ,0))
+                        .modifier(AccessibilityRole.of(Roles.HEADER)),
                 Text.of("Every protocol primitive, control, modifier, and state binding")
                         .modifier(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88))),
                 new CounterSection(),
@@ -32,6 +34,9 @@ public final class KitchenSinkView implements View {
                         .modifiers(
                                 ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88)),
                                 Padding.of(16))
-        ).modifier(Padding.of(24)));
+        )
+        // The demo's main content region → `<main>`.
+        .modifier(AccessibilityRole.of(Roles.MAIN))
+        .modifier(Padding.of(24)));
     }
 }

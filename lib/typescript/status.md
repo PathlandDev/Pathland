@@ -24,6 +24,15 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `pathland-render-html::token_spec`; `src/tokens.ts` imports them, so the
   `--pl-*` naming, `dark.` prefix, `space.<N>` family, and length-token rules are
   single-sourced in Rust.
+- **Semantic HTML elements from `ROLE`** (generated `src/generated/role-spec.ts`
+  from `pathland-render-html::role_spec`): a `PROP_ROLE` delta **retags a generic
+  `div`/`span` shell** to its semantic element (`<header>`/`<nav>`/`<main>`/
+  `<footer>`/`<aside>`/`<article>`/`<section>`/`<search>`/`<ul>`/`<li>`/`<p>`/
+  `<h2>`…) via an in-place `morphRole` (attributes + children + registry
+  preserved); control components keep their native element; ARIA-only roles
+  (`LINK`, `CHECKBOX`, …) set the `role` attribute. The shell kind is derived
+  from the component when known (fresh nodes) and from the element tag when
+  hydrating (SSR nodes have no component).
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or
@@ -130,9 +139,11 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   fixtures emitted by `pathland-html-golden` (`test/fixtures/ssr/`) drive BOTH a
   fresh-DOM render (apply each `{name}.plpl` with `createElement` + `applyBatch`
   and compare the serialized DOM to the canonical `{name}.html` fragment) and a
-  hydrate-then-delta render (`delta_*`) — so the DOM client and the Rust SSR
-  renderer cannot drift without a failing test. `npm run regen` regenerates the
-  fixtures together with the generated TS.
+  hydrate-then-delta render (`delta_*`, which now includes a `ROLE` change
+  exercising the semantic-tag retag) — so the DOM client and the Rust SSR
+  renderer cannot drift without a failing test. A `semantics` scenario pins the
+  semantic-tag / ARIA behavior on both renderers. `npm run regen` regenerates
+  the fixtures together with the generated TS.
 - **`META::RESYNC`** (`encodeResync`): the client requests a full snapshot after
   **reconnect** (never on first connect — the UI is already the SSR HTML).
 - **Transport** (`src/transport.ts`): WebSocket connect, protocol-version
@@ -176,7 +187,7 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 
 ## Verified by
 
-`npm test` (vitest, 148 tests) + `npm run typecheck` (strict TS). CI runs the
+`npm test` (vitest, 152 tests) + `npm run typecheck` (strict TS). CI runs the
 web-client job (typecheck + test + build + copy-to-demos drift check) and the
 rust job verifies the generated TS + SSR golden fixtures are current
 (`cargo run -p pathland-ts-codegen` / `pathland-html-golden -- --emit` then

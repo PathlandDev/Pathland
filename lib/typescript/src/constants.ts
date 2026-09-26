@@ -250,7 +250,16 @@ export const TOGGLE_STYLE_SWITCH = 0;
 export const TOGGLE_STYLE_CHECKBOX = 1;
 export const TOGGLE_STYLE_BUTTON = 2;
 
-// ROLE (accessibility, spec/OPCODE.md semantic properties)
+// STATE (control/interaction state, spec/OPCODE.md semantic properties)
+export const STATE_NORMAL = 0;
+export const STATE_DISABLED = 1;
+export const STATE_FOCUSED = 2;
+export const STATE_PRESSED = 3;
+export const STATE_SELECTED = 4;
+export const STATE_EXPANDED = 5;
+export const STATE_BUSY = 6;
+
+// ROLE (semantic role, spec/OPCODE.md — bound to `pathland_core::role`)
 export const ROLE_NONE = 0;
 export const ROLE_BUTTON = 1;
 export const ROLE_LINK = 2;
@@ -271,15 +280,16 @@ export const ROLE_SCROLL_VIEW = 16;
 export const ROLE_ADJUSTABLE = 17;
 export const ROLE_SUMMARY = 18;
 export const ROLE_MENU = 19;
-
-// STATE (control/interaction state, spec/OPCODE.md semantic properties)
-export const STATE_NORMAL = 0;
-export const STATE_DISABLED = 1;
-export const STATE_FOCUSED = 2;
-export const STATE_PRESSED = 3;
-export const STATE_SELECTED = 4;
-export const STATE_EXPANDED = 5;
-export const STATE_BUSY = 6;
+export const ROLE_BANNER = 20;
+export const ROLE_NAVIGATION = 21;
+export const ROLE_MAIN = 22;
+export const ROLE_CONTENT_INFO = 23;
+export const ROLE_COMPLEMENTARY = 24;
+export const ROLE_ARTICLE = 25;
+export const ROLE_SECTION = 26;
+export const ROLE_SEARCH = 27;
+export const ROLE_LIST_ITEM = 28;
+export const ROLE_PARAGRAPH = 29;
 
 // Components (spec/PRIMITIVES.md)
 export const COMPONENT_TEXT = 0x0001;
