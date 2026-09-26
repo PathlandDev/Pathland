@@ -3,7 +3,7 @@
   "checkpoint_id": "01M3ERWZ0KP90C0Q9J3B4FNZRT",
   "strategy": "manual-commit",
   "branch": "feat/assets-and-reserved-path",
-  "checkpoints_count": 36,
+  "checkpoints_count": 48,
   "files_touched": [
     "AGENTS.md",
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/ToggleSection.java",
@@ -40,13 +40,20 @@
       "compact_transcript": "/1/transcript.jsonl",
       "content_hash": "/1/content_hash.txt",
       "prompt": "/1/prompt.txt"
+    },
+    {
+      "metadata": "/2/metadata.json",
+      "transcript": "/2/full.jsonl",
+      "compact_transcript": "/2/transcript.jsonl",
+      "content_hash": "/2/content_hash.txt",
+      "prompt": "/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 13880997,
+    "input_tokens": 53169624,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 292869888,
-    "output_tokens": 275516,
-    "api_call_count": 473
+    "cache_read_tokens": 714062976,
+    "output_tokens": 1124360,
+    "api_call_count": 1986
   }
 }
