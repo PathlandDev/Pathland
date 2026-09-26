@@ -82,6 +82,10 @@ public final class Properties {
     public static final int TINT = 0x1030;
     /** Presentation hint for structural swaps (F32 enum code): None=0, PlatformDefault=1, Fade=2, Slide=3, Scale=4. */
     public static final int TRANSITION = 0x1031;
+    /** Predefined typography (F32 enum code, see {@link TextStyle}): the heading
+     *  styles imply a heading element on a {@code TEXT}; raw font modifiers
+     *  override the visual on top and never imply a heading. */
+    public static final int TEXT_STYLE = 0x1032;
     // Semantic (0x2000 range)
     public static final int ROLE = 0x2001;
     public static final int STATE = 0x2002;

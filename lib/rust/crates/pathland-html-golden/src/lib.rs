@@ -137,6 +137,7 @@ fn scenarios() -> Vec<Scenario> {
 
 fn semantics() -> Scenario {
     use pathland_core::role;
+    use pathland_core::text_style;
     let mut b = Builder::new();
     // root nav: a generic VStack retagged to <nav>.
     b.create(1, component_type::VSTACK);
@@ -152,7 +153,9 @@ fn semantics() -> Scenario {
     b.create(11, component_type::VSTACK);
     b.create(12, component_type::TEXT);
     b.create(13, component_type::TEXT);
-    b.create(14, component_type::BUTTON);
+    b.create(14, component_type::TEXT);
+    b.create(15, component_type::TEXT);
+    b.create(16, component_type::BUTTON);
     b.insert(1, 2);
     b.insert(1, 3);
     b.insert(1, 4);
@@ -166,11 +169,20 @@ fn semantics() -> Scenario {
     b.insert(11, 12);
     b.insert(1, 13);
     b.insert(1, 14);
+    b.insert(1, 15);
+    b.insert(1, 16);
     b.set_prop(1, value_type::F32, property_id::ROLE, (role::NAVIGATION as f32).to_bits());
+    // A heading role → default <h2>.
     b.set_text(2, "Home");
-    b.set_prop(2, value_type::F32, property_id::ROLE, (role::LINK as f32).to_bits());
-    b.set_text(3, "Heading");
-    b.set_prop(3, value_type::F32, property_id::ROLE, (role::HEADER as f32).to_bits());
+    b.set_prop(2, value_type::F32, property_id::ROLE, (role::HEADER as f32).to_bits());
+    // A heading TEXT_STYLE → <hN> (a heading even without a role).
+    b.set_text(3, "Title");
+    b.set_prop(
+        3,
+        value_type::F32,
+        property_id::TEXT_STYLE,
+        (text_style::TITLE2 as f32).to_bits(),
+    );
     // A list container (children stay plain — container tag only).
     b.set_prop(4, value_type::F32, property_id::ROLE, (role::LIST as f32).to_bits());
     b.set_text(5, "Item A");
@@ -184,12 +196,27 @@ fn semantics() -> Scenario {
     b.set_text(10, "Site");
     b.set_prop(11, value_type::F32, property_id::ROLE, (role::CONTENT_INFO as f32).to_bits());
     b.set_text(12, "© Pathland");
-    // ARIA-only role on a generic shell.
-    b.set_text(13, "Checkable");
-    b.set_prop(13, value_type::F32, property_id::ROLE, (role::CHECKBOX as f32).to_bits());
-    // A control keeps its native element and emits no redundant role attribute.
-    b.set_text(14, "Go");
-    b.set_prop(14, value_type::F32, property_id::ROLE, (role::BUTTON as f32).to_bits());
+    // Plain text with no role/style → <span>.
+    b.set_text(13, "Plain");
+    // A non-heading TEXT_STYLE → still <span> (not a heading).
+    b.set_text(14, "Sub");
+    b.set_prop(
+        14,
+        value_type::F32,
+        property_id::TEXT_STYLE,
+        (text_style::SUBHEADLINE as f32).to_bits(),
+    );
+    // A heading TEXT_STYLE + heading role → the typography's level wins.
+    b.set_text(15, "Head");
+    b.set_prop(
+        15,
+        value_type::F32,
+        property_id::TEXT_STYLE,
+        (text_style::LARGE_TITLE as f32).to_bits(),
+    );
+    b.set_prop(15, value_type::F32, property_id::ROLE, (role::HEADER as f32).to_bits());
+    // A control keeps its native element — no role needed (intrinsic).
+    b.set_text(16, "Go");
     Scenario {
         name: "semantics",
         opcodes: b.opcodes,

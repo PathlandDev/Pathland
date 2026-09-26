@@ -44,6 +44,7 @@ import {
   PROP_SELECTED,
   PROP_SELECTION,
   PROP_TEXT,
+  PROP_TEXT_STYLE,
   PROP_VALUE,
   PROP_WIDTH,
   VAL_DESIGN_TOKEN,
@@ -59,7 +60,7 @@ import {
   GENERIC_COMPONENTS,
   NATIVE_ROLE_COMPONENTS,
   ariaRole,
-  semanticTag,
+  textTag,
 } from "./generated/role-spec";
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 
@@ -67,6 +68,13 @@ import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./f
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
  *  spinner/progress morph) without baking it into the DOM. */
 const componentByNode = new WeakMap<Node, number>();
+
+/** The last `ROLE` code applied per element (morphing needs both role and text
+ *  style to resolve the effective tag). */
+const roleByNode = new WeakMap<HTMLElement, number>();
+
+/** The last `TEXT_STYLE` code applied per element, if any. */
+const textStyleByNode = new WeakMap<HTMLElement, number>();
 
 /** The retained `node id → DOM Node` registry the renderer works against. */
 export interface DomRenderer {
@@ -432,7 +440,35 @@ function morphRole(el: HTMLElement, tag: string, r: DomRenderer): HTMLElement {
   if (comp !== undefined) {
     componentByNode.set(fresh, comp);
   }
+  const role = roleByNode.get(el);
+  if (role !== undefined) {
+    roleByNode.set(fresh, role);
+  }
+  const style = textStyleByNode.get(el);
+  if (style !== undefined) {
+    textStyleByNode.set(fresh, style);
+  }
   return fresh;
+}
+
+/** Resolve and apply the semantic tag + ARIA role for an element from its
+ *  current `ROLE` / `TEXT_STYLE` state (a heading `TEXT_STYLE` always wins).
+ *  Retags a generic shell in place when the effective tag differs. */
+function applySemantic(el: HTMLElement, r: DomRenderer): void {
+  const kind = shellKind(el);
+  const role = roleByNode.get(el) ?? 0;
+  const style = textStyleByNode.get(el);
+  const tag = textTag(kind, role, style ?? null);
+  let current = el;
+  if (tag && current.tagName.toLowerCase() !== tag) {
+    current = morphRole(current, tag, r);
+  }
+  const aria = ariaRole(kind, role);
+  if (aria) {
+    current.setAttribute("role", aria);
+  } else {
+    current.removeAttribute("role");
+  }
 }
 
 function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
@@ -486,19 +522,15 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
         // Semantic role → native element where one exists (generated role-spec):
         // a generic shell is retagged to its semantic element; the ARIA `role`
         // attribute is set only when the element does not already convey it.
-        const code = Math.round(f32FromBits(op.c)) & 0xff;
-        const kind = shellKind(el);
-        const tag = semanticTag(kind, code);
-        let current = el;
-        if (tag && current.tagName.toLowerCase() !== tag) {
-          current = morphRole(current, tag, r);
-        }
-        const aria = ariaRole(kind, code);
-        if (aria) {
-          current.setAttribute("role", aria);
-        } else {
-          current.removeAttribute("role");
-        }
+        roleByNode.set(el, Math.round(f32FromBits(op.c)) & 0xff);
+        applySemantic(el, r);
+      } else if (propId === PROP_TEXT_STYLE) {
+        // A heading `TEXT_STYLE` (LargeTitle…Headline) makes a TEXT a heading
+        // (`<h1>`–`<h5>`) — always, even without `ROLE_HEADER`; raw font
+        // modifiers never imply a heading. Absence is "no style" (the enum has
+        // no NONE — LARGE_TITLE is code 0, a real heading style).
+        textStyleByNode.set(el, Math.round(f32FromBits(op.c)) & 0xff);
+        applySemantic(el, r);
       } else if (propId === PROP_NAV_DEPTH) {
         // Back-stack depth on a nav slot → the renderer's default back button.
         el.setAttribute("data-pathland-depth", String(op.c));

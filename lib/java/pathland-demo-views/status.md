@@ -66,10 +66,12 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
 - **Semantic accessibility roles** (`AccessibilityRole.of(Roles.*)`,
   `com.pathland.view.Roles`): the demo root views carry the `MAIN` landmark
   (`HomeView`/`SettingsView`/`KitchenSinkView`/`CounterView`), the sidebar is
-  `NAVIGATION` with its menu rows `BUTTON`, destination/section titles are
-  `HEADER` headings, and `SectionCard` titles are `HEADER` — the web renderer
-  reflects these as native semantic elements (`<nav>`, `<main>`, `<h2>`,
-  `<button>`).
+  `NAVIGATION`, and `SectionCard` titles are `HEADER` headings — the web
+  renderer reflects these as native semantic elements (`<nav>`, `<main>`,
+  `<h2>`). Sidebar menu rows are **real `Button`s styled with
+  `PlainButtonStyle`** (`Button.of(Label, action)`) — control semantics are
+  intrinsic to the component, not a `ROLE`; a custom-looking button is a
+  `Button` + `ButtonStyle`.
 
 ## Not implemented / gaps
 

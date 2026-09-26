@@ -69,6 +69,15 @@ public interface View {
     }
 
     /**
+     * Apply a {@link Font} (SwiftUI {@code .font(_:)}): a predefined typography
+     * ({@code Font.headline()}, … → a heading element for the heading styles), a
+     * custom family + size, or a system size/weight/design.
+     */
+    default View font(Font font) {
+        return modifier(FontMod.of(font));
+    }
+
+    /**
      * Declare this view a route-changer that {@code navigate}s to {@code to} (a
      * direct selection — no back-stack entry). Resolved to the nearest enclosing
      * {@code Router} by the emitter (spec DSL.md §4.5 "any component can change

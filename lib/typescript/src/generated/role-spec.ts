@@ -12,22 +12,34 @@ export interface RoleTag {
 }
 
 export const ROLE_TAGS: readonly RoleTag[] = [
-  { role: 20, tag: "header", aria: "banner" },
-  { role: 21, tag: "nav", aria: "navigation" },
-  { role: 22, tag: "main", aria: "main" },
-  { role: 23, tag: "footer", aria: "contentinfo" },
-  { role: 24, tag: "aside", aria: "complementary" },
-  { role: 25, tag: "article", aria: "article" },
-  { role: 26, tag: "section", aria: "region" },
-  { role: 27, tag: "search", aria: "search" },
-  { role: 14, tag: "ul", aria: "list" },
-  { role: 28, tag: "li", aria: "listitem" },
-  { role: 29, tag: "p", aria: "paragraph" },
-  { role: 3, tag: "h2", aria: "heading" },
-  { role: 18, tag: "section", aria: "region" },
+  { role: 1, tag: "h2", aria: "heading" },
+  { role: 2, tag: "p", aria: "paragraph" },
+  { role: 3, tag: "ul", aria: "list" },
+  { role: 4, tag: "li", aria: "listitem" },
+  { role: 5, tag: "section", aria: "region" },
+  { role: 6, tag: "header", aria: "banner" },
+  { role: 7, tag: "nav", aria: "navigation" },
+  { role: 8, tag: "main", aria: "main" },
+  { role: 9, tag: "footer", aria: "contentinfo" },
+  { role: 10, tag: "aside", aria: "complementary" },
+  { role: 11, tag: "article", aria: "article" },
+  { role: 12, tag: "section", aria: "region" },
+  { role: 13, tag: "search", aria: "search" },
 ];
 
-export const ROLE_ARIA: ReadonlyArray<readonly [number, string]> = [[1, "button"], [2, "link"], [4, "text"], [5, "img"], [6, "textbox"], [7, "slider"], [8, "switch"], [9, "checkbox"], [10, "radio"], [11, "spinbutton"], [12, "tab"], [13, "tablist"], [15, "grid"], [16, "scrollbar"], [17, "slider"], [19, "menu"]];
+export const HEADING_STYLES: ReadonlyArray<readonly [number, number]> = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]];
+
+/** The heading level a `TEXT_STYLE` typography implies, or null for the
+ *  non-heading styles (Subheadline, Body, Caption, …). */
+export function headingLevel(textStyle: number): number | null {
+  const found = HEADING_STYLES.find(([s]) => s === textStyle);
+  return found ? found[1] : null;
+}
+
+/** The heading element tag for a level (1 → `h1` … 5 → `h5`). */
+export function headingTag(level: number): string {
+  return "h" + String(level);
+}
 
 /** A shell's role behavior (see `pathland-render-html::role_spec`).
  *  Generic `div`/`span` shells may be retagged; native controls convey
@@ -41,6 +53,17 @@ export function semanticTag(kind: ShellKind, role: number): string | null {
   return found ? found.tag : null;
 }
 
+/** The effective tag for a generic TEXT shell: a heading `TEXT_STYLE`
+*  wins (always a heading), then the semantic role (`ROLE_HEADER` → `<h2>`,
+*  `ROLE_PARAGRAPH` → `<p>`, landmarks), else null (→ `<span>`). */
+export function textTag(kind: ShellKind, role: number, textStyle: number | null): string | null {
+  if (kind === "generic" && textStyle !== null) {
+   const level = headingLevel(textStyle);
+   if (level !== null) return headingTag(level);
+  }
+  return semanticTag(kind, role);
+}
+
 /** The ARIA `role` value to emit for `(shell kind, role)`, or null when
 *  the element already conveys the role (a semantic tag or a native control). */
 export function ariaRole(kind: ShellKind, role: number): string | null {
@@ -49,6 +72,5 @@ export function ariaRole(kind: ShellKind, role: number): string | null {
   if (tagged) {
    return kind === "generic" ? null : tagged.aria;
   }
-  const found = ROLE_ARIA.find(([r]) => r === role);
-  return found ? found[1] : null;
+  return null;
 }

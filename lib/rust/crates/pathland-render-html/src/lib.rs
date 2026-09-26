@@ -77,6 +77,14 @@ impl Node {
             .unwrap_or(0)
     }
 
+    /// The decoded `TEXT_STYLE` typography code (None when absent), from its
+    /// `F32` wire value.
+    fn text_style_code(&self) -> Option<u8> {
+        self.properties
+            .get(&property_id::TEXT_STYLE)
+            .map(|b| f32::from_bits(*b) as u8)
+    }
+
     /// An `F32` property value, or a default when absent.
     fn f32_property(&self, prop: u16, default: f32) -> f32 {
         self.properties
@@ -877,7 +885,11 @@ impl HtmlRenderer {
                 wrap_stack(id, "row", semantic, node, &children, &css, &event, &aria)
             }
             component_type::TEXT => {
-                let tag = semantic.unwrap_or("span");
+                // A TEXT's tag is resolved by typography + role: a heading
+                // `TEXT_STYLE` (LargeTitle…Headline) is always a heading; else
+                // `ROLE_HEADER` → `<h2>`, `ROLE_PARAGRAPH` → `<p>`; else `<span>`.
+                let tag = role_spec::text_tag(kind, node.role_code(), node.text_style_code())
+                    .unwrap_or("span");
                 let text = escape(node.text.as_deref().unwrap_or_default());
                 format!("<{tag}{data_id}{event}{aria}{style}>{text}</{tag}>")
             }
@@ -1159,12 +1171,12 @@ if indeterminate {
                 // Composite shell matching the DOM client's `menuShell()`
                 // (lib/typescript/src/elements.ts): the trigger holds the label,
                 // and TREE children are routed into `.pathland-menu-items` (the
-                // client's `childrenContainer`). The `role="menu"` ARIA attribute
-                // comes from the `ROLE` property, not the shell.
+                // client's `childrenContainer`). `role="menu"` is the control's
+                // intrinsic semantics (not a `ROLE` property).
                 let label = escape(node.text.as_deref().unwrap_or_default());
                 let menu_class = class_attr("pathland-menu");
                 format!(
-                    "<div{data_id}{event}{aria}{menu_class}{style}><div class=\"pathland-menu-trigger\">{label}</div><div class=\"pathland-menu-items\">{children}</div></div>"
+                    "<div{data_id}{event}{aria}{menu_class} role=\"menu\"{style}><div class=\"pathland-menu-trigger\">{label}</div><div class=\"pathland-menu-items\">{children}</div></div>"
                 )
             }
             component_type::COLOR_PICKER => {

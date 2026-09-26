@@ -245,47 +245,54 @@ delivery (see [EVENTS.md](./EVENTS.md#transport-aware-event-guards-must)).
 | `ROUTE` | `0x2019` | STRING | Current navigation path (absolute, e.g. `/users/42`); drives web URL sync — see [DSL.md §4.5](./DSL.md#45-navigation) |
 | `NAV_DEPTH` | `0x201A` | U32 | Navigation back-stack depth (destinations in the app's path incl. current; `push`+1, `pop`−1, `replace` unchanged); lets native navigation adapters reconcile their page stack by depth — see [DSL.md §4.5](./DSL.md#45-navigation) |
 | `NAV_CHROME` | `0x201B` | F32 (enum code) | Navigation chrome mode on a `NavigationContainer` slot: `PlatformDefault`=0 (renderer supplies chrome — native container where one exists, renderer-drawn back affordance on DOM), `Custom`=1 (developer owns all nav UI; renderer adds none). Emitted once at mount; missing = `PlatformDefault` — see [DSL.md §4.5](./DSL.md#45-navigation) |
+| `TEXT_STYLE` | `0x1032` | ENUM (F32 code) | Predefined typography from the design system (see below). The heading styles imply a heading element on a `TEXT`; raw font modifiers override the visual on top and never imply a heading |
 
-**`ROLE` enumerated values** (accessibility role; carried as an `F32` numeric code, `value_type::F32`):
+**`TEXT_STYLE` enumerated values** (predefined typography; carried as an `F32` numeric code, `value_type::F32`):
 
-| Value | Role |
-|-------|------|
-| 0 | `None` (no semantic role) |
-| 1 | `Button` |
-| 2 | `Link` |
-| 3 | `Header` (a heading; the web renderer maps it to `<hN>`) |
-| 4 | `Text` |
-| 5 | `Image` |
-| 6 | `TextField` |
-| 7 | `Slider` |
-| 8 | `Toggle` (Switch/Checkbox/Button styles) |
-| 9 | `Checkbox` |
-| 10 | `RadioButton` |
-| 11 | `Stepper` |
-| 12 | `Tab` |
-| 13 | `TabBar` |
-| 14 | `List` |
-| 15 | `Grid` |
-| 16 | `ScrollView` |
-| 17 | `Adjustable` (value the user can adjust) |
-| 18 | `Summary` |
-| 19 | `Menu` / `PopUpButton` |
-| 20 | `Banner` (site header landmark; web → `<header>`) |
-| 21 | `Navigation` (site nav landmark; web → `<nav>`) |
-| 22 | `Main` (main content landmark; web → `<main>`) |
-| 23 | `ContentInfo` (site footer landmark; web → `<footer>`) |
-| 24 | `Complementary` (aside landmark; web → `<aside>`) |
-| 25 | `Article` (web → `<article>`) |
-| 26 | `Section` (web → `<section>`) |
-| 27 | `Search` (web → `<search>`) |
-| 28 | `ListItem` (web → `<li>`) |
-| 29 | `Paragraph` (web → `<p>`) |
+| Value | Style | Heading |
+|-------|-------|---------|
+| 0 | `LargeTitle` | `<h1>` |
+| 1 | `Title` | `<h2>` |
+| 2 | `Title2` | `<h3>` |
+| 3 | `Title3` | `<h4>` |
+| 4 | `Headline` | `<h5>` |
+| 5 | `Subheadline` | — (`<span>`) |
+| 6 | `Body` | — (`<span>`) |
+| 7 | `Callout` | — (`<span>`) |
+| 8 | `Footnote` | — (`<span>`) |
+| 9 | `Caption` | — (`<span>`) |
+| 10 | `Caption2` | — (`<span>`) |
 
-> A role is a **semantic/accessibility** property — the web renderer reflects it
-> with a native semantic element where one exists (the landmark/structural roles
-> above), and falls back to an ARIA `role` attribute otherwise. Control
-> components keep their native element (a `BUTTON` stays a `<button>`); a role
-> only upgrades a generic `div`/`span` shell.
+**`ROLE` enumerated values** (semantic structure; carried as an `F32` numeric code, `value_type::F32`):
+
+| Value | Role | Element |
+|-------|------|---------|
+| 0 | `None` (no semantic role) | — |
+| 1 | `Header` (a heading) | `<h2>` (raised by a heading `TEXT_STYLE`) |
+| 2 | `Paragraph` | `<p>` |
+| 3 | `List` | `<ul>` |
+| 4 | `ListItem` | `<li>` |
+| 5 | `Summary` | `<section>` |
+| 6 | `Banner` (site header landmark) | `<header>` |
+| 7 | `Navigation` (site nav landmark) | `<nav>` |
+| 8 | `Main` (main content landmark) | `<main>` |
+| 9 | `ContentInfo` (site footer landmark) | `<footer>` |
+| 10 | `Complementary` (aside landmark) | `<aside>` |
+| 11 | `Article` | `<article>` |
+| 12 | `Section` | `<section>` |
+| 13 | `Search` | `<search>` |
+
+> **`ROLE` is semantic structure only.** Interactive/control roles (button, link,
+> checkbox, slider, toggle, menu, text field, …) are **not roles** — they are
+> intrinsic to the control components (a `BUTTON` renders as a `<button>`, a
+> `TOGGLE` as an `<input type="checkbox">`/`role="switch"`, a `MENU` as
+> `role="menu"`), and a custom-looking button is expressed with `Button` +
+> `ButtonStyle`. The web renderer maps each semantic role onto its native element
+> on a generic `div`/`span` shell; control components keep their native element
+> and never take an ARIA role from `ROLE`. **Headings** come from a heading
+> `TEXT_STYLE` typography (always `<h1>`–`<h5>`) or from `ROLE=Header` (default
+> `<h2>`); a raw font modifier never implies a heading. Non-heading text defaults
+> to `<span>`.
 
 **`STATE` enumerated values** (control/interaction state; carried as an `F32` numeric code, `value_type::F32`):
 

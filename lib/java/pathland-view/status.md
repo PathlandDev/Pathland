@@ -92,13 +92,21 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `ButtonStyleMod`, `LabelStyleMod` — `Color` is never a modifier.
   `AccessibilityLabel`/`Image` accept reactive `Signal<String>` overloads
   (node-level `LABEL`/`IMAGE_SOURCE` bindings).
-- **`Roles` constants** (`com.pathland.view.Roles`): the canonical `ROLE` enum
-  catalog (mirrors `pathland_core::constants::role` / `spec/OPCODE.md`) — the 20
-  classic accessibility roles plus the landmark/structural roles (`BANNER`,
+- **`Roles` constants** (`com.pathland.view.Roles`): the canonical **semantic**
+  `ROLE` catalog (mirrors `pathland_core::constants::role` / `spec/OPCODE.md`,
+  dense 0–13): `HEADER`, `PARAGRAPH`, `LIST`, `LIST_ITEM`, `SUMMARY`, `BANNER`,
   `NAVIGATION`, `MAIN`, `CONTENT_INFO`, `COMPLEMENTARY`, `ARTICLE`, `SECTION`,
-  `SEARCH`, `LIST_ITEM`, `PARAGRAPH`) for use with
-  `AccessibilityRole.of(Roles.X)`. The web renderer reflects these as native
-  semantic HTML elements (`<nav>`, `<main>`, `<h2>`, …).
+  `SEARCH`. Interactive/control roles are NOT roles — they are intrinsic to the
+  control components, so `AccessibilityRole.of(int)` **throws** for codes
+  outside the semantic catalog (a custom button uses `Button` + `ButtonStyle`).
+- **`Font` + `FontMod` + `View.font(_:)`** — the SwiftUI-style `Font` spec: a
+  predefined typography (`Font.title2()` → `TEXT_STYLE`, heading styles imply a
+  heading element), a custom family + size (`Font.custom(name, size)` →
+  `FONT_FAMILY` + `FONT_SIZE`), or a system size/weight/design
+  (`Font.system(size, weight, design)`). `TextStyle` is the design-system
+  typography enum (`TEXT_STYLE` codes). The individual font modifiers
+  (`FontSize`, `FontWeightMod`, `FontFamily`, `FontDesignMod`, `FontStyleMod`,
+  `FontWidth`, `Italic`) remain available for one-off overrides.
 - **Value types**: `ValueTypes.forProperty` mirrors `value_type_for` —
   `COLOR` family → `COLOR`; `VISIBLE`/`ENABLED`/`CLIPS_TO_BOUNDS`/`UNDERLINE`/
   `STRIKETHROUGH`/`COLOR_INVERT`/`ALLOWS_HIT_TESTING`/`IS_SECURE`/

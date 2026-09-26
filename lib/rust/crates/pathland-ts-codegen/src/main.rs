@@ -12,7 +12,7 @@
 
 use pathland_core::{
     category, component_type, environment, event, flag, listener, meta, property_id, role, style,
-    tree, value_type,
+    text_style, tree, value_type,
 };
 use pathland_render_html::{role_spec, token_spec};
 use std::fmt::Write;
@@ -289,6 +289,7 @@ pub fn emit_constants_ts() -> String {
             ("ALLOWS_HIT_TESTING", fmt_u16(property_id::ALLOWS_HIT_TESTING)),
             ("TINT", fmt_u16(property_id::TINT)),
             ("TRANSITION", fmt_u16(property_id::TRANSITION)),
+            ("TEXT_STYLE", fmt_u16(property_id::TEXT_STYLE)),
             ("ROLE", fmt_u16(property_id::ROLE)),
             ("STATE", fmt_u16(property_id::STATE)),
             ("ENABLED", fmt_u16(property_id::ENABLED)),
@@ -344,32 +345,18 @@ pub fn emit_constants_ts() -> String {
         write_consts(&mut out, prefix, &mapped);
     }
 
-    // ROLE is bound to pathland_core::role (the canonical protocol catalog).
-    out.push_str("\n// ROLE (semantic role, spec/OPCODE.md — bound to `pathland_core::role`)\n");
+    // ROLE is bound to pathland_core::role (the canonical semantic-only catalog).
+    out.push_str("\n// ROLE (semantic structure, spec/OPCODE.md — bound to `pathland_core::role`)\n");
     write_consts(
         &mut out,
         "ROLE_",
         &[
             ("NONE", role::NONE.to_string()),
-            ("BUTTON", role::BUTTON.to_string()),
-            ("LINK", role::LINK.to_string()),
             ("HEADER", role::HEADER.to_string()),
-            ("TEXT", role::TEXT.to_string()),
-            ("IMAGE", role::IMAGE.to_string()),
-            ("TEXT_FIELD", role::TEXT_FIELD.to_string()),
-            ("SLIDER", role::SLIDER.to_string()),
-            ("TOGGLE", role::TOGGLE.to_string()),
-            ("CHECKBOX", role::CHECKBOX.to_string()),
-            ("RADIO_BUTTON", role::RADIO_BUTTON.to_string()),
-            ("STEPPER", role::STEPPER.to_string()),
-            ("TAB", role::TAB.to_string()),
-            ("TAB_BAR", role::TAB_BAR.to_string()),
+            ("PARAGRAPH", role::PARAGRAPH.to_string()),
             ("LIST", role::LIST.to_string()),
-            ("GRID", role::GRID.to_string()),
-            ("SCROLL_VIEW", role::SCROLL_VIEW.to_string()),
-            ("ADJUSTABLE", role::ADJUSTABLE.to_string()),
+            ("LIST_ITEM", role::LIST_ITEM.to_string()),
             ("SUMMARY", role::SUMMARY.to_string()),
-            ("MENU", role::MENU.to_string()),
             ("BANNER", role::BANNER.to_string()),
             ("NAVIGATION", role::NAVIGATION.to_string()),
             ("MAIN", role::MAIN.to_string()),
@@ -378,8 +365,26 @@ pub fn emit_constants_ts() -> String {
             ("ARTICLE", role::ARTICLE.to_string()),
             ("SECTION", role::SECTION.to_string()),
             ("SEARCH", role::SEARCH.to_string()),
-            ("LIST_ITEM", role::LIST_ITEM.to_string()),
-            ("PARAGRAPH", role::PARAGRAPH.to_string()),
+        ],
+    );
+
+    // TEXT_STYLE typographies (design-system predefined fonts).
+    out.push_str("\n// TEXT_STYLE (predefined typographies, spec/MODIFIERS.md — bound to `pathland_core::text_style`)\n");
+    write_consts(
+        &mut out,
+        "TEXT_STYLE_",
+        &[
+            ("LARGE_TITLE", text_style::LARGE_TITLE.to_string()),
+            ("TITLE", text_style::TITLE.to_string()),
+            ("TITLE2", text_style::TITLE2.to_string()),
+            ("TITLE3", text_style::TITLE3.to_string()),
+            ("HEADLINE", text_style::HEADLINE.to_string()),
+            ("SUBHEADLINE", text_style::SUBHEADLINE.to_string()),
+            ("BODY", text_style::BODY.to_string()),
+            ("CALLOUT", text_style::CALLOUT.to_string()),
+            ("FOOTNOTE", text_style::FOOTNOTE.to_string()),
+            ("CAPTION", text_style::CAPTION.to_string()),
+            ("CAPTION2", text_style::CAPTION2.to_string()),
         ],
     );
 
@@ -524,13 +529,6 @@ pub fn emit_role_spec_ts() -> String {
         let joined: Vec<String> = items.iter().map(|v| format!("{v:#06x}")).collect();
         format!("[{}]", joined.join(", "))
     };
-    let pair_list = |items: &[(u8, &str)]| {
-        let joined: Vec<String> = items
-            .iter()
-            .map(|(r, s)| format!("[{r}, {}]", q(s)))
-            .collect();
-        format!("[{}]", joined.join(", "))
-    };
     writeln!(
         out,
         "export const GENERIC_COMPONENTS: readonly number[] = {};",
@@ -555,19 +553,46 @@ pub fn emit_role_spec_ts() -> String {
         writeln!(out, "  {{ role: {}, tag: {}, aria: {} }},", rt.role, q(rt.tag), q(rt.aria)).unwrap();
     }
     out.push_str("];\n\n");
-    out.push_str("export const ROLE_ARIA: ReadonlyArray<readonly [number, string]> = ");
-    out.push_str(&pair_list(role_spec::ROLE_ARIA));
-    out.push_str(";\n\n");
+    let heading_pairs: Vec<String> = role_spec::HEADING_STYLES
+        .iter()
+        .map(|(style, level)| format!("[{style}, {level}]"))
+        .collect();
+    writeln!(
+        out,
+        "export const HEADING_STYLES: ReadonlyArray<readonly [number, number]> = [{}];",
+        heading_pairs.join(", ")
+    )
+    .unwrap();
     out.push_str(
-        "/** A shell's role behavior (see `pathland-render-html::role_spec`).\n \
-         *  Generic `div`/`span` shells may be retagged; native controls convey\n \
-         *  their own role; anything else only gets an ARIA attribute. */\n\
+        "\n/** The heading level a `TEXT_STYLE` typography implies, or null for the\n \
+         *  non-heading styles (Subheadline, Body, Caption, …). */\n\
+         export function headingLevel(textStyle: number): number | null {\n\
+         \x20 const found = HEADING_STYLES.find(([s]) => s === textStyle);\n\
+         \x20 return found ? found[1] : null;\n\
+         }\n\n\
+         /** The heading element tag for a level (1 → `h1` … 5 → `h5`). */\n\
+         export function headingTag(level: number): string {\n\
+         \x20 return \"h\" + String(level);\n\
+         }\n\n\
+         /** A shell's role behavior (see `pathland-render-html::role_spec`).\n \
+          *  Generic `div`/`span` shells may be retagged; native controls convey\n \
+          *  their own role; anything else only gets an ARIA attribute. */\n\
          export type ShellKind = \"generic\" | \"native\" | \"other\";\n\n\
          /** The semantic tag a `(shell kind, role)` pair resolves to, or null. */\n\
          export function semanticTag(kind: ShellKind, role: number): string | null {\n\
          \x20 if (kind !== \"generic\") return null;\n\
          \x20 const found = ROLE_TAGS.find((r) => r.role === role);\n\
          \x20 return found ? found.tag : null;\n\
+         }\n\n\
+         /** The effective tag for a generic TEXT shell: a heading `TEXT_STYLE`\n\
+          *  wins (always a heading), then the semantic role (`ROLE_HEADER` → `<h2>`,\n\
+          *  `ROLE_PARAGRAPH` → `<p>`, landmarks), else null (→ `<span>`). */\n\
+         export function textTag(kind: ShellKind, role: number, textStyle: number | null): string | null {\n\
+         \x20 if (kind === \"generic\" && textStyle !== null) {\n\
+         \x20\x20 const level = headingLevel(textStyle);\n\
+         \x20\x20 if (level !== null) return headingTag(level);\n\
+         \x20 }\n\
+         \x20 return semanticTag(kind, role);\n\
          }\n\n\
          /** The ARIA `role` value to emit for `(shell kind, role)`, or null when\n\
           *  the element already conveys the role (a semantic tag or a native control). */\n\
@@ -577,8 +602,7 @@ pub fn emit_role_spec_ts() -> String {
          \x20 if (tagged) {\n\
          \x20\x20 return kind === \"generic\" ? null : tagged.aria;\n\
          \x20 }\n\
-         \x20 const found = ROLE_ARIA.find(([r]) => r === role);\n\
-         \x20 return found ? found[1] : null;\n\
+         \x20 return null;\n\
          }\n",
     );
     out

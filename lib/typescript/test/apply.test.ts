@@ -14,6 +14,7 @@ import {
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
   COMPONENT_BUTTON,
+  COMPONENT_MENU,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_TEXT,
   COMPONENT_VSTACK,
@@ -29,10 +30,13 @@ import {
   PROP_SPACING,
   PROP_TEXT,
   PROP_ROLE,
+  PROP_TEXT_STYLE,
   PROP_VALUE,
   ROLE_BANNER,
-  ROLE_BUTTON,
   ROLE_HEADER,
+  TEXT_STYLE_LARGE_TITLE,
+  TEXT_STYLE_SUBHEADLINE,
+  TEXT_STYLE_TITLE2,
   VAL_DESIGN_TOKEN,
   VAL_F32,
   VAL_STRING,
@@ -572,6 +576,12 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
       [CAT_STYLE, CMD_SET_PROPERTY, 0, id, (VAL_F32 << 16) | PROP_ROLE, f32bits(role)],
     ]);
 
+  const styleBatch = (id: number, component: number, style: number) =>
+    buildBatch([
+      [CAT_TREE, CMD_CREATE_NODE, 0, id, component],
+      [CAT_STYLE, CMD_SET_PROPERTY, 0, id, (VAL_F32 << 16) | PROP_TEXT_STYLE, f32bits(style)],
+    ]);
+
   it("retags a generic Text with role=HEADER to an <h2> (no redundant role attr)", () => {
     const r = renderer();
     applyBatch(parseBatch(roleBatch(1, COMPONENT_TEXT, ROLE_HEADER)), r);
@@ -588,19 +598,62 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
     expect(el.getAttribute("role")).toBeNull();
   });
 
-  it("keeps an ARIA-only role as a role attribute on a generic shell", () => {
+  it("a heading TEXT_STYLE makes a Text a heading even without a role (TITLE2 -> <h3>)", () => {
     const r = renderer();
-    applyBatch(parseBatch(roleBatch(1, COMPONENT_TEXT, ROLE_BUTTON)), r);
+    applyBatch(parseBatch(styleBatch(1, COMPONENT_TEXT, TEXT_STYLE_TITLE2)), r);
     const el = r.byId.get(1) as HTMLElement;
-    expect(el.tagName.toLowerCase()).toBe("span"); // no semantic element for button
-    expect(el.getAttribute("role")).toBe("button");
+    expect(el.tagName.toLowerCase()).toBe("h3");
+    expect(el.getAttribute("role")).toBeNull();
   });
 
-  it("keeps a control component's native element and no role attribute", () => {
+  it("a non-heading TEXT_STYLE (SUBHEADLINE) stays a <span>", () => {
     const r = renderer();
-    applyBatch(parseBatch(roleBatch(1, COMPONENT_BUTTON, ROLE_BUTTON)), r);
+    applyBatch(parseBatch(styleBatch(1, COMPONENT_TEXT, TEXT_STYLE_SUBHEADLINE)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("span");
+  });
+
+  it("a heading TEXT_STYLE wins over the role default (LARGE_TITLE + HEADER -> <h1>)", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_TEXT],
+          [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_TEXT_STYLE, f32bits(TEXT_STYLE_LARGE_TITLE)],
+          [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_ROLE, f32bits(ROLE_HEADER)],
+        ]),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("h1");
+  });
+
+  it("a control component keeps its native element and no role attribute", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_BUTTON, ROLE_HEADER)), r);
     const el = r.byId.get(1) as HTMLElement;
     expect(el.tagName.toLowerCase()).toBe("button");
     expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("a reserved/unknown role code is a no-op on a generic shell", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_TEXT, 14)), r); // reserved (was a control role)
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("span");
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("a MENU renders with its intrinsic role=\"menu\"", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_MENU]]),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.getAttribute("role")).toBe("menu");
   });
 });

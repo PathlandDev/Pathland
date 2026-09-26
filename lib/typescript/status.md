@@ -24,15 +24,18 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `pathland-render-html::token_spec`; `src/tokens.ts` imports them, so the
   `--pl-*` naming, `dark.` prefix, `space.<N>` family, and length-token rules are
   single-sourced in Rust.
-- **Semantic HTML elements from `ROLE`** (generated `src/generated/role-spec.ts`
-  from `pathland-render-html::role_spec`): a `PROP_ROLE` delta **retags a generic
-  `div`/`span` shell** to its semantic element (`<header>`/`<nav>`/`<main>`/
-  `<footer>`/`<aside>`/`<article>`/`<section>`/`<search>`/`<ul>`/`<li>`/`<p>`/
-  `<h2>`…) via an in-place `morphRole` (attributes + children + registry
-  preserved); control components keep their native element; ARIA-only roles
-  (`LINK`, `CHECKBOX`, …) set the `role` attribute. The shell kind is derived
-  from the component when known (fresh nodes) and from the element tag when
-  hydrating (SSR nodes have no component).
+- **Semantic HTML elements from `ROLE` + typography** (generated
+  `src/generated/role-spec.ts` from `pathland-render-html::role_spec`): a
+  `PROP_ROLE` / `PROP_TEXT_STYLE` delta resolves the effective element via
+  `textTag` (a heading `TEXT_STYLE` LargeTitle…Headline is always `<h1>`–`<h5>`;
+  `ROLE_HEADER` → `<h2>`; `ROLE_PARAGRAPH` → `<p>`; else `<span>`) and
+  **retags a generic `div`/`span` shell** in place (`morphRole`, attributes +
+  children + registry preserved). Control components keep their native element;
+  the MENU shell renders its intrinsic `role="menu"`. `PROP_ROLE`/`PROP_TEXT_STYLE`
+  state is tracked per element so either delta reconciles the tag. The shell kind
+  is derived from the component when known (fresh nodes) and from the element tag
+  when hydrating (SSR nodes have no component). Interactive/control roles are not
+  in the catalog — a reserved code is a graceful no-op.
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or
