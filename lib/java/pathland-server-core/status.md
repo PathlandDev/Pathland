@@ -27,6 +27,10 @@ starters.
   renderer's debug mode so every rendered node is prefixed with an HTML comment naming
   its component and the modifiers applied. The Spring/Quarkus starters bind it to the
   `pathland.debug-html` property (default `false`).
+- **Reserved framework root**: `PathlandSession.PATHLAND_BASE` (`/_pathland`) — the
+  SSR page carries it as `data-pathland-base` and the DOM-client bundle is injected
+  at `/{base}/dom-renderer.js`, so the client's WebSocket and asset refs resolve from
+  the same reserved prefix (spec DSL.md).
 
 ## Not implemented / gaps
 

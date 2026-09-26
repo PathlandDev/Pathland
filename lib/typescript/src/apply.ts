@@ -28,6 +28,7 @@ import {
   COMPONENT_TEXT,
   COMPONENT_ZSTACK,
   PROP_BINDING_ID,
+  PROP_AUDIO_SOURCE,
   PROP_COLOR,
   PROP_COLOR_VALUE,
   PROP_ENABLED,
@@ -46,6 +47,7 @@ import {
   PROP_TEXT,
   PROP_TEXT_STYLE,
   PROP_VALUE,
+  PROP_VIDEO_SOURCE,
   PROP_WIDTH,
   VAL_DESIGN_TOKEN,
   VAL_STRING,
@@ -583,11 +585,18 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
   switch (propId) {
     case PROP_TEXT:
     case PROP_LABEL: {
-      const span = el.querySelector(".pathland-label");
-      if (span) {
-        span.textContent = text;
+      // On a media element the accessibility label is the `alt` text (mirrors
+      // the Rust SSR renderer); elsewhere it's the caption/label span.
+      const media = el.matches("img,audio,video") ? el : null;
+      if (media) {
+        media.setAttribute("alt", text);
       } else {
-        setNodeText(el, text);
+        const span = el.querySelector(".pathland-label");
+        if (span) {
+          span.textContent = text;
+        } else {
+          setNodeText(el, text);
+        }
       }
       break;
     }
@@ -602,6 +611,20 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
       const img = el.matches("img") ? el : el.querySelector("img");
       if (img instanceof HTMLImageElement) {
         img.src = text;
+      }
+      break;
+    }
+    case PROP_AUDIO_SOURCE: {
+      const audio = el.matches("audio") ? el : el.querySelector("audio");
+      if (audio instanceof HTMLAudioElement) {
+        audio.src = text;
+      }
+      break;
+    }
+    case PROP_VIDEO_SOURCE: {
+      const video = el.matches("video") ? el : el.querySelector("video");
+      if (video instanceof HTMLVideoElement) {
+        video.src = text;
       }
       break;
     }

@@ -18,6 +18,8 @@ public final class Components {
     public static final int SPACER = 0x06;
     public static final int PROGRESS_VIEW = 0x07;
     public static final int GAUGE = 0x08;
+    public static final int AUDIO = 0x09;
+    public static final int VIDEO = 0x0A;
 
     // ── Layout & Container Primitives (0x10–0x1F) ──────────────────────────
     public static final int VSTACK = 0x10;

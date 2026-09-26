@@ -40,6 +40,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `emit.Frame`.
 - **Views**: `View` (open interface), `VStack`, `HStack`, `ZStack`, `Group`
   (transparent container, maps to a `VSTACK` node today), `Text`, `Image`,
+  `Audio`, `Video`,
   `Color` (dual identity: a `COLOR` view *and* a value passed into style
   modifiers), shapes (`Rectangle`, `Circle`, `Capsule`, `Ellipse`,
   `RoundedRectangle`, generic `Shape.of(ShapeKind)` — all `SHAPE` nodes),

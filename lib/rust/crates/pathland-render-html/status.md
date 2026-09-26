@@ -26,6 +26,12 @@ Statelessness). Protocol contract: `spec/`.
   value="{index}">` + `SELECTION`), `MENU` (the `.pathland-menu` composite:
   `.pathland-menu-trigger` label + `.pathland-menu-items` children),
   `COLOR_PICKER`, `COMMENT`.
+- **Media**: `IMAGE` renders `<img src alt>` (the `LABEL` accessibility text is
+  the `alt`; empty = decorative) and honors `CONTENT_MODE`/`ASPECT_RATIO`
+  inline (`Fit`→`object-fit:contain`, `Fill`→`object-fit:cover`); `VIDEO` →
+  `<video src controls>` and `AUDIO` → `<audio src controls>` (playback
+  interaction is renderer-native). Asset refs are absolute
+  (`/_pathland/assets/…`); bytes never ride the opcode stream.
 - **Composite override mode**: `BUTTON`/`TOGGLE`/`SLIDER` with children render
   the custom body wrapped in the native element.
 - **Properties**: `ALIGNMENT` (cross-axis flex), `CONTENT_MARGINS`,

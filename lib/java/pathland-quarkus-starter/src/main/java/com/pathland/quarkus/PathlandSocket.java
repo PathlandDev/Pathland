@@ -20,7 +20,7 @@ import java.util.UUID;
  * connection and memoized. The session logic lives in the framework-agnostic
  * {@link PathlandRegistry}.
  */
-@WebSocket(path = "/ws")
+@WebSocket(path = "/_pathland/ws")
 public class PathlandSocket {
 
     @Inject

@@ -23,9 +23,9 @@ public class Sidebar implements View {
         return VStack.of(Alignment.FILL, 8,
                         Text.of("Pathland").modifiers(
                                 FontSize.of(18), FontWeightMod.of(FontWeight.BOLD)),
-                        menuRow("/home", "Home", "icons/home.svg"),
-                        menuRow("/kitchen", "Kitchen sink", "icons/kitchen.svg"),
-                        menuRow("/settings", "Settings", "icons/settings.svg"),
+                        menuRow("/home", "Home", "/_pathland/assets/icons/home.svg"),
+                        menuRow("/kitchen", "Kitchen sink", "/_pathland/assets/icons/kitchen.svg"),
+                        menuRow("/settings", "Settings", "/_pathland/assets/icons/settings.svg"),
                         Spacer.of()
                 ).modifiers(Padding.of(16))
                 // Fixed-width sidebar with no height hint: as a flex child of the split

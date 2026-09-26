@@ -55,10 +55,10 @@ public class PathlandAutoConfiguration {
         return new PathlandSocket(registry);
     }
 
-    /** Registers the socket at {@code /ws}. */
+    /** Registers the socket at the reserved {@code /_pathland/ws} path. */
     @Bean
     public WebSocketConfigurer pathlandWebSocketConfigurer(PathlandSocket socket) {
-        return registry -> registry.addHandler(socket, "/ws").setAllowedOrigins("*");
+        return registry -> registry.addHandler(socket, "/_pathland/ws").setAllowedOrigins("*");
     }
 
     /** The SSR catch-all + static JS bundle. */

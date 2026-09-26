@@ -219,7 +219,13 @@ pub mod component_type {
     pub const PROGRESS_VIEW: u16 = 0x07;
     /// **Draft.** Range meter against a scale (read-only).
     pub const GAUGE: u16 = 0x08;
-    // 0x09–0x0F reserved (future drawing nodes).
+    /// **Draft.** Audio playback node (`AUDIO_SOURCE` references the media;
+    /// playback interaction is renderer-native).
+    pub const AUDIO: u16 = 0x09;
+    /// **Draft.** Video playback node (`VIDEO_SOURCE` references the media;
+    /// playback interaction is renderer-native).
+    pub const VIDEO: u16 = 0x0A;
+    // 0x0B–0x0F reserved (future drawing nodes).
 
     // ── Layout & Container Primitives (0x10–0x1F) ───────────────────────────
     /// Vertical flex stack.
@@ -326,8 +332,14 @@ pub mod property_id {
     pub const MINIMUM_SCALE_FACTOR: u16 = 0x001D;
     // Style (0x1000 range)
     pub const BACKGROUND_COLOR: u16 = 0x1001;
-    /// **Draft.** Image source (STRING: a resource name, file path, or URL).
+    /// **Draft.** Image source (STRING: a resource name, file path, or URL —
+    /// an **asset reference**, resolved and loaded by the renderer/host; never
+    /// embedded in the opcode stream).
     pub const IMAGE_SOURCE: u16 = 0x1002;
+    /// **Draft.** Audio source (STRING asset reference, see `IMAGE_SOURCE`).
+    pub const AUDIO_SOURCE: u16 = 0x1033;
+    /// **Draft.** Video source (STRING asset reference, see `IMAGE_SOURCE`).
+    pub const VIDEO_SOURCE: u16 = 0x1034;
     pub const BORDER_WIDTH: u16 = 0x1003;
     pub const BORDER_COLOR: u16 = 0x1004;
     pub const BORDER_RADIUS: u16 = 0x1005;
@@ -520,6 +532,8 @@ pub fn value_type_for(prop: u16) -> u8 {
         | property_id::PROMPT
         | property_id::FONT_FAMILY
         | property_id::IMAGE_SOURCE
+        | property_id::AUDIO_SOURCE
+        | property_id::VIDEO_SOURCE
         | property_id::ROUTE => value_type::STRING,
         property_id::LINE_LIMIT
         | property_id::SELECTION

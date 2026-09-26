@@ -53,7 +53,9 @@ Java renderer is removed. Protocol contract: `spec/`.
   shells); the demos' SSR output reflects the Rust renderer as-is, pinned by the
   `pathland-html-golden` conformance harness. `HtmlRendererTest` covers the
   semantic-role → element mapping (`NAVIGATION`→`<nav>`, `HEADER`→`<h2>`,
-  `TEXT_STYLE` headings) and the DSL's rejection of non-semantic role codes.
+  `TEXT_STYLE` headings) and the DSL's rejection of non-semantic role codes,
+  plus media rendering (`<video>/<audio>` native controls, image `alt` from the
+  accessibility label, `ContentMode Fill`→`cover`).
 
 ## Verified by
 

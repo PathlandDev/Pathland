@@ -243,6 +243,8 @@ pub fn emit_constants_ts() -> String {
             ("MINIMUM_SCALE_FACTOR", fmt_u16(property_id::MINIMUM_SCALE_FACTOR)),
             ("BACKGROUND_COLOR", fmt_u16(property_id::BACKGROUND_COLOR)),
             ("IMAGE_SOURCE", fmt_u16(property_id::IMAGE_SOURCE)),
+            ("AUDIO_SOURCE", fmt_u16(property_id::AUDIO_SOURCE)),
+            ("VIDEO_SOURCE", fmt_u16(property_id::VIDEO_SOURCE)),
             ("BORDER_WIDTH", fmt_u16(property_id::BORDER_WIDTH)),
             ("BORDER_COLOR", fmt_u16(property_id::BORDER_COLOR)),
             ("BORDER_RADIUS", fmt_u16(property_id::BORDER_RADIUS)),
@@ -394,6 +396,8 @@ pub fn emit_constants_ts() -> String {
         &[
             ("TEXT", fmt_u16(component_type::TEXT)),
             ("IMAGE", fmt_u16(component_type::IMAGE)),
+            ("AUDIO", fmt_u16(component_type::AUDIO)),
+            ("VIDEO", fmt_u16(component_type::VIDEO)),
             ("COLOR", fmt_u16(component_type::COLOR)),
             ("SHAPE", fmt_u16(component_type::SHAPE)),
             ("DIVIDER", fmt_u16(component_type::DIVIDER)),

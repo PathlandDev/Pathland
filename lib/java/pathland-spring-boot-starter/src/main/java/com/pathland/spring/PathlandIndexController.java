@@ -4,6 +4,7 @@ import com.pathland.server.PathlandRegistry;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -37,8 +38,9 @@ public class PathlandIndexController {
 
     /**
      * The SPA catch-all: every path renders the session shell seeded at the request path.
-     * Requests carrying an {@code Upgrade} header (the {@code /ws} WebSocket handshake) are
-     * excluded so they reach the registered WebSocket handler, not this HTML renderer.
+     * Requests carrying an {@code Upgrade} header (the {@code /_pathland/ws} WebSocket
+     * handshake) are excluded so they reach the registered WebSocket handler, not this
+     * HTML renderer.
      */
     @GetMapping(value = "/{*path}", headers = "!Upgrade")
     @ResponseBody
@@ -58,15 +60,26 @@ public class PathlandIndexController {
     }
 
     /**
-     * The single static asset — served explicitly so the {@code /{*path}} catch-all never
-     * shadows it. Built by {@code lib/typescript} and copied into the app's
-     * {@code src/main/resources/static}.
+     * The reserved framework prefix — serves the DOM client bundle and the asset
+     * mount from {@code classpath:/_pathland/**} so the {@code /{*path}} catch-all
+     * never shadows them (a more-specific mapping wins). WebSocket upgrades
+     * ({@code Upgrade} header — {@code /_pathland/ws}) are excluded so the registered
+     * WebSocket handler takes the handshake, not this static controller.
      */
-    @GetMapping(value = "/pathland-dom-renderer.js", produces = "application/javascript")
+    @GetMapping(value = "/_pathland/**", headers = "!Upgrade")
     @ResponseBody
-    public byte[] bundle() throws IOException {
-        try (InputStream in = new ClassPathResource("static/pathland-dom-renderer.js").getInputStream()) {
-            return in.readAllBytes();
+    public ResponseEntity<byte[]> framework(
+            HttpServletRequest request) throws IOException {
+        String uri = request.getRequestURI(); // e.g. "/_pathland/dom-renderer.js"
+        ClassPathResource resource = new ClassPathResource("static" + uri);
+        if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+        // Spring's built-in extension → MIME detection (js, svg, mp4, mp3, …).
+        MediaType type = MediaTypeFactory.getMediaType(uri)
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+        try (InputStream in = resource.getInputStream()) {
+            return ResponseEntity.ok().contentType(type).body(in.readAllBytes());
         }
     }
 }

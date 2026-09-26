@@ -258,6 +258,32 @@ A static image or icon asset. Asset loading is client-owned.
   renderer loads asynchronously and re-issues `SET_PROPERTY(IMAGE_SOURCE)` if
   the source changes.
 
+### Audio — `AUDIO` 0x09
+
+An audio playback node. Playback interaction (play/pause/volume/seek) is
+**renderer-native** (the web renderer emits `controls`); the app supplies only
+the source reference and size/layout.
+
+- **Protocol**: a leaf node; source via `AUDIO_SOURCE` (0x1033, STRING: a
+  resource name, file path, or absolute URL — an asset reference, never
+  embedded in the opcode stream).
+- **Properties**: `AUDIO_SOURCE`, size modifiers.
+- **Events**: none by default.
+- **Renderer mapping**: GTK `GtkMediaFile`/GStreamer; HTML `<audio controls>`.
+
+### Video — `VIDEO` 0x0A
+
+A video playback node. Playback interaction is **renderer-native** (`controls`);
+the app supplies the source reference and size.
+
+- **Protocol**: a leaf node; source via `VIDEO_SOURCE` (0x1034, STRING asset
+  reference).
+- **Properties**: `VIDEO_SOURCE`, `CONTENT_MODE`, size modifiers.
+- **Events**: none by default.
+- **Renderer mapping**: GTK `GtkVideo`/`GtkMediaFile`; HTML `<video controls>`.
+- **Note**: a poster/preview frame is a planned draft (`POSTER_SOURCE`); a
+  video plays fine without one.
+
 ### Color — `COLOR` 0x03
 
 `Color` mirrors SwiftUI's **dual identity**: it is both a **View** and a

@@ -29,6 +29,7 @@ public final class KitchenSinkView implements View {
                 new LayoutSection(),
                 new TextStylesSection(),
                 new LabelSection(),
+                new MediaSection(),
                 new AppearanceSection(),
                 Text.of("Pathland · per-session · 16-byte deltas")
                         .modifiers(

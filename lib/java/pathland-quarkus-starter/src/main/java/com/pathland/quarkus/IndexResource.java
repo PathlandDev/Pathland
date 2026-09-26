@@ -36,12 +36,12 @@ public class IndexResource {
 
     /**
      * Any other path (deep links) — a multi-segment catch-all. The negative lookahead
-     * excludes the literal {@code ws} path so the {@code @WebSocket("/ws")} endpoint
-     * handles the WebSocket upgrade. Quarkus serves the static JS bundle from
-     * {@code META-INF/resources} before JAX-RS, so it is not shadowed.
+     * excludes the reserved {@code /_pathland/**} framework prefix (the WebSocket, the
+     * DOM client bundle, and the asset mount — served by Quarkus static resources from
+     * {@code META-INF/resources} before JAX-RS), so system endpoints are never SSR'd.
      */
     @GET
-    @Path("{path:(?!ws).*}")
+    @Path("{path:(?!_pathland).*}")
     @Produces(MediaType.TEXT_HTML)
     public Response deep(@PathParam("path") String path, @CookieParam("session") String sessionId) {
         return render("/" + path, sessionId);
