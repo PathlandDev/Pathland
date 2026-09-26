@@ -268,6 +268,20 @@ function applyRangeBounds(el: HTMLElement, property: number, value: number): voi
       input.max = String(value);
     }
   }
+  // Range bounds are also mirrored onto the composite shells that carry them as
+  // `data-min`/`data-max` (stepper click math, gauge percentage), matching the
+  // Rust SSR renderer's attributes. A gauge element IS the `.pathland-gauge`, so
+  // the element itself is included alongside any descendant meta spans.
+  const attr = property === P.PROP_MIN_VALUE ? "data-min" : "data-max";
+  const metas: HTMLElement[] = [el];
+  for (const meta of el.querySelectorAll<HTMLElement>(".pathland-stepper-range, .pathland-gauge")) {
+    metas.push(meta);
+  }
+  for (const meta of metas) {
+    if (meta.classList.contains("pathland-stepper-range") || meta.classList.contains("pathland-gauge")) {
+      meta.setAttribute(attr, String(value));
+    }
+  }
 }
 
 // --- the full property table ---
@@ -479,8 +493,20 @@ const HANDLERS: Record<number, Handler> = {
   [P.PROP_BACKGROUND_COLOR]: (el, _vt, c) => (el.style.backgroundColor = argbToRgba(c)),
   [P.PROP_OPACITY]: (el, vt, c) => (el.style.opacity = fmtFloat(f32(vt, c))),
   [P.PROP_VISIBLE]: (el, vt, c) => (el.style.display = isOn(vt, c) ? "" : "none"),
-  [P.PROP_WIDTH]: (el, vt, c) => (el.style.width = sizeCss(f32(vt, c))),
-  [P.PROP_HEIGHT]: (el, vt, c) => (el.style.height = sizeCss(f32(vt, c))),
+  [P.PROP_WIDTH]: (el, vt, c) => {
+    // HUG_CONTENT (-2) is left to the intrinsic size (the Rust SSR renderer
+    // omits it); FILL/fixed values are applied.
+    const v = f32(vt, c);
+    if (v !== P.WIDTH_HUG) {
+      el.style.width = sizeCss(v);
+    }
+  },
+  [P.PROP_HEIGHT]: (el, vt, c) => {
+    const v = f32(vt, c);
+    if (v !== P.WIDTH_HUG) {
+      el.style.height = sizeCss(v);
+    }
+  },
   [P.PROP_PADDING]: (el, vt, c) => (el.style.padding = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_PADDING_TOP]: (el, vt, c) => (el.style.paddingTop = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_PADDING_RIGHT]: (el, vt, c) => (el.style.paddingRight = fmtFloat(f32(vt, c)) + "px"),
@@ -507,37 +533,56 @@ function setFilterPart(el: HTMLElement, prefix: string, value: number | string):
 // CSS expression (`var(--pl-…)` / `calc(var(--pl-space-base) * N)`) instead of
 // a literal. Only properties that map to a single CSS value are tokenizable
 // here; compound accumulators that need concrete numbers (e.g. BORDER_WIDTH's
-// px suffix, shadow/transform components) are left literal.
-const TOKEN_HANDLERS: Record<number, (el: HTMLElement, css: string) => void> = {
-  [P.PROP_COLOR]: (el, v) => (el.style.color = v),
-  [P.PROP_BACKGROUND_COLOR]: (el, v) => (el.style.backgroundColor = v),
-  [P.PROP_TINT]: (el, v) => (el.style.accentColor = v),
-  [P.PROP_BORDER_COLOR]: (el, v) => {
-    borderOf(el).color = v;
-    applyBorderEdges(el);
-  },
-  [P.PROP_SHADOW_COLOR]: (el, v) => {
-    shadowOf(el).color = v;
-    recomposeShadow(el);
-  },
-  [P.PROP_FONT_SIZE]: (el, v) => (el.style.fontSize = v),
-  [P.PROP_FONT_FAMILY]: (el, v) => (el.style.fontFamily = v),
-  [P.PROP_FONT_WEIGHT]: (el, v) => (el.style.fontWeight = v),
-  [P.PROP_SPACING]: (el, v) => (el.style.gap = v),
-  [P.PROP_PADDING]: (el, v) => (el.style.padding = v),
-  [P.PROP_PADDING_TOP]: (el, v) => (el.style.paddingTop = v),
-  [P.PROP_PADDING_RIGHT]: (el, v) => (el.style.paddingRight = v),
-  [P.PROP_PADDING_BOTTOM]: (el, v) => (el.style.paddingBottom = v),
-  [P.PROP_PADDING_LEFT]: (el, v) => (el.style.paddingLeft = v),
-  [P.PROP_BORDER_RADIUS]: (el, v) => (el.style.borderRadius = v),
-  [P.PROP_OPACITY]: (el, v) => (el.style.opacity = v),
-  [P.PROP_WIDTH]: (el, v) => (el.style.width = v),
-  [P.PROP_HEIGHT]: (el, v) => (el.style.height = v),
+// px suffix, shadow/transform components) are left literal. The value is
+// written into the style *attribute* verbatim (not via the CSSOM) so CSS
+// expressions survive exactly as the SSR renderer emits them.
+const TOKEN_STYLE_PROPS: Record<number, string> = {
+  [P.PROP_COLOR]: "color",
+  [P.PROP_BACKGROUND_COLOR]: "background-color",
+  [P.PROP_TINT]: "accent-color",
+  [P.PROP_FONT_SIZE]: "font-size",
+  [P.PROP_FONT_FAMILY]: "font-family",
+  [P.PROP_FONT_WEIGHT]: "font-weight",
+  [P.PROP_SPACING]: "gap",
+  [P.PROP_PADDING]: "padding",
+  [P.PROP_PADDING_TOP]: "padding-top",
+  [P.PROP_PADDING_RIGHT]: "padding-right",
+  [P.PROP_PADDING_BOTTOM]: "padding-bottom",
+  [P.PROP_PADDING_LEFT]: "padding-left",
+  [P.PROP_BORDER_RADIUS]: "border-radius",
+  [P.PROP_OPACITY]: "opacity",
+  [P.PROP_WIDTH]: "width",
+  [P.PROP_HEIGHT]: "height",
 };
+
+/** Set a single CSS declaration verbatim in the element's style attribute,
+ *  replacing any existing declaration for the same property. */
+function setStyleCss(el: HTMLElement, cssProp: string, value: string): void {
+  const decls = (el.getAttribute("style") ?? "")
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.toLowerCase().startsWith(`${cssProp}:`));
+  decls.push(`${cssProp}:${value}`);
+  el.setAttribute("style", decls.join(";"));
+}
 
 /** Apply a property whose value is a `DESIGN_TOKEN` reference (a token path). */
 export function applyTokenRefProperty(el: HTMLElement, property: number, tokenPath: string): void {
-  TOKEN_HANDLERS[property]?.(el, resolveTokenCssRef(tokenPath));
+  const value = resolveTokenCssRef(tokenPath);
+  if (property === P.PROP_BORDER_COLOR) {
+    borderOf(el).color = value;
+    applyBorderEdges(el);
+    return;
+  }
+  if (property === P.PROP_SHADOW_COLOR) {
+    shadowOf(el).color = value;
+    recomposeShadow(el);
+    return;
+  }
+  const cssProp = TOKEN_STYLE_PROPS[property];
+  if (cssProp) {
+    setStyleCss(el, cssProp, value);
+  }
 }
 
 /** Apply a numeric style/control property to an element via inline style / ARIA / shell reconfiguration. */

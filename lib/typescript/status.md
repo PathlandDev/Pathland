@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** September 4, 2026
+**Last updated:** September 25, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -16,6 +16,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   duplicated `app.js` is removed.
 - **Hydration**: builds the `data-pathland-id → element` registry from the SSR
   DOM.
+- **Generated protocol constants** (`src/constants.ts`): emitted by
+  `pathland-ts-codegen` from `pathland_core::constants` (wire constants are bound
+  to the Rust consts; enum codes mirror `spec/`). Regenerate with `npm run regen`;
+  CI (`rust` job) runs the generators and fails on any committed-file drift.
+- **Generated token conventions** (`src/generated/tokens-core.ts`): emitted from
+  `pathland-render-html::token_spec`; `src/tokens.ts` imports them, so the
+  `--pl-*` naming, `dark.` prefix, `space.<N>` family, and length-token rules are
+  single-sourced in Rust.
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or
@@ -108,20 +116,33 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **Runtime shells mirror the Rust renderer** (`src/elements.ts`): runtime-created
   nodes carry the same `pathland-*` classes/structure as SSR (a reinstated
   `BUTTON` gets `pathland-button`, `GAUGE` gets its `pathland-gauge` bar shell);
-  a `ZStack` child is absolutely positioned (`position:absolute;inset:0`), and a
+  a `ZStack` child is wrapped in an absolutely-positioned `<div
+  style="position:absolute;inset:0">` (matching the SSR wrapper), and a
   `ProgressView` morphs between the determinate `<progress>` and the
-  `pathland-spinner` div per `IS_INDETERMINATE`/`PROGRESS` — so a destination
-  reinstated after a navigation swap keeps its styling. A table-driven **drift
+  `pathland-spinner` div per `IS_INDETERMINATE`/`PROGRESS` (the spinner carries
+  no `max`/`value`, matching SSR). Picker children are materialized as native
+  `<option data-pathland-id>` elements; stepper/gauge range bounds ride as
+  `data-min`/`data-max`; grids mirror `grid-template-columns` / `grid-auto-flow`
+  from the WIDTH property. A table-driven **drift
   guard** (`test/elements.test.ts`) pins the canonical shells against the Rust
   renderer's SSR markup.
+- **Cross-renderer SSR conformance** (`test/ssr-conformance.test.ts`): the golden
+  fixtures emitted by `pathland-html-golden` (`test/fixtures/ssr/`) drive BOTH a
+  fresh-DOM render (apply each `{name}.plpl` with `createElement` + `applyBatch`
+  and compare the serialized DOM to the canonical `{name}.html` fragment) and a
+  hydrate-then-delta render (`delta_*`) — so the DOM client and the Rust SSR
+  renderer cannot drift without a failing test. `npm run regen` regenerates the
+  fixtures together with the generated TS.
 - **`META::RESYNC`** (`encodeResync`): the client requests a full snapshot after
   **reconnect** (never on first connect — the UI is already the SSR HTML).
 - **Transport** (`src/transport.ts`): WebSocket connect, protocol-version
   negotiation (mismatch → reload), exponential-backoff reconnect, defensive
   per-batch try/catch.
 - **Styling (Option A)**: the protocol stays renderer-agnostic; the SSR HTML
-  carries Tailwind classes; runtime style deltas apply as inline style, literal
-  colors inline, design tokens as CSS variables.
+  carries the Rust renderer's inline styles + `pathland-*` classes; runtime style
+  deltas apply as inline style (or the style attribute for `DESIGN_TOKEN`
+  references, so CSS expressions survive verbatim), literal colors inline,
+  design tokens as CSS variables.
 - **Tests** (`test/`, vitest + happy-dom): codec round-trips, TREE/STYLE/META
   application, design tokens (var mapping, dark scoping, px lengths, generative
   `space.N` refs), event byte layouts (incl. `NAVIGATE`), navigation (ROUTE →
@@ -147,12 +168,16 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **Visual tokens** (`PICKER_STYLE`, `CONTROL_SIZE`, `MINIMUM_SCALE_FACTOR`,
   `COLOR_MULTIPLY`) are applied as `data-*` attributes; their *visual* variety is
   renderer-styling-owned (Tailwind/theme), not the protocol's job.
-- The element factory's runtime shells are functional but not yet
-  golden-tested against the Rust/Java renderers' SSR markup (drift guard TODO).
+- The element factory's runtime shells and the full property applier are
+  golden-tested against the Rust SSR renderer via `test/ssr-conformance.test.ts`
+  (fresh-DOM + hydrate-then-delta scenarios).
 - `STATE`/`ROLE` map to ARIA attributes; exact bit semantics should be
   cross-checked against the conformance vectors when they land.
 
 ## Verified by
 
-`npm test` (vitest, 87 tests) + `npm run typecheck` (strict TS). CI runs the
-web-client job (typecheck + test + build + copy-to-demos drift check).
+`npm test` (vitest, 148 tests) + `npm run typecheck` (strict TS). CI runs the
+web-client job (typecheck + test + build + copy-to-demos drift check) and the
+rust job verifies the generated TS + SSR golden fixtures are current
+(`cargo run -p pathland-ts-codegen` / `pathland-html-golden -- --emit` then
+`git diff --exit-code`).

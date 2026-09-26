@@ -501,6 +501,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pathland-html-golden"
+version = "0.1.0"
+dependencies = [
+ "pathland-core",
+ "pathland-core-transport",
+ "pathland-render-html",
+]
+
+[[package]]
 name = "pathland-render-gtk"
 version = "0.1.0"
 dependencies = [
@@ -532,6 +541,14 @@ version = "0.1.0"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",
+]
+
+[[package]]
+name = "pathland-ts-codegen"
+version = "0.1.0"
+dependencies = [
+ "pathland-core",
+ "pathland-render-html",
 ]
 
 [[package]]

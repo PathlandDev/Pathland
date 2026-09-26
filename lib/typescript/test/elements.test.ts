@@ -42,7 +42,7 @@ const EXPECTED: Array<[number, string, string | null, (el: HTMLElement) => boole
   [COMPONENT_IMAGE, "IMG", null, () => undefined],
   [COMPONENT_COLOR, "DIV", null, () => undefined],
   [COMPONENT_SHAPE, "DIV", null, () => undefined],
-  [COMPONENT_DIVIDER, "HR", null, () => undefined],
+  [COMPONENT_DIVIDER, "DIV", null, (el) => el.style.height === "0" || el.style.height === "0px"],
   [COMPONENT_SPACER, "DIV", null, (el) => el.style.flex !== ""],
   [COMPONENT_PROGRESS_VIEW, "PROGRESS", null, (el) => (el as HTMLProgressElement).max === 1],
   [COMPONENT_GAUGE, "DIV", "pathland-gauge", (el) => el.children.length === 1],

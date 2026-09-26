@@ -1,0 +1,17 @@
+[package]
+name = "pathland-ts-codegen"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Generates the TypeScript DOM renderer's protocol constants and token conventions from the canonical Rust sources"
+repository = "https://github.com/michaelkrog/Pathland"
+categories = ["rendering", "web-programming"]
+keywords = ["ui", "protocol", "opcode", "typescript", "codegen"]
+
+[[bin]]
+name = "pathland-ts-codegen"
+path = "src/main.rs"
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+pathland-render-html = { path = "../pathland-render-html" }

@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** September 3, 2026
+**Last updated:** September 25, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -14,12 +14,17 @@ Statelessness). Protocol contract: `spec/`.
   / `render_fragment(...)` build a transient decode map per call and stream HTML;
   the retained `apply`/`apply_frame`/`render` model is removed.
 - **All spec components render**: `TEXT`, `IMAGE`, `COLOR` (layout-greedy:
-  `flex:1;align-self:stretch`), `SHAPE` (CSS/SVG by `SHAPE_KIND`), `DIVIDER`, `SPACER`, `PROGRESS_VIEW`/`GAUGE`, `VSTACK`/
+  `flex:1;align-self:stretch`), `SHAPE` (CSS/SVG by `SHAPE_KIND`), `DIVIDER`, `SPACER` (inline
+  `flex:1`), `PROGRESS_VIEW`/`GAUGE` (`data-min`/`data-max` ride on the gauge so the DOM
+  client can recompute its percentage), `VSTACK`/
   `HSTACK`/`LAZY_VSTACK`/`LAZY_HSTACK` (flex), `ZSTACK` (overlay), `GRID`/
   `LAZY_VGRID`/`LAZY_HGRID` (CSS grid), `SCROLLVIEW`, `BUTTON`, `TEXT_FIELD`
   (incl. `IS_SECURE` → `type="password"`), `TEXT_EDITOR`, `TOGGLE`
-  (`TOGGLE_STYLE`), `SLIDER`, `STEPPER`, `DATE_PICKER` (`SET_DATE` →
-  `days_to_date`), `PICKER` (option children + `SELECTION`), `MENU`,
+  (`TOGGLE_STYLE`), `SLIDER`, `STEPPER` (the `.pathland-stepper` composite with
+  `data-min`/`data-max`/`data-step` on its hidden range span), `DATE_PICKER` (`SET_DATE` →
+  `days_to_date`), `PICKER` (option children rendered as `<option data-pathland-id="{child}"
+  value="{index}">` + `SELECTION`), `MENU` (the `.pathland-menu` composite:
+  `.pathland-menu-trigger` label + `.pathland-menu-items` children),
   `COLOR_PICKER`, `COMMENT`.
 - **Composite override mode**: `BUTTON`/`TOGGLE`/`SLIDER` with children render
   the custom body wrapped in the native element.
@@ -30,7 +35,14 @@ Statelessness). Protocol contract: `spec/`.
   `Z_INDEX`, `LINE_LIMIT`, `TEXT_ALIGNMENT`, `TRUNCATION_MODE`, `BORDER_*`,
   `SELECTED`, `TOGGLE_STYLE`, `ENABLED`, `ROLE`/`STATE` (ARIA), plus
   `TEXT_CASE`, `FONT_STYLE`, `FONT_DESIGN`, `UNDERLINE`/`STRIKETHROUGH`,
-  `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `COLOR_INVERT`.
+  `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `COLOR_INVERT`. `WIDTH`/`HEIGHT`
+  `HUG_CONTENT` (-2) is **omitted** (intrinsic size); `FILL` (-1) → `100%`.
+- **ARIA ROLE/STATE maps match the DOM client**: the full `ROLE` set (button…
+  menu, incl. `text`/`img`/`radio`/`spinbutton`/`tablist`/`list`/`grid`/
+  `region`/`menu`) and the `STATE` semantics (one true `aria-*` per state) are
+  canonical with `lib/typescript/src/classes.ts`.
+- **`TREE::INSERT_CHILD` honors its `C` index** (`u32::MAX` = append), matching
+  the protocol and the DOM client's `insertAt`.
 - **Event surfacing**: `data-event-listeners` / `data-action-id` /
   `data-binding-id` attributes.
 - **Navigation slot attrs** (spec DSL.md §4.5 / MODIFIERS.md): a slot node's
@@ -44,6 +56,10 @@ Statelessness). Protocol contract: `spec/`.
   own back button (the web has no native navigation container).
 - `STYLE::SET_DATE` handled (days + millis-of-day → date/time).
 - **Design tokens (spec/TOKENS.md)**:
+  - The naming/length conventions live in **`src/token_spec.rs`** — the single
+    source of truth consumed by the renderer AND by `pathland-ts-codegen`, which
+    emits the DOM client's `lib/typescript/src/generated/tokens-core.ts`
+    (`tokenToCssVar`, `isDarkToken`, `isLengthToken`, `resolveTokenCssRef`).
   - `STYLE::SET_DESIGN_TOKEN` overrides are collected per snapshot batch and
     emitted into the document head as CSS: base (light) tokens as `:root`
     rules, `dark.*` overrides inside `@media (prefers-color-scheme: dark)` —
@@ -112,6 +128,17 @@ single `style` attribute — no external compiler, no class system, no safelist:
   strings, bitmasks); opt-in so default output is unchanged, and comments stay
   valid HTML (content scrubbed of `--`).
 
+## Cross-renderer conformance (no drift)
+
+The **`pathland-html-golden`** crate renders a battery of scenarios to committed
+fixtures under `lib/typescript/test/fixtures/ssr/` (`{name}.plpl` batch bytes +
+`{name}.html` canonical `render_fragment`). Its `tests/guard.rs` fails if the
+SSR output changes without the fixtures being regenerated
+(`cargo run -p pathland-html-golden -- --emit`), and the TypeScript
+`test/ssr-conformance.test.ts` asserts the DOM client reproduces the same DOM
+from the same batches (fresh-DOM + hydrate-then-delta). The SSR output is the
+contract both renderers must satisfy.
+
 ## Not implemented / gaps
 
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset
@@ -129,8 +156,9 @@ single `style` attribute — no external compiler, no class system, no safelist:
 
 ## Verified by
 
-`cargo test -p pathland-render-html` — 37 headless render tests (components,
+`cargo test -p pathland-render-html` — 43 headless render tests (components,
 properties, composite, event attrs, navigation slot route/transition attrs,
 `days_to_date`, network-decoded frames, inline-all styling, built-in CSS block
 contents, Inter CDN head links, design tokens: base/dark override CSS, `px`
-lengths, `DESIGN_TOKEN` refs, generative `space.N`).
+lengths, `DESIGN_TOKEN` refs, generative `space.N`). `cargo test -p
+pathland-html-golden` — the SSR golden-fixture guard.
