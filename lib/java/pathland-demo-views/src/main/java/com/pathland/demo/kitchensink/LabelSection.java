@@ -23,13 +23,13 @@ public final class LabelSection implements View {
     public View body() {
         return new SectionCard("Label · title + icon, three labelStyles",
                 VStack.of(
-                        Label.of("Settings", "icons/settings.svg"),
-                        Label.of("Save changes", "icons/save.svg")
+                        Label.of("Settings", "/_pathland/assets/icons/settings.svg"),
+                        Label.of("Save changes", "/_pathland/assets/icons/save.svg")
                                 .modifier(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
                         Label.of("Wi-Fi").modifier(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
-                        Label.of("Cloud", "icons/cloud.svg")
+                        Label.of("Cloud", "/_pathland/assets/icons/cloud.svg")
                                 .modifier(LabelStyleMod.of(LabelStyle.TITLE_AND_ICON)),
-                        Label.of(status.signal(), "icons/status.svg"),
+                        Label.of(status.signal(), "/_pathland/assets/icons/status.svg"),
                         Button.of("Toggle status",
                                 () -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready"))
                 ).modifier(Padding.of(4))

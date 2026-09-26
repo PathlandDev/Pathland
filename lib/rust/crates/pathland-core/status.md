@@ -11,7 +11,7 @@ tracks what this crate implements.
 
 - **Component types** (`constants.rs::component_type`): the full grouped map —
   `TEXT 0x01, IMAGE 0x02, COLOR 0x03, SHAPE 0x04, DIVIDER 0x05, SPACER 0x06,
-  PROGRESS_VIEW 0x07, GAUGE 0x08, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
+  PROGRESS_VIEW 0x07, GAUGE 0x08, AUDIO 0x09, VIDEO 0x0A, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
   0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
   LAZY_HSTACK 0x1C, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
   0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
@@ -27,7 +27,9 @@ tracks what this crate implements.
   `ROTATION_DEGREES`/`SCALE`/`ALLOWS_HIT_TESTING`, control drafts
   `STEP_VALUE`/`CONTROL_SIZE`/`IS_SECURE`/`PROGRESS`/`IS_INDETERMINATE`/
   `SELECTION`/`COLOR_VALUE`/`DATE_PICKER_MODE`/`PICKER_STYLE`,
-  `ACTION_ID`/`BINDING_ID`/`TOGGLE_STYLE`, `IMAGE_SOURCE`, plus the navigation
+  `ACTION_ID`/`BINDING_ID`/`TOGGLE_STYLE`, the **asset references** `IMAGE_SOURCE`,
+  `AUDIO_SOURCE` (0x1033), `VIDEO_SOURCE` (0x1034) — STRING asset refs (URL /
+  resource / path), never embedded in the opcode stream; plus the navigation
   drafts `TRANSITION` (0x1031), `ROUTE` (0x2019, STRING), `NAV_DEPTH` (0x201A,
   U32 — the `NavigationContainer`'s back-stack depth, so native navigation
   adapters reconcile their page stack by depth) and `NAV_CHROME` (0x201B,

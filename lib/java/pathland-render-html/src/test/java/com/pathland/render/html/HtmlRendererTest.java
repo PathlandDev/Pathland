@@ -1,20 +1,25 @@
 package com.pathland.render.html;
 
+import com.pathland.view.AccessibilityLabel;
 import com.pathland.view.AccessibilityRole;
+import com.pathland.view.Audio;
 import com.pathland.view.Button;
 import com.pathland.view.DatePicker;
 import com.pathland.view.DatePickerMode;
 import com.pathland.view.Divider;
 import com.pathland.view.Environment;
+import com.pathland.view.Image;
 import com.pathland.view.Picker;
 import com.pathland.view.PickerStyle;
 import com.pathland.view.ProgressView;
 import com.pathland.view.Roles;
+import com.pathland.view.ScaledToFill;
 import com.pathland.view.Slider;
 import com.pathland.view.Text;
 import com.pathland.view.TextEditor;
 import com.pathland.view.Toggle;
 import com.pathland.view.ToggleStyle;
+import com.pathland.view.Video;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
 import com.pathland.view.emit.Emitter;
@@ -151,6 +156,27 @@ class HtmlRendererTest {
         // Interactive/control roles are NOT roles — they are intrinsic to the
         // control components, so the DSL rejects them.
         assertThrows(IllegalArgumentException.class, () -> AccessibilityRole.of(20), "reserved code rejected");
+    }
+
+    @Test
+    void rendersMedia() {
+        // Video/audio render with renderer-native controls; an image with an
+        // accessibility label renders its `alt` and ContentMode Fill → cover.
+        View root = VStack.of(
+                Video.of("https://example.com/sample.mp4"),
+                Audio.of("https://example.com/sample.mp3"),
+                Image.of("/_pathland/assets/icons/home.svg")
+                        .modifier(AccessibilityLabel.of("Home"))
+                        .modifier(ScaledToFill.of())
+        );
+        String html = renderer().renderFragment(frameOf(root), 1);
+        assertTrue(html.contains("<video"), "video element");
+        assertTrue(html.contains("controls"), "video native controls");
+        assertTrue(html.contains("src=\"https://example.com/sample.mp4\""), "video source");
+        assertTrue(html.contains("<audio"), "audio element");
+        assertTrue(html.contains("src=\"https://example.com/sample.mp3\""), "audio source");
+        assertTrue(html.contains("alt=\"Home\""), "image alt from accessibility label");
+        assertTrue(html.contains("object-fit:cover"), "ContentMode Fill -> cover");
     }
 
     @Test

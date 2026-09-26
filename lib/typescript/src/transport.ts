@@ -1,7 +1,8 @@
-// WebSocket transport: connects to the server's `/ws`, applies each received
-// PLPL batch to the DOM renderer, negotiates the protocol version, and reports
-// raw-input events back. Reconnect/backoff live here; session-resync and
-// frameCount gap handling are P3 (the module seam is the `onBatch` hook).
+// WebSocket transport: connects to the server's reserved `/_pathland/ws`,
+// applies each received PLPL batch to the DOM renderer, negotiates the protocol
+// version, and reports raw-input events back. Reconnect/backoff live here;
+// session-resync and frameCount gap handling are P3 (the module seam is the
+// `onBatch` hook).
 
 import type { Batch } from "./plpl";
 import { ProtocolError, parseBatch } from "./plpl";
@@ -14,7 +15,7 @@ import { describeBatch, describeBatchDetail } from "./describe";
 export type TransportStatus = "connecting" | "open" | "reconnecting";
 
 export interface TransportOptions {
-  /** WebSocket URL, e.g. `ws://host/ws`. */
+  /** WebSocket URL, e.g. `ws://host/_pathland/ws`. */
   url: string;
   /** The retained-node registry deltas are applied to. */
   renderer: DomRenderer;

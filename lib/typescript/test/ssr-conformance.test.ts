@@ -14,7 +14,7 @@ import { parseBatch, type Batch } from "../src/plpl";
 const FIXTURES = resolve(process.cwd(), "test/fixtures/ssr");
 
 /** Full-snapshot scenarios (applied to a fresh DOM and compared to SSR). */
-const FULL = ["counter", "form", "composite_controls", "layout", "tokens", "semantics"] as const;
+const FULL = ["counter", "form", "composite_controls", "layout", "tokens", "semantics", "media"] as const;
 
 function plpl(name: string): Uint8Array {
   return new Uint8Array(readFileSync(resolve(FIXTURES, `${name}.plpl`)));
@@ -53,6 +53,12 @@ function normalizeStyle(styleAttr: string): string {
     });
     // CSSOM last-wins: duplicate declarations collapse to the last value.
     props.set(prop, value);
+  }
+  // happy-dom expands `aspect-ratio: 1.5` to `1.5 / 1` (equivalent CSS); the SSR
+  // renderer writes the single-value form — collapse for comparison.
+  const ar = props.get("aspect-ratio");
+  if (ar !== undefined && /^\d+(\.\d+)? \/ 1$/.test(ar)) {
+    props.set("aspect-ratio", ar.replace(/ \/ 1$/, ""));
   }
   // happy-dom expands `flex:1` into its longhands on assignment but not on
   // parse — collapse the longhands back to the shorthand for comparison.

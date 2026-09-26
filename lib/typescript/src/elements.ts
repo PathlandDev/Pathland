@@ -3,6 +3,7 @@
 // path renders the shell server-side with Tailwind classes).
 
 import {
+  COMPONENT_AUDIO,
   COMPONENT_BUTTON,
   COMPONENT_COLOR,
   COMPONENT_COLOR_PICKER,
@@ -29,6 +30,7 @@ import {
   COMPONENT_TEXT_EDITOR,
   COMPONENT_TEXT_FIELD,
   COMPONENT_TOGGLE,
+  COMPONENT_VIDEO,
   COMPONENT_VSTACK,
   COMPONENT_ZSTACK,
 } from "./constants";
@@ -77,6 +79,17 @@ export function createElement(component: number): Node {
     case COMPONENT_IMAGE: {
       const el = document.createElement("img");
       el.alt = "";
+      return el;
+    }
+    case COMPONENT_AUDIO: {
+      // Playback interaction is renderer-native (`controls`), mirroring the Rust SSR.
+      const el = document.createElement("audio");
+      el.controls = true;
+      return el;
+    }
+    case COMPONENT_VIDEO: {
+      const el = document.createElement("video");
+      el.controls = true;
       return el;
     }
     case COMPONENT_COLOR: {

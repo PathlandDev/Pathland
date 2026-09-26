@@ -424,6 +424,15 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
   (`pushState` / `replaceState` / back) is a renderer/DOM-client translation of
   the `ROUTE` property and the `NAVIGATE` event.
 
+**Reserved framework root** — the host reserves **`/_pathland/**`** for its own
+system endpoints, so app routes never collide with them: the WebSocket lives at
+`/_pathland/ws`, the DOM-client bundle at `/_pathland/dom-renderer.js`, and the
+host's asset mount at `/_pathland/assets/**`. App routes are everything else
+(served by the SSR catch-all). The DOM client reads the base from the SSR page's
+`data-pathland-base` attribute (default `/_pathland`), so a host can relocate it
+behind a proxy. Asset references in the UI model are **absolute**
+(`/_pathland/assets/icons/home.svg`) so deep-linked routes resolve correctly.
+
 **The `Navigation` facade** — the ergonomic entry point. `Navigation.navigator`
 collapses the route table + router + seeding into one readable flow, and
 `Navigation.of(router)` is the container:

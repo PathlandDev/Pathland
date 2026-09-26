@@ -8,7 +8,8 @@ Cross-renderer **golden conformance fixtures** for the HTML renderers.
 
 - A battery of self-contained `PLPL` scenario batches (counter, form,
   composite controls, layout, tokens, **semantics** — semantic roles mapping to
-  native elements/ARIA, and a base→delta pair whose change includes a `ROLE`
+  native elements/ARIA, **media** — image alt/content-mode + video/audio native
+  controls, and a base→delta pair whose change includes a `ROLE`
   change exercising the semantic-tag retag), each rendered by
   the canonical Rust SSR renderer into committed fixtures under
   `lib/typescript/test/fixtures/ssr/` (`{name}.plpl` batch bytes + `{name}.html`

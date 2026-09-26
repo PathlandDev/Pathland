@@ -23,7 +23,8 @@ Rust sources, so the TS side cannot drift silently.
   `pathland_render_html::role_spec` — `ROLE_TAGS`, `HEADING_STYLES`,
   `ShellKind`, and the `semanticTag`/`textTag`/`ariaRole`/`headingLevel`
   resolvers — so semantic-tag / ARIA / heading decisions cannot drift between
-  the Rust SSR renderer and the DOM client.
+  the Rust SSR renderer and the DOM client. `constants.ts` also carries the
+  media surface (`COMPONENT_AUDIO`/`VIDEO`, `PROP_AUDIO_SOURCE`/`VIDEO_SOURCE`).
 - **`npm run regen`** (`lib/typescript/scripts/regen.mjs`) runs both generators
   (and the golden-fixture emitter); CI's `rust` job runs them and fails on
   `git diff --exit-code` drift.

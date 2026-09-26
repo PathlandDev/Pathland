@@ -386,6 +386,16 @@ impl Node {
         if self.properties.contains_key(&property_id::TRUNCATION_MODE) {
             css.push_str("text-overflow:ellipsis;overflow:hidden;white-space:nowrap;");
         }
+        // CONTENT_MODE → object-fit (Fit=contain, Fill=cover); ASPECT_RATIO.
+        if let Some(v) = f32p(property_id::CONTENT_MODE) {
+            css.push_str(&format!(
+                "object-fit:{};",
+                if (v as u8) == 1 { "cover" } else { "contain" }
+            ));
+        }
+        if let Some(v) = f32p(property_id::ASPECT_RATIO) {
+            css.push_str(&format!("aspect-ratio:{v};"));
+        }
 
         css
     }
@@ -988,7 +998,35 @@ impl HtmlRenderer {
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                format!("<img{data_id}{event}{aria} src=\"{src}\"{style}>")
+                // The accessibility label (`LABEL` / `.accessibilityLabel`) is the
+                // image's `alt` text (empty = decorative).
+                let alt = escape(
+                    node.strings
+                        .get(&property_id::LABEL)
+                        .map(String::as_str)
+                        .unwrap_or_default(),
+                );
+                format!("<img{data_id}{event}{aria} src=\"{src}\" alt=\"{alt}\"{style}>")
+            }
+            component_type::AUDIO => {
+                let src = escape(
+                    node.strings
+                        .get(&property_id::AUDIO_SOURCE)
+                        .map(String::as_str)
+                        .unwrap_or_default(),
+                );
+                // Playback interaction is renderer-native (`controls`).
+                format!("<audio{data_id}{event}{aria} src=\"{src}\" controls{style}></audio>")
+            }
+            component_type::VIDEO => {
+                let src = escape(
+                    node.strings
+                        .get(&property_id::VIDEO_SOURCE)
+                        .map(String::as_str)
+                        .unwrap_or_default(),
+                );
+                // Playback interaction is renderer-native (`controls`).
+                format!("<video{data_id}{event}{aria} src=\"{src}\" controls{style}></video>")
             }
             component_type::COLOR => {
                 let tag = semantic.unwrap_or("div");
@@ -1677,7 +1715,77 @@ mod tests {
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
-        assert!(html.contains("<img data-pathland-id=\"1\" src=\"assets/logo.png\">"));
+        assert!(html.contains("<img data-pathland-id=\"1\" src=\"assets/logo.png\" alt=\"\">"));
+    }
+
+    #[test]
+    fn renders_media_and_image_alt() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        let mut strings = Vec::new();
+        // IMAGE with an accessibility label → alt; CONTENT_MODE Fill → cover.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::IMAGE as u32, 0));
+        strings.extend_from_slice(&(32u32).to_le_bytes());
+        strings.extend_from_slice(b"/_pathland/assets/icons/home.svg");
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::STRING as u32) << 16) | property_id::IMAGE_SOURCE as u32,
+            0,
+        ));
+        strings.extend_from_slice(&(4u32).to_le_bytes());
+        strings.extend_from_slice(b"Home");
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::STRING as u32) << 16) | property_id::LABEL as u32,
+            36,
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::CONTENT_MODE as u32,
+            1f32.to_bits(),
+        ));
+        // VIDEO + AUDIO with renderer-native controls.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::VIDEO as u32, 0));
+        strings.extend_from_slice(&(30u32).to_le_bytes());
+        strings.extend_from_slice(b"https://example.com/sample.mp4");
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::STRING as u32) << 16) | property_id::VIDEO_SOURCE as u32,
+            44,
+        ));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::AUDIO as u32, 0));
+        strings.extend_from_slice(&(30u32).to_le_bytes());
+        strings.extend_from_slice(b"https://example.com/sample.mp3");
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            3,
+            ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
+            78,
+        ));
+
+        let renderer = HtmlRenderer::new();
+        let img = renderer.render_fragment(&opcodes, &strings, 1);
+        assert!(img.contains("alt=\"Home\""), "image alt from LABEL");
+        assert!(img.contains("object-fit:cover;"), "ContentMode Fill -> cover");
+        let video = renderer.render_fragment(&opcodes, &strings, 2);
+        assert!(video.contains("<video data-pathland-id=\"2\" src=\"https://example.com/sample.mp4\" controls"), "video native controls");
+        let audio = renderer.render_fragment(&opcodes, &strings, 3);
+        assert!(audio.contains("<audio data-pathland-id=\"3\" src=\"https://example.com/sample.mp3\" controls"), "audio native controls");
     }
 
     #[test]

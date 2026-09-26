@@ -110,6 +110,8 @@ export const PROP_CONTENT_MODE = 0x001c;
 export const PROP_MINIMUM_SCALE_FACTOR = 0x001d;
 export const PROP_BACKGROUND_COLOR = 0x1001;
 export const PROP_IMAGE_SOURCE = 0x1002;
+export const PROP_AUDIO_SOURCE = 0x1033;
+export const PROP_VIDEO_SOURCE = 0x1034;
 export const PROP_BORDER_WIDTH = 0x1003;
 export const PROP_BORDER_COLOR = 0x1004;
 export const PROP_BORDER_RADIUS = 0x1005;
@@ -292,6 +294,8 @@ export const TEXT_STYLE_CAPTION2 = 10;
 // Components (spec/PRIMITIVES.md)
 export const COMPONENT_TEXT = 0x0001;
 export const COMPONENT_IMAGE = 0x0002;
+export const COMPONENT_AUDIO = 0x0009;
+export const COMPONENT_VIDEO = 0x000a;
 export const COMPONENT_COLOR = 0x0003;
 export const COMPONENT_SHAPE = 0x0004;
 export const COMPONENT_DIVIDER = 0x0005;

@@ -72,6 +72,12 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   `PlainButtonStyle`** (`Button.of(Label, action)`) — control semantics are
   intrinsic to the component, not a `ROLE`; a custom-looking button is a
   `Button` + `ButtonStyle`.
+- **Real asset refs**: the demo icons are now actual SVGs served from the
+  reserved asset mount (`/_pathland/assets/icons/*.svg`) and referenced
+  **absolute** (fixing the relative-path bug on deep routes).
+- **`MediaSection`** (kitchensink): a `Video` + `Audio` node with remote sample
+  URLs — playback interaction is renderer-native (`controls`); the app supplies
+  only the source + size.
 
 ## Not implemented / gaps
 

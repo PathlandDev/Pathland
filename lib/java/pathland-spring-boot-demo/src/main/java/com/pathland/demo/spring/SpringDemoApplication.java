@@ -11,8 +11,8 @@ import org.springframework.context.annotation.Bean;
 
 /**
  * The Spring Boot demo — the whole app. The Pathland starter provides SSR, the
- * {@code /ws} delta transport, and per-session state; this class only supplies the root
- * view (and the optional theme).
+ * reserved {@code /_pathland/ws} delta transport, and per-session state; this
+ * class only supplies the root view (and the optional theme).
  */
 @SpringBootApplication
 public class SpringDemoApplication {

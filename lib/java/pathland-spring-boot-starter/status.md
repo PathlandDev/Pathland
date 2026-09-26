@@ -2,9 +2,9 @@
 
 **Last updated:** September 12, 2026
 
-Spring Boot auto-configuration for Pathland: SSR at any path, live deltas over `/ws`,
-per-session state. Adding the starter dependency + a `PathlandApp` bean gives a running
-app.
+Spring Boot auto-configuration for Pathland: SSR at any path, live deltas over the
+reserved `/_pathland/ws`, per-session state. Adding the starter dependency + a
+`PathlandApp` bean gives a running app.
 
 ## Implemented
 
@@ -13,9 +13,10 @@ app.
   longer auto-enables it) + `META-INF/spring/…/AutoConfiguration.imports`:
   - default `StateStore` bean (`@ConditionalOnMissingBean` — Redis-or-in-memory),
   - `PathlandRegistry` bean (shut down with the context),
-  - `PathlandSocket` + a `WebSocketConfigurer` registering `/ws`,
-  - `PathlandIndexController` (SSR catch-all + `session` cookie + static JS bundle +
-    `/ws`-Upgrade exclusion).
+  - `PathlandSocket` + a `WebSocketConfigurer` registering `/_pathland/ws`,
+  - `PathlandIndexController` (SSR catch-all + `session` cookie + a `/_pathland/**`
+    static controller serving the bundle + asset mount from `classpath:/static/_pathland/**`;
+    the more-specific mapping beats `/{*path}`, and the `!Upgrade` header excludes WS).
 - **SSR debug comments**: the `PathlandRegistry` bean reads the
   `pathland.debug-html` property (`@Value("${pathland.debug-html:false}")`) and forwards
   it to the registry, enabling per-node HTML comments in SSR output when set.
@@ -35,5 +36,5 @@ public class MyApp {
 
 `mvn test` — `PathlandAutoConfigurationTest` (`@SpringBootTest`): a `PathlandApp` bean
 activates the registry and SSR renders the root. Manual: the `pathland-spring-boot-demo`
-renders `/`, `/kitchen`, `/settings` and the 404 fallback; a WebSocket handshake to `/ws`
-returns 101.
+renders `/`, `/kitchen`, `/settings` and the 404 fallback; a WebSocket handshake to
+`/_pathland/ws` returns 101.

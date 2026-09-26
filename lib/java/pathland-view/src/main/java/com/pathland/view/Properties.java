@@ -34,6 +34,8 @@ public final class Properties {
     // Style (0x1000 range)
     public static final int BACKGROUND_COLOR = 0x1001;
     public static final int IMAGE_SOURCE = 0x1002;
+    public static final int AUDIO_SOURCE = 0x1033;
+    public static final int VIDEO_SOURCE = 0x1034;
     public static final int BORDER_WIDTH = 0x1003;
     public static final int BORDER_COLOR = 0x1004;
     public static final int BORDER_RADIUS = 0x1005;

@@ -319,7 +319,9 @@ const HANDLERS: Record<number, Handler> = {
   [P.PROP_LAYOUT_PRIORITY]: (el, vt, c) => (el.style.flexGrow = fmtFloat(f32(vt, c))),
   [P.PROP_ASPECT_RATIO]: (el, vt, c) => (el.style.aspectRatio = fmtFloat(f32(vt, c))),
   [P.PROP_CONTENT_MODE]: (el, vt, c) => {
-    el.style.objectFit = enumCode(vt, c) === P.CONTENT_MODE_FILL ? "fill" : "contain";
+    // Fit → contain (aspect-fit within bounds); Fill → cover (aspect-fill,
+    // cropped) — mirrors the Rust SSR renderer.
+    el.style.objectFit = enumCode(vt, c) === P.CONTENT_MODE_FILL ? "cover" : "contain";
   },
 
   // Text

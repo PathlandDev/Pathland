@@ -14,6 +14,12 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `npm run copy-to-demos` copies it into both the Quarkus and Spring Boot demos'
   static resource dirs. Both demos serve `/pathland-dom-renderer.js`; the old
   duplicated `app.js` is removed.
+- **Media**: `IMAGE`/`VIDEO`/`AUDIO` shells (`<img>`, `<video controls>`,
+  `<audio controls>`); `IMAGE_SOURCE`/`VIDEO_SOURCE`/`AUDIO_SOURCE` apply the
+  asset ref; the `LABEL` accessibility text is set as `alt` on media elements;
+  `CONTENT_MODE` maps `Fit`→`contain`, `Fill`→**`cover`** (matching the Rust SSR).
+  The reserved framework root (`/_pathland/**`) is read from the SSR page's
+  `data-pathland-base` (WS URL + bundle resolved from it).
 - **Hydration**: builds the `data-pathland-id → element` registry from the SSR
   DOM.
 - **Generated protocol constants** (`src/constants.ts`): emitted by

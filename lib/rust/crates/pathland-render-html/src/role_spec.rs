@@ -124,6 +124,8 @@ pub const NATIVE_ROLE_COMPONENTS: &[u16] = &[
     component_type::SLIDER,
     component_type::TOGGLE,
     component_type::IMAGE,
+    component_type::AUDIO,
+    component_type::VIDEO,
     component_type::PROGRESS_VIEW,
     component_type::GAUGE,
     component_type::DATE_PICKER,

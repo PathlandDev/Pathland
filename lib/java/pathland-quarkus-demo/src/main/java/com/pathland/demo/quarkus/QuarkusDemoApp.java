@@ -8,9 +8,9 @@ import com.pathland.view.View;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
- * The Quarkus demo — the whole app. The Pathland starter provides SSR, the {@code /ws}
- * delta transport, and per-session state; this bean only supplies the root view (and the
- * optional theme).
+ * The Quarkus demo — the whole app. The Pathland starter provides SSR, the reserved
+ * {@code /_pathland/ws} delta transport, and per-session state; this bean only supplies
+ * the root view (and the optional theme).
  */
 @ApplicationScoped
 public class QuarkusDemoApp implements PathlandApp {

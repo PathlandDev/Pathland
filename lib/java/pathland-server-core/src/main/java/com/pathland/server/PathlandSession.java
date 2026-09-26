@@ -32,6 +32,11 @@ import com.pathland.view.transport.FrameCodec;
  */
 public final class PathlandSession {
 
+    /** The reserved framework path prefix (spec): host system endpoints (the
+     *  WebSocket, the DOM client bundle, the asset mount) live under
+     *  {@code /_pathland/**}, never colliding with app routes. */
+    public static final String PATHLAND_BASE = "/_pathland";
+
     private final PersistentState state;
     private final WritableSignal<String> activePath;
 
@@ -143,7 +148,13 @@ public final class PathlandSession {
         String html = debugHtml
                 ? renderer.renderDebug(sink.frame(), rootId)
                 : renderer.render(sink.frame(), rootId);
-        return html.replace("</body>", "<script src=\"/pathland-dom-renderer.js\" defer></script></body>");
+        // The reserved framework path prefix (spec): host system endpoints live
+        // under `/_pathland/**`. Carried as `data-pathland-base` so the DOM client
+        // resolves its `/_pathland/ws` and the bundle from the same base.
+        String base = PATHLAND_BASE;
+        return html
+                .replace("<html>", "<html data-pathland-base=\"" + base + "\">")
+                .replace("</body>", "<script src=\"" + base + "/dom-renderer.js\" defer></script></body>");
     }
 
     /** Tear down: close the persistent state, unsubscribe the emitter, drop the connection. */

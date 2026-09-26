@@ -104,9 +104,13 @@ function boot(): void {
     byId.set(Number(el.getAttribute("data-pathland-id")), el);
   }
   log.info(undefined, `dom-renderer boot — hydrated ${byId.size} nodes`);
+  // The reserved framework path prefix (spec — host system endpoints live under
+  // `/_pathland/**`). The SSR page carries it as `data-pathland-base` so a host
+  // can relocate it (e.g. behind a proxy); defaults to `/_pathland`.
+  const base = document.documentElement.dataset.pathlandBase ?? "/_pathland";
   const renderer: DomRenderer = { byId };
   const transport = new Transport({
-    url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`,
+    url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${base}/ws`,
     renderer,
     // The platform environment (viewport + current route) is the FIRST message:
     // the server session seeds its router from the ROUTE field before mount, so a

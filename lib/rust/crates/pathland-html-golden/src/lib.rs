@@ -132,7 +132,37 @@ fn scenarios() -> Vec<Scenario> {
         layout(),
         tokens(),
         semantics(),
+        media(),
     ]
+}
+
+fn media() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::VSTACK);
+    b.create(2, component_type::IMAGE);
+    b.create(3, component_type::VIDEO);
+    b.create(4, component_type::AUDIO);
+    b.insert(1, 2);
+    b.insert(1, 3);
+    b.insert(1, 4);
+    // Image: absolute asset ref + alt (LABEL) + content-mode Fill → cover + aspect ratio.
+    b.set_string(2, property_id::IMAGE_SOURCE, "/_pathland/assets/icons/home.svg");
+    b.set_string(2, property_id::LABEL, "Home");
+    b.set_prop(2, value_type::F32, property_id::CONTENT_MODE, 1f32.to_bits());
+    b.set_prop(2, value_type::F32, property_id::ASPECT_RATIO, 1.5f32.to_bits());
+    b.set_prop(2, value_type::F32, property_id::WIDTH, 200f32.to_bits());
+    // Video: source ref; playback interaction is renderer-native (controls).
+    b.set_string(3, property_id::VIDEO_SOURCE, "https://example.com/sample.mp4");
+    b.set_prop(3, value_type::F32, property_id::WIDTH, 320f32.to_bits());
+    b.set_prop(3, value_type::F32, property_id::HEIGHT, 180f32.to_bits());
+    // Audio: source ref.
+    b.set_string(4, property_id::AUDIO_SOURCE, "https://example.com/sample.mp3");
+    Scenario {
+        name: "media",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
 }
 
 fn semantics() -> Scenario {
@@ -632,6 +662,7 @@ pub const FIXTURE_NAMES: &[&str] = &[
     "layout",
     "tokens",
     "semantics",
+    "media",
     "delta_base",
     "delta_change",
     "delta_result",
