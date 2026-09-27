@@ -22,6 +22,8 @@ import {
   PROP_COLOR,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
+  PROP_LABEL,
+  PROP_LINE_LIMIT,
   PROP_NAV_CHROME,
   PROP_NAV_DEPTH,
   PROP_PROGRESS,
@@ -301,6 +303,47 @@ describe("applyBatch · META + design tokens + string props", () => {
       r,
     );
     expect(span.textContent).toBe("hello");
+  });
+
+  it("applying a LABEL to a composite never wipes its children", () => {
+    // A button whose label is a composite (icon + text): re-applying its accessibility
+    // LABEL on a resync must not clobber the children (SSR renders no label on composites).
+    const button = document.createElement("button");
+    const img = document.createElement("img");
+    const span = document.createElement("span");
+    span.textContent = "Home";
+    button.append(img, span);
+    const r = renderer();
+    r.byId.set(4, button);
+    r.byId.set(5, img);
+    r.byId.set(6, span);
+
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 4, (VAL_STRING << 16) | PROP_LABEL, 0]], stringEntry("Home")),
+      ),
+      r,
+    );
+    expect(button.childNodes.length).toBe(2);
+    expect(button.firstChild).toBe(img);
+    expect(button.lastChild).toBe(span);
+    expect(button.textContent).toBe("Home");
+  });
+
+  it("a positive LINE_LIMIT clamps the text via the webkit box model", () => {
+    const span = document.createElement("span");
+    const r = renderer();
+    r.byId.set(11, span);
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 11, (VAL_U32 << 16) | PROP_LINE_LIMIT, 1]]),
+      ),
+      r,
+    );
+    expect(span.style.webkitLineClamp).toBe("1");
+    expect((span.style as unknown as Record<string, string>).boxOrient).toBe("vertical");
+    // `display:-webkit-box` is also set (real browsers reflect it); happy-dom's CSSOM
+    // drops the vendor value, so it can't be asserted here.
   });
 
   it("SET_DATE on a time input writes millis-of-day as HH:MM", () => {

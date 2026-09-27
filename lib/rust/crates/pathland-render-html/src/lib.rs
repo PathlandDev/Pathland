@@ -876,7 +876,15 @@ impl HtmlRenderer {
             .collect();
         let mut data_id = format!(" data-pathland-id=\"{id}\"");
         data_id.push_str(&slot_attrs(node));
-        let css = format!("{}{}", node.style_css(), node.border_style());
+        let mut css = format!("{}{}", node.style_css(), node.border_style());
+        // LINE_LIMIT truncation: a positive line limit clamps the text to N lines
+        // (mirrors the DOM client's PROP_LINE_LIMIT application, classes.ts).
+        let line_limit = node.u32_property(property_id::LINE_LIMIT, 0);
+        if line_limit > 0 {
+            css.push_str(&format!(
+                "display:-webkit-box;-webkit-line-clamp:{line_limit};-webkit-box-orient:vertical;"
+            ));
+        }
         let style = style_attr(&css);
         let event = event_attrs(node);
         let aria = aria_attrs(node);
@@ -1941,6 +1949,42 @@ mod tests {
         let html = renderer.render_document(&opcodes, &strings, 1);
         assert!(html.contains("<button data-pathland-id=\"1\" class=\"pathland-button\">"), "button uses the design-system class");
         assert!(html.contains("<span data-pathland-id=\"2\">A</span>"));
+    }
+
+    #[test]
+    fn line_limit_clamps_text_to_n_lines() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::U32 as u32) << 16) | property_id::LINE_LIMIT as u32,
+            1,
+        ));
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&(2u32).to_le_bytes());
+        strings.extend_from_slice(b"Hi");
+        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+
+        let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
+        assert!(
+            html.contains("style=\"display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;\""),
+            "a positive LINE_LIMIT clamps the text to N lines: {html}"
+        );
+        // 0 = unlimited: no clamp style (the unset case above is unchanged).
+        let mut no_limit = Vec::new();
+        no_limit.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
+        no_limit.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        assert!(
+            !HtmlRenderer::new()
+                .render_document(&no_limit, &strings, 1)
+                .contains("line-clamp"),
+            "no LINE_LIMIT means unlimited (no clamp)"
+        );
     }
 
     #[test]

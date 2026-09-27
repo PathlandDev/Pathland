@@ -15,19 +15,16 @@ import jakarta.inject.Inject;
 import java.util.UUID;
 
 /**
- * The root app's live-updates WebSocket endpoint at {@code /_pathland/ws} (the framework
- * base of the app mounted at {@code "/"}). Sessions are 1:1 per connection: each
- * connection gets a fresh {@code uiId} (its UI model — two windows of the same browser
- * never share a session), while the client's per-window id ({@code ?wid=…} on the WS URL,
- * kept in {@code sessionStorage}) is the persisted-state scope. The ids are resolved once
- * per connection and memoized. The session logic lives in the framework-agnostic
- * {@link PathlandRegistry}.
- *
- * <p>Mounted apps (non-root) connect at {@code /<app>/_pathland/ws} — see
- * {@link MountedPathlandSocket}.
+ * A mounted (non-root) app's live-updates WebSocket endpoint at
+ * {@code /<app>/_pathland/ws} — the framework base the SSR page emits for that app, which
+ * the DOM client joins as {@code {base}/ws}. The mount path is a single path segment
+ * ({@code {app}}); {@link PathlandHost#registry} resolves it. Sessions are 1:1 per
+ * connection: each connection gets a fresh {@code uiId} (its UI model), while the client's
+ * per-window id ({@code ?wid=…} on the WS URL) is the persisted-state scope. The session
+ * logic lives in the framework-agnostic {@link PathlandRegistry}.
  */
-@WebSocket(path = "/_pathland/ws")
-public class PathlandSocket {
+@WebSocket(path = "/{app}/_pathland/ws")
+public class MountedPathlandSocket {
 
     @Inject
     WebSocketConnection connection;
@@ -35,13 +32,14 @@ public class PathlandSocket {
     @Inject
     PathlandHost host;
 
+    private volatile PathlandRegistry registry;
     private volatile String uiId;
     private volatile String windowId;
 
     @OnOpen
     void open() {
-        PathlandRegistry registry = host.registry("/");
-        if (registry == null) {
+        PathlandRegistry r = registry();
+        if (r == null) {
             return;
         }
         // Resolve the concrete connection while the session context is active: the CDI
@@ -49,32 +47,47 @@ public class PathlandSocket {
         // unwraps it to the real connection, whose send methods work from any thread.
         WebSocketConnection resolved =
                 ClientProxy.unwrap(Arc.container().instance(WebSocketConnection.class).get());
-        registry.open(uiId(), windowId(), new QuarkusConnection(resolved));
+        r.open(uiId(), windowId(), new QuarkusConnection(resolved));
     }
 
     @OnClose
     void close() {
-        PathlandRegistry registry = host.registry("/");
-        if (registry != null) {
-            registry.close(uiId());
+        PathlandRegistry r = registry();
+        if (r != null) {
+            r.close(uiId());
         }
     }
 
     @OnBinaryMessage
     void onBinary(byte[] message) {
-        PathlandRegistry registry = host.registry("/");
-        if (registry == null) {
+        PathlandRegistry r = registry();
+        if (r == null) {
             return;
         }
         if (FrameCodec.isResync(message)) {
-            registry.resync(uiId());
+            r.resync(uiId());
         } else if (FrameCodec.isEnvironment(message)) {
             // The DOM client's FIRST message: seeds the session (created lazily) from the
             // ROUTE field; later messages enrich the environment (viewport, …).
-            registry.environment(uiId(), FrameCodec.decodeEnvironment(message));
+            r.environment(uiId(), FrameCodec.decodeEnvironment(message));
         } else {
-            registry.dispatch(uiId(), message);
+            r.dispatch(uiId(), message);
         }
+    }
+
+    /** The app's registry, resolved once per connection from the {@code {app}} path param. */
+    private PathlandRegistry registry() {
+        PathlandRegistry current = registry;
+        if (current == null) {
+            synchronized (this) {
+                current = registry;
+                if (current == null) {
+                    current = host.registry("/" + connection.pathParam("app"));
+                    registry = current;
+                }
+            }
+        }
+        return current;
     }
 
     /** The per-connection UI-model id (a fresh id memoized once). */

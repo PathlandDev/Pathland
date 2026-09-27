@@ -1,33 +1,48 @@
 package com.pathland.spring;
 
+import com.pathland.server.MountedApp;
 import com.pathland.server.PathlandApp;
-import com.pathland.server.PathlandRegistry;
+import com.pathland.server.PathlandHost;
 import com.pathland.server.StateStores;
 import com.pathland.view.state.InMemoryStateStore;
 import com.pathland.view.state.StateStore;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Spring Boot auto-configuration for Pathland (spec DSL.md §4.5). Activated when the app
- * provides a {@link PathlandApp} bean — so adding the starter without a root view is a
- * no-op, and providing one wires SSR + live deltas end to end:
+ * Spring Boot auto-configuration for Pathland (spec DSL.md §4.5). Activated whenever the
+ * starter is on the classpath; without any app it stays inert (an empty host — no SSR, no
+ * WebSocket handlers). Declaring a root view wires SSR + live deltas end to end:
  *
  * <pre>{@code
  * @Bean PathlandApp pathlandApp() { return () -> new MyHomeView(); }
  * }</pre>
  *
+ * <p>Any number of apps can share the server, each at its own subpath (the BFF layout):
+ *
+ * <pre>{@code
+ * @Bean PathlandApp pathlandApp() { return () -> new HomeApp(); }        // owns /
+ * @Bean MountedApp support() { return MountedApp.of("/support", ...); }  // serves /support/**
+ * }</pre>
+ *
+ * <p>Each mount gets its own registry, framework base ({@code /<path>/_pathland}), session
+ * cookie scope, WebSocket endpoint, and state-store scope. The lone {@link PathlandApp}
+ * bean mounts at {@code "/"} unless an explicit {@code MountedApp} claims the root.
+ *
  * <p>Every bean is {@code @ConditionalOnMissingBean}, so the app can override the
- * {@link StateStore}, the socket, or the controller. {@code @EnableWebSocket} is applied
- * here because Spring Boot 3.5 no longer auto-enables it (it was removed from the
- * WebSocket auto-configurations); it collects this configuration's {@link WebSocketConfigurer}.
+ * {@link StateStore}, the controller, or the socket wiring. {@code @EnableWebSocket} is
+ * applied here because Spring Boot 3.5 no longer auto-enables it (it was removed from
+ * the WebSocket auto-configurations); it collects this configuration's {@link WebSocketConfigurer}.
  */
 @AutoConfiguration
-@ConditionalOnBean(PathlandApp.class)
 @EnableWebSocket
 public class PathlandAutoConfiguration {
 
@@ -38,33 +53,42 @@ public class PathlandAutoConfiguration {
         return StateStores.redisOrFallback(new InMemoryStateStore());
     }
 
-    /** The per-session registry (shut down with the application context). */
+    /**
+     * The multi-app host (shut down with the application context): every {@link MountedApp}
+     * bean plus the lone {@link PathlandApp} bean (mounted at {@code "/"}, unless an
+     * explicit {@code MountedApp} claims the root).
+     */
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnMissingBean
-    public PathlandRegistry pathlandRegistry(
-            PathlandApp app,
+    public PathlandHost pathlandHost(
+            ObjectProvider<PathlandApp> apps,
+            ObjectProvider<MountedApp> mounts,
             StateStore store,
-            @org.springframework.beans.factory.annotation.Value("${pathland.debug-html:false}") boolean debugHtml) {
-        return new PathlandRegistry(app, store, debugHtml);
+            @Value("${pathland.debug-html:false}") boolean debugHtml) {
+        List<MountedApp> list = new ArrayList<>();
+        mounts.orderedStream().forEach(list::add);
+        PathlandApp lone = apps.getIfAvailable();
+        if (lone != null && list.stream().noneMatch(m -> "/".equals(m.path()))) {
+            list.add(0, MountedApp.of("/", lone));
+        }
+        return new PathlandHost(list, store, debugHtml);
     }
 
-    /** The {@code /ws} WebSocket handler. */
+    /**
+     * Registers one WebSocket handler per mounted app at its framework base
+     * ({@code /_pathland/ws} for the root mount, {@code /<path>/_pathland/ws} otherwise).
+     */
     @Bean
     @ConditionalOnMissingBean
-    public PathlandSocket pathlandSocket(PathlandRegistry registry) {
-        return new PathlandSocket(registry);
+    public WebSocketConfigurer pathlandWebSocketConfigurer(PathlandHost host) {
+        return registry -> host.registries().forEach(r ->
+                registry.addHandler(new PathlandSocket(r), r.base() + "/ws").setAllowedOrigins("*"));
     }
 
-    /** Registers the socket at the reserved {@code /_pathland/ws} path. */
-    @Bean
-    public WebSocketConfigurer pathlandWebSocketConfigurer(PathlandSocket socket) {
-        return registry -> registry.addHandler(socket, "/_pathland/ws").setAllowedOrigins("*");
-    }
-
-    /** The SSR catch-all + static JS bundle. */
+    /** The SSR dispatcher (per-app prefix routing) + the shared static JS bundle. */
     @Bean
     @ConditionalOnMissingBean
-    public PathlandIndexController pathlandIndexController(PathlandRegistry registry) {
-        return new PathlandIndexController(registry);
+    public PathlandIndexController pathlandIndexController(PathlandHost host) {
+        return new PathlandIndexController(host);
     }
 }

@@ -145,7 +145,7 @@ public final class Router {
     }
 
     /** The pathname of a URL or an absolute path: {@code https://h/u/7?q=1} → {@code /u/7}. */
-    static String pathOf(String url) {
+    public static String pathOf(String url) {
         int scheme = url.indexOf("://");
         int start = scheme >= 0 ? url.indexOf('/', scheme + 3) : 0;
         String path = start < 0 ? "/" : url.substring(start);

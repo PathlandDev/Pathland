@@ -14,6 +14,22 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `npm run copy-to-demos` copies it into both the Quarkus and Spring Boot demos'
   static resource dirs. Both demos serve `/pathland-dom-renderer.js`; the old
   duplicated `app.js` is removed.
+- **Per-window identity (`wid`)**: the client keeps a window id in `sessionStorage`
+  (fresh per window/tab, kept across reloads of the same tab), appends it as
+  `?wid=` to the WebSocket URL (the server's per-window persisted-state scope), and
+  **reflects it into the page URL** (`history.replaceState`/`pushState`) so the SSR
+  request carries it too — a reload's HTML then already renders that window's persisted
+  state. The client only requests a `META::RESYNC` when a reload's URL lacked the `wid`
+  (a typed URL / a first visit before the client ran); a normal reload never replays the
+  tree. Two windows therefore never share a UI model or state.
+- **Property application parity**: `setNodeText` only writes `textContent` on leaf nodes
+  — re-applying a composite's `LABEL`/`TEXT` property never wipes its children (SSR
+  renders no label on composites). `LINE_LIMIT` (positive) clamps via the webkit box
+  model (`display:-webkit-box` + `-webkit-line-clamp`), matching the Rust SSR.
+- **Mounted-app URL mirroring**: the server emits app-relative `ROUTE`s; the client
+  derives the app's mount prefix from `data-pathland-base` (`/<mount>/_pathland`) and
+  pushes the app's <b>real</b> address (`/app2` app navigating to `/home` →
+  `pushState("/app2/home…")`). The root app (base `/_pathland`) is unchanged.
 - **Media**: `IMAGE`/`VIDEO`/`AUDIO` shells (`<img>`, `<video controls>`,
   `<audio controls>`); `IMAGE_SOURCE`/`VIDEO_SOURCE`/`AUDIO_SOURCE` apply the
   asset ref; the `LABEL` accessibility text is set as `alt` on media elements;
