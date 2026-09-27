@@ -1,0 +1,25 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3H6HT7273Z7WPXWKESC21A8",
+  "session_id": "ses_f22887ab0ffepRGnujdgeYZTVd",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-27T10:28:43.275607Z",
+  "branch": "feat/multi-app-host",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "87f1afd9a66a",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 97430,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1394176,
+    "output_tokens": 30760,
+    "api_call_count": 24
+  },
+  "session_metrics": {
+    "turn_count": 1
+  }
+}
