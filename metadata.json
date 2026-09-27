@@ -3,8 +3,40 @@
   "checkpoint_id": "01M3H6HT7273Z7WPXWKESC21A8",
   "strategy": "manual-commit",
   "branch": "feat/multi-app-host",
-  "checkpoints_count": 1,
-  "files_touched": null,
+  "checkpoints_count": 20,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-quarkus-demo/src/main/java/com/pathland/demo/quarkus/QuarkusDemoApp.java",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.js",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/IndexResource.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/MountedPathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandRegistryProducer.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/MountedApp.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandHost.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandHostTest.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandSessionTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-demo/src/main/java/com/pathland/demo/spring/SpringDemoApplication.java",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.js",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandAutoConfiguration.java",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandIndexController.java",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandSocket.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/PathlandAutoConfigurationTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/PathlandDebugHtmlTest.java",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/router/Router.java",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/index.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/wid.test.ts"
+  ],
   "sessions": [
     {
       "metadata": "/0/metadata.json",
@@ -12,13 +44,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 97430,
+    "input_tokens": 5207033,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 1394176,
-    "output_tokens": 30760,
-    "api_call_count": 24
+    "cache_read_tokens": 139922944,
+    "output_tokens": 336845,
+    "api_call_count": 453
   }
 }
