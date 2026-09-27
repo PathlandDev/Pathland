@@ -5,8 +5,7 @@ import com.pathland.view.DatePickerMode;
 import com.pathland.view.Text;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
-import com.pathland.view.signal.Signal;
-import com.pathland.view.signal.Signals;
+import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.Padding;
 
@@ -19,16 +18,16 @@ import com.pathland.view.Padding;
 public final class DateSection implements View {
 
     State<Integer> days = new State<>(20487, "days");
-    Signal<String> dateLabel = Signals.computed(() ->
-            java.time.LocalDate.ofEpochDay(days.get()).toString());
 
     @Override
     public View body() {
+        var dateLabel = computed(() ->
+                java.time.LocalDate.ofEpochDay(days.get()).toString());
         return new SectionCard("DatePicker · STYLE::SET_DATE",
                 VStack.of(
                         DatePicker.of(DatePickerMode.DATE, days.signal()),
-                        Text.of(dateLabel).modifier(Padding.of(4))
-                ).modifier(Padding.of(4))
+                        Text.of(dateLabel).with(Padding.of(4))
+                ).with(Padding.of(4))
         );
     }
 }

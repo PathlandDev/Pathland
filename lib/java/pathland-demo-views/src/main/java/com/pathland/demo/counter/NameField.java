@@ -4,8 +4,7 @@ import com.pathland.view.Text;
 import com.pathland.view.TextField;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
-import com.pathland.view.signal.Signal;
-import com.pathland.view.signal.Signals;
+import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 
 /**
@@ -16,10 +15,10 @@ import com.pathland.view.state.State;
 public final class NameField implements View {
 
     State<String> name = new State<>("");
-    Signal<String> nameLabel = Signals.computed(() -> "Name: " + name.get());
 
     @Override
     public View body() {
+        var nameLabel = computed(() -> "Name: " + name.get());
         return VStack.of(
                 TextField.of("Your name", name.signal()),
                 Text.of(nameLabel)

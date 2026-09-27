@@ -40,8 +40,8 @@
 //! }
 //!
 //! // Works on any view:
-//! let a = pathland_view::text("A").modifier(Card);
-//! let b = pathland_view::vstack![].modifier(Card);
+//! let a = pathland_view::text("A").with(Card);
+//! let b = pathland_view::vstack![].with(Card);
 //! # let _ = (a, b);
 //! ```
 //!
@@ -192,29 +192,29 @@ impl<V: View, M: ViewModifier> View for Modified<V, M> {
 
 /// Blanket modifier methods on any `View`.
 ///
-/// `.modifier(...)` applies a custom (or core) modifier; the sugar methods
+/// `.with(...)` applies a custom (or core) modifier; the sugar methods
 /// (`spacing`, `padding`, `font_size`, `color`, `background`) are conveniences
 /// that construct the corresponding core modifier. Modifiers apply
 /// innermost-first, matching SwiftUI ordering.
 pub trait ViewExt: View + Sized {
     /// Apply a modifier to this view.
-    fn modifier<M: ViewModifier>(self, modifier: M) -> Modified<Self, M> {
+    fn with<M: ViewModifier>(self, modifier: M) -> Modified<Self, M> {
         Modified { view: self, modifier }
     }
 
     /// Chain `.spacing(value)`.
     fn spacing(self, value: f32) -> Modified<Self, Spacing> {
-        self.modifier(Spacing(value))
+        self.with(Spacing(value))
     }
 
     /// Chain `.padding(value)`.
     fn padding(self, value: f32) -> Modified<Self, Padding> {
-        self.modifier(Padding(value))
+        self.with(Padding(value))
     }
 
     /// Chain `.font_size(value)`.
     fn font_size(self, value: f32) -> Modified<Self, FontSize> {
-        self.modifier(FontSize(value))
+        self.with(FontSize(value))
     }
 
     /// Chain `.foreground_style(color)` — the foreground color
@@ -222,22 +222,22 @@ pub trait ViewExt: View + Sized {
     /// `.foregroundColor()` modifier; foreground styling is
     /// `.foreground_style(_:)` (SwiftUI `.foregroundStyle`).
     fn foreground_style(self, color: Color) -> Modified<Self, ForegroundStyle> {
-        self.modifier(ForegroundStyle(color))
+        self.with(ForegroundStyle(color))
     }
 
     /// Chain `.background(color)` — the background color.
     fn background(self, color: Color) -> Modified<Self, Background> {
-        self.modifier(Background(color))
+        self.with(Background(color))
     }
 
     /// Chain `.border(color, width)`.
     fn border(self, color: Color, width: f32) -> Modified<Self, Border> {
-        self.modifier(Border { color, width })
+        self.with(Border { color, width })
     }
 
     /// Chain `.tint(color)` — the accent/tint color (a `TINT` property).
     fn tint(self, color: Color) -> Modified<Self, Tint> {
-        self.modifier(Tint(color))
+        self.with(Tint(color))
     }
 
     /// Chain `.frame(width, height, alignment)` — a compound sizing modifier.
@@ -253,7 +253,7 @@ pub trait ViewExt: View + Sized {
         height: Option<f32>,
         alignment: Option<Align>,
     ) -> Modified<Self, Frame> {
-        self.modifier(Frame {
+        self.with(Frame {
             width,
             height,
             alignment,
@@ -266,7 +266,7 @@ pub trait ViewExt: View + Sized {
     /// `pathland_core::listener::*` bits, e.g.
     /// `POINTER_DOWN | POINTER_UP`.
     fn pointer_events(self, mask: u32) -> Modified<Self, PointerEvents> {
-        self.modifier(PointerEvents(mask))
+        self.with(PointerEvents(mask))
     }
 
     /// Chain `.on_tap_gesture(f)` — attach a tap gesture (SwiftUI
@@ -274,57 +274,57 @@ pub trait ViewExt: View + Sized {
     /// recognized from the view's raw pointer events (down then up on the same
     /// target).
     fn on_tap_gesture<F: FnMut() + 'static>(self, f: F) -> Modified<Self, TapGesture> {
-        self.modifier(TapGesture(Rc::new(RefCell::new(f))))
+        self.with(TapGesture(Rc::new(RefCell::new(f))))
     }
 
     /// Chain `.opacity(value)` (0..1).
     fn opacity(self, value: f32) -> Modified<Self, Opacity> {
-        self.modifier(Opacity(value))
+        self.with(Opacity(value))
     }
 
     /// Chain `.hidden()` — hide the view (`VISIBLE` = 0).
     fn hidden(self) -> Modified<Self, Hidden> {
-        self.modifier(Hidden)
+        self.with(Hidden)
     }
 
     /// Chain `.corner_radius(value)`.
     fn corner_radius(self, value: f32) -> Modified<Self, CornerRadius> {
-        self.modifier(CornerRadius(value))
+        self.with(CornerRadius(value))
     }
 
     /// Chain `.font_weight(value)` (100–900).
     fn font_weight(self, value: f32) -> Modified<Self, FontWeight> {
-        self.modifier(FontWeight(value))
+        self.with(FontWeight(value))
     }
 
     /// Chain `.line_limit(n)` (0 = unlimited).
     fn line_limit(self, n: u32) -> Modified<Self, LineLimit> {
-        self.modifier(LineLimit(n))
+        self.with(LineLimit(n))
     }
 
     /// Chain `.text_alignment(a)` (0=Leading, 1=Center, 2=Trailing).
     fn text_alignment(self, a: u8) -> Modified<Self, TextAlignment> {
-        self.modifier(TextAlignment(a))
+        self.with(TextAlignment(a))
     }
 
     /// Chain `.truncation_mode(m)` (0=Head, 1=Middle, 2=Tail).
     fn truncation_mode(self, m: u8) -> Modified<Self, TruncationMode> {
-        self.modifier(TruncationMode(m))
+        self.with(TruncationMode(m))
     }
 
     /// Chain `.offset(x, y)` — post-layout translation.
     fn offset(self, x: f32, y: f32) -> Modified<Self, Offset> {
-        self.modifier(Offset { x, y })
+        self.with(Offset { x, y })
     }
 
     /// Chain `.position(x, y)` — absolute placement within the parent.
     fn position(self, x: f32, y: f32) -> Modified<Self, Position> {
-        self.modifier(Position { x, y })
+        self.with(Position { x, y })
     }
 
     /// Chain `.z_index(value)`.
     fn z_index(self, value: f32) -> Modified<Self, ZIndex> {
-        self.modifier(ZIndex(value))
+        self.with(ZIndex(value))
     }
 }
 
@@ -1380,7 +1380,7 @@ mod tests {
             }
         }
 
-        let text = text("A").modifier(Card).build();
+        let text = text("A").with(Card).build();
         assert_eq!(
             text.properties.get(&property_id::PADDING),
             Some(&16.0f32.to_bits())
@@ -1390,7 +1390,7 @@ mod tests {
             Some(&0xFF_EEEEEE)
         );
 
-        let stack = vstack![].modifier(Card).build();
+        let stack = vstack![].with(Card).build();
         assert_eq!(
             stack.properties.get(&property_id::BACKGROUND_COLOR),
             Some(&0xFF_EEEEEE)

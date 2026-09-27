@@ -28,22 +28,22 @@ public final class ThemeSection implements View {
         return new SectionCard("Theme · design tokens + SET_DESIGN_TOKEN overrides",
                 VStack.of(
                         Text.of("color.primary — accent text")
-                                .modifier(ForegroundStyle.of(Color.token("color.primary"))),
+                                .with(ForegroundStyle.of(Color.token("color.primary"))),
                         Text.of("control.accent — control accent")
-                                .modifier(ForegroundStyle.of(Color.token("control.accent"))),
+                                .with(ForegroundStyle.of(Color.token("control.accent"))),
                         HStack.of(
-                                Rectangle.of().modifiers(
+                                Rectangle.of().with(
                                         FrameMod.of(120, 60, Alignment.CENTER),
                                         Background.of(Color.token("color.surface"))),
-                                Rectangle.of().modifiers(
+                                Rectangle.of().with(
                                         FrameMod.of(120, 60, Alignment.CENTER),
                                         Background.of(Color.token("dark.color.surface")))
-                        ).modifier(Padding.of(4)),
+                        ).with(Padding.of(4)),
                         Text.of("control.background — a token-referenced control fill")
-                                .modifiers(
+                                .with(
                                         Padding.of(8),
                                         Background.of(Color.token("control.background")))
-                ).modifier(Padding.of(4))
+                ).with(Padding.of(4))
         );
     }
 }

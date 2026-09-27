@@ -4,8 +4,7 @@ import com.pathland.view.Button;
 import com.pathland.view.HStack;
 import com.pathland.view.Text;
 import com.pathland.view.View;
-import com.pathland.view.signal.Signal;
-import com.pathland.view.signal.Signals;
+import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.Padding;
 
@@ -18,13 +17,13 @@ import com.pathland.view.Padding;
 public final class CounterControls implements View {
 
     State<Integer> count = new State<>(0);
-    Signal<String> countLabel = Signals.computed(() -> "Count: " + count.get());
 
     @Override
     public View body() {
+        var countLabel = computed(() -> "Count: " + count.get());
         return HStack.of(
                 Text.of(countLabel),
                 Button.of("Increment", () -> count.update(v -> v + 1))
-        ).modifier(Padding.of(16));
+        ).with(Padding.of(16));
     }
 }

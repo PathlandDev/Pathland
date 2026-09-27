@@ -9,8 +9,7 @@ import com.pathland.view.Stepper;
 import com.pathland.view.Text;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
-import com.pathland.view.signal.Signal;
-import com.pathland.view.signal.Signals;
+import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.FontSize;
 import com.pathland.view.FontWeightMod;
@@ -27,21 +26,21 @@ public final class CounterSection implements View {
 
     State<Integer> count = new State<>(0, "count");
     State<Float> step = new State<>(1f, "step");
-    Signal<String> countLabel = Signals.computed(() -> "Count: " + count.get());
 
     @Override
     public View body() {
+        var countLabel = computed(() -> "Count: " + count.get());
         return new SectionCard("Counter · State + Button + Stepper",
                 VStack.of(
-                        Text.of(countLabel).modifiers(FontSize.of(28), FontWeightMod.of(FontWeight.BOLD)),
+                        Text.of(countLabel).with(FontSize.of(28), FontWeightMod.of(FontWeight.BOLD)),
                         HStack.of(Alignment.LEADING, 4,
                                 Button.of("−", () -> count.update(v -> v - step.get().intValue())),
                                 Button.of("+", () -> count.update(v -> v + step.get().intValue())),
                                 Button.of("Reset", () -> count.set(0))
-                        ).modifier(Padding.of(4)),
-                        Text.of("Step size").modifier(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88))),
+                        ).with(Padding.of(4)),
+                        Text.of("Step size").with(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88))),
                         Stepper.of(step.signal(), 1, 10, 1)
-                ).modifier(Padding.of(4))
+                ).with(Padding.of(4))
         );
     }
 }

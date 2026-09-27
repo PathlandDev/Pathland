@@ -129,7 +129,7 @@ class LabelTest {
     void titleOnlyStyleDropsTheIcon() {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(
-                Label.of("Save", "save.svg").modifier(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
+                Label.of("Save", "save.svg").with(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
                 Environment.DEFAULT);
         Frame frame = sink.frame();
 
@@ -142,7 +142,7 @@ class LabelTest {
     void iconOnlyStyleKeepsTheTitleAsA11yLabel() {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(
-                Label.of("Save", "save.svg").modifier(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
+                Label.of("Save", "save.svg").with(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
                 Environment.DEFAULT);
         Frame frame = sink.frame();
 
@@ -183,7 +183,7 @@ class LabelTest {
         };
 
         new Emitter(sink()).mount(
-                probe.modifier(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
+                probe.with(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
                 Environment.DEFAULT);
         assertEquals(LabelStyle.ICON_ONLY, seen.get(0), "the scoped style is readable via Environment.value");
 
@@ -234,7 +234,7 @@ class LabelTest {
                 .route("/two", p -> probeStyle(seen))
                 .build();
         new Emitter(sink()).mount(
-                NavigationContainer.of(router).modifier(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
+                NavigationContainer.of(router).with(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
                 Environment.DEFAULT);
 
         seen.clear();

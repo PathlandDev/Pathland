@@ -25,14 +25,14 @@ public final class LabelSection implements View {
                 VStack.of(
                         Label.of("Settings", "/_pathland/assets/icons/settings.svg"),
                         Label.of("Save changes", "/_pathland/assets/icons/save.svg")
-                                .modifier(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
-                        Label.of("Wi-Fi").modifier(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
+                                .with(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
+                        Label.of("Wi-Fi").with(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
                         Label.of("Cloud", "/_pathland/assets/icons/cloud.svg")
-                                .modifier(LabelStyleMod.of(LabelStyle.TITLE_AND_ICON)),
+                                .with(LabelStyleMod.of(LabelStyle.TITLE_AND_ICON)),
                         Label.of(status.signal(), "/_pathland/assets/icons/status.svg"),
                         Button.of("Toggle status",
                                 () -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready"))
-                ).modifier(Padding.of(4))
+                ).with(Padding.of(4))
         );
     }
 }

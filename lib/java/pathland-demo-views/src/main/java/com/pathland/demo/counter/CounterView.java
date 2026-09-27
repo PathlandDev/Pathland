@@ -23,10 +23,10 @@ public final class CounterView implements View {
                 new CounterControls(),
                 new NameField(),
                 Text.of("Pathland · per-session · 16-byte deltas")
-                        .modifier(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88)))
+                        .with(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88)))
         )
         // The app's main content region → `<main>`.
-        .modifier(AccessibilityRole.of(Roles.MAIN))
-        .modifier(Padding.of(24));
+        .with(AccessibilityRole.of(Roles.MAIN))
+        .with(Padding.of(24));
     }
 }

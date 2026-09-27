@@ -16,8 +16,8 @@ public final class HomeView implements View {
         return VStack.of(Alignment.LEADING, 24,
                 VStack.of(Alignment.LEADING, 2,
                     // The destination title is a heading → `<h2>`.
-                    Text.of("Home").modifiers(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD))
-                            .modifier(AccessibilityRole.of(Roles.HEADER)),
+                    Text.of("Home").with(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD))
+                            .with(AccessibilityRole.of(Roles.HEADER)),
                     Text.of("A master-detail (split) navigation demo: the menu on the left "
                             + "drives the content area on the right.")
                 ),
@@ -25,7 +25,7 @@ public final class HomeView implements View {
                 Button.of("Open kitchen sink", () -> {}).navigate("/kitchen")
         )
         // The destination content region → `<main>`.
-        .modifier(AccessibilityRole.of(Roles.MAIN))
-        .modifier(Padding.of(24));
+        .with(AccessibilityRole.of(Roles.MAIN))
+        .with(Padding.of(24));
     }
 }
