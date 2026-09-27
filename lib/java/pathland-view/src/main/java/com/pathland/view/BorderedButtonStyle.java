@@ -37,11 +37,11 @@ public final class BorderedButtonStyle implements ButtonStyle {
     @Override
     public View makeBody(Configuration config) {
         return config.label()
-                .modifiers(
+                .with(
                         ForegroundStyle.of(Color.WHITE),
                         Padding.of(padding),
                         Background.of(background),
                         Border.of(borderColor, 1f, radius))
-                .modifier(TapGesture.of(config.action()));
+                .with(TapGesture.of(config.action()));
     }
 }

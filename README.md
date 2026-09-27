@@ -100,7 +100,7 @@ public final class MyHomeView implements View {
         return VStack.of(
                 Text.of(Signals.computed(() -> "Clicked " + count.get() + " times")),
                 Button.of("Click me", () -> count.update(v -> v + 1))
-        ).modifier(Padding.of(24));
+        ).with(Padding.of(24));
     }
 }
 ```

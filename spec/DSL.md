@@ -87,7 +87,7 @@ DSL must be *shaped* by them:
 - **There is exactly one modifier mechanism.** Built-in core modifiers are
   **not** a separate syntax: they are `ViewModifier` values the library ships,
   and the sugar methods (`.padding(_:)`, `.foregroundStyle(_:)`) are
-  conveniences that construct them via `.modifier(...)`. Core and
+  conveniences that construct them via `.with(...)`. Core and
   application-authored modifiers share the same surface.
 - **Constructor properties vs modifiers.** Structural/layout parameters
   (`alignment`, `spacing`) are **constructor arguments**, never chainable.
@@ -120,7 +120,7 @@ agnostic. Conventions used:
   a two-way binding target. A control takes a `WritableSignal<T>` for its
   value (see [§3](#3-state-model-signals)).
 - `()` — the action a `Button` fires.
-- `.modifier(name)` — apply a **modifier value** to a view; chainable on any
+- `.with(name)` — apply a **modifier value** to a view; chainable on any
   view. Every modifier — built-in or application-authored — is such a value
   ([§5.6](#56-custom-modifiers-developer-authored)); the sugar names
   (`.padding`, `.foregroundStyle`, …) are shorthand that construct the
@@ -133,7 +133,7 @@ Per-language adaptation rules:
 | Language | Case | Composition mechanism | Example |
 |----------|------|-----------------------|---------|
 | SwiftUI | `camelCase` | trailing closures + result builder | `VStack { Text("x").padding() }` |
-| Java (`com.pathland.view`) | `camelCase` | `.of()` factories + varargs + `.modifier(...)`/`.modifiers(...)` | `VStack.of(Text.of("x").modifier(Padding.of(16)))` |
+| Java (`com.pathland.view`) | `camelCase` | `.of()` factories + varargs + `.with(...)`/`.with(...)` | `VStack.of(Text.of("x").with(Padding.of(16)))` |
 | Rust (`pathland-view`) | `snake_case` | macros + free functions + chainable trait methods | `vstack![text("x").padding(16.0)]` |
 
 ---
@@ -351,8 +351,8 @@ event guards) — see [EVENTS.md](./EVENTS.md).
 
 | Gesture | Canonical (SwiftUI-shaped) | Java DSL (current) | Rust DSL (current) |
 |---------|---------------------------|--------------------|--------------------|
-| tap | `.onTapGesture { action }` | `.modifier(TapGesture.of(Runnable))` | `.on_tap_gesture(f)` |
-| raw pointer | `.gesture` composition from raw inputs | `.modifier(PointerEvents.of(int mask))` | `.pointer_events(u32 mask)` |
+| tap | `.onTapGesture { action }` | `.with(TapGesture.of(Runnable))` | `.on_tap_gesture(f)` |
+| raw pointer | `.gesture` composition from raw inputs | `.with(PointerEvents.of(int mask))` | `.pointer_events(u32 mask)` |
 
 Tap is **not** a protocol event: it is composed app-side from `POINTER_DOWN`
 then `POINTER_UP` on the same target (`EVENT_LISTENERS` bits 0|2). The
@@ -602,14 +602,14 @@ property** (`.frame` → `WIDTH` + `HEIGHT` + `ALIGNMENT`; `.border` →
 
 **One mechanism for every modifier.** Each entry in the tables below is a
 `ViewModifier` value. `padding(16)` is shorthand for
-`.modifier(Padding.of(16))`; `foregroundStyle(color)` for
-`.modifier(ForegroundStyle.of(color))`. The tables list the canonical sugar
-names; core and application-authored modifiers use the same `.modifier(...)`
+`.with(Padding.of(16))`; `foregroundStyle(color)` for
+`.with(ForegroundStyle.of(color))`. The tables list the canonical sugar
+names; core and application-authored modifiers use the same `.with(...)`
 surface ([§5.6](#56-custom-modifiers-developer-authored)).
 
 > **Java realization**: the Java DSL ships **no modifier sugar on `View`** —
-> modifiers are values applied via `.modifier(X.of(...))` (single) or
-> `.modifiers(X.of(...), Y.of(...))` (several, innermost-first). The "Java DSL
+> modifiers are values applied via `.with(X.of(...))` (single) or
+> `.with(X.of(...), Y.of(...))` (several, innermost-first). The "Java DSL
 > (current)" column lists the value form; the parameter list is carried from the
 > canonical signature.
 
@@ -617,18 +617,18 @@ surface ([§5.6](#56-custom-modifiers-developer-authored)).
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `frame` | `.frame(width:height:alignment:)` | `.modifier(FrameMod.of(float width))` / `.modifier(FrameMod.of(float width, float height))` / `.modifier(FrameMod.of(float width, float height, Alignment))` — alignment optional (omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved) | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
-| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.modifier(FrameMod.of(float, float, float, float, float, float))` (NaN = unset) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
-| `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.modifier(Padding.of(int))` / `.modifier(Padding.of(float))` / `.modifier(Padding.of(int top, int right, int bottom, int left))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
-| `offset` | `.offset(x:y:)` | `.modifier(Offset.of(float x, float y))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
-| `position` | `.position(x:y:)` | `.modifier(Position.of(float x, float y))` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 |
-| `fixedSize` | `.fixedSize()` / `.fixedSize(horizontal:vertical:)` | `.modifier(FixedSize.of())` / `.modifier(FixedSize.of(boolean, boolean))` | `FIXED_SIZE_HORIZONTAL` 0x0018, `FIXED_SIZE_VERTICAL` 0x0019 |
-| `layoutPriority` | `.layoutPriority(_:)` | `.modifier(LayoutPriority.of(float))` | `LAYOUT_PRIORITY` 0x001A |
-| `zIndex` | `.zIndex(_:)` | `.modifier(ZIndex.of(float))` | `Z_INDEX` 0x100F |
-| `aspectRatio` | `.aspectRatio(_:contentMode:)` | `.modifier(AspectRatio.of(float, ContentMode))` | `ASPECT_RATIO` 0x001B, `CONTENT_MODE` 0x001C |
-| `scaledToFit` | `.scaledToFit()` | `.modifier(ScaledToFit.of())` | `CONTENT_MODE` 0x001C (Fit) |
-| `scaledToFill` | `.scaledToFill()` | `.modifier(ScaledToFill.of())` | `CONTENT_MODE` 0x001C (Fill) |
-| `minimumScaleFactor` | `.minimumScaleFactor(_:)` | `.modifier(MinimumScaleFactor.of(float))` | `MINIMUM_SCALE_FACTOR` 0x001D |
+| `frame` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(float width))` / `.with(FrameMod.of(float width, float height))` / `.with(FrameMod.of(float width, float height, Alignment))` — alignment optional (omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved) | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
+| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.with(FrameMod.of(float, float, float, float, float, float))` (NaN = unset) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
+| `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.with(Padding.of(int))` / `.with(Padding.of(float))` / `.with(Padding.of(int top, int right, int bottom, int left))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
+| `offset` | `.offset(x:y:)` | `.with(Offset.of(float x, float y))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
+| `position` | `.position(x:y:)` | `.with(Position.of(float x, float y))` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 |
+| `fixedSize` | `.fixedSize()` / `.fixedSize(horizontal:vertical:)` | `.with(FixedSize.of())` / `.with(FixedSize.of(boolean, boolean))` | `FIXED_SIZE_HORIZONTAL` 0x0018, `FIXED_SIZE_VERTICAL` 0x0019 |
+| `layoutPriority` | `.layoutPriority(_:)` | `.with(LayoutPriority.of(float))` | `LAYOUT_PRIORITY` 0x001A |
+| `zIndex` | `.zIndex(_:)` | `.with(ZIndex.of(float))` | `Z_INDEX` 0x100F |
+| `aspectRatio` | `.aspectRatio(_:contentMode:)` | `.with(AspectRatio.of(float, ContentMode))` | `ASPECT_RATIO` 0x001B, `CONTENT_MODE` 0x001C |
+| `scaledToFit` | `.scaledToFit()` | `.with(ScaledToFit.of())` | `CONTENT_MODE` 0x001C (Fit) |
+| `scaledToFill` | `.scaledToFill()` | `.with(ScaledToFill.of())` | `CONTENT_MODE` 0x001C (Fill) |
+| `minimumScaleFactor` | `.minimumScaleFactor(_:)` | `.with(MinimumScaleFactor.of(float))` | `MINIMUM_SCALE_FACTOR` 0x001D |
 
 **Semantics**: `WIDTH`/`HEIGHT` use the sentinels `FILL` (−1.0 = expand) and
 `HUG_CONTENT` (−2.0 = intrinsic); omitting an axis leaves it to the native
@@ -643,23 +643,23 @@ absolute placement within the parent.
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `font` | `.font(.system(size:))` | `.modifier(FontSize.of(float))` / `.modifier(FontSize.of(Signal<Float>))` | `FONT_SIZE` 0x1007 |
-| `fontWeight` | `.fontWeight(_:)` | `.modifier(FontWeightMod.of(FontWeight))` | `FONT_WEIGHT` 0x1008 (100–900) |
-| `font` (custom) | `.font(.custom(name:size:))` | `.modifier(FontFamily.of(String))` | `FONT_FAMILY` 0x1009 |
-| `fontStyle` | `.italic()` / `.fontDesign(_:)` | `.modifier(Italic.of())` / `.modifier(FontStyleMod.of(FontStyle))` / `.modifier(FontDesignMod.of(FontDesign))` | `FONT_STYLE` 0x1017, `FONT_DESIGN` 0x1018 |
-| `fontWidth` | `.fontWidth(_:)` | `.modifier(FontWidth.of(float))` | `FONT_WIDTH` 0x1019 |
-| `kerning` | `.kerning(_:)` | `.modifier(Kerning.of(float))` | `KERNING` 0x101A |
-| `tracking` | `.tracking(_:)` | `.modifier(Tracking.of(float))` | `TRACKING` 0x101B |
-| `baselineOffset` | `.baselineOffset(_:)` | `.modifier(BaselineOffset.of(float))` | `BASELINE_OFFSET` 0x101C |
-| `lineSpacing` | `.lineSpacing(_:)` | `.modifier(LineSpacing.of(float))` | `LINE_SPACING` 0x101D |
-| `lineLimit` | `.lineLimit(_:)` | `.modifier(LineLimit.of(int))` | `LINE_LIMIT` 0x000B (0 = unlimited) |
-| `multilineTextAlignment` | `.multilineTextAlignment(_:)` | `.modifier(TextAlignmentMod.of(TextAlignment))` | `TEXT_ALIGNMENT` 0x000C |
-| `truncationMode` | `.truncationMode(_:)` | `.modifier(TruncationMod.of(Truncation))` | `TRUNCATION_MODE` 0x000D |
-| `textCase` | `.textCase(_:)` | `.modifier(TextCaseMod.of(TextCase))` | `TEXT_CASE` 0x101E |
-| `underline` | `.underline()` | `.modifier(Underline.of())` / `.modifier(Underline.of(boolean))` | `UNDERLINE` 0x101F |
-| `strikethrough` | `.strikethrough()` | `.modifier(Strikethrough.of())` / `.modifier(Strikethrough.of(boolean))` | `STRIKETHROUGH` 0x1020 |
-| `foregroundStyle` | `.foregroundStyle(_:)` | `.modifier(ForegroundStyle.of(Color))` / `.modifier(ForegroundStyle.of(Signal<Color>))` | `COLOR` 0x100A |
-| `tint` | `.tint(_:)` | `.modifier(Tint.of(Color))` | `TINT` 0x1030 |
+| `font` | `.font(.system(size:))` | `.with(FontSize.of(float))` / `.with(FontSize.of(Signal<Float>))` | `FONT_SIZE` 0x1007 |
+| `fontWeight` | `.fontWeight(_:)` | `.with(FontWeightMod.of(FontWeight))` | `FONT_WEIGHT` 0x1008 (100–900) |
+| `font` (custom) | `.font(.custom(name:size:))` | `.with(FontFamily.of(String))` | `FONT_FAMILY` 0x1009 |
+| `fontStyle` | `.italic()` / `.fontDesign(_:)` | `.with(Italic.of())` / `.with(FontStyleMod.of(FontStyle))` / `.with(FontDesignMod.of(FontDesign))` | `FONT_STYLE` 0x1017, `FONT_DESIGN` 0x1018 |
+| `fontWidth` | `.fontWidth(_:)` | `.with(FontWidth.of(float))` | `FONT_WIDTH` 0x1019 |
+| `kerning` | `.kerning(_:)` | `.with(Kerning.of(float))` | `KERNING` 0x101A |
+| `tracking` | `.tracking(_:)` | `.with(Tracking.of(float))` | `TRACKING` 0x101B |
+| `baselineOffset` | `.baselineOffset(_:)` | `.with(BaselineOffset.of(float))` | `BASELINE_OFFSET` 0x101C |
+| `lineSpacing` | `.lineSpacing(_:)` | `.with(LineSpacing.of(float))` | `LINE_SPACING` 0x101D |
+| `lineLimit` | `.lineLimit(_:)` | `.with(LineLimit.of(int))` | `LINE_LIMIT` 0x000B (0 = unlimited) |
+| `multilineTextAlignment` | `.multilineTextAlignment(_:)` | `.with(TextAlignmentMod.of(TextAlignment))` | `TEXT_ALIGNMENT` 0x000C |
+| `truncationMode` | `.truncationMode(_:)` | `.with(TruncationMod.of(Truncation))` | `TRUNCATION_MODE` 0x000D |
+| `textCase` | `.textCase(_:)` | `.with(TextCaseMod.of(TextCase))` | `TEXT_CASE` 0x101E |
+| `underline` | `.underline()` | `.with(Underline.of())` / `.with(Underline.of(boolean))` | `UNDERLINE` 0x101F |
+| `strikethrough` | `.strikethrough()` | `.with(Strikethrough.of())` / `.with(Strikethrough.of(boolean))` | `STRIKETHROUGH` 0x1020 |
+| `foregroundStyle` | `.foregroundStyle(_:)` | `.with(ForegroundStyle.of(Color))` / `.with(ForegroundStyle.of(Signal<Color>))` | `COLOR` 0x100A |
+| `tint` | `.tint(_:)` | `.with(Tint.of(Color))` | `TINT` 0x1030 |
 
 > **`Color` is never a modifier** — there is no `.color()` and
 > `.foregroundColor(_:)` is deprecated. Foreground styling is
@@ -669,22 +669,22 @@ absolute placement within the parent.
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `background` | `.background(_:)` | `.modifier(Background.of(Color))` / `.modifier(Background.of(Signal<Color>))` | `BACKGROUND_COLOR` 0x1001 |
-| `border` | `.border(_:width:)` | `.modifier(Border.of(Color color, float width, float radius))` | `BORDER_COLOR` 0x1004, `BORDER_WIDTH` 0x1003, `BORDER_RADIUS` 0x1005 |
+| `background` | `.background(_:)` | `.with(Background.of(Color))` / `.with(Background.of(Signal<Color>))` | `BACKGROUND_COLOR` 0x1001 |
+| `border` | `.border(_:width:)` | `.with(Border.of(Color color, float width, float radius))` | `BORDER_COLOR` 0x1004, `BORDER_WIDTH` 0x1003, `BORDER_RADIUS` 0x1005 |
 | `border` (edges) | `.border(_:width:edges:)` | (not exposed) | + `BORDER_EDGES` 0x1016 (u32 bitmask: `TOP`=1, `LEADING`=2, `BOTTOM`=4, `TRAILING`=8) |
-| `cornerRadius` | `.cornerRadius(_:)` | `.modifier(CornerRadius.of(float))` | `BORDER_RADIUS` 0x1005 |
-| `shadow` | `.shadow(color:radius:x:y:)` | `.modifier(Shadow.of(Color, float, float, float))` / `.modifier(Shadow.of(float))` | `SHADOW_COLOR` 0x1021, `SHADOW_RADIUS` 0x1022, `SHADOW_X` 0x1023, `SHADOW_Y` 0x1024 |
-| `opacity` | `.opacity(_:)` | `.modifier(Opacity.of(float))` | `OPACITY` 0x100D |
-| `blur` | `.blur(radius:)` | `.modifier(Blur.of(float))` | `BLUR_RADIUS` 0x1025 |
-| `saturation` | `.saturation(_:)` | `.modifier(Saturation.of(float))` | `SATURATION` 0x1026 |
-| `contrast` | `.contrast(_:)` | `.modifier(Contrast.of(float))` | `CONTRAST` 0x1027 |
-| `brightness` | `.brightness(_:)` | `.modifier(Brightness.of(float))` | `BRIGHTNESS` 0x1028 |
-| `grayscale` | `.grayscale(_:)` | `.modifier(Grayscale.of(float))` | `GRAYSCALE` 0x1029 |
-| `hueRotation` | `.hueRotation(_:)` | `.modifier(HueRotation.of(float))` | `HUE_ROTATION` 0x102A |
-| `colorMultiply` | `.colorMultiply(_:)` | `.modifier(ColorMultiply.of(Color))` | `COLOR_MULTIPLY` 0x102B |
-| `colorInvert` | `.colorInvert()` | `.modifier(ColorInvert.of())` | `COLOR_INVERT` 0x102C |
-| `clipped` | `.clipped()` | `.modifier(Clipped.of())` | `CLIPS_TO_BOUNDS` 0x1010 |
-| `clipShape` | `.clipShape(_:)` | `.modifier(ClipShape.of(ShapeKind))` | `CLIPS_TO_BOUNDS` 0x1010 + `SHAPE_KIND` 0x0006 |
+| `cornerRadius` | `.cornerRadius(_:)` | `.with(CornerRadius.of(float))` | `BORDER_RADIUS` 0x1005 |
+| `shadow` | `.shadow(color:radius:x:y:)` | `.with(Shadow.of(Color, float, float, float))` / `.with(Shadow.of(float))` | `SHADOW_COLOR` 0x1021, `SHADOW_RADIUS` 0x1022, `SHADOW_X` 0x1023, `SHADOW_Y` 0x1024 |
+| `opacity` | `.opacity(_:)` | `.with(Opacity.of(float))` | `OPACITY` 0x100D |
+| `blur` | `.blur(radius:)` | `.with(Blur.of(float))` | `BLUR_RADIUS` 0x1025 |
+| `saturation` | `.saturation(_:)` | `.with(Saturation.of(float))` | `SATURATION` 0x1026 |
+| `contrast` | `.contrast(_:)` | `.with(Contrast.of(float))` | `CONTRAST` 0x1027 |
+| `brightness` | `.brightness(_:)` | `.with(Brightness.of(float))` | `BRIGHTNESS` 0x1028 |
+| `grayscale` | `.grayscale(_:)` | `.with(Grayscale.of(float))` | `GRAYSCALE` 0x1029 |
+| `hueRotation` | `.hueRotation(_:)` | `.with(HueRotation.of(float))` | `HUE_ROTATION` 0x102A |
+| `colorMultiply` | `.colorMultiply(_:)` | `.with(ColorMultiply.of(Color))` | `COLOR_MULTIPLY` 0x102B |
+| `colorInvert` | `.colorInvert()` | `.with(ColorInvert.of())` | `COLOR_INVERT` 0x102C |
+| `clipped` | `.clipped()` | `.with(Clipped.of())` | `CLIPS_TO_BOUNDS` 0x1010 |
+| `clipShape` | `.clipShape(_:)` | `.with(ClipShape.of(ShapeKind))` | `CLIPS_TO_BOUNDS` 0x1010 + `SHAPE_KIND` 0x0006 |
 
 **Delta (Java)**: the border modifier value is `Border.of(color, width[, radius])`
 — canonical color-then-width order; corner radius is a separate
@@ -694,8 +694,8 @@ absolute placement within the parent.
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `rotationEffect` | `.rotationEffect(_:anchor:)` | `.modifier(Rotation.of(float))` | `ROTATION_DEGREES` 0x102D |
-| `scaleEffect` | `.scaleEffect(_:anchor:)` | `.modifier(ScaleEffect.of(float))` | `SCALE` 0x102E |
+| `rotationEffect` | `.rotationEffect(_:anchor:)` | `.with(Rotation.of(float))` | `ROTATION_DEGREES` 0x102D |
+| `scaleEffect` | `.scaleEffect(_:anchor:)` | `.with(ScaleEffect.of(float))` | `SCALE` 0x102E |
 
 Anchor is renderer-token-owned (center default); the protocol does not transmit
 anchors. Transforms do not affect layout.
@@ -704,18 +704,18 @@ anchors. Transforms do not affect layout.
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `hidden` | `.hidden()` | `.modifier(Hidden.of())` / `.modifier(Visible.of(boolean))` | `VISIBLE` 0x100E |
-| `disabled` | `.disabled(_:)` | `.modifier(Disabled.of(boolean))` | `ENABLED` 0x2003 (inverse: 1 = interactive) |
-| `allowsHitTesting` | `.allowsHitTesting(_:)` | `.modifier(AllowsHitTesting.of(boolean))` | `ALLOWS_HIT_TESTING` 0x102F |
-| `controlSize` | `.controlSize(_:)` | `.modifier(ControlSizeMod.of(ControlSize))` | `CONTROL_SIZE` 0x200C |
-| `accessibilityLabel` | `.accessibilityLabel(_:)` | `.modifier(AccessibilityLabel.of(String))` | `LABEL` 0x200A |
-| `accessibilityRole` | `.accessibilityRole(_:)` | `.modifier(AccessibilityRole.of(int))` | `ROLE` 0x2001 |
-| `accessibilityState` | `.accessibilityState(_:)` | `.modifier(AccessibilityState.of(int))` | `STATE` 0x2002 |
-| `modifier` (custom) | `.modifier(_:)` | `.modifier(ViewModifier)` | composes core modifiers |
-| `buttonStyle` | `.buttonStyle(_:)` | `.modifier(ButtonStyleMod.of(ButtonStyle))` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins) |
-| `labelStyle` | `.labelStyle(_:)` | `.modifier(LabelStyleMod.of(LabelStyle))` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
+| `hidden` | `.hidden()` | `.with(Hidden.of())` / `.with(Visible.of(boolean))` | `VISIBLE` 0x100E |
+| `disabled` | `.disabled(_:)` | `.with(Disabled.of(boolean))` | `ENABLED` 0x2003 (inverse: 1 = interactive) |
+| `allowsHitTesting` | `.allowsHitTesting(_:)` | `.with(AllowsHitTesting.of(boolean))` | `ALLOWS_HIT_TESTING` 0x102F |
+| `controlSize` | `.controlSize(_:)` | `.with(ControlSizeMod.of(ControlSize))` | `CONTROL_SIZE` 0x200C |
+| `accessibilityLabel` | `.accessibilityLabel(_:)` | `.with(AccessibilityLabel.of(String))` | `LABEL` 0x200A |
+| `accessibilityRole` | `.accessibilityRole(_:)` | `.with(AccessibilityRole.of(int))` | `ROLE` 0x2001 |
+| `accessibilityState` | `.accessibilityState(_:)` | `.with(AccessibilityState.of(int))` | `STATE` 0x2002 |
+| `modifier` (custom) | `.with(_:)` | `.with(ViewModifier)` | composes core modifiers |
+| `buttonStyle` | `.buttonStyle(_:)` | `.with(ButtonStyleMod.of(ButtonStyle))` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins) |
+| `labelStyle` | `.labelStyle(_:)` | `.with(LabelStyleMod.of(LabelStyle))` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
 | `focusable` | `.focusable(_:)` | (via the `PointerEvents` modifier) | **no property** — declares `FOCUS` listener bit 5; observe `FOCUS_CHANGED` |
-| raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifier(PointerEvents.of(int))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
+| raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.with(PointerEvents.of(int))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
 
 **Delta (Java)**: `.visible(boolean)` is a Pathland extra (SwiftUI only has
 `.hidden()` — `Visible.of(...)`/`Hidden.of()`). `.accessibilityRole`/
@@ -734,18 +734,17 @@ every conformant DSL: modifiers are never hard-bound to a view type.
   (`Text`), a container (`VStack`), a control (`Button`), a custom view, or an
   already-modified view. The same modifier value applies everywhere.
 - **One mechanism.** Core and application-authored modifiers are the **same
-  surface**: a `ViewModifier` value applied via `.modifier(...)`. The library's
+  surface**: a `ViewModifier` value applied via `.with(...)`. The library's
   sugar names (`.padding`, `.foregroundStyle`, …) are conveniences that
   construct the built-in `ViewModifier` values; there is exactly one modifier
   mechanism ([§5](#5-modifier-surface)). The Java realization ships **no sugar**
-  — `.modifier(Padding.of(16))` is the only form (plus the `.modifiers(...)`
-  varargs convenience for several at once).
+  — `.with(Padding.of(16))` is the only form (the varargs accept several at once).
 
 | | Canonical | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view`) |
 |-|-----------|-------------------------------|----------------------------|
 | authoring | `struct Card: ViewModifier { func body(content: Content) -> some View }` | `@FunctionalInterface ViewModifier { View body(View content) }` | `trait ViewModifier { fn apply(&mut Node) }` |
-| applying | `content.modifier(Card())` | `content.modifier(CardStyle.of(...))` / `content.modifiers(A.of(...), B.of(...))` | `content.modifier(Card)` |
-| sugar | `.padding(16)` ≡ `.modifier(Padding(16))` | **no sugar** — `.modifier(Padding.of(16))` only | `.padding(16.0)` ≡ `.modifier(Padding(16.0))` |
+| applying | `content.modifier(Card())` | `content.with(CardStyle.of(...))` / `content.with(A.of(...), B.of(...))` | `content.with(Card)` |
+| sugar | `.padding(16)` ≡ `.modifier(Padding(16))` | **no sugar** — `.with(Padding.of(16))` only | `.padding(16.0)` ≡ `.with(Padding(16.0))` |
 
 **Composition**: a custom modifier composes core modifiers **or** wraps
 `content` with additional structure (a background, an overlay, a frame) and
@@ -759,12 +758,12 @@ emission stays diff-based, and a renderer that cannot apply a modifier
 **Realization deltas**:
 - **Rust** — already conformant: every core modifier (`Padding`, `FontSize`,
   `ForegroundStyle`, `Frame`, …) implements `ViewModifier`, and the sugar
-  methods delegate to `.modifier(...)`. Caveat: `apply(&mut Node)` mutates the
+  methods delegate to `.with(...)`. Caveat: `apply(&mut Node)` mutates the
   built node's properties only — it cannot wrap `content` with new structure
   (the Java/SwiftUI `body(content)` form can). A conformant DSL's
   custom-modifier mechanism should support wrapping.
 - **Java** — fully conformant: every core modifier is a `ViewModifier` value
-  (`Padding.of(16)`, `ForegroundStyle.of(color)`, …) applied via `.modifier(...)`;
+  (`Padding.of(16)`, `ForegroundStyle.of(color)`, …) applied via `.with(...)`;
   `View` has no modifier sugar, and `buttonStyle` is the `ButtonStyleMod`
   modifier value (which binds the `Environment.BUTTON_STYLE` key down the
   subtree — subtree scoping is environment-only). Application-authored
@@ -926,7 +925,7 @@ marked *optional*. The canonical contract is [§4](#4-view-surface) and
 | `Button("…", action)` / `Button(action:label:)` | `Button.of(String, Runnable)` / `Button.of(View, Runnable)` | — |
 | `Toggle("label", isOn: writable)` | `Toggle.of(String label, WritableSignal<Boolean>)` (+ `ToggleStyle` overload) | — |
 | `Slider(value: in:)` | `Slider.of(binding, min, max)` (binding first) | — |
-| `.border(color, width)` | `Border.of(Color, float)` via `.modifier(...)` | `Border.of(Color, float, float)` radius convenience |
+| `.border(color, width)` | `Border.of(Color, float)` via `.with(...)` | `Border.of(Color, float, float)` radius convenience |
 | `DatePicker(selection:)` | `DatePicker.of(mode, days)` | *optional* `Date`-shaped overload encoding days + millis-of-day per `SET_DATE`/`DATE_CHANGED` |
 
 Adopted conventions:
@@ -944,8 +943,8 @@ Adopted conventions:
   container view (SwiftUI `Group`).
 - **Core and custom modifiers share one mechanism.** Core modifiers are
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`) applied
-  via `.modifier(...)` — there is **no sugar on `View`**; several modifiers at
-  once use `.modifiers(...)`, innermost-first. Parameterized modifier values use
+  via `.with(...)` — there is **no sugar on `View`**; several modifiers at
+  once use `.with(...)`, innermost-first. Parameterized modifier values use
   `.of(...)`; `buttonStyle` is the `ButtonStyleMod` value (an environment
   binding: it scopes `Environment.BUTTON_STYLE` down the subtree).
 - **Full `ShapeKind` coverage.** `Circle.of()`, `Capsule.of()`, `Ellipse.of()`,
@@ -976,7 +975,7 @@ are the companion specs.
 - [ ] **Modifiers** — every entry of [§5](#5-modifier-surface), chainable on
   any view, innermost-first, emitting one property per underlying argument.
 - [ ] **Custom modifiers / unified mechanism** — a `ViewModifier` authoring
-  surface (`body(content) -> View`) + `.modifier(...)` chainable on **any**
+  surface (`body(content) -> View`) + `.with(...)` chainable on **any**
   view; **core modifiers are implemented through the same mechanism**, never a
   separate syntax ([§5.6](#56-custom-modifiers-developer-authored)).
 - [ ] **Signals** — `signal`, `computed`, `effect`, `untracked`,
@@ -1073,34 +1072,34 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 | SwiftUI | Canonical DSL | Java DSL (current) | Rust DSL (current) |
 |---------|---------------|--------------------|--------------------|
 | `Text("Hi")` | `Text("Hi")` | `Text.of("Hi")` | `text("Hi")` |
-| `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.of(Alignment.CENTER, 8, children...)` | `vstack![…].modifier(Spacing.of(8.0))` |
+| `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.of(Alignment.CENTER, 8, children...)` | `vstack![…].with(Spacing.of(8.0))` |
 | `Button("+") { inc() }` | `Button("+", action)` | `Button.of("+", () -> inc())` | `button("+")` (no action yet) |
 | `TextField("Name", text: $name)` | `TextField("Name", text: writable)` | `TextField.of("Name", name)` | `TextField { placeholder }` (no binding yet) |
 | `Toggle("On", isOn: $on)` | `Toggle("On", isOn: writable)` | `Toggle.of(selected, binding)` | `Toggle(style)` (no binding yet) |
 | `Slider(value: $v, in: 0...100)` | `Slider(value: writable, in: min...max)` | `Slider.of(vSig, 0, 100)` | `Slider { value, min, max }` (no binding yet) |
 | `DatePicker("D", selection: $d)` | `DatePicker("D", selection: writable)` | `DatePicker.of(DatePickerMode.DATE, days)` | `DatePicker` (bare) |
-| `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.modifier(ForegroundStyle.of(Color))` | `.foreground_style(Color(0xFF0000FF))` |
-| `.background(.gray)` | `.background(Color)` | `.modifier(Background.of(Color))` | `.background(Color(0xFFEEEEEE))` |
-| `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.modifier(Border.of(Color, 2))` | `.border(Color, 2.0)` |
-| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.modifier(FrameMod.of(100, 24))` | `.frame(Some(100.0), Some(24.0), None)` |
-| `.padding(16)` | `.padding(16)` | `.modifier(Padding.of(16))` | `.padding(16.0)` |
-| `.font(.system(size: 28))` | `.font(size: 28)` | `.modifier(FontSize.of(28))` | `.font_size(28.0)` |
-| `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.modifier(FontWeightMod.of(FontWeight.BOLD))` | `.font_weight(700.0)` |
-| `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.modifier(Shadow.of(Color, float, float, float))` | (not yet) |
-| `.onTapGesture { go() }` | `.onTapGesture(action)` | `.modifier(TapGesture.of(() -> go()))` | `.on_tap_gesture(|| go())` |
+| `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.with(ForegroundStyle.of(Color))` | `.foreground_style(Color(0xFF0000FF))` |
+| `.background(.gray)` | `.background(Color)` | `.with(Background.of(Color))` | `.background(Color(0xFFEEEEEE))` |
+| `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.with(Border.of(Color, 2))` | `.border(Color, 2.0)` |
+| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(100, 24))` | `.frame(Some(100.0), Some(24.0), None)` |
+| `.padding(16)` | `.padding(16)` | `.with(Padding.of(16))` | `.padding(16.0)` |
+| `.font(.system(size: 28))` | `.font(size: 28)` | `.with(FontSize.of(28))` | `.font_size(28.0)` |
+| `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.with(FontWeightMod.of(FontWeight.BOLD))` | `.font_weight(700.0)` |
+| `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.with(Shadow.of(Color, float, float, float))` | (not yet) |
+| `.onTapGesture { go() }` | `.onTapGesture(action)` | `.with(TapGesture.of(() -> go()))` | `.on_tap_gesture(|| go())` |
 | `if showLogin { LoginView() } else { HomeView() }` | `if/else` in a result builder | `Conditional.when(showLogin, LoginView.of(), HomeView.of())` | `if`/`match` in `build()` |
 | `NavigationStack { … }` | `Router` + `NavigationContainer` | `NavigationContainer.of(router)` | `NavigationContainer::new(router)` |
 | `NavigationLink("Users", value:)` | `NavigationLink("label", router, to)` | `NavigationLink.of("Users", router, "/users")` | `navigation_link(...)` |
-| `content.modifier(Card())` | `content.modifier(Card())` | `content.modifier(CardStyle.of(...))` | `.modifier(Card)` |
+| `content.with(Card())` | `content.with(Card())` | `content.with(CardStyle.of(...))` | `.with(Card)` |
 
 Core modifier sugar (`.padding`, `.foregroundStyle`, …) is shorthand for
-`.modifier(CoreModifier.of(...))` — one mechanism for built-in and
+`.with(CoreModifier.of(...))` — one mechanism for built-in and
 application-authored modifiers alike ([§5.6](#56-custom-modifiers-developer-authored)).
-The Java realization has **no sugar**: `.modifier(Padding.of(16))` is the only
-form, with `.modifiers(...)` for several at once.
+The Java realization has **no sugar**: `.with(Padding.of(16))` is the only
+form, with `.with(...)` for several at once.
 
 **Status deltas captured by this table**: the Java DSL is surface-complete —
-`<ViewName>.of(...)` construction, modifiers as values via `.modifier(...)`
+`<ViewName>.of(...)` construction, modifiers as values via `.with(...)`
 (no sugar on `View`), `ButtonStyleMod` for `.buttonStyle`; the Rust DSL is
 structural today — `pathland-view` exposes the view/modifier surface without
 signals, two-way bindings, or actions (signals live in `pathland-core::signal`

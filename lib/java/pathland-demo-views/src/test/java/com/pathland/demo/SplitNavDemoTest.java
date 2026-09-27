@@ -11,7 +11,7 @@ import com.pathland.view.emit.Frame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.RenderResult;
-import com.pathland.view.signal.Signals;
+import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.signal.WritableSignal;
 import com.pathland.view.state.InMemoryStateStore;
 import com.pathland.view.state.PersistentState;
@@ -46,7 +46,7 @@ class SplitNavDemoTest {
 
     /** The host pattern: provide the active path, mount the demo root. */
     private static Mount mount(FrameOpcodeSink sink, String initialPath) {
-        WritableSignal<String> activePath = Signals.signal(initialPath);
+        var activePath = signal(initialPath);
         RenderResult result = new Emitter(sink).mount(
                 new SplitNavDemo().environment(Platform.ACTIVE_PATH, activePath), env());
         return new Mount(result, activePath);

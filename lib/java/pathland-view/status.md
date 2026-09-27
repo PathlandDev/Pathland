@@ -19,7 +19,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 - **One modifier mechanism — no sugar on `View`**: core modifiers are
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,
   `Border.of(color, width)`, `FrameMod.of(w, h, align)`, …) applied via
-  `.modifier(...)` (single) or `.modifiers(...)` (several, innermost-first);
+  `.with(...)` (one or several, innermost-first);
   `FrameMod.of(w)` / `of(w, h)` leave `ALIGNMENT` unset (alignment optional, so a
   stack's own cross-axis alignment is preserved); `FrameMod.of(...)` width/height
   overloads accept `Float.POSITIVE_INFINITY` (SwiftUI `maxWidth/maxHeight:
@@ -75,7 +75,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 - **Resync**: `Commands.Meta.RESYNC`, `FrameCodec.encodeResync`/`isResync`
   (host → guest `META::RESYNC` request), and `Emitter.renderFull()` (re-emit the
   complete retained tree as one snapshot frame — no re-mount).
-- **Modifiers** (modifier values applied via `.modifier(...)`/`.modifiers(...)`,
+- **Modifiers** (modifier values applied via `.with(...)`,
   chainable on any view): `Padding`, `ForegroundStyle(Color)` (no `.color()`),
   `Background(Color)`, `Tint`, `Opacity`, `FontSize`, `FontWeightMod`, `Border`
   (`Border.of(color, width)` canonical + `(color, width, radius)` convenience),

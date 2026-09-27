@@ -94,7 +94,7 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> count = Signals.signal(0);
         Signal<Color> color = Signals.computed(() -> count.get() % 2 == 0 ? Color.RED : Color.BLUE);
-        emitter.mount(VStack.of(Text.of("x").modifier(ForegroundStyle.of(color))), Environment.DEFAULT);
+        emitter.mount(VStack.of(Text.of("x").with(ForegroundStyle.of(color))), Environment.DEFAULT);
 
         count.set(1);
         Frame delta = sink.frame();
@@ -114,7 +114,7 @@ class EmitterTest {
         // and a reactive text: changing the text re-emits ONLY the text.
         WritableSignal<String> text = Signals.signal("a");
         View root = VStack.of(
-                Text.of("x").modifier(Background.of(Color.RED)),
+                Text.of("x").with(Background.of(Color.RED)),
                 Text.of(text));
         emitter.mount(root, Environment.DEFAULT);
 
@@ -136,11 +136,11 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         View root = Text.of("x")
-                .modifier(Visible.of(false))      // U8, low byte 0
-                .modifier(Disabled.of(true))      // U8, low byte 0 (disabled -> ENABLED=0)
-                .modifier(FontFamily.of("Georgia")) // STRING
-                .modifier(LineLimit.of(2))        // U32
-                .modifier(ScaledToFit.of());      // CONTENT_MODE enum code as F32
+                .with(Visible.of(false))      // U8, low byte 0
+                .with(Disabled.of(true))      // U8, low byte 0 (disabled -> ENABLED=0)
+                .with(FontFamily.of("Georgia")) // STRING
+                .with(LineLimit.of(2))        // U32
+                .with(ScaledToFit.of());      // CONTENT_MODE enum code as F32
         emitter.mount(root, Environment.DEFAULT);
         Frame frame = sink.frame();
 
@@ -177,8 +177,8 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         View root = Text.of("x")
-                .modifier(ForegroundStyle.of(Color.token("color.primary")))
-                .modifier(Background.of(Color.token("dark.color.surface")));
+                .with(ForegroundStyle.of(Color.token("color.primary")))
+                .with(Background.of(Color.token("dark.color.surface")));
         emitter.mount(root, Environment.DEFAULT);
         Frame frame = sink.frame();
 
@@ -210,7 +210,7 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
         View root = VStack.of(
                         Button.of("Increment", () -> { }))
-                .modifier(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE));
+                .with(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
         Frame frame = sink.frame();
 
@@ -455,7 +455,7 @@ class EmitterTest {
     void frameCodecCarriesDesignTokenRef() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        emitter.mount(Text.of("x").modifier(ForegroundStyle.of(Color.token("color.primary"))),
+        emitter.mount(Text.of("x").with(ForegroundStyle.of(Color.token("color.primary"))),
                 Environment.DEFAULT);
 
         byte[] wire = FrameCodec.encodeFrame(sink.frame());

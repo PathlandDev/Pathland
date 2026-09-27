@@ -4,7 +4,7 @@ import com.pathland.view.*;
 import com.pathland.view.router.Navigation;
 import com.pathland.view.router.Router;
 import com.pathland.view.signal.Signal;
-import com.pathland.view.signal.Signals;
+import static com.pathland.view.signal.Signals.*;
 
 public class Sidebar implements View {
     // Environment.value returns a lazy signal when the key isn't bound yet — this
@@ -21,25 +21,25 @@ public class Sidebar implements View {
         // The router signal resolves here, inside SplitNavDemo's pushed
         // .environment(Navigation.ROUTER, router) scope.
         return VStack.of(Alignment.FILL, 8,
-                        Text.of("Pathland").modifiers(
+                        Text.of("Pathland").with(
                                 FontSize.of(18), FontWeightMod.of(FontWeight.BOLD)),
                         menuRow("/home", "Home", "/_pathland/assets/icons/home.svg"),
                         menuRow("/kitchen", "Kitchen sink", "/_pathland/assets/icons/kitchen.svg"),
                         menuRow("/settings", "Settings", "/_pathland/assets/icons/settings.svg"),
                         Spacer.of()
-                ).modifiers(Padding.of(16))
+                ).with(Padding.of(16))
                 // Fixed-width sidebar with no height hint: as a flex child of the split
                 // HStack it stretches to the row's full height (align-items: stretch).
                 // Alignment is omitted so the stack's own FILL child-alignment (stretch
                 // the menu rows) is preserved.
-                .modifier(FrameMod.of(200f))
-                .modifier(Background.of(SIDEBAR_BG))
-                .modifier(Border.of(SIDEBAR_BORDER, 1f))
+                .with(FrameMod.of(200f))
+                .with(Background.of(SIDEBAR_BG))
+                .with(Border.of(SIDEBAR_BORDER, 1f))
                 // The sidebar is the app's primary navigation region → a `<nav>` landmark.
-                .modifier(AccessibilityRole.of(Roles.NAVIGATION))
+                .with(AccessibilityRole.of(Roles.NAVIGATION))
                 // Custom-looking buttons: real `Button`s styled with a `ButtonStyle`
                 // (control semantics are intrinsic to the component, not a `ROLE`).
-                .modifier(ButtonStyleMod.of(PlainButtonStyle.INSTANCE));
+                .with(ButtonStyleMod.of(PlainButtonStyle.INSTANCE));
     }
 
     /** A sidebar menu row (a {@link Label}): navigates the router (direct selection — no
@@ -51,15 +51,15 @@ public class Sidebar implements View {
         // Reactive active-item highlight via Navigation.isActive: a computed signal from
         // the route signal, so a selection re-emits only this row's background/color.
         var router = this.router.get();
-        Signal<Boolean> active = Navigation.isActive(router, path);
-        Signal<Color> bg = Signals.computed(() -> active.get() ? ACTIVE_BG : Color.CLEAR);
-        Signal<Color> fg = Signals.computed(() -> active.get() ? ACTIVE_FG : Color.BLACK);
+        var active = Navigation.isActive(router, path);
+        var bg = computed(() -> active.get() ? ACTIVE_BG : Color.CLEAR);
+        var fg = computed(() -> active.get() ? ACTIVE_FG : Color.BLACK);
 
         return Button.of(
-                Label.of(label, icon).modifiers(Background.of(bg), ForegroundStyle.of(fg)),
+                Label.of(label, icon).with(Background.of(bg), ForegroundStyle.of(fg)),
                 () -> router.navigate(path)
         );
         //return Button.of(label, () -> router.navigate(path))
-        //        .modifiers(Background.of(bg), ForegroundStyle.of(fg));
+        //        .with(Background.of(bg), ForegroundStyle.of(fg));
     }
 }

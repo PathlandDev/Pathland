@@ -89,7 +89,7 @@ class HtmlRendererTest {
     @Test
     void rendersBorderedStyledButton() {
         View root = VStack.of(Button.of("Go", () -> { }))
-                .modifier(ButtonStyleMod.of(com.pathland.view.BorderedButtonStyle.INSTANCE));
+                .with(ButtonStyleMod.of(com.pathland.view.BorderedButtonStyle.INSTANCE));
         String html = renderer().render(frameOf(root), 1);
         assertTrue(html.contains("data-pathland-id=\"2\""), "styled button keeps its node id");
     }
@@ -130,13 +130,13 @@ class HtmlRendererTest {
         // A generic stack with a NAVIGATION role renders as a <nav> landmark; the
         // element conveys the role, so no redundant ARIA attribute is emitted.
         View nav = VStack.of(Text.of("Menu"))
-                .modifier(AccessibilityRole.of(Roles.NAVIGATION));
+                .with(AccessibilityRole.of(Roles.NAVIGATION));
         String navHtml = renderer().renderFragment(frameOf(nav), 1);
         assertTrue(navHtml.contains("<nav "), "navigation role -> <nav>");
         assertFalse(navHtml.contains("role=\"navigation\""), "nav conveys the role (no ARIA attr)");
 
         // A generic Text with a HEADER (heading) role renders as <h2>.
-        View heading = Text.of("Title").modifier(AccessibilityRole.of(Roles.HEADER));
+        View heading = Text.of("Title").with(AccessibilityRole.of(Roles.HEADER));
         String headingHtml = renderer().renderFragment(frameOf(heading), 1);
         assertTrue(headingHtml.contains("<h2 "), "header role -> <h2>");
 
@@ -166,8 +166,8 @@ class HtmlRendererTest {
                 Video.of("https://example.com/sample.mp4"),
                 Audio.of("https://example.com/sample.mp3"),
                 Image.of("/_pathland/assets/icons/home.svg")
-                        .modifier(AccessibilityLabel.of("Home"))
-                        .modifier(ScaledToFill.of())
+                        .with(AccessibilityLabel.of("Home"))
+                        .with(ScaledToFill.of())
         );
         String html = renderer().renderFragment(frameOf(root), 1);
         assertTrue(html.contains("<video"), "video element");

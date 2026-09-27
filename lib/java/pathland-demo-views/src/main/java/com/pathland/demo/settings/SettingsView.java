@@ -12,9 +12,7 @@ import com.pathland.view.Toggle;
 import com.pathland.view.ToggleStyle;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
-import com.pathland.view.signal.Signal;
-import com.pathland.view.signal.Signals;
-import com.pathland.view.signal.WritableSignal;
+import static com.pathland.view.signal.Signals.*;
 
 /**
  * The Settings content area of the {@code SplitNavDemo}: a titled pane with a switch and a
@@ -25,21 +23,21 @@ public final class SettingsView implements View {
 
     @Override
     public View body() {
-        WritableSignal<Boolean> dark = Signals.signal(false);
-        WritableSignal<Float> volume = Signals.signal(50f);
-        Signal<String> volumeLabel = Signals.computed(() -> "Volume: " + volume.get().intValue());
+        var dark = signal(false);
+        var volume = signal(50f);
+        var volumeLabel = computed(() -> "Volume: " + volume.get().intValue());
         return VStack.of(
                 // The destination title is a heading → `<h2>`.
-                Text.of("Settings").modifiers(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD))
-                        .modifier(AccessibilityRole.of(Roles.HEADER)),
+                Text.of("Settings").with(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD))
+                        .with(AccessibilityRole.of(Roles.HEADER)),
                 Text.of("A few controls bound to plain signals — the content area is "
-                        + "just another destination view.").modifier(Padding.of(8)),
+                        + "just another destination view.").with(Padding.of(8)),
                 Toggle.of(ToggleStyle.SWITCH, dark, "Dark mode"),
-                Text.of(volumeLabel).modifier(Padding.of(8)),
+                Text.of(volumeLabel).with(Padding.of(8)),
                 Slider.of(volume, 0f, 100f)
         )
         // The destination content region → `<main>`.
-        .modifier(AccessibilityRole.of(Roles.MAIN))
-        .modifier(Padding.of(24));
+        .with(AccessibilityRole.of(Roles.MAIN))
+        .with(Padding.of(24));
     }
 }

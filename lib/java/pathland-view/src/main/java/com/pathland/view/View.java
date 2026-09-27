@@ -15,11 +15,11 @@ import com.pathland.view.signal.Signal;
  * <p>{@link #body()} is evaluated once at mount — reactivity comes from signals
  * ({@link Text#of(Signal)}, {@code Signals.computed}), not from body re-evaluation.
  *
- * <p>Modifiers are {@link ViewModifier} values applied with {@link #modifier(ViewModifier)}
- * or {@link #modifiers(ViewModifier...)} — built-in and application-authored modifiers
- * share one mechanism (spec DSL.md §5.6), applied innermost-first. There is no
- * per-modifier factory sugar on this interface. Constructor (structural/layout)
- * properties are passed to the view constructors and are never chainable.
+ * <p>Modifiers are {@link ViewModifier} values applied with {@link #with(ViewModifier...)}
+ * — built-in and application-authored modifiers share one mechanism (spec DSL.md
+ * §5.6), applied innermost-first. There is no per-modifier factory sugar on this
+ * interface. Constructor (structural/layout) properties are passed to the view
+ * constructors and are never chainable.
  */
 public interface View {
 
@@ -50,20 +50,15 @@ public interface View {
                 getClass().getName() + " must override body() (composite) or render() (primitive)");
     }
 
-    /** Wrap this view in a modifier (SwiftUI {@code .modifier}). */
-    default View modifier(ViewModifier modifier) {
-        return Modified.modifier(this, modifier);
-    }
-
     /**
-     * Wrap this view in several modifiers, applied innermost-first:
-     * {@code modifiers(A, B, C)} ≡ {@code modifier(A).modifier(B).modifier(C)}.
-     * An empty call returns {@code this}.
+     * Wrap this view in one or more modifiers (SwiftUI {@code .modifier}), applied
+     * innermost-first: {@code with(A, B, C)} ≡ {@code with(A).with(B).with(C)}. A
+     * single modifier is the common case; an empty call returns {@code this}.
      */
-    default View modifiers(ViewModifier... modifiers) {
+    default View with(ViewModifier... modifiers) {
         View result = this;
         for (ViewModifier modifier : modifiers) {
-            result = result.modifier(modifier);
+            result = Modified.apply(result, modifier);
         }
         return result;
     }
@@ -74,7 +69,7 @@ public interface View {
      * custom family + size, or a system size/weight/design.
      */
     default View font(Font font) {
-        return modifier(FontMod.of(font));
+        return with(FontMod.of(font));
     }
 
     /**
@@ -84,17 +79,17 @@ public interface View {
      * the route").
      */
     default View navigate(String to) {
-        return modifier(NavigationMod.navigate(to));
+        return with(NavigationMod.navigate(to));
     }
 
     /** Declare this view a route-changer that {@code push}es to {@code to} (drill-down). */
     default View push(String to) {
-        return modifier(NavigationMod.push(to));
+        return with(NavigationMod.push(to));
     }
 
     /** Declare this view a route-changer that {@code replace}s to {@code to}. */
     default View replace(String to) {
-        return modifier(NavigationMod.replace(to));
+        return with(NavigationMod.replace(to));
     }
 
     /**
@@ -105,7 +100,7 @@ public interface View {
      * is wrapped; a signal value is returned as-is and stays reactive).
      */
     default <T> View environment(EnvironmentKey<T> key, T value) {
-        return modifier(EnvironmentMod.of(key, value));
+        return with(EnvironmentMod.of(key, value));
     }
 
     /**
@@ -114,7 +109,7 @@ public interface View {
      * {@code Text.of(Environment.value(key))}) re-emits when it changes.
      */
     default <T> View environment(EnvironmentKey<T> key, Signal<T> value) {
-        return modifier(EnvironmentMod.of(key, value));
+        return with(EnvironmentMod.of(key, value));
     }
 
     /**
@@ -123,6 +118,6 @@ public interface View {
      * changes (including its initial value). Works with or without navigation.
      */
     default View onPathChange(java.util.function.Consumer<String> listener) {
-        return modifier(new PathChangeMod(listener));
+        return with(new PathChangeMod(listener));
     }
 }

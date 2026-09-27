@@ -612,7 +612,7 @@ class RouterTest {
         };
 
         new Emitter(sink()).mount(
-                probe.modifier(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE)),
+                probe.with(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE)),
                 Environment.DEFAULT);
         assertEquals(BorderedButtonStyle.INSTANCE, seen.get(0), "buttonStyle() reads the scoped style");
         assertEquals(BorderedButtonStyle.INSTANCE, seen.get(1), "Environment.value(BUTTON_STYLE) returns it");
@@ -636,7 +636,7 @@ class RouterTest {
                 .route("/two", p -> probeButton(seen, "Two"))
                 .build();
         new Emitter(sink()).mount(
-                NavigationContainer.of(router).modifier(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE)),
+                NavigationContainer.of(router).with(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE)),
                 Environment.DEFAULT);
 
         seen.clear(); // mount renders the initial destination (once or twice); only the swap matters

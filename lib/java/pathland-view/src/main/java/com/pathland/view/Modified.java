@@ -52,7 +52,7 @@ final class Modified implements View {
     }
 
     /** A custom-view-modifier wrapper. */
-    static Modified modifier(View inner, ViewModifier modifier) {
+    static Modified apply(View inner, ViewModifier modifier) {
         return new Modified(inner, List.of(), modifier);
     }
 

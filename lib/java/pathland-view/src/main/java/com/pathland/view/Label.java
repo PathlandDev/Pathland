@@ -78,13 +78,13 @@ public final class Label implements View {
             children.add(Image.of(iconSignal));
         }
         if (nonBlank(title) && style.showsTitle()) {
-            View text = Text.of(titleSignal).modifier(LineLimit.of(1));
+            View text = Text.of(titleSignal).with(LineLimit.of(1));
             children.add(text);
         }
 
         View stack = HStack.of(Alignment.CENTER, 2f, children);
         if (nonBlank(title)) {
-            stack = stack.modifier(AccessibilityLabel.of(titleSignal));
+            stack = stack.with(AccessibilityLabel.of(titleSignal));
         }
         return stack;
     }

@@ -21,10 +21,10 @@ public final class MediaSection implements View {
         return new SectionCard("Media · video + audio (renderer-native controls)",
                 VStack.of(
                         Video.of("https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4")
-                                .modifier(FrameMod.of(320, 180, Alignment.CENTER)),
+                                .with(FrameMod.of(320, 180, Alignment.CENTER)),
                         Audio.of("https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3"),
                         Text.of("Playback controls are native — the app only supplies the source.")
-                ).modifier(Padding.of(4))
+                ).with(Padding.of(4))
         );
     }
 }

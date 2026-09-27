@@ -36,31 +36,31 @@ public final class LayoutSection implements View {
                         LazyVStack.of(
                                 Text.of("Lazy row A"),
                                 Text.of("Lazy row B"),
-                                Text.of("Lazy row C")).modifier(Padding.of(4)),
+                                Text.of("Lazy row C")).with(Padding.of(4)),
                         HStack.of(
                                 Text.of("Left"),
                                 Spacer.of(),
                                 Text.of("Right"))
-                                .modifier(FrameMod.of(260, Float.NaN, Alignment.CENTER)),
+                                .with(FrameMod.of(260, Float.NaN, Alignment.CENTER)),
                         ZStack.of(
-                                Rectangle.of().modifiers(
+                                Rectangle.of().with(
                                         FrameMod.of(180, 80, Alignment.CENTER),
                                         Background.of(Color.rgb(0xE3, 0xF2, 0xFD)),
                                         CornerRadius.of(8)),
-                                Text.of("badge").modifiers(
+                                Text.of("badge").with(
                                         FontSize.of(12),
                                         Padding.of(4),
                                         Background.of(Color.rgb(0xFF, 0xC1, 0x07)),
                                         CornerRadius.of(4),
                                         Offset.of(0, 28))
-                        ).modifier(Padding.of(4)),
+                        ).with(Padding.of(4)),
                         Divider.of()
-                ).modifier(Padding.of(4))
+                ).with(Padding.of(4))
         );
     }
 
     private static View cell(String label) {
-        return Text.of(label).modifiers(
+        return Text.of(label).with(
                 Padding.of(12),
                 Background.of(Color.rgb(0xF3, 0xF4, 0xF6)),
                 CornerRadius.of(6));

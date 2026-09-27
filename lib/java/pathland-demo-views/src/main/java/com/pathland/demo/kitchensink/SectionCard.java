@@ -42,11 +42,11 @@ public final class SectionCard implements View {
     public View body() {
         return VStack.of(
                 // A section title is a heading → `<h2>`.
-                Text.of(title).modifiers(FontSize.of(14), FontWeightMod.of(FontWeight.SEMIBOLD), ForegroundStyle.of(TITLE_COLOR))
-                        .modifier(AccessibilityRole.of(Roles.HEADER)),
-                Divider.of().modifier(Padding.of(0, 0, 8, 0)),
+                Text.of(title).with(FontSize.of(14), FontWeightMod.of(FontWeight.SEMIBOLD), ForegroundStyle.of(TITLE_COLOR))
+                        .with(AccessibilityRole.of(Roles.HEADER)),
+                Divider.of().with(Padding.of(0, 0, 8, 0)),
                 content
-        ).modifiers(
+        ).with(
                 Padding.of(16),
                 Background.of(Color.WHITE),
                 Border.of(BORDER, 1, 10),

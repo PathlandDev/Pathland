@@ -8,8 +8,7 @@ import com.pathland.view.Rectangle;
 import com.pathland.view.Text;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
-import com.pathland.view.signal.Signal;
-import com.pathland.view.signal.Signals;
+import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.Background;
 import com.pathland.view.FrameMod;
@@ -24,24 +23,24 @@ import com.pathland.view.Padding;
 public final class ColorSection implements View {
 
     State<Color> accent = new State<>(Color.BLUE, "accent");
-    Signal<String> accentLabel = Signals.computed(() -> {
-        int rgb = accent.get().argb() & 0xFFFFFF;
-        return String.format("Accent #%06x", rgb);
-    });
 
     @Override
     public View body() {
+        var accentLabel = computed(() -> {
+            int rgb = accent.get().argb() & 0xFFFFFF;
+            return String.format("Accent #%06x", rgb);
+        });
         return new SectionCard("Color · ColorPicker + Color view + Rectangle",
                 VStack.of(
                         ColorPicker.of(accent.signal()),
                         HStack.of(
-                                accent.get().modifier(FrameMod.of(120, 60, Alignment.CENTER)),
-                                Rectangle.of().modifiers(
+                                accent.get().with(FrameMod.of(120, 60, Alignment.CENTER)),
+                                Rectangle.of().with(
                                         FrameMod.of(120, 60, Alignment.CENTER),
                                         Background.of(accent.signal()))
-                        ).modifier(Padding.of(4)),
-                        Text.of(accentLabel).modifier(Padding.of(4))
-                ).modifier(Padding.of(4))
+                        ).with(Padding.of(4)),
+                        Text.of(accentLabel).with(Padding.of(4))
+                ).with(Padding.of(4))
         );
     }
 }

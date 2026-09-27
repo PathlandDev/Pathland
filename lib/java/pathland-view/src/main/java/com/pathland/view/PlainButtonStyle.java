@@ -7,6 +7,6 @@ public enum PlainButtonStyle implements ButtonStyle {
 
     @Override
     public View makeBody(Configuration config) {
-        return config.label().modifier(TapGesture.of(config.action()));
+        return config.label().with(TapGesture.of(config.action()));
     }
 }

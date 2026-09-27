@@ -35,29 +35,29 @@ public final class AppearanceSection implements View {
     public View body() {
         return new SectionCard("Appearance · border / shadow / opacity / transform",
                 VStack.of(
-                        Text.of("Card with shadow").modifiers(
+                        Text.of("Card with shadow").with(
                                         Padding.of(20),
                                         Background.of(Color.WHITE),
                                         Border.of(BLUE_200, 2, 12),
                                         CornerRadius.of(12),
                                         Shadow.of(Color.rgb(0, 0, 0), 6, 2, 4)),
-                        Text.of("Rotated 6°").modifiers(Rotation.of(6), Padding.of(8))
-                                .modifiers(Background.of(RED_50), CornerRadius.of(6)),
-                        Text.of("Scaled 1.2×").modifiers(ScaleEffect.of(1.2f), Padding.of(8))
-                                .modifiers(Background.of(GREEN_50), CornerRadius.of(6)),
-                        Text.of("This text is hidden").modifier(Hidden.of()),
+                        Text.of("Rotated 6°").with(Rotation.of(6), Padding.of(8))
+                                .with(Background.of(RED_50), CornerRadius.of(6)),
+                        Text.of("Scaled 1.2×").with(ScaleEffect.of(1.2f), Padding.of(8))
+                                .with(Background.of(GREEN_50), CornerRadius.of(6)),
+                        Text.of("This text is hidden").with(Hidden.of()),
                         HStack.of(
-                                Rectangle.of().modifiers(
+                                Rectangle.of().with(
                                         FrameMod.of(90, 60, Alignment.CENTER),
                                         Background.of(Color.RED),
                                         ClipShape.of(ShapeKind.CIRCLE)),
-                                Rectangle.of().modifiers(
+                                Rectangle.of().with(
                                         FrameMod.of(90, 60, Alignment.CENTER),
                                         Background.of(Color.BLUE),
                                         CornerRadius.of(12))
-                        ).modifier(Padding.of(4)),
-                        Text.of("zIndex above").modifier(ZIndex.of(3))
-                ).modifier(Padding.of(4))
+                        ).with(Padding.of(4)),
+                        Text.of("zIndex above").with(ZIndex.of(3))
+                ).with(Padding.of(4))
         );
     }
 }
