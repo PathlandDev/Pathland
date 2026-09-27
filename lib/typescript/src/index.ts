@@ -19,6 +19,7 @@ import {
   encodePointerDown,
   encodePointerMove,
   encodePointerUp,
+  encodeResync,
   encodeScroll,
   encodeTextChanged,
   encodeValueBits,
@@ -108,9 +109,38 @@ function boot(): void {
   // `/_pathland/**`). The SSR page carries it as `data-pathland-base` so a host
   // can relocate it (e.g. behind a proxy); defaults to `/_pathland`.
   const base = document.documentElement.dataset.pathlandBase ?? "/_pathland";
+  // The app's mount prefix, derived from its framework base (`/<mount>/_pathland`,
+  // `/_pathland` for the root app). The server emits app-relative ROUTEs; the browser
+  // URL is the app's real address, so URL mirroring must prepend the mount
+  // (`/app2` app navigating to `/home` → the URL `/app2/home`). The root app (mount
+  // "") is unchanged.
+  const mount =
+    base === "/_pathland" ? "" : base.slice(0, -"/_pathland".length);
+  // Per-window identity (the server's persisted-state scope): kept in sessionStorage so
+  // a reload of THIS tab keeps its state, while a NEW window/tab gets a fresh id — two
+  // windows never share a UI model or state. The server reads it as the `wid` query
+  // param on the WebSocket URL, and — once reflected into the page URL — on the SSR
+  // request too, so a reload's HTML already renders this window's persisted state.
+  const storageKey = "pathland.wid";
+  let wid = sessionStorage.getItem(storageKey);
+  const isReload = wid != null;
+  if (wid == null) {
+    wid = crypto.randomUUID();
+    sessionStorage.setItem(storageKey, wid);
+  }
+  // Reflect the wid into the URL (`?wid=…`) so the NEXT page load (reload, or a
+  // navigation that preserves the query) reaches the server with it — SSR then renders
+  // this window's persisted state directly and no resync is needed. The environment's
+  // ROUTE stays the path only (the server matches routes on the path, ignoring the query).
+  const urlParams = new URLSearchParams(location.search);
+  const urlHasWid = urlParams.has("wid");
+  if (!urlHasWid) {
+    urlParams.set("wid", wid);
+    history.replaceState(null, "", `${location.pathname}?${urlParams.toString()}`);
+  }
   const renderer: DomRenderer = { byId };
   const transport = new Transport({
-    url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${base}/ws`,
+    url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${base}/ws?wid=${wid}`,
     renderer,
     // The platform environment (viewport + current route) is the FIRST message:
     // the server session seeds its router from the ROUTE field before mount, so a
@@ -119,6 +149,14 @@ function boot(): void {
       const { innerWidth: w, innerHeight: h } = window;
       log.info("route", `environment: viewport ${w}x${h}, route "${location.pathname}"`);
       t.send(encodeEnvironment(w, h, location.pathname));
+      // A reload whose URL lacked the wid (a typed URL / a first visit before the client
+      // ran) rendered SSR defaults — request a full snapshot to restore this window's
+      // persisted state. When the URL already carried the wid, SSR rendered the latest
+      // state and nothing needs re-syncing.
+      if (isReload && !urlHasWid) {
+        log.debug("route", "reload without ?wid — requesting RESYNC for this window's persisted state");
+        t.send(encodeResync());
+      }
     },
   });
   transport.start();
@@ -132,12 +170,14 @@ function boot(): void {
     }
   });
 
-  // URL mirroring (spec DSL.md §4.5): the server emits the route as ROUTE; we push
-  // it into the history so the browser URL follows the app. pushState never fires
+  // URL mirroring (spec DSL.md §4.5): the server emits the app-relative route as ROUTE;
+  // we push the app's real URL (mount prefix prepended) so the browser URL follows the
+  // app — a reload of `/app2/home` reaches the `/app2` app. pushState never fires
   // popstate, so server-originated navigation can't loop back into NAVIGATE events.
+  // The wid query param is preserved so a reload after navigation still reaches SSR.
   renderer.onRoute = (path) => {
-    log.info("route", `server navigated -> pushState("${path}")`);
-    history.pushState(null, "", path);
+    log.info("route", `server navigated -> pushState("${mount}${path}")`);
+    history.pushState(null, "", `${mount}${path}?${urlParams.toString()}`);
   };
 
   // Renderer-provided navigation chrome (spec DSL.md §4.5): a PlatformDefault nav

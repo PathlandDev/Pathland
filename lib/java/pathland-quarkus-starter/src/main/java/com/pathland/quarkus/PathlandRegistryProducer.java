@@ -1,26 +1,40 @@
 package com.pathland.quarkus;
 
+import com.pathland.server.MountedApp;
 import com.pathland.server.PathlandApp;
-import com.pathland.server.PathlandRegistry;
+import com.pathland.server.PathlandHost;
 import com.pathland.server.StateStores;
 import com.pathland.view.state.InMemoryStateStore;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Disposes;
+import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * CDI wiring for Pathland: builds the {@link PathlandRegistry} from the app's
- * {@link PathlandApp} bean and the default state store (Redis when reachable, else
- * in-memory), and shuts it down with the application. The app provides the root view:
+ * CDI wiring for Pathland: builds the {@link PathlandHost} from the app's
+ * {@link PathlandApp} bean (mounted at {@code "/"}) and any {@link MountedApp} beans
+ * (each at its own subpath), and shuts it down with the application. The app provides
+ * the root view:
  *
  * <pre>{@code
  * @ApplicationScoped
  * public class MyApp implements PathlandApp {
  *     public View newRoot() { return new MyHomeView(); }
  * }
+ * }</pre>
+ *
+ * <p>Multiple apps share the server the same way (each at its own mount, with its own
+ * framework base, WebSocket endpoint, and state scope):
+ *
+ * <pre>{@code
+ * @Produces @Singleton
+ * MountedApp support() { return MountedApp.of("/support", new SupportApp()); }
  * }</pre>
  *
  * <p>SSR debug comments are opt-in via the {@code pathland.debug-html} config property
@@ -31,7 +45,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 public class PathlandRegistryProducer {
 
     @Inject
-    PathlandApp app;
+    Instance<PathlandApp> apps;
+
+    @Inject
+    Instance<MountedApp> mounts;
 
     @Inject
     @ConfigProperty(name = "pathland.debug-html", defaultValue = "false")
@@ -39,11 +56,17 @@ public class PathlandRegistryProducer {
 
     @Produces
     @Singleton
-    PathlandRegistry registry() {
-        return new PathlandRegistry(app, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml);
+    PathlandHost host() {
+        List<MountedApp> list = new ArrayList<>();
+        mounts.forEach(list::add);
+        PathlandApp lone = apps.stream().findFirst().orElse(null);
+        if (lone != null && list.stream().noneMatch(m -> "/".equals(m.path()))) {
+            list.add(0, MountedApp.of("/", lone));
+        }
+        return new PathlandHost(list, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml);
     }
 
-    void shutdown(@Disposes PathlandRegistry registry) {
-        registry.shutdown();
+    void shutdown(@Disposes PathlandHost host) {
+        host.shutdown();
     }
 }

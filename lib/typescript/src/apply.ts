@@ -578,7 +578,12 @@ export function setNodeText(el: HTMLElement, text: string): void {
     span.textContent = text;
     return;
   }
-  el.textContent = text;
+  // Only a leaf (no element children) falls through to textContent: re-applying a
+  // composite's LABEL/TEXT property must never wipe its children (SSR renders no
+  // label on composites — a composite's children are its body).
+  if (el.childElementCount === 0) {
+    el.textContent = text;
+  }
 }
 
 function applyStringProperty(el: HTMLElement, propId: number, text: string): void {

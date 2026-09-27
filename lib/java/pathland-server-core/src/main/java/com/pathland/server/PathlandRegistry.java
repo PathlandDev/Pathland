@@ -1,17 +1,29 @@
 package com.pathland.server;
 
+import com.pathland.view.router.Router;
 import com.pathland.view.state.StateStore;
 import com.pathland.view.transport.EnvironmentData;
+import com.pathland.view.transport.Event;
+import com.pathland.view.transport.FrameCodec;
 
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The application registry: 1:1 sessions keyed by id. Each WebSocket connection owns one
- * {@link PathlandSession}; deltas flow only to that client (never broadcast). Transport-
- * agnostic — the framework starters adapt their connection type to {@link PathlandConnection}.
+ * The application registry: 1:1 sessions keyed by a per-connection id. Each WebSocket
+ * connection owns one {@link PathlandSession} (its own retained tree + deltas); two
+ * windows of the same browser never share a session. Transport-agnostic — the framework
+ * starters adapt their connection type to {@link PathlandConnection}.
+ *
+ * <p>Session <b>identity</b> (the map key) and the <b>persisted-state scope</b> are
+ * deliberately separate: the registry is keyed by a fresh per-connection {@code uiId},
+ * while the {@link PersistentState} scope comes from a client-provided window id
+ * ({@code wid}, carried on the WebSocket query string) so each window keeps its own
+ * persisted state across reloads.
  *
  * <p>Sessions are created **lazily on the first inbound message**: the platform
  * environment ({@code META::ENVIRONMENT}, spec/OPCODE.md) arrives as the DOM client's
@@ -28,6 +40,7 @@ public final class PathlandRegistry {
 
     private static final int MAX_EVENT_BATCH = 1 << 16;
 
+    private final String mountPath;
     private final PathlandApp app;
     private final StateStore store;
     private final boolean debugHtml;
@@ -39,13 +52,18 @@ public final class PathlandRegistry {
     });
 
     private final Map<String, PathlandSession> sessions = new ConcurrentHashMap<>();
-    private final Map<String, PathlandConnection> pending = new ConcurrentHashMap<>();
+    private final Map<String, PendingSession> pending = new ConcurrentHashMap<>();
 
     public PathlandRegistry(PathlandApp app, StateStore store) {
-        this(app, store, false);
+        this("/", app, store, false);
     }
 
     public PathlandRegistry(PathlandApp app, StateStore store, boolean debugHtml) {
+        this("/", app, store, debugHtml);
+    }
+
+    public PathlandRegistry(String mountPath, PathlandApp app, StateStore store, boolean debugHtml) {
+        this.mountPath = mountPath == null || mountPath.isBlank() ? "/" : mountPath;
         this.app = app;
         this.store = store;
         this.debugHtml = debugHtml;
@@ -56,9 +74,63 @@ public final class PathlandRegistry {
         return debugHtml;
     }
 
-    /** Render the SSR HTML for a session (request thread), seeding the router from the request path. */
-    public String renderHtml(String sessionId, String route) {
-        PathlandSession session = new PathlandSession(sessionId, store, app, EnvironmentData.of(route), debugHtml);
+    /** The normalized subpath prefix this registry's app is mounted at ({@code "/"} for root). */
+    public String mountPath() {
+        return mountPath;
+    }
+
+    /** The reserved framework base this app's host endpoints live under (e.g. {@code "/app2/_pathland"}). */
+    public String base() {
+        return "/".equals(mountPath) ? PathlandSession.PATHLAND_BASE : mountPath + PathlandSession.PATHLAND_BASE;
+    }
+
+    /**
+     * The state-store scope for a session of this app: app-qualified so two apps sharing
+     * a store never collide on the same window id ({@code "mount:windowId"}; bare
+     * {@code windowId} for the root mount).
+     */
+    public String stateScope(String windowId) {
+        return "/".equals(mountPath) ? windowId : mountPath + ":" + windowId;
+    }
+
+    /**
+     * Strip this app's mount prefix from a route, so the app always sees its own route
+     * space ({@code /app2/home} → {@code /home}). Idempotent: routes already outside the
+     * mount pass through unchanged.
+     */
+    public String stripRoute(String route) {
+        if ("/".equals(mountPath)) {
+            return route;
+        }
+        if (route == null || route.isBlank()) {
+            return "/";
+        }
+        if (route.equals(mountPath)) {
+            return "/";
+        }
+        if (route.startsWith(mountPath + "/")) {
+            return route.substring(mountPath.length());
+        }
+        return route;
+    }
+
+    /**
+     * Render the SSR HTML (request thread), seeding the router from the request path. When
+     * the client's per-window id is on the request ({@code ?wid=…}, preserved in the URL by
+     * the DOM client), the throwaway session renders that window's <b>persisted state</b>
+     * directly — so a reload's HTML is already the latest UI model state and needs no
+     * resync. Without a {@code wid} (a first visit or a typed URL) the session renders
+     * <b>defaults</b> (a fresh scope); the client then generates its wid and re-syncs if
+     * the URL lacked one.
+     */
+    public String renderHtml(String route, String windowId) {
+        String scope = windowId == null || windowId.isBlank()
+                ? stateScope(UUID.randomUUID().toString())
+                : stateScope(windowId);
+        String sessionId = UUID.randomUUID().toString();
+        PathlandSession session = new PathlandSession(
+                sessionId, store, app, EnvironmentData.of(stripRoute(route)),
+                debugHtml, base(), scope);
         try {
             return session.renderHtml();
         } finally {
@@ -66,28 +138,40 @@ public final class PathlandRegistry {
         }
     }
 
-    /** Register the connection for a session id; the session is created on its first message. */
-    public void open(String sessionId, PathlandConnection connection) {
+    /** Render SSR defaults (no window id — a first visit without the client running yet). */
+    public String renderHtml(String route) {
+        return renderHtml(route, null);
+    }
+
+    /**
+     * Register a connection for a session. {@code uiId} is a fresh per-connection id (the
+     * session's identity — two windows never collide); {@code windowId} is the client's
+     * per-window id (the persisted-state scope, mount-prefixed). The session is created on
+     * its first message.
+     */
+    public void open(String uiId, String windowId, PathlandConnection connection) {
         actor.execute(() -> {
-            PathlandSession previous = sessions.remove(sessionId);
+            PathlandSession previous = sessions.remove(uiId);
             if (previous != null) {
                 previous.close();
             }
-            pending.put(sessionId, connection);
+            pending.put(uiId, new PendingSession(stateScope(windowId), connection));
         });
     }
 
     /** Apply the platform environment: creates the session (seeded from its ROUTE field) on first contact, or enriches it after mount. */
     public void environment(String sessionId, EnvironmentData env) {
-        actor.execute(() -> session(sessionId, env).applyEnvironment(env));
+        EnvironmentData appEnv = stripRoute(env);
+        actor.execute(() -> session(sessionId, appEnv).applyEnvironment(appEnv));
     }
 
-    /** Route an inbound event batch to the owning session. */
+    /** Route an inbound event batch to the owning session (NAVIGATE urls are mount-stripped first). */
     public void dispatch(String sessionId, byte[] message) {
         if (message.length > MAX_EVENT_BATCH) {
             return;
         }
-        actor.execute(() -> session(sessionId, EnvironmentData.of("/")).dispatch(message));
+        actor.execute(() -> session(sessionId, EnvironmentData.of("/"))
+                .dispatch(stripNavigateUrls(FrameCodec.decodeEvents(message))));
     }
 
     /** Handle a META::RESYNC request: re-send the session's current tree as a snapshot. */
@@ -117,16 +201,44 @@ public final class PathlandRegistry {
     }
 
     /** Create the session on first contact, wired to its pending connection. */
-    private PathlandSession session(String sessionId, EnvironmentData env) {
-        PathlandSession session = sessions.get(sessionId);
+    private PathlandSession session(String uiId, EnvironmentData env) {
+        PathlandSession session = sessions.get(uiId);
         if (session == null) {
-            PathlandConnection connection = pending.remove(sessionId);
-            session = new PathlandSession(sessionId, store, app, env, debugHtml);
-            if (connection != null) {
-                session.connect(connection);
+            PendingSession pending = this.pending.remove(uiId);
+            session = new PathlandSession(
+                    uiId, store, app, env, debugHtml, base(),
+                    pending != null ? pending.stateScope() : stateScope(uiId));
+            if (pending != null) {
+                session.connect(pending.connection());
             }
-            sessions.put(sessionId, session);
+            sessions.put(uiId, session);
         }
         return session;
+    }
+
+    /** Rebuild the environment with the mount prefix stripped from its route. */
+    private EnvironmentData stripRoute(EnvironmentData env) {
+        return new EnvironmentData(stripRoute(env.route()), env.viewportWidth(), env.viewportHeight());
+    }
+
+    /**
+     * Strip the mount prefix from a NAVIGATE event's URL (browser back/forward sends the
+     * real URL, e.g. {@code http://host/app2/home}): the app's router is mount-relative, so
+     * it must see {@code /home}. Non-NAVIGATE events pass through unchanged; the root mount
+     * is the identity.
+     */
+    private List<Event> stripNavigateUrls(List<Event> events) {
+        if (events.stream().noneMatch(Event::isNavigate)) {
+            return events;
+        }
+        return events.stream()
+                .map(event -> event.isNavigate() && event.url() != null
+                        ? Event.navigate(stripRoute(Router.pathOf(event.url())))
+                        : event)
+                .toList();
+    }
+
+    /** A connection awaiting its first message, with the window id's state scope. */
+    private record PendingSession(String stateScope, PathlandConnection connection) {
     }
 }

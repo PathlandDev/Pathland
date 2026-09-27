@@ -13,6 +13,7 @@ import com.pathland.view.signal.WritableSignal;
 import com.pathland.view.state.PersistentState;
 import com.pathland.view.state.StateStore;
 import com.pathland.view.transport.EnvironmentData;
+import com.pathland.view.transport.Event;
 import com.pathland.view.transport.FrameCodec;
 
 /**
@@ -40,6 +41,7 @@ public final class PathlandSession {
     private final PersistentState state;
     private final WritableSignal<String> activePath;
 
+    private final String base;
     private final FrameOpcodeSink sink;
     private final Emitter emitter;
     private final InputDispatcher inputDispatcher;
@@ -61,8 +63,20 @@ public final class PathlandSession {
             PathlandApp app,
             EnvironmentData env,
             boolean debugHtml) {
+        this(sessionId, store, app, env, debugHtml, PATHLAND_BASE, sessionId);
+    }
+
+    public PathlandSession(
+            String sessionId,
+            StateStore store,
+            PathlandApp app,
+            EnvironmentData env,
+            boolean debugHtml,
+            String base,
+            String stateScope) {
         this.debugHtml = debugHtml;
-        this.state = new PersistentState(store, sessionId);
+        this.base = base;
+        this.state = new PersistentState(store, stateScope);
         // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the
         // app reads it, and a bound Router re-routes guard-aware on external changes.
         this.activePath = Signals.signal(env.route());
@@ -130,8 +144,13 @@ public final class PathlandSession {
 
     /** Route an inbound event batch (raw host → guest opcodes) into the app's bindings. */
     public void dispatch(byte[] message) {
+        dispatch(FrameCodec.decodeEvents(message));
+    }
+
+    /** Route decoded events into the app's bindings (a host may pre-transform them, e.g. mount-strip NAVIGATE urls). */
+    public void dispatch(Iterable<Event> events) {
         try {
-            inputDispatcher.dispatch(FrameCodec.decodeEvents(message));
+            inputDispatcher.dispatch(events);
         } catch (RuntimeException e) {
             log("dropping event batch: " + e.getMessage());
         }
@@ -149,9 +168,9 @@ public final class PathlandSession {
                 ? renderer.renderDebug(sink.frame(), rootId)
                 : renderer.render(sink.frame(), rootId);
         // The reserved framework path prefix (spec): host system endpoints live
-        // under `/_pathland/**`. Carried as `data-pathland-base` so the DOM client
-        // resolves its `/_pathland/ws` and the bundle from the same base.
-        String base = PATHLAND_BASE;
+        // under `/{base}/**`. Carried as `data-pathland-base` so the DOM client
+        // resolves its WebSocket and the bundle from the same base. Multi-app
+        // hosts give each mounted app its own base (e.g. `/app2/_pathland`).
         return html
                 .replace("<html>", "<html data-pathland-base=\"" + base + "\">")
                 .replace("</body>", "<script src=\"" + base + "/dom-renderer.js\" defer></script></body>");
