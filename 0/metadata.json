@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3J2D51B9JDGB74KE4BT7KV3",
+  "session_id": "ses_f22887ab0ffepRGnujdgeYZTVd",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-27T18:35:30.865775Z",
+  "branch": "feat/view-with-modifier",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/MediaSection.java"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "87f1afd9a66a",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 97430,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1394176,
+    "output_tokens": 30760,
+    "api_call_count": 24
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-27T18:35:30.812306Z",
+    "agent_lines": 2,
+    "agent_removed": 2,
+    "human_added": 300,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 302,
+    "total_lines_changed": 621,
+    "agent_percentage": 0.644122383252818,
+    "metric_version": 2
+  }
+}
