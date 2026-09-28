@@ -1,0 +1,241 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3MPHGB6M2E5N7SB1NK5ZQQP",
+  "session_id": "ses_f19ed713affeZaLNsSlXVxmfpL",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-28T19:05:59.081753Z",
+  "branch": "feat/music-player-demo",
+  "checkpoints_count": 19,
+  "save_step_count": 14,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/LibraryView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/MusicPlayerView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/NowPlayingSidebar.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PercentSeek.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PlayerBar.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PlayerControlsStyle.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/Track.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/TrackRowView.java",
+    "lib/java/pathland-demo-views/src/test/java/com/pathland/demo/music/MusicPlayerViewTest.java",
+    "lib/java/pathland-demo-views/status.md",
+    "lib/java/pathland-quarkus-demo/src/main/java/com/pathland/demo/quarkus/QuarkusDemoApp.java",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track1.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track2.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track3.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track4.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track5.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track6.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track7.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track8.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/audio/track9.mp3",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.js",
+    "lib/java/pathland-spring-boot-demo/src/main/java/com/pathland/demo/spring/SpringDemoApplication.java",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/albumart/cover1.svg",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/albumart/cover2.svg",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/albumart/cover3.svg",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track1.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track2.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track3.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track4.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track5.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track6.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track7.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track8.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/audio/track9.mp3",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.js",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Audio.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/AudioStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/AudioStyleMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Commands.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Environment.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/NativeAudioStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/NativeVideoStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Properties.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ValueTypes.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Video.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/VideoStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/VideoStyleMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/Emitter.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/InputDispatcher.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/MediaInput.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/PathlandNode.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/RenderResult.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/transport/Event.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/transport/FrameCodec.java",
+    "lib/java/pathland-view/status.md",
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/rust/crates/pathland-core/src/events.rs",
+    "lib/rust/crates/pathland-render-html/src/css.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/rust/crates/pathland-ts-codegen/src/main.rs",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/constants.ts",
+    "lib/typescript/src/elements.ts",
+    "lib/typescript/src/events.ts",
+    "lib/typescript/src/index.ts",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/events.test.ts",
+    "spec/CONFORMANCE.md",
+    "spec/EVENTS.md",
+    "spec/MODIFIERS.md",
+    "spec/PRIMITIVES.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "0202bb12a6b4",
+  "checkpoint_transcript_start": 195,
+  "transcript_lines_at_start": 195,
+  "compact_transcript_start": 195,
+  "token_usage": {
+    "input_tokens": 8993330,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 202018304,
+    "output_tokens": 278572,
+    "api_call_count": 364
+  },
+  "session_metrics": {
+    "turn_count": 35
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-28T19:05:58.266299Z",
+    "agent_lines": 348,
+    "agent_removed": 10107,
+    "human_added": 0,
+    "human_modified": 6,
+    "human_removed": 2,
+    "total_committed": 353,
+    "total_lines_changed": 10463,
+    "agent_percentage": 99.92354009366339,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 436,
+      "user_lines_removed": 6,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/MusicPlayerView.java": 205,
+        "lib/java/pathland-demo-views/src/test/java/com/pathland/demo/music/MusicPlayerViewTest.java": 147,
+        "lib/java/pathland-quarkus-demo/src/main/java/com/pathland/demo/quarkus/QuarkusDemoApp.java": 3,
+        "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/albumart/cover1.svg": 13,
+        "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/albumart/cover2.svg": 13,
+        "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/assets/albumart/cover3.svg": 13,
+        "lib/java/pathland-spring-boot-demo/src/main/java/com/pathland/demo/spring/SpringDemoApplication.java": 3,
+        "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/albumart/cover1.svg": 13,
+        "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/albumart/cover2.svg": 13,
+        "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/assets/albumart/cover3.svg": 13
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-quarkus-demo/src/main/java/com/pathland/demo/quarkus/QuarkusDemoApp.java": 3,
+        "lib/java/pathland-spring-boot-demo/src/main/java/com/pathland/demo/spring/SpringDemoApplication.java": 3
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 606,
+      "agent_lines_removed": 13
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 606,
+      "agent_lines_removed": 13
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 606,
+      "agent_lines_removed": 13
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1876,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1876,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1915,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1915,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1921,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1921,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 11,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1921,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 12,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1921,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 13,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1921,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 14,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1921,
+      "agent_lines_removed": 96
+    },
+    {
+      "checkpoint_number": 15,
+      "user_lines_added": 3,
+      "user_lines_removed": 1,
+      "agent_lines_added": 1978,
+      "agent_lines_removed": 96,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/LibraryView.java": 3
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/LibraryView.java": 1
+      }
+    }
+  ]
+}
