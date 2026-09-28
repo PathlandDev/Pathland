@@ -92,7 +92,9 @@ fn main() {
     // Which Qt frameworks/dylibs do we need? QML controls call into a QObject
     // bridge via context-property invokables, so only Core/Qml/Quick + the
     // moc-generated meta-object code are required (no Controls C++ libs).
-    let modules = ["QtCore", "QtGui", "QtQml", "QtQuick"];
+    // QtQuickLayouts provides the Layout attached properties (`Layout.fillWidth`
+    // etc.) used to stretch FILL children inside RowLayout/ColumnLayout stacks.
+    let modules = ["QtCore", "QtGui", "QtQml", "QtQuick", "QtQuickLayouts"];
 
     let framework_dir = |m: &str| PathBuf::from(&libs).join(format!("{m}.framework"));
     let frameworks = modules
@@ -106,11 +108,21 @@ fn main() {
     // `#include <QtQml/QQmlEngine>` resolves.
     let framework_header_dirs = |framework: &str| -> Vec<String> {
         let base = PathBuf::from(&libs).join(format!("{framework}.framework/Headers"));
-        let mut dirs = Vec::new();
+        let mut dirs = vec![base.to_string_lossy().into_owned()]; // flat module headers (<QPointer>)
         if let Ok(rd) = std::fs::read_dir(&base) {
             for e in rd.flatten() {
                 if e.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                     dirs.push(e.path().to_string_lossy().into_owned());
+                    // Versioned module dirs (`<version>/<Module>`): make
+                    // unqualified headers (`<QPointer>`) and `<private/...>`
+                    // resolve (Qt Quick Layouts' private header pulls both).
+                    if let Ok(sub) = std::fs::read_dir(e.path()) {
+                        for s in sub.flatten() {
+                            if s.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                                dirs.push(s.path().to_string_lossy().into_owned());
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -169,6 +169,16 @@ extern "C" {
         out: *mut c_char,
         cap: u32,
     ) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_widget_fill(id: u32, which: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_widget_preferred(id: u32, which: u32) -> f64;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_widget_size(id: u32, which: u32) -> f64;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_anchors_fill(id: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_render_once() -> i32;
     #[allow(dead_code)] // test-only hook
     pub fn pathland_qt_layer_shutdown();
 }
@@ -360,6 +370,53 @@ mod tests {
                 pathland_qt_layer_widget_prop_text(1, c"spacing".as_ptr(), buf3.as_mut_ptr(), buf3.len() as u32)
             };
             assert_eq!(unsafe { CStr::from_ptr(buf3.as_ptr()) }.to_string_lossy(), "16");
+        });
+    }
+
+    /// FILL sizing inside a stack (the "sliver" fix): a WIDTH FILL child
+    /// stretches via the Layout attached property; a fixed width becomes the
+    /// Layout preferredWidth; a stack's ALIGNMENT=FILL stretches children on the
+    /// cross axis.
+    #[test]
+    fn fill_child_stretches_inside_stack() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, component_type::HSTACK),
+                Command::create_node(2, component_type::TEXT),
+                Command::create_node(3, component_type::TEXT),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::insert_child(1, 3, u32::MAX),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::set_property(
+                    1,
+                    property_id::ALIGNMENT,
+                    value_type::F32,
+                    3.0f32.to_bits(),
+                ),
+                Command::set_property(2, property_id::WIDTH, value_type::F32, 100.0f32.to_bits()),
+                Command::set_property(
+                    3,
+                    property_id::WIDTH,
+                    value_type::F32,
+                    (-1.0f32).to_bits(),
+                ),
+                Command::set_text(2, "a"),
+                Command::set_text(3, "b"),
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+
+            assert_eq!(pathland_qt_layer_root_child_count(), 1, "root fills the window");
+            assert_eq!(pathland_qt_layer_widget_child_count(1), 2, "both children in the stack");
+            // The root HSTACK wrapper is anchored to the window content (the
+            // "sliver" fix) instead of hugging its content.
+            assert_eq!(pathland_qt_layer_anchors_fill(1), 1, "root anchored to the window");
+            // Child 2 (fixed width 100) -> Layout.preferredWidth 100.
+            assert_eq!(pathland_qt_layer_widget_preferred(2, 0), 100.0);
+            // Child 3 (WIDTH FILL) -> Layout.fillWidth set.
+            assert_eq!(pathland_qt_layer_widget_fill(3, 0), 1);
+            // Root ALIGNMENT=FILL -> children fill the cross axis (height).
+            assert_eq!(pathland_qt_layer_widget_fill(2, 1), 1);
+            assert_eq!(pathland_qt_layer_widget_fill(3, 1), 1);
         });
     }
 

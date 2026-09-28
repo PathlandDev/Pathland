@@ -1,6 +1,6 @@
 # pathland-render-qt — implementation status
 
-**Last updated:** September 24, 2026
+**Last updated:** September 28, 2026
 
 The **Qt Quick renderer**: maps opcode frames incrementally onto a Qt Quick
 scene graph (shared-memory desktop path). Protocol contract: `spec/`.
@@ -36,8 +36,11 @@ Design-token contract: `spec/TOKENS.md`.
   are children of pseudo-parent `0` (window contentItem). Ghost children after
   `DELETE_NODE` are guarded in the walk. Headless-tested.
 - **Qt widget mapping** (`src/qt/qt_layer.cpp`): component → QML item factory —
-  `VSTACK`/`HSTACK`/lazy stacks → `Column`/`Row`, `GRID`+lazy grids → `Grid`,
-  `ZSTACK` → `Item`, `SCROLLVIEW` → `ScrollView`, `TEXT` → `Text`, `SPACER`/
+  `VSTACK`/`HSTACK`/lazy stacks → a **wrapper `Item` holding an inner
+  `ColumnLayout`/`RowLayout`** (`QtQuick.Layouts`; the wrapper's `plPad` drives
+  padding + implicit size, so a stack hugs its content), `GRID`+lazy grids →
+  `Grid`, `ZSTACK` → `Item`, `SCROLLVIEW` → `ScrollView` (content attaches to its
+  `contentItem`; fills its parent by default), `TEXT` → `Text`, `SPACER`/
   unknown → `Item`, `DIVIDER` → `Rectangle`, `COLOR`/`SHAPE` → `Rectangle`,
   `IMAGE` → `Image`, `BUTTON` → `Button`, `TEXT_FIELD` → `TextField`, `SLIDER`
   → `Slider`, `TOGGLE` → `Switch` (controls embed `onX: bridge.<event>(id, …)`
@@ -49,12 +52,21 @@ Design-token contract: `spec/TOKENS.md`.
   `COLOR_PICKER` → `TextField`/`Button` approximations (Qt Quick Controls has no
   native date/color pickers). Property application via generic `setProperty`
   (Qt ignores unknown props): spacing/`align`/padding+edges, width/height (`-1`
-  FILL → `anchors.fill`, `-2` HUG → implicit), color, font size/weight/family,
-  opacity, visible, z, value/min/max/step, selected→checked, enabled,
+  FILL → **`Layout.fillWidth`/`fillHeight` in a layout, anchors.fill elsewhere**,
+  `-2` HUG → implicit), color, **font size/weight/family via the `font` `QFont`
+  property** (dotted-path `setProperty` silently fails), opacity, visible, z,
+  value/min/max/step, selected→checked, enabled,
   `IS_SECURE` → `echoMode`, progress/indeterminate, selection→currentIndex,
-  prompt/label→placeholder, image source. `RESET_NODE` resets renderer-owned
-  style defaults (value props untouched so a slider/toggle doesn't lose
-  position on echo).
+  prompt/label→placeholder, image source. **Stack alignment**: a stack's
+  `ALIGNMENT` is applied to each child via its `Layout` attached properties
+  (`Fill` stretches the cross axis; Start/Center/End set `Layout.alignment`).
+  **Roots are anchored to fill the window** (GTK hexpand/vexpand parity).
+  `RESET_NODE` resets renderer-owned style defaults (value props untouched so a
+  slider/toggle doesn't lose position on echo).
+- **Diff ordering** (`src/renderer.rs`): `QtRenderer::diff` emits child inserts
+  *before* property deltas, so `WIDTH`/`HEIGHT`/`ALIGNMENT` land after a widget is
+  attached to its final parent — FILL resolves against the real parent instead of
+  the create-time contentItem placeholder.
 - **Events** (spec/EVENTS.md guards): the `Bridge` reports control inputs
   (`tap` → `POINTER_UP`, `valueChanged` → `VALUE_CHANGED`, `textChanged` →
   `TEXT_CHANGED`) to Rust, which encodes the `Event`, writes it into the event
@@ -122,12 +134,11 @@ Design-token contract: `spec/TOKENS.md`.
   background delegate; mapping is a follow-up), `SHAPE` path approximation,
   `MENU` popup item list, `DATE_PICKER`/`COLOR_PICKER` native dialogs, and
   `PICKER` option styling not yet mapped.
-- **FILL in Qt positioners**: `Row`/`Column`/`Grid` reject `anchors.fill` on
-  their children, so a `WIDTH`/`HEIGHT` `FILL` inside a stack defers and is
-  skipped (the positioner sizes it) — cross-axis stretch would need Qt Quick
-  Layouts (`RowLayout`/`ColumnLayout`). Qt may print "Cannot specify ...
-  anchors for items inside Row" notes for DSL FILL/alignment patterns; the UI
-  renders regardless (this is a fidelity gap, not a crash).
+- **FILL inside plain positioners**: `GRID` (a `QQuickGrid`) rejects
+  `anchors.fill` on its children, so a `WIDTH`/`HEIGHT` `FILL` inside a Grid
+  defers and is skipped (the positioner sizes it). Stacks use `RowLayout`/
+  `ColumnLayout` so FILL children stretch properly; `Row`/`Column`/`Grid`
+  plain-positioner stretch would need `QtQuick.Layouts` everywhere.
 - **Java JNA demo** (`lib/java/pathland-qt-demo`) runs the shared
   `SplitNavDemo` (incl. native navigation) via `pathland_qt_run_ring` — the
   cross-language nav demo vehicle, since the Rust DSL lacks a
@@ -141,7 +152,10 @@ tests) — the delta diff suite, the end-to-end FFI batch
 (`command_batch_crosses_into_cpp_offscreen`), the **full pipeline**
 (`renderer_drives_live_qml_scene`: DSL → engine → frame → shared decode →
 delta diff → FFI → live QML `Column`/`Text`/`Button`/`Slider` with spacing/value
-applied and a delta re-applied), pointer-listener MouseArea attachment
+applied and a delta re-applied), **FILL/Layout stretch**
+(`fill_child_stretches_inside_stack`: FILL → `Layout.fillWidth`, fixed →
+`Layout.preferredWidth`, stack `ALIGNMENT=FILL` stretches the cross axis, root
+anchored to the window), pointer-listener MouseArea attachment
 (`pointer_listeners_attach_mousearea`), the event path
 (`decode_maps_pointer_and_global_events`, `ring_event_writes_pointer_into_ring_and_wakes`,
 `scheme_event_reapplies_without_waking`, `text_event_string_is_length_prefixed`,

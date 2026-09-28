@@ -98,6 +98,11 @@ uint32_t pathland_qt_layer_widget_child_count(uint32_t id);
 uint32_t pathland_qt_layer_widget_text(uint32_t id, char *out, uint32_t cap);
 uint32_t pathland_qt_layer_widget_prop_text(uint32_t id, const char *prop,
                                             char *out, uint32_t cap);
+uint32_t pathland_qt_layer_widget_fill(uint32_t id, uint32_t which);
+double pathland_qt_layer_widget_preferred(uint32_t id, uint32_t which);
+double pathland_qt_layer_widget_size(uint32_t id, uint32_t which);
+uint32_t pathland_qt_layer_anchors_fill(uint32_t id);
+int pathland_qt_layer_render_once(void);
 
 #ifdef __cplusplus
 }

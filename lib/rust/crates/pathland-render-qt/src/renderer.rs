@@ -116,9 +116,40 @@ impl QtRenderer {
             );
         }
 
-        // 3. Text + property deltas. On any property change we re-send the
-        //    node's *complete* property set (preceded by RESET_NODE), so the
-        //    C++ layer can reset removed properties to its renderer defaults.
+        // 3. Child order (parents before children already exist), THEN props:
+        //    the C++ layer attaches a widget to its final parent before its
+        //    WIDTH/HEIGHT/ALIGNMENT arrive, so FILL/stretch resolve against the
+        //    real parent (a Layout/positioner/window) instead of the create-time
+        //    contentItem placeholder. The shared core's DELETE_NODE leaves a
+        //    ghost in the parent's child list, so filter to live nodes.
+        for &id in &order {
+            let node = self.tree.node(id).unwrap();
+            let children: Vec<u32> = node
+                .children
+                .iter()
+                .copied()
+                .filter(|c| self.tree.nodes.contains_key(c))
+                .collect();
+            let prev = self.sent_children.entry(id).or_default();
+            cmds.extend(children_diff(id, prev, &children));
+            *prev = children;
+        }
+
+        // 4. Roots are children of the pseudo-parent 0 (window contentItem).
+        let mut roots: Vec<u32> = order
+            .iter()
+            .copied()
+            .filter(|&id| self.tree.node(id).map_or(false, |n| n.parent.is_none()))
+            .collect();
+        roots.sort_unstable();
+        let prev_roots = self.sent_children.entry(CONTENT_ITEM).or_default();
+        cmds.extend(children_diff(CONTENT_ITEM, prev_roots, &roots));
+        *prev_roots = roots;
+
+        // 5. Text + property deltas (after the widget is attached to its final
+        //    parent). On any property change we re-send the node's *complete*
+        //    property set (preceded by RESET_NODE), so the C++ layer can reset
+        //    removed properties to its renderer defaults.
         for &id in &order {
             let node = self.tree.node(id).unwrap();
             let s = self.sent.get_mut(&id).unwrap();
@@ -146,33 +177,6 @@ impl QtRenderer {
                 s.strings = node.strings.clone();
             }
         }
-
-        // 4. Child order (parents before children already exist). The shared
-        //    core's DELETE_NODE leaves a ghost in the parent's child list, so
-        //    filter to live nodes before diffing.
-        for &id in &order {
-            let node = self.tree.node(id).unwrap();
-            let children: Vec<u32> = node
-                .children
-                .iter()
-                .copied()
-                .filter(|c| self.tree.nodes.contains_key(c))
-                .collect();
-            let prev = self.sent_children.entry(id).or_default();
-            cmds.extend(children_diff(id, prev, &children));
-            *prev = children;
-        }
-
-        // 5. Roots are children of the pseudo-parent 0 (window contentItem).
-        let mut roots: Vec<u32> = order
-            .iter()
-            .copied()
-            .filter(|&id| self.tree.node(id).map_or(false, |n| n.parent.is_none()))
-            .collect();
-        roots.sort_unstable();
-        let prev_roots = self.sent_children.entry(CONTENT_ITEM).or_default();
-        cmds.extend(children_diff(CONTENT_ITEM, prev_roots, &roots));
-        *prev_roots = roots;
 
         cmds
     }

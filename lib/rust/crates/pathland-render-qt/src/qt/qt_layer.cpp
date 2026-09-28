@@ -28,6 +28,11 @@
 #include <QtGui/QColor>
 #include <QtCore/QDebug>
 #include <QtCore/QVariant>
+// The Layout attached properties (`Layout.fillWidth`/`fillHeight`/`preferredWidth`)
+// used to stretch FILL children inside RowLayout/ColumnLayout stacks. Private
+// header (Qt Quick Layouts ships it); the build.rs adds the framework include
+// dirs. Matches the Qt version the crate builds against.
+#include <QtQuickLayouts/private/qquicklayout_p.h>
 
 #include <algorithm>
 #include <cmath>
@@ -152,6 +157,9 @@ struct LayerState {
     std::unordered_map<uint32_t, std::vector<QString>> nav_page_tags;
     // Nodes that may report interactions (carry BINDING_ID / ACTION_ID).
     std::unordered_set<uint32_t> gated_ids;
+    // Stack cross-axis alignment (raw Pathland alignment) per stack node id,
+    // applied to each child via its Layout attached properties on insert.
+    std::unordered_map<uint32_t, uint32_t> stack_align;
     // EVENT_LISTENERS mask per node (raw pointer stream gating).
     std::unordered_map<uint32_t, uint32_t> listener_masks;
     // EVENT_LISTENERS MouseArea overlay per node (id -> MouseArea item).
@@ -201,10 +209,46 @@ QString qmlFor(uint16_t component, uint32_t id) {
     switch (component) {
     case PL_COMP_VSTACK:
     case PL_COMP_LAZY_VSTACK:
-        return QStringLiteral("import QtQuick 2.15\nColumn { objectName: \"pl%1\" }").arg(id);
+        // A stack renders as a wrapper Item holding an inner ColumnLayout (the
+        // node's widget is the wrapper; children attach to the layout, whose
+        // `Layout` attached properties give FILL children a real stretch —
+        // plain Row/Column reject anchors on their children). Padding is
+        // carried by `plPad` (drives the layout's anchors.margins + the
+        // wrapper's implicit size so the wrapper hugs its content).
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Layouts 1.15\n"
+                   "Item {\n"
+                   "  objectName: \"pl%1\"\n"
+                   "  property real plPad: 0\n"
+                   "  implicitWidth: lay ? lay.implicitWidth + 2 * plPad : 0\n"
+                   "  implicitHeight: lay ? lay.implicitHeight + 2 * plPad : 0\n"
+                   "  ColumnLayout {\n"
+                   "    id: lay\n"
+                   "    objectName: \"pl%1lay\"\n"
+                   "    anchors.fill: parent\n"
+                   "    anchors.margins: plPad\n"
+                   "    spacing: 0\n"
+                   "  }\n"
+                   "}")
+            .arg(id);
     case PL_COMP_HSTACK:
     case PL_COMP_LAZY_HSTACK:
-        return QStringLiteral("import QtQuick 2.15\nRow { objectName: \"pl%1\" }").arg(id);
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Layouts 1.15\n"
+                   "Item {\n"
+                   "  objectName: \"pl%1\"\n"
+                   "  property real plPad: 0\n"
+                   "  implicitWidth: lay ? lay.implicitWidth + 2 * plPad : 0\n"
+                   "  implicitHeight: lay ? lay.implicitHeight + 2 * plPad : 0\n"
+                   "  RowLayout {\n"
+                   "    id: lay\n"
+                   "    objectName: \"pl%1lay\"\n"
+                   "    anchors.fill: parent\n"
+                   "    anchors.margins: plPad\n"
+                   "    spacing: 0\n"
+                   "  }\n"
+                   "}")
+            .arg(id);
     case PL_COMP_ZSTACK:
         return QStringLiteral("import QtQuick 2.15\nItem { objectName: \"pl%1\" }").arg(id);
     case PL_COMP_GRID:
@@ -332,6 +376,85 @@ bool isPositioner(QQuickItem *parent) {
                    strstr(cls, "QQuickGrid"));
 }
 
+// Whether an item is a Qt Quick Layout (RowLayout/ColumnLayout/GridLayout).
+bool isLayout(QQuickItem *item) {
+    return item && qobject_cast<QQuickLayout *>(item) != nullptr;
+}
+
+// The layout that owns a stack node's children: a stack renders as a wrapper
+// Item holding an inner ColumnLayout/RowLayout. Returns the inner layout, or
+// `item` itself when it already is a layout.
+QQuickItem *layoutOf(QQuickItem *item) {
+    if (!item) {
+        return nullptr;
+    }
+    if (isLayout(item)) {
+        return item;
+    }
+    const auto kids = item->childItems();
+    for (QQuickItem *k : kids) {
+        if (isLayout(k)) {
+            return k;
+        }
+    }
+    return nullptr;
+}
+
+// The `Layout` attached object for an item (Layout.fillWidth/fillHeight/
+// preferredWidth/…). Creates it on demand, as QML's `Layout.foo` would.
+QQuickLayoutAttached *layoutAttached(QQuickItem *item) {
+    if (!item) {
+        return nullptr;
+    }
+    return qobject_cast<QQuickLayoutAttached *>(
+        qmlAttachedPropertiesObject<QQuickLayout>(item, /*create=*/true));
+}
+
+// Pathland cross-axis alignment (0=Start,1=Center,2=End,3=Fill) applied to a
+// stack's children via the Layout attached properties: Fill stretches the child
+// on the stack's cross axis; Start/Center/End set the Layout alignment.
+void applyStackAlignment(uint32_t parentId, QQuickItem *child) {
+    if (!child) {
+        return;
+    }
+    auto it = g.stack_align.find(parentId);
+    if (it == g.stack_align.end()) {
+        return;
+    }
+    const uint16_t comp = g.components[parentId];
+    const bool vertical = comp == PL_COMP_VSTACK || comp == PL_COMP_LAZY_VSTACK;
+    const float raw = f32(it->second);
+    const int idx = (std::isfinite(raw) && std::floor(raw) == raw && raw >= 0.0f && raw <= 3.0f)
+                        ? static_cast<int>(raw)
+                        : static_cast<int>(it->second & 0xFF);
+    QQuickLayoutAttached *a = layoutAttached(child);
+    if (!a) {
+        return;
+    }
+    if (idx == 3) { // Fill -> stretch on the cross axis
+        if (vertical) {
+            a->setFillWidth(true);
+        } else {
+            a->setFillHeight(true);
+        }
+        return;
+    }
+    Qt::Alignment align;
+    if (vertical) { // Column: cross axis is horizontal
+        align = idx == 0 ? Qt::AlignLeft : (idx == 1 ? Qt::AlignHCenter : Qt::AlignRight);
+    } else { // Row: cross axis is vertical
+        align = idx == 0 ? Qt::AlignTop : (idx == 1 ? Qt::AlignVCenter : Qt::AlignBottom);
+    }
+    a->setAlignment(align);
+}
+
+// Apply a stack's ALIGNMENT to every current child (after a change).
+void reapplyStackAlignment(uint32_t parentId) {
+    for (uint32_t childId : g.children_of[parentId]) {
+        applyStackAlignment(parentId, findWidget(childId));
+    }
+}
+
 // The nav container: a plain Item page stack. Qt Quick has no native
 // navigation container, and StackView's push/pop are QML-callable-only (not
 // invokable from C++ via QMetaObject), so the renderer manages its page cache
@@ -340,8 +463,10 @@ QQuickItem *createNavContainer(QQuickItem *parent) {
     return createComponent(g.engine, parent, "import QtQuick 2.15\nItem { clip: true }");
 }
 
-// Promote a slot's Column/Row to the nav container (first non-empty ROUTE).
-// Children are inserted after props, so the slot has none yet — safe to swap.
+// Promote a slot's stack wrapper to the nav container (first non-empty ROUTE).
+// The diff inserts the destination before ROUTE arrives, so the wrapper's inner
+// layout may already own the destination — detach it (and the layout) before the
+// swap so the app-owned destination survives the wrapper's deletion.
 void promoteNavSlot(uint32_t slotId) {
     auto it = g.widgets.find(slotId);
     if (it == g.widgets.end()) {
@@ -360,6 +485,16 @@ void promoteNavSlot(uint32_t slotId) {
             anchors->setProperty("fill", QVariant::fromValue(old->parentItem()));
         }
     }
+    for (QQuickItem *kid : old->childItems()) {
+        const auto grandkids = kid->childItems();
+        for (QQuickItem *gk : grandkids) {
+            gk->setParentItem(nullptr);
+        }
+        g.pending_fill.erase(kid);
+        kid->setParentItem(nullptr);
+        kid->deleteLater();
+    }
+    g.pending_fill.erase(old);
     g.widgets[slotId] = container;
     g.nav_slots.insert(slotId);
     g.nav_stacks[slotId] = container;
@@ -560,25 +695,6 @@ void attachPointerArea(uint32_t id, uint32_t mask) {
     }
 }
 
-// Pathland cross-axis alignment (0=Start,1=Center,2=End,else Fill) -> Qt's
-// Row/Column `align` (Qt 6.7+, horizontal flags for a Column).
-int alignFor(uint32_t raw) {
-    const float f = f32(raw);
-    const int idx = (std::isfinite(f) && std::floor(f) == f && f >= 0.0f && f <= 3.0f)
-                        ? static_cast<int>(f)
-                        : static_cast<int>(raw & 0xFF);
-    switch (idx) {
-    case 0:
-        return Qt::AlignLeft; // Start
-    case 1:
-        return Qt::AlignHCenter; // Center
-    case 2:
-        return Qt::AlignRight; // End
-    default:
-        return Qt::AlignLeft; // Fill -> stretch is the QML default; gap
-    }
-}
-
 int weightFor(float weight) {
     const int w = static_cast<int>(weight + 0.5f);
     switch (w) {
@@ -603,23 +719,37 @@ int weightFor(float weight) {
     }
 }
 
-// WIDTH/HEIGHT special values: -1 = FILL (anchors.fill parent), -2 = HUG
-// (implicit size). Positive values set an explicit size.
-// Apply a pending FILL (anchors.fill) once a widget gains its final parent.
-// Skipped for positioners (Row/Column/Grid reject anchors on their children).
+// WIDTH/HEIGHT special values: -1 = FILL (stretch), -2 = HUG (implicit size).
+// Positive values set a fixed size.
+// Apply a pending FILL once a widget gains its final parent. In a Qt Quick
+// Layout (RowLayout/ColumnLayout) FILL stretches via the Layout attached
+// properties; elsewhere it is anchors.fill. Skipped for plain positioners
+// (Grid rejects anchors on its children).
 void flushFill(QQuickItem *item, QQuickItem *container) {
     auto it = g.pending_fill.find(item);
     if (it == g.pending_fill.end()) {
         return;
     }
-    if (container && !isPositioner(container)) {
-        QObject *anchors = item->property("anchors").value<QObject *>();
-        if (anchors) {
-            if (it->second & 1u) {
-                anchors->setProperty("width", QVariant::fromValue(container));
+    if (container) {
+        if (isLayout(container)) {
+            QQuickLayoutAttached *a = layoutAttached(item);
+            if (a) {
+                if (it->second & 1u) {
+                    a->setFillWidth(true);
+                }
+                if (it->second & 2u) {
+                    a->setFillHeight(true);
+                }
             }
-            if (it->second & 2u) {
-                anchors->setProperty("height", QVariant::fromValue(container));
+        } else if (!isPositioner(container)) {
+            QObject *anchors = item->property("anchors").value<QObject *>();
+            if (anchors) {
+                if (it->second & 1u) {
+                    anchors->setProperty("width", QVariant::fromValue(container));
+                }
+                if (it->second & 2u) {
+                    anchors->setProperty("height", QVariant::fromValue(container));
+                }
             }
         }
     }
@@ -628,11 +758,23 @@ void flushFill(QQuickItem *item, QQuickItem *container) {
 
 void applySize(QQuickItem *item, const char *dimension, float value) {
     if (value == -1.0f) {
-        // FILL: apply once the widget is in its final parent. Props arrive
-        // before children are inserted, so if the parent is unknown (or a
-        // positioner that rejects anchors) defer to insert time.
+        // FILL: stretch. In a Layout this is `Layout.fillWidth/fillHeight` and
+        // works as soon as the child joins it. Elsewhere anchors.fill the final
+        // parent once known; defer when the current parent is the create-time
+        // placeholder (contentItem) or a plain positioner.
         QQuickItem *parent = item->parentItem();
-        if (parent && !isPositioner(parent)) {
+        if (isLayout(parent)) {
+            QQuickLayoutAttached *a = layoutAttached(item);
+            if (a) {
+                if (*dimension == 'w') {
+                    a->setFillWidth(true);
+                } else {
+                    a->setFillHeight(true);
+                }
+            }
+            return;
+        }
+        if (parent && parent != g.root && !isPositioner(parent)) {
             QObject *anchors = item->property("anchors").value<QObject *>();
             if (anchors) {
                 anchors->setProperty(dimension, QVariant::fromValue(parent));
@@ -643,9 +785,72 @@ void applySize(QQuickItem *item, const char *dimension, float value) {
         return;
     }
     if (value == -2.0f) {
-        return; // HUG_CONTENT: implicit size is the default
+        // HUG_CONTENT: implicit size. In a Layout, clear any fixed preferred size.
+        QQuickItem *parent = item->parentItem();
+        if (isLayout(parent)) {
+            QQuickLayoutAttached *a = layoutAttached(item);
+            if (a) {
+                if (*dimension == 'w') {
+                    a->setPreferredWidth(-1);
+                } else {
+                    a->setPreferredHeight(-1);
+                }
+            }
+        }
+        return;
     }
-    item->setProperty(dimension, static_cast<double>(value));
+    // Fixed size: preferred size in a Layout, explicit width/height elsewhere.
+    QQuickItem *parent = item->parentItem();
+    if (isLayout(parent)) {
+        QQuickLayoutAttached *a = layoutAttached(item);
+        if (a) {
+            if (*dimension == 'w') {
+                a->setPreferredWidth(value);
+            } else {
+                a->setPreferredHeight(value);
+            }
+        }
+    } else {
+        item->setProperty(dimension, static_cast<double>(value));
+    }
+}
+
+// Apply a stack's padding to its inner layout (anchors.margins / edge margins)
+// and, for the uniform case, the wrapper's `plPad` (which drives the wrapper's
+// implicit size so it hugs its padded content). No-op for non-stack widgets.
+void applyPadding(QQuickItem *item, const char *edge, float value) {
+    QQuickItem *lay = layoutOf(item);
+    if (!lay) {
+        return;
+    }
+    QObject *anchors = lay->property("anchors").value<QObject *>();
+    if (!anchors) {
+        return;
+    }
+    if (!edge) {
+        item->setProperty("plPad", static_cast<double>(value));
+        anchors->setProperty("margins", static_cast<double>(value));
+    } else {
+        anchors->setProperty(edge, static_cast<double>(value));
+    }
+}
+
+// Apply a font property via the `font` QFont (QObject::setProperty does not
+// resolve dotted paths like "font.pixelSize").
+void applyFont(QQuickItem *item, uint16_t prop, uint32_t value) {
+    QVariant fv = item->property("font");
+    QFont font = fv.value<QFont>();
+    switch (prop) {
+    case PL_PROP_FONT_SIZE:
+        font.setPixelSize(static_cast<int>(f32(value)));
+        break;
+    case PL_PROP_FONT_WEIGHT:
+        font.setWeight(static_cast<QFont::Weight>(weightFor(f32(value))));
+        break;
+    default:
+        return;
+    }
+    item->setProperty("font", QVariant::fromValue(font));
 }
 
 void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t value) {
@@ -654,26 +859,31 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
         return;
     }
     switch (prop) {
-    case PL_PROP_SPACING:
-        item->setProperty("spacing", static_cast<double>(f32(value)));
+    case PL_PROP_SPACING: {
+        QQuickItem *lay = layoutOf(item);
+        if (lay) {
+            lay->setProperty("spacing", static_cast<double>(f32(value)));
+        }
         break;
+    }
     case PL_PROP_ALIGNMENT:
-        item->setProperty("align", alignFor(value));
+        g.stack_align[id] = value;
+        reapplyStackAlignment(id);
         break;
     case PL_PROP_PADDING:
-        item->setProperty("padding", static_cast<double>(f32(value)));
+        applyPadding(item, nullptr, f32(value));
         break;
     case PL_PROP_PADDING_TOP:
-        item->setProperty("topPadding", static_cast<double>(f32(value)));
+        applyPadding(item, "topMargin", f32(value));
         break;
     case PL_PROP_PADDING_RIGHT:
-        item->setProperty("rightPadding", static_cast<double>(f32(value)));
+        applyPadding(item, "rightMargin", f32(value));
         break;
     case PL_PROP_PADDING_BOTTOM:
-        item->setProperty("bottomPadding", static_cast<double>(f32(value)));
+        applyPadding(item, "bottomMargin", f32(value));
         break;
     case PL_PROP_PADDING_LEFT:
-        item->setProperty("leftPadding", static_cast<double>(f32(value)));
+        applyPadding(item, "leftMargin", f32(value));
         break;
     case PL_PROP_WIDTH:
         applySize(item, "width", f32(value));
@@ -685,10 +895,10 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
         item->setProperty("color", QColor::fromRgba(value));
         break;
     case PL_PROP_FONT_SIZE:
-        item->setProperty("font.pixelSize", static_cast<double>(f32(value)));
+        applyFont(item, prop, value);
         break;
     case PL_PROP_FONT_WEIGHT:
-        item->setProperty("font.weight", weightFor(f32(value)));
+        applyFont(item, prop, value);
         break;
     case PL_PROP_OPACITY:
         item->setProperty("opacity", static_cast<double>(f32(value)));
@@ -764,9 +974,13 @@ void applyStringProperty(uint32_t id, uint16_t prop, const char *str, uint32_t l
     case PL_PROP_IMAGE_SOURCE:
         item->setProperty("source", value);
         break;
-    case PL_PROP_FONT_FAMILY:
-        item->setProperty("font.family", value);
+    case PL_PROP_FONT_FAMILY: {
+        QVariant fv = item->property("font");
+        QFont font = fv.value<QFont>();
+        font.setFamily(value);
+        item->setProperty("font", QVariant::fromValue(font));
         break;
+    }
     case PL_PROP_PROMPT:
     case PL_PROP_LABEL:
         item->setProperty("placeholderText", value);
@@ -795,14 +1009,29 @@ void resetNode(uint32_t id) {
     // Listener overlays are renderer-owned; the full property set that follows
     // RESET re-attaches them from the (re-sent) EVENT_LISTENERS value.
     detachPointerArea(id);
-    item->setProperty("spacing", 0.0);
-    item->setProperty("padding", 0.0);
-    item->setProperty("topPadding", 0.0);
-    item->setProperty("rightPadding", 0.0);
-    item->setProperty("bottomPadding", 0.0);
-    item->setProperty("leftPadding", 0.0);
+    g.stack_align.erase(id);
     item->setProperty("opacity", 1.0);
     item->setProperty("visible", true);
+    if (QQuickItem *lay = layoutOf(item)) {
+        lay->setProperty("spacing", 0.0);
+        QObject *anchors = lay->property("anchors").value<QObject *>();
+        if (anchors) {
+            anchors->setProperty("margins", 0.0);
+            anchors->setProperty("topMargin", 0.0);
+            anchors->setProperty("rightMargin", 0.0);
+            anchors->setProperty("bottomMargin", 0.0);
+            anchors->setProperty("leftMargin", 0.0);
+        }
+        const auto kids = lay->childItems();
+        for (QQuickItem *k : kids) {
+            if (QQuickLayoutAttached *a = layoutAttached(k)) {
+                a->setFillWidth(false);
+                a->setFillHeight(false);
+                a->setPreferredWidth(-1);
+                a->setPreferredHeight(-1);
+            }
+        }
+    }
 }
 
 // Rebuild a PICKER's ComboBox model from its ordered option children's text.
@@ -851,12 +1080,54 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
     if (!parent) {
         return;
     }
-    child->setParentItem(parent);
-    flushFill(child, parent);
+    // Stacks attach children to their inner layout (so `Layout` stretch works);
+    // a ScrollView attaches to its contentItem (so content sizes/scrolls it).
+    QQuickItem *attach = parent;
+    if (isStackComponent(g.components[parentId])) {
+        attach = layoutOf(parent);
+        if (!attach) {
+            attach = parent;
+        }
+    } else if (g.components[parentId] == PL_COMP_SCROLL) {
+        QVariant ci = parent->property("contentItem");
+        if (ci.isValid()) {
+            if (QQuickItem *c = ci.value<QQuickItem *>()) {
+                attach = c;
+            }
+        }
+    }
+
+    child->setParentItem(attach);
+    // Window content (pseudo-parent 0): roots fill the window (GTK's window
+    // child expands).
+    if (parentId == 0) {
+        QObject *anchors = child->property("anchors").value<QObject *>();
+        if (anchors) {
+            anchors->setProperty("fill", QVariant::fromValue(g.root));
+        }
+    }
+    applyStackAlignment(parentId, child);
+    // A ScrollView fills its parent by default (GTK: halign/valign = Fill), so a
+    // scroll content area stretches instead of collapsing to its content.
+    if (g.components[childId] == PL_COMP_SCROLL) {
+        if (isLayout(attach)) {
+            QQuickLayoutAttached *a = layoutAttached(child);
+            if (a) {
+                a->setFillWidth(true);
+                a->setFillHeight(true);
+            }
+        } else if (!isPositioner(attach)) {
+            QObject *anchors = child->property("anchors").value<QObject *>();
+            if (anchors) {
+                anchors->setProperty("fill", QVariant::fromValue(attach));
+            }
+        }
+    }
+    flushFill(child, attach);
     if (index == UINT32_MAX) {
         return; // append (already last)
     }
-    QList<QQuickItem *> siblingsList = parent->childItems();
+    QList<QQuickItem *> siblingsList = attach->childItems();
     siblingsList.removeAll(child);
     if (static_cast<int>(index) < siblingsList.size()) {
         QQuickItem *after = siblingsList.at(static_cast<int>(index));
@@ -891,6 +1162,7 @@ void deleteNode(uint32_t id) {
     g.nav_pages.erase(id);
     g.nav_page_tags.erase(id);
     g.gated_ids.erase(id);
+    g.stack_align.erase(id);
     detachPointerArea(id);
 }
 
@@ -1104,6 +1376,7 @@ void pathland_qt_layer_reset(void) {
     g.nav_pages.clear();
     g.nav_page_tags.clear();
     g.gated_ids.clear();
+    g.stack_align.clear();
     g.listener_masks.clear();
     g.mouse_areas.clear();
     g.pending_fill.clear();
@@ -1138,12 +1411,85 @@ uint32_t pathland_qt_layer_root_child_count(void) {
 
 uint32_t pathland_qt_layer_widget_child_count(uint32_t id) {
     QQuickItem *item = findWidget(id);
-    return item ? static_cast<uint32_t>(item->childItems().size()) : 0;
+    if (!item) {
+        return 0;
+    }
+    // A stack's children live in its inner layout (the wrapper holds the layout).
+    QQuickItem *lay = layoutOf(item);
+    return static_cast<uint32_t>((lay ? lay : item)->childItems().size());
 }
 
 uint32_t pathland_qt_layer_nav_depth(uint32_t slot) {
     auto it = g.nav_pages.find(slot);
     return it == g.nav_pages.end() ? 0 : static_cast<uint32_t>(it->second.size());
+}
+
+// Test hook: whether a widget's Layout attached fill flag is explicitly set
+// (which==0 -> fillWidth, else fillHeight). Proves FILL stretch wiring.
+uint32_t pathland_qt_layer_widget_fill(uint32_t id, uint32_t which) {
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return 0;
+    }
+    QQuickLayoutAttached *a = layoutAttached(item);
+    if (!a) {
+        return 0;
+    }
+    return which == 0 ? (a->isFillWidthSet() && a->fillWidth() ? 1u : 0u)
+                      : (a->isFillHeightSet() && a->fillHeight() ? 1u : 0u);
+}
+
+// Test hook: a widget's Layout attached preferred size (which==0 width, 1 height).
+double pathland_qt_layer_widget_preferred(uint32_t id, uint32_t which) {
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return -1;
+    }
+    QQuickLayoutAttached *a = layoutAttached(item);
+    if (!a) {
+        return -1;
+    }
+    return which == 0 ? a->preferredWidth() : a->preferredHeight();
+}
+
+// Test hook: a widget's current width (0) or height (1). Offscreen (no window
+// render) sizes are the anchors/layout result, proving fill geometry.
+double pathland_qt_layer_widget_size(uint32_t id, uint32_t which) {
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return -1;
+    }
+    return which == 0 ? item->width() : item->height();
+}
+
+// Test hook: whether a widget's anchors.fill is bound to the window contentItem
+// (roots are anchored to fill the window — the "sliver" fix).
+uint32_t pathland_qt_layer_anchors_fill(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return 0;
+    }
+    QObject *anchors = item->property("anchors").value<QObject *>();
+    if (!anchors) {
+        return 0;
+    }
+    QVariant fill = anchors->property("fill");
+    QQuickItem *target = fill.value<QQuickItem *>();
+    return target == g.root ? 1 : 0;
+}
+
+// Test hook: force one synchronous render pass (grabWindow) so anchors/layout
+// geometry is computed without entering the event loop. Offscreen + software
+// backend; the window must be shown once to get a real size.
+int pathland_qt_layer_render_once(void) {
+    if (!g.window) {
+        return 0;
+    }
+    if (!g.window->isVisible()) {
+        g.window->show();
+    }
+    QImage img = g.window->grabWindow();
+    return img.isNull() ? 0 : 1;
 }
 
 uint32_t pathland_qt_layer_widget_text(uint32_t id, char *out, uint32_t cap) {
@@ -1165,7 +1511,10 @@ uint32_t pathland_qt_layer_widget_prop_text(uint32_t id, const char *prop, char 
     if (!item || !out || cap == 0) {
         return 0;
     }
-    const QByteArray bytes = item->property(prop).toString().toUtf8();
+    // A stack's spacing/padding live on its inner layout (the wrapper holds it).
+    QQuickItem *lay = layoutOf(item);
+    QQuickItem *target = lay ? lay : item;
+    const QByteArray bytes = target->property(prop).toString().toUtf8();
     const uint32_t n = bytes.size() < static_cast<int>(cap) ? static_cast<uint32_t>(bytes.size())
                                                             : cap - 1;
     std::memcpy(out, bytes.constData(), n);
@@ -1190,6 +1539,7 @@ void pathland_qt_layer_shutdown(void) {
     g.nav_page_tags.clear();
     g.mouse_areas.clear();
     g.listener_masks.clear();
+    g.stack_align.clear();
     g.pending_fill.clear();
     delete g.window;
     g.window = nullptr;
