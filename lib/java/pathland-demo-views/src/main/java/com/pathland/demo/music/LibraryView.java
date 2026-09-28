@@ -38,7 +38,7 @@ public final class LibraryView implements View {
         return VStack.of(
                 Text.of("Library").with(FontSize.of(26), FontWeightMod.of(FontWeight.BOLD))
                         .with(AccessibilityRole.of(Roles.HEADER)),
-                Text.of(MusicPlayerView.TRACKS.size() + " songs · 3 albums")
+                Text.of(MusicPlayerView.TRACKS.size() + " songs · 2 albums")
                         .with(ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
                 Divider.of().with(Padding.of(0, 0, 0, 10)),
                 ScrollView.of(

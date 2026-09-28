@@ -59,7 +59,7 @@ class MusicPlayerViewTest {
 
         assertTrue(anySetText(frame, "Midnight Drive"), "first track title renders");
         assertTrue(anySetText(frame, "Blue Hour"), "a later track title renders");
-        assertTrue(anySetText(frame, "Night Bus"), "last track title renders");
+        assertTrue(anySetText(frame, "Tidal"), "last track title renders");
         assertTrue(anySetText(frame, "The Neon Signals"), "an artist renders");
         assertTrue(anySetText(frame, "Now Playing"), "the now-playing sidebar header renders");
         assertTrue(anySetText(frame, "Library"), "the library header renders");

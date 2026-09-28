@@ -48,16 +48,7 @@ public final class MusicPlayerView implements View {
                     "/_pathland/assets/audio/track5.mp3"),
             new Track("Tidal", "Mara Voss", "Blue Hour", 280f,
                     "/_pathland/assets/albumart/cover2.svg",
-                    "/_pathland/assets/audio/track6.mp3"),
-            new Track("Analog Heart", "The Weatherfield", "Analog Heart", 421f,
-                    "/_pathland/assets/albumart/cover3.svg",
-                    "/_pathland/assets/audio/track7.mp3"),
-            new Track("Slow Light", "The Weatherfield", "Analog Heart", 325f,
-                    "/_pathland/assets/albumart/cover3.svg",
-                    "/_pathland/assets/audio/track8.mp3"),
-            new Track("Night Bus", "The Weatherfield", "Analog Heart", 389f,
-                    "/_pathland/assets/albumart/cover3.svg",
-                    "/_pathland/assets/audio/track9.mp3"));
+                    "/_pathland/assets/audio/track6.mp3"));
 
     // App-owned, persisted per-session (the annotation processor wires State fields
     // by type; explicit keys keep the player's state scope stable).
