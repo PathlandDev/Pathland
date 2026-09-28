@@ -92,8 +92,8 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   element plays the current track and reports time/ended/volume back into the
   player state (spec/EVENTS.md Media) — `MEDIA_ENDED` auto-advances. Track
   selection / prev / next change app-owned state (position resets to 0). Each of
-  the 6 tracks is a **full-length** bundled song (`trackN.mp3`, durations match
-  the real files). Fictional catalog (`Track` record, 2 albums)
+  the 6 tracks is a **full-length** bundled song (`trackN.mp3`, mono 64k, durations
+  match the real files). Fictional catalog (`Track` record, 2 albums)
   with SVG album art + bundled royalty-free clips served from
   `/_pathland/assets/albumart/*.svg` and `/_pathland/assets/audio/*.mp3` in both
   SSR demos. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as
