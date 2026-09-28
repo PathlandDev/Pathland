@@ -53,6 +53,10 @@ export const CMD_SCROLL = 0x0b;
 export const CMD_WHEEL = 0x0c;
 export const CMD_DATE_CHANGED = 0x0d;
 export const CMD_NAVIGATE = 0x0e;
+export const CMD_MEDIA_PLAY_STATE_CHANGED = 0x0f;
+export const CMD_MEDIA_TIME_UPDATED = 0x10;
+export const CMD_MEDIA_ENDED = 0x11;
+export const CMD_MEDIA_VOLUME_CHANGED = 0x12;
 
 // EVENT flags
 export const FLAG_POINTER_SECONDARY = 0x0001;
@@ -112,6 +116,9 @@ export const PROP_BACKGROUND_COLOR = 0x1001;
 export const PROP_IMAGE_SOURCE = 0x1002;
 export const PROP_AUDIO_SOURCE = 0x1033;
 export const PROP_VIDEO_SOURCE = 0x1034;
+export const PROP_PLAYBACK_STATE = 0x1035;
+export const PROP_MEDIA_POSITION = 0x1036;
+export const PROP_MEDIA_VOLUME = 0x1037;
 export const PROP_BORDER_WIDTH = 0x1003;
 export const PROP_BORDER_COLOR = 0x1004;
 export const PROP_BORDER_RADIUS = 0x1005;

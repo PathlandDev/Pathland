@@ -22,6 +22,7 @@ public final class InputDispatcher {
     private final Map<Integer, Consumer<String>> textInputs;
     private final Map<Integer, Consumer<Float>> valueInputs;
     private final Map<Integer, DateInput> dateInputs;
+    private final Map<Integer, MediaInput> mediaInputs;
     private final Consumer<Event> navigateHandler;
     private final WritableSignal<String> activePath;
 
@@ -31,6 +32,7 @@ public final class InputDispatcher {
         this.textInputs = result.textInputs();
         this.valueInputs = result.valueInputs();
         this.dateInputs = result.dateInputs();
+        this.mediaInputs = result.mediaInputs();
         this.navigateHandler = result.navigateHandler();
         this.activePath = activePath;
     }
@@ -70,6 +72,26 @@ public final class InputDispatcher {
             DateInput sink = dateInputs.get(event.target());
             if (sink != null) {
                 sink.accept(event.days(), event.millisOfDay());
+            }
+        } else if (event.isMediaPlayStateChanged()) {
+            MediaInput sink = mediaInputs.get(event.target());
+            if (sink != null) {
+                sink.onPlayStateChanged(event.mediaPlaying());
+            }
+        } else if (event.isMediaTimeUpdated()) {
+            MediaInput sink = mediaInputs.get(event.target());
+            if (sink != null) {
+                sink.onTimeUpdated(event.mediaValue());
+            }
+        } else if (event.isMediaEnded()) {
+            MediaInput sink = mediaInputs.get(event.target());
+            if (sink != null) {
+                sink.onEnded();
+            }
+        } else if (event.isMediaVolumeChanged()) {
+            MediaInput sink = mediaInputs.get(event.target());
+            if (sink != null) {
+                sink.onVolumeChanged(event.mediaValue());
             }
         } else if (event.isNavigate()) {
             if (event.url() != null) {

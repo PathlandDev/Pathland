@@ -88,6 +88,17 @@ pub mod event {
     /// batch string section) to the destination URL; without it, the event means
     /// "back one step" (native back affordance) and `B`/`C` are ignored.
     pub const NAVIGATE: u8 = 0x0E;
+    /// **Draft.** A bound `AUDIO`/`VIDEO` node's playback state changed
+    /// (host → guest); `B` = 0/1. Reported only when `PLAYBACK_STATE` is bound.
+    pub const MEDIA_PLAY_STATE_CHANGED: u8 = 0x0F;
+    /// **Draft.** A bound media node's current position (host → guest); `B` =
+    /// seconds (f32). Reported while playing; an app-initiated seek is not echoed.
+    pub const MEDIA_TIME_UPDATED: u8 = 0x10;
+    /// **Draft.** A bound media node reached the end of its media (host → guest).
+    pub const MEDIA_ENDED: u8 = 0x11;
+    /// **Draft.** A bound media node's volume changed (host → guest); `B` =
+    /// volume (f32, 0..1).
+    pub const MEDIA_VOLUME_CHANGED: u8 = 0x12;
 }
 
 /// Commands within the `META` category.
@@ -340,6 +351,15 @@ pub mod property_id {
     pub const AUDIO_SOURCE: u16 = 0x1033;
     /// **Draft.** Video source (STRING asset reference, see `IMAGE_SOURCE`).
     pub const VIDEO_SOURCE: u16 = 0x1034;
+    /// **Draft.** Media playback state (U32 0=pause, 1=play) on an `AUDIO`/`VIDEO`
+    /// node. When bound, the renderer reports `MEDIA_PLAY_STATE_CHANGED`.
+    pub const PLAYBACK_STATE: u16 = 0x1035;
+    /// **Draft.** Media position in seconds (F32) on an `AUDIO`/`VIDEO` node; a
+    /// change seeks. When bound, the renderer reports `MEDIA_TIME_UPDATED`.
+    pub const MEDIA_POSITION: u16 = 0x1036;
+    /// **Draft.** Media volume (F32 0..1) on an `AUDIO`/`VIDEO` node. When bound,
+    /// the renderer reports `MEDIA_VOLUME_CHANGED`.
+    pub const MEDIA_VOLUME: u16 = 0x1037;
     pub const BORDER_WIDTH: u16 = 0x1003;
     pub const BORDER_COLOR: u16 = 0x1004;
     pub const BORDER_RADIUS: u16 = 0x1005;

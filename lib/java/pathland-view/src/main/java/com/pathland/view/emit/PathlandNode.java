@@ -77,6 +77,10 @@ public final class PathlandNode {
     /** Writable date-input sink (date pickers); the emitter routes DATE_CHANGED into it. */
     public DateInput dateInput;
 
+    /** Media-event sink (bound `AUDIO`/`VIDEO`); the emitter routes the media
+     *  events (spec/EVENTS.md) into it — play state, time, ended, volume. */
+    public MediaInput mediaInput;
+
     /**
      * Structural slot: when non-null this node's single child subtree is selected by
      * a signal and **reconciled** by the emitter on selector change (spec DSL.md §3.4).

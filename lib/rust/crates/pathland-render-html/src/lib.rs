@@ -457,6 +457,20 @@ fn rgba(argb: u32) -> String {
     format!("rgba({r},{g},{b},{a})")
 }
 
+/// Whether an `AUDIO`/`VIDEO` node is **app-driven**: it binds at least one
+/// media control property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`),
+/// so the renderer reports playback events (spec/EVENTS.md Media) and the DOM
+/// client marks the node for listener wiring.
+fn app_driven_media(node: &Node) -> bool {
+    [
+        property_id::PLAYBACK_STATE,
+        property_id::MEDIA_POSITION,
+        property_id::MEDIA_VOLUME,
+    ]
+    .iter()
+    .any(|p| node.properties.contains_key(p))
+}
+
 /// A `WIDTH`/`HEIGHT` hint as CSS: `FILL` (-1) → `100%`, `HUG_CONTENT` (-2) →
 /// `fit-content`, otherwise pixels.
 fn size_css(v: f32) -> String {
@@ -1023,8 +1037,21 @@ impl HtmlRenderer {
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                // Playback interaction is renderer-native (`controls`).
-                format!("<audio{data_id}{event}{aria} src=\"{src}\" controls{style}></audio>")
+                // An app-driven node (any media control property bound) carries a
+                // marker so the DOM client wires its playback events (EVENTS.md).
+                let app_driven = app_driven_media(node);
+                let marker = if app_driven { " data-pathland-media" } else { "" };
+                if node.children.is_empty() {
+                    // Renderer-native controls (the default `AudioStyle` emits no
+                    // children); the app supplies only the source.
+                    format!("<audio{data_id}{event}{aria} src=\"{src}\" controls{marker}{style}></audio>")
+                } else {
+                    // Custom `AudioStyle`: a hidden media element + the custom control
+                    // children (`.pathland-media` hides the bare media, CSS below).
+                    format!(
+                        "<div{data_id}{event}{aria}{marker} class=\"pathland-media\"{style}><audio src=\"{src}\"></audio>{children}</div>"
+                    )
+                }
             }
             component_type::VIDEO => {
                 let src = escape(
@@ -1033,8 +1060,17 @@ impl HtmlRenderer {
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                // Playback interaction is renderer-native (`controls`).
-                format!("<video{data_id}{event}{aria} src=\"{src}\" controls{style}></video>")
+                let app_driven = app_driven_media(node);
+                let marker = if app_driven { " data-pathland-media" } else { "" };
+                if node.children.is_empty() {
+                    // Renderer-native controls (the default `VideoStyle`).
+                    format!("<video{data_id}{event}{aria} src=\"{src}\" controls{marker}{style}></video>")
+                } else {
+                    // Custom `VideoStyle`: hidden media element + the control children.
+                    format!(
+                        "<div{data_id}{event}{aria}{marker} class=\"pathland-media\"{style}><video src=\"{src}\"></video>{children}</div>"
+                    )
+                }
             }
             component_type::COLOR => {
                 let tag = semantic.unwrap_or("div");
@@ -1794,6 +1830,71 @@ mod tests {
         assert!(video.contains("<video data-pathland-id=\"2\" src=\"https://example.com/sample.mp4\" controls"), "video native controls");
         let audio = renderer.render_fragment(&opcodes, &strings, 3);
         assert!(audio.contains("<audio data-pathland-id=\"3\" src=\"https://example.com/sample.mp3\" controls"), "audio native controls");
+    }
+
+    /// A media node with custom control children (custom `AudioStyle`) wraps a
+    /// hidden, control-less media element next to the app's control UI.
+    #[test]
+    fn custom_controls_media_wraps_hidden_element_with_children() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        // AUDIO node 1 with a BUTTON child 2 (the custom transport control).
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::AUDIO as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::BUTTON as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&(29u32).to_le_bytes());
+        strings.extend_from_slice(b"https://example.com/track.mp3");
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
+            0,
+        ));
+        // The app-bound media control properties ride the node.
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::U32 as u32) << 16) | property_id::PLAYBACK_STATE as u32,
+            1,
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::MEDIA_POSITION as u32,
+            12.5f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::MEDIA_VOLUME as u32,
+            0.5f32.to_bits(),
+        ));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_fragment(&opcodes, &strings, 1);
+        assert!(
+            html.contains("<div data-pathland-id=\"1\" data-pathland-media class=\"pathland-media\""),
+            "custom controls wrap in .pathland-media: {html}"
+        );
+        assert!(
+            html.contains("<audio src=\"https://example.com/track.mp3\"></audio>"),
+            "the wrapper holds a control-less audio element"
+        );
+        assert!(
+            !html.contains("controls"),
+            "the wrapped media element has no native controls"
+        );
+        assert!(html.contains("<button"), "the custom control children render");
     }
 
     #[test]

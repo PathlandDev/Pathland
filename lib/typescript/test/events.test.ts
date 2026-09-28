@@ -6,6 +6,10 @@ import {
   encodeFocusChanged,
   encodeKeyDown,
   encodeKeyUp,
+  encodeMediaEnded,
+  encodeMediaPlayStateChanged,
+  encodeMediaTimeUpdated,
+  encodeMediaVolumeChanged,
   encodeNavigate,
   encodeNavigateBack,
   encodePointerDown,
@@ -28,6 +32,10 @@ import {
   CMD_FOCUS_CHANGED,
   CMD_KEY_DOWN,
   CMD_KEY_UP,
+  CMD_MEDIA_ENDED,
+  CMD_MEDIA_PLAY_STATE_CHANGED,
+  CMD_MEDIA_TIME_UPDATED,
+  CMD_MEDIA_VOLUME_CHANGED,
   CMD_NAVIGATE,
   CMD_POINTER_DOWN,
   CMD_POINTER_UP,
@@ -177,5 +185,25 @@ describe("event encoders", () => {
     expect(new Float32Array(new Uint32Array([width.b]).buffer)[0]).toBe(800);
     expect(new Float32Array(new Uint32Array([height.b]).buffer)[0]).toBe(600);
     expect(readString(batch.strings, route.b)).toBe("/users/42");
+  });
+
+  it("media event encoders carry the media node id + payload", () => {
+    const play = eventOf(encodeMediaPlayStateChanged(7, true));
+    expect(play.command).toBe(CMD_MEDIA_PLAY_STATE_CHANGED);
+    expect(play.a).toBe(7);
+    expect(play.b).toBe(1);
+
+    const time = eventOf(encodeMediaTimeUpdated(7, 12.5));
+    expect(time.command).toBe(CMD_MEDIA_TIME_UPDATED);
+    expect(time.a).toBe(7);
+    expect(new Float32Array(new Uint32Array([time.b]).buffer)[0]).toBe(12.5);
+
+    const ended = eventOf(encodeMediaEnded(7));
+    expect(ended.command).toBe(CMD_MEDIA_ENDED);
+    expect(ended.a).toBe(7);
+
+    const volume = eventOf(encodeMediaVolumeChanged(7, 0.5));
+    expect(volume.command).toBe(CMD_MEDIA_VOLUME_CHANGED);
+    expect(new Float32Array(new Uint32Array([volume.b]).buffer)[0]).toBe(0.5);
   });
 });

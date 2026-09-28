@@ -260,27 +260,38 @@ A static image or icon asset. Asset loading is client-owned.
 
 ### Audio — `AUDIO` 0x09
 
-An audio playback node. Playback interaction (play/pause/volume/seek) is
-**renderer-native** (the web renderer emits `controls`); the app supplies only
-the source reference and size/layout.
+An audio playback node. Playback is **renderer-native by default** (the web
+renderer emits `controls`); the app supplies the source reference. A **custom
+`AudioStyle`** supplies app-driven control children (transport buttons, seek,
+volume) — the node then carries the media control properties below and the
+renderer renders a hidden media element alongside the custom controls.
 
-- **Protocol**: a leaf node; source via `AUDIO_SOURCE` (0x1033, STRING: a
-  resource name, file path, or absolute URL — an asset reference, never
-  embedded in the opcode stream).
-- **Properties**: `AUDIO_SOURCE`, size modifiers.
-- **Events**: none by default.
-- **Renderer mapping**: GTK `GtkMediaFile`/GStreamer; HTML `<audio controls>`.
+- **Protocol**: a leaf node by default (no children); source via `AUDIO_SOURCE`
+  (0x1033, STRING: a resource name, file path, or absolute URL — an asset
+  reference, never embedded in the opcode stream). With a custom style the
+  node's children are the custom control UI.
+- **Properties**: `AUDIO_SOURCE`, the media control properties —
+  `PLAYBACK_STATE` (0x1035, U32 0/1), `MEDIA_POSITION` (0x1036, F32 seconds;
+  a change seeks), `MEDIA_VOLUME` (0x1037, F32 0..1) — and size modifiers.
+- **Events**: none by default; when a control property is bound, the renderer
+  reports `MEDIA_PLAY_STATE_CHANGED` / `MEDIA_TIME_UPDATED` / `MEDIA_ENDED` /
+  `MEDIA_VOLUME_CHANGED` (see EVENTS.md).
+- **Renderer mapping**: GTK `GtkMediaFile`/GStreamer; HTML `<audio controls>`
+  when there are no children, else a hidden `<audio>` + the children.
 
 ### Video — `VIDEO` 0x0A
 
-A video playback node. Playback interaction is **renderer-native** (`controls`);
-the app supplies the source reference and size.
+A video playback node. Playback is **renderer-native by default** (`controls`);
+a custom `VideoStyle` supplies app-driven control children, mirroring `AUDIO`.
 
-- **Protocol**: a leaf node; source via `VIDEO_SOURCE` (0x1034, STRING asset
-  reference).
-- **Properties**: `VIDEO_SOURCE`, `CONTENT_MODE`, size modifiers.
-- **Events**: none by default.
-- **Renderer mapping**: GTK `GtkVideo`/`GtkMediaFile`; HTML `<video controls>`.
+- **Protocol**: a leaf node by default; source via `VIDEO_SOURCE` (0x1034,
+  STRING asset reference). Custom style → children = the control UI.
+- **Properties**: `VIDEO_SOURCE`, `CONTENT_MODE`, the media control properties
+  (`PLAYBACK_STATE`, `MEDIA_POSITION`, `MEDIA_VOLUME`), size modifiers.
+- **Events**: none by default; the media events above when a control property
+  is bound.
+- **Renderer mapping**: GTK `GtkVideo`/`GtkMediaFile`; HTML `<video controls>`
+  when there are no children, else a hidden `<video>` + the children.
 - **Note**: a poster/preview frame is a planned draft (`POSTER_SOURCE`); a
   video plays fine without one.
 

@@ -18,6 +18,7 @@ import {
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
+  COMPONENT_AUDIO,
   COMPONENT_COLOR,
   COMPONENT_GRID,
   COMPONENT_LAZY_HGRID,
@@ -26,6 +27,7 @@ import {
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_SHAPE,
   COMPONENT_TEXT,
+  COMPONENT_VIDEO,
   COMPONENT_ZSTACK,
   PROP_BINDING_ID,
   PROP_AUDIO_SOURCE,
@@ -36,8 +38,11 @@ import {
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
+  PROP_MEDIA_POSITION,
+  PROP_MEDIA_VOLUME,
   PROP_NAV_CHROME,
   PROP_NAV_DEPTH,
+  PROP_PLAYBACK_STATE,
   PROP_PROGRESS,
   PROP_PROMPT,
   PROP_ROLE,
@@ -58,6 +63,12 @@ import { readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
 import { applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";
+import {
+  encodeMediaEnded,
+  encodeMediaPlayStateChanged,
+  encodeMediaTimeUpdated,
+  encodeMediaVolumeChanged,
+} from "./events";
 import {
   GENERIC_COMPONENTS,
   NATIVE_ROLE_COMPONENTS,
@@ -96,6 +107,11 @@ export interface DomRenderer {
   onNavigateBack?: () => void;
   /** Optional design-token sink (defaults to document-root CSS variables). */
   tokenSink?: DesignTokenSink;
+  /**
+   * Optional media-event sink: the host wires it to `transport.send` so a bound
+   * `AUDIO`/`VIDEO` node can report play/pause/time/ended/volume (host → guest).
+   */
+  onMediaEvent?: (batch: Uint8Array) => void;
 }
 
 /** Apply every opcode in a batch to the DOM (TREE structure + STYLE/META deltas). */
@@ -201,26 +217,36 @@ function applyTree(op: Opcode, r: DomRenderer): void {
       break;
     }
     case CMD_INSERT_CHILD: {
-      const parent = r.byId.get(op.a);
       const child = r.byId.get(op.b);
-      if (parent && child) {
-        const container = childrenContainer(parent);
-        // Hydration/idempotent-replay guard: skip when the child is already there
-        // (the SSR DOM already holds the initial tree; a resync replays it).
-        if (container && !container.contains(child)) {
-          let placed = placedChild(parent, child);
-          if (componentByNode.get(parent) === COMPONENT_PICKER && child instanceof HTMLElement) {
-            // Picker children are option labels → materialize native `<option>`s.
-            placed = pickerOption(child);
-            r.byId.set(op.b, placed);
-            componentByNode.set(placed, COMPONENT_TEXT);
-          }
-          insertAt(container, placed, op.c);
-          if (componentByNode.get(parent) === COMPONENT_PICKER) {
-            renumberPickerOptions(container);
-          }
-          maybeAnimateInsert(parent, placed);
+      const parentNode = r.byId.get(op.a);
+      if (!child || !parentNode) {
+        break;
+      }
+      let parent: Node = parentNode;
+      // A media node gaining custom control children morphs its bare media
+      // element into a `.pathland-media` wrapper (the Rust SSR emits the same
+      // structure); the children then attach to the wrapper.
+      const comp = componentByNode.get(parentNode);
+      if ((comp === COMPONENT_AUDIO || comp === COMPONENT_VIDEO)
+          && parentNode instanceof HTMLElement && parentNode.matches("audio,video")) {
+        parent = mediaToWrapper(parentNode, r);
+      }
+      const container = childrenContainer(parent);
+      // Hydration/idempotent-replay guard: skip when the child is already there
+      // (the SSR DOM already holds the initial tree; a resync replays it).
+      if (container && !container.contains(child)) {
+        let placed = placedChild(parent, child);
+        if (comp === COMPONENT_PICKER && child instanceof HTMLElement) {
+          // Picker children are option labels → materialize native `<option>`s.
+          placed = pickerOption(child);
+          r.byId.set(op.b, placed);
+          componentByNode.set(placed, COMPONENT_TEXT);
         }
+        insertAt(container, placed, op.c);
+        if (comp === COMPONENT_PICKER) {
+          renumberPickerOptions(container);
+        }
+        maybeAnimateInsert(parent, placed);
       }
       break;
     }
@@ -514,6 +540,12 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
           r.onRoute?.(text); // host mirrors the URL (history.pushState)
         } else {
           applyStringProperty(el, propId, text);
+          if (propId === PROP_AUDIO_SOURCE || propId === PROP_VIDEO_SOURCE) {
+            // Wire a media node's element + listeners and finalize native
+            // controls (a control-less media node renders native controls).
+            setupMediaElement(el, r);
+            finalizeNativeMedia(el);
+          }
         }
       } else if (valueType === VAL_DESIGN_TOKEN) {
         applyTokenRefProperty(el, propId, readString(strings, op.c));
@@ -546,6 +578,9 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
           el.removeAttribute("data-pathland-nav-chrome");
         }
         updateNavBackButton(el, r);
+      } else if (propId === PROP_PLAYBACK_STATE || propId === PROP_MEDIA_POSITION
+              || propId === PROP_MEDIA_VOLUME) {
+        applyMediaProperty(el, r, propId, valueType, op.c);
       } else {
         applyNumericProperty(el, propId, valueType, op.c);
       }
@@ -788,4 +823,151 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
   }
   componentByNode.set(fresh, COMPONENT_PROGRESS_VIEW);
   return fresh;
+}
+
+// --- media (app-driven AUDIO/VIDEO) ---
+
+/** Per-element media echo suppression: when the app drives the media element,
+ *  the resulting DOM events are ignored for a short window so the app's own
+ *  state doesn't loop back. */
+const mediaState = new WeakMap<HTMLMediaElement, { suppressUntil: number; suppressTimeUntil: number }>();
+
+/** The media element of a node: the element itself when it IS the media, else the
+ *  inner `<audio>`/`<video>` of a `.pathland-media` wrapper. */
+function mediaElementOf(el: HTMLElement): HTMLMediaElement | null {
+  return el.matches("audio,video")
+    ? (el as HTMLMediaElement)
+    : el.querySelector<HTMLMediaElement>("audio,video");
+}
+
+/** Attach a media node's element once: wire the app-driven media element to the
+ *  host's media-event sink (play/pause/time/ended/volume, spec/EVENTS.md). */
+export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
+  const media = mediaElementOf(el);
+  if (!media || mediaState.has(media)) {
+    return;
+  }
+  const state = { suppressUntil: 0, suppressTimeUntil: 0 };
+  mediaState.set(media, state);
+  const id = Number(el.getAttribute("data-pathland-id"));
+  const send = r.onMediaEvent;
+  if (!send) {
+    return;
+  }
+  // Play/pause/volume are reported only when the media has NATIVE controls —
+  // the only case a user drives them directly. App-driven custom-control media
+  // (a hidden element under app controls) never echoes them: every such change
+  // is app-initiated, so reporting it back would lock the player state.
+  if (media.controls) {
+    media.addEventListener("play", () => {
+      if (performance.now() >= state.suppressUntil) {
+        send(encodeMediaPlayStateChanged(id, true));
+      }
+    });
+    media.addEventListener("pause", () => {
+      if (performance.now() >= state.suppressUntil) {
+        send(encodeMediaPlayStateChanged(id, false));
+      }
+    });
+    media.addEventListener("volumechange", () => {
+      if (performance.now() >= state.suppressUntil) {
+        send(encodeMediaVolumeChanged(id, media.volume));
+      }
+    });
+  }
+  // Time + ended are always reported: the app displays progress and advances on end.
+  media.addEventListener("timeupdate", () => {
+    if (!media.paused && performance.now() >= state.suppressTimeUntil) {
+      send(encodeMediaTimeUpdated(id, media.currentTime));
+    }
+  });
+  media.addEventListener("ended", () => {
+    send(encodeMediaEnded(id));
+  });
+}
+
+/** Apply a media control property: drive the media element, suppress the echo,
+ *  and wire its listeners. */
+function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, valueType: number, bits: number): void {
+  const media = mediaElementOf(el);
+  if (!media) {
+    return;
+  }
+  setupMediaElement(el, r);
+  const state = mediaState.get(media);
+  if (propId === PROP_PLAYBACK_STATE) {
+    const playing = (valueType === VAL_U8 ? bits & 0xff : bits) !== 0;
+    if (playing) {
+      void media.play();
+    } else {
+      media.pause();
+    }
+    if (state) {
+      state.suppressUntil = performance.now() + 100;
+    }
+  } else if (propId === PROP_MEDIA_POSITION) {
+    // A seek only when it is meaningful: the app's position echoes every
+    // timeupdate, so a near-identical write must NOT seek — it would interrupt
+    // the just-started playback (and echo a pause back, locking the player).
+    const target = f32FromBits(bits);
+    if (Math.abs(media.currentTime - target) > 0.25) {
+      media.currentTime = target;
+      if (state) {
+        state.suppressTimeUntil = performance.now() + 250;
+      }
+    }
+  } else if (propId === PROP_MEDIA_VOLUME) {
+    media.volume = Math.min(1, Math.max(0, f32FromBits(bits)));
+    if (state) {
+      state.suppressUntil = performance.now() + 100;
+    }
+  }
+}
+
+/** A live-created media node with no control children renders with native
+ *  `controls` (the default AudioStyle/VideoStyle), mirroring the Rust SSR. */
+function finalizeNativeMedia(el: HTMLElement): void {
+  const media = el.matches("audio,video")
+    ? (el as HTMLMediaElement)
+    : el.querySelector<HTMLMediaElement>("audio,video");
+  if (!media) {
+    return;
+  }
+  const hasCustomChildren = el.matches("audio,video")
+    ? el.childElementCount > 0
+    : el.childElementCount > 1;
+  if (!hasCustomChildren) {
+    media.controls = true;
+  }
+}
+
+/** Morph a bare media element into a `.pathland-media` wrapper (a node gaining
+ *  custom control children), preserving the node's identity + style and moving
+ *  the media element inside — the structure the Rust SSR emits. */
+function mediaToWrapper(el: HTMLElement, r: DomRenderer): HTMLElement {
+  const wrapper = document.createElement("div");
+  wrapper.className = "pathland-media";
+  wrapper.setAttribute("data-pathland-media", "");
+  for (const attr of Array.from(el.attributes)) {
+    if (attr.name === "style") {
+      wrapper.style.cssText = el.style.cssText;
+    } else {
+      wrapper.setAttribute(attr.name, attr.value);
+    }
+  }
+  el.removeAttribute("data-pathland-id");
+  el.style.cssText = "";
+  wrapper.append(el);
+  if (el.parentNode) {
+    el.parentNode.replaceChild(wrapper, el);
+  }
+  const id = Number(wrapper.getAttribute("data-pathland-id") ?? 0);
+  if (id) {
+    r.byId.set(id, wrapper);
+  }
+  const c = componentByNode.get(el);
+  if (c !== undefined) {
+    componentByNode.set(wrapper, c);
+  }
+  return wrapper;
 }

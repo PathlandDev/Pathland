@@ -24,6 +24,7 @@ import {
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
   PROP_LINE_LIMIT,
+  PROP_MEDIA_POSITION,
   PROP_NAV_CHROME,
   PROP_NAV_DEPTH,
   PROP_PROGRESS,
@@ -56,6 +57,31 @@ beforeEach(() => {
 function renderer(): DomRenderer {
   return { byId: new Map<number, Node>() };
 }
+
+describe("applyBatch · media", () => {
+  it("seeks only on a meaningful MEDIA_POSITION change (no echo interruption)", () => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const r = renderer();
+    r.byId.set(1, wrapper);
+
+    // A near-identical position (a timeupdate echo) must NOT seek the element.
+    audio.currentTime = 3;
+    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_F32 << 16) | PROP_MEDIA_POSITION) >>> 0, f32bits(3.1)]], stringEntry(""))), r);
+    expect(audio.currentTime).toBe(3);
+
+    // A real seek (a user drag) does.
+    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_F32 << 16) | PROP_MEDIA_POSITION) >>> 0, f32bits(120)]], stringEntry(""))), r);
+    expect(audio.currentTime).toBe(120);
+  });
+});
 
 describe("applyBatch · STYLE", () => {
   it("applies SET_TEXT to a hydrated span", () => {

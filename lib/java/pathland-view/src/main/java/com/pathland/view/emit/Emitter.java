@@ -47,6 +47,7 @@ public final class Emitter {
     private final Map<Integer, Consumer<String>> textInputs = new LinkedHashMap<>();
     private final Map<Integer, Consumer<Float>> valueInputs = new LinkedHashMap<>();
     private final Map<Integer, DateInput> dateInputs = new LinkedHashMap<>();
+    private final Map<Integer, MediaInput> mediaInputs = new LinkedHashMap<>();
     private final Map<Integer, Runnable> navigateActions = new LinkedHashMap<>();
     private final List<EffectRef> bindings = new ArrayList<>();
     private final Map<Integer, List<EffectRef>> nodeBindings = new LinkedHashMap<>();
@@ -90,6 +91,7 @@ public final class Emitter {
         textInputs.clear();
         valueInputs.clear();
         dateInputs.clear();
+        mediaInputs.clear();
         navigateActions.clear();
         navigateHandler = null;
         collectInputs(tree);
@@ -109,6 +111,7 @@ public final class Emitter {
                 Collections.unmodifiableMap(textInputs),
                 Collections.unmodifiableMap(valueInputs),
                 Collections.unmodifiableMap(dateInputs),
+                Collections.unmodifiableMap(mediaInputs),
                 Collections.unmodifiableMap(navigateActions),
                 navigateHandler);
     }
@@ -179,6 +182,9 @@ public final class Emitter {
         if (node.dateInput != null) {
             dateInputs.put(node.id, node.dateInput);
         }
+        if (node.mediaInput != null) {
+            mediaInputs.put(node.id, node.mediaInput);
+        }
         if (node.navigateHandler != null) {
             navigateHandler = node.navigateHandler; // global: a NavigationContainer's router sink
         }
@@ -207,6 +213,7 @@ public final class Emitter {
         textInputs.remove(node.id);
         valueInputs.remove(node.id);
         dateInputs.remove(node.id);
+        mediaInputs.remove(node.id);
         navigateActions.remove(node.id);
         for (PathlandNode child : node.children) {
             forgetInputs(child);

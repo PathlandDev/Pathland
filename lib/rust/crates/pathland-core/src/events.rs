@@ -102,6 +102,19 @@ pub enum Event {
     /// navigated to (browser `popstate`/back/forward/deep-link), resolved from
     /// the string section / event arena; `url: None` is a native back request.
     Navigate { url: Option<String> },
+    /// A bound `AUDIO`/`VIDEO` node's playback state changed (host → guest).
+    /// Draft command 0x0F; reported only when `PLAYBACK_STATE` is bound.
+    MediaPlayStateChanged { target: u32, playing: bool },
+    /// A bound media node's current playback position (host → guest). Draft
+    /// command 0x10; `seconds` is the position in seconds (f32), reported while
+    /// playing. An app-initiated seek (`MEDIA_POSITION` change) is not echoed.
+    MediaTimeUpdated { target: u32, seconds: f32 },
+    /// A bound media node reached the end of its media (host → guest). Draft
+    /// command 0x11.
+    MediaEnded { target: u32 },
+    /// A bound media node's volume changed (host → guest). Draft command 0x12;
+    /// `volume` is in the range 0..1 (f32).
+    MediaVolumeChanged { target: u32, volume: f32 },
 }
 
 impl Event {
@@ -263,6 +276,38 @@ impl Event {
                 0,
                 0,
             ),
+            Event::MediaPlayStateChanged { target, playing } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_PLAY_STATE_CHANGED,
+                0,
+                *target,
+                u32::from(*playing),
+                0,
+            ),
+            Event::MediaTimeUpdated { target, seconds } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_TIME_UPDATED,
+                0,
+                *target,
+                seconds.to_bits(),
+                0,
+            ),
+            Event::MediaEnded { target } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_ENDED,
+                0,
+                *target,
+                0,
+                0,
+            ),
+            Event::MediaVolumeChanged { target, volume } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_VOLUME_CHANGED,
+                0,
+                *target,
+                volume.to_bits(),
+                0,
+            ),
         }
     }
 }
@@ -371,6 +416,19 @@ impl TryFrom<Opcode> for Event {
                     Ok(Event::Navigate { url: None })
                 }
             }
+            crate::event::MEDIA_PLAY_STATE_CHANGED => Ok(Event::MediaPlayStateChanged {
+                target: op.a(),
+                playing: op.b() != 0,
+            }),
+            crate::event::MEDIA_TIME_UPDATED => Ok(Event::MediaTimeUpdated {
+                target: op.a(),
+                seconds: op.b_f32(),
+            }),
+            crate::event::MEDIA_ENDED => Ok(Event::MediaEnded { target: op.a() }),
+            crate::event::MEDIA_VOLUME_CHANGED => Ok(Event::MediaVolumeChanged {
+                target: op.a(),
+                volume: op.b_f32(),
+            }),
             _ => Err(EventError::UnknownCommand),
         }
     }
@@ -498,6 +556,36 @@ mod tests {
         ] {
             assert_eq!(round_trip(e.clone()), e);
         }
+    }
+
+    #[test]
+    fn media_events_round_trip() {
+        for e in [
+            Event::MediaPlayStateChanged { target: 7, playing: true },
+            Event::MediaPlayStateChanged { target: 7, playing: false },
+            Event::MediaTimeUpdated { target: 7, seconds: 12.5 },
+            Event::MediaEnded { target: 7 },
+            Event::MediaVolumeChanged { target: 7, volume: 0.5 },
+        ] {
+            assert_eq!(round_trip(e.clone()), e);
+        }
+        // Conformance vector bytes (spec/CONFORMANCE.md vectors 23–26).
+        assert_eq!(
+            Event::MediaPlayStateChanged { target: 7, playing: true }.encode().to_bytes(),
+            [0x03, 0x0F, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::MediaTimeUpdated { target: 7, seconds: 12.5 }.encode().to_bytes(),
+            [0x03, 0x10, 0, 0, 7, 0, 0, 0, 0, 0, 0x48, 0x41, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::MediaEnded { target: 7 }.encode().to_bytes(),
+            [0x03, 0x11, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::MediaVolumeChanged { target: 7, volume: 0.5 }.encode().to_bytes(),
+            [0x03, 0x12, 0, 0, 7, 0, 0, 0, 0, 0, 0x00, 0x3F, 0, 0, 0, 0]
+        );
     }
 
     #[test]

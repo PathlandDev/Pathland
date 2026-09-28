@@ -4,7 +4,7 @@
 // SSR HTML carries a `data-event-listeners` mask). Bundle: dist/pathland-dom-renderer.js
 
 import type { DomRenderer } from "./apply";
-import { updateNavBackButtons } from "./apply";
+import { setupMediaElement, updateNavBackButtons } from "./apply";
 import { Transport } from "./transport";
 import { log } from "./log";
 import {
@@ -160,6 +160,19 @@ function boot(): void {
     },
   });
   transport.start();
+
+  // Media events from app-driven AUDIO/VIDEO nodes (spec/EVENTS.md Media) ride
+  // the same WebSocket as every raw input.
+  renderer.onMediaEvent = (batch) => {
+    if (transport.open) {
+      transport.send(batch);
+    }
+  };
+  // Wire app-driven media nodes hydrated from the SSR HTML (they carry the
+  // `data-pathland-media` marker) so playback state reports to the app.
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
+    setupMediaElement(el, renderer);
+  }
 
   // Enrich the environment after connect: a window resize re-emits the viewport
   // fields (the mechanism future platform fields ride too).

@@ -82,15 +82,13 @@ export function createElement(component: number): Node {
       return el;
     }
     case COMPONENT_AUDIO: {
-      // Playback interaction is renderer-native (`controls`), mirroring the Rust SSR.
-      const el = document.createElement("audio");
-      el.controls = true;
-      return el;
+      // A bare media element: native (no children) gets `controls` in apply; a
+      // node that gains custom control children is morphed to a
+      // `.pathland-media` wrapper on first insert (mirrors the Rust SSR).
+      return document.createElement("audio");
     }
     case COMPONENT_VIDEO: {
-      const el = document.createElement("video");
-      el.controls = true;
-      return el;
+      return document.createElement("video");
     }
     case COMPONENT_COLOR: {
       // Layout-greedy (SwiftUI Color): expands to the available space unless a
