@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3MA81SNX1J52FYJRQSKRNQN",
+  "strategy": "manual-commit",
+  "branch": "feat/qt-renderer",
+  "checkpoints_count": 16,
+  "files_touched": [
+    "lib/rust/crates/pathland-render-qt/build.rs",
+    "lib/rust/crates/pathland-render-qt/src/ffi.rs",
+    "lib/rust/crates/pathland-render-qt/src/qt/pathland_qt.h",
+    "lib/rust/crates/pathland-render-qt/src/qt/qt_layer.cpp",
+    "lib/rust/crates/pathland-render-qt/src/renderer.rs",
+    "lib/rust/crates/pathland-render-qt/status.md",
+    "lib/rust/crates/pathland-render-qt/todo.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1345294,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 39761920,
+    "output_tokens": 166298,
+    "api_call_count": 182
+  }
+}

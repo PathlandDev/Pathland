@@ -1,0 +1,152 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3MA81SNX1J52FYJRQSKRNQN",
+  "session_id": "ses_f19ed713affeZaLNsSlXVxmfpL",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-28T15:31:01.459605Z",
+  "branch": "feat/qt-renderer",
+  "checkpoints_count": 16,
+  "save_step_count": 14,
+  "files_touched": [
+    "lib/rust/crates/pathland-render-qt/build.rs",
+    "lib/rust/crates/pathland-render-qt/src/ffi.rs",
+    "lib/rust/crates/pathland-render-qt/src/qt/pathland_qt.h",
+    "lib/rust/crates/pathland-render-qt/src/qt/qt_layer.cpp",
+    "lib/rust/crates/pathland-render-qt/src/renderer.rs",
+    "lib/rust/crates/pathland-render-qt/status.md",
+    "lib/rust/crates/pathland-render-qt/todo.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "f3567875982d",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 1345294,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 39761920,
+    "output_tokens": 166298,
+    "api_call_count": 182
+  },
+  "session_metrics": {
+    "turn_count": 16
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-28T15:31:01.267765Z",
+    "agent_lines": 605,
+    "agent_removed": 110,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 605,
+    "total_lines_changed": 715,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 131,
+      "agent_lines_removed": 3
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 352,
+      "agent_lines_removed": 46
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 523,
+      "agent_lines_removed": 95
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 523,
+      "agent_lines_removed": 95
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 523,
+      "agent_lines_removed": 95
+    },
+    {
+      "checkpoint_number": 11,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 12,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 523,
+      "agent_lines_removed": 95
+    },
+    {
+      "checkpoint_number": 13,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 605,
+      "agent_lines_removed": 110
+    },
+    {
+      "checkpoint_number": 14,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 15,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 605,
+      "agent_lines_removed": 110
+    }
+  ]
+}
