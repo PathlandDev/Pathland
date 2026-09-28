@@ -1,1 +1,1 @@
-We need to fix the qt renderer. It rendere practiallby notging at all.
+Commit what we have here first
