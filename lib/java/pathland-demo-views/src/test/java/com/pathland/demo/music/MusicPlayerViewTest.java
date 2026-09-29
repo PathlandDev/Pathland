@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class MusicPlayerViewTest {
 
-    private static final String COVER = "/_pathland/assets/albumart/cover1.svg";
+    private static final String COVER = "/_pathland/assets/albumart/cover1.jpg";
 
     private static final class Mounted {
         final RenderResult result;
@@ -57,10 +57,10 @@ class MusicPlayerViewTest {
         Mounted m = mount();
         Frame frame = m.sink.frame();
 
-        assertTrue(anySetText(frame, "Midnight Drive"), "first track title renders");
-        assertTrue(anySetText(frame, "Blue Hour"), "a later track title renders");
-        assertTrue(anySetText(frame, "Tidal"), "last track title renders");
-        assertTrue(anySetText(frame, "The Neon Signals"), "an artist renders");
+        assertTrue(anySetText(frame, "Fiddles McGinty"), "first track title renders");
+        assertTrue(anySetText(frame, "OctoBlues"), "a later track title renders");
+        assertTrue(anySetText(frame, "Maple Leaf Rag"), "last track title renders");
+        assertTrue(anySetText(frame, "Kevin MacLeod"), "an artist renders");
         assertTrue(anySetText(frame, "Now Playing"), "the now-playing sidebar header renders");
         assertTrue(anySetText(frame, "Library"), "the library header renders");
         assertTrue(countCreate(frame, Components.IMAGE) >= 3, "album art images render");

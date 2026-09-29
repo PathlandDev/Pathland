@@ -29,25 +29,26 @@ public final class MusicPlayerView implements View {
     static final Color BAR_BORDER = Color.rgb(0xE2, 0xE8, 0xF0);
     static final Color BAR_BG = Color.rgb(0xFB, 0xFB, 0xFD);
 
-    /** The demo library (fictional albums; each track is its own full-length song). */
+    /** The demo library: Kevin MacLeod tracks (CC-BY 3.0 — see the attribution
+ *  credit in {@link #body()}), grouped into two albums. */
     static final List<Track> TRACKS = List.of(
-            new Track("Midnight Drive", "The Neon Signals", "Neon Nights", 373f,
-                    "/_pathland/assets/albumart/cover1.svg",
+            new Track("Fiddles McGinty", "Kevin MacLeod", "Country & Bluegrass", 207f,
+                    "/_pathland/assets/albumart/cover1.jpg",
                     "/_pathland/assets/audio/track1.mp3"),
-            new Track("Glass Horizon", "The Neon Signals", "Neon Nights", 426f,
-                    "/_pathland/assets/albumart/cover1.svg",
+            new Track("Nano Hoedown", "Kevin MacLeod", "Country & Bluegrass", 154f,
+                    "/_pathland/assets/albumart/cover1.jpg",
                     "/_pathland/assets/audio/track2.mp3"),
-            new Track("Static Bloom", "The Neon Signals", "Neon Nights", 344f,
-                    "/_pathland/assets/albumart/cover1.svg",
+            new Track("Comin' Round the Mountain", "Kevin MacLeod", "Country & Bluegrass", 174f,
+                    "/_pathland/assets/albumart/cover1.jpg",
                     "/_pathland/assets/audio/track3.mp3"),
-            new Track("Blue Hour", "Mara Voss", "Blue Hour", 303f,
-                    "/_pathland/assets/albumart/cover2.svg",
+            new Track("OctoBlues", "Kevin MacLeod", "Blues & Ragtime", 256f,
+                    "/_pathland/assets/albumart/cover2.jpg",
                     "/_pathland/assets/audio/track4.mp3"),
-            new Track("Paper Moons", "Mara Voss", "Blue Hour", 354f,
-                    "/_pathland/assets/albumart/cover2.svg",
+            new Track("Fig Leaf Rag", "Kevin MacLeod", "Blues & Ragtime", 209f,
+                    "/_pathland/assets/albumart/cover2.jpg",
                     "/_pathland/assets/audio/track5.mp3"),
-            new Track("Tidal", "Mara Voss", "Blue Hour", 280f,
-                    "/_pathland/assets/albumart/cover2.svg",
+            new Track("Maple Leaf Rag", "Kevin MacLeod", "Blues & Ragtime", 179f,
+                    "/_pathland/assets/albumart/cover2.jpg",
                     "/_pathland/assets/audio/track6.mp3"));
 
     // App-owned, persisted per-session (the annotation processor wires State fields
