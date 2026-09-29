@@ -77,7 +77,9 @@ crates/pathland-core-transport/ # TRANSPORT — shared-memory ring owner (RingTr
                           #   network batch encode/decode + batching policy (std)
 crates/pathland-render-gtk/ # RENDERER — host reader (RenderTree) + maps opcode frames onto
                           #   native GTK widgets incrementally; the only crate that touches
-                          #   GTK/glib/pango. Exposes pathland_gtk_run for Java (JNA) hosts.
+                          #   GTK/glib/pango. App-driven media via GtkMediaFile (GStreamer).
+                          #   Exposes pathland_gtk_run[_ring]/pathland_gtk_set_asset_root
+                          #   for Java (JNA) hosts.
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
 #   stacks, spans, buttons) as a pure function of the stream; the
                            #   server-side/remote-projection target (Goal #15).
@@ -179,13 +181,17 @@ it — the demos **never call GTK or Swing directly**:
 
 - Rust demo links `pathland-render-gtk` as an `rlib` and calls `GtkRenderer::run(...)`
   with a wake closure.
-- Java demo loads `pathland-render-gtk` as a `cdylib` via JNA and calls
-  `pathland_gtk_run(host, on_event)`; native inputs round-trip as `EVENT`
-  opcodes through the shared ring. The renderer **writes** the events and
-  **wakes** the host (no payload); the host drains the event ring itself via
-  `pathland_native_drain_events` (Rust: `NativeHost::drain_events` /
-  `RingTransport::drain_events`). Events are never delivered through a
-  side-channel callback — they flow through the opcode engine.
+- Java demo (`pathland-gtk-demo`) loads `pathland-render-gtk` as a `cdylib` via JNA and
+  calls `pathland_gtk_run_ring(ring, on_event, width, height)` over the Java DSL's own
+  `libpathland_core` ring; native inputs round-trip as `EVENT` opcodes through the shared
+  ring. The renderer **writes** the events and **wakes** the host (no payload); the host
+  drains the event ring itself via `pathland_core_drain_events`. Events are never
+  delivered through a side-channel callback — they flow through the opcode engine.
+  The demo mounts `MusicPlayerView` (the same shared views the web demos use) with the
+  app-driven media contract: the renderer plays the tracks through GTK's
+  `GtkMediaFile` (GStreamer) and reports `MEDIA_*` events back; the demo's web-style
+  `/_pathland/assets/...` paths resolve against an extracted local asset root
+  (`pathland_gtk_set_asset_root`).
 
 The renderer maps native inputs onto the raw `Event` surface via GTK4
 controllers (`Button::clicked` → pointer up, `EventControllerMotion` →

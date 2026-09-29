@@ -118,6 +118,43 @@ class RingEventReaderTest {
     }
 
     @Test
+    void decodesMediaEvents() {
+        try (Memory ring = ringWithArena(HEADER_SIZE, "x", 0)) {
+            RingEventReader reader = new RingEventReader(ring, ring.size());
+
+            byte[] raw = concat(
+                    opcode(Commands.Event.MEDIA_PLAY_STATE_CHANGED, 0, 61, 1, 0),
+                    opcode(Commands.Event.MEDIA_TIME_UPDATED, 0, 61,
+                            Float.floatToRawIntBits(12.5f), 0),
+                    opcode(Commands.Event.MEDIA_ENDED, 0, 61, 0, 0),
+                    opcode(Commands.Event.MEDIA_VOLUME_CHANGED, 0, 61,
+                            Float.floatToRawIntBits(0.7f), 0));
+
+            List<Event> events = reader.decode(raw);
+            assertEquals(4, events.size());
+
+            Event play = events.get(0);
+            assertTrue(play.isMediaPlayStateChanged());
+            assertEquals(61, play.target());
+            assertTrue(play.mediaPlaying());
+
+            Event time = events.get(1);
+            assertTrue(time.isMediaTimeUpdated());
+            assertEquals(61, time.target());
+            assertEquals(12.5f, time.mediaValue());
+
+            Event ended = events.get(2);
+            assertTrue(ended.isMediaEnded());
+            assertEquals(61, ended.target());
+
+            Event volume = events.get(3);
+            assertTrue(volume.isMediaVolumeChanged());
+            assertEquals(61, volume.target());
+            assertEquals(0.7f, volume.mediaValue());
+        }
+    }
+
+    @Test
     void ignoresUnknownCommandsAndNonEventCategories() {
         try (Memory ring = ringWithArena(HEADER_SIZE, "x", 0)) {
             RingEventReader reader = new RingEventReader(ring, ring.size());

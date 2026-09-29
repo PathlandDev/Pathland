@@ -30,6 +30,8 @@ pub use host::{describe, render_tree_from_frame, HostNode, RenderTree};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use libadwaita::prelude::*;
 use libadwaita::NavigationView;
@@ -94,6 +96,10 @@ pub struct GtkRenderer {
     /// itself (a route change it already applied), the `popped` signal must not
     /// be re-emitted as a back request — the app already knows it navigated.
     nav_reconciling: HashMap<u32, Rc<Cell<bool>>>,
+    /// Per-node native media streams (AUDIO/VIDEO nodes), the rendered output
+    /// for app-driven playback. Playback is driven by the node's media control
+    /// properties; media events report back through the event sink.
+    media_players: HashMap<u32, MediaPlayer>,
 }
 
 impl Default for GtkRenderer {
@@ -115,6 +121,7 @@ impl GtkRenderer {
             nav_views: HashMap::new(),
             nav_pages: HashMap::new(),
             nav_reconciling: HashMap::new(),
+            media_players: HashMap::new(),
         }
     }
 
@@ -185,6 +192,9 @@ impl GtkRenderer {
             self.nav_views.remove(&id);
             self.nav_pages.remove(&id);
             self.nav_reconciling.remove(&id);
+            if let Some(player) = self.media_players.remove(&id) {
+                player.teardown();
+            }
         }
 
         // 2. Pre-order walk: get-or-create widgets, update text/style, and
@@ -285,6 +295,12 @@ impl GtkRenderer {
         // gated by the transport-aware event guards (a `BINDING_ID`).
         self.attach_control_events(node.id, &widget, node);
 
+        // App-driven media: an AUDIO/VIDEO node (or any node carrying a media
+        // source) gets a hidden native stream driven by its control properties.
+        if is_media_node(&node) {
+            self.sync_media(node.id, &node);
+        }
+
         match widget_kind(node.component_type) {
             WidgetKind::Stack => {
                 if let Ok(bx) = widget.downcast::<GtkBox>() {
@@ -321,10 +337,11 @@ impl GtkRenderer {
             WidgetKind::Image => {
                 if let Ok(pic) = widget.downcast::<gtk::Picture>() {
                     if let Some(src) = node.string_property(property_id::IMAGE_SOURCE) {
-                        pic.set_filename(Some(src));
+                        pic.set_filename(Some(&resolve_asset(src)));
                     }
                 }
             }
+            WidgetKind::Media => {}
             WidgetKind::Toggle => {
                 let active = node.checked();
                 if let Ok(sw) = widget.clone().downcast::<gtk::Switch>() {
@@ -458,6 +475,127 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Drive a node's native media stream from its control properties (the
+    /// app-driven media contract, spec/EVENTS.md Media): source, playback
+    /// state, position (seek, echo-guarded), and volume.
+    fn sync_media(&mut self, id: u32, node: &HostNode) {
+        let source = node
+            .string_property(property_id::AUDIO_SOURCE)
+            .or_else(|| node.string_property(property_id::VIDEO_SOURCE));
+        let Some(source) = source else {
+            // A media node with no source: nothing to play; drop any stream.
+            if let Some(player) = self.media_players.remove(&id) {
+                player.teardown();
+            }
+            return;
+        };
+        let resolved = resolve_asset(source);
+        let player = match self.media_players.get_mut(&id) {
+            Some(player) if player.source == resolved => player,
+            _ => {
+                if let Some(old) = self.media_players.remove(&id) {
+                    old.teardown();
+                }
+                let stream = gtk::MediaFile::for_filename(&resolved);
+                let player = self.create_media_player(id, stream, resolved.clone());
+                self.media_players.insert(id, player);
+                self.media_players.get_mut(&id).expect("just inserted")
+            }
+        };
+
+        // Playback state: the node's current value (a source change re-emits only
+        // AUDIO_SOURCE, so the retained PLAYBACK_STATE is authoritative — a skip
+        // while playing therefore resumes automatically).
+        if node.u32_property(property_id::PLAYBACK_STATE, 0) != 0 {
+            player.stream.play();
+        } else {
+            player.stream.pause();
+        }
+
+        // Seek — only when meaningful: the app echoes every MEDIA_TIME_UPDATED
+        // back as MEDIA_POSITION, so a near-identical write must NOT seek (it
+        // would interrupt just-started playback and echo the position around).
+        let target = f64::from(node.f32_property(property_id::MEDIA_POSITION, 0.0));
+        let now = player.stream.timestamp() as f64 / 1_000_000.0;
+        if should_seek(now, target) {
+            player.stream.seek((target * 1_000_000.0) as i64);
+            player.suppress_until.set(monotonic_ms() + 250);
+        }
+
+        let volume = node.f32_property(property_id::MEDIA_VOLUME, 1.0);
+        player.stream.set_volume(f64::from(volume.clamp(0.0, 1.0)));
+    }
+
+    /// Create a media player for a node: attach the native stream's event
+    /// reporting (play state, ended, volume) and a periodic position reporter
+    /// through the event sink (the host drains them from the event ring).
+    fn create_media_player(
+        &mut self,
+        id: u32,
+        stream: gtk::MediaFile,
+        source: String,
+    ) -> MediaPlayer {
+        let suppress_until = Rc::new(Cell::new(0u64));
+        let last_reported = Rc::new(Cell::new(0f32));
+        if let Some(sink) = self.event_sink.clone() {
+            let stream_events = stream.clone();
+            let sink_playing = sink.clone();
+            stream_events.connect_playing_notify(move |s| {
+                sink_playing.borrow_mut()(Event::MediaPlayStateChanged {
+                    target: id,
+                    playing: s.is_playing(),
+                });
+            });
+            let sink_ended = sink.clone();
+            stream_events.connect_ended_notify(move |s| {
+                if s.is_ended() {
+                    sink_ended.borrow_mut()(Event::MediaEnded { target: id });
+                }
+            });
+            let sink_volume = sink.clone();
+            stream_events.connect_volume_notify(move |s| {
+                sink_volume.borrow_mut()(Event::MediaVolumeChanged {
+                    target: id,
+                    volume: s.volume() as f32,
+                });
+            });
+
+            // Periodic position reporter (~4 Hz while playing, mirroring the web
+            // client's `timeupdate` cadence). Suppressed briefly after a seek.
+            let timer_stream = stream.clone();
+            let timer_sink = sink;
+            let timer_suppress = suppress_until.clone();
+            let timer_last = last_reported.clone();
+            let timer = glib::timeout_add_local(Duration::from_millis(250), move || {
+                if timer_stream.is_playing()
+                    && monotonic_ms() >= timer_suppress.get()
+                {
+                    let seconds = timer_stream.timestamp() as f32 / 1_000_000.0;
+                    if (seconds - timer_last.get()).abs() >= 0.25 {
+                        timer_last.set(seconds);
+                        timer_sink.borrow_mut()(Event::MediaTimeUpdated {
+                            target: id,
+                            seconds,
+                        });
+                    }
+                }
+                glib::ControlFlow::Continue
+            });
+            return MediaPlayer {
+                stream,
+                source,
+                suppress_until,
+                timer: Some(timer),
+            };
+        }
+        MediaPlayer {
+            stream,
+            source,
+            suppress_until,
+            timer: None,
         }
     }
 
@@ -781,6 +919,9 @@ pub enum WidgetKind {
     Menu,
     /// `COLOR_PICKER` → `GtkColorButton`.
     ColorPicker,
+    /// `AUDIO`/`VIDEO` → a media container (playback is driven by the node's
+    /// media control properties; see [`GtkRenderer::sync_media`]).
+    Media,
     /// Any component the renderer does not map yet → a blank `GtkLabel`.
     Blank,
 }
@@ -801,6 +942,7 @@ pub fn widget_kind(component_type: u16) -> WidgetKind {
         component_type::ZSTACK => WidgetKind::Overlay,
         component_type::SPACER => WidgetKind::Spacer,
         component_type::IMAGE => WidgetKind::Image,
+        component_type::AUDIO | component_type::VIDEO => WidgetKind::Media,
         component_type::TOGGLE => WidgetKind::Toggle,
         component_type::SLIDER => WidgetKind::Slider,
         component_type::TEXT_FIELD => WidgetKind::TextField,
@@ -895,6 +1037,85 @@ fn is_composite(node: &HostNode) -> bool {
         )
 }
 
+/// Whether a node is app-driven media: an `AUDIO`/`VIDEO` component, or any
+/// node carrying a media source (a custom `AudioStyle`/`VideoStyle` body keeps
+/// its own component — e.g. a `VStack` — and adds the media properties).
+fn is_media_node(node: &HostNode) -> bool {
+    matches!(node.component_type, component_type::AUDIO | component_type::VIDEO)
+        || node.string_property(property_id::AUDIO_SOURCE).is_some()
+        || node.string_property(property_id::VIDEO_SOURCE).is_some()
+}
+
+/// The asset root directory (set once by a foreign host before `run`, via
+/// `pathland_gtk_set_asset_root`): web-style `/_pathland/...` source paths
+/// resolve against it so a desktop host can play/serve local copies of the
+/// same assets. Empty = sources used as-is.
+static ASSET_ROOT: Mutex<Option<String>> = Mutex::new(None);
+
+/// Set the asset root (see [`ASSET_ROOT`]). Returns the previous value.
+pub fn set_asset_root(root: String) -> Option<String> {
+    *ASSET_ROOT.lock().unwrap() = Some(root);
+    ASSET_ROOT.lock().unwrap().clone()
+}
+
+/// Resolve a media/image source path: `/_pathland/<rest>` → `<root>/<rest>`
+/// when an asset root is configured, otherwise the source unchanged.
+fn resolve_asset(source: &str) -> String {
+    let rest = source.strip_prefix("/_pathland/");
+    match (rest, ASSET_ROOT.lock().unwrap().as_deref()) {
+        (Some(rest), Some(root)) if !root.is_empty() => {
+            let root = root.trim_end_matches('/');
+            if root.is_empty() {
+                source.to_string()
+            } else {
+                format!("{root}/{rest}")
+            }
+        }
+        _ => source.to_string(),
+    }
+}
+
+/// Monotonic milliseconds (for echo-suppression windows), measured from the
+/// first call.
+fn monotonic_ms() -> u64 {
+    static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    START.get_or_init(Instant::now).elapsed().as_millis() as u64
+}
+
+/// Whether a `MEDIA_POSITION` write is a real seek (a user drag) rather than
+/// the app's echo of its own `MEDIA_TIME_UPDATED` — within 0.25s of the
+/// current position it is an echo and must not interrupt playback.
+fn should_seek(now_seconds: f64, target_seconds: f64) -> bool {
+    (now_seconds - target_seconds).abs() > 0.25
+}
+
+/// A renderer-owned media player: the native `GtkMediaFile` (GStreamer-backed,
+/// shipped inside GTK4) that plays a node's `AUDIO_SOURCE`/`VIDEO_SOURCE`, plus
+/// the state the event wiring shares with the stream's signals and the periodic
+/// time reporter. The app owns all playback state; this is only the rendered
+/// output (the desktop analog of the web client's hidden `<audio>`).
+struct MediaPlayer {
+    /// The native media stream.
+    stream: gtk::MediaFile,
+    /// The resolved source it was created for (to detect a source change).
+    source: String,
+    /// Monotonic ms until which time updates are suppressed (a just-applied
+    /// seek must not echo back as a new position).
+    suppress_until: Rc<Cell<u64>>,
+    /// The periodic time-update source (removed on teardown so a dead node's
+    /// stream is released).
+    timer: Option<glib::SourceId>,
+}
+
+impl MediaPlayer {
+    /// Cancel the periodic reporter and drop the stream.
+    fn teardown(self) {
+        if let Some(timer) = self.timer {
+            timer.remove();
+        }
+    }
+}
+
 /// The current child widgets of a native widget, in child/draw order.
 fn child_widgets(widget: &gtk::Widget) -> Vec<gtk::Widget> {
     let mut out = Vec::new();
@@ -960,6 +1181,9 @@ fn build_widget(node: &HostNode) -> gtk::Widget {
             bx.upcast()
         }
         WidgetKind::Image => gtk::Picture::new().upcast(),
+        // Bare `AUDIO`/`VIDEO`: a hidden playback container (the stream itself is
+        // not a widget). A custom media style renders its own body container.
+        WidgetKind::Media => GtkBox::new(gtk::Orientation::Vertical, 0).upcast(),
         WidgetKind::Toggle => toggle_widget(node),
         WidgetKind::Slider => {
             let min = f64::from(node.f32_property(property_id::MIN_VALUE, 0.0));
@@ -1857,8 +2081,49 @@ mod tests {
         assert_eq!(widget_kind(PICKER), WidgetKind::Picker);
         assert_eq!(widget_kind(MENU), WidgetKind::Menu);
         assert_eq!(widget_kind(COLOR_PICKER), WidgetKind::ColorPicker);
+        assert_eq!(widget_kind(AUDIO), WidgetKind::Media);
+        assert_eq!(widget_kind(VIDEO), WidgetKind::Media);
         // Components without a mapping fall back to a blank widget.
         assert_eq!(widget_kind(COMMENT), WidgetKind::Blank);
+    }
+
+    #[test]
+    fn media_node_detection_and_asset_resolution() {
+        // An AUDIO/VIDEO component, or any node carrying a media source.
+        let audio = HostNode {
+            component_type: component_type::AUDIO,
+            ..Default::default()
+        };
+        assert!(is_media_node(&audio));
+        let mut vstack = HostNode {
+            component_type: component_type::VSTACK,
+            ..Default::default()
+        };
+        assert!(!is_media_node(&vstack));
+        vstack.strings.insert(property_id::AUDIO_SOURCE, "/_pathland/assets/audio/track1.mp3".into());
+        assert!(is_media_node(&vstack));
+
+        // No asset root → sources pass through unchanged.
+        *ASSET_ROOT.lock().unwrap() = None;
+        assert_eq!(resolve_asset("/_pathland/assets/audio/track1.mp3"), "/_pathland/assets/audio/track1.mp3");
+        assert_eq!(resolve_asset("/local/track.mp3"), "/local/track.mp3");
+
+        // An asset root maps web-style paths to the local copy.
+        set_asset_root("/tmp/pathland-assets/_pathland".to_string());
+        assert_eq!(resolve_asset("/_pathland/assets/audio/track1.mp3"), "/tmp/pathland-assets/_pathland/assets/audio/track1.mp3");
+        assert_eq!(resolve_asset("/local/track.mp3"), "/local/track.mp3");
+        *ASSET_ROOT.lock().unwrap() = None;
+    }
+
+    #[test]
+    fn media_seek_is_echo_guarded() {
+        // A user drag is a real seek (> 0.25s from the current position)…
+        assert!(should_seek(30.0, 120.0));
+        assert!(should_seek(120.0, 30.0));
+        // …but the app's MEDIA_TIME_UPDATED echo is near-identical and must not.
+        assert!(!should_seek(120.0, 120.1));
+        assert!(!should_seek(120.1, 120.0));
+        assert!(!should_seek(30.0, 30.0));
     }
 
     #[test]

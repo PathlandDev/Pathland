@@ -92,6 +92,25 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   - The generative `space.<N>` family resolves `space.base` × N.
   - Since GTK CSS has no custom properties, tokens resolve to **concrete**
     values (rgba/px/Pango) before the existing CSS-provider / text-style paths.
+- **App-driven media (spec/EVENTS.md Media)**: an `AUDIO`/`VIDEO` node — or any
+  node carrying a media source (a custom `AudioStyle`/`VideoStyle` body keeps its
+  own component, e.g. a `VStack`) — gets a hidden **`gtk::MediaFile`**
+  (GStreamer-backed, ships inside GTK4) driven by the node's media control
+  properties: `AUDIO_SOURCE`/`VIDEO_SOURCE` loads the source (re-created on
+  change, resuming if the app was playing), `PLAYBACK_STATE` → play/pause,
+  `MEDIA_POSITION` → seek (**echo-guarded**: a near-identical write — the app's
+  `MEDIA_TIME_UPDATED` echo — does not seek), `MEDIA_VOLUME` → volume. Media
+  events report back through the shared event sink/ring: `MEDIA_PLAY_STATE_CHANGED`
+  (`notify::playing`), `MEDIA_TIME_UPDATED` (periodic ~4 Hz reporter while
+  playing, suppressed briefly after a seek), `MEDIA_ENDED` (`notify::ended`),
+  `MEDIA_VOLUME_CHANGED` (`notify::volume`). The app owns all playback state;
+  the stream is the renderer's rendered output (the desktop analog of the web
+  client's hidden `<audio>`).
+- **Asset root**: `pathland_gtk_set_asset_root(const char*)` sets a directory
+  that web-style `/_pathland/...` media/image source paths resolve against
+  (`/_pathland/assets/x` → `<root>/assets/x`), so desktop apps reference the same
+  asset paths as the web demos. Applied to `IMAGE_SOURCE`, `AUDIO_SOURCE`, and
+  `VIDEO_SOURCE`.
 - **C ABI for foreign hosts (`capi.rs`)**:
   - `pathland_gtk_run(host, on_event)` — pump a `pathland-view-native`
     `NativeHost`'s ring in-process.
@@ -127,6 +146,10 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 - Composite bodies attach to button-like controls only; other controls ignore
   children.
 - `LAZY_*` renders eagerly (no GTK windowing).
+- **Media**: a `VIDEO` node plays its audio through the shared `GtkMediaFile`
+  machinery, but has no native video surface (`GtkVideo`) yet — native video
+  rendering is a follow-up. Playback requires GStreamer (GTK4 links it) with the
+  mp3 decoding plugins installed.
 - The `AdwNavigationView` adapter does not (yet) reflect the `TRANSITION`
   (0x1031) hint into a native animation choice — libadwaita animates its
   standard push/pop; per-transition styling is a follow-up.

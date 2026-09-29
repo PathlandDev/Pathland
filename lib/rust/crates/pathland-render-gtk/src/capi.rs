@@ -10,19 +10,34 @@
 //! borrowed ring directly, with no `pathland-view-native` host involved.
 
 use std::cell::RefCell;
-use std::ffi::c_void;
+use std::ffi::{c_char, c_void, CStr};
 use std::rc::Rc;
 
 use pathland_native::NativeHost;
 use pathland_core::Event;
 use pathland_core_transport::{DriverTransport, FrameSource, OpcodeBatch, RingTransport, TransportError};
 
-use crate::{run_with_pump_sized, Pump};
+use crate::{run_with_pump_sized, set_asset_root, Pump};
 
 /// A host-supplied event callback, invoked (with no payload) when the renderer
 /// has written a raw input into the host → guest event ring. The host drains the
 /// ring itself (via `pathland_native_drain_events`) to receive the events.
 pub type EventCallback = extern "C" fn();
+
+/// Set the directory that web-style `/_pathland/...` media/image source paths
+/// resolve against (see [`crate::resolve_asset`]). Call before `pathland_gtk_run`
+/// / `pathland_gtk_run_ring`. A null pointer clears the root.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_gtk_set_asset_root(dir: *const c_char) {
+    if dir.is_null() {
+        set_asset_root(String::new());
+        return;
+    }
+    let Ok(bytes) = CStr::from_ptr(dir).to_str() else {
+        return;
+    };
+    set_asset_root(bytes.to_string());
+}
 
 /// A `Pump` over a `pathland-view-native` `NativeHost` owned by the foreign host.
 ///
