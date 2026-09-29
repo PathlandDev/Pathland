@@ -32,7 +32,10 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   Unknown components → blank `GtkLabel`.
 - **Container + composite reconciliation** (diff-guarded): stacks/grid/scroll/
   overlay children, and **Composite Override Mode** for `BUTTON`/`TOGGLE`/`MENU`
-  with children (custom body wrapped in the native button shell).
+  with children (custom body wrapped in the native button shell). A `BUTTON`
+  composite body is a **horizontal row** with centered children (matching the
+  HTML renderer's `.pathland-button` `inline-flex`); `TOGGLE`/`MENU` bodies stay
+  vertical (HTML wraps those as block/inline-block).
 - **Style properties**: `VISIBLE`, `OPACITY`, `WIDTH`/`HEIGHT`,
   `CONTENT_MARGINS`, `PADDING` + per-edge, `BACKGROUND_COLOR`, `BORDER_WIDTH`/
   `COLOR`/`RADIUS`, `FONT_FAMILY`/`FONT_WEIGHT` (CSS provider), `COLOR`,

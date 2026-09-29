@@ -244,6 +244,11 @@ impl GtkRenderer {
     /// Composite bodies attach to button-like controls (`GtkButton` and
     /// subclasses — `ToggleButton`, `CheckButton`, `MenuButton`); other controls
     /// ignore children.
+    ///
+    /// The body box's orientation follows the HTML renderer's composite layout:
+    /// a `BUTTON` body is a **horizontal row** (`.pathland-button` is
+    /// `display:inline-flex; align-items:center`), while `TOGGLE`/`MENU` bodies
+    /// stay **vertical** (HTML wraps those as block/inline-block).
     fn sync_composite_children(&mut self, parent_id: u32, children: &[u32]) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
@@ -251,10 +256,21 @@ impl GtkRenderer {
         let Ok(btn) = parent.downcast::<gtk::Button>() else {
             return;
         };
+        let horizontal = self
+            .tree
+            .node(parent_id)
+            .is_some_and(|n| composite_horizontal(n.component_type));
         let box_widget: gtk::Widget = if let Some(bx) = self.composite_boxes.get(&parent_id).cloned() {
             bx
         } else {
-            let bx = GtkBox::new(gtk::Orientation::Vertical, 0);
+            let bx = GtkBox::new(
+                if horizontal {
+                    gtk::Orientation::Horizontal
+                } else {
+                    gtk::Orientation::Vertical
+                },
+                0,
+            );
             bx.set_hexpand(true);
             bx.set_vexpand(true);
             btn.set_child(Some(&bx));
@@ -262,6 +278,15 @@ impl GtkRenderer {
             self.composite_boxes.insert(parent_id, bxw.clone());
             bxw
         };
+        // A horizontal (BUTTON) body centers its children on the cross axis,
+        // matching the HTML button's `align-items:center`.
+        if horizontal {
+            for child_id in children {
+                if let Some(w) = self.widgets.get(child_id) {
+                    w.set_valign(Align::Center);
+                }
+            }
+        }
         self.reconcile_box_children(&box_widget, children);
     }
 
@@ -1087,6 +1112,13 @@ fn is_container(component_type: u16) -> bool {
             | component_type::SCROLLVIEW
             | component_type::ZSTACK
     )
+}
+
+/// Whether a composite control body lays out horizontally: a `BUTTON` body is a
+/// row (the HTML renderer's `.pathland-button` is `display:inline-flex`);
+/// `TOGGLE`/`MENU` bodies stay vertical (HTML wraps those as block/inline-block).
+fn composite_horizontal(component_type: u16) -> bool {
+    component_type == component_type::BUTTON
 }
 
 /// Whether a semantic control has a custom body (Composite Override Mode):
@@ -2340,6 +2372,17 @@ mod tests {
         for ct in [TEXT, BUTTON, SPACER, IMAGE, TOGGLE, SLIDER] {
             assert!(!is_container(ct), "{ct:#x} should not be a container");
         }
+    }
+
+    #[test]
+    fn composite_button_bodies_lay_out_horizontally() {
+        use component_type::*;
+        // A BUTTON composite body is a row (parity with the HTML inline-flex
+        // button); TOGGLE/MENU bodies stay vertical (HTML block/inline-block).
+        assert!(composite_horizontal(BUTTON));
+        assert!(!composite_horizontal(TOGGLE));
+        assert!(!composite_horizontal(MENU));
+        assert!(!composite_horizontal(HSTACK));
     }
 
     #[test]
