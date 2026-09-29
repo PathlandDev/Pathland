@@ -20,10 +20,10 @@ import java.io.InputStream;
 /**
  * Server-side rendering entry point. Dispatches each request to the app whose mount path
  * is the longest prefix of the request (see {@link PathlandHost}) and renders that app's
- * session. The client's per-window id ({@code ?wid=…}, preserved in the URL by the DOM
- * client) scopes the render to that window's <b>persisted state</b>, so a reload's HTML is
- * already the latest UI model state and needs no resync; without it the page renders
- * defaults and the client re-syncs once. Two windows of the same browser never share a UI
+ * session. The per-window id ({@code wid}) lives only on the WebSocket URL (kept in
+ * {@code sessionStorage}, never in the page URL), so the SSR request never carries one:
+ * it renders defaults, and the client re-syncs that window's persisted state over the
+ * WebSocket after a same-tab reload. Without state scope, two windows never share a UI
  * model or state.
  *
  * <p>The initial route is part of the platform environment (spec/OPCODE.md §Environment

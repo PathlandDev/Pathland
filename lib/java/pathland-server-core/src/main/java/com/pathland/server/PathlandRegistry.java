@@ -115,13 +115,13 @@ public final class PathlandRegistry {
     }
 
     /**
-     * Render the SSR HTML (request thread), seeding the router from the request path. When
-     * the client's per-window id is on the request ({@code ?wid=…}, preserved in the URL by
-     * the DOM client), the throwaway session renders that window's <b>persisted state</b>
-     * directly — so a reload's HTML is already the latest UI model state and needs no
-     * resync. Without a {@code wid} (a first visit or a typed URL) the session renders
-     * <b>defaults</b> (a fresh scope); the client then generates its wid and re-syncs if
-     * the URL lacked one.
+     * Render the SSR HTML (request thread), seeding the router from the request path. The
+     * per-window id is carried only on the WebSocket URL (kept in {@code sessionStorage},
+     * never in the page URL), so the SSR request normally has no {@code windowId} and this
+     * throwaway session renders <b>defaults</b>; the client's live session (scoped by the
+     * WS {@code wid}) re-syncs that window's persisted state over the WebSocket after a
+     * same-tab reload. A {@code windowId} is honored when present (a stale {@code wid} a
+     * shared/bookmarked URL may carry).
      */
     public String renderHtml(String route, String windowId) {
         String scope = windowId == null || windowId.isBlank()

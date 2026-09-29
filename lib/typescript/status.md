@@ -15,13 +15,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   static resource dirs. Both demos serve `/pathland-dom-renderer.js`; the old
   duplicated `app.js` is removed.
 - **Per-window identity (`wid`)**: the client keeps a window id in `sessionStorage`
-  (fresh per window/tab, kept across reloads of the same tab), appends it as
-  `?wid=` to the WebSocket URL (the server's per-window persisted-state scope), and
-  **reflects it into the page URL** (`history.replaceState`/`pushState`) so the SSR
-  request carries it too — a reload's HTML then already renders that window's persisted
-  state. The client only requests a `META::RESYNC` when a reload's URL lacked the `wid`
-  (a typed URL / a first visit before the client ran); a normal reload never replays the
-  tree. Two windows therefore never share a UI model or state.
+  (fresh per window/tab, kept across reloads of the same tab) and appends it as
+  `?wid=` to the WebSocket URL (the server's per-window persisted-state scope). The
+  id is **never reflected into the page URL** — the address bar/history/referrer stay
+  clean — so the SSR request has no `wid` and always renders defaults. A fresh window
+  needs no re-sync (its defaults match the fresh session's); a same-tab reload (or a
+  load whose URL carried a stale `wid`, which the client strips) requests a
+  `META::RESYNC` to restore the window's persisted state. Two windows therefore never
+  share a UI model or state.
 - **Property application parity**: `setNodeText` only writes `textContent` on leaf nodes
   — re-applying a composite's `LABEL`/`TEXT` property never wipes its children (SSR
   renders no label on composites). `LINE_LIMIT` (positive) clamps via the webkit box

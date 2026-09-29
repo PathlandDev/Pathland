@@ -89,7 +89,10 @@ lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer
                            #   in place, sends raw-input events over /ws. The server
                            #   NEVER replays the full tree on connect (the client already
                            #   has it from the HTML); a full snapshot is sent only on an
-                           #   explicit META::RESYNC (client requests it after reconnect).
+                           #   explicit META::RESYNC (client requests it after a reconnect
+                           #   or a same-tab reload — the per-window id lives only in
+                           #   sessionStorage + the WS URL, never in the page URL, so SSR
+                           #   renders defaults and the client re-syncs its saved state).
                            #   Built to dist/pathland-dom-renderer.js and copied into both demos.
 # ── Retained-UI projection (host/driver surface) ──────────────────────────
 crates/pathland-view-native/ # NATIVE C-ABI shim + NativeHost: flat world over a zero-copy

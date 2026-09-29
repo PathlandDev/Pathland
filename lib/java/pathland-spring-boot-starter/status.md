@@ -18,7 +18,7 @@ subpaths (the BFF layout).
   - a `WebSocketConfigurer` registering **one handler per app** at its framework base
     (`/_pathland/ws` for the root, `/{mount}/_pathland/ws` otherwise). Each connection
     gets a fresh `uiId` (its UI model) + the client's `wid` (per-window state scope)
-    from the `?wid=` query param,
+    from the WS `?wid=` query param (kept in `sessionStorage`, never in the page URL),
   - `PathlandIndexController` (SSR catch-all dispatching to the longest-mount app with
     the prefix stripped + a framework static controller serving the bundle + asset mount
     from `classpath:/static/_pathland/**` at both `/_pathland/**` and `/{app}/_pathland/**`;

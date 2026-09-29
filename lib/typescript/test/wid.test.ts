@@ -1,10 +1,11 @@
 // Per-window identity (wid): the DOM client keeps a window id in sessionStorage (fresh
-// per window, kept across reloads of the same tab), sends it as `?wid=` on the WebSocket
-// URL so the server can scope persisted state per window, AND reflects it into the page
-// URL (`?wid=…`) so the SSR request carries it too. A reload whose URL already carries the
-// wid gets the latest state from the HTML directly (no RESYNC); only a reload whose URL
-// lacked it (a typed URL, or a first visit before the client ran) requests a RESYNC to
-// restore the persisted state. Two windows therefore never share a UI model or state.
+// per window, kept across reloads of the same tab) and sends it as `?wid=` on the
+// WebSocket URL so the server can scope persisted state per window. It is NEVER
+// reflected into the page URL — the address bar stays clean, and the SSR request has no
+// wid (it renders defaults). A fresh window therefore needs no RESYNC (its defaults match
+// the fresh session's defaults); a same-tab reload (or a load whose URL carried a stale
+// wid) requests a RESYNC to restore the window's persisted state. Two windows therefore
+// never share a UI model or state.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildBatch, stringEntry } from "./plpl.test";
@@ -73,50 +74,50 @@ async function boot(): Promise<FakeSocket> {
 }
 
 describe("per-window id (wid)", () => {
-  it("a fresh window generates a wid, stores it, reflects it into the URL, and connects with it — no resync", async () => {
+  it("a fresh window generates a wid, stores it, and connects with it — no URL wid, no resync", async () => {
     const socket = await boot();
     const wid = new URL(socket.url).searchParams.get("wid");
     expect(wid).toBeTruthy();
     expect(sessionStorage.getItem(WID_KEY)).toBe(wid);
-    expect(new URL(location.href).searchParams.get("wid")).toBe(wid), "the page URL carries the wid for the next SSR";
+    // The wid never reaches the page URL (clean address bar / history / referrer).
+    expect(new URL(location.href).searchParams.has("wid")).toBe(false);
 
     socket.emitOpen();
     // Environment first; a fresh window has no persisted state, so no RESYNC.
     expect(socket.sent).toHaveLength(1);
   });
 
-  it("a reload whose URL already carries the wid reuses it and does NOT resync (the HTML is already the latest)", async () => {
+  it("a same-tab reload reuses the wid and requests RESYNC (SSR rendered defaults)", async () => {
     const first = await boot();
     const wid = sessionStorage.getItem(WID_KEY)!;
     first.emitOpen();
-    expect(new URL(location.href).searchParams.get("wid")).toBe(wid);
+    expect(new URL(location.href).searchParams.has("wid")).toBe(false);
 
-    // Reload: sessionStorage AND the URL keep the wid → SSR rendered this window's
-    // persisted state, so no RESYNC.
+    // Reload: sessionStorage keeps the wid → the WS connects with it, but the SSR (no
+    // URL wid) rendered defaults, so the client re-syncs this window's persisted state.
     const second = await boot();
     expect(new URL(second.url).searchParams.get("wid")).toBe(wid);
     second.emitOpen();
-    expect(second.sent).toHaveLength(1);
+    expect(second.sent).toHaveLength(2); // environment + RESYNC
   });
 
-  it("a reload whose URL lacks the wid (a typed URL) requests RESYNC to restore its state", async () => {
-    const first = await boot();
-    const wid = sessionStorage.getItem(WID_KEY)!;
-    first.emitOpen();
-
-    // Simulate a typed URL: the wid survives in sessionStorage but the URL was reset.
-    history.replaceState(null, "", "/kitchen");
-    const second = await boot();
-    expect(new URL(second.url).searchParams.get("wid")).toBe(wid);
-    second.emitOpen();
-    // Environment + RESYNC (this load rendered SSR defaults; restore persisted state).
-    expect(second.sent).toHaveLength(2);
+  it("a load whose URL carries a stale wid strips it from the URL and requests RESYNC", async () => {
+    history.replaceState(null, "", "/kitchen?wid=stale-wid&keep=1");
+    const socket = await boot();
+    // The stale wid is cleaned out of the address bar; other params survive.
+    const url = new URL(location.href);
+    expect(url.searchParams.has("wid")).toBe(false);
+    expect(url.searchParams.get("keep")).toBe("1");
+    socket.emitOpen();
+    // The SSR rendered with the stale wid's scope → re-sync to the fresh session's scope.
+    expect(socket.sent).toHaveLength(2);
   });
 
-  it("a mounted app mirrors an app-relative ROUTE into its full mounted URL", async () => {
+  it("a mounted app mirrors an app-relative ROUTE into its full mounted URL (no wid)", async () => {
     document.documentElement.dataset.pathlandBase = "/app2/_pathland";
     const socket = await boot();
     const wid = new URL(socket.url).searchParams.get("wid");
+    expect(wid).toBeTruthy();
 
     // The server emits the app-relative route as ROUTE on the nav slot (node 1); the
     // client must push the app's REAL address — the mount prefix prepended.
@@ -127,7 +128,7 @@ describe("per-window id (wid)", () => {
       ).buffer as ArrayBuffer,
     );
     expect(new URL(location.href).pathname).toBe("/app2/home");
-    expect(new URL(location.href).searchParams.get("wid")).toBe(wid);
+    expect(new URL(location.href).searchParams.has("wid")).toBe(false);
   });
 
   it("a different window gets a different wid", async () => {
