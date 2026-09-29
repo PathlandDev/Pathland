@@ -33,9 +33,9 @@ public final class PlayerControlsStyle implements AudioStyle {
         var current = computed(() -> MusicPlayerView.at(trackIndex.get()));
         var glyph = computed(() -> config.playing().get() ? "⏸" : "▶");
         var groups = HStack.of(Alignment.CENTER, 18f,
-                Button.of("⏮", this::prev).with(FontSize.of(20)),
+                Button.of("⏮", () -> { prev(); config.position().set(0f); }).with(FontSize.of(20)),
                 Button.of(Text.of(glyph), () -> config.playing().update(v -> !v)).with(FontSize.of(28)),
-                Button.of("⏭", this::next).with(FontSize.of(20)),
+                Button.of("⏭", () -> { next(); config.position().set(0f); }).with(FontSize.of(20)),
                 Text.of("|").with(FontSize.of(18), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
                 Image.of(computed(() -> current.get().cover()))
                         .with(FrameMod.of(36, 36), ScaledToFit.of()),

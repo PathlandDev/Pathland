@@ -50,12 +50,11 @@ public final class PlayerBar implements View {
                 .with(FrameMod.of(Commands.Size.FILL, MusicPlayerView.BAR_HEIGHT));
     }
 
-    /** The media ended: advance to the next track and restart playback. */
+    /** The media ended: advance to the next track and restart from the top. The
+     *  playing state is unchanged — the DOM client resumes playback when the new
+     *  source lands. */
     private void ended() {
         trackIndex.update(i -> (i + 1) % MusicPlayerView.TRACKS.size());
         position.set(0f);
-        // Force a play: the new source needs a PLAYBACK_STATE re-emit to start.
-        playing.set(false);
-        playing.set(true);
     }
 }

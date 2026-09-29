@@ -541,10 +541,12 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
         } else {
           applyStringProperty(el, propId, text);
           if (propId === PROP_AUDIO_SOURCE || propId === PROP_VIDEO_SOURCE) {
-            // Wire a media node's element + listeners and finalize native
-            // controls (a control-less media node renders native controls).
+            // Wire a media node's element + listeners, finalize native controls
+            // (a control-less media node renders native controls), and resume
+            // playback if the app was playing (a src change pauses the element).
             setupMediaElement(el, r);
             finalizeNativeMedia(el);
+            resumeIfPlaying(el);
           }
         }
       } else if (valueType === VAL_DESIGN_TOKEN) {
@@ -827,10 +829,9 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
 
 // --- media (app-driven AUDIO/VIDEO) ---
 
-/** Per-element media echo suppression: when the app drives the media element,
- *  the resulting DOM events are ignored for a short window so the app's own
- *  state doesn't loop back. */
-const mediaState = new WeakMap<HTMLMediaElement, { suppressUntil: number; suppressTimeUntil: number }>();
+/** Per-element media state: echo suppression windows + the last app-requested
+ *  playing state (so a source change can resume playback). */
+const mediaState = new WeakMap<HTMLMediaElement, { suppressUntil: number; suppressTimeUntil: number; playing: boolean }>();
 
 /** The media element of a node: the element itself when it IS the media, else the
  *  inner `<audio>`/`<video>` of a `.pathland-media` wrapper. */
@@ -847,7 +848,7 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
   if (!media || mediaState.has(media)) {
     return;
   }
-  const state = { suppressUntil: 0, suppressTimeUntil: 0 };
+  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false };
   mediaState.set(media, state);
   const id = Number(el.getAttribute("data-pathland-id"));
   const send = r.onMediaEvent;
@@ -897,6 +898,9 @@ function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, val
   const state = mediaState.get(media);
   if (propId === PROP_PLAYBACK_STATE) {
     const playing = (valueType === VAL_U8 ? bits & 0xff : bits) !== 0;
+    if (state) {
+      state.playing = playing;
+    }
     if (playing) {
       void media.play();
     } else {
@@ -920,6 +924,22 @@ function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, val
     media.volume = Math.min(1, Math.max(0, f32FromBits(bits)));
     if (state) {
       state.suppressUntil = performance.now() + 100;
+    }
+  }
+}
+
+/** A source change resets the media element to a paused, loading state — even
+ *  when it was playing. If the app last requested "playing", resume playback on
+ *  the new source (a skip/auto-advance must keep playing, not require a manual
+ *  pause+play). Transient rejections (not yet buffered / autoplay policy) are
+ *  non-fatal. */
+function resumeIfPlaying(el: HTMLElement): void {
+  const media = mediaElementOf(el);
+  const state = media ? mediaState.get(media) : undefined;
+  if (media && state && state.playing) {
+    const p = media.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(() => undefined);
     }
   }
 }
