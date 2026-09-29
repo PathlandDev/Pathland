@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3P3NQ9D3VG2NN3FYGXBCPYT",
+  "session_id": "ses_f19ed713affeZaLNsSlXVxmfpL",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-29T08:14:44.712267Z",
+  "branch": "feat/music-player-demo",
+  "checkpoints_count": 9,
+  "save_step_count": 3,
+  "files_touched": [],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "32e6142b2fbc",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 17532964,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 370296576,
+    "output_tokens": 650697,
+    "api_call_count": 815
+  },
+  "session_metrics": {
+    "turn_count": 56
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
