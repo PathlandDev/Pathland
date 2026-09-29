@@ -81,12 +81,12 @@ public final class Audio implements View {
 
     @Override
     public PathlandNode render(Environment env) {
-        // The active style contributes the node's body: the default style adds no
-        // children (native controls); a custom style adds the app's control UI.
+        // The active style contributes the node's body AND its component: the
+        // default style returns a bare AUDIO shell (native controls); a custom
+        // style returns its container (e.g. a VStack) whose layout is preserved.
         AudioStyle style = env.audioStyle();
         PathlandNode node = style.makeBody(new AudioStyle.Configuration(playing, position, volume, duration))
                 .render(env);
-        node.component = Components.AUDIO;
 
         if (sourceSignal != null) {
             node.properties.put(Properties.AUDIO_SOURCE, sourceSignal.get());

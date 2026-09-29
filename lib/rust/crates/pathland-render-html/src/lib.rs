@@ -458,19 +458,6 @@ fn rgba(argb: u32) -> String {
 }
 
 /// Whether an `AUDIO`/`VIDEO` node is **app-driven**: it binds at least one
-/// media control property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`),
-/// so the renderer reports playback events (spec/EVENTS.md Media) and the DOM
-/// client marks the node for listener wiring.
-fn app_driven_media(node: &Node) -> bool {
-    [
-        property_id::PLAYBACK_STATE,
-        property_id::MEDIA_POSITION,
-        property_id::MEDIA_VOLUME,
-    ]
-    .iter()
-    .any(|p| node.properties.contains_key(p))
-}
-
 /// A `WIDTH`/`HEIGHT` hint as CSS: `FILL` (-1) → `100%`, `HUG_CONTENT` (-2) →
 /// `fit-content`, otherwise pixels.
 fn size_css(v: f32) -> String {
@@ -883,13 +870,37 @@ impl HtmlRenderer {
         let Some(node) = nodes.get(&id) else {
             return String::new();
         };
-        let children: String = node
+        let mut children: String = node
             .children
             .iter()
             .map(|&child| self.render_node(nodes, child))
             .collect();
         let mut data_id = format!(" data-pathland-id=\"{id}\"");
         data_id.push_str(&slot_attrs(node));
+        // An app-driven media container (a custom AudioStyle/VideoStyle body, e.g.
+        // a VStack carrying AUDIO_SOURCE): inject a hidden, control-less media
+        // element as its first child and mark the container so the DOM client
+        // wires playback events (spec/EVENTS.md Media). The style body's own
+        // component is preserved, so the container keeps its layout (e.g. a
+        // flex-column VStack). Native media (no children) render `<audio
+        // controls>` via the AUDIO/VIDEO cases below.
+        let mut media_attr = String::new();
+        if !node.children.is_empty() {
+            if let Some(src) = node.strings.get(&property_id::AUDIO_SOURCE) {
+                media_attr.push_str(" data-pathland-media");
+                children = format!(
+                    "<audio src=\"{}\" data-pathland-media></audio>{children}",
+                    escape(src)
+                );
+            } else if let Some(src) = node.strings.get(&property_id::VIDEO_SOURCE) {
+                media_attr.push_str(" data-pathland-media");
+                children = format!(
+                    "<video src=\"{}\" data-pathland-media></video>{children}",
+                    escape(src)
+                );
+            }
+        }
+        data_id.push_str(&media_attr);
         let mut css = format!("{}{}", node.style_css(), node.border_style());
         // LINE_LIMIT truncation: a positive line limit clamps the text to N lines
         // (mirrors the DOM client's PROP_LINE_LIMIT application, classes.ts).
@@ -908,13 +919,13 @@ impl HtmlRenderer {
         let semantic = role_spec::semantic_tag(kind, node.role_code());
 
         let element = match node.component {
-            component_type::VSTACK => wrap_stack(id, "column", semantic, node, &children, &css, &event, &aria),
-            component_type::HSTACK => wrap_stack(id, "row", semantic, node, &children, &css, &event, &aria),
+            component_type::VSTACK => wrap_stack(id, "column", semantic, node, &media_attr, &children, &css, &event, &aria),
+            component_type::HSTACK => wrap_stack(id, "row", semantic, node, &media_attr, &children, &css, &event, &aria),
             component_type::LAZY_VSTACK => {
-                wrap_stack(id, "column", semantic, node, &children, &css, &event, &aria)
+                wrap_stack(id, "column", semantic, node, &media_attr, &children, &css, &event, &aria)
             }
             component_type::LAZY_HSTACK => {
-                wrap_stack(id, "row", semantic, node, &children, &css, &event, &aria)
+                wrap_stack(id, "row", semantic, node, &media_attr, &children, &css, &event, &aria)
             }
             component_type::TEXT => {
                 // A TEXT's tag is resolved by typography + role: a heading
@@ -1037,19 +1048,15 @@ impl HtmlRenderer {
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                // An app-driven node (any media control property bound) carries a
-                // marker so the DOM client wires its playback events (EVENTS.md).
-                let app_driven = app_driven_media(node);
-                let marker = if app_driven { " data-pathland-media" } else { "" };
                 if node.children.is_empty() {
                     // Renderer-native controls (the default `AudioStyle` emits no
                     // children); the app supplies only the source.
-                    format!("<audio{data_id}{event}{aria} src=\"{src}\" controls{marker}{style}></audio>")
+                    format!("<audio{data_id}{event}{aria} src=\"{src}\" controls{style}></audio>")
                 } else {
-                    // Custom `AudioStyle`: a hidden media element + the custom control
-                    // children (`.pathland-media` hides the bare media, CSS below).
+                    // Defensive: an `AUDIO` node with custom children — the central
+                    // injection above already added the hidden media + marker.
                     format!(
-                        "<div{data_id}{event}{aria}{marker} class=\"pathland-media\"{style}><audio src=\"{src}\"></audio>{children}</div>"
+                        "<div{data_id}{event}{aria} class=\"pathland-media\"{style}>{children}</div>"
                     )
                 }
             }
@@ -1060,15 +1067,13 @@ impl HtmlRenderer {
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                let app_driven = app_driven_media(node);
-                let marker = if app_driven { " data-pathland-media" } else { "" };
                 if node.children.is_empty() {
                     // Renderer-native controls (the default `VideoStyle`).
-                    format!("<video{data_id}{event}{aria} src=\"{src}\" controls{marker}{style}></video>")
+                    format!("<video{data_id}{event}{aria} src=\"{src}\" controls{style}></video>")
                 } else {
-                    // Custom `VideoStyle`: hidden media element + the control children.
+                    // Defensive: a `VIDEO` node with custom children.
                     format!(
-                        "<div{data_id}{event}{aria}{marker} class=\"pathland-media\"{style}><video src=\"{src}\"></video>{children}</div>"
+                        "<div{data_id}{event}{aria} class=\"pathland-media\"{style}>{children}</div>"
                     )
                 }
             }
@@ -1287,6 +1292,7 @@ if indeterminate {
         direction: &str,
         semantic: Option<&'static str>,
         node: &Node,
+        media_attr: &str,
         children: &str,
         css: &str,
         event: &str,
@@ -1309,7 +1315,7 @@ if indeterminate {
         );
         let stack_style = style_attr(&combined);
         format!(
-            "<{tag} data-pathland-id=\"{id}\"{}{event}{aria}{stack_style}>{children}</{tag}>",
+            "<{tag} data-pathland-id=\"{id}\"{}{media_attr}{event}{aria}{stack_style}>{children}</{tag}>",
             slot_attrs(node),
         )
     }
@@ -1832,15 +1838,16 @@ mod tests {
         assert!(audio.contains("<audio data-pathland-id=\"3\" src=\"https://example.com/sample.mp3\" controls"), "audio native controls");
     }
 
-    /// A media node with custom control children (custom `AudioStyle`) wraps a
-    /// hidden, control-less media element next to the app's control UI.
+    /// A custom `AudioStyle` body is a container (e.g. a VStack) carrying the media
+    /// source: the renderer preserves its layout and injects a hidden, control-less
+    /// media element + the `data-pathland-media` marker.
     #[test]
-    fn custom_controls_media_wraps_hidden_element_with_children() {
+    fn custom_controls_media_preserves_container_with_hidden_audio() {
         use pathland_core::value_type;
 
         let mut opcodes = Vec::new();
-        // AUDIO node 1 with a BUTTON child 2 (the custom transport control).
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::AUDIO as u32, 0));
+        // VSTACK node 1 (the custom style body) with a BUTTON child 2.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::BUTTON as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
         let mut strings = Vec::new();
@@ -1883,18 +1890,24 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_fragment(&opcodes, &strings, 1);
         assert!(
-            html.contains("<div data-pathland-id=\"1\" data-pathland-media class=\"pathland-media\""),
-            "custom controls wrap in .pathland-media: {html}"
+            html.contains("data-pathland-id=\"1\" data-pathland-media"),
+            "the container is marked app-driven: {html}"
         );
         assert!(
-            html.contains("<audio src=\"https://example.com/track.mp3\"></audio>"),
-            "the wrapper holds a control-less audio element"
+            html.contains("display:flex;flex-direction:column"),
+            "the VStack body keeps its flex layout: {html}"
+        );
+        assert!(
+            html.contains("<audio src=\"https://example.com/track.mp3\" data-pathland-media></audio>"),
+            "the container holds a hidden, control-less audio element"
         );
         assert!(
             !html.contains("controls"),
-            "the wrapped media element has no native controls"
+            "the injected media element has no native controls"
         );
         assert!(html.contains("<button"), "the custom control children render");
+        let debug = renderer.with_debug_comments(true).render_fragment(&opcodes, &strings, 1);
+        assert!(debug.contains("<!-- #1 VStack:"), "debug comment names the VStack: {debug}");
     }
 
     #[test]

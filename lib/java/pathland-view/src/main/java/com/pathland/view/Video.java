@@ -74,10 +74,11 @@ public final class Video implements View {
 
     @Override
     public PathlandNode render(Environment env) {
+        // The active style contributes the node's body AND its component (a bare
+        // VIDEO shell for native controls, or the custom style's container).
         VideoStyle style = env.videoStyle();
         PathlandNode node = style.makeBody(new VideoStyle.Configuration(playing, position, volume, duration))
                 .render(env);
-        node.component = Components.VIDEO;
 
         if (sourceSignal != null) {
             node.properties.put(Properties.VIDEO_SOURCE, sourceSignal.get());

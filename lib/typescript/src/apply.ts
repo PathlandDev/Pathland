@@ -544,6 +544,8 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
             // Wire a media node's element + listeners, finalize native controls
             // (a control-less media node renders native controls), and resume
             // playback if the app was playing (a src change pauses the element).
+            ensureMediaElement(el, propId);
+            applyStringProperty(el, propId, text);
             setupMediaElement(el, r);
             finalizeNativeMedia(el);
             resumeIfPlaying(el);
@@ -841,6 +843,21 @@ function mediaElementOf(el: HTMLElement): HTMLMediaElement | null {
     : el.querySelector<HTMLMediaElement>("audio,video");
 }
 
+/** Ensure a media node's container holds an inner (hidden) media element,
+ *  creating it for a live-created custom-controls node that lacks one yet. */
+function ensureMediaElement(el: HTMLElement, propId: number): HTMLMediaElement | null {
+  if (el.matches("audio,video")) {
+    return el as HTMLMediaElement;
+  }
+  let media = el.querySelector<HTMLMediaElement>("audio,video");
+  if (!media) {
+    media = document.createElement(propId === PROP_VIDEO_SOURCE ? "video" : "audio");
+    media.setAttribute("data-pathland-media", "");
+    el.prepend(media);
+  }
+  return media;
+}
+
 /** Attach a media node's element once: wire the app-driven media element to the
  *  host's media-event sink (play/pause/time/ended/volume, spec/EVENTS.md). */
 export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
@@ -890,7 +907,7 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
 /** Apply a media control property: drive the media element, suppress the echo,
  *  and wire its listeners. */
 function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, valueType: number, bits: number): void {
-  const media = mediaElementOf(el);
+  const media = ensureMediaElement(el, propId);
   if (!media) {
     return;
   }

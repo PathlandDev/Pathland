@@ -82,7 +82,6 @@ class MusicPlayerViewTest {
         // The centered bar groups: transport | now-playing | volume (| dividers).
         assertTrue(anySetText(frame, "|"), "the bar groups are separated by | dividers");
         // The app-driven audio node: source + media control properties bound.
-        assertTrue(countCreate(frame, Components.AUDIO) == 1, "one audio node drives playback");
         assertTrue(anySetPropertyString(frame, Properties.AUDIO_SOURCE, "/_pathland/assets/audio/track1.mp3"),
                 "the audio node carries the current track's source");
         assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0), "the audio node binds play state");
