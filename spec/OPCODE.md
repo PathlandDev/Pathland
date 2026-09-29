@@ -163,6 +163,15 @@ native equivalents (e.g. `SPACING` → GTK box spacing / CSS `gap`, `WIDTH`/`HEI
 → size requests). Special `WIDTH`/`HEIGHT` values: `-1` = FILL (expand to
 available), `-2` = HUG_CONTENT (native intrinsic size).
 
+> **Units — logical points.** All size properties (`WIDTH`/`HEIGHT`/`SPACING`/
+> `PADDING`/`CONTENT_MARGINS`, …) are expressed in an abstract **logical point**
+> unit — the same abstraction as SwiftUI points, Jetpack Compose `dp`, and CSS
+> pixels. A renderer MUST allocate the requested points box and fit content
+> within it; it must never treat the value as a device-pixel size. Each renderer
+> maps points to its native unit and resolves its own device resolution (e.g.
+> CSS `px`, GTK logical pixels × scale factor), so the same value yields the
+> same physical size across renderers.
+
 | Property | Value | Type | Native meaning |
 |----------|-------|------|----------------|
 | `SPACING` | `0x0001` | F32 | Gap between children |

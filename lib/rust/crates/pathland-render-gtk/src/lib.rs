@@ -102,6 +102,9 @@ pub struct GtkRenderer {
     /// for app-driven playback. Playback is driven by the node's media control
     /// properties; media events report back through the event sink.
     media_players: HashMap<u32, MediaPlayer>,
+    /// Per-node cache of the last applied fixed-size image content, so steady-
+    /// state frames don't re-decode: (source, box width, box height, content mode).
+    image_cache: HashMap<u32, (String, i32, i32, u32)>,
 }
 
 impl Default for GtkRenderer {
@@ -124,6 +127,7 @@ impl GtkRenderer {
             nav_pages: HashMap::new(),
             nav_reconciling: HashMap::new(),
             media_players: HashMap::new(),
+            image_cache: HashMap::new(),
         }
     }
 
@@ -197,6 +201,7 @@ impl GtkRenderer {
             if let Some(player) = self.media_players.remove(&id) {
                 player.teardown();
             }
+            self.image_cache.remove(&id);
         }
 
         // 2. Pre-order walk: get-or-create widgets, update text/style, and
@@ -339,7 +344,7 @@ impl GtkRenderer {
             WidgetKind::Image => {
                 if let Ok(pic) = widget.downcast::<gtk::Picture>() {
                     if let Some(src) = node.string_property(property_id::IMAGE_SOURCE) {
-                        pic.set_filename(Some(&resolve_asset(src)));
+                        self.apply_image(node, &pic, src);
                     }
                 }
             }
@@ -623,6 +628,39 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         timer: Some(timer),
     })
 }
+
+    /// Apply an image node: a fixed `WIDTH`×`HEIGHT` (logical points) scales the
+    /// decoded content into that box (Fit = contain/letterbox, Fill = cover/crop,
+    /// mirroring the web's `object-fit` and SwiftUI content modes); otherwise the
+    /// file is loaded natively and the picture scales itself. The scaled box is
+    /// cached per node so steady-state frames don't re-decode.
+    fn apply_image(&mut self, node: &HostNode, pic: &gtk::Picture, src: &str) {
+        let resolved = resolve_asset(src);
+        let mode = node
+            .f32_property(property_id::CONTENT_MODE, 0.0)
+            .round()
+            .max(0.0) as u32;
+        let (Some(box_w), Some(box_h)) = (
+            fixed_size(node, property_id::WIDTH),
+            fixed_size(node, property_id::HEIGHT),
+        ) else {
+            // No fixed points box: load natively and let the picture fit itself.
+            pic.set_filename(Some(&resolved));
+            self.image_cache.remove(&node.id);
+            return;
+        };
+        if self.image_cache.get(&node.id) == Some(&(resolved.clone(), box_w, box_h, mode)) {
+            return;
+        }
+        if let Some(boxed) = scale_image_to_box(&resolved, box_w, box_h, mode) {
+            pic.set_pixbuf(Some(&boxed));
+            self.image_cache.insert(node.id, (resolved, box_w, box_h, mode));
+        } else {
+            // Decode/scaling failed — fall back to the native loader.
+            pic.set_filename(Some(&resolved));
+            self.image_cache.remove(&node.id);
+        }
+    }
 
     /// Attach native input recognition for the listener bits not yet wired for
     /// `id`. Guarded by `attached_listeners` so delta frames don't double-attach.
@@ -1585,6 +1623,80 @@ fn size_hint(bits: Option<u32>) -> SizeHint {
     }
 }
 
+/// The finite points value of a `WIDTH`/`HEIGHT` property, or `None` when it is
+/// absent, `FILL`, or `HUG_CONTENT` (no fixed box).
+fn fixed_size(node: &HostNode, prop: u16) -> Option<i32> {
+    match size_hint(node.properties.get(&prop).copied()) {
+        SizeHint::Fixed(v) => Some(v),
+        _ => None,
+    }
+}
+
+/// Where content of size `(src_w, src_h)` sits inside a `(box_w, box_h)` points
+/// box for a content mode: `Fit` (0) scales to fit, centered (letterboxed);
+/// `Fill` (1) scales to cover and crops. Returns the target `(x, y, w, h)` in
+/// box coordinates (for `Fit`, `w`/`h` are the fitted content size and `x`/`y`
+/// its centered offset; for `Fill`, the crop window over the scaled content).
+fn fit_rect(src_w: i32, src_h: i32, box_w: i32, box_h: i32, mode: u32) -> (i32, i32, i32, i32) {
+    let sw = src_w.max(1) as f64;
+    let sh = src_h.max(1) as f64;
+    let bw = box_w.max(1) as f64;
+    let bh = box_h.max(1) as f64;
+    let scale = if mode == 1 {
+        (bw / sw).max(bh / sh) // cover: fill the box
+    } else {
+        (bw / sw).min(bh / sh) // fit: fit within the box
+    };
+    let tw = (sw * scale).round() as i32;
+    let th = (sh * scale).round() as i32;
+    let x = (box_w - tw) / 2;
+    let y = (box_h - th) / 2;
+    (x, y, tw, th)
+}
+
+/// Decode a fixed-size image into a `box_w`×`box_h` points box: `Fit` (0)
+/// scales to fit and centers it on a transparent canvas (letterbox); `Fill` (1)
+/// scales to cover and crops to the box. The box-sized pixbuf makes
+/// `GtkPicture`'s natural size equal the requested box (logical points),
+/// matching the web/SwiftUI. Returns `None` on decode/scale failure.
+fn scale_image_to_box(path: &str, box_w: i32, box_h: i32, mode: u32) -> Option<gdk_pixbuf::Pixbuf> {
+    use gdk_pixbuf::{Colorspace, InterpType, Pixbuf};
+    let src = Pixbuf::from_file(path).ok()?;
+    if box_w <= 0 || box_h <= 0 {
+        return Some(src);
+    }
+    let (x, y, tw, th) = fit_rect(src.width(), src.height(), box_w, box_h, mode);
+    let scaled = src
+        .scale_simple(tw.max(1), th.max(1), InterpType::Bilinear)?;
+    if mode == 1 {
+        // Cover: crop the box-sized region from the center of the scaled content.
+        Some(scaled.new_subpixbuf(
+            (tw - box_w) / 2,
+            (th - box_h) / 2,
+            box_w,
+            box_h,
+        ))
+    } else {
+        // Fit: place the scaled content centered on a box-sized transparent canvas.
+        let canvas = Pixbuf::new(Colorspace::Rgb, true, 8, box_w, box_h)?;
+        canvas.fill(0);
+        scaled.composite(
+            &canvas,
+            x,
+            y,
+            tw,
+            th,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            InterpType::Bilinear,
+            255,
+        );
+        Some(canvas)
+    }
+}
+
 /// Apply the directly-mappable style properties to any widget: visibility,
 /// opacity, size hints, content margins, plus CSS-backed decoration
 /// (background, border, font family/weight).
@@ -1948,6 +2060,37 @@ mod tests {
         assert_eq!(size_hint(Some(size::HUG_CONTENT.to_bits())), SizeHint::None);
         assert_eq!(size_hint(Some(0.0f32.to_bits())), SizeHint::None);
         assert_eq!(size_hint(Some(f32::INFINITY.to_bits())), SizeHint::None);
+    }
+
+    #[test]
+    fn fit_rect_matches_object_fit_semantics() {
+        // A 600x600 source in a 36x36 box → fills the box exactly.
+        assert_eq!(fit_rect(600, 600, 36, 36, 0), (0, 0, 36, 36));
+        // A 600x400 (3:2) source in a 36x36 box → fits by width, centered y.
+        assert_eq!(fit_rect(600, 400, 36, 36, 0), (0, 6, 36, 24));
+        // Fit scales up small sources too.
+        assert_eq!(fit_rect(20, 10, 36, 36, 0), (0, 9, 36, 18));
+        // Fill (cover): scale to cover the box; the scaled content extends past it
+        // (negative centering offsets; the crop window is derived from w/h).
+        assert_eq!(fit_rect(600, 400, 36, 36, 1), (-9, 0, 54, 36));
+        assert_eq!(fit_rect(400, 600, 36, 36, 1), (0, -9, 36, 54));
+    }
+
+    #[test]
+    fn scale_image_to_box_produces_a_points_sized_pixbuf() {
+        use gdk_pixbuf::{Colorspace, Pixbuf};
+        // A real 600x400 source, saved as PNG, then scaled into a 36x36 box:
+        // both Fit and Fill must yield a 36x36 pixbuf (GtkPicture's natural size
+        // then equals the requested points box).
+        let src = Pixbuf::new(Colorspace::Rgb, false, 8, 600, 400).unwrap();
+        src.fill(0x00FF0000); // red
+        let path = std::env::temp_dir().join("pathland-scale-test.png");
+        src.savev(&path, "png", &[]).unwrap();
+        let fit = scale_image_to_box(path.to_str().unwrap(), 36, 36, 0).unwrap();
+        assert_eq!((fit.width(), fit.height()), (36, 36));
+        let cover = scale_image_to_box(path.to_str().unwrap(), 36, 36, 1).unwrap();
+        assert_eq!((cover.width(), cover.height()), (36, 36));
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]

@@ -37,6 +37,20 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `CONTENT_MARGINS`, `PADDING` + per-edge, `BACKGROUND_COLOR`, `BORDER_WIDTH`/
   `COLOR`/`RADIUS`, `FONT_FAMILY`/`FONT_WEIGHT` (CSS provider), `COLOR`,
   `FONT_SIZE`.
+- **Fixed-size images scale to the points box**: a `WIDTH`×`HEIGHT` on an
+  `IMAGE` is a **logical-points box** (spec/OPCODE.md §units), and `GtkPicture`'s
+  natural size is its content's intrinsic pixels — so a finite box was only a
+  *minimum* request and the cover rendered at its intrinsic size. A fixed-size
+  image now decodes and scales the content into the box (via gdk-pixbuf), making
+  the picture's natural size equal the requested points (the bar cover renders
+  36pt, the sidebar 220pt, the bar stays 76pt tall). `CONTENT_MODE` is honored:
+  `Fit` → scale-to-fit + centered on a transparent canvas (letterbox, like
+  `object-fit:contain`), `Fill` → scale-to-cover + center-crop (like
+  `object-fit:cover`); absent → Fit. The scaled box is cached per node (steady
+  state doesn't re-decode). A non-fixed (`FILL`/single-axis) image keeps the
+  native `set_filename` loader. Retina *crispness* (decoding at the display
+  scale factor) is a documented follow-up — layout is points-correct on every
+  display.
 - **`FILL` expansion**: a `WIDTH`/`HEIGHT` of `FILL` (-1.0, SwiftUI
   `maxWidth/maxHeight: .infinity`) now sets `hexpand`/`vexpand` + `Fill` axis
   alignment so arbitrary elements truly expand to the available space; a finite

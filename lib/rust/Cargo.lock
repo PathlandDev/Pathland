@@ -626,6 +626,7 @@ dependencies = [
 name = "pathland-render-gtk"
 version = "0.1.0"
 dependencies = [
+ "gdk-pixbuf",
  "glib",
  "gstreamer",
  "gtk4",

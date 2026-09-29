@@ -77,9 +77,10 @@ crates/pathland-core-transport/ # TRANSPORT — shared-memory ring owner (RingTr
                           #   network batch encode/decode + batching policy (std)
 crates/pathland-render-gtk/ # RENDERER — host reader (RenderTree) + maps opcode frames onto
                           #   native GTK widgets incrementally; the only crate that touches
-                          #   GTK/glib/pango. App-driven media via a direct GStreamer
-                          #   playbin (GTK4's own media backend is compiled out of some
-                          #   builds). Exposes pathland_gtk_run[_ring]/
+                          #   GTK/glib/pango. Fixed-size images scale to the logical-points
+                          #   box (gdk-pixbuf, CONTENT_MODE fit/fill). App-driven media via a
+                          #   direct GStreamer playbin (GTK4's own media backend is compiled
+                          #   out of some builds). Exposes pathland_gtk_run[_ring]/
                           #   pathland_gtk_set_asset_root for Java (JNA) hosts.
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
 #   stacks, spans, buttons) as a pure function of the stream; the
