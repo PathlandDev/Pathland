@@ -1,0 +1,15 @@
+I'm planning a new "music player" demo view for the Pathland project (Java DSL, rendered via the HTML renderer — Quarkus and Spring SSR + WebSocket demos). I need you to research (READ-ONLY, no edits) and report concisely with file paths and line numbers:
+
+1. **How the web demos mount their root view**: Find the Quarkus demo app class (lib/java/pathland-quarkus-demo/src/main/java/...) and the Spring Boot demo app class (lib/java/pathland-spring-boot-demo/src/main/java/...). Report exactly how they configure a PathlandApp root-view factory (what view class do they return — e.g. SplitNavDemo or CounterView?), and any PathlandApp/root-view setup code. Include the exact class names and the root view returned.
+
+2. **How static assets are served** (for album images): The web demos serve icons at paths like `/_pathland/assets/icons/home.svg` (I saw them under lib/java/pathland-spring-boot-demo/target/classes/static/_pathland/assets/icons/ and quarkus META-INF/resources). Find the SOURCE location of these asset files (e.g. src/main/resources/static/_pathland/assets/icons/*.svg), how the server maps them, and how the HTML/DOM renderer resolves an `Image` node's `IMAGE_SOURCE` (spec/PRIMITIVES.md IMAGE). Is the image source an asset path the server serves? Can the demo ship new image files (e.g. album art) there? Report the exact directory where I would drop new assets (for both quarkus and spring demo modules).
+
+3. **The Image view in the Java DSL**: Read lib/java/pathland-view/src/main/java/com/pathland/view/Image.java and ImageSource.java (and ImageSource modifier). Report how an app authors an Image with a source (e.g. Image.of("path") or .image(...)), and what `IMAGE_SOURCE` emits (asset ref string?). Also check if there's a ScaledToFill/ScaledToFit/ContentMode.
+
+4. **Available media/controls for a music player**: Check the Java DSL for: Slider (constructor args — value/min/max, and is there a step, a .value(Signal) binding?), Button (label + action), TextField, Toggle, and the `Audio`/`Video` components (lib/java/pathland-view/src/main/java/com/pathland/view/Audio.java, Video.java). Report their authoring signatures and whether the HTML renderer (lib/java/pathland-render-html and lib/typescript/src) maps Audio/Video to native HTML elements (audio/video tags) or ignores them.
+
+5. **State + signals pattern**: Confirm the State<T> auto-wiring (pathland-view-processor) and PersistentState.signal usage from a demo view like CounterControls or SettingsView. Show one short example of a State field + a computed signal + a WritableSignal used as a Slider binding, if any such example exists in lib/java/pathland-demo-views.
+
+6. Check lib/java/pathland-demo-views/src/main/java/com/pathland/demo/settings/SettingsView.java and home/HomeView.java briefly — what do they render (for reference on authoring style)?
+
+Report a concise structured summary. Do NOT modify anything.
