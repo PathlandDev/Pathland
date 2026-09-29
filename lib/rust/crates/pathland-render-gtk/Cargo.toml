@@ -19,6 +19,9 @@ gtk = { package = "gtk4", version = "0.9" }
 glib = "0.20"
 pango = "0.20"
 libadwaita = { version = "0.7", features = ["v1_4"] }
+# App-driven media playback: GStreamer directly (GTK4's own media backend is
+# compiled out of some builds, e.g. Homebrew's gtk4 with `-Dmedia-gstreamer=disabled`).
+gstreamer = "0.23"
 
 [dev-dependencies]
 pathland-engine = { path = "../pathland-engine" }

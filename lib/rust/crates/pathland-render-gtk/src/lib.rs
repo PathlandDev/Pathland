@@ -43,6 +43,8 @@ use pathland_core::tokens::Scheme;
 use pathland_core::{component_type, listener, property_id, size, Event, Frame};
 use pathland_core_transport::{DriverTransport, FrameSource, OpcodeBatch, RingTransport, TransportError};
 use glib::translate::IntoGlib;
+use gstreamer as gst;
+use gstreamer::prelude::*;
 
 /// The bidirectional transport surface the renderer pumps: frames in
 /// (guest → host) and events out (host → guest).
@@ -499,8 +501,10 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
                 if let Some(old) = self.media_players.remove(&id) {
                     old.teardown();
                 }
-                let stream = gtk::MediaFile::for_filename(&resolved);
-                let player = self.create_media_player(id, stream, resolved.clone());
+                let Some(player) = self.create_media_player(id, resolved.clone()) else {
+                    // GStreamer unavailable: nothing to play for this node.
+                    return;
+                };
                 self.media_players.insert(id, player);
                 self.media_players.get_mut(&id).expect("just inserted")
             }
@@ -509,95 +513,116 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
         // Playback state: the node's current value (a source change re-emits only
         // AUDIO_SOURCE, so the retained PLAYBACK_STATE is authoritative — a skip
         // while playing therefore resumes automatically).
-        if node.u32_property(property_id::PLAYBACK_STATE, 0) != 0 {
-            player.stream.play();
+        let playing = node.u32_property(property_id::PLAYBACK_STATE, 0) != 0;
+        player.requested_playing.set(playing);
+        let state = if playing {
+            gst::State::Playing
         } else {
-            player.stream.pause();
-        }
+            gst::State::Paused
+        };
+        let _ = player.pipeline.set_state(state);
 
         // Seek — only when meaningful: the app echoes every MEDIA_TIME_UPDATED
         // back as MEDIA_POSITION, so a near-identical write must NOT seek (it
         // would interrupt just-started playback and echo the position around).
         let target = f64::from(node.f32_property(property_id::MEDIA_POSITION, 0.0));
-        let now = player.stream.timestamp() as f64 / 1_000_000.0;
+        let now = player
+            .playbin
+            .query_position::<gst::ClockTime>()
+            .map(|t| t.nseconds() as f64 / 1_000_000_000.0)
+            .unwrap_or(0.0);
         if should_seek(now, target) {
-            player.stream.seek((target * 1_000_000.0) as i64);
+            let _ = player.playbin.seek_simple(
+                gst::SeekFlags::FLUSH,
+                gst::ClockTime::from_seconds_f64(target),
+            );
             player.suppress_until.set(monotonic_ms() + 250);
         }
 
         let volume = node.f32_property(property_id::MEDIA_VOLUME, 1.0);
-        player.stream.set_volume(f64::from(volume.clamp(0.0, 1.0)));
+        player.playbin.set_property("volume", f64::from(volume.clamp(0.0, 1.0)));
     }
 
-    /// Create a media player for a node: attach the native stream's event
-    /// reporting (play state, ended, volume) and a periodic position reporter
-    /// through the event sink (the host drains them from the event ring).
-    fn create_media_player(
-        &mut self,
-        id: u32,
-        stream: gtk::MediaFile,
-        source: String,
-    ) -> MediaPlayer {
-        let suppress_until = Rc::new(Cell::new(0u64));
-        let last_reported = Rc::new(Cell::new(0f32));
-        if let Some(sink) = self.event_sink.clone() {
-            let stream_events = stream.clone();
-            let sink_playing = sink.clone();
-            stream_events.connect_playing_notify(move |s| {
-                sink_playing.borrow_mut()(Event::MediaPlayStateChanged {
-                    target: id,
-                    playing: s.is_playing(),
-                });
-            });
-            let sink_ended = sink.clone();
-            stream_events.connect_ended_notify(move |s| {
-                if s.is_ended() {
-                    sink_ended.borrow_mut()(Event::MediaEnded { target: id });
-                }
-            });
-            let sink_volume = sink.clone();
-            stream_events.connect_volume_notify(move |s| {
-                sink_volume.borrow_mut()(Event::MediaVolumeChanged {
-                    target: id,
-                    volume: s.volume() as f32,
-                });
-            });
-
-            // Periodic position reporter (~4 Hz while playing, mirroring the web
-            // client's `timeupdate` cadence). Suppressed briefly after a seek.
-            let timer_stream = stream.clone();
-            let timer_sink = sink;
-            let timer_suppress = suppress_until.clone();
-            let timer_last = last_reported.clone();
-            let timer = glib::timeout_add_local(Duration::from_millis(250), move || {
-                if timer_stream.is_playing()
-                    && monotonic_ms() >= timer_suppress.get()
-                {
-                    let seconds = timer_stream.timestamp() as f32 / 1_000_000.0;
-                    if (seconds - timer_last.get()).abs() >= 0.25 {
-                        timer_last.set(seconds);
-                        timer_sink.borrow_mut()(Event::MediaTimeUpdated {
-                            target: id,
-                            seconds,
-                        });
-                    }
-                }
-                glib::ControlFlow::Continue
-            });
-            return MediaPlayer {
-                stream,
-                source,
-                suppress_until,
-                timer: Some(timer),
-            };
-        }
-        MediaPlayer {
-            stream,
-            source,
+    /// Create a media player for a node: a GStreamer `playbin` pipeline driven by
+/// the node's control properties, with a periodic reporter that both polls the
+/// stream position (`MEDIA_TIME_UPDATED`) and drains the pipeline bus for
+/// `EOS` (`MEDIA_ENDED`) / errors (play-state false). The bus is polled on the
+/// main thread (not via `connect_message`, which requires a `Send` closure the
+/// renderer's `Rc`-based sink cannot provide). Returns `None` when GStreamer
+/// is unavailable.
+fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlayer> {
+    let (pipeline, playbin) = build_playbin(&resolved)?;
+    let suppress_until = Rc::new(Cell::new(0u64));
+    let last_reported = Rc::new(Cell::new(0f32));
+    let requested_playing = Rc::new(Cell::new(false));
+    let Some(sink) = self.event_sink.clone() else {
+        return Some(MediaPlayer {
+            pipeline,
+            playbin,
+            source: resolved,
+            requested_playing,
             suppress_until,
             timer: None,
+        });
+    };
+
+    // Periodic position reporter (~4 Hz while playing, mirroring the web
+    // client's `timeupdate` cadence). Suppressed briefly after a seek. Also
+    // drains the pipeline bus: EOS → MEDIA_ENDED, an error → play-state false
+    // (so the app's play button isn't left stuck on a failed stream).
+    let timer_pipeline = pipeline.clone();
+    let timer_playbin = playbin.clone();
+    let timer_sink = sink;
+    let timer_suppress = suppress_until.clone();
+    let timer_last = last_reported.clone();
+    let timer_playing = requested_playing.clone();
+    let timer = glib::timeout_add_local(Duration::from_millis(250), move || {
+        if let Some(bus) = timer_pipeline.bus() {
+            while let Some(msg) = bus.pop() {
+                match msg.view() {
+                    gst::MessageView::Eos(_) => {
+                        timer_sink.borrow_mut()(Event::MediaEnded { target: id });
+                        timer_playing.set(false);
+                    }
+                    gst::MessageView::Error(err) => {
+                        eprintln!(
+                            "pathland-gtk media error: {}",
+                            err.error().message()
+                        );
+                        timer_playing.set(false);
+                        timer_sink.borrow_mut()(Event::MediaPlayStateChanged {
+                            target: id,
+                            playing: false,
+                        });
+                    }
+                    _ => {}
+                }
+            }
         }
-    }
+        if timer_playing.get() && monotonic_ms() >= timer_suppress.get() {
+            let seconds = timer_playbin
+                .query_position::<gst::ClockTime>()
+                .map(|t| t.nseconds() as f32 / 1_000_000_000.0)
+                .unwrap_or(0.0);
+            if (seconds - timer_last.get()).abs() >= 0.25 {
+                timer_last.set(seconds);
+                timer_sink.borrow_mut()(Event::MediaTimeUpdated {
+                    target: id,
+                    seconds,
+                });
+            }
+        }
+        glib::ControlFlow::Continue
+    });
+    Some(MediaPlayer {
+        pipeline,
+        playbin,
+        source: resolved,
+        requested_playing,
+        suppress_until,
+        timer: Some(timer),
+    })
+}
 
     /// Attach native input recognition for the listener bits not yet wired for
     /// `id`. Guarded by `attached_listeners` so delta frames don't double-attach.
@@ -1095,25 +1120,62 @@ fn should_seek(now_seconds: f64, target_seconds: f64) -> bool {
 /// time reporter. The app owns all playback state; this is only the rendered
 /// output (the desktop analog of the web client's hidden `<audio>`).
 struct MediaPlayer {
-    /// The native media stream.
-    stream: gtk::MediaFile,
+    /// The GStreamer pipeline hosting the `playbin` (owns the bus).
+    pipeline: gst::Pipeline,
+    /// The `playbin` element (source URI, volume, position, seeks).
+    playbin: gst::Element,
     /// The resolved source it was created for (to detect a source change).
     source: String,
+    /// The app's last requested play state (drives the time reporter and
+    /// resume-on-source-change).
+    requested_playing: Rc<Cell<bool>>,
     /// Monotonic ms until which time updates are suppressed (a just-applied
     /// seek must not echo back as a new position).
     suppress_until: Rc<Cell<u64>>,
-    /// The periodic time-update source (removed on teardown so a dead node's
-    /// stream is released).
+    /// The periodic time-update/bus-poll source (removed on teardown so a dead
+    /// node's pipeline is released).
     timer: Option<glib::SourceId>,
 }
 
 impl MediaPlayer {
-    /// Cancel the periodic reporter and drop the stream.
+    /// Cancel the periodic reporter and release the pipeline.
     fn teardown(self) {
         if let Some(timer) = self.timer {
             timer.remove();
         }
+        let _ = self.pipeline.set_state(gst::State::Null);
     }
+}
+
+/// Build a `playbin` pipeline for a resolved local media file. GStreamer is
+/// initialized once per process (a no-op when already done).
+fn build_playbin(resolved: &str) -> Option<(gst::Pipeline, gst::Element)> {
+    static INIT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if !*INIT.get_or_init(|| gst::init().is_ok()) {
+        return None;
+    }
+    let pipeline = gst::Pipeline::new();
+    let playbin = gst::ElementFactory::make("playbin").build().ok()?;
+    pipeline.add(&playbin).ok()?;
+    playbin.set_property("uri", file_uri(resolved));
+    playbin.sync_state_with_parent().ok()?;
+    Some((pipeline, playbin))
+}
+
+/// A `file://` URI for a local path (percent-encoding the characters that break
+/// a URI).
+fn file_uri(path: &str) -> String {
+    let mut uri = String::from("file://");
+    for ch in path.chars() {
+        match ch {
+            ' ' => uri.push_str("%20"),
+            '#' => uri.push_str("%23"),
+            '?' => uri.push_str("%3F"),
+            '%' => uri.push_str("%25"),
+            _ => uri.push(ch),
+        }
+    }
+    uri
 }
 
 /// The current child widgets of a native widget, in child/draw order.

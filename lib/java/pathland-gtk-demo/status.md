@@ -19,8 +19,8 @@ cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
   router back).
 - State/theme/platform seeding mirrors the server session: `PersistentState`
   over an `InMemoryStateStore`, `DemoTheme.adaptive()` as the emitter theme.
-- **App-driven media**: the renderer plays the demo's tracks through its native
-  `GtkMediaFile` stream (driven by the node's media control properties) and
+- **App-driven media**: the renderer plays the demo's tracks through a direct
+  GStreamer `playbin` (driven by the node's media control properties) and
   reports `MEDIA_*` events back through the ring. The app's web-style
   `/_pathland/assets/...` paths are resolved against a local asset root: the
   demo extracts its audio + covers from the classpath at startup and calls
@@ -46,8 +46,9 @@ cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
 
 ## Not implemented / gaps
 
-- **Playback requires GStreamer** (GTK4 links it) with the mp3 decoding plugins
-  installed; without them the app runs but the media stream errors on play.
+- **Playback requires GStreamer** with the mp3 decoding plugins installed (the
+  brew `gstreamer` formula bundles them); without it the app runs but the
+  pipeline errors on play.
 - The GTK renderer's `attach_control_events` covers `TOGGLE`/`SLIDER`/
   `TEXT_FIELD`/`PICKER` only: `DATE_PICKER`, `STEPPER`, `COLOR_PICKER`, and
   `TEXT_EDITOR` render but do not (yet) emit events under GTK.
@@ -58,5 +59,6 @@ cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
 
 `mvn test -pl pathland-gtk-demo` — `RingEventReaderTest` (6 tests, headless, no
 GTK). Manual: `GtkHost` boots the window and renders `MusicPlayerView` via the
-shared ring (the media stream is created per node; audio playback itself needs
-GStreamer). The full Java reactor compiles with this module.
+shared ring; with GStreamer installed the pipeline reaches `PLAYING` and reports
+`MEDIA_*` events (verified with a seeded `playing=true` run + `GST_DEBUG`). The
+full Java reactor compiles with this module.
