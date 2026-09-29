@@ -833,7 +833,12 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
 
 /** Per-element media state: echo suppression windows + the last app-requested
  *  playing state (so a source change can resume playback). */
-const mediaState = new WeakMap<HTMLMediaElement, { suppressUntil: number; suppressTimeUntil: number; playing: boolean }>();
+const mediaState = new WeakMap<HTMLMediaElement, {
+  suppressUntil: number;
+  suppressTimeUntil: number;
+  playing: boolean;
+  lastReported: number;
+}>();
 
 /** The media element of a node: the element itself when it IS the media, else the
  *  inner `<audio>`/`<video>` of a `.pathland-media` wrapper. */
@@ -865,7 +870,7 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
   if (!media || mediaState.has(media)) {
     return;
   }
-  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false };
+  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0 };
   mediaState.set(media, state);
   const id = Number(el.getAttribute("data-pathland-id"));
   const send = r.onMediaEvent;
@@ -893,9 +898,15 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
       }
     });
   }
-  // Time + ended are always reported: the app displays progress and advances on end.
+  // Time + ended are always reported: the app displays progress and advances on
+  // end. Time updates are throttled to ~1/second of playback progress (a
+  // `timeupdate` within a second of the last report is dropped), matching the
+  // GTK renderer's cadence.
   media.addEventListener("timeupdate", () => {
-    if (!media.paused && performance.now() >= state.suppressTimeUntil) {
+    if (!media.paused
+        && performance.now() >= state.suppressTimeUntil
+        && Math.abs(media.currentTime - state.lastReported) >= 1) {
+      state.lastReported = media.currentTime;
       send(encodeMediaTimeUpdated(id, media.currentTime));
     }
   });

@@ -117,10 +117,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `PLAYBACK_STATE` → pipeline `Playing`/`Paused`, `MEDIA_POSITION` → seek
   (**echo-guarded**: a near-identical write — the app's `MEDIA_TIME_UPDATED` echo
   — does not seek), `MEDIA_VOLUME` → playbin volume. Media events report back
-  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (a periodic ~4 Hz
-  reporter polls `query_position` while the app requested playing, suppressed
-  briefly after a seek), `MEDIA_ENDED` and error → play-state-false from polling
-  the pipeline bus (`EOS`/`Error` messages, on the main thread). Playback is
+  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (a 250 ms reporter
+  polls `query_position` while the app requested playing and reports only when
+  the position advanced ~1 second — the same cadence as the web client — 
+  suppressed briefly after a seek), `MEDIA_ENDED` and error → play-state-false
+  from polling the pipeline bus (`EOS`/`Error` messages, on the main thread).
+  Playback is
   **GStreamer-direct** because GTK4's own media backend (`GtkMediaFile`) is
   compiled out of some builds (Homebrew's `gtk4` ships with
   `-Dmedia-gstreamer=disabled`); the app owns all playback state, the pipeline is

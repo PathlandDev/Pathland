@@ -107,6 +107,36 @@ describe("applyBatch · media", () => {
       ((VAL_STRING << 16) | PROP_AUDIO_SOURCE) >>> 0, 0]], stringEntry("/track2.mp3"))), r);
     expect(audio.paused).toBe(false);
   });
+
+  it("reports MEDIA_TIME_UPDATED only when the position advances ~1s", () => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const sent: Uint8Array[] = [];
+    const r = renderer();
+    r.byId.set(1, wrapper);
+    r.onMediaEvent = (batch: Uint8Array) => sent.push(batch);
+
+    // Wire the media element and start "playing" (paused=false for the gate).
+    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_U32 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry(""))), r);
+
+    // Sub-second timeupdates are dropped (no MEDIA_TIME_UPDATED).
+    audio.currentTime = 0.4;
+    audio.dispatchEvent(new Event("timeupdate"));
+    audio.currentTime = 0.9;
+    audio.dispatchEvent(new Event("timeupdate"));
+    expect(sent).toHaveLength(0);
+
+    // A ~1s advance reports exactly once, with the current position.
+    audio.currentTime = 1.2;
+    audio.dispatchEvent(new Event("timeupdate"));
+    expect(sent).toHaveLength(1);
+  });
 });
 
 describe("applyBatch · STYLE", () => {

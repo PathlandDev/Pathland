@@ -35,6 +35,10 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `<audio controls>`); `IMAGE_SOURCE`/`VIDEO_SOURCE`/`AUDIO_SOURCE` apply the
   asset ref; the `LABEL` accessibility text is set as `alt` on media elements;
   `CONTENT_MODE` maps `Fit`→`contain`, `Fill`→**`cover`** (matching the Rust SSR).
+  App-driven media reports `MEDIA_TIME_UPDATED` when the playback position
+  advances **~1 second** (throttled, matching the GTK renderer's cadence) and
+  `MEDIA_ENDED` at track end; play/pause/volume are reported only for
+  native-controls media.
   The reserved framework root (`/_pathland/**`) is read from the SSR page's
   `data-pathland-base` (WS URL + bundle resolved from it).
 - **Hydration**: builds the `data-pathland-id → element` registry from the SSR

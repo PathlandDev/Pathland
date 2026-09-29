@@ -634,7 +634,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
                 .query_position::<gst::ClockTime>()
                 .map(|t| t.nseconds() as f32 / 1_000_000_000.0)
                 .unwrap_or(0.0);
-            if (seconds - timer_last.get()).abs() >= 0.25 {
+            if should_report_time(timer_last.get(), seconds) {
                 timer_last.set(seconds);
                 timer_sink.borrow_mut()(Event::MediaTimeUpdated {
                     target: id,
@@ -1182,6 +1182,13 @@ fn monotonic_ms() -> u64 {
 /// current position it is an echo and must not interrupt playback.
 fn should_seek(now_seconds: f64, target_seconds: f64) -> bool {
     (now_seconds - target_seconds).abs() > 0.25
+}
+
+/// Whether a `MEDIA_TIME_UPDATED` should be reported: the playback position
+/// advanced ~1 second since the last report (the cadence the web client uses,
+/// so both renderers tick the seek bar once per second).
+fn should_report_time(last_seconds: f32, current_seconds: f32) -> bool {
+    (current_seconds - last_seconds).abs() >= 1.0
 }
 
 /// A renderer-owned media player: the native `GtkMediaFile` (GStreamer-backed,
@@ -2361,6 +2368,19 @@ mod tests {
         assert!(!should_seek(120.0, 120.1));
         assert!(!should_seek(120.1, 120.0));
         assert!(!should_seek(30.0, 30.0));
+    }
+
+    #[test]
+    fn media_time_reports_once_per_second() {
+        // A MEDIA_TIME_UPDATED is reported only when the position advanced ~1s
+        // since the last report (the web client's cadence — slider ticks 1/s).
+        assert!(!should_report_time(0.0, 0.9));
+        assert!(!should_report_time(10.0, 10.5));
+        assert!(should_report_time(0.0, 1.0));
+        assert!(should_report_time(0.0, 1.1));
+        assert!(should_report_time(10.0, 11.2));
+        // Backward jumps (a seek the app applied) also report.
+        assert!(should_report_time(30.0, 20.0));
     }
 
     #[test]

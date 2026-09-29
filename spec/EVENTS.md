@@ -239,8 +239,9 @@ renderer-native `<audio controls>` reports nothing).
 | `MEDIA_VOLUME_CHANGED` | 0x12 | targetId | volume (f32, 0..1) | 0 | — | `AVPlayer.volume` |
 
 - **`MEDIA_TIME_UPDATED`**: the media's current playback position in seconds.
-  Reported periodically while playing; a seek initiated by the app
-  (`MEDIA_POSITION` change) is not echoed back.
+  Reported **when the playback position advances ~1 second** (at most ~1/s)
+  while playing; a seek initiated by the app (`MEDIA_POSITION` change) is not
+  echoed back.
 - **Guards**: media events flow only when the app bound the matching control
   property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`) on the node; a
   plain `<audio controls>` reports nothing.
