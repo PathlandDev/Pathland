@@ -41,23 +41,24 @@ public final class PlayerControlsStyle implements AudioStyle {
                         .with(FrameMod.of(36, 36), ScaledToFit.of()),
                 VStack.of(Alignment.LEADING, 2,
                         Text.of(computed(() -> current.get().title()))
-                                .with(FontWeightMod.of(FontWeight.SEMIBOLD)),
+                                .with(FontWeightMod.of(FontWeight.SEMIBOLD), LineLimit.of(1)),
                         Text.of(computed(() -> current.get().artist()))
-                                .with(FontSize.of(13), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG))
+                                .with(FontSize.of(13), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG), LineLimit.of(1))
                 ).with(FrameMod.of(160f)),
                 Text.of("|").with(FontSize.of(18), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
                 Text.of("🔊").with(FontSize.of(16)),
-                Slider.of(config.volume(), 0f, 1f).with(FrameMod.of(96f))
+                Slider.of(config.volume(), 0f, 1f)
         );
-        return VStack.of(
+        return VStack.of(Alignment.CENTER, 0,
                 // Center the three groups in the full-width bar.
-                HStack.of(Alignment.CENTER, 0f, Spacer.of(), groups, Spacer.of()),
-                Spacer.of(), // pin the seek bar to the bottom
-                // Progress as a percent (0..100), mapped in the UI model.
-                Slider.of(new PercentSeek(config.position(),
-                                () -> MusicPlayerView.at(trackIndex.get()).duration()),
-                        0f, 100f)
-                        .with(FrameMod.of(Commands.Size.FILL, 16f))
+                HStack.of(
+                    Spacer.of(),
+                    VStack.of(groups,
+                            Slider.of(new PercentSeek(config.position(),
+                                    () -> MusicPlayerView.at(trackIndex.get()).duration()),
+                                0f, 100f)),
+                    Spacer.of()
+                )
         );
     }
 
