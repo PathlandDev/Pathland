@@ -1,0 +1,57 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3P5NM52RW0DWYR9XKKW6S3Z",
+  "session_id": "ses_f19ed713affeZaLNsSlXVxmfpL",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-29T08:49:41.060703Z",
+  "branch": "feat/music-player-demo",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/src/capi.rs",
+    "lib/java/pathland-gtk-demo/src/main/java/com/pathland/demo/gtk/RingEventReader.java",
+    "lib/java/pathland-gtk-demo/src/test/java/com/pathland/demo/gtk/RingEventReaderTest.java",
+    "lib/java/pathland-gtk-demo/src/main/java/com/pathland/demo/gtk/GtkRendererNative.java",
+    "lib/java/pathland-gtk-demo/src/main/java/com/pathland/demo/gtk/GtkHost.java",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/java/pathland-gtk-demo/status.md",
+    "AGENTS.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "adcc7843104c",
+  "checkpoint_transcript_start": 870,
+  "transcript_lines_at_start": 870,
+  "compact_transcript_start": 870,
+  "token_usage": {
+    "input_tokens": 1057034,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 28450048,
+    "output_tokens": 67782,
+    "api_call_count": 118
+  },
+  "session_metrics": {
+    "turn_count": 58
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-29T08:49:39.904791Z",
+    "agent_lines": 467,
+    "agent_removed": 42,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 467,
+    "total_lines_changed": 509,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
