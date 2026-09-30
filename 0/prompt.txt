@@ -1,14 +1,1 @@
-Gstreamer missing in workflow files: PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1 pkg-config --libs --cflags gstreamer-1.0 'gstreamer-1.0 >= 1.14'
-
-  pkg-config output:
-    Package gstreamer-1.0 was not found in the pkg-config search path.
-    Perhaps you should add the directory containing `gstreamer-1.0.pc'
-    to the PKG_CONFIG_PATH environment variable
-    Package 'gstreamer-1.0', required by 'virtual:world', not found
-    Package 'gstreamer-1.0', required by 'virtual:world', not found
-
-  The system library `gstreamer-1.0` required by crate `gstreamer-sys` was not found.
-  The file `gstreamer-1.0.pc` needs to be installed and the PKG_CONFIG_PATH environment variable must contain its parent directory.
-  The PKG_CONFIG_PATH environment variable is not set.
-
-  HINT: if you have installed the library, try setting PKG_CONFIG_PATH to the directory containing `gstreamer-1.0.pc`.
+go
