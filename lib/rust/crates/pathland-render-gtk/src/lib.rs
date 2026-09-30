@@ -40,7 +40,7 @@ use gtk::{
     PropagationPhase,
 };
 use pathland_core::tokens::Scheme;
-use pathland_core::{component_type, listener, property_id, size, Event, Frame};
+use pathland_core::{component_type, listener, property_id, Event, Frame};
 use pathland_core_transport::{DriverTransport, FrameSource, OpcodeBatch, RingTransport, TransportError};
 use glib::translate::IntoGlib;
 use gstreamer as gst;
@@ -260,28 +260,9 @@ impl GtkRenderer {
             .tree
             .node(parent_id)
             .is_some_and(|n| composite_horizontal(n.component_type));
-        // A composite control sizes to its content on the MAIN axis unless the
-        // node explicitly fills it, matching the HTML button (`inline-flex`,
-        // content-sized) inside a flex row/column that stretches the cross axis.
-        // Without this, the enclosing box's default `Fill` alignment stretches
-        // the control on its main axis (e.g. a library row button absorbs the
-        // viewport height), inflating content like fixed-size images.
-        let fills = |prop: u16| {
-            self.tree.node(parent_id).is_some_and(|n| {
-                matches!(size_hint(n.properties.get(&prop).copied()), SizeHint::Fill)
-            })
-        };
-        let parent_vertical = parent
-            .parent()
-            .and_then(|p| p.downcast::<GtkBox>().ok())
-            .map(|b| b.orientation() == gtk::Orientation::Vertical);
-        if parent_vertical.unwrap_or(true) {
-            if !fills(property_id::HEIGHT) {
-                btn.set_valign(Align::Center);
-            }
-        } else if !fills(property_id::WIDTH) {
-            btn.set_halign(Align::Center);
-        }
+        // The button's own main/cross-axis alignment is governed by its parent
+        // stack's per-child rule in `sync_stack_children` (LAYOUT.md: a
+        // composite control hugs on the main axis unless it is `FILL`-sized).
         let box_widget: gtk::Widget = if let Some(bx) = self.composite_boxes.get(&parent_id).cloned() {
             bx
         } else {
@@ -746,8 +727,11 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         }
     }
 
-    /// Reconcile a stack's children: apply cross-axis alignment to each child
-    /// and re-append the tree-ordered child widgets.
+    /// Reconcile a stack's children: apply the LAYOUT.md per-child alignment
+    /// rule (main axis: only `FILL`/greedy children stretch, leftover goes to
+    /// them; cross axis: only `FILL`/greedy children stretch, everything else
+    /// keeps its size and is positioned by the stack's `ALIGNMENT`, default
+    /// Leading) and re-append the tree-ordered child widgets.
     fn sync_stack_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
@@ -758,19 +742,24 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         let Some(l) = layout::stack_layout(node) else {
             return;
         };
-
-        // Cross-axis alignment of each child: a vertical stack aligns children
-        // horizontally (`halign`), a horizontal stack vertically (`valign`).
+        let stack_align = layout::stack_align_option(node);
         for child_id in children {
-            if let Some(w) = self.widgets.get(child_id) {
-                if layout::cross_axis_is_horizontal(l.orientation) {
-                    w.set_halign(l.child_align);
-                } else {
-                    w.set_valign(l.child_align);
-                }
+            let Some(w) = self.widgets.get(child_id).cloned() else {
+                continue;
+            };
+            let Some(cn) = self.tree.node(*child_id) else {
+                continue;
+            };
+            let main = layout::main_axis_align(cn, l.orientation);
+            let cross = layout::cross_axis_align(cn, l.orientation, stack_align);
+            if layout::cross_axis_is_horizontal(l.orientation) {
+                w.set_halign(cross);
+                w.set_valign(main);
+            } else {
+                w.set_halign(main);
+                w.set_valign(cross);
             }
         }
-
         self.reconcile_box_children(&parent, children);
     }
 
@@ -783,6 +772,14 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             return;
         };
         let columns = layout::grid_columns(node);
+        // Per-cell alignment (LAYOUT.md): a `FILL`/greedy cell stretches on an
+        // axis, anything else keeps its size and is positioned at the start.
+        for child_id in children {
+            if let (Some(w), Some(cn)) = (self.widgets.get(child_id), self.tree.node(*child_id)) {
+                w.set_halign(layout::grid_cell_align(cn, layout::Axis::Horizontal));
+                w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical));
+            }
+        }
         if grid_matches(grid, children, columns, &self.widgets) {
             return;
         }
@@ -1658,35 +1655,11 @@ fn apply_padding(widget: &gtk::Widget, node: &HostNode) {
     widget.set_margin_start(e.left);
 }
 
-/// How a `WIDTH`/`HEIGHT` property maps to GTK sizing.
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum SizeHint {
-    /// No hint: leave the widget's natural size and default expand state.
-    None,
-    /// Expand to the available space (`size::FILL`, i.e. SwiftUI `.infinity`).
-    Fill,
-    /// A fixed size request.
-    Fixed(i32),
-}
-
-/// Map a stored `WIDTH`/`HEIGHT` property (bit pattern) to a sizing hint.
-/// `FILL` (-1.0) → `Fill`; a positive finite value → `Fixed`; `HUG_CONTENT`
-/// (-2.0), zero, and non-finite (defensive: the ring path never normalizes) →
-/// `None`.
-fn size_hint(bits: Option<u32>) -> SizeHint {
-    match bits.map(f32::from_bits) {
-        None => SizeHint::None,
-        Some(v) if v == size::FILL => SizeHint::Fill,
-        Some(v) if v.is_finite() && v > 0.0 => SizeHint::Fixed(v as i32),
-        Some(_) => SizeHint::None,
-    }
-}
-
 /// The finite points value of a `WIDTH`/`HEIGHT` property, or `None` when it is
 /// absent, `FILL`, or `HUG_CONTENT` (no fixed box).
 fn fixed_size(node: &HostNode, prop: u16) -> Option<i32> {
-    match size_hint(node.properties.get(&prop).copied()) {
-        SizeHint::Fixed(v) => Some(v),
+    match layout::size_hint(node.properties.get(&prop).copied()) {
+        layout::SizeHint::Fixed(v) => Some(v),
         _ => None,
     }
 }
@@ -1768,21 +1741,21 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
     }
     let w = node.properties.get(&property_id::WIDTH).copied();
     let h = node.properties.get(&property_id::HEIGHT).copied();
-    let sw = size_hint(w);
-    let sh = size_hint(h);
+    let sw = layout::size_hint(w);
+    let sh = layout::size_hint(h);
     // FILL (-1.0) means "expand to available space": grow on the axis and align
     // the widget into it (SwiftUI `maxWidth/maxHeight: .infinity`). A finite
     // value becomes a size request; HUG_CONTENT / absence leaves the natural size.
     // A present-but-not-FILL axis resets a previous expansion so updates are
     // idempotent; an absent axis is left untouched (preserves widget defaults
     // such as Spacer's built-in expand).
-    if let SizeHint::Fill = sw {
+    if let layout::SizeHint::Fill = sw {
         widget.set_hexpand(true);
         widget.set_halign(Align::Fill);
     } else if w.is_some() {
         widget.set_hexpand(false);
     }
-    if let SizeHint::Fill = sh {
+    if let layout::SizeHint::Fill = sh {
         widget.set_vexpand(true);
         widget.set_valign(Align::Fill);
     } else if h.is_some() {
@@ -1791,11 +1764,11 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
     if w.is_some() || h.is_some() {
         widget.set_size_request(
             match sw {
-                SizeHint::Fixed(v) => v,
+                layout::SizeHint::Fixed(v) => v,
                 _ => -1,
             },
             match sh {
-                SizeHint::Fixed(v) => v,
+                layout::SizeHint::Fixed(v) => v,
                 _ => -1,
             },
         );
@@ -2107,18 +2080,30 @@ mod tests {
     use super::*;
     use pathland_engine::Engine;
     use pathland_core::tokens::Scheme;
-    use pathland_core::{init_memory, property_id, value_type, Guest, Host, MemoryLayout};
+    use pathland_core::{init_memory, property_id, size, value_type, Guest, Host, MemoryLayout};
     use pathland_view::{assign_ids, text, vstack, View, ViewExt};
 
     #[test]
     fn size_hint_maps_width_height_sentinels() {
-        assert_eq!(size_hint(None), SizeHint::None);
-        assert_eq!(size_hint(Some(size::FILL.to_bits())), SizeHint::Fill);
-        assert_eq!(size_hint(Some(24.0f32.to_bits())), SizeHint::Fixed(24));
+        assert_eq!(layout::size_hint(None), layout::SizeHint::None);
+        assert_eq!(
+            layout::size_hint(Some(size::FILL.to_bits())),
+            layout::SizeHint::Fill
+        );
+        assert_eq!(
+            layout::size_hint(Some(24.0f32.to_bits())),
+            layout::SizeHint::Fixed(24)
+        );
         // HUG_CONTENT (-2.0), zero, and non-finite values are natural size.
-        assert_eq!(size_hint(Some(size::HUG_CONTENT.to_bits())), SizeHint::None);
-        assert_eq!(size_hint(Some(0.0f32.to_bits())), SizeHint::None);
-        assert_eq!(size_hint(Some(f32::INFINITY.to_bits())), SizeHint::None);
+        assert_eq!(
+            layout::size_hint(Some(size::HUG_CONTENT.to_bits())),
+            layout::SizeHint::None
+        );
+        assert_eq!(layout::size_hint(Some(0.0f32.to_bits())), layout::SizeHint::None);
+        assert_eq!(
+            layout::size_hint(Some(f32::INFINITY.to_bits())),
+            layout::SizeHint::None
+        );
     }
 
     #[test]

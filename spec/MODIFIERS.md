@@ -123,6 +123,10 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.
 - **`ALIGNMENT` enum**: `Leading`=0, `Center`=1, `Trailing`=2, `Fill`=3.
+  `ALIGNMENT` **positions** children in the leftover cross-axis space; it never
+  resizes them. The cross-axis default is *hug* (children keep their size;
+  only `FILL`-sized children stretch), and `Fill`=3 means default (hug)
+  positioning, not stretch. Full contract: [LAYOUT.md](./LAYOUT.md).
 - **`CONTENT_MODE` enum**: `Fit`=0 (aspect-fit within the bounds),
   `Fill`=1 (aspect-fill, cropped) — the web renderer maps them to
   `object-fit: contain` / `object-fit: cover` (both SSR and the DOM client).

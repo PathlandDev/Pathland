@@ -69,12 +69,17 @@ A child's main-axis size comes from its size kind:
 - **Fill** → the child expands; **leftover main-axis space goes only to `Fill`
   children** (shared between them). A container with no `Fill` child leaves the
   leftover space empty at the end of its main axis.
-- **Hug** (or absent) → the child's natural size.
+- **Hug** (or absent) → the child's natural size, positioned at the start of
+  the leftover space.
 
 ### Cross axis
 
 - A **Fixed** or **Hug** child keeps its own size on the cross axis and is
-  positioned by the container's `ALIGNMENT`.
+  **positioned** by the container's `ALIGNMENT`.
+- **`ALIGNMENT` positions but never resizes.** It selects the placement of
+  Fixed/Hug children within leftover space; it does not stretch them. With no
+  `ALIGNMENT`, the default cross-axis position is **Leading/Start**. The enum's
+  `Fill` (3) therefore means *default (hug) positioning*, not stretch.
 - Only a **`Fill`** child fills the container's cross size.
 - **The default is *hug*, not stretch.** A child with no cross-axis size is NOT
   stretched to fill the cross axis. This deliberately matches **SwiftUI**
@@ -83,6 +88,29 @@ A child's main-axis size comes from its size kind:
   `fillMaxWidth/Height`), rather than CSS flexbox's `align-items: stretch`
   default. A renderer must therefore NOT stretch cross-axis children implicitly
   (e.g. the web renderer uses `align-items: flex-start`, not the flex default).
+
+### Layout-greedy primitives
+
+The cross-axis hug default has **four intrinsic exceptions** — primitives whose
+native behavior is to fill space (SwiftUI/Compose precedent), so an app does not
+need an explicit `FILL` frame to get their natural behavior:
+
+| Primitive | Greedy on | Precedent |
+|-----------|-----------|-----------|
+| `DIVIDER` | cross-axis | SwiftUI `Divider()` fills the stack's available width/height; CSS `hr` is block-width |
+| `SCROLLVIEW` | both axes | SwiftUI `ScrollView` / Compose scroll fills the available space (the point of a scroll region) |
+| `COLOR` | both axes | SwiftUI `Color` is layout-greedy and expands unless a frame constrains it |
+| `SPACER` | main-axis | `Spacer()` absorbs leftover main-axis space by definition |
+
+Rules:
+
+- Greedy fills **only the axis the primitive is designed to fill** — never both
+  for `DIVIDER`/`SPACER`.
+- An **explicit `WIDTH`/`HEIGHT` always overrides** the greedy default (`Fixed`
+  = that box; `FILL` = stretch anyway).
+- Every other primitive (Text, Image, stacks, buttons, controls) is a plain
+  **Fixed / Fill / Hug** node governed by the size model — no implicit
+  greediness.
 
 ### A container that is itself Fixed
 

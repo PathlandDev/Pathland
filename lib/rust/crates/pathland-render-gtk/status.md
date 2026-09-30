@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** September 14, 2026
+**Last updated:** September 30, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -167,12 +167,15 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 
 ## Not implemented / gaps
 
-- **Layout contract (spec/LAYOUT.md)**: the allocation contract is documented;
-  render-gtk conforms on the main axis (Fixed/Hug children are not stretched,
-  composite controls size to content) but the **cross axis** is not yet aligned:
-  GTK allocates children the container's full cross size, so a Fixed child in a
-  wider column (e.g. a 220 cover in a 280 sidebar) fills the column instead of
-  keeping its exact points size — conformance cases C2/C5 are pending.
+- **Layout contract (spec/LAYOUT.md)**: aligned — stacks apply the per-child
+  rule on **both** axes (main axis: only `FILL`/greedy children stretch and
+  leftover goes to them, everything else positioned at the start; cross axis:
+  only `FILL`/greedy children stretch, otherwise positioned by `ALIGNMENT`
+  defaulting to Leading), grid cells apply the same rule, and the greedy
+  primitives (`DIVIDER` cross-axis, `SPACER` main-axis, `COLOR`/`SCROLLVIEW`
+  both) fill by nature. The old composite-button main-axis hack was retired
+  (superseded by the parent stack's rule). Conformance C1–C6 covered by the
+  pure decision tests in `layout.rs`.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).

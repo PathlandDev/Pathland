@@ -136,11 +136,13 @@ function applyBorderEdges(el: HTMLElement): void {
 // --- enum → CSS ---
 
 export function alignmentCss(code: number): string {
+  // Cross-axis POSITION (LAYOUT.md): positions children, never stretches.
+  // `Fill` (3) and absent mean the default hug positioning → flex-start.
   switch (code) {
     case P.ALIGN_LEADING: return "flex-start";
+    case P.ALIGN_CENTER: return "center";
     case P.ALIGN_TRAILING: return "flex-end";
-    case P.ALIGN_FILL: return "stretch";
-    default: return "center";
+    default: return "flex-start";
   }
 }
 function textAlignCss(code: number): string {

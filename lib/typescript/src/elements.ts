@@ -66,6 +66,10 @@ export function createElement(component: number): Node {
     }
     case COMPONENT_SCROLLVIEW: {
       const el = document.createElement("div");
+      // Layout-greedy on both axes (LAYOUT.md): a scroll region fills the
+      // available space (mirrors the Rust SSR renderer).
+      el.style.flex = "1 1 auto";
+      el.style.alignSelf = "stretch";
       el.style.overflow = "auto";
       return el;
     }
@@ -110,12 +114,12 @@ export function createElement(component: number): Node {
       return el;
     }
     case COMPONENT_DIVIDER: {
-      // `<div style="height:0;border-top:1px solid rgba(0,0,0,0.2)">` — mirrors
-      // the Rust SSR renderer's default divider (a div with only a top border, so
-      // it is free of the `<hr>` element's UA margins/styles). BORDER_WIDTH /
-      // COLOR deltas override border-top at apply time.
+      // `<div style="height:0;width:100%;border-top:1px solid rgba(0,0,0,0.2)">`
+      // — mirrors the Rust SSR renderer's default divider (greedy on the cross
+      // axis, LAYOUT.md). BORDER_WIDTH / COLOR deltas override border-top.
       const el = document.createElement("div");
       el.style.height = "0";
+      el.style.width = "100%";
       el.style.borderTop = "1px solid rgba(0,0,0,0.2)";
       return el;
     }
@@ -168,9 +172,10 @@ function flexBox(direction: "column" | "row"): HTMLElement {
   const el = document.createElement("div");
   el.style.display = "flex";
   el.style.flexDirection = direction;
-  // Cross-axis default is stretch (the Rust SSR renderer's `align-items` when no
-  // ALIGNMENT property is set); an ALIGNMENT delta overrides it.
-  el.style.alignItems = "stretch";
+  // Cross-axis default is hug (flex-start) — mirrors the Rust SSR renderer's
+  // `align-items` when no ALIGNMENT property is set (LAYOUT.md: never CSS
+  // stretch; only FILL-sized children stretch). An ALIGNMENT delta overrides it.
+  el.style.alignItems = "flex-start";
   return el;
 }
 

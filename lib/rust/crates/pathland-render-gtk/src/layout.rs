@@ -10,7 +10,7 @@
 
 use gtk::{Align, Orientation};
 use crate::host::HostNode;
-use pathland_core::{component_type, property_id};
+use pathland_core::{component_type, property_id, size};
 
 /// Map a component type to its native stack orientation.
 ///
@@ -32,6 +32,138 @@ pub struct StackLayout {
     pub child_align: Align,
 }
 
+/// How a `WIDTH`/`HEIGHT` property maps to GTK sizing.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SizeHint {
+    /// No hint: leave the widget's natural size and default expand state.
+    None,
+    /// Expand to the available space (`size::FILL`, i.e. SwiftUI `.infinity`).
+    Fill,
+    /// A fixed size request.
+    Fixed(i32),
+}
+
+/// Map a stored `WIDTH`/`HEIGHT` property (bit pattern) to a sizing hint.
+/// `FILL` (-1.0) → `Fill`; a positive finite value → `Fixed`; `HUG_CONTENT`
+/// (-2.0), zero, and non-finite (defensive: the ring path never normalizes) →
+/// `None`.
+pub fn size_hint(bits: Option<u32>) -> SizeHint {
+    match bits.map(f32::from_bits) {
+        None => SizeHint::None,
+        Some(v) if v == size::FILL => SizeHint::Fill,
+        Some(v) if v.is_finite() && v > 0.0 => SizeHint::Fixed(v as i32),
+        Some(_) => SizeHint::None,
+    }
+}
+
+/// A spatial axis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Axis {
+    Horizontal,
+    Vertical,
+}
+
+impl Axis {
+    /// The axis a stack's `orientation` lays out along (its main axis).
+    pub fn of(orientation: Orientation) -> Axis {
+        if orientation == Orientation::Horizontal {
+            Axis::Horizontal
+        } else {
+            Axis::Vertical
+        }
+    }
+
+    fn property(self) -> u16 {
+        match self {
+            Axis::Horizontal => property_id::WIDTH,
+            Axis::Vertical => property_id::HEIGHT,
+        }
+    }
+}
+
+/// The size hint a node carries on `axis`.
+fn axis_hint(node: &HostNode, axis: Axis) -> SizeHint {
+    size_hint(node.properties.get(&axis.property()).copied())
+}
+
+/// A layout-greedy primitive that fills the main axis (`main_axis` = true) or
+/// the cross axis (false) by nature (LAYOUT.md): `SPACER` fills the main axis,
+/// `DIVIDER` the cross axis, `COLOR`/`SCROLLVIEW` both.
+fn greedy_fills(node: &HostNode, main_axis: bool) -> bool {
+    match node.component_type {
+        component_type::SPACER => main_axis,
+        component_type::DIVIDER => !main_axis,
+        component_type::COLOR | component_type::SCROLLVIEW => true,
+        _ => false,
+    }
+}
+
+/// Whether a stack child stretches on `axis`: it is `FILL`-sized there, or it
+/// is a layout-greedy primitive that fills that axis by nature.
+fn stretches(node: &HostNode, axis: Axis, main_axis: bool) -> bool {
+    matches!(axis_hint(node, axis), SizeHint::Fill) || greedy_fills(node, main_axis)
+}
+
+/// The stack's explicit cross-axis `ALIGNMENT` position. `Fill` (3) and absent
+/// both mean the default hug positioning (never stretch), so they yield `None`
+/// (LAYOUT.md).
+pub fn stack_align_option(node: &HostNode) -> Option<Align> {
+    node.properties
+        .get(&property_id::ALIGNMENT)
+        .map(|raw| align_from(*raw))
+        .filter(|a| *a != Align::Fill)
+}
+
+/// Main-axis alignment for a stack child: `FILL` children (and greedy
+/// main-axis primitives like `SPACER`) stretch; everything else is positioned
+/// at the start — leftover main-axis space goes to `FILL` children only
+/// (LAYOUT.md).
+pub fn main_axis_align(node: &HostNode, orientation: Orientation) -> Align {
+    if stretches(node, Axis::of(orientation), true) {
+        Align::Fill
+    } else {
+        Align::Start
+    }
+}
+
+/// Cross-axis alignment for a stack child: `FILL` children (and greedy
+/// cross-axis primitives like `DIVIDER`/`COLOR`/`SCROLLVIEW`) stretch;
+/// everything else keeps its own size and is positioned by the stack's
+/// explicit `ALIGNMENT` (`stack_align`), defaulting to `Start` — never
+/// stretched (LAYOUT.md).
+pub fn cross_axis_align(
+    node: &HostNode,
+    orientation: Orientation,
+    stack_align: Option<Align>,
+) -> Align {
+    let cross = if orientation == Orientation::Vertical {
+        Axis::Horizontal
+    } else {
+        Axis::Vertical
+    };
+    if stretches(node, cross, false) {
+        Align::Fill
+    } else {
+        stack_align.unwrap_or(Align::Start)
+    }
+}
+
+/// Per-axis alignment for a `GRID` cell (no stack direction): a `FILL`-sized
+/// cell (or a greedy filler) stretches; otherwise the cell keeps its size and
+/// is positioned at the start.
+pub fn grid_cell_align(node: &HostNode, axis: Axis) -> Align {
+    if matches!(axis_hint(node, axis), SizeHint::Fill)
+        || matches!(
+            node.component_type,
+            component_type::SPACER | component_type::COLOR | component_type::SCROLLVIEW
+        )
+    {
+        Align::Fill
+    } else {
+        Align::Start
+    }
+}
+
 /// Compute the stack layout from a node's component type + properties.
 ///
 /// Returns `None` for non-stack components. Defaults (absent properties):
@@ -45,7 +177,9 @@ pub fn stack_layout(node: &HostNode) -> Option<StackLayout> {
         .properties
         .get(&property_id::ALIGNMENT)
         .map(|raw| align_from(*raw))
-        .unwrap_or(Align::Fill);
+        // Absent ALIGNMENT defaults to the hug position (Leading/Start), never
+        // a stretch (LAYOUT.md).
+        .unwrap_or(Align::Start);
     Some(StackLayout {
         orientation,
         spacing,
@@ -226,9 +360,9 @@ mod tests {
     }
 
     #[test]
-    fn alignment_defaults_to_fill() {
+    fn alignment_defaults_to_start() {
         let n = node(component_type::HSTACK, &[]);
-        assert_eq!(stack_layout(&n).unwrap().child_align, Align::Fill);
+        assert_eq!(stack_layout(&n).unwrap().child_align, Align::Start);
     }
 
     #[test]
@@ -240,6 +374,99 @@ mod tests {
         assert_eq!(align_from(3), Align::Fill);
         // Out-of-range falls back to Fill.
         assert_eq!(align_from(99), Align::Fill);
+    }
+
+    #[test]
+    fn stack_align_option_drops_fill_and_absent() {
+        // Absent ALIGNMENT → None (hug default, LAYOUT.md).
+        assert_eq!(stack_align_option(&node(component_type::VSTACK, &[])), None);
+        // Explicit Start/Center/End → Some.
+        assert_eq!(
+            stack_align_option(&node(component_type::VSTACK, &[(property_id::ALIGNMENT, f32_bits(0.0))])),
+            Some(Align::Start)
+        );
+        assert_eq!(
+            stack_align_option(&node(component_type::VSTACK, &[(property_id::ALIGNMENT, f32_bits(2.0))])),
+            Some(Align::End)
+        );
+        // Fill (3) means default hug positioning → None.
+        assert_eq!(
+            stack_align_option(&node(component_type::VSTACK, &[(property_id::ALIGNMENT, f32_bits(3.0))])),
+            None
+        );
+    }
+
+    #[test]
+    fn main_axis_align_fill_and_greedy_stretch_else_start() {
+        let v = Orientation::Vertical;
+        // No frame → hug at the start (leftover goes to FILL children only).
+        assert_eq!(main_axis_align(&node(component_type::TEXT, &[]), v), Align::Start);
+        // Fixed height keeps its size → positioned at the start.
+        assert_eq!(
+            main_axis_align(&node(component_type::TEXT, &[(property_id::HEIGHT, f32_bits(44.0))]), v),
+            Align::Start
+        );
+        // FILL height stretches.
+        assert_eq!(
+            main_axis_align(&node(component_type::TEXT, &[(property_id::HEIGHT, f32_bits(-1.0))]), v),
+            Align::Fill
+        );
+        // SPACER is greedy on the main axis.
+        assert_eq!(main_axis_align(&node(component_type::SPACER, &[]), v), Align::Fill);
+    }
+
+    #[test]
+    fn cross_axis_align_fill_and_greedy_stretch_else_position() {
+        let v = Orientation::Vertical; // cross axis = horizontal (WIDTH)
+        // A fixed-width cover in a vertical stack keeps its size, positioned
+        // at the default Leading (C2: 220 in a 280 column stays 220).
+        assert_eq!(
+            cross_axis_align(
+                &node(component_type::IMAGE, &[(property_id::WIDTH, f32_bits(220.0))]),
+                v,
+                None,
+            ),
+            Align::Start
+        );
+        // Explicit Center alignment positions it, still not stretched.
+        assert_eq!(
+            cross_axis_align(
+                &node(component_type::IMAGE, &[(property_id::WIDTH, f32_bits(220.0))]),
+                v,
+                Some(Align::Center),
+            ),
+            Align::Center
+        );
+        // FILL width stretches (C3).
+        assert_eq!(
+            cross_axis_align(
+                &node(component_type::TEXT, &[(property_id::WIDTH, f32_bits(-1.0))]),
+                v,
+                None,
+            ),
+            Align::Fill
+        );
+        // A hug (absent) child is never stretched (C5).
+        assert_eq!(
+            cross_axis_align(&node(component_type::TEXT, &[]), v, None),
+            Align::Start
+        );
+        // DIVIDER is greedy on the cross axis.
+        assert_eq!(
+            cross_axis_align(&node(component_type::DIVIDER, &[]), v, None),
+            Align::Fill
+        );
+    }
+
+    #[test]
+    fn grid_cell_align_fill_stretches_else_start() {
+        let h = Axis::Horizontal;
+        assert_eq!(grid_cell_align(&node(component_type::TEXT, &[]), h), Align::Start);
+        assert_eq!(
+            grid_cell_align(&node(component_type::TEXT, &[(property_id::WIDTH, f32_bits(-1.0))]), h),
+            Align::Fill
+        );
+        assert_eq!(grid_cell_align(&node(component_type::COLOR, &[]), h), Align::Fill);
     }
 
     #[test]

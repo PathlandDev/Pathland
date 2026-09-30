@@ -180,7 +180,7 @@ available), `-2` = HUG_CONTENT (native intrinsic size).
 | Property | Value | Type | Native meaning |
 |----------|-------|------|----------------|
 | `SPACING` | `0x0001` | F32 | Gap between children |
-| `ALIGNMENT` | `0x0002` | F32 (enum code) | Cross-axis alignment |
+| `ALIGNMENT` | `0x0002` | F32 (enum code) | Cross-axis position (never stretches; default = Leading, `Fill`(3) = default hug — see LAYOUT.md) |
 | `CONTENT_MARGINS` | `0x0005` | F32 | Uniform inset between a stack's edge and its content |
 | `WIDTH` | `0x100B` | F32 | Width hint (-1 FILL, -2 HUG) |
 | `HEIGHT` | `0x100C` | F32 | Height hint (-1 FILL, -2 HUG) |

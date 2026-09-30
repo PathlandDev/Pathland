@@ -342,6 +342,8 @@ An axis-aligned 1px separator line.
 - **Properties**: `COLOR` (0x100A), `BORDER_WIDTH` (0x1003) — line thickness.
 - **Events**: none.
 - **Renderer mapping**: GTK `GtkSeparator`; HTML `<hr>` / `<div>` with a border.
+  **Layout-greedy on the cross axis** (fills the stack's available cross size,
+  SwiftUI-style) — see LAYOUT.md; an explicit `WIDTH`/`HEIGHT` overrides it.
 
 ### Spacer — `SPACER` 0x06
 
@@ -407,6 +409,8 @@ Scrollable content container. **Events**: with the `SCROLL` (bit 8) listener the
 renderer reports the scroll offset via `EVENT::SCROLL`; with `WHEEL` (bit 9) it
 reports deltas via `EVENT::WHEEL` (both draft — see [EVENTS.md](./EVENTS.md)).
 Renderer: GTK `GtkScrolledWindow`; HTML overflow container.
+**Layout-greedy on both axes** (fills the available space, SwiftUI-style) — see
+LAYOUT.md; an explicit `WIDTH`/`HEIGHT` overrides it.
 
 ### LazyVGrid — `LAZY_VGRID` 0x15
 

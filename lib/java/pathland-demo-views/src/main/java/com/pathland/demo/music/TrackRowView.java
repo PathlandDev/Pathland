@@ -58,6 +58,10 @@ public final class TrackRowView implements View {
                     playing.set(true);
                 })
                 .with(Background.of(bg), ForegroundStyle.of(fg))
-                .with(Padding.of(6));
+                .with(Padding.of(6))
+                // Full-width row: the layout contract's cross-axis default is hug
+                // (LAYOUT.md), so a row that should span the library column must
+                // explicitly FILL its width.
+                .with(FrameMod.of(Commands.Size.FILL));
     }
 }

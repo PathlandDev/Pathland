@@ -291,7 +291,10 @@ impl Node {
         }
 
         // Enum-derived properties (previously Tailwind classes) now inline.
-        // ALIGNMENT cross-axis (Leading=0, Center=1, Trailing=2, Fill=3 → default stretch).
+        // ALIGNMENT cross-axis position (Leading=0, Center=1, Trailing=2,
+        // Fill=3 → default). Positions children; the default is hug
+        // (flex-start), never CSS stretch — only FILL-sized children stretch
+        // (LAYOUT.md).
         if let Some(v) = f32p(property_id::ALIGNMENT) {
             css.push_str(&format!(
                 "align-items:{};",
@@ -299,7 +302,7 @@ impl Node {
                     0 => "flex-start",
                     1 => "center",
                     2 => "flex-end",
-                    _ => "stretch",
+                    _ => "flex-start",
                 }
             ));
         }
@@ -1123,8 +1126,11 @@ impl HtmlRenderer {
                     .copied()
                     .map(rgba)
                     .unwrap_or_else(|| "rgba(0,0,0,0.2)".to_string());
+                // Layout-greedy on the cross axis (LAYOUT.md): the separator
+                // spans the stack's available cross size unless a size frame
+                // overrides it (SwiftUI `Divider()` semantics).
                 format!(
-                    "<div{data_id}{event}{aria} style=\"height:0;border-top:{width}px solid {color};\"></div>"
+                    "<div{data_id}{event}{aria} style=\"height:0;width:100%;border-top:{width}px solid {color};\"></div>"
                 )
             }
             component_type::PROGRESS_VIEW => {
@@ -1168,7 +1174,10 @@ if indeterminate {
             }
             component_type::SCROLLVIEW => {
                 let tag = semantic.unwrap_or("div");
-                let combined = format!("overflow:auto;{css}");
+                // Layout-greedy on both axes (LAYOUT.md): a scroll region fills
+                // the available space (SwiftUI `ScrollView` semantics) unless a
+                // size frame overrides it.
+                let combined = format!("flex:1 1 auto;align-self:stretch;overflow:auto;{css}");
                 let scroll_style = style_attr(&combined);
                 format!("<{tag}{data_id}{event}{aria}{scroll_style}>{children}</{tag}>")
             }
@@ -1304,11 +1313,14 @@ if indeterminate {
             .get(&property_id::ALIGNMENT)
             .map(|bits| f32::from_bits(*bits) as u8)
             .unwrap_or(3);
+        // ALIGNMENT positions cross-axis children; the default is hug
+        // (flex-start), never CSS `align-items: stretch` — only FILL-sized
+        // children stretch (they carry `align-self:stretch`/`100%`), LAYOUT.md.
         let align = match alignment {
             0 => "flex-start",
             1 => "center",
             2 => "flex-end",
-            _ => "stretch",
+            _ => "flex-start",
         };
         let combined = format!(
             "display:flex;flex-direction:{direction};align-items:{align};{css}"
@@ -2157,6 +2169,90 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("flex-direction:column"), "stack inline flex"); assert!(html.contains("align-items:flex-start"), "alignment inline");
+    }
+
+    #[test]
+    fn layout_default_cross_axis_is_hug_not_stretch() {
+        // A stack with NO ALIGNMENT must default to hug (flex-start), never
+        // CSS `align-items: stretch` (LAYOUT.md conformance C5).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("align-items:flex-start"), "default is hug: {}", html);
+        assert!(!html.contains("align-items:stretch"), "no implicit stretch");
+    }
+
+    #[test]
+    fn layout_fill_alignment_is_hug_positioning() {
+        use pathland_core::value_type;
+
+        // ALIGNMENT=Fill(3) means default (hug) positioning, not stretch.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
+            3.0f32.to_bits(),
+        ));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("align-items:flex-start"), "Fill=3 → hug: {}", html);
+    }
+
+    #[test]
+    fn fixed_child_keeps_points_box_in_hug_container() {
+        use pathland_core::value_type;
+
+        // C2: a 220×220 image in a vertical stack keeps its exact points box
+        // (width/height in px), positioned (flex-start) — never stretched.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::IMAGE as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            220.0f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::HEIGHT as u32,
+            220.0f32.to_bits(),
+        ));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("align-items:flex-start"), "hug container");
+        assert!(html.contains("width:220px;height:220px"), "exact box: {}", html);
+    }
+
+    #[test]
+    fn divider_spans_cross_axis_and_scrollview_is_greedy() {
+        // DIVIDER is layout-greedy on the cross axis (width:100%); SCROLLVIEW
+        // is greedy on both axes (flex + align-self:stretch) — LAYOUT.md.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::DIVIDER as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::SCROLLVIEW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, pathland_core::APPEND));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("width:100%"), "divider greedy: {}", html);
+        assert!(
+            html.contains("flex:1 1 auto;align-self:stretch;overflow:auto"),
+            "scrollview greedy: {}",
+            html
+        );
     }
 
     #[test]

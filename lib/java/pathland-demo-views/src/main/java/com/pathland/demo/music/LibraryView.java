@@ -37,7 +37,7 @@ public final class LibraryView implements View {
         }
         // A trailing spacer absorbs the leftover vertical space.
         rows.add(Spacer.of());
-        
+
         return VStack.of(
                 Text.of("Library").with(FontSize.of(26), FontWeightMod.of(FontWeight.BOLD))
                         .with(AccessibilityRole.of(Roles.HEADER)),
