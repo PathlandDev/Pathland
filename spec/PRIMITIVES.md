@@ -393,11 +393,11 @@ its native layout engine. The full allocation contract is
 **Size kinds.** Each `WIDTH`/`HEIGHT` is one of three kinds (LAYOUT.md §size
 model):
 
-| Kind | Wire value | Meaning | SwiftUI | Compose |
-|------|-----------|---------|---------|---------|
-| **Fixed** | finite `F32` | exactly that many points | `.frame(width: 44, height: 44)` | `Modifier.size(44.dp)` |
-| **Fill** | `-1` | expand to available space | `.frame(maxWidth: .infinity)` | `Modifier.fillMaxWidth()` |
-| **Hug** | `-2` / absent | natural size | ideal size | `wrapContentWidth()` |
+| Kind | Wire value | Meaning |
+|------|-----------|---------|
+| **Fixed** | finite `F32` | exactly that many points |
+| **Fill** | `-1` | expand to available space |
+| **Hug** | `-2` / absent | natural size |
 
 **Main vs cross axis.** The **main axis** is the stack's layout direction
 (VStack = vertical, HStack = horizontal); the other is the **cross axis**.
@@ -458,16 +458,6 @@ Vertical flex stack. **Properties**: `SPACING`, `ALIGNMENT` (enum: `Leading`=0,
   child). A Fixed `WIDTH`/`HEIGHT` makes the box exact; a `Fill` axis — or fill
   propagation — expands to the parent's proposal. A `Fill`-width child makes
   the stack full-width; a `Fill`-height child makes it full-height.
-- **Renderer mapping**:
-
-  | Pathland | GTK4 | CSS | SwiftUI | Compose |
-  |---|---|---|---|---|
-  | `SPACING` | `GtkBox` spacing | `gap` | `VStack(spacing:)` | `Arrangement.spacedBy` |
-  | `ALIGNMENT` | per-child cross-axis `halign` (default Start) | `align-items` (default `flex-start`) | `VStack(alignment:)` (default `.center`) | `Column(horizontalAlignment)` (default `Start`) |
-  | Fixed `WIDTH`/`HEIGHT` | `set_size_request` + hug | `width`/`height` px | `.frame(width:height:)` | `Modifier.size` |
-  | `FILL` | `hexpand`/`vexpand` + Fill | `100%` / `flex-grow` | `.frame(maxWidth/maxHeight: .infinity)` | `fillMaxWidth/Height` |
-  | `SPACER` | expanding empty box | `flex: 1` | `Spacer()` | `Spacer(Modifier.weight(1f))` |
-
 - **Edge cases**: negative `SPACING` → 0; no Fill child + leftover → empty at
   the end; a Fixed-width child narrower than the stack keeps its exact box and
   is aligned; a `Fill` child in a Hug stack propagates (fills the parent's
@@ -482,13 +472,9 @@ Horizontal flex stack. Same properties as `VStack`, mirrored:
   is the sum of its children's widths plus `SPACING`.
 - **Cross axis (vertical)**: children keep their own height (Fixed or Hug);
   `Fill`-height children stretch. Positioned per `ALIGNMENT` (default
-  Leading/Start → GTK `valign`, CSS `align-items:flex-start`, Compose `Row`
-  default `Alignment.Top`; SwiftUI `.center`).
+  Leading/Start; Compose `Row` defaults to `Top`, SwiftUI's HStack to `.center`).
 - **Own size**: Hug by default (width = content + spacing; height = tallest
   child); a Fixed box exact; `Fill`/propagation expands.
-- **Renderer mapping**: as VStack, with GTK `GtkBox` horizontal + per-child
-  `valign`, CSS `flex-direction:row`, SwiftUI `HStack(alignment:spacing:)`,
-  Compose `Row` (`Arrangement.spacedBy`, `verticalAlignment`).
 - **Edge cases**: as VStack.
 
 ### ZStack — `ZSTACK` 0x12
@@ -522,15 +508,6 @@ children occupy the same box by design; there is no gap between them.
   Compose parity). A mixed-axis alignment (e.g. top-trailing) is a future
   extension — today `ALIGNMENT` is a single code applied to both axes.
 - **Overflow**: content that exceeds a Fixed box is clipped to the stack.
-- **Renderer mapping**:
-
-  | Pathland | GTK4 | CSS | SwiftUI | Compose |
-  |---|---|---|---|---|
-  | ZStack | `GtkOverlay` | `position:relative` container + `position:absolute` children | `ZStack(alignment:)` | `Box(contentAlignment:)` |
-  | `ALIGNMENT` | overlay child `halign`/`valign` | per-child `inset` from the code | `.topLeading`/`.center`/… | `Alignment.TopStart`/`Center`/… |
-  | Fixed `WIDTH`/`HEIGHT` | `set_size_request` + hug | `width`/`height` px | `.frame(width:height:)` | `Modifier.size` |
-  | `FILL` | `hexpand`/`vexpand` + Fill | `100%` | `.frame(maxWidth/maxHeight: .infinity)` | `fillMaxWidth/Height` |
-
 - **Edge cases**: the first child is **not** a special "background" — it follows
   the same size model (a Fixed first child keeps its exact box; a `Fill` one
   stretches); draw order is always child index; a `Fill` child in a Hug ZStack
