@@ -124,9 +124,9 @@ public final class GtkHost {
             Files.createDirectories(dir);
             for (String path : ASSET_FILES) {
                 Path target = dir.resolve(path);
-                if (Files.isRegularFile(target)) {
-                    continue;
-                }
+                // Always overwrite: the temp dir may hold assets from a previous
+                // run (e.g. an older track set), and a stale copy must never win
+                // over the assets shipped with this build.
                 Files.createDirectories(target.getParent());
                 try (InputStream in = GtkHost.class.getResourceAsStream("/" + path)) {
                     if (in == null) {
