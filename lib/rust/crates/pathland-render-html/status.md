@@ -176,6 +176,11 @@ contract both renderers must satisfy.
 
 ## Not implemented / gaps
 
+- **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: a `FILL` child
+  inside a Hug-sized stack currently stays at its base size (a `flex:1` item in
+  a content-sized flex container has no leftover to grow into); the spec
+  requires the stack to become `FILL` on that axis and fill its parent's
+  proposal (SwiftUI/Compose parity). Pending.
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset
   (colors, font size/weight, spacing/padding, corner radius, opacity,
   width/height, border width/color, shadow color). Compound accumulators that

@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 3, 2026
+**Last Updated:** September 30, 2026
 
 ---
 
@@ -381,14 +381,115 @@ Layout primitives arrange children. They carry `SPACING` (0x0001),
 [MODIFIERS.md](./MODIFIERS.md#1-layout). Renderers map them to their native flex
 box / grid primitives (GTK `GtkBox`/`GtkGrid`, CSS flex/grid).
 
+### The stack layout model
+
+`VStack`/`HStack` (and the lazy stacks) follow the **SwiftUI / Jetpack Compose
+layout model**: a stack *proposes* a size to each child, the child reports its
+own size, and the stack *places* it. The protocol transmits **intent** — size
+kinds and alignment — never geometry; the renderer resolves the proposal with
+its native layout engine. The full allocation contract is
+[LAYOUT.md](./LAYOUT.md); the essentials:
+
+**Size kinds.** Each `WIDTH`/`HEIGHT` is one of three kinds (LAYOUT.md §size
+model):
+
+| Kind | Wire value | Meaning | SwiftUI | Compose |
+|------|-----------|---------|---------|---------|
+| **Fixed** | finite `F32` | exactly that many points | `.frame(width: 44, height: 44)` | `Modifier.size(44.dp)` |
+| **Fill** | `-1` | expand to available space | `.frame(maxWidth: .infinity)` | `Modifier.fillMaxWidth()` |
+| **Hug** | `-2` / absent | natural size | ideal size | `wrapContentWidth()` |
+
+**Main vs cross axis.** The **main axis** is the stack's layout direction
+(VStack = vertical, HStack = horizontal); the other is the **cross axis**.
+
+**Main-axis allocation.** A child is Fixed (exact box), Fill (expands), or Hug
+(natural). **Leftover main-axis space goes only to `Fill` children** (and to
+`Spacer`, which is Fill by nature); a stack with no Fill child leaves the
+leftover empty at the end. Every other child is packed from the start.
+
+**Cross-axis allocation.** A child keeps its own size on the cross axis and is
+**positioned** by `ALIGNMENT` — position-only, it never resizes. The default is
+**Leading/Start**; `Fill`(3) means default (hug) positioning, not stretch
+(Compose `Column` defaults `Alignment.Start`, `Row` defaults `Alignment.Top`;
+SwiftUI's stack default is `.center` — a per-framework difference, all three are
+expressible with an explicit `ALIGNMENT`). Only a **`Fill`-sized child**
+stretches to the stack's cross size.
+
+**Fill propagation.** A Hug-sized stack that contains a **`Fill`-sized child or
+`Spacer` on an axis is itself `Fill`-sized on that axis** — the child's
+expansion propagates to the stack, which then fills its parent's proposal on
+that axis. This matches both reference frameworks:
+
+- SwiftUI `VStack { Button().frame(maxWidth: .infinity) }` fills the width.
+- Compose `Column { Box(Modifier.fillMaxWidth()) }` fills the width.
+- `VStack { Spacer() }` fills the proposed height.
+
+A full-width row is therefore expressed as a `Fill`-width child (or `Spacer`)
+inside the stack, never by stretching the stack itself.
+
+**Spacing.** `SPACING` is a fixed gap between **adjacent** children (never
+before the first or after the last), clamped to ≥ 0. It matches SwiftUI
+`VStack(spacing:)` and Compose `Arrangement.spacedBy(...)`. Leftover space is
+distributed by `Fill` children / `Spacer`, never by the gap.
+
+**Insets.** `CONTENT_MARGINS` is the stack's uniform content inset
+(equivalently, `PADDING` on the stack). Both compose; when both are present on
+the same node, precedence is per-edge `PADDING_*` > `PADDING` >
+`CONTENT_MARGINS`.
+
+**Overflow.** A stack with a Fixed box clips content that exceeds it; a stack
+inside a `SCROLLVIEW` scrolls.
+
 ### VStack — `VSTACK` 0x10
 
 Vertical flex stack. **Properties**: `SPACING`, `ALIGNMENT` (enum: `Leading`=0,
 `Center`=1, `Trailing`=2, `Fill`=3), `CONTENT_MARGINS`.
 
+**Layout & sizing**
+
+- **Main axis (vertical)**: children are allocated per the stack model —
+  Fixed exact, Fill expands (leftover only to `Fill`/`Spacer`), Hug natural. A
+  Hug VStack's height is the sum of its children's heights plus `SPACING`
+  between them.
+- **Cross axis (horizontal)**: children keep their own width (a Fixed box, or a
+  Hug natural width); `Fill`-width children stretch to the stack's width. Narrow
+  children are positioned per `ALIGNMENT` (default Leading/Start).
+- **Own size**: Hug by default (height = content + spacing; width = widest
+  child). A Fixed `WIDTH`/`HEIGHT` makes the box exact; a `Fill` axis — or fill
+  propagation — expands to the parent's proposal. A `Fill`-width child makes
+  the stack full-width; a `Fill`-height child makes it full-height.
+- **Renderer mapping**:
+
+  | Pathland | GTK4 | CSS | SwiftUI | Compose |
+  |---|---|---|---|---|
+  | `SPACING` | `GtkBox` spacing | `gap` | `VStack(spacing:)` | `Arrangement.spacedBy` |
+  | `ALIGNMENT` | per-child cross-axis `halign` (default Start) | `align-items` (default `flex-start`) | `VStack(alignment:)` (default `.center`) | `Column(horizontalAlignment)` (default `Start`) |
+  | Fixed `WIDTH`/`HEIGHT` | `set_size_request` + hug | `width`/`height` px | `.frame(width:height:)` | `Modifier.size` |
+  | `FILL` | `hexpand`/`vexpand` + Fill | `100%` / `flex-grow` | `.frame(maxWidth/maxHeight: .infinity)` | `fillMaxWidth/Height` |
+  | `SPACER` | expanding empty box | `flex: 1` | `Spacer()` | `Spacer(Modifier.weight(1f))` |
+
+- **Edge cases**: negative `SPACING` → 0; no Fill child + leftover → empty at
+  the end; a Fixed-width child narrower than the stack keeps its exact box and
+  is aligned; a `Fill` child in a Hug stack propagates (fills the parent's
+  proposal); root stacks are typically `Fill` (`FrameMod.of(FILL, FILL)`).
+
 ### HStack — `HSTACK` 0x11
 
-Horizontal flex stack. Same properties as `VStack`.
+Horizontal flex stack. Same properties as `VStack`, mirrored:
+
+- **Main axis (horizontal)**: children per the stack model — Fixed exact, Fill
+  expands (leftover only to `Fill`/`Spacer`), Hug natural. A Hug HStack's width
+  is the sum of its children's widths plus `SPACING`.
+- **Cross axis (vertical)**: children keep their own height (Fixed or Hug);
+  `Fill`-height children stretch. Positioned per `ALIGNMENT` (default
+  Leading/Start → GTK `valign`, CSS `align-items:flex-start`, Compose `Row`
+  default `Alignment.Top`; SwiftUI `.center`).
+- **Own size**: Hug by default (width = content + spacing; height = tallest
+  child); a Fixed box exact; `Fill`/propagation expands.
+- **Renderer mapping**: as VStack, with GTK `GtkBox` horizontal + per-child
+  `valign`, CSS `flex-direction:row`, SwiftUI `HStack(alignment:spacing:)`,
+  Compose `Row` (`Arrangement.spacedBy`, `verticalAlignment`).
+- **Edge cases**: as VStack.
 
 ### ZStack — `ZSTACK` 0x12
 

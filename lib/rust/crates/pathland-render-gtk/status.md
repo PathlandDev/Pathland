@@ -176,6 +176,14 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   both) fill by nature. The old composite-button main-axis hack was retired
   (superseded by the parent stack's rule). Conformance C1–C6 covered by the
   pure decision tests in `layout.rs`.
+- **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: a `FILL` child
+  inside a Hug-sized stack currently collapses to its natural size (a `hexpand`
+  child in a hugging `GtkBox` has no extra space to claim); the spec requires
+  the stack to become `FILL` on that axis and fill its parent's proposal
+  (SwiftUI/Compose parity). Pending.
+- **CONTENT_MARGINS vs PADDING precedence**: `CONTENT_MARGINS` is applied after
+  `PADDING` in `apply_style`, so it currently wins; the spec (PRIMITIVES.md)
+  requires `PADDING` > `CONTENT_MARGINS`. Pending.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).
