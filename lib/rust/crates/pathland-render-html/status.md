@@ -181,6 +181,10 @@ contract both renderers must satisfy.
   a content-sized flex container has no leftover to grow into); the spec
   requires the stack to become `FILL` on that axis and fill its parent's
   proposal (SwiftUI/Compose parity). Pending.
+- **ZStack (spec/PRIMITIVES.md)**: the container is emitted greedy on both axes
+  (`width:100%;height:100%`) and each child is wrapped `position:absolute;
+  inset:0` without alignment — the spec requires a Hug default (size = max of
+  children), per-child Fixed/Fill sizing, and `ALIGNMENT` positioning. Pending.
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset
   (colors, font size/weight, spacing/padding, corner radius, opacity,
   width/height, border width/color, shadow color). Compound accumulators that

@@ -184,6 +184,11 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 - **CONTENT_MARGINS vs PADDING precedence**: `CONTENT_MARGINS` is applied after
   `PADDING` in `apply_style`, so it currently wins; the spec (PRIMITIVES.md)
   requires `PADDING` > `CONTENT_MARGINS`. Pending.
+- **ZStack (spec/PRIMITIVES.md)**: the first child is pinned as the `GtkOverlay`
+  main child and fills the overlay regardless of its size kind (a Fixed first
+  child should keep its box), overlay `ALIGNMENT` is not applied (overlays sit
+  at their natural size top-left), and the overlay hugs instead of honoring a
+  Fixed box exactly. Pending.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).

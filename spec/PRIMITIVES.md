@@ -493,9 +493,48 @@ Horizontal flex stack. Same properties as `VStack`, mirrored:
 
 ### ZStack — `ZSTACK` 0x12
 
-Depth-overlapping layer stack; child index = draw order (later = on top).
-**Properties**: `ALIGNMENT`. Renderer: GTK `GtkOverlay`; HTML absolutely
-positioned children.
+Depth-overlapping layer stack: children are drawn in depth order — **child index =
+draw order**, later = on top. **Properties**: `ALIGNMENT` (enum: `Leading`=0,
+`Center`=1, `Trailing`=2, `Fill`=3), plus layout modifiers (Fixed/Fill
+`WIDTH`/`HEIGHT`, `PADDING`, `CONTENT_MARGINS` as an inset). **No `SPACING`** —
+children occupy the same box by design; there is no gap between them.
+
+**Layout & sizing** (SwiftUI `ZStack` / Compose `Box` semantics)
+
+- **Overlay allocation**: unlike a flex stack, children do **not** add to each
+  other along an axis — they share one box. Each child keeps its own size (a
+  Fixed box, or a Hug natural size) and is **positioned** by `ALIGNMENT` on
+  **both axes**; only a **`Fill`-sized child** stretches to the stack's size.
+- **Own size**: the stack **hugs to its largest child** by default — on each
+  axis its size is the **maximum** of its children's sizes, never the sum. A
+  Fixed `WIDTH`/`HEIGHT` makes the box exact; a `Fill` axis — or fill
+  propagation (a `Fill` child on an axis makes the Hug stack `Fill` on that
+  axis, see the stack layout model above) — expands to the parent's proposal.
+  `ZStack { Color.red }` fills (Color is layout-greedy); `ZStack { Text("hi") }`
+  hugs the text.
+- **Alignment**: `ALIGNMENT` positions each child on **both** axes. The
+  single-axis enum is applied to both axes: `Leading`(0) = top-leading
+  (Start × Start), `Center`(1) = centered, `Trailing`(2) = bottom-trailing
+  (End × End), `Fill`(3) / absent = default hug positioning (Leading).
+  Position-only: it never resizes a child. SwiftUI's `ZStack(alignment:)`
+  defaults to `.center`; Compose `Box(contentAlignment:)` defaults to
+  `Alignment.TopStart`; the protocol default is **Leading** (Start × Start,
+  Compose parity). A mixed-axis alignment (e.g. top-trailing) is a future
+  extension — today `ALIGNMENT` is a single code applied to both axes.
+- **Overflow**: content that exceeds a Fixed box is clipped to the stack.
+- **Renderer mapping**:
+
+  | Pathland | GTK4 | CSS | SwiftUI | Compose |
+  |---|---|---|---|---|
+  | ZStack | `GtkOverlay` | `position:relative` container + `position:absolute` children | `ZStack(alignment:)` | `Box(contentAlignment:)` |
+  | `ALIGNMENT` | overlay child `halign`/`valign` | per-child `inset` from the code | `.topLeading`/`.center`/… | `Alignment.TopStart`/`Center`/… |
+  | Fixed `WIDTH`/`HEIGHT` | `set_size_request` + hug | `width`/`height` px | `.frame(width:height:)` | `Modifier.size` |
+  | `FILL` | `hexpand`/`vexpand` + Fill | `100%` | `.frame(maxWidth/maxHeight: .infinity)` | `fillMaxWidth/Height` |
+
+- **Edge cases**: the first child is **not** a special "background" — it follows
+  the same size model (a Fixed first child keeps its exact box; a `Fill` one
+  stretches); draw order is always child index; a `Fill` child in a Hug ZStack
+  propagates (fills the parent's proposal).
 
 ### Grid — `GRID` 0x13
 
