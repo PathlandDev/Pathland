@@ -163,6 +163,11 @@ native equivalents (e.g. `SPACING` → GTK box spacing / CSS `gap`, `WIDTH`/`HEI
 → size requests). Special `WIDTH`/`HEIGHT` values: `-1` = FILL (expand to
 available), `-2` = HUG_CONTENT (native intrinsic size).
 
+> **Allocation semantics** — the exact meaning of a Fixed / `FILL` / `HUG_CONTENT`
+> size, how containers distribute space to children (main axis: only `FILL`
+> expands; cross axis: children hug unless `FILL`), and how content fits inside
+> a Fixed box, are defined in [LAYOUT.md](./LAYOUT.md).
+
 > **Units — logical points.** All size properties (`WIDTH`/`HEIGHT`/`SPACING`/
 > `PADDING`/`CONTENT_MARGINS`, …) are expressed in an abstract **logical point**
 > unit — the same abstraction as SwiftUI points, Jetpack Compose `dp`, and CSS

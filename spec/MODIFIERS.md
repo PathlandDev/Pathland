@@ -113,7 +113,9 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 - **`WIDTH` / `HEIGHT`**: size hints; the renderer maps them to its size
   request / `width`/`height` style. `FILL` (-1.0) expands to available space;
   `HUG_CONTENT` (-2.0) sizes to intrinsic content. Absence of a property leaves
-  that axis to the native default.
+  that axis to the native default. The full allocation contract — Fixed = an
+  exact points box, container space distribution, cross-axis hug-not-stretch,
+  content fitting — is in [LAYOUT.md](./LAYOUT.md).
 - **`frame(min/ideal/max)`**: each provided bound emits its own property.
   Renderers map them to min/max/ideal size (GTK `set_size_request`, CSS
   `min-width`/`max-width`/`width`).

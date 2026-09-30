@@ -167,6 +167,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 
 ## Not implemented / gaps
 
+- **Layout contract (spec/LAYOUT.md)**: the allocation contract is documented;
+  render-gtk conforms on the main axis (Fixed/Hug children are not stretched,
+  composite controls size to content) but the **cross axis** is not yet aligned:
+  GTK allocates children the container's full cross size, so a Fixed child in a
+  wider column (e.g. a 220 cover in a 280 sidebar) fills the column instead of
+  keeping its exact points size — conformance cases C2/C5 are pending.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).
