@@ -159,6 +159,17 @@ pub fn spacing(node: &HostNode) -> i32 {
     f32_prop(node, property_id::SPACING).map(round_nonneg).unwrap_or(0)
 }
 
+/// Map a `TRUNCATION_MODE` code (`Head`=0, `Middle`=1, `Tail`=2, spec
+/// MODIFIERS.md) to the pango ellipsize position (SwiftUI `.truncationMode`
+/// parity).
+pub fn ellipsize_from(mode: u8) -> pango::EllipsizeMode {
+    match mode {
+        0 => pango::EllipsizeMode::Start,
+        1 => pango::EllipsizeMode::Middle,
+        _ => pango::EllipsizeMode::End,
+    }
+}
+
 /// Main-axis alignment for a stack child: effectively-`FILL` children (and
 /// greedy main-axis primitives like `SPACER`) stretch; everything else is
 /// positioned at the start — leftover main-axis space goes to `FILL` children
@@ -584,6 +595,14 @@ mod tests {
             spacing(&node(component_type::BUTTON, &[(property_id::SPACING, f32_bits(12.0))])),
             12
         );
+    }
+
+    #[test]
+    fn truncation_maps_to_ellipsize_position() {
+        assert_eq!(ellipsize_from(0), pango::EllipsizeMode::Start); // Head
+        assert_eq!(ellipsize_from(1), pango::EllipsizeMode::Middle); // Middle
+        assert_eq!(ellipsize_from(2), pango::EllipsizeMode::End); // Tail
+        assert_eq!(ellipsize_from(99), pango::EllipsizeMode::End); // out-of-range → Tail
     }
 
     #[test]

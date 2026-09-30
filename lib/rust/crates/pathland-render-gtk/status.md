@@ -210,6 +210,16 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 - **`CLIPS_TO_BOUNDS`**: implemented — applied in `apply_style` via
   `set_overflow(Overflow::Hidden)` (SwiftUI `.clipped()` parity, spec LAYOUT.md /
   PRIMITIVES.md: a Fixed box constrains layout but only clips when set).
+- **Text layout (spec LAYOUT.md §content fitting)**: a Fixed `WIDTH` wraps the
+  label within the box (`set_wrap` + `WordChar`), `LINE_LIMIT` clamps the line
+  count with an end ellipsis (`set_lines`), and `TRUNCATION_MODE` ellipsizes on
+  a single line at the mapped position (`ellipsize_from`: Head/Middle/Tail →
+  Start/Middle/End) — applied in `apply_text_style`.
+- **Known GTK limitation**: a GTK Fixed box (`set_size_request`) is a **minimum**
+  request — GTK has no max-size API, so a widget whose natural size exceeds its
+  Fixed box (e.g. a stack wider than its box) is allocated its natural size
+  rather than clipped to the box. Text wraps within its box (above) and
+  `CLIPS_TO_BOUNDS` clips overflow; other content may still exceed a Fixed box.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).
