@@ -45,10 +45,14 @@ export function createElement(component: number): Node {
     case COMPONENT_LAZY_HSTACK:
       return flexBox("row");
     case COMPONENT_ZSTACK: {
+      // ZStack (SwiftUI ZStack / Compose Box): an overlapping grid — children
+      // share one cell (`grid-area:1/1`) and are positioned per ALIGNMENT
+      // (mirrors the Rust SSR renderer). The container's size (hug-to-largest-
+      // child / Fixed / FILL / fill-propagation) is resolved by the layout pass.
       const el = document.createElement("div");
-      el.style.position = "relative";
-      el.style.width = "100%";
-      el.style.height = "100%";
+      el.style.display = "grid";
+      el.style.gridTemplateColumns = "1fr";
+      el.style.gridTemplateRows = "1fr";
       return el;
     }
     case COMPONENT_GRID:

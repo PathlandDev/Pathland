@@ -176,19 +176,22 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   both) fill by nature. The old composite-button main-axis hack was retired
   (superseded by the parent stack's rule). Conformance C1–C6 covered by the
   pure decision tests in `layout.rs`.
-- **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: a `FILL` child
-  inside a Hug-sized stack currently collapses to its natural size (a `hexpand`
-  child in a hugging `GtkBox` has no extra space to claim); the spec requires
-  the stack to become `FILL` on that axis and fill its parent's proposal
-  (SwiftUI/Compose parity). Pending.
+- **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: implemented —
+  `effective_fill` in `layout.rs` resolves a Hug-sized stack/ZStack that
+  contains a `FILL` child / `Spacer` / greedy primitive on an axis as `FILL` on
+  that axis (SwiftUI/Compose parity), so it fills its parent's proposal.
+  Covered by `fill_propagates_through_a_hug_stack`.
+- **ZStack (spec/PRIMITIVES.md)**: implemented — every child is an overlay
+  (later = on top) that keeps its own size unless effectively `FILL`, positioned
+  by the ZStack `ALIGNMENT` on **both** axes (`sync_overlay_children`); the
+  overlay hugs to its largest child; fill propagation applies. The old
+  first-child-pinned-to-fill `GtkOverlay` main-child behavior is gone.
 - **CONTENT_MARGINS vs PADDING precedence**: `CONTENT_MARGINS` is applied after
   `PADDING` in `apply_style`, so it currently wins; the spec (PRIMITIVES.md)
   requires `PADDING` > `CONTENT_MARGINS`. Pending.
-- **ZStack (spec/PRIMITIVES.md)**: the first child is pinned as the `GtkOverlay`
-  main child and fills the overlay regardless of its size kind (a Fixed first
-  child should keep its box), overlay `ALIGNMENT` is not applied (overlays sit
-  at their natural size top-left), and the overlay hugs instead of honoring a
-  Fixed box exactly. Pending.
+- **`CLIPS_TO_BOUNDS`** is not implemented (no `set_overflow`/clip anywhere): a
+  Fixed box's overflow is drawn outside the box instead of clipped (spec
+  LAYOUT.md / PRIMITIVES.md, SwiftUI `.clipped()` parity). Pending.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).

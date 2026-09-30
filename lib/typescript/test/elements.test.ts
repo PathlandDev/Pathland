@@ -50,7 +50,7 @@ const EXPECTED: Array<[number, string, string | null, (el: HTMLElement) => boole
   [COMPONENT_HSTACK, "DIV", null, (el) => el.style.flexDirection === "row"],
   [COMPONENT_LAZY_VSTACK, "DIV", null, (el) => el.style.flexDirection === "column"],
   [COMPONENT_LAZY_HSTACK, "DIV", null, (el) => el.style.flexDirection === "row"],
-  [COMPONENT_ZSTACK, "DIV", null, (el) => el.style.position === "relative"],
+  [COMPONENT_ZSTACK, "DIV", null, (el) => el.style.display === "grid"],
   [COMPONENT_GRID, "DIV", null, (el) => el.style.display === "grid"],
   [COMPONENT_LAZY_VGRID, "DIV", null, (el) => el.style.display === "grid"],
   [COMPONENT_LAZY_HGRID, "DIV", null, (el) => el.style.display === "grid"],

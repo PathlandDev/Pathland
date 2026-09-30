@@ -636,7 +636,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     expect(slot.querySelector(".pathland-nav-back")).not.toBeNull();
   });
 
-  it("wraps children inserted into a ZStack in an absolute-positioned div (runtime overlap)", () => {
+  it("wraps children inserted into a ZStack in a grid-area cell shell (runtime overlap)", () => {
     const r = renderer();
     const batch = parseBatch(
       buildBatch([
@@ -651,12 +651,16 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     const zstack = r.byId.get(1) as HTMLElement;
     const first = r.byId.get(2) as HTMLElement;
     const second = r.byId.get(3) as HTMLElement;
-    // Mirrors the Rust SSR renderer's per-child `<div style="position:absolute;inset:0">` wrapper.
+    // Mirrors the Rust SSR renderer's per-child
+    // `<div style="grid-area:1/1;width:max-content;height:max-content;...">` shell
+    // (overlap in the ZSTACK grid's single cell).
     const wrappers = Array.from(zstack.children).filter((el) => el instanceof HTMLElement);
     expect(wrappers).toHaveLength(2);
     for (const wrapper of wrappers) {
       const el = wrapper as HTMLElement;
-      expect(el.getAttribute("style")).toBe("position:absolute;inset:0");
+      expect(el.style.gridArea).toBe("1/1");
+      expect(el.style.width).toBe("max-content");
+      expect(el.style.height).toBe("max-content");
       expect(el.tagName).toBe("DIV");
     }
     expect(zstack.contains(first)).toBe(true);

@@ -56,6 +56,15 @@ Statelessness). Protocol contract: `spec/`.
   default). `DIVIDER` is greedy on the cross axis (`width:100%`); `SCROLLVIEW`
   is greedy on both axes (`flex:1 1 auto;align-self:stretch`); fixed frames emit
   exact px boxes. Conformance cases C1–C6 asserted in `lib.rs` tests.
+- **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: implemented —
+  `fills_axis` resolves a Hug stack/ZStack containing a `FILL` child / greedy
+  primitive on an axis as `FILL`, emitting `width/height:100%` on that axis, and
+  cross-axis `FILL` children stretch via `align-self:stretch` (SSR + TS DOM
+  client, kept canonical via the layout pass in `applyLayout`).
+- **ZStack (spec/PRIMITIVES.md)**: implemented — an overlapping grid
+  (`grid-area:1/1` cells); the container hugs to its largest child (`max-content`)
+  unless Fixed/FILL (or fill propagation → `100%`); each child keeps its own
+  size and is positioned by `ALIGNMENT` on both axes (SSR + TS DOM client).
 - **ARIA ROLE/STATE maps match the DOM client**: the full `ROLE` set (button…
   menu, incl. `text`/`img`/`radio`/`spinbutton`/`tablist`/`list`/`grid`/
   `region`/`menu`) and the `STATE` semantics (one true `aria-*` per state) are
@@ -176,15 +185,6 @@ contract both renderers must satisfy.
 
 ## Not implemented / gaps
 
-- **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: a `FILL` child
-  inside a Hug-sized stack currently stays at its base size (a `flex:1` item in
-  a content-sized flex container has no leftover to grow into); the spec
-  requires the stack to become `FILL` on that axis and fill its parent's
-  proposal (SwiftUI/Compose parity). Pending.
-- **ZStack (spec/PRIMITIVES.md)**: the container is emitted greedy on both axes
-  (`width:100%;height:100%`) and each child is wrapped `position:absolute;
-  inset:0` without alignment — the spec requires a Hug default (size = max of
-  children), per-child Fixed/Fill sizing, and `ALIGNMENT` positioning. Pending.
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset
   (colors, font size/weight, spacing/padding, corner radius, opacity,
   width/height, border width/color, shadow color). Compound accumulators that

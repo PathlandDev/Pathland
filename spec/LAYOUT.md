@@ -115,8 +115,10 @@ Rules:
 ### A container that is itself Fixed
 
 A container with a **Fixed** `WIDTH`/`HEIGHT` is allocated exactly that box and
-lays its children out *within* it. Content that overflows the fixed box is
-clipped, or scrolled when the container is a `SCROLLVIEW`.
+lays its children out *within* it. A Fixed box **constrains layout but does not
+clip**: content that overflows it is drawn outside the box unless
+`CLIPS_TO_BOUNDS` clips it (SwiftUI `.clipped()` parity); it scrolls instead
+when the container is a `SCROLLVIEW`.
 
 ### Rationale
 

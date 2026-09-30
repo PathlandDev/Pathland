@@ -437,8 +437,9 @@ distributed by `Fill` children / `Spacer`, never by the gap.
 the same node, precedence is per-edge `PADDING_*` > `PADDING` >
 `CONTENT_MARGINS`.
 
-**Overflow.** A stack with a Fixed box clips content that exceeds it; a stack
-inside a `SCROLLVIEW` scrolls.
+**Overflow.** A Fixed box **constrains layout but does not clip**: content that
+exceeds the box is drawn outside it unless `CLIPS_TO_BOUNDS` clips it (SwiftUI
+`.clipped()` parity). A stack inside a `SCROLLVIEW` scrolls instead.
 
 ### VStack — `VSTACK` 0x10
 
@@ -507,7 +508,9 @@ children occupy the same box by design; there is no gap between them.
   `Alignment.TopStart`; the protocol default is **Leading** (Start × Start,
   Compose parity). A mixed-axis alignment (e.g. top-trailing) is a future
   extension — today `ALIGNMENT` is a single code applied to both axes.
-- **Overflow**: content that exceeds a Fixed box is clipped to the stack.
+- **Overflow**: a Fixed box constrains layout but does not clip — content that
+  exceeds it is drawn outside the box unless `CLIPS_TO_BOUNDS` clips it
+  (SwiftUI `.clipped()` parity).
 - **Edge cases**: the first child is **not** a special "background" — it follows
   the same size model (a Fixed first child keeps its exact box; a `Fill` one
   stretches); draw order is always child index; a `Fill` child in a Hug ZStack

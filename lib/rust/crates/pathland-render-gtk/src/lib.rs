@@ -722,7 +722,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             WidgetKind::Stack => self.sync_stack_children(parent_id, children, node),
             WidgetKind::Grid => self.sync_grid_children(parent_id, children, node),
             WidgetKind::ScrollView => self.sync_scroll_children(parent_id, children),
-            WidgetKind::Overlay => self.sync_overlay_children(parent_id, children),
+            WidgetKind::Overlay => self.sync_overlay_children(parent_id, children, node),
             _ => {}
         }
     }
@@ -743,6 +743,8 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             return;
         };
         let stack_align = layout::stack_align_option(node);
+        // Fill propagation: a Hug child stack that contains a FILL child fills
+        // the axis (resolved through the tree).
         for child_id in children {
             let Some(w) = self.widgets.get(child_id).cloned() else {
                 continue;
@@ -750,8 +752,8 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             let Some(cn) = self.tree.node(*child_id) else {
                 continue;
             };
-            let main = layout::main_axis_align(cn, l.orientation);
-            let cross = layout::cross_axis_align(cn, l.orientation, stack_align);
+            let main = layout::main_axis_align(cn, l.orientation, &self.tree);
+            let cross = layout::cross_axis_align(cn, l.orientation, stack_align, &self.tree);
             if layout::cross_axis_is_horizontal(l.orientation) {
                 w.set_halign(cross);
                 w.set_valign(main);
@@ -815,30 +817,53 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         }
     }
 
-    /// Reconcile a `GtkOverlay`: the first child is the main child, the rest
-    /// are overlays (later = drawn on top).
-    fn sync_overlay_children(&mut self, parent_id: u32, children: &[u32]) {
+    /// Reconcile a `GtkOverlay`: every child is an overlay (later = drawn on top),
+    /// keeps its own size unless it is effectively `FILL`, and is positioned by
+    /// the ZStack's `ALIGNMENT` on **both** axes (default Leading/Start) —
+    /// spec/PRIMITIVES.md §ZStack.
+    fn sync_overlay_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
         };
         let Some(ov) = parent.downcast_ref::<gtk::Overlay>() else {
             return;
         };
+        let align = layout::stack_align_option(node).unwrap_or(Align::Start);
         let target: Vec<gtk::Widget> = children
             .iter()
             .filter_map(|id| self.widgets.get(id).cloned())
             .collect();
+        // Apply per-child alignment on every reconcile (cheap; needed even when
+        // the child set is unchanged, e.g. an ALIGNMENT delta).
+        let position = |child_id: &u32, w: &gtk::Widget| {
+            let Some(cn) = self.tree.node(*child_id) else {
+                return;
+            };
+            let halign = if layout::effective_fill(cn, layout::Axis::Horizontal, false, &self.tree) {
+                Align::Fill
+            } else {
+                align
+            };
+            let valign = if layout::effective_fill(cn, layout::Axis::Vertical, false, &self.tree) {
+                Align::Fill
+            } else {
+                align
+            };
+            w.set_halign(halign);
+            w.set_valign(valign);
+        };
         if child_widgets(&parent) == target {
+            for (child_id, w) in children.iter().zip(&target) {
+                position(child_id, w);
+            }
             return;
         }
         for w in child_widgets(&parent) {
             ov.remove_overlay(&w);
         }
-        if let Some(main) = target.first() {
-            ov.set_child(Some(main));
-            for overlay in target.iter().skip(1) {
-                ov.add_overlay(overlay);
-            }
+        for (child_id, w) in children.iter().zip(&target) {
+            position(child_id, w);
+            ov.add_overlay(w);
         }
     }
 

@@ -17,8 +17,8 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    Opcode, border_edges, category, component_type, property_id, style, tokens::TokenValue, tree,
-    value_type,
+    Opcode, border_edges, category, component_type, property_id, size, style,
+    tokens::TokenValue, tree, value_type,
 };
 
 mod capi;
@@ -474,7 +474,99 @@ fn size_css(v: f32) -> String {
 }
 
 /// The column count of a `GRID` from its `WIDTH` property (cell-axis count);
+
+/// The stack's main axis as a boolean (horizontal) when `component` is a flex
+/// stack; `None` otherwise.
+fn stack_main_horizontal(component: u16) -> Option<bool> {
+    match component {
+        component_type::HSTACK | component_type::LAZY_HSTACK => Some(true),
+        component_type::VSTACK | component_type::LAZY_VSTACK => Some(false),
+        _ => None,
+    }
+}
+
+/// Whether a node is **effectively `FILL`-sized on an axis** (LAYOUT.md §fill
+/// propagation, SwiftUI/Compose parity): it is `FILL` itself, a layout-greedy
+/// primitive that fills the axis by nature, or a Hug-sized container whose
+/// subtree carries such a child. A Fixed box bounds its subtree.
+///
+/// `axis_horizontal` selects `WIDTH` (true) or `HEIGHT`; `main_axis` tells
+/// whether the axis is the node's parent's main axis (governs `SPACER`/`DIVIDER`
+/// greediness).
+fn fills_axis(
+    nodes: &BTreeMap<u32, Node>,
+    id: u32,
+    axis_horizontal: bool,
+    main_axis: bool,
+) -> bool {
+    let Some(node) = nodes.get(&id) else {
+        return false;
+    };
+    let prop = if axis_horizontal {
+        property_id::WIDTH
+    } else {
+        property_id::HEIGHT
+    };
+    let hint = node.properties.get(&prop).map(|b| f32::from_bits(*b));
+    match hint {
+        Some(v) if v == size::FILL => return true,
+        Some(v) if v.is_finite() && v > 0.0 => return false, // Fixed bounds
+        _ => {}
+    }
+    let greedy = match node.component {
+        component_type::COLOR | component_type::SCROLLVIEW => true,
+        component_type::SPACER => main_axis,
+        component_type::DIVIDER => !main_axis,
+        _ => false,
+    };
+    if greedy {
+        return true;
+    }
+    if !matches!(
+        node.component,
+        component_type::VSTACK
+            | component_type::HSTACK
+            | component_type::ZSTACK
+            | component_type::LAZY_VSTACK
+            | component_type::LAZY_HSTACK
+    ) {
+        return false;
+    }
+    // A child's greedy nature is relative to its own parent (this node).
+    let child_main = stack_main_horizontal(node.component)
+        .map(|main_h| main_h == axis_horizontal)
+        .unwrap_or(false); // ZSTACK has no main axis
+    node.children
+        .iter()
+        .any(|&child| fills_axis(nodes, child, axis_horizontal, child_main))
+}
+
+/// Fill-propagation sizing for a flex stack: a Hug-sized stack that contains an
+/// effectively-`FILL` descendant on an axis becomes `FILL` on that axis (emit
+/// `100%`), matching SwiftUI/Compose. Returns the extra CSS, empty when the
+/// stack is Fixed/FILL-sized itself (its own frame already covers it).
+fn fill_propagation(
+    nodes: &BTreeMap<u32, Node>,
+    id: u32,
+    node: &Node,
+    main_horizontal: bool,
+) -> String {
+    let mut extra = String::new();
+    for (axis_h, prop, css) in [
+        (true, property_id::WIDTH, "width:100%;"),
+        (false, property_id::HEIGHT, "height:100%;"),
+    ] {
+        let hint = node.properties.get(&prop).map(|b| f32::from_bits(*b));
+        let hug = hint.is_none() || hint == Some(size::HUG_CONTENT);
+        if hug && fills_axis(nodes, id, axis_h, main_horizontal == axis_h) {
+            extra.push_str(css);
+        }
+    }
+    extra
+}
 /// `FILL`/absent → auto-fit.
+/// The column count of a `GRID` from its `WIDTH` property (cell-axis count;
+/// `FILL`/absent → auto-fit).
 fn grid_columns(node: &Node) -> Option<u32> {
     let w = node.f32_property(property_id::WIDTH, -1.0);
     if w <= 0.0 {
@@ -836,7 +928,7 @@ impl HtmlRenderer {
     #[must_use]
     pub fn render_document(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
         let (nodes, tokens) = decode(opcodes, strings);
-        let body = self.render_node(&nodes, root);
+        let body = self.render_node(&nodes, root, None);
         // Token overrides render as their own `<style data-pathland-tokens>`
         // element AFTER the built-in block so their `:root` variables win the
         // cascade (same specificity, later wins) — matching the JS DOM client's
@@ -866,17 +958,22 @@ impl HtmlRenderer {
     #[must_use]
     pub fn render_fragment(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
         let (nodes, _) = decode(opcodes, strings);
-        self.render_node(&nodes, root)
+        self.render_node(&nodes, root, None)
     }
 
-    fn render_node(&self, nodes: &BTreeMap<u32, Node>, id: u32) -> String {
+    fn render_node(
+        &self,
+        nodes: &BTreeMap<u32, Node>,
+        id: u32,
+        parent_component: Option<u16>,
+    ) -> String {
         let Some(node) = nodes.get(&id) else {
             return String::new();
         };
         let mut children: String = node
             .children
             .iter()
-            .map(|&child| self.render_node(nodes, child))
+            .map(|&child| self.render_node(nodes, child, Some(node.component)))
             .collect();
         let mut data_id = format!(" data-pathland-id=\"{id}\"");
         data_id.push_str(&slot_attrs(node));
@@ -905,6 +1002,20 @@ impl HtmlRenderer {
         }
         data_id.push_str(&media_attr);
         let mut css = format!("{}{}", node.style_css(), node.border_style());
+        // Derived layout (LAYOUT.md), separate from the node's own css so
+        // components with hardcoded shells (e.g. DIVIDER) can append it without
+        // duplicating their base styles.
+        let mut derived = String::new();
+        // Cross-axis FILL: a child that is effectively FILL on its parent
+        // stack's cross axis stretches via `align-self:stretch` (fills the
+        // cross size even when the container's cross size is content-driven).
+        if let Some(parent) = parent_component {
+            if let Some(main_horizontal) = stack_main_horizontal(parent) {
+                if fills_axis(nodes, id, !main_horizontal, false) {
+                    derived.push_str("align-self:stretch;");
+                }
+            }
+        }
         // LINE_LIMIT truncation: a positive line limit clamps the text to N lines
         // (mirrors the DOM client's PROP_LINE_LIMIT application, classes.ts).
         let line_limit = node.u32_property(property_id::LINE_LIMIT, 0);
@@ -913,7 +1024,7 @@ impl HtmlRenderer {
                 "display:-webkit-box;-webkit-line-clamp:{line_limit};-webkit-box-orient:vertical;"
             ));
         }
-        let style = style_attr(&css);
+        let style = style_attr(&format!("{css}{derived}"));
         let event = event_attrs(node);
         let aria = aria_attrs(node);
         // A semantic role may retag a generic div/span shell (role_spec);
@@ -922,13 +1033,17 @@ impl HtmlRenderer {
         let semantic = role_spec::semantic_tag(kind, node.role_code());
 
         let element = match node.component {
-            component_type::VSTACK => wrap_stack(id, "column", semantic, node, &media_attr, &children, &css, &event, &aria),
-            component_type::HSTACK => wrap_stack(id, "row", semantic, node, &media_attr, &children, &css, &event, &aria),
+            component_type::VSTACK => {
+                wrap_stack(id, "column", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
+            }
+            component_type::HSTACK => {
+                wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
+            }
             component_type::LAZY_VSTACK => {
-                wrap_stack(id, "column", semantic, node, &media_attr, &children, &css, &event, &aria)
+                wrap_stack(id, "column", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
             }
             component_type::LAZY_HSTACK => {
-                wrap_stack(id, "row", semantic, node, &media_attr, &children, &css, &event, &aria)
+                wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
             }
             component_type::TEXT => {
                 // A TEXT's tag is resolved by typography + role: a heading
@@ -1128,9 +1243,11 @@ impl HtmlRenderer {
                     .unwrap_or_else(|| "rgba(0,0,0,0.2)".to_string());
                 // Layout-greedy on the cross axis (LAYOUT.md): the separator
                 // spans the stack's available cross size unless a size frame
-                // overrides it (SwiftUI `Divider()` semantics).
+                // overrides it (SwiftUI `Divider()` semantics). The derived css
+                // (e.g. cross-axis `align-self:stretch`) is appended so the
+                // divider participates in stack layout like any other child.
                 format!(
-                    "<div{data_id}{event}{aria} style=\"height:0;width:100%;border-top:{width}px solid {color};\"></div>"
+                    "<div{data_id}{event}{aria} style=\"height:0;width:100%;border-top:{width}px solid {color};{derived}\"></div>"
                 )
             }
             component_type::PROGRESS_VIEW => {
@@ -1183,19 +1300,59 @@ if indeterminate {
             }
             component_type::ZSTACK => {
                 let tag = semantic.unwrap_or("div");
+                // ZStack (SwiftUI `ZStack` / Compose `Box`): children overlap in
+                // one box. The container hugs to its largest child by default
+                // (grid `max-content` tracks); a Fixed/FILL frame sizes it
+                // exactly; a FILL child propagates (`100%`). Each child keeps
+                // its own size and is positioned by `ALIGNMENT` on both axes
+                // (spec/PRIMITIVES.md §ZStack).
+                let align = node.f32_property(property_id::ALIGNMENT, 3.0) as u8;
+                let pos = |code: u8, stretch: bool| -> &'static str {
+                    if stretch {
+                        "stretch"
+                    } else {
+                        match code {
+                            0 => "start",
+                            1 => "center",
+                            2 => "end",
+                            _ => "start",
+                        }
+                    }
+                };
                 let inner: String = node
                     .children
                     .iter()
-                    .map(|&child| {
-                        let child_html = self.render_node(nodes, child);
+                    .filter_map(|&child| {
+                        let child_html = self.render_node(nodes, child, Some(node.component));
                         if child_html.is_empty() {
-                            String::new()
+                            None
                         } else {
-                            format!("<div style=\"position:absolute;inset:0\">{child_html}</div>")
+                            Some(format!(
+                                "<div style=\"grid-area:1/1;width:max-content;height:max-content;justify-self:{};align-self:{};\">{child_html}</div>",
+                                pos(align, fills_axis(nodes, child, true, false)),
+                                pos(align, fills_axis(nodes, child, false, false)),
+                            ))
                         }
                     })
                     .collect();
-                let combined = format!("position:relative;width:100%;height:100%;{css}");
+                // Container sizing: Hug → max-content, or `100%` on an axis a
+                // FILL child propagates; Fixed/FILL frames come from `css`.
+                let mut zcss = String::from("display:grid;grid-template-columns:1fr;grid-template-rows:1fr;");
+                for (axis_h, prop, hug_css, fill_css) in [
+                    (true, property_id::WIDTH, "width:max-content;", "width:100%;"),
+                    (false, property_id::HEIGHT, "height:max-content;", "height:100%;"),
+                ] {
+                    let hint = node.properties.get(&prop).map(|b| f32::from_bits(*b));
+                    let hug = hint.is_none() || hint == Some(size::HUG_CONTENT);
+                    if hug {
+                        zcss.push_str(if fills_axis(nodes, id, axis_h, false) {
+                            fill_css
+                        } else {
+                            hug_css
+                        });
+                    }
+                }
+                let combined = format!("{zcss}{css}{derived}");
                 let zstyle = style_attr(&combined);
                 format!("<{tag}{data_id}{event}{aria}{zstyle}>{inner}</{tag}>")
             }
@@ -1959,8 +2116,10 @@ mod tests {
         assert!(scroll.contains("overflow:auto"), "scrollview inline");
         assert!(scroll.contains("<span data-pathland-id=\"2\"></span>"));
         let zstack = renderer.render_document(&opcodes, &[], 3);
-        assert!(zstack.contains("position:relative"), "zstack inline");
-        assert!(zstack.contains("position:absolute;inset:0"), "zstack child inline");
+        assert!(zstack.contains("display:grid"), "zstack grid inline");
+        assert!(zstack.contains("width:max-content"), "zstack hugs to its largest child");
+        assert!(zstack.contains("grid-area:1/1"), "zstack child overlaps in one cell");
+        assert!(zstack.contains("justify-self:start"), "zstack child positioned per ALIGNMENT");
     }
 
     #[test]
@@ -2253,6 +2412,37 @@ mod tests {
             "scrollview greedy: {}",
             html
         );
+    }
+
+    #[test]
+    fn fill_propagates_through_a_hug_stack() {
+        use pathland_core::{size, value_type};
+        // A Hug VStack with a FILL-width child: the child stretches on the
+        // cross axis (`align-self:stretch`) and the stack itself becomes
+        // full-width (`width:100%` propagation) — SwiftUI/Compose parity.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::BUTTON as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            size::FILL.to_bits(),
+        ));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("width:100%"), "fill propagation: {}", html);
+        assert!(html.contains("align-self:stretch"), "cross-axis fill: {}", html);
+        // A Hug stack with no FILL child does NOT propagate.
+        let mut hug = Vec::new();
+        hug.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        hug.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        hug.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        let html_hug = renderer.render_document(&hug, &[], 1);
+        assert!(!html_hug.contains("width:100%"), "no propagation: {}", html_hug);
     }
 
     #[test]

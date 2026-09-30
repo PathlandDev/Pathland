@@ -9,7 +9,7 @@
 //! needs GTK initialized - which keeps the mapping unit-testable headlessly.
 
 use gtk::{Align, Orientation};
-use crate::host::HostNode;
+use crate::host::{HostNode, RenderTree};
 use pathland_core::{component_type, property_id, size};
 
 /// Map a component type to its native stack orientation.
@@ -98,10 +98,48 @@ fn greedy_fills(node: &HostNode, main_axis: bool) -> bool {
     }
 }
 
-/// Whether a stack child stretches on `axis`: it is `FILL`-sized there, or it
-/// is a layout-greedy primitive that fills that axis by nature.
-fn stretches(node: &HostNode, axis: Axis, main_axis: bool) -> bool {
-    matches!(axis_hint(node, axis), SizeHint::Fill) || greedy_fills(node, main_axis)
+/// Whether a node is **effectively `FILL`-sized on `axis`** — it is `FILL`
+/// itself, a layout-greedy primitive that fills `axis` by nature, or (fill
+/// propagation) a Hug-sized container whose subtree carries a `FILL`-sized
+/// child / greedy filler on `axis`. A Fixed box bounds its subtree, so a
+/// Fixed-sized container never propagates (its children fill within the box).
+///
+/// `resolve` maps a child id to its node; pass a no-op resolver when the caller
+/// has no tree (then only the node's own size kind / greediness is considered).
+pub fn effective_fill(node: &HostNode, axis: Axis, main_axis: bool, tree: &RenderTree) -> bool {
+    match axis_hint(node, axis) {
+        SizeHint::Fill => return true,
+        SizeHint::Fixed(_) => return false,
+        SizeHint::None => {}
+    }
+    if greedy_fills(node, main_axis) {
+        return true;
+    }
+    if !propagates_fill(node.component_type) {
+        return false;
+    }
+    // A child's greedy nature is relative to its own parent (`node`): a child's
+    // main axis is `axis` iff `node` is a stack whose main axis is `axis`.
+    let child_main = stack_orientation(node.component_type)
+        .map(|o| Axis::of(o) == axis)
+        .unwrap_or(false);
+    node.children
+        .iter()
+        .any(|&cid| tree.node(cid).is_some_and(|c| effective_fill(c, axis, child_main, tree)))
+}
+
+/// Containers that hug their content and therefore propagate a `FILL` child up
+/// (SwiftUI/Compose parity): stacks and the ZStack. `GRID`/`SCROLLVIEW` are
+/// excluded — a grid sizes its cells, a scroll view is greedy already.
+fn propagates_fill(component_type: u16) -> bool {
+    matches!(
+        component_type,
+        component_type::VSTACK
+            | component_type::HSTACK
+            | component_type::ZSTACK
+            | component_type::LAZY_VSTACK
+            | component_type::LAZY_HSTACK
+    )
 }
 
 /// The stack's explicit cross-axis `ALIGNMENT` position. `Fill` (3) and absent
@@ -114,34 +152,35 @@ pub fn stack_align_option(node: &HostNode) -> Option<Align> {
         .filter(|a| *a != Align::Fill)
 }
 
-/// Main-axis alignment for a stack child: `FILL` children (and greedy
-/// main-axis primitives like `SPACER`) stretch; everything else is positioned
-/// at the start — leftover main-axis space goes to `FILL` children only
-/// (LAYOUT.md).
-pub fn main_axis_align(node: &HostNode, orientation: Orientation) -> Align {
-    if stretches(node, Axis::of(orientation), true) {
+/// Main-axis alignment for a stack child: effectively-`FILL` children (and
+/// greedy main-axis primitives like `SPACER`) stretch; everything else is
+/// positioned at the start — leftover main-axis space goes to `FILL` children
+/// only (LAYOUT.md).
+pub fn main_axis_align(node: &HostNode, orientation: Orientation, tree: &RenderTree) -> Align {
+    if effective_fill(node, Axis::of(orientation), true, tree) {
         Align::Fill
     } else {
         Align::Start
     }
 }
 
-/// Cross-axis alignment for a stack child: `FILL` children (and greedy
-/// cross-axis primitives like `DIVIDER`/`COLOR`/`SCROLLVIEW`) stretch;
-/// everything else keeps its own size and is positioned by the stack's
-/// explicit `ALIGNMENT` (`stack_align`), defaulting to `Start` — never
-/// stretched (LAYOUT.md).
+/// Cross-axis alignment for a stack child: effectively-`FILL` children (and
+/// greedy cross-axis primitives like `DIVIDER`/`COLOR`/`SCROLLVIEW`) stretch;
+/// everything else keeps its own size and is positioned by the stack's explicit
+/// `ALIGNMENT` (`stack_align`), defaulting to `Start` — never stretched
+/// (LAYOUT.md).
 pub fn cross_axis_align(
     node: &HostNode,
     orientation: Orientation,
     stack_align: Option<Align>,
+    tree: &RenderTree,
 ) -> Align {
     let cross = if orientation == Orientation::Vertical {
         Axis::Horizontal
     } else {
         Axis::Vertical
     };
-    if stretches(node, cross, false) {
+    if effective_fill(node, cross, false, tree) {
         Align::Fill
     } else {
         stack_align.unwrap_or(Align::Start)
@@ -396,23 +435,37 @@ mod tests {
         );
     }
 
-    #[test]
+        #[test]
     fn main_axis_align_fill_and_greedy_stretch_else_start() {
         let v = Orientation::Vertical;
         // No frame → hug at the start (leftover goes to FILL children only).
-        assert_eq!(main_axis_align(&node(component_type::TEXT, &[]), v), Align::Start);
+        assert_eq!(
+            main_axis_align(&node(component_type::TEXT, &[]), v, &RenderTree::default()),
+            Align::Start
+        );
         // Fixed height keeps its size → positioned at the start.
         assert_eq!(
-            main_axis_align(&node(component_type::TEXT, &[(property_id::HEIGHT, f32_bits(44.0))]), v),
+            main_axis_align(
+                &node(component_type::TEXT, &[(property_id::HEIGHT, f32_bits(44.0))]),
+                v,
+                &RenderTree::default(),
+            ),
             Align::Start
         );
         // FILL height stretches.
         assert_eq!(
-            main_axis_align(&node(component_type::TEXT, &[(property_id::HEIGHT, f32_bits(-1.0))]), v),
+            main_axis_align(
+                &node(component_type::TEXT, &[(property_id::HEIGHT, f32_bits(-1.0))]),
+                v,
+                &RenderTree::default(),
+            ),
             Align::Fill
         );
         // SPACER is greedy on the main axis.
-        assert_eq!(main_axis_align(&node(component_type::SPACER, &[]), v), Align::Fill);
+        assert_eq!(
+            main_axis_align(&node(component_type::SPACER, &[]), v, &RenderTree::default()),
+            Align::Fill
+        );
     }
 
     #[test]
@@ -425,6 +478,7 @@ mod tests {
                 &node(component_type::IMAGE, &[(property_id::WIDTH, f32_bits(220.0))]),
                 v,
                 None,
+                &RenderTree::default(),
             ),
             Align::Start
         );
@@ -434,6 +488,7 @@ mod tests {
                 &node(component_type::IMAGE, &[(property_id::WIDTH, f32_bits(220.0))]),
                 v,
                 Some(Align::Center),
+                &RenderTree::default(),
             ),
             Align::Center
         );
@@ -443,19 +498,67 @@ mod tests {
                 &node(component_type::TEXT, &[(property_id::WIDTH, f32_bits(-1.0))]),
                 v,
                 None,
+                &RenderTree::default(),
             ),
             Align::Fill
         );
         // A hug (absent) child is never stretched (C5).
         assert_eq!(
-            cross_axis_align(&node(component_type::TEXT, &[]), v, None),
+            cross_axis_align(&node(component_type::TEXT, &[]), v, None, &RenderTree::default()),
             Align::Start
         );
         // DIVIDER is greedy on the cross axis.
         assert_eq!(
-            cross_axis_align(&node(component_type::DIVIDER, &[]), v, None),
+            cross_axis_align(&node(component_type::DIVIDER, &[]), v, None, &RenderTree::default()),
             Align::Fill
         );
+    }
+
+    #[test]
+    fn fill_propagates_through_a_hug_stack() {
+        let v = Orientation::Vertical; // main = height, cross = width
+        // A Hug VStack whose child is FILL-height is itself FILL on the main
+        // axis (SwiftUI/Compose parity: `VStack { Spacer() }` fills).
+        let mut stack = node(component_type::VSTACK, &[]);
+        stack.children.push(2);
+        let mut tree = RenderTree::default();
+        tree.nodes.insert(2, node(component_type::TEXT, &[(property_id::HEIGHT, f32_bits(-1.0))]));
+        assert_eq!(
+            main_axis_align(&stack, v, &tree),
+            Align::Fill,
+            "a FILL child propagates main-axis fill"
+        );
+        // A Fixed child does not propagate (a Fixed box bounds its subtree).
+        tree.nodes.insert(2, node(component_type::TEXT, &[(property_id::HEIGHT, f32_bits(44.0))]));
+        assert_eq!(main_axis_align(&stack, v, &tree), Align::Start);
+        // A FILL-width child propagates the CROSS axis.
+        tree.nodes.insert(2, node(component_type::TEXT, &[(property_id::WIDTH, f32_bits(-1.0))]));
+        assert_eq!(
+            cross_axis_align(&stack, v, None, &tree),
+            Align::Fill,
+            "a FILL-width child makes a Hug VStack full-width"
+        );
+        // A nested Hug stack with a FILL child propagates through the ancestor.
+        let mut outer = node(component_type::VSTACK, &[]);
+        outer.children.push(2);
+        let mut outer_tree = RenderTree::default();
+        outer_tree.nodes.insert(
+            2,
+            node(
+                component_type::VSTACK,
+                &[(property_id::WIDTH, f32_bits(-1.0))],
+            ),
+        );
+        assert_eq!(
+            cross_axis_align(&outer, v, None, &outer_tree),
+            Align::Fill,
+            "a FILL child nested in a Hug sub-stack propagates to the outer stack"
+        );
+        // A Hug stack with only Hug children does not propagate.
+        let mut hug_tree = RenderTree::default();
+        hug_tree.nodes.insert(2, node(component_type::TEXT, &[]));
+        assert_eq!(main_axis_align(&stack, v, &hug_tree), Align::Start);
+        assert_eq!(cross_axis_align(&stack, v, None, &hug_tree), Align::Start);
     }
 
     #[test]

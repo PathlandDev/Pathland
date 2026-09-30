@@ -20,13 +20,20 @@ import {
   CMD_SET_TEXT,
   COMPONENT_AUDIO,
   COMPONENT_COLOR,
+  COMPONENT_DIVIDER,
   COMPONENT_GRID,
+  COMPONENT_HSTACK,
   COMPONENT_LAZY_HGRID,
+  COMPONENT_LAZY_HSTACK,
   COMPONENT_LAZY_VGRID,
+  COMPONENT_LAZY_VSTACK,
   COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
+  COMPONENT_SCROLLVIEW,
   COMPONENT_SHAPE,
+  COMPONENT_SPACER,
   COMPONENT_TEXT,
+  COMPONENT_VSTACK,
   COMPONENT_VIDEO,
   COMPONENT_ZSTACK,
   PROP_BINDING_ID,
@@ -82,6 +89,131 @@ import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./f
  *  spinner/progress morph) without baking it into the DOM. */
 const componentByNode = new WeakMap<Node, number>();
 
+/** Flex stacks (main axis horizontal). */
+const STACK_MAIN_HORIZONTAL = new Set([COMPONENT_HSTACK, COMPONENT_LAZY_HSTACK]);
+/** Flex stacks (main axis vertical). */
+const STACK_MAIN_VERTICAL = new Set([COMPONENT_VSTACK, COMPONENT_LAZY_VSTACK]);
+/** Hug-to-content containers that propagate a FILL descendant up (LAYOUT.md). */
+const PROPAGATING = new Set([
+  COMPONENT_VSTACK,
+  COMPONENT_HSTACK,
+  COMPONENT_ZSTACK,
+  COMPONENT_LAZY_VSTACK,
+  COMPONENT_LAZY_HSTACK,
+]);
+
+/** Whether `el` is effectively FILL-sized on `horizontal` (LAYOUT.md §fill
+ *  propagation, SwiftUI/Compose parity): FILL itself (`width/height:100%`), a
+ *  layout-greedy primitive, or a Hug container whose subtree carries one. A
+ *  Fixed px box bounds its subtree. `mainAxis` = whether the axis is the
+ *  element's parent's main axis (governs SPACER/DIVIDER greediness). A
+ *  component-less shell (a ZStack child wrapper) is transparent. */
+function fillsAxis(el: Element, horizontal: boolean, mainAxis: boolean): boolean {
+  const comp = componentByNode.get(el) ?? 0;
+  if (comp === 0) {
+    return Array.from(el.children).some(
+      (c) => c instanceof HTMLElement && fillsAxis(c, horizontal, mainAxis),
+    );
+  }
+  const style = (el as HTMLElement).style;
+  const hint = horizontal ? style.width : style.height;
+  if (hint === "100%") {
+    return true;
+  }
+  if (hint !== "") {
+    return false; // a Fixed px box bounds its subtree
+  }
+  const greedy =
+    comp === COMPONENT_COLOR ||
+    comp === COMPONENT_SCROLLVIEW ||
+    (comp === COMPONENT_SPACER && mainAxis) ||
+    (comp === COMPONENT_DIVIDER && !mainAxis);
+  if (greedy) {
+    return true;
+  }
+  if (!PROPAGATING.has(comp)) {
+    return false;
+  }
+  const childMain = STACK_MAIN_HORIZONTAL.has(comp)
+    ? horizontal
+    : STACK_MAIN_VERTICAL.has(comp)
+      ? !horizontal
+      : false;
+  return Array.from(el.children).some(
+    (c) => c instanceof HTMLElement && fillsAxis(c, horizontal, childMain),
+  );
+}
+
+/** The SSR's alignment token for a ZSTACK child position from the element's
+ *  `align-items` value (`flex-start`/`center`/`flex-end`, default start). */
+function zstackAlignToken(alignItems: string): string {
+  if (alignItems === "center") {
+    return "center";
+  }
+  if (alignItems === "flex-end") {
+    return "end";
+  }
+  return "start";
+}
+
+/** Derived layout pass (LAYOUT.md): fill propagation (a Hug stack/ZStack with a
+ *  FILL descendant becomes FILL on that axis), ZStack hug-to-largest-child
+ *  sizing, cross-axis `align-self:stretch` for FILL children, and ZStack child
+ *  positioning. Mirrors the Rust SSR renderer's whole-tree layout decisions;
+ *  runs after every batch so a delta leaves the derived styles consistent. */
+function applyLayout(r: DomRenderer): void {
+  const els = Array.from(r.byId.values()).filter(
+    (n): n is HTMLElement => n instanceof HTMLElement,
+  );
+  // Phase 1: container fill propagation + ZStack sizing.
+  for (const el of els) {
+    const comp = componentByNode.get(el) ?? 0;
+    if (!PROPAGATING.has(comp)) {
+      continue;
+    }
+    if (STACK_MAIN_HORIZONTAL.has(comp) || STACK_MAIN_VERTICAL.has(comp)) {
+      const mainH = STACK_MAIN_HORIZONTAL.has(comp);
+      if (el.style.width === "" && fillsAxis(el, true, mainH)) {
+        el.style.width = "100%";
+      }
+      if (el.style.height === "" && fillsAxis(el, false, !mainH)) {
+        el.style.height = "100%";
+      }
+    } else if (comp === COMPONENT_ZSTACK) {
+      if (el.style.width === "") {
+        el.style.width = fillsAxis(el, true, false) ? "100%" : "max-content";
+      }
+      if (el.style.height === "") {
+        el.style.height = fillsAxis(el, false, false) ? "100%" : "max-content";
+      }
+      // Position each child shell per the ZSTACK ALIGNMENT (both axes).
+      const token = zstackAlignToken(el.style.alignItems);
+      for (const w of Array.from(el.children)) {
+        if (!(w instanceof HTMLElement)) {
+          continue;
+        }
+        w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : token;
+        w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : token;
+      }
+    }
+  }
+  // Phase 2: cross-axis FILL children in a stack stretch via align-self.
+  for (const el of els) {
+    const parent = el.parentElement;
+    if (!parent) {
+      continue;
+    }
+    const parentComp = componentByNode.get(parent) ?? 0;
+    const mainH = STACK_MAIN_HORIZONTAL.has(parentComp);
+    if (!STACK_MAIN_HORIZONTAL.has(parentComp) && !STACK_MAIN_VERTICAL.has(parentComp)) {
+      continue;
+    }
+    if (fillsAxis(el, !mainH, false)) {
+      el.style.alignSelf = "stretch";
+    }
+  }
+}
+
 /** The last `ROLE` code applied per element (morphing needs both role and text
  *  style to resolve the effective tag). */
 const roleByNode = new WeakMap<HTMLElement, number>();
@@ -131,6 +263,9 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
         break;
     }
   }
+  // Derived layout (fill propagation, ZStack sizing/positioning, cross-axis
+  // align-self) — mirrors the Rust SSR renderer's whole-tree decisions.
+  applyLayout(renderer);
 }
 
 function applyMeta(op: Opcode, r: DomRenderer): void {
@@ -151,14 +286,16 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
 }
 
 /** The node actually inserted into a parent's container: ZStack children are
- *  wrapped in `<div style="position:absolute;inset:0">` (mirrors the Rust SSR
- *  renderer's per-child wrapper), everything else inserts directly. */
+ *  wrapped in a `grid-area:1/1` cell shell (the layout pass sets its
+ *  `justify-self`/`align-self` from the ZSTACK ALIGNMENT once the child's size
+ *  styles exist — mirrors the Rust SSR renderer), everything else inserts
+ *  directly. */
 function placedChild(parent: Node, child: Node): Node {
   if (componentByNode.get(parent) === COMPONENT_ZSTACK && child instanceof HTMLElement) {
-    // Set via the style attribute so `inset:0` survives verbatim (the CSSOM
-    // drops the property in some engines); mirrors the Rust SSR wrapper exactly.
     const wrapper = document.createElement("div");
-    wrapper.setAttribute("style", "position:absolute;inset:0");
+    wrapper.style.gridArea = "1/1";
+    wrapper.style.width = "max-content";
+    wrapper.style.height = "max-content";
     wrapper.appendChild(child);
     return wrapper;
   }
