@@ -274,15 +274,21 @@ impl Edges {
     }
 }
 
-/// Compute a node's padding margins. Uniform `PADDING` sets all four edges;
-/// per-edge `PADDING_TOP/RIGHT/BOTTOM/LEFT` override individual edges.
+/// Compute a node's padding margins. Precedence (spec PRIMITIVES.md §stack
+/// layout model): per-edge `PADDING_TOP/RIGHT/BOTTOM/LEFT` > uniform `PADDING`
+/// > `CONTENT_MARGINS` (the stack's content inset is the lowest-precedence base,
+/// matching the HTML renderer where `PADDING` is emitted after `CONTENT_MARGINS`
+/// and wins the cascade).
 ///
 /// Padding is **styling** (a DSL modifier), so it applies to any node, not just
 /// stacks.
 pub fn padding_from(node: &HostNode) -> Edges {
-    let uniform = f32_prop(node, property_id::PADDING)
+    let base = f32_prop(node, property_id::CONTENT_MARGINS)
         .map(round_nonneg)
         .unwrap_or(0);
+    let uniform = f32_prop(node, property_id::PADDING)
+        .map(round_nonneg)
+        .unwrap_or(base);
     Edges {
         top: f32_prop(node, property_id::PADDING_TOP)
             .map(round_nonneg)
@@ -627,6 +633,33 @@ mod tests {
             ],
         );
         assert_eq!(padding_from(&n), Edges { top: 1, right: 8, bottom: 8, left: 2 });
+    }
+
+    #[test]
+    fn content_margins_are_the_lowest_precedence_base() {
+        // CONTENT_MARGINS alone is the uniform inset.
+        let n = node(component_type::VSTACK, &[(property_id::CONTENT_MARGINS, f32_bits(16.0))]);
+        assert_eq!(padding_from(&n), Edges { top: 16, right: 16, bottom: 16, left: 16 });
+        // PADDING overrides CONTENT_MARGINS (spec PRIMITIVES.md §stack layout
+        // model: PADDING_* > PADDING > CONTENT_MARGINS).
+        let n = node(
+            component_type::VSTACK,
+            &[
+                (property_id::CONTENT_MARGINS, f32_bits(16.0)),
+                (property_id::PADDING, f32_bits(8.0)),
+            ],
+        );
+        assert_eq!(padding_from(&n), Edges { top: 8, right: 8, bottom: 8, left: 8 });
+        // Per-edge PADDING_* wins over both.
+        let n = node(
+            component_type::VSTACK,
+            &[
+                (property_id::CONTENT_MARGINS, f32_bits(16.0)),
+                (property_id::PADDING, f32_bits(8.0)),
+                (property_id::PADDING_TOP, f32_bits(1.0)),
+            ],
+        );
+        assert_eq!(padding_from(&n), Edges { top: 1, right: 8, bottom: 8, left: 8 });
     }
 
     #[test]

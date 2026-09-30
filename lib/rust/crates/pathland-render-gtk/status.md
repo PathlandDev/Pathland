@@ -194,9 +194,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   by the ZStack `ALIGNMENT` on **both** axes (`sync_overlay_children`); the
   overlay hugs to its largest child; fill propagation applies. The old
   first-child-pinned-to-fill `GtkOverlay` main-child behavior is gone.
-- **CONTENT_MARGINS vs PADDING precedence**: `CONTENT_MARGINS` is applied after
-  `PADDING` in `apply_style`, so it currently wins; the spec (PRIMITIVES.md)
-  requires `PADDING` > `CONTENT_MARGINS`. Pending.
+- **CONTENT_MARGINS vs PADDING precedence**: implemented — `CONTENT_MARGINS` is
+  folded into the margins by `apply_padding` as the **lowest-precedence base**
+  (per-edge `PADDING_*` > `PADDING` > `CONTENT_MARGINS`, spec PRIMITIVES.md §stack
+  layout model) and no longer applied in `apply_style` (where it previously
+  overrode the higher-precedence `PADDING`). Matches the HTML renderer.
+  Covered by `content_margins_are_the_lowest_precedence_base`.
 - **SPACING** (spec/PRIMITIVES.md): applied on stacks (`GtkBox` spacing,
   re-set every frame), on **grids** (`row_spacing`/`column_spacing` from
   `SPACING`, `sync_grid_children`), and on **composite-control bodies**

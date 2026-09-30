@@ -1698,9 +1698,6 @@ fn nav_page(route: &str, title: &str, child: &gtk::Widget, custom_chrome: bool) 
 /// Apply a node's padding as widget margins (styling, any widget type).
 fn apply_padding(widget: &gtk::Widget, node: &HostNode) {
     let e = layout::padding_from(node);
-    if e.is_zero() {
-        return;
-    }
     widget.set_margin_top(e.top);
     widget.set_margin_end(e.right);
     widget.set_margin_bottom(e.bottom);
@@ -1825,13 +1822,10 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
             },
         );
     }
-    if let Some(bits) = node.properties.get(&property_id::CONTENT_MARGINS) {
-        let m = f32::from_bits(*bits) as i32;
-        widget.set_margin_top(m);
-        widget.set_margin_end(m);
-        widget.set_margin_bottom(m);
-        widget.set_margin_start(m);
-    }
+    // CONTENT_MARGINS is folded into the padding margins by `apply_padding` as
+    // the lowest-precedence base (per-edge PADDING_* > PADDING > CONTENT_MARGINS,
+    // spec PRIMITIVES.md §stack layout model) — it must NOT be applied here,
+    // or it would override the higher-precedence PADDING margins.
 
     let css = style_css(node);
     if !css.is_empty() {
