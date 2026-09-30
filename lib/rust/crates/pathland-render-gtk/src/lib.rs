@@ -253,13 +253,35 @@ impl GtkRenderer {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
         };
-        let Ok(btn) = parent.downcast::<gtk::Button>() else {
+        let Ok(btn) = parent.clone().downcast::<gtk::Button>() else {
             return;
         };
         let horizontal = self
             .tree
             .node(parent_id)
             .is_some_and(|n| composite_horizontal(n.component_type));
+        // A composite control sizes to its content on the MAIN axis unless the
+        // node explicitly fills it, matching the HTML button (`inline-flex`,
+        // content-sized) inside a flex row/column that stretches the cross axis.
+        // Without this, the enclosing box's default `Fill` alignment stretches
+        // the control on its main axis (e.g. a library row button absorbs the
+        // viewport height), inflating content like fixed-size images.
+        let fills = |prop: u16| {
+            self.tree.node(parent_id).is_some_and(|n| {
+                matches!(size_hint(n.properties.get(&prop).copied()), SizeHint::Fill)
+            })
+        };
+        let parent_vertical = parent
+            .parent()
+            .and_then(|p| p.downcast::<GtkBox>().ok())
+            .map(|b| b.orientation() == gtk::Orientation::Vertical);
+        if parent_vertical.unwrap_or(true) {
+            if !fills(property_id::HEIGHT) {
+                btn.set_valign(Align::Center);
+            }
+        } else if !fills(property_id::WIDTH) {
+            btn.set_halign(Align::Center);
+        }
         let box_widget: gtk::Widget = if let Some(bx) = self.composite_boxes.get(&parent_id).cloned() {
             bx
         } else {
@@ -271,8 +293,6 @@ impl GtkRenderer {
                 },
                 0,
             );
-            bx.set_hexpand(true);
-            bx.set_vexpand(true);
             btn.set_child(Some(&bx));
             let bxw: gtk::Widget = bx.upcast();
             self.composite_boxes.insert(parent_id, bxw.clone());

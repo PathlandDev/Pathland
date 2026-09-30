@@ -35,6 +35,9 @@ public final class LibraryView implements View {
         for (int i = 0; i < MusicPlayerView.TRACKS.size(); i++) {
             rows.add(new TrackRowView(MusicPlayerView.TRACKS.get(i), i, trackIndex, position, playing));
         }
+        // A trailing spacer absorbs the leftover vertical space.
+        rows.add(Spacer.of());
+        
         return VStack.of(
                 Text.of("Library").with(FontSize.of(26), FontWeightMod.of(FontWeight.BOLD))
                         .with(AccessibilityRole.of(Roles.HEADER)),

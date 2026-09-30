@@ -35,7 +35,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   with children (custom body wrapped in the native button shell). A `BUTTON`
   composite body is a **horizontal row** with centered children (matching the
   HTML renderer's `.pathland-button` `inline-flex`); `TOGGLE`/`MENU` bodies stay
-  vertical (HTML wraps those as block/inline-block).
+  vertical (HTML wraps those as block/inline-block). A composite control **sizes
+  to its content on the main axis** (the button's main-axis `valign`/`halign` is
+  `Center`, mirroring HTML's `inline-flex`) unless the node is explicitly
+  `FILL`-sized — otherwise the enclosing box's default `Fill` alignment stretches
+  it (e.g. a library row button absorbs the viewport height, inflating
+  fixed-size images).
 - **Style properties**: `VISIBLE`, `OPACITY`, `WIDTH`/`HEIGHT`,
   `CONTENT_MARGINS`, `PADDING` + per-edge, `BACKGROUND_COLOR`, `BORDER_WIDTH`/
   `COLOR`/`RADIUS`, `FONT_FAMILY`/`FONT_WEIGHT` (CSS provider), `COLOR`,
