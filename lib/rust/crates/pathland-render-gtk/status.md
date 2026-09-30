@@ -207,9 +207,9 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   whose label flattened a stack, e.g. `Button.of(HStack, …)`, carries the
   stack's `SPACING`, and its body box reproduces the gap like the HTML
   renderer's `gap`). Covered by `spacing_clamps_and_rounds_for_any_node`.
-- **`CLIPS_TO_BOUNDS`** is not implemented (no `set_overflow`/clip anywhere): a
-  Fixed box's overflow is drawn outside the box instead of clipped (spec
-  LAYOUT.md / PRIMITIVES.md, SwiftUI `.clipped()` parity). Pending.
+- **`CLIPS_TO_BOUNDS`**: implemented — applied in `apply_style` via
+  `set_overflow(Overflow::Hidden)` (SwiftUI `.clipped()` parity, spec LAYOUT.md /
+  PRIMITIVES.md: a Fixed box constrains layout but only clips when set).
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).

@@ -1788,6 +1788,16 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
     if let Some(bits) = node.properties.get(&property_id::OPACITY) {
         widget.set_opacity(f64::from(f32::from_bits(*bits)));
     }
+    // CLIPS_TO_BOUNDS → native overflow clipping (SwiftUI `.clipped()` parity,
+    // spec LAYOUT.md / PRIMITIVES.md: a Fixed box constrains layout but only
+    // clips when this property is set).
+    if let Some(bits) = node.properties.get(&property_id::CLIPS_TO_BOUNDS) {
+        widget.set_overflow(if *bits != 0 {
+            gtk::Overflow::Hidden
+        } else {
+            gtk::Overflow::Visible
+        });
+    }
     let w = node.properties.get(&property_id::WIDTH).copied();
     let h = node.properties.get(&property_id::HEIGHT).copied();
     let sw = layout::size_hint(w);

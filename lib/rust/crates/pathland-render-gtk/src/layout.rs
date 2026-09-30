@@ -267,13 +267,6 @@ pub struct Edges {
     pub left: i32,
 }
 
-impl Edges {
-    /// True when every edge is zero.
-    pub fn is_zero(&self) -> bool {
-        self.top == 0 && self.right == 0 && self.bottom == 0 && self.left == 0
-    }
-}
-
 /// Compute a node's padding margins. Precedence (spec PRIMITIVES.md §stack
 /// layout model): per-edge `PADDING_TOP/RIGHT/BOTTOM/LEFT` > uniform `PADDING`
 /// > `CONTENT_MARGINS` (the stack's content inset is the lowest-precedence base,
@@ -613,7 +606,7 @@ mod tests {
     #[test]
     fn padding_defaults_to_zero() {
         let n = node(component_type::TEXT, &[]);
-        assert!(padding_from(&n).is_zero());
+        assert_eq!(padding_from(&n), Edges::default());
     }
 
     #[test]
@@ -672,7 +665,7 @@ mod tests {
     #[test]
     fn padding_clamps_negative_and_rounds() {
         let n = node(component_type::VSTACK, &[(property_id::PADDING, f32_bits(-4.0))]);
-        assert!(padding_from(&n).is_zero());
+        assert_eq!(padding_from(&n), Edges::default());
 
         let n = node(component_type::VSTACK, &[(property_id::PADDING, f32_bits(4.4))]);
         assert_eq!(padding_from(&n).top, 4);
