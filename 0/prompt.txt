@@ -1,1 +1,1 @@
-1+2
+Add it to the status of gtk renderer. The issue I have is that Hstack in TrackRowViw has a sapcing of 12f. And the space is rendered in html, but not in gtk
