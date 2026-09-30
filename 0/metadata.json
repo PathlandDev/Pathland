@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3RR8FRJTV24JHAY4XGWT37V",
+  "session_id": "ses_f19ed713affeZaLNsSlXVxmfpL",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-30T08:53:05.712648Z",
+  "branch": "feat/music-player-demo",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "spec/LAYOUT.md",
+    "spec/MODIFIERS.md",
+    "spec/OPCODE.md",
+    "spec/PRIMITIVES.md",
+    "lib/rust/crates/pathland-render-gtk/src/layout.rs",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/TrackRowView.java",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/typescript/src/elements.ts",
+    "lib/typescript/src/classes.ts"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "a7a5649ff22a",
+  "checkpoint_transcript_start": 1391,
+  "transcript_lines_at_start": 1391,
+  "compact_transcript_start": 1391,
+  "token_usage": {
+    "input_tokens": 863697,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 16584960,
+    "output_tokens": 81217,
+    "api_call_count": 139
+  },
+  "session_metrics": {
+    "turn_count": 101
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-30T08:53:04.174056Z",
+    "agent_lines": 470,
+    "agent_removed": 105,
+    "human_added": 10,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 480,
+    "total_lines_changed": 595,
+    "agent_percentage": 96.63865546218487,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
