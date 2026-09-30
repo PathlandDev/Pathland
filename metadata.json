@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3RP0AP3WXDCWQ6THN90EHVR",
+  "strategy": "manual-commit",
+  "branch": "feat/music-player-demo",
+  "checkpoints_count": 11,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/LibraryView.java",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1976684,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 42494464,
+    "output_tokens": 113016,
+    "api_call_count": 75
+  }
+}

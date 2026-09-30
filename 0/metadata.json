@@ -1,0 +1,93 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3RP0AP3WXDCWQ6THN90EHVR",
+  "session_id": "ses_f19ed713affeZaLNsSlXVxmfpL",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-30T08:13:38.106717Z",
+  "branch": "feat/music-player-demo",
+  "checkpoints_count": 11,
+  "save_step_count": 6,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/LibraryView.java",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "8f108a006dc9",
+  "checkpoint_transcript_start": 1283,
+  "transcript_lines_at_start": 1283,
+  "compact_transcript_start": 1283,
+  "token_usage": {
+    "input_tokens": 1976684,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 42494464,
+    "output_tokens": 113016,
+    "api_call_count": 75
+  },
+  "session_metrics": {
+    "turn_count": 93
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-30T08:13:36.662037Z",
+    "agent_lines": 26,
+    "agent_removed": 3,
+    "human_added": 6,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 32,
+    "total_lines_changed": 36,
+    "agent_percentage": 80.55555555555556,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 37,
+      "agent_lines_removed": 2
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 37,
+      "agent_lines_removed": 2
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 37,
+      "agent_lines_removed": 2
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 26,
+      "agent_lines_removed": 3
+    }
+  ]
+}
