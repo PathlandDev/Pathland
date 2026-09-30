@@ -176,6 +176,14 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   both) fill by nature. The old composite-button main-axis hack was retired
   (superseded by the parent stack's rule). Conformance C1–C6 covered by the
   pure decision tests in `layout.rs`.
+- **Per-child expansion is explicit** (`sync_stack_children`): each child's
+  `hexpand`/`vexpand` is set from the same effective-`FILL` decision as its
+  alignment, so a Hug main-axis child (`valign=Start`, `vexpand=false`) can
+  never claim leftover — a `GtkBox` otherwise hands extra space to children
+  left at GTK's default `Align::Fill`, which spread e.g. a library's rows
+  vertically instead of pinning them to the leading edge (the trailing
+  `SPACER` absorbs the leftover). This also makes `SPACER` cross-axis
+  non-expanding.
 - **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: implemented —
   `effective_fill` in `layout.rs` resolves a Hug-sized stack/ZStack that
   contains a `FILL` child / `Spacer` / greedy primitive on an axis as `FILL` on

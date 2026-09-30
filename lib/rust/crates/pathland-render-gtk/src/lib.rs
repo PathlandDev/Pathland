@@ -745,6 +745,12 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
     /// them; cross axis: only `FILL`/greedy children stretch, everything else
     /// keeps its size and is positioned by the stack's `ALIGNMENT`, default
     /// Leading) and re-append the tree-ordered child widgets.
+    ///
+    /// The `hexpand`/`vexpand` flags are set from the SAME effective-FILL
+    /// decision, so a non-FILL main-axis child is explicitly non-expanding
+    /// (`valign=Start`, `vexpand=false`) and can never claim leftover space —
+    /// a `GtkBox` otherwise hands it to children left at GTK's default
+    /// `Align::Fill`/expand state, which spreads e.g. a library's rows.
     fn sync_stack_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
@@ -770,9 +776,13 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             if layout::cross_axis_is_horizontal(l.orientation) {
                 w.set_halign(cross);
                 w.set_valign(main);
+                w.set_hexpand(cross == Align::Fill);
+                w.set_vexpand(main == Align::Fill);
             } else {
                 w.set_halign(main);
                 w.set_valign(cross);
+                w.set_hexpand(main == Align::Fill);
+                w.set_vexpand(cross == Align::Fill);
             }
         }
         self.reconcile_box_children(&parent, children);
