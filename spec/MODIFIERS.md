@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 3, 2026
+**Last Updated:** September 30, 2026
 
 ---
 
@@ -182,7 +182,16 @@ passes font families as string names (`.font(.custom("Georgia", size:))`).
   `bold`≈700). Renderers map it to the nearest native weight.
 - **`KERNING` vs `TRACKING`**: kerning adjusts per-glyph spacing at a
   point/em scale; tracking adds uniform letter spacing. Both are F32 points.
-- **`LINE_LIMIT`** of 0 means unlimited.
+- **`LINE_LIMIT`**: a positive value clamps the rendered text to **at most N
+  lines**, any overflow replaced by an ellipsis `…` at the end of the last
+  visible line (tail truncation); `0`/absent = unlimited. It does not force a
+  single line — lines form by wrapping at the available width and by explicit
+  line breaks.
+- **`TRUNCATION_MODE`** (`Head`=0, `Middle`=1, `Tail`=2) **positions the
+  ellipsis** (start / middle / end of the last visible line) whenever a
+  `LINE_LIMIT` clamp truncates. On its own it has **no observable effect**
+  (SwiftUI-aligned) — it never forces a single line and never truncates by
+  itself. Full contract: [LAYOUT.md](./LAYOUT.md#content-fitting-truncation--clipping).
 - **`TEXT_ALIGNMENT`** differs from stack `ALIGNMENT`: it aligns the text block
   inside its own bounds (CSS `text-align`), not children of a stack.
 
@@ -224,7 +233,10 @@ Visual decoration. These never change layout; they decorate the element.
 - **`clipShape`**: `SHAPE_KIND` (0x0006, defined in
   [PRIMITIVES.md](./PRIMITIVES.md#5-shapes--paints)) selects the clip geometry;
   `CLIPS_TO_BOUNDS` (1) turns clipping on. A bare `.clipped()` is
-  `CLIPS_TO_BOUNDS` with no shape.
+  `CLIPS_TO_BOUNDS` with no shape (the clip is the bounds box). `CLIPS_TO_BOUNDS`
+  is a **post-layout visual clip** to the node's allocated bounds box (both
+  axes): layout is unaffected, only painting is clipped — see
+  [LAYOUT.md](./LAYOUT.md#clipping--clips_to_bounds).
 - **Color effects** (`SATURATION`, `CONTRAST`, …) are renderer-owned filters;
   the renderer maps them to native filter APIs (CSS `filter`, GTK
   `GtkSnapshot` effects). They compose in the order applied.

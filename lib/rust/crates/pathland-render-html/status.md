@@ -185,6 +185,11 @@ contract both renderers must satisfy.
 
 ## Not implemented / gaps
 
+- **`TRUNCATION_MODE` alone (spec/LAYOUT.md)**: currently emits
+  `text-overflow:ellipsis;overflow:hidden;white-space:nowrap` (single-line) when
+  `TRUNCATION_MODE` is present; the pinned contract (SwiftUI-aligned) says it
+  positions the ellipsis **only when a `LINE_LIMIT` clamp truncates** and has no
+  standalone effect. Alignment pending (SSR + TS DOM client).
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset
   (colors, font size/weight, spacing/padding, corner radius, opacity,
   width/height, border width/color, shadow color). Compound accumulators that

@@ -133,7 +133,7 @@ These rules are the bugs-fixed-and-avoided model of the GTK renderer:
 
 ---
 
-## Content fitting
+## Content fitting, truncation & clipping
 
 Content-bearing views fit their content **inside** their allocated box:
 
@@ -141,10 +141,44 @@ Content-bearing views fit their content **inside** their allocated box:
   `CONTENT_MODE` — `Fit` (0) scales to contain (letterboxed), `Fill` (1) scales
   to cover (cropped). The box is the allocation, never the content's intrinsic
   size.
-- **Text**: wraps within a Fixed width; `LINE_LIMIT` / `TRUNCATION_MODE` apply
-  within the box. A Hug text takes its natural (wrapped) size.
-- **Containers** (stacks, scroll): children lay out inside; a Fixed box
-  constrains them (scroll for `SCROLLVIEW`, clip otherwise).
+
+### Text
+
+- **Wrapping.** An unconstrained `TEXT` lays out on a **single line at its
+  natural width**. It **wraps at word boundaries only when its width is
+  constrained** — a Fixed `WIDTH`, or a `LINE_LIMIT` that needs multiple lines.
+  An unbreakable word wider than the box may break by character. A wrapped
+  Text's natural height is its **line count × line height** (so a Hug container
+  can compute its size). A Fixed `HEIGHT` constrains the box; overflow follows
+  the overflow rules ([above](#a-container-that-is-itself-fixed)).
+- **`LINE_LIMIT`.** A positive `LINE_LIMIT` (N) clamps the rendered text to **at
+  most N lines**; any overflow beyond the last visible line is replaced by an
+  ellipsis `…` at its end (**tail** truncation). `0`/absent = unlimited. It does
+  not force a single line — lines are formed by wrapping at the available width
+  and by explicit line breaks.
+- **`TRUNCATION_MODE`.** `Head`=0, `Middle`=1, `Tail`=2 **positions the
+  ellipsis** (at the start / middle / end of the last visible line) whenever a
+  `LINE_LIMIT` clamp truncates. It applies **only when such a clamp truncates**:
+  on its own it has **no observable effect** (SwiftUI-aligned) — it never forces
+  a single line and never truncates by itself.
+
+### Clipping — `CLIPS_TO_BOUNDS`
+
+`CLIPS_TO_BOUNDS` (0x1010, U8) is a **post-layout visual clip**: the node's
+content and its own painted decoration (fills, backgrounds, borders) are
+clipped to its **allocated bounds box** — on **both axes**. Layout is
+unaffected: the node is still allocated and positioned exactly as if unclipped;
+only what is painted is clipped. `0`/absent = no clipping. A `SHAPE_KIND`
+(0x0006) carried alongside constrains the clip to that geometry instead of the
+plain bounds box (a bare `.clipped()` is `CLIPS_TO_BOUNDS` with no shape, so the
+clip is the bounds box). A `SCROLLVIEW` scrolls its content rather than
+clipping it.
+
+### Containers
+
+Stacks, scroll, and other containers lay their children out inside; a Fixed box
+constrains them (scroll for `SCROLLVIEW`, otherwise overflow is visible unless
+`CLIPS_TO_BOUNDS` clips it).
 
 ---
 
@@ -178,7 +212,11 @@ renderer** (HTML + GTK4 today; SwiftUI/Compose as they land).
 | C3 | `Fill`-height container | a `HUG`-height child | the child keeps its natural height; leftover stays empty / goes to a `Fill` sibling |
 | C4 | Composite button, no frame | a `Fill`-height column | content height (not absorbed/stretched to the viewport) |
 | C5 | Hug `Text` | a stack | natural size on both axes (not stretched cross-axis) |
-| C6 | Fixed-width `VStack` | fixed `200` box, taller children | children lay out within `200`; overflow clipped/scrolls |
+| C6 | Fixed-width `VStack` | fixed `200` box, taller children | children lay out within `200`; overflow is visible unless `CLIPS_TO_BOUNDS` clips it |
+| C7 | `Text` `WIDTH=120`, longer content | a column | wraps at word boundaries within `120`; natural height = line count × line height |
+| C8 | `Text` long content, `LINE_LIMIT=2` | a `200`-wide column | at most 2 lines; overflow on the last visible line tail-ellipsized (`…`) |
+| C9 | `Text` `LINE_LIMIT=1`, `TRUNCATION_MODE=Head` | a `200`-wide column | single line, ellipsis at the start, the tail preserved |
+| C10 | `CLIPS_TO_BOUNDS=1` | a Fixed box with overflowing content | content (and the node's painted decoration) clipped to the allocated box; layout unchanged |
 
 Conformance tests (golden vectors) are wired in the renderer alignment passes
 that follow this document; see each project's `status.md`.

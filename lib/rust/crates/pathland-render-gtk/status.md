@@ -215,6 +215,10 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   count with an end ellipsis (`set_lines`), and `TRUNCATION_MODE` ellipsizes on
   a single line at the mapped position (`ellipsize_from`: Head/Middle/Tail →
   Start/Middle/End) — applied in `apply_text_style`.
+- **`TRUNCATION_MODE` alone (spec/LAYOUT.md)**: currently forces a single line
+  (`set_wrap(false)` + ellipsize); the pinned contract (SwiftUI-aligned) says it
+  positions the ellipsis **only when a `LINE_LIMIT` clamp truncates** and has no
+  standalone effect. Alignment pending.
 - **Known GTK limitation**: a GTK Fixed box (`set_size_request`) is a **minimum**
   request — GTK has no max-size API, so a widget whose natural size exceeds its
   Fixed box (e.g. a stack wider than its box) is allocated its natural size

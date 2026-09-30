@@ -238,6 +238,11 @@ and renders.
 - **Properties**: `LINE_LIMIT` (0x000B, U32), `TEXT_ALIGNMENT` (0x000C, enum
   code), `TRUNCATION_MODE` (0x000D, enum code), plus all text-formatting and
   appearance modifiers from [MODIFIERS.md](./MODIFIERS.md).
+- **Content fitting**: an unconstrained Text is a single line at its natural
+  width; a constrained width (Fixed `WIDTH`) wraps at word boundaries;
+  `LINE_LIMIT` clamps the line count with a tail ellipsis; `TRUNCATION_MODE`
+  positions that ellipsis under a clamp; `CLIPS_TO_BOUNDS` clips the Text to its
+  bounds box. Full contract: [LAYOUT.md](./LAYOUT.md#content-fitting-truncation--clipping).
 - **Events**: none by default; any listener via `EVENT_LISTENERS`.
 - **Renderer mapping**: GTK `GtkLabel`; HTML `<span>`/`<p>`.
   Font handling is client-owned (the renderer resolves `FONT_FAMILY` /
