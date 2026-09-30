@@ -12,9 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The workspace includes pathland-render-gtk (GTK4 + libadwaita), so the runner
-      # needs the GTK4 and libadwaita system libraries before `cargo test` can link them.
-      - name: Install GTK4 + libadwaita system dependencies
+      # The workspace includes pathland-render-gtk (GTK4 + libadwaita + GStreamer),
+      # so the runner needs the GTK4, libadwaita, and GStreamer system libraries
+      # before `cargo test` can link them. GStreamer is required because the
+      # renderer plays app-driven media through a direct GStreamer playbin (GTK4's
+      # own media backend is compiled out of some builds); the plugins are the
+      # runtime set the audio stack uses (playbin, volume/audioconvert, mp3 decode).
+      - name: Install GTK4 + libadwaita + GStreamer system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -24,7 +28,11 @@ jobs:
             libcairo2-dev \
             libpango1.0-dev \
             libgdk-pixbuf-2.0-dev \
-            libgraphene-1.0-dev
+            libgraphene-1.0-dev \
+            libgstreamer1.0-dev \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            gstreamer1.0-libav
 
       - name: Install Rust (stable + wasm32 target)
         uses: dtolnay/rust-toolchain@stable
