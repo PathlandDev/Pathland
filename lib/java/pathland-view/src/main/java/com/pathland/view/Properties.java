@@ -36,6 +36,12 @@ public final class Properties {
     public static final int IMAGE_SOURCE = 0x1002;
     public static final int AUDIO_SOURCE = 0x1033;
     public static final int VIDEO_SOURCE = 0x1034;
+    /** Media playback state on an `AUDIO`/`VIDEO` node (0 pause, 1 play). */
+    public static final int PLAYBACK_STATE = 0x1035;
+    /** Media position in seconds on an `AUDIO`/`VIDEO` node; a change seeks. */
+    public static final int MEDIA_POSITION = 0x1036;
+    /** Media volume on an `AUDIO`/`VIDEO` node (0..1). */
+    public static final int MEDIA_VOLUME = 0x1037;
     public static final int BORDER_WIDTH = 0x1003;
     public static final int BORDER_COLOR = 0x1004;
     public static final int BORDER_RADIUS = 0x1005;

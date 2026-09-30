@@ -81,6 +81,26 @@ public record Event(
         return new Event(Commands.Event.NAVIGATE, 0, 0, 0, 0, 0, null, 0, 0);
     }
 
+    /** A bound media node's playback state changed (spec/EVENTS.md Media). */
+    public static Event mediaPlayStateChanged(int target, boolean playing) {
+        return new Event(Commands.Event.MEDIA_PLAY_STATE_CHANGED, target, 0, 0, 0, 0, null, playing ? 1 : 0, 0);
+    }
+
+    /** A bound media node's current playback position (seconds). */
+    public static Event mediaTimeUpdated(int target, float seconds) {
+        return new Event(Commands.Event.MEDIA_TIME_UPDATED, target, 0, 0, 0, seconds, null, 0, 0);
+    }
+
+    /** A bound media node reached the end of its media. */
+    public static Event mediaEnded(int target) {
+        return new Event(Commands.Event.MEDIA_ENDED, target, 0, 0, 0, 0, null, 0, 0);
+    }
+
+    /** A bound media node's volume changed (0..1). */
+    public static Event mediaVolumeChanged(int target, float volume) {
+        return new Event(Commands.Event.MEDIA_VOLUME_CHANGED, target, 0, 0, 0, volume, null, 0, 0);
+    }
+
     public boolean isPointerDown() {
         return command == Commands.Event.POINTER_DOWN;
     }
@@ -135,6 +155,32 @@ public record Event(
 
     public boolean isNavigate() {
         return command == Commands.Event.NAVIGATE;
+    }
+
+    public boolean isMediaPlayStateChanged() {
+        return command == Commands.Event.MEDIA_PLAY_STATE_CHANGED;
+    }
+
+    public boolean isMediaTimeUpdated() {
+        return command == Commands.Event.MEDIA_TIME_UPDATED;
+    }
+
+    public boolean isMediaEnded() {
+        return command == Commands.Event.MEDIA_ENDED;
+    }
+
+    public boolean isMediaVolumeChanged() {
+        return command == Commands.Event.MEDIA_VOLUME_CHANGED;
+    }
+
+    /** For {@code MEDIA_PLAY_STATE_CHANGED}: the playing bit (0/1). */
+    public boolean mediaPlaying() {
+        return b != 0;
+    }
+
+    /** For {@code MEDIA_TIME_UPDATED}: seconds; for {@code MEDIA_VOLUME_CHANGED}: volume (0..1). */
+    public float mediaValue() {
+        return value;
     }
 
     /** For `NAVIGATE` with the `NAVIGATE_URL` flag: the destination URL; null for a back request. */

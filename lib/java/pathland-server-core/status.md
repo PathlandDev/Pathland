@@ -33,11 +33,11 @@ dependency — framework glue lives in the starters.
     space (`/app2/home` → `/home`). `Router.pathOf` is reused for URL→path extraction.
 - **Per-window isolation (no session cookie)**: session <b>identity</b> (the `uiId`
   map key) is deliberately separate from the <b>persisted-state scope</b> (the client's
-  `wid`). The client reflects the `wid` into the page URL, so the SSR request carries it:
-  `renderHtml(route, wid)` renders <b>that window's persisted state</b> directly — a
-  reload's HTML is already the latest UI model state and needs no resync. Without a
-  `wid` on the request (a first visit / typed URL) SSR renders defaults and the client
-  re-syncs once. The old `session` cookie is removed.
+  `wid`, carried only on the WebSocket URL — never in the page URL, so the address bar
+  stays clean). The SSR request therefore has no `wid`: `renderHtml(route, wid)` with
+  a null `wid` renders <b>defaults</b>; the client's live session is scoped by the WS
+  `wid`, and a same-tab reload re-syncs that window's persisted state over the
+  WebSocket. The old `session` cookie is removed.
 - **`PathlandSession`** — per-session: builds the `Platform.ACTIVE_PATH` signal, mounts
   `app.newRoot().environment(ACTIVE_PATH, activePath)`, send-on-`endFrame` sink over a
   `PathlandConnection`, `applyEnvironment` (re-route guard-aware via the bound router),

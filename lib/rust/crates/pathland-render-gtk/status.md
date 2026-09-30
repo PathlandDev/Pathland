@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** September 14, 2026
+**Last updated:** September 30, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -32,11 +32,33 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   Unknown components → blank `GtkLabel`.
 - **Container + composite reconciliation** (diff-guarded): stacks/grid/scroll/
   overlay children, and **Composite Override Mode** for `BUTTON`/`TOGGLE`/`MENU`
-  with children (custom body wrapped in the native button shell).
+  with children (custom body wrapped in the native button shell). A `BUTTON`
+  composite body is a **horizontal row** with centered children (matching the
+  HTML renderer's `.pathland-button` `inline-flex`); `TOGGLE`/`MENU` bodies stay
+  vertical (HTML wraps those as block/inline-block). A composite control **sizes
+  to its content on the main axis** (the button's main-axis `valign`/`halign` is
+  `Center`, mirroring HTML's `inline-flex`) unless the node is explicitly
+  `FILL`-sized — otherwise the enclosing box's default `Fill` alignment stretches
+  it (e.g. a library row button absorbs the viewport height, inflating
+  fixed-size images).
 - **Style properties**: `VISIBLE`, `OPACITY`, `WIDTH`/`HEIGHT`,
   `CONTENT_MARGINS`, `PADDING` + per-edge, `BACKGROUND_COLOR`, `BORDER_WIDTH`/
   `COLOR`/`RADIUS`, `FONT_FAMILY`/`FONT_WEIGHT` (CSS provider), `COLOR`,
   `FONT_SIZE`.
+- **Fixed-size images scale to the points box**: a `WIDTH`×`HEIGHT` on an
+  `IMAGE` is a **logical-points box** (spec/OPCODE.md §units), and `GtkPicture`'s
+  natural size is its content's intrinsic pixels — so a finite box was only a
+  *minimum* request and the cover rendered at its intrinsic size. A fixed-size
+  image now decodes and scales the content into the box (via gdk-pixbuf), making
+  the picture's natural size equal the requested points (the bar cover renders
+  36pt, the sidebar 220pt, the bar stays 76pt tall). `CONTENT_MODE` is honored:
+  `Fit` → scale-to-fit + centered on a transparent canvas (letterbox, like
+  `object-fit:contain`), `Fill` → scale-to-cover + center-crop (like
+  `object-fit:cover`); absent → Fit. The scaled box is cached per node (steady
+  state doesn't re-decode). A non-fixed (`FILL`/single-axis) image keeps the
+  native `set_filename` loader. Retina *crispness* (decoding at the display
+  scale factor) is a documented follow-up — layout is points-correct on every
+  display.
 - **`FILL` expansion**: a `WIDTH`/`HEIGHT` of `FILL` (-1.0, SwiftUI
   `maxWidth/maxHeight: .infinity`) now sets `hexpand`/`vexpand` + `Fill` axis
   alignment so arbitrary elements truly expand to the available space; a finite
@@ -92,6 +114,30 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   - The generative `space.<N>` family resolves `space.base` × N.
   - Since GTK CSS has no custom properties, tokens resolve to **concrete**
     values (rgba/px/Pango) before the existing CSS-provider / text-style paths.
+- **App-driven media (spec/EVENTS.md Media)**: an `AUDIO`/`VIDEO` node — or any
+  node carrying a media source (a custom `AudioStyle`/`VideoStyle` body keeps its
+  own component, e.g. a `VStack`) — gets a hidden **GStreamer `playbin` pipeline**
+  driven by the node's media control properties: `AUDIO_SOURCE`/`VIDEO_SOURCE`
+  sets the source URI (re-created on change, resuming if the app was playing),
+  `PLAYBACK_STATE` → pipeline `Playing`/`Paused`, `MEDIA_POSITION` → seek
+  (**echo-guarded**: a near-identical write — the app's `MEDIA_TIME_UPDATED` echo
+  — does not seek), `MEDIA_VOLUME` → playbin volume. Media events report back
+  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (a 250 ms reporter
+  polls `query_position` while the app requested playing and reports only when
+  the position advanced ~1 second — the same cadence as the web client — 
+  suppressed briefly after a seek), `MEDIA_ENDED` and error → play-state-false
+  from polling the pipeline bus (`EOS`/`Error` messages, on the main thread).
+  Playback is
+  **GStreamer-direct** because GTK4's own media backend (`GtkMediaFile`) is
+  compiled out of some builds (Homebrew's `gtk4` ships with
+  `-Dmedia-gstreamer=disabled`); the app owns all playback state, the pipeline is
+  the renderer's rendered output (the desktop analog of the web client's hidden
+  `<audio>`).
+- **Asset root**: `pathland_gtk_set_asset_root(const char*)` sets a directory
+  that web-style `/_pathland/...` media/image source paths resolve against
+  (`/_pathland/assets/x` → `<root>/assets/x`), so desktop apps reference the same
+  asset paths as the web demos. Applied to `IMAGE_SOURCE`, `AUDIO_SOURCE`, and
+  `VIDEO_SOURCE`.
 - **C ABI for foreign hosts (`capi.rs`)**:
   - `pathland_gtk_run(host, on_event)` — pump a `pathland-view-native`
     `NativeHost`'s ring in-process.
@@ -121,12 +167,26 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 
 ## Not implemented / gaps
 
+- **Layout contract (spec/LAYOUT.md)**: aligned — stacks apply the per-child
+  rule on **both** axes (main axis: only `FILL`/greedy children stretch and
+  leftover goes to them, everything else positioned at the start; cross axis:
+  only `FILL`/greedy children stretch, otherwise positioned by `ALIGNMENT`
+  defaulting to Leading), grid cells apply the same rule, and the greedy
+  primitives (`DIVIDER` cross-axis, `SPACER` main-axis, `COLOR`/`SCROLLVIEW`
+  both) fill by nature. The old composite-button main-axis hack was retired
+  (superseded by the parent stack's rule). Conformance C1–C6 covered by the
+  pure decision tests in `layout.rs`.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).
 - Composite bodies attach to button-like controls only; other controls ignore
   children.
 - `LAZY_*` renders eagerly (no GTK windowing).
+- **Media**: a `VIDEO` node plays its audio through the shared GStreamer
+  `playbin` machinery, but has no native video surface yet (a native `GtkVideo`
+  widget additionally needs a GTK4 build with `media-gstreamer` enabled) — video
+  rendering is a follow-up. Playback requires GStreamer with the mp3 decoding
+  plugins installed (the brew `gstreamer` formula bundles them).
 - The `AdwNavigationView` adapter does not (yet) reflect the `TRANSITION`
   (0x1031) hint into a native animation choice — libadwaita animates its
   standard push/pop; per-transition styling is a follow-up.

@@ -1,6 +1,6 @@
 # pathland-demo-views — implementation status
 
-**Last updated:** September 3, 2026
+**Last updated:** September 28, 2026
 
 The framework-agnostic shared demo views (`com.pathland.demo`), consumed by the
 Quarkus and Spring Boot demos. Uses `State` fields wired by the
@@ -78,6 +78,30 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
 - **`MediaSection`** (kitchensink): a `Video` + `Audio` node with remote sample
   URLs — playback interaction is renderer-native (`controls`); the app supplies
   only the source + size.
+- **`MusicPlayerView`** (com.pathland.demo.music) — the **web demos' root** (an
+  Apple Music-style player): a track **`LibraryView`** (left) + the
+  **`NowPlayingSidebar`** (right) in a fill HStack, over the bottom
+  **`PlayerBar`**. Owns the player's `State` (persisted per-session under
+  `player.*` keys) and hands the bound signals to its subviews; each subview is
+  its own `View` class. **Real playback**: the bottom bar is an app-driven
+  `Audio` node whose custom **`PlayerControlsStyle`** (`AudioStyle`) renders the
+  whole bar — a centered row of `[⏮] [play-pause] [⏭] | [cover art] [track
+  title] | [volume]` over a slim, draggable **seek bar showing progress as a
+  percent** (`PercentSeek` maps seconds↔percent in the UI model; the wire keeps
+  seconds) — bound to the media configuration's signals; the hidden media
+  element plays the current track and reports time/ended/volume back into the
+  player state (spec/EVENTS.md Media) — `MEDIA_ENDED` auto-advances. Track
+  selection / prev / next change app-owned state (position resets to 0). The 6
+  tracks are **Pathland concept songs** — one per album, genre-matched invented
+  artists (The Foundation, The Crossings, Rena Render, Ember Frame, Rowan
+  Frame, Neon Protocol) — sourced from bundled `.mp4` covers (the extracted
+  frame at ~1s is `coverN.jpg`) and re-encoded **mono-64k** `trackN.mp3` with
+  durations matching the real files. Catalog (`Track` record, 6 albums)
+  with album art + audio served from
+  `/_pathland/assets/albumart/*.jpg` and `/_pathland/assets/audio/*.mp3` in both
+  SSR demos. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as
+  `newRoot()` and by the **GTK desktop host** (`GtkHost` mounts it directly,
+  unchanged); `SplitNavDemo` remains the nav showcase for the Qt host.
 
 ## Not implemented / gaps
 
@@ -88,10 +112,12 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
 ## Verified by
 
 `mvn test -pl pathland-demo-views` (JDK 17+) — `CounterViewTest`,
-`KitchenSinkViewTest` (mount + persistence + input routing), and
+`KitchenSinkViewTest` (mount + persistence + input routing),
 `SplitNavDemoTest` (sidebar + content first frame, `/kitchen` content swap,
-menu-click content swap deltas, reactive active-row highlight). Both SSR demos
-are verified by running them and curling the deep links (`/`, `/home`,
-`/kitchen`, `/settings` render the splitview seeded at that path with the right
-content + `data-pathland-route`; unknown paths show the sidebar + "Not Found";
-the JS bundle serves correctly).
+menu-click content swap deltas, reactive active-row highlight), and
+`MusicPlayerViewTest` (library/art/buttons/sliders render; the app-driven audio
+node binds source + media control props; taps persist the player state; the
+media events drive position/volume/ended). Both SSR demos are verified by
+running them and curling the routes (`/` renders the music player's
+`<img>`s + range sliders + transport buttons + the `.pathland-media` audio
+wrapper; the albumart + audio assets serve from `/_pathland/assets/`).

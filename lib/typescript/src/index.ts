@@ -4,7 +4,7 @@
 // SSR HTML carries a `data-event-listeners` mask). Bundle: dist/pathland-dom-renderer.js
 
 import type { DomRenderer } from "./apply";
-import { updateNavBackButtons } from "./apply";
+import { setupMediaElement, updateNavBackButtons } from "./apply";
 import { Transport } from "./transport";
 import { log } from "./log";
 import {
@@ -119,8 +119,10 @@ function boot(): void {
   // Per-window identity (the server's persisted-state scope): kept in sessionStorage so
   // a reload of THIS tab keeps its state, while a NEW window/tab gets a fresh id — two
   // windows never share a UI model or state. The server reads it as the `wid` query
-  // param on the WebSocket URL, and — once reflected into the page URL — on the SSR
-  // request too, so a reload's HTML already renders this window's persisted state.
+  // param on the WebSocket URL ONLY — it is deliberately never reflected into the page
+  // URL, so the address bar/history/referrer stay clean. The SSR request therefore has
+  // no wid: it renders defaults, and a same-tab reload re-syncs this window's state
+  // over the WebSocket (see `onOpen` below).
   const storageKey = "pathland.wid";
   let wid = sessionStorage.getItem(storageKey);
   const isReload = wid != null;
@@ -128,15 +130,15 @@ function boot(): void {
     wid = crypto.randomUUID();
     sessionStorage.setItem(storageKey, wid);
   }
-  // Reflect the wid into the URL (`?wid=…`) so the NEXT page load (reload, or a
-  // navigation that preserves the query) reaches the server with it — SSR then renders
-  // this window's persisted state directly and no resync is needed. The environment's
-  // ROUTE stays the path only (the server matches routes on the path, ignoring the query).
+  // Strip a stale `?wid=` a shared/bookmarked URL may carry (from before the id left
+  // the URL): the SSR already used it, so it also forces a re-sync below. Keeping the
+  // search otherwise intact preserves other params and the route-mirror closure.
   const urlParams = new URLSearchParams(location.search);
-  const urlHasWid = urlParams.has("wid");
-  if (!urlHasWid) {
-    urlParams.set("wid", wid);
-    history.replaceState(null, "", `${location.pathname}?${urlParams.toString()}`);
+  const urlHadWid = urlParams.has("wid");
+  if (urlHadWid) {
+    urlParams.delete("wid");
+    const search = urlParams.toString();
+    history.replaceState(null, "", location.pathname + (search ? `?${search}` : ""));
   }
   const renderer: DomRenderer = { byId };
   const transport = new Transport({
@@ -149,17 +151,31 @@ function boot(): void {
       const { innerWidth: w, innerHeight: h } = window;
       log.info("route", `environment: viewport ${w}x${h}, route "${location.pathname}"`);
       t.send(encodeEnvironment(w, h, location.pathname));
-      // A reload whose URL lacked the wid (a typed URL / a first visit before the client
-      // ran) rendered SSR defaults — request a full snapshot to restore this window's
-      // persisted state. When the URL already carried the wid, SSR rendered the latest
-      // state and nothing needs re-syncing.
-      if (isReload && !urlHasWid) {
-        log.debug("route", "reload without ?wid — requesting RESYNC for this window's persisted state");
+      // The SSR request never carries the wid, so it always rendered DEFAULT state. On a
+      // same-tab reload (sessionStorage holds this window's wid) — or any load whose URL
+      // carried a stale wid the SSR used — request a full snapshot to restore this
+      // window's persisted state. A fresh window needs no snapshot: its defaults match
+      // the fresh session's defaults.
+      if (isReload || urlHadWid) {
+        log.debug("route", "reload — requesting RESYNC for this window's persisted state");
         t.send(encodeResync());
       }
     },
   });
   transport.start();
+
+  // Media events from app-driven AUDIO/VIDEO nodes (spec/EVENTS.md Media) ride
+  // the same WebSocket as every raw input.
+  renderer.onMediaEvent = (batch) => {
+    if (transport.open) {
+      transport.send(batch);
+    }
+  };
+  // Wire app-driven media nodes hydrated from the SSR HTML (they carry the
+  // `data-pathland-media` marker) so playback state reports to the app.
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
+    setupMediaElement(el, renderer);
+  }
 
   // Enrich the environment after connect: a window resize re-emits the viewport
   // fields (the mechanism future platform fields ride too).

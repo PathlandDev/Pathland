@@ -291,7 +291,10 @@ impl Node {
         }
 
         // Enum-derived properties (previously Tailwind classes) now inline.
-        // ALIGNMENT cross-axis (Leading=0, Center=1, Trailing=2, Fill=3 → default stretch).
+        // ALIGNMENT cross-axis position (Leading=0, Center=1, Trailing=2,
+        // Fill=3 → default). Positions children; the default is hug
+        // (flex-start), never CSS stretch — only FILL-sized children stretch
+        // (LAYOUT.md).
         if let Some(v) = f32p(property_id::ALIGNMENT) {
             css.push_str(&format!(
                 "align-items:{};",
@@ -299,7 +302,7 @@ impl Node {
                     0 => "flex-start",
                     1 => "center",
                     2 => "flex-end",
-                    _ => "stretch",
+                    _ => "flex-start",
                 }
             ));
         }
@@ -457,6 +460,7 @@ fn rgba(argb: u32) -> String {
     format!("rgba({r},{g},{b},{a})")
 }
 
+/// Whether an `AUDIO`/`VIDEO` node is **app-driven**: it binds at least one
 /// A `WIDTH`/`HEIGHT` hint as CSS: `FILL` (-1) → `100%`, `HUG_CONTENT` (-2) →
 /// `fit-content`, otherwise pixels.
 fn size_css(v: f32) -> String {
@@ -869,13 +873,37 @@ impl HtmlRenderer {
         let Some(node) = nodes.get(&id) else {
             return String::new();
         };
-        let children: String = node
+        let mut children: String = node
             .children
             .iter()
             .map(|&child| self.render_node(nodes, child))
             .collect();
         let mut data_id = format!(" data-pathland-id=\"{id}\"");
         data_id.push_str(&slot_attrs(node));
+        // An app-driven media container (a custom AudioStyle/VideoStyle body, e.g.
+        // a VStack carrying AUDIO_SOURCE): inject a hidden, control-less media
+        // element as its first child and mark the container so the DOM client
+        // wires playback events (spec/EVENTS.md Media). The style body's own
+        // component is preserved, so the container keeps its layout (e.g. a
+        // flex-column VStack). Native media (no children) render `<audio
+        // controls>` via the AUDIO/VIDEO cases below.
+        let mut media_attr = String::new();
+        if !node.children.is_empty() {
+            if let Some(src) = node.strings.get(&property_id::AUDIO_SOURCE) {
+                media_attr.push_str(" data-pathland-media");
+                children = format!(
+                    "<audio src=\"{}\" data-pathland-media></audio>{children}",
+                    escape(src)
+                );
+            } else if let Some(src) = node.strings.get(&property_id::VIDEO_SOURCE) {
+                media_attr.push_str(" data-pathland-media");
+                children = format!(
+                    "<video src=\"{}\" data-pathland-media></video>{children}",
+                    escape(src)
+                );
+            }
+        }
+        data_id.push_str(&media_attr);
         let mut css = format!("{}{}", node.style_css(), node.border_style());
         // LINE_LIMIT truncation: a positive line limit clamps the text to N lines
         // (mirrors the DOM client's PROP_LINE_LIMIT application, classes.ts).
@@ -894,13 +922,13 @@ impl HtmlRenderer {
         let semantic = role_spec::semantic_tag(kind, node.role_code());
 
         let element = match node.component {
-            component_type::VSTACK => wrap_stack(id, "column", semantic, node, &children, &css, &event, &aria),
-            component_type::HSTACK => wrap_stack(id, "row", semantic, node, &children, &css, &event, &aria),
+            component_type::VSTACK => wrap_stack(id, "column", semantic, node, &media_attr, &children, &css, &event, &aria),
+            component_type::HSTACK => wrap_stack(id, "row", semantic, node, &media_attr, &children, &css, &event, &aria),
             component_type::LAZY_VSTACK => {
-                wrap_stack(id, "column", semantic, node, &children, &css, &event, &aria)
+                wrap_stack(id, "column", semantic, node, &media_attr, &children, &css, &event, &aria)
             }
             component_type::LAZY_HSTACK => {
-                wrap_stack(id, "row", semantic, node, &children, &css, &event, &aria)
+                wrap_stack(id, "row", semantic, node, &media_attr, &children, &css, &event, &aria)
             }
             component_type::TEXT => {
                 // A TEXT's tag is resolved by typography + role: a heading
@@ -1023,8 +1051,17 @@ impl HtmlRenderer {
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                // Playback interaction is renderer-native (`controls`).
-                format!("<audio{data_id}{event}{aria} src=\"{src}\" controls{style}></audio>")
+                if node.children.is_empty() {
+                    // Renderer-native controls (the default `AudioStyle` emits no
+                    // children); the app supplies only the source.
+                    format!("<audio{data_id}{event}{aria} src=\"{src}\" controls{style}></audio>")
+                } else {
+                    // Defensive: an `AUDIO` node with custom children — the central
+                    // injection above already added the hidden media + marker.
+                    format!(
+                        "<div{data_id}{event}{aria} class=\"pathland-media\"{style}>{children}</div>"
+                    )
+                }
             }
             component_type::VIDEO => {
                 let src = escape(
@@ -1033,8 +1070,15 @@ impl HtmlRenderer {
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                // Playback interaction is renderer-native (`controls`).
-                format!("<video{data_id}{event}{aria} src=\"{src}\" controls{style}></video>")
+                if node.children.is_empty() {
+                    // Renderer-native controls (the default `VideoStyle`).
+                    format!("<video{data_id}{event}{aria} src=\"{src}\" controls{style}></video>")
+                } else {
+                    // Defensive: a `VIDEO` node with custom children.
+                    format!(
+                        "<div{data_id}{event}{aria} class=\"pathland-media\"{style}>{children}</div>"
+                    )
+                }
             }
             component_type::COLOR => {
                 let tag = semantic.unwrap_or("div");
@@ -1082,8 +1126,11 @@ impl HtmlRenderer {
                     .copied()
                     .map(rgba)
                     .unwrap_or_else(|| "rgba(0,0,0,0.2)".to_string());
+                // Layout-greedy on the cross axis (LAYOUT.md): the separator
+                // spans the stack's available cross size unless a size frame
+                // overrides it (SwiftUI `Divider()` semantics).
                 format!(
-                    "<div{data_id}{event}{aria} style=\"height:0;border-top:{width}px solid {color};\"></div>"
+                    "<div{data_id}{event}{aria} style=\"height:0;width:100%;border-top:{width}px solid {color};\"></div>"
                 )
             }
             component_type::PROGRESS_VIEW => {
@@ -1127,7 +1174,10 @@ if indeterminate {
             }
             component_type::SCROLLVIEW => {
                 let tag = semantic.unwrap_or("div");
-                let combined = format!("overflow:auto;{css}");
+                // Layout-greedy on both axes (LAYOUT.md): a scroll region fills
+                // the available space (SwiftUI `ScrollView` semantics) unless a
+                // size frame overrides it.
+                let combined = format!("flex:1 1 auto;align-self:stretch;overflow:auto;{css}");
                 let scroll_style = style_attr(&combined);
                 format!("<{tag}{data_id}{event}{aria}{scroll_style}>{children}</{tag}>")
             }
@@ -1251,6 +1301,7 @@ if indeterminate {
         direction: &str,
         semantic: Option<&'static str>,
         node: &Node,
+        media_attr: &str,
         children: &str,
         css: &str,
         event: &str,
@@ -1262,18 +1313,21 @@ if indeterminate {
             .get(&property_id::ALIGNMENT)
             .map(|bits| f32::from_bits(*bits) as u8)
             .unwrap_or(3);
+        // ALIGNMENT positions cross-axis children; the default is hug
+        // (flex-start), never CSS `align-items: stretch` — only FILL-sized
+        // children stretch (they carry `align-self:stretch`/`100%`), LAYOUT.md.
         let align = match alignment {
             0 => "flex-start",
             1 => "center",
             2 => "flex-end",
-            _ => "stretch",
+            _ => "flex-start",
         };
         let combined = format!(
             "display:flex;flex-direction:{direction};align-items:{align};{css}"
         );
         let stack_style = style_attr(&combined);
         format!(
-            "<{tag} data-pathland-id=\"{id}\"{}{event}{aria}{stack_style}>{children}</{tag}>",
+            "<{tag} data-pathland-id=\"{id}\"{}{media_attr}{event}{aria}{stack_style}>{children}</{tag}>",
             slot_attrs(node),
         )
     }
@@ -1796,6 +1850,78 @@ mod tests {
         assert!(audio.contains("<audio data-pathland-id=\"3\" src=\"https://example.com/sample.mp3\" controls"), "audio native controls");
     }
 
+    /// A custom `AudioStyle` body is a container (e.g. a VStack) carrying the media
+    /// source: the renderer preserves its layout and injects a hidden, control-less
+    /// media element + the `data-pathland-media` marker.
+    #[test]
+    fn custom_controls_media_preserves_container_with_hidden_audio() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        // VSTACK node 1 (the custom style body) with a BUTTON child 2.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::BUTTON as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&(29u32).to_le_bytes());
+        strings.extend_from_slice(b"https://example.com/track.mp3");
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
+            0,
+        ));
+        // The app-bound media control properties ride the node.
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::U32 as u32) << 16) | property_id::PLAYBACK_STATE as u32,
+            1,
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::MEDIA_POSITION as u32,
+            12.5f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::MEDIA_VOLUME as u32,
+            0.5f32.to_bits(),
+        ));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_fragment(&opcodes, &strings, 1);
+        assert!(
+            html.contains("data-pathland-id=\"1\" data-pathland-media"),
+            "the container is marked app-driven: {html}"
+        );
+        assert!(
+            html.contains("display:flex;flex-direction:column"),
+            "the VStack body keeps its flex layout: {html}"
+        );
+        assert!(
+            html.contains("<audio src=\"https://example.com/track.mp3\" data-pathland-media></audio>"),
+            "the container holds a hidden, control-less audio element"
+        );
+        assert!(
+            !html.contains("controls"),
+            "the injected media element has no native controls"
+        );
+        assert!(html.contains("<button"), "the custom control children render");
+        let debug = renderer.with_debug_comments(true).render_fragment(&opcodes, &strings, 1);
+        assert!(debug.contains("<!-- #1 VStack:"), "debug comment names the VStack: {debug}");
+    }
+
     #[test]
     fn renders_grid_with_columns() {
         use pathland_core::value_type;
@@ -2043,6 +2169,90 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("flex-direction:column"), "stack inline flex"); assert!(html.contains("align-items:flex-start"), "alignment inline");
+    }
+
+    #[test]
+    fn layout_default_cross_axis_is_hug_not_stretch() {
+        // A stack with NO ALIGNMENT must default to hug (flex-start), never
+        // CSS `align-items: stretch` (LAYOUT.md conformance C5).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("align-items:flex-start"), "default is hug: {}", html);
+        assert!(!html.contains("align-items:stretch"), "no implicit stretch");
+    }
+
+    #[test]
+    fn layout_fill_alignment_is_hug_positioning() {
+        use pathland_core::value_type;
+
+        // ALIGNMENT=Fill(3) means default (hug) positioning, not stretch.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
+            3.0f32.to_bits(),
+        ));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("align-items:flex-start"), "Fill=3 → hug: {}", html);
+    }
+
+    #[test]
+    fn fixed_child_keeps_points_box_in_hug_container() {
+        use pathland_core::value_type;
+
+        // C2: a 220×220 image in a vertical stack keeps its exact points box
+        // (width/height in px), positioned (flex-start) — never stretched.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::IMAGE as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            220.0f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::HEIGHT as u32,
+            220.0f32.to_bits(),
+        ));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("align-items:flex-start"), "hug container");
+        assert!(html.contains("width:220px;height:220px"), "exact box: {}", html);
+    }
+
+    #[test]
+    fn divider_spans_cross_axis_and_scrollview_is_greedy() {
+        // DIVIDER is layout-greedy on the cross axis (width:100%); SCROLLVIEW
+        // is greedy on both axes (flex + align-self:stretch) — LAYOUT.md.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::DIVIDER as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::SCROLLVIEW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, pathland_core::APPEND));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("width:100%"), "divider greedy: {}", html);
+        assert!(
+            html.contains("flex:1 1 auto;align-self:stretch;overflow:auto"),
+            "scrollview greedy: {}",
+            html
+        );
     }
 
     #[test]

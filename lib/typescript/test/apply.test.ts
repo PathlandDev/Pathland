@@ -19,12 +19,15 @@ import {
   COMPONENT_TEXT,
   COMPONENT_VSTACK,
   COMPONENT_ZSTACK,
+  PROP_AUDIO_SOURCE,
   PROP_COLOR,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
   PROP_LINE_LIMIT,
+  PROP_MEDIA_POSITION,
   PROP_NAV_CHROME,
+  PROP_PLAYBACK_STATE,
   PROP_NAV_DEPTH,
   PROP_PROGRESS,
   PROP_ROUTE,
@@ -56,6 +59,85 @@ beforeEach(() => {
 function renderer(): DomRenderer {
   return { byId: new Map<number, Node>() };
 }
+
+describe("applyBatch · media", () => {
+  it("seeks only on a meaningful MEDIA_POSITION change (no echo interruption)", () => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const r = renderer();
+    r.byId.set(1, wrapper);
+
+    // A near-identical position (a timeupdate echo) must NOT seek the element.
+    audio.currentTime = 3;
+    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_F32 << 16) | PROP_MEDIA_POSITION) >>> 0, f32bits(3.1)]], stringEntry(""))), r);
+    expect(audio.currentTime).toBe(3);
+
+    // A real seek (a user drag) does.
+    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_F32 << 16) | PROP_MEDIA_POSITION) >>> 0, f32bits(120)]], stringEntry(""))), r);
+    expect(audio.currentTime).toBe(120);
+  });
+
+  it("resumes playback when the source changes while playing (a skip keeps playing)", () => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const r = renderer();
+    r.byId.set(1, wrapper);
+
+    // App requests playing -> the element plays.
+    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_U32 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry(""))), r);
+    expect(audio.paused).toBe(false);
+
+    // A source change (skip/auto-advance) resets the element to paused...
+    audio.pause();
+    // ...and applying the new source resumes playback.
+    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_STRING << 16) | PROP_AUDIO_SOURCE) >>> 0, 0]], stringEntry("/track2.mp3"))), r);
+    expect(audio.paused).toBe(false);
+  });
+
+  it("reports MEDIA_TIME_UPDATED only when the position advances ~1s", () => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const sent: Uint8Array[] = [];
+    const r = renderer();
+    r.byId.set(1, wrapper);
+    r.onMediaEvent = (batch: Uint8Array) => sent.push(batch);
+
+    // Wire the media element and start "playing" (paused=false for the gate).
+    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_U32 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry(""))), r);
+
+    // Sub-second timeupdates are dropped (no MEDIA_TIME_UPDATED).
+    audio.currentTime = 0.4;
+    audio.dispatchEvent(new Event("timeupdate"));
+    audio.currentTime = 0.9;
+    audio.dispatchEvent(new Event("timeupdate"));
+    expect(sent).toHaveLength(0);
+
+    // A ~1s advance reports exactly once, with the current position.
+    audio.currentTime = 1.2;
+    audio.dispatchEvent(new Event("timeupdate"));
+    expect(sent).toHaveLength(1);
+  });
+});
 
 describe("applyBatch · STYLE", () => {
   it("applies SET_TEXT to a hydrated span", () => {

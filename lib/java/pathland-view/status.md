@@ -54,6 +54,17 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (the environment is the **only** inheritance mechanism, Java 17+ — a
   hierarchical `EnvironmentKey`/`EnvironmentValues` scope over the synchronous
   render pass; no modifier scopes values by any other route).
+- **App-driven media** (`AudioStyle`/`VideoStyle` + `NativeAudioStyle`/
+  `NativeVideoStyle`): `Audio`/`Video` render through the environment's active
+  style — the default adds no control children (renderer-native `<audio
+  controls>`); a custom style adds the app's control UI as the media node's
+  children (hidden media element + controls). `.playing/.position/.volume/
+  .duration/.onEnded` bind the media control properties (`PLAYBACK_STATE`/
+  `MEDIA_POSITION`/`MEDIA_VOLUME`, `Properties` 0x1035–0x1037); the node
+  registers a **`MediaInput`** and `RenderResult.mediaInputs` routes the
+  `MEDIA_*` events (spec/EVENTS.md 0x0F–0x12) into the bound signals via
+  `InputDispatcher` (time→position, ended→`onEnded`, play state/volume).
+  `Commands.Event`/`transport.Event`/`FrameCodec` decode the new events.
 - **Component IDs**: synced to the spec's grouped ranges (`Components.java`:
   `TEXT 0x01`, `IMAGE 0x02`, `COLOR 0x03`, `SHAPE 0x04`, `DIVIDER 0x05`,
   `SPACER 0x06`, `PROGRESS_VIEW 0x07`, `GAUGE 0x08`, `VSTACK 0x10`,

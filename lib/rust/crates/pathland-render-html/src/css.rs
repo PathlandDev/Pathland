@@ -212,6 +212,14 @@ body  {
 .pathland-slider input[type='range'] { flex: 1; accent-color: var(--pl-control-accent); }
 .pathland-slider input[type='range']:focus-visible { outline: 2px solid var(--pl-control-accent); outline-offset: 2px; }
 
+/* ===== Media (custom AudioStyle/VideoStyle) ===== */
+/* A media node with custom control children wraps a bare (control-less) media
+   element; the element is the app-driven playback sink, so it stays hidden and
+   only the custom control children are visible. Native media (no children)
+   keep their own `controls` and are not wrapped. */
+.pathland-media audio,
+.pathland-media video { display: none; }
+
 /* ===== Text field / editor ===== */
 .pathland-textfield { display: inline-flex; align-items: center; gap: 0.5rem; }
 .pathland-textfield .pathland-label { flex: none; }

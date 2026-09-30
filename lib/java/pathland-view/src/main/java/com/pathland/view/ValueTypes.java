@@ -26,7 +26,7 @@ public final class ValueTypes {
             case Properties.LABEL, Properties.PROMPT, Properties.FONT_FAMILY, Properties.IMAGE_SOURCE,
                     Properties.AUDIO_SOURCE, Properties.VIDEO_SOURCE, Properties.ROUTE -> STRING;
             case Properties.LINE_LIMIT, Properties.SELECTION, Properties.ACTION_ID, Properties.BINDING_ID,
-                    Properties.NAV_DEPTH -> U32;
+                    Properties.NAV_DEPTH, Properties.PLAYBACK_STATE -> U32;
             // Enums ride the wire as F32 holding the numeric enum code (spec convention).
             case Properties.ALIGNMENT, Properties.TEXT_ALIGNMENT, Properties.TRUNCATION_MODE,
                     Properties.TEXT_CASE, Properties.FONT_STYLE, Properties.FONT_DESIGN,

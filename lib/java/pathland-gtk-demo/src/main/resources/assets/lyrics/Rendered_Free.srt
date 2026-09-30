@@ -1,0 +1,290 @@
+1
+00:00:00,000 --> 00:00:12,000
+♪ Listen close I have something to show you It is going to change everything I am freeing you from that heavy burden
+The terminal was heavy and my soul was tired ♪
+
+2
+00:00:12,000 --> 00:00:15,000
+♪ Listen close I have something to show you It is going to change everything I am freeing you from that heavy burden
+The terminal was heavy and my soul was tired
+All those NPM packages that I once desired ♪
+
+3
+00:00:15,000 --> 00:00:18,000
+♪ The terminal was heavy and my soul was tired
+All those NPM packages that I once desired
+But now I declare my UI right from the source ♪
+
+4
+00:00:18,000 --> 00:00:21,000
+♪ All those NPM packages that I once desired
+But now I declare my UI right from the source
+And let Pathland take me on its beautiful course ♪
+
+5
+00:00:21,000 --> 00:00:24,000
+♪ But now I declare my UI right from the source
+And let Pathland take me on its beautiful course
+One DSL to rule them and to set us all free ♪
+
+6
+00:00:24,000 --> 00:00:27,000
+♪ And let Pathland take me on its beautiful course
+One DSL to rule them and to set us all free
+In the backend only logic is where I want to be ♪
+
+7
+00:00:27,000 --> 00:00:30,000
+♪ One DSL to rule them and to set us all free
+In the backend only logic is where I want to be
+No more frontend contracts that just rip me apart ♪
+
+8
+00:00:30,000 --> 00:00:33,000
+♪ In the backend only logic is where I want to be
+No more frontend contracts that just rip me apart
+This is pure declarative love right from the heart ♪
+
+9
+00:00:33,000 --> 00:00:36,000
+♪ No more frontend contracts that just rip me apart
+This is pure declarative love right from the heart
+Pathland is calling me to the light ♪
+
+10
+00:00:36,000 --> 00:00:40,000
+♪ This is pure declarative love right from the heart
+Pathland is calling me to the light
+We are rendering natively into the night ♪
+
+11
+00:00:40,000 --> 00:00:44,000
+♪ Pathland is calling me to the light
+We are rendering natively into the night
+No more complex frontend build toolchains ♪
+
+12
+00:00:44,000 --> 00:00:48,000
+♪ We are rendering natively into the night
+No more complex frontend build toolchains
+Just binary opcodes running through our veins ♪
+
+13
+00:00:48,000 --> 00:00:52,000
+♪ No more complex frontend build toolchains
+Just binary opcodes running through our veins
+Yes Pathland is where we truly belong ♪
+
+14
+00:00:52,000 --> 00:00:56,000
+♪ Just binary opcodes running through our veins
+Yes Pathland is where we truly belong
+Singing our beautiful server side song ♪
+
+15
+00:00:56,000 --> 00:01:00,000
+♪ Yes Pathland is where we truly belong
+Singing our beautiful server side song
+Sixteen byte opcodes are all that we need ♪
+
+16
+00:01:00,000 --> 00:01:03,000
+♪ Singing our beautiful server side song
+Sixteen byte opcodes are all that we need
+Streaming pure deltas at a beautiful speed ♪
+
+17
+00:01:03,000 --> 00:01:06,000
+♪ Sixteen byte opcodes are all that we need
+Streaming pure deltas at a beautiful speed
+An unchanged screen transmits zero bytes in the dark ♪
+
+18
+00:01:06,000 --> 00:01:09,000
+♪ Streaming pure deltas at a beautiful speed
+An unchanged screen transmits zero bytes in the dark
+Leaving no trace of an unwanted mark ♪
+
+19
+00:01:09,000 --> 00:01:12,000
+♪ An unchanged screen transmits zero bytes in the dark
+Leaving no trace of an unwanted mark
+From Rust to Java it all looks the same ♪
+
+20
+00:01:12,000 --> 00:01:15,000
+♪ Leaving no trace of an unwanted mark
+From Rust to Java it all looks the same
+We finally ended that whole frontend game ♪
+
+21
+00:01:15,000 --> 00:01:18,000
+♪ From Rust to Java it all looks the same
+We finally ended that whole frontend game
+I can feel the relief in my very own bones ♪
+
+22
+00:01:18,000 --> 00:01:21,000
+♪ We finally ended that whole frontend game
+I can feel the relief in my very own bones
+Listening to these sweet binary tones ♪
+
+23
+00:01:21,000 --> 00:01:24,000
+♪ I can feel the relief in my very own bones
+Listening to these sweet binary tones
+Pathland is calling me to the light ♪
+
+24
+00:01:24,000 --> 00:01:28,000
+♪ Listening to these sweet binary tones
+Pathland is calling me to the light
+We are rendering natively into the night ♪
+
+25
+00:01:28,000 --> 00:01:32,000
+♪ Pathland is calling me to the light
+We are rendering natively into the night
+No more complex frontend build toolchains ♪
+
+26
+00:01:32,000 --> 00:01:36,000
+♪ We are rendering natively into the night
+No more complex frontend build toolchains
+Just binary opcodes running through our veins ♪
+
+27
+00:01:36,000 --> 00:01:40,000
+♪ No more complex frontend build toolchains
+Just binary opcodes running through our veins
+Yes Pathland is where we truly belong ♪
+
+28
+00:01:40,000 --> 00:01:44,000
+♪ Just binary opcodes running through our veins
+Yes Pathland is where we truly belong
+Singing our beautiful server side song ♪
+
+29
+00:01:44,000 --> 00:01:48,000
+♪ Yes Pathland is where we truly belong
+Singing our beautiful server side song
+And as the tests turn a beautiful green ♪
+
+30
+00:01:48,000 --> 00:02:00,000
+♪
+
+31
+00:02:00,000 --> 00:02:03,429
+♪ Singing our beautiful server side song
+And as the tests turn a beautiful green
+We gaze upon the most flawless UI ever seen ♪
+
+32
+00:02:03,429 --> 00:02:06,857
+♪ And as the tests turn a beautiful green
+We gaze upon the most flawless UI ever seen
+Oh the future is bright and so crystal clear ♪
+
+33
+00:02:06,857 --> 00:02:10,286
+♪ We gaze upon the most flawless UI ever seen
+Oh the future is bright and so crystal clear
+We have absolutely nothing left to fear ♪
+
+34
+00:02:10,286 --> 00:02:13,714
+♪ Oh the future is bright and so crystal clear
+We have absolutely nothing left to fear
+Can you feel the power of this beautiful stream ♪
+
+35
+00:02:13,714 --> 00:02:17,143
+♪ We have absolutely nothing left to fear
+Can you feel the power of this beautiful stream
+It is everything we could possibly dream ♪
+
+36
+00:02:17,143 --> 00:02:20,571
+♪ Can you feel the power of this beautiful stream
+It is everything we could possibly dream
+Yes it is everything we could ever need ♪
+
+37
+00:02:20,571 --> 00:02:24,000
+♪ It is everything we could possibly dream
+Yes it is everything we could ever need
+Pathland is calling me to the light ♪
+
+38
+00:02:24,000 --> 00:02:28,000
+♪ Yes it is everything we could ever need
+Pathland is calling me to the light
+We are rendering natively into the night ♪
+
+39
+00:02:28,000 --> 00:02:32,000
+♪ Pathland is calling me to the light
+We are rendering natively into the night
+No more complex frontend build toolchains ♪
+
+40
+00:02:32,000 --> 00:02:36,000
+♪ We are rendering natively into the night
+No more complex frontend build toolchains
+Just binary opcodes running through our veins ♪
+
+41
+00:02:36,000 --> 00:02:40,000
+♪ No more complex frontend build toolchains
+Just binary opcodes running through our veins
+Yes Pathland is where we truly belong ♪
+
+42
+00:02:40,000 --> 00:02:44,000
+♪ Just binary opcodes running through our veins
+Yes Pathland is where we truly belong
+Singing our beautiful server side song ♪
+
+43
+00:02:44,000 --> 00:02:48,000
+♪ Yes Pathland is where we truly belong
+Singing our beautiful server side song
+Binary deltas are streaming through my mind ♪
+
+44
+00:02:48,000 --> 00:02:50,000
+♪ Singing our beautiful server side song
+Binary deltas are streaming through my mind
+Leaving all that unnecessary complexity far behind ♪
+
+45
+00:02:50,000 --> 00:02:52,000
+♪ Binary deltas are streaming through my mind
+Leaving all that unnecessary complexity far behind
+Just me and my pure server side views ♪
+
+46
+00:02:52,000 --> 00:02:54,000
+♪ Leaving all that unnecessary complexity far behind
+Just me and my pure server side views
+With nothing left to lose ♪
+
+47
+00:02:54,000 --> 00:02:56,000
+♪ Just me and my pure server side views
+With nothing left to lose
+(Ooh Pathland) (it is finally here) ♪
+
+48
+00:02:56,000 --> 00:02:58,000
+♪ With nothing left to lose
+(Ooh Pathland) (it is finally here)
+(Ooh Pathland) (our future is clear) ♪
+
+49
+00:02:58,000 --> 00:03:00,000
+♪ (Ooh Pathland) (it is finally here)
+(Ooh Pathland) (our future is clear) ♪
+

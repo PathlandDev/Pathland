@@ -1,7 +1,7 @@
 package com.pathland.demo.spring;
 
 import com.pathland.demo.DemoTheme;
-import com.pathland.demo.SplitNavDemo;
+import com.pathland.demo.music.MusicPlayerView;
 import com.pathland.server.MountedApp;
 import com.pathland.server.PathlandApp;
 import com.pathland.view.ThemeData;
@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Bean;
  * The Spring Boot demo — the whole app. The Pathland starter provides SSR, the per-app
  * reserved {@code /<path>/_pathland/ws} delta transport, and per-session state; this
  * class only supplies the root views (and the optional theme). Two apps share the
- * server: the main {@link SplitNavDemo} at {@code /} and a second instance at
+ * server: the main {@link MusicPlayerView} at {@code /} and a second instance at
  * {@code /app2} — each with its own framework base, WebSocket endpoint, per-window
  * persisted-state scope, and isolated per-connection UI models.
  */
@@ -41,7 +41,7 @@ public class SpringDemoApplication {
         return new PathlandApp() {
             @Override
             public View newRoot() {
-                return new SplitNavDemo();
+                return new MusicPlayerView();
             }
 
             @Override

@@ -24,7 +24,7 @@ This document provides essential context for AI agents (or human contributors) w
 - Opcodes live in a **ring buffer** in linear memory; the guest writes at `writeCursor`, the host reads from `readCursor`; frame boundaries via a monotonic `frameCount` in the header block.
 - **Both directions are binary**: a second **event ring** (host → guest) carries `EVENT`-category opcodes. The renderer writes raw inputs at `eventWriteCursor`; the guest drains them at `eventReadCursor`. Events are 16-byte opcodes through the engine, never a side-channel callback.
 - **Variable-length data** (strings, token paths) lives in a bump **arena**; opcodes reference entries by offset (`[u32 byteLength][bytes...]`), so every opcode stays 16 bytes. A second host-owned **event arena** mirrors this in the host → guest direction (shared-memory event strings, e.g. `TEXT_CHANGED`); over the network, host → guest strings ride the batch's string section.
-- Spec: **`spec/OPCODE.md`** (primary) + **`spec/CONFORMANCE.md`** (golden vectors). Companion catalogs: **`spec/PRIMITIVES.md`** (views), **`spec/MODIFIERS.md`** (modifiers/properties), **`spec/EVENTS.md`** (events) — draft IDs are allocated there spec-first.
+- Spec: **`spec/OPCODE.md`** (primary) + **`spec/CONFORMANCE.md`** (golden vectors). Companion catalogs: **`spec/PRIMITIVES.md`** (views), **`spec/MODIFIERS.md`** (modifiers/properties), **`spec/EVENTS.md`** (events), **`spec/LAYOUT.md`** (frame & layout allocation contract) — draft IDs are allocated there spec-first.
 
 ### Declarative, not positioned (NON-NEGOTIABLE)
 
@@ -77,7 +77,11 @@ crates/pathland-core-transport/ # TRANSPORT — shared-memory ring owner (RingTr
                           #   network batch encode/decode + batching policy (std)
 crates/pathland-render-gtk/ # RENDERER — host reader (RenderTree) + maps opcode frames onto
                           #   native GTK widgets incrementally; the only crate that touches
-                          #   GTK/glib/pango. Exposes pathland_gtk_run for Java (JNA) hosts.
+                          #   GTK/glib/pango. Fixed-size images scale to the logical-points
+                          #   box (gdk-pixbuf, CONTENT_MODE fit/fill). App-driven media via a
+                          #   direct GStreamer playbin (GTK4's own media backend is compiled
+                          #   out of some builds). Exposes pathland_gtk_run[_ring]/
+                          #   pathland_gtk_set_asset_root for Java (JNA) hosts.
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
 #   stacks, spans, buttons) as a pure function of the stream; the
                            #   server-side/remote-projection target (Goal #15).
@@ -89,7 +93,10 @@ lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer
                            #   in place, sends raw-input events over /ws. The server
                            #   NEVER replays the full tree on connect (the client already
                            #   has it from the HTML); a full snapshot is sent only on an
-                           #   explicit META::RESYNC (client requests it after reconnect).
+                           #   explicit META::RESYNC (client requests it after a reconnect
+                           #   or a same-tab reload — the per-window id lives only in
+                           #   sessionStorage + the WS URL, never in the page URL, so SSR
+                           #   renders defaults and the client re-syncs its saved state).
                            #   Built to dist/pathland-dom-renderer.js and copied into both demos.
 # ── Retained-UI projection (host/driver surface) ──────────────────────────
 crates/pathland-view-native/ # NATIVE C-ABI shim + NativeHost: flat world over a zero-copy
@@ -176,13 +183,17 @@ it — the demos **never call GTK or Swing directly**:
 
 - Rust demo links `pathland-render-gtk` as an `rlib` and calls `GtkRenderer::run(...)`
   with a wake closure.
-- Java demo loads `pathland-render-gtk` as a `cdylib` via JNA and calls
-  `pathland_gtk_run(host, on_event)`; native inputs round-trip as `EVENT`
-  opcodes through the shared ring. The renderer **writes** the events and
-  **wakes** the host (no payload); the host drains the event ring itself via
-  `pathland_native_drain_events` (Rust: `NativeHost::drain_events` /
-  `RingTransport::drain_events`). Events are never delivered through a
-  side-channel callback — they flow through the opcode engine.
+- Java demo (`pathland-gtk-demo`) loads `pathland-render-gtk` as a `cdylib` via JNA and
+  calls `pathland_gtk_run_ring(ring, on_event, width, height)` over the Java DSL's own
+  `libpathland_core` ring; native inputs round-trip as `EVENT` opcodes through the shared
+  ring. The renderer **writes** the events and **wakes** the host (no payload); the host
+  drains the event ring itself via `pathland_core_drain_events`. Events are never
+  delivered through a side-channel callback — they flow through the opcode engine.
+  The demo mounts `MusicPlayerView` (the same shared views the web demos use) with the
+  app-driven media contract: the renderer plays the tracks through a direct GStreamer
+  `playbin` and reports `MEDIA_*` events back; the demo's web-style
+  `/_pathland/assets/...` paths resolve against an extracted local asset root
+  (`pathland_gtk_set_asset_root`).
 
 The renderer maps native inputs onto the raw `Event` surface via GTK4
 controllers (`Button::clicked` → pointer up, `EventControllerMotion` →
@@ -313,7 +324,8 @@ tests (golden byte layout + round-trips), replacing the old codegen assert pass.
 
 The semantic surface is catalogued in the companion specs: **`spec/PRIMITIVES.md`**
 (primitive views + component IDs), **`spec/MODIFIERS.md`** (core modifiers = the
-`STYLE` properties), **`spec/EVENTS.md`** (core events + listener bits). The
+`STYLE` properties), **`spec/EVENTS.md`** (core events + listener bits),
+**`spec/LAYOUT.md`** (frame & layout allocation contract). The
 tables below are a quick recap of the protocol surface; the companion files
 carry the authoritative ID allocations.
 
@@ -489,4 +501,4 @@ implementing project.
 4. Only Changes Matter (transmit mutations / reactive emission)
 5. Binary is Beautiful (efficient, deterministic)
 
-**When in doubt**: Check `spec/OPCODE.md`, the conformance vectors in `spec/CONFORMANCE.md`, and the companion catalogs (`spec/PRIMITIVES.md`, `spec/MODIFIERS.md`, `spec/EVENTS.md`), and the reference implementation (`pathland-core`). Ask: "Does this maintain stateless renderers?" "Does this only transmit actual changes?" "Does this describe WHAT the UI is, never WHERE?" "Is this representable as a 16-byte opcode in any language?"
+**When in doubt**: Check `spec/OPCODE.md`, the conformance vectors in `spec/CONFORMANCE.md`, and the companion catalogs (`spec/PRIMITIVES.md`, `spec/MODIFIERS.md`, `spec/EVENTS.md`, `spec/LAYOUT.md`), and the reference implementation (`pathland-core`). Ask: "Does this maintain stateless renderers?" "Does this only transmit actual changes?" "Does this describe WHAT the UI is, never WHERE?" "Is this representable as a 16-byte opcode in any language?"

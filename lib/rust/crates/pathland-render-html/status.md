@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** September 25, 2026
+**Last updated:** September 30, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -30,11 +30,18 @@ Statelessness). Protocol contract: `spec/`.
   the `alt`; empty = decorative) and honors `CONTENT_MODE`/`ASPECT_RATIO`
   inline (`Fit`→`object-fit:contain`, `Fill`→`object-fit:cover`); `VIDEO` →
   `<video src controls>` and `AUDIO` → `<audio src controls>` (playback
-  interaction is renderer-native). Asset refs are absolute
-  (`/_pathland/assets/…`); bytes never ride the opcode stream.
+  interaction is renderer-native by default). **App-driven media**: a custom
+  `AudioStyle`/`VideoStyle` body keeps its own component/layout (e.g. a `VStack`
+  flex column) and, when it carries `AUDIO_SOURCE`/`VIDEO_SOURCE` with children,
+  the renderer injects a hidden control-less media element as its first child
+  and marks the container `data-pathland-media` (the DOM client wires playback
+  events, spec/EVENTS.md Media). Asset refs are absolute (`/_pathland/assets/…`);
+  bytes never ride the opcode stream.
 - **Composite override mode**: `BUTTON`/`TOGGLE`/`SLIDER` with children render
   the custom body wrapped in the native element.
-- **Properties**: `ALIGNMENT` (cross-axis flex), `CONTENT_MARGINS`,
+- **Properties**: `ALIGNMENT` (cross-axis **position** — the default is hug
+  (`flex-start`), never CSS `align-items:stretch`, per `spec/LAYOUT.md`; only
+  `FILL`-sized children stretch via their `100%` size), `CONTENT_MARGINS`,
   `WIDTH`/`HEIGHT` (`FILL` → `width:100%`/`height:100%` expansion, `HUG` →
   intrinsic), `PADDING` + per-edge, `COLOR`,
   `BACKGROUND_COLOR`, `FONT_SIZE`/`WEIGHT`/`FAMILY`, `OPACITY`, `VISIBLE`,
@@ -44,6 +51,11 @@ Statelessness). Protocol contract: `spec/`.
   `TEXT_CASE`, `FONT_STYLE`, `FONT_DESIGN`, `UNDERLINE`/`STRIKETHROUGH`,
   `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `COLOR_INVERT`. `WIDTH`/`HEIGHT`
   `HUG_CONTENT` (-2) is **omitted** (intrinsic size); `FILL` (-1) → `100%`.
+- **Layout contract (spec/LAYOUT.md)**: cross-axis default is **hug**
+  (`flex-start`), not CSS stretch; `ALIGNMENT` positions only (`Fill`=3 → hug
+  default). `DIVIDER` is greedy on the cross axis (`width:100%`); `SCROLLVIEW`
+  is greedy on both axes (`flex:1 1 auto;align-self:stretch`); fixed frames emit
+  exact px boxes. Conformance cases C1–C6 asserted in `lib.rs` tests.
 - **ARIA ROLE/STATE maps match the DOM client**: the full `ROLE` set (button…
   menu, incl. `text`/`img`/`radio`/`spinbutton`/`tablist`/`list`/`grid`/
   `region`/`menu`) and the `STATE` semantics (one true `aria-*` per state) are

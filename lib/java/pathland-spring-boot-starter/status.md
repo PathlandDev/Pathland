@@ -18,11 +18,16 @@ subpaths (the BFF layout).
   - a `WebSocketConfigurer` registering **one handler per app** at its framework base
     (`/_pathland/ws` for the root, `/{mount}/_pathland/ws` otherwise). Each connection
     gets a fresh `uiId` (its UI model) + the client's `wid` (per-window state scope)
-    from the `?wid=` query param,
+    from the WS `?wid=` query param (kept in `sessionStorage`, never in the page URL),
   - `PathlandIndexController` (SSR catch-all dispatching to the longest-mount app with
     the prefix stripped + a framework static controller serving the bundle + asset mount
     from `classpath:/static/_pathland/**` at both `/_pathland/**` and `/{app}/_pathland/**`;
     the more-specific mapping beats `/{*path}`, and the `!Upgrade` header excludes WS).
+    The framework controller honors byte-range requests (`206 Partial Content` +
+    `Content-Range`, `416` for unsatisfiable ranges, `Accept-Ranges` on the full
+    response) — an `<audio>`/`<video>` seeking beyond its buffer issues a `Range`
+    request, and answering it with a full `200` would make browsers restart the media
+    at byte 0.
     SSR renders defaults (no session cookie — per-window state arrives over the WS).
 - **SSR debug comments**: the host reads the `pathland.debug-html` property
   (`@Value("${pathland.debug-html:false}")`) and forwards it to each registry, enabling

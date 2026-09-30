@@ -29,6 +29,8 @@ public final class GtkRendererNative {
 
     /** The C ABI surface, mapped by JNA onto the Rust cdylib. */
     private interface NativeGtkRenderer extends Library {
+        void pathland_gtk_set_asset_root(String dir);
+
         void pathland_gtk_run_ring(Pointer ring, EventCallback onEvent, int width, int height);
     }
 
@@ -51,6 +53,15 @@ public final class GtkRendererNative {
                             + "(cargo build -p pathland-render-gtk)");
         }
         this.nativeGtk = Native.load(libraryPath, NativeGtkRenderer.class);
+    }
+
+    /**
+     * Set the directory that web-style {@code /_pathland/...} media/image source
+     * paths resolve against (the local copy of the demo's assets). Call before
+     * {@link #runRing}; a null/empty value clears it.
+     */
+    public void setAssetRoot(String dir) {
+        nativeGtk.pathland_gtk_set_asset_root(dir);
     }
 
     /**

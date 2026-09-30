@@ -101,6 +101,9 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 | `.imageSource(_:)` | `IMAGE_SOURCE` 0x1002 | STRING (asset reference) | one (arenaRef) |
 | `.audioSource(_:)` | `AUDIO_SOURCE` 0x1033 | STRING (asset reference) | one (arenaRef) |
 | `.videoSource(_:)` | `VIDEO_SOURCE` 0x1034 | STRING (asset reference) | one (arenaRef) |
+| `.playback(_:)` (Audio/Video) | `PLAYBACK_STATE` 0x1035 | U32 (0 pause, 1 play) | one |
+| `.mediaPosition(_:)` (Audio/Video) | `MEDIA_POSITION` 0x1036 | F32 (seconds; change = seek) | one |
+| `.mediaVolume(_:)` (Audio/Video) | `MEDIA_VOLUME` 0x1037 | F32 (0..1) | one |
 | `.minimumScaleFactor(_:)` | `MINIMUM_SCALE_FACTOR` 0x001D | F32 | one |
 | `.spacing(_:)` (stacks) | `SPACING` 0x0001 | F32 | one |
 | `Spacer` | — (implied by component) | — | none |
@@ -110,7 +113,9 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 - **`WIDTH` / `HEIGHT`**: size hints; the renderer maps them to its size
   request / `width`/`height` style. `FILL` (-1.0) expands to available space;
   `HUG_CONTENT` (-2.0) sizes to intrinsic content. Absence of a property leaves
-  that axis to the native default.
+  that axis to the native default. The full allocation contract — Fixed = an
+  exact points box, container space distribution, cross-axis hug-not-stretch,
+  content fitting — is in [LAYOUT.md](./LAYOUT.md).
 - **`frame(min/ideal/max)`**: each provided bound emits its own property.
   Renderers map them to min/max/ideal size (GTK `set_size_request`, CSS
   `min-width`/`max-width`/`width`).
@@ -118,6 +123,10 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.
 - **`ALIGNMENT` enum**: `Leading`=0, `Center`=1, `Trailing`=2, `Fill`=3.
+  `ALIGNMENT` **positions** children in the leftover cross-axis space; it never
+  resizes them. The cross-axis default is *hug* (children keep their size;
+  only `FILL`-sized children stretch), and `Fill`=3 means default (hug)
+  positioning, not stretch. Full contract: [LAYOUT.md](./LAYOUT.md).
 - **`CONTENT_MODE` enum**: `Fit`=0 (aspect-fit within the bounds),
   `Fill`=1 (aspect-fill, cropped) — the web renderer maps them to
   `object-fit: contain` / `object-fit: cover` (both SSR and the DOM client).
@@ -351,8 +360,8 @@ are never chainable modifiers.
 | `0x1030` | `TINT` (COLOR) | — |
 | `0x1031` | `TRANSITION` (ENUM; navigation swap hint) | — |
 | `0x1032` | `TEXT_STYLE` (ENUM; predefined typography) | — |
-| `0x1033`–`0x1034` | `AUDIO_SOURCE`, `VIDEO_SOURCE` (STRING asset references, see PRIMITIVES.md) | — |
-| `0x1035`–`0x10FF` | Future styling properties (unallocated) |
+| `0x1033`–`0x1037` | Media — `AUDIO_SOURCE`, `VIDEO_SOURCE` (STRING asset references), `PLAYBACK_STATE` (U32), `MEDIA_POSITION` (F32), `MEDIA_VOLUME` (F32), see PRIMITIVES.md |
+| `0x1038`–`0x10FF` | Future styling properties (unallocated) |
 | `0x2001`–`0x200B` | Semantic (ROLE, STATE, ENABLED, SELECTED, EVENT_LISTENERS, VALUE, MIN_VALUE, MAX_VALUE, LABEL, PROMPT) |
 | `0x2009`, `0x200C`–`0x2014` | Control properties (allocated: STEP_VALUE, CONTROL_SIZE, IS_SECURE, PROGRESS, IS_INDETERMINATE, SELECTION, COLOR_VALUE, DATE_PICKER_MODE, PICKER_STYLE) — defined in PRIMITIVES.md controls. Note: a `DATE_PICKER`'s date is set via the `STYLE::SET_DATE` command (0x04), not a property; **`0x2011` is unallocated/reserved** (its former `DATE_VALUE` draft was dropped) |
 | `0x2016`–`0x2018` | Binding/action properties (allocated: `ACTION_ID`, `BINDING_ID`, `TOGGLE_STYLE`) — defined in PRIMITIVES.md semantic controls |

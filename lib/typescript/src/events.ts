@@ -10,6 +10,10 @@ import {
   CMD_FOCUS_CHANGED,
   CMD_KEY_DOWN,
   CMD_KEY_UP,
+  CMD_MEDIA_ENDED,
+  CMD_MEDIA_PLAY_STATE_CHANGED,
+  CMD_MEDIA_TIME_UPDATED,
+  CMD_MEDIA_VOLUME_CHANGED,
   CMD_NAVIGATE,
   CMD_POINTER_DOWN,
   CMD_POINTER_MOVE,
@@ -107,6 +111,28 @@ export function encodeValueChanged(target: number, value: number): Uint8Array {
 /** A VALUE_CHANGED EVENT with a raw 32-bit payload (e.g. a packed ARGB color). */
 export function encodeValueBits(target: number, bits: number): Uint8Array {
   return eventBatch(CMD_VALUE_CHANGED, target, bits >>> 0, 0);
+}
+
+// --- media ---
+
+/** A bound media node's play state changed (B = 0/1). */
+export function encodeMediaPlayStateChanged(target: number, playing: boolean): Uint8Array {
+  return eventBatch(CMD_MEDIA_PLAY_STATE_CHANGED, target, playing ? 1 : 0, 0);
+}
+
+/** A bound media node's current position (B = seconds, f32). */
+export function encodeMediaTimeUpdated(target: number, seconds: number): Uint8Array {
+  return eventBatch(CMD_MEDIA_TIME_UPDATED, target, bitsFromF32(seconds), 0);
+}
+
+/** A bound media node reached the end of its media. */
+export function encodeMediaEnded(target: number): Uint8Array {
+  return eventBatch(CMD_MEDIA_ENDED, target, 0, 0);
+}
+
+/** A bound media node's volume changed (B = 0..1, f32). */
+export function encodeMediaVolumeChanged(target: number, volume: number): Uint8Array {
+  return eventBatch(CMD_MEDIA_VOLUME_CHANGED, target, bitsFromF32(volume), 0);
 }
 
 /** A DATE_CHANGED EVENT (A=target, B=days, C=millis of day). */

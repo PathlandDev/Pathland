@@ -180,6 +180,10 @@ pub fn emit_constants_ts() -> String {
         ("WHEEL", fmt_u8(event::WHEEL)),
         ("DATE_CHANGED", fmt_u8(event::DATE_CHANGED)),
         ("NAVIGATE", fmt_u8(event::NAVIGATE)),
+        ("MEDIA_PLAY_STATE_CHANGED", fmt_u8(event::MEDIA_PLAY_STATE_CHANGED)),
+        ("MEDIA_TIME_UPDATED", fmt_u8(event::MEDIA_TIME_UPDATED)),
+        ("MEDIA_ENDED", fmt_u8(event::MEDIA_ENDED)),
+        ("MEDIA_VOLUME_CHANGED", fmt_u8(event::MEDIA_VOLUME_CHANGED)),
     ]);
     out.push_str("\n// EVENT flags\n");
     write_consts(&mut out, "FLAG_", &[
@@ -245,6 +249,9 @@ pub fn emit_constants_ts() -> String {
             ("IMAGE_SOURCE", fmt_u16(property_id::IMAGE_SOURCE)),
             ("AUDIO_SOURCE", fmt_u16(property_id::AUDIO_SOURCE)),
             ("VIDEO_SOURCE", fmt_u16(property_id::VIDEO_SOURCE)),
+            ("PLAYBACK_STATE", fmt_u16(property_id::PLAYBACK_STATE)),
+            ("MEDIA_POSITION", fmt_u16(property_id::MEDIA_POSITION)),
+            ("MEDIA_VOLUME", fmt_u16(property_id::MEDIA_VOLUME)),
             ("BORDER_WIDTH", fmt_u16(property_id::BORDER_WIDTH)),
             ("BORDER_COLOR", fmt_u16(property_id::BORDER_COLOR)),
             ("BORDER_RADIUS", fmt_u16(property_id::BORDER_RADIUS)),

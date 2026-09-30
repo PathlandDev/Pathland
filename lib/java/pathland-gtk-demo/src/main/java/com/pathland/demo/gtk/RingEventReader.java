@@ -72,6 +72,10 @@ public final class RingEventReader {
             case Commands.Event.SCROLL -> Event.scroll(a, f32(b), f32(c));
             case Commands.Event.WHEEL -> Event.wheel(a, f32(b), f32(c));
             case Commands.Event.DATE_CHANGED -> Event.dateChanged(a, b, c);
+            case Commands.Event.MEDIA_PLAY_STATE_CHANGED -> Event.mediaPlayStateChanged(a, b != 0);
+            case Commands.Event.MEDIA_TIME_UPDATED -> Event.mediaTimeUpdated(a, f32(b));
+            case Commands.Event.MEDIA_ENDED -> Event.mediaEnded(a);
+            case Commands.Event.MEDIA_VOLUME_CHANGED -> Event.mediaVolumeChanged(a, f32(b));
             case Commands.Event.NAVIGATE -> (flags & Commands.Flags.NAVIGATE_URL) != 0
                     ? Event.navigate(arenaString(b))
                     : Event.navigateBack();

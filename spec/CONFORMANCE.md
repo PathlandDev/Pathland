@@ -395,7 +395,64 @@ back button): no `NAVIGATE_URL` flag, so `B` is ignored and the host calls
 - `00 00 00 00` B = 0
 - `00 00 00 00` C = 0
 
-### 23. STYLE:SET_PROPERTY (id=1, propertyId=ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)
+### 23. EVENT:MEDIA_PLAY_STATE_CHANGED (target=7, playing=1)
+
+The app-bound audio/video node started playing.
+
+```
+03 0F 00 00 07 00 00 00 01 00 00 00 00 00 00 00
+```
+
+- `03` category = EVENT
+- `0F` command = MEDIA_PLAY_STATE_CHANGED
+- `00 00` flags = 0
+- `07 00 00 00` A = targetId = 7 (the media node)
+- `01 00 00 00` B = playing = 1
+- `00 00 00 00` C = 0
+
+### 24. EVENT:MEDIA_TIME_UPDATED (target=7, seconds=12.5)
+
+The media's current playback position (seconds, f32).
+
+```
+03 10 00 00 07 00 00 00 00 00 48 41 00 00 00 00
+```
+
+- `03` category = EVENT
+- `10` command = MEDIA_TIME_UPDATED
+- `07 00 00 00` A = targetId = 7
+- `00 00 48 41` B = 12.5f (0x41480000 LE)
+- `00 00 00 00` C = 0
+
+### 25. EVENT:MEDIA_ENDED (target=7)
+
+The media reached its end.
+
+```
+03 11 00 00 07 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `03` category = EVENT
+- `11` command = MEDIA_ENDED
+- `07 00 00 00` A = targetId = 7
+- `00 00 00 00` B = 0
+- `00 00 00 00` C = 0
+
+### 26. EVENT:MEDIA_VOLUME_CHANGED (target=7, volume=0.5)
+
+The user changed the media volume (0..1, f32).
+
+```
+03 12 00 00 07 00 00 00 00 00 00 3F 00 00 00 00
+```
+
+- `03` category = EVENT
+- `12` command = MEDIA_VOLUME_CHANGED
+- `07 00 00 00` A = targetId = 7
+- `00 00 00 3F` B = 0.5f (0x3F000000 LE)
+- `00 00 00 00` C = 0
+
+### 27. STYLE:SET_PROPERTY (id=1, propertyId=ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)
 
 The `NavigationContainer` emits the current path as a STRING property; the DOM
 renderer reacts with `history.pushState`.
@@ -413,7 +470,7 @@ renderer reacts with `history.pushState`.
   - high byte `05` = valueType = 0x05 (STRING)
 - `00 00 00 00` C = arenaRef = 0 (`"/users/42"`)
 
-### 24. STYLE:SET_PROPERTY (id=1, propertyId=TRANSITION=0x1031, valueType=F32=0x04, Slide=3)
+### 28. STYLE:SET_PROPERTY (id=1, propertyId=TRANSITION=0x1031, valueType=F32=0x04, Slide=3)
 
 A transition hint on the slot (enum code carried as an `F32` bit pattern):
 `Slide`=3 → `C` = 3.0 (0x40400000).
@@ -431,7 +488,7 @@ A transition hint on the slot (enum code carried as an `F32` bit pattern):
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 40 40` C = 3.0 (f32 LE: 0x40400000) = `Slide`
 
-### 25. Structural swap (slot 4: delete old destination 5, create new destination 6, insert)
+### 29. Structural swap (slot 4: delete old destination 5, create new destination 6, insert)
 
 A `NavigationContainer` (slot id 4) whose child changes from destination 5 to a
 new destination 6 — the frame of `TREE` deltas a reconcile emits:
@@ -452,7 +509,7 @@ new destination 6 — the frame of `TREE` deltas a reconcile emits:
 An identical recompute (same structure, same ids) emits **zero** opcodes — the
 reconcile is a diff.
 
-### 26. META:ENVIRONMENT (VIEWPORT_WIDTH=0x0001, width=800.0)
+### 30. META:ENVIRONMENT (VIEWPORT_WIDTH=0x0001, width=800.0)
 
 An environment field opcode: `A` = field id, `B` = the field value. `800.0`
 (f32 LE: 0x44480000).
@@ -468,7 +525,7 @@ An environment field opcode: `A` = field id, `B` = the field value. `800.0`
 - `00 00 48 44` B = 800.0 (f32 LE: 0x44480000)
 - `00 00 00 00` C = 0
 
-### 27. META:ENVIRONMENT (ROUTE=0x0003, string offset 0)
+### 31. META:ENVIRONMENT (ROUTE=0x0003, string offset 0)
 
 A STRING-valued environment field: `B` is a string-section/event-arena offset
 (the dual convention of `TEXT_CHANGED`/`NAVIGATE`) to the initial route —
@@ -485,7 +542,7 @@ A STRING-valued environment field: `B` is a string-section/event-arena offset
 - `00 00 00 00` B = string offset = 0 (`"/users/42"`)
 - `00 00 00 00` C = 0
 
-### 28. STYLE:SET_PROPERTY (id=1, propertyId=NAV_DEPTH=0x201A, valueType=U32=0x02, depth=3)
+### 32. STYLE:SET_PROPERTY (id=1, propertyId=NAV_DEPTH=0x201A, valueType=U32=0x02, depth=3)
 
 The `NavigationContainer` emits its back-stack depth as a U32 property — three
 destinations in the app's path (the current one included), so a native
@@ -504,7 +561,7 @@ navigation adapter reconciles its page stack by depth. `C` = 3 (U32 LE).
   - high byte `02` = valueType = 0x02 (U32)
 - `03 00 00 00` C = 3 (U32 LE) = depth
 
-### 29. STYLE:SET_PROPERTY (id=1, propertyId=NAV_CHROME=0x201B, valueType=F32=0x04, Custom=1)
+### 33. STYLE:SET_PROPERTY (id=1, propertyId=NAV_CHROME=0x201B, valueType=F32=0x04, Custom=1)
 
 The `NavigationContainer`'s chrome mode (F32 enum code): `Custom`=1 → `C` =
 1.0 (0x3F800000) — the developer owns all navigation UI and the renderer adds

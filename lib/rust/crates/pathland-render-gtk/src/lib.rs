@@ -30,6 +30,8 @@ pub use host::{describe, render_tree_from_frame, HostNode, RenderTree};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use libadwaita::prelude::*;
 use libadwaita::NavigationView;
@@ -38,9 +40,11 @@ use gtk::{
     PropagationPhase,
 };
 use pathland_core::tokens::Scheme;
-use pathland_core::{component_type, listener, property_id, size, Event, Frame};
+use pathland_core::{component_type, listener, property_id, Event, Frame};
 use pathland_core_transport::{DriverTransport, FrameSource, OpcodeBatch, RingTransport, TransportError};
 use glib::translate::IntoGlib;
+use gstreamer as gst;
+use gstreamer::prelude::*;
 
 /// The bidirectional transport surface the renderer pumps: frames in
 /// (guest → host) and events out (host → guest).
@@ -94,6 +98,13 @@ pub struct GtkRenderer {
     /// itself (a route change it already applied), the `popped` signal must not
     /// be re-emitted as a back request — the app already knows it navigated.
     nav_reconciling: HashMap<u32, Rc<Cell<bool>>>,
+    /// Per-node native media streams (AUDIO/VIDEO nodes), the rendered output
+    /// for app-driven playback. Playback is driven by the node's media control
+    /// properties; media events report back through the event sink.
+    media_players: HashMap<u32, MediaPlayer>,
+    /// Per-node cache of the last applied fixed-size image content, so steady-
+    /// state frames don't re-decode: (source, box width, box height, content mode).
+    image_cache: HashMap<u32, (String, i32, i32, u32)>,
 }
 
 impl Default for GtkRenderer {
@@ -115,6 +126,8 @@ impl GtkRenderer {
             nav_views: HashMap::new(),
             nav_pages: HashMap::new(),
             nav_reconciling: HashMap::new(),
+            media_players: HashMap::new(),
+            image_cache: HashMap::new(),
         }
     }
 
@@ -185,6 +198,10 @@ impl GtkRenderer {
             self.nav_views.remove(&id);
             self.nav_pages.remove(&id);
             self.nav_reconciling.remove(&id);
+            if let Some(player) = self.media_players.remove(&id) {
+                player.teardown();
+            }
+            self.image_cache.remove(&id);
         }
 
         // 2. Pre-order walk: get-or-create widgets, update text/style, and
@@ -227,24 +244,50 @@ impl GtkRenderer {
     /// Composite bodies attach to button-like controls (`GtkButton` and
     /// subclasses — `ToggleButton`, `CheckButton`, `MenuButton`); other controls
     /// ignore children.
+    ///
+    /// The body box's orientation follows the HTML renderer's composite layout:
+    /// a `BUTTON` body is a **horizontal row** (`.pathland-button` is
+    /// `display:inline-flex; align-items:center`), while `TOGGLE`/`MENU` bodies
+    /// stay **vertical** (HTML wraps those as block/inline-block).
     fn sync_composite_children(&mut self, parent_id: u32, children: &[u32]) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
         };
-        let Ok(btn) = parent.downcast::<gtk::Button>() else {
+        let Ok(btn) = parent.clone().downcast::<gtk::Button>() else {
             return;
         };
+        let horizontal = self
+            .tree
+            .node(parent_id)
+            .is_some_and(|n| composite_horizontal(n.component_type));
+        // The button's own main/cross-axis alignment is governed by its parent
+        // stack's per-child rule in `sync_stack_children` (LAYOUT.md: a
+        // composite control hugs on the main axis unless it is `FILL`-sized).
         let box_widget: gtk::Widget = if let Some(bx) = self.composite_boxes.get(&parent_id).cloned() {
             bx
         } else {
-            let bx = GtkBox::new(gtk::Orientation::Vertical, 0);
-            bx.set_hexpand(true);
-            bx.set_vexpand(true);
+            let bx = GtkBox::new(
+                if horizontal {
+                    gtk::Orientation::Horizontal
+                } else {
+                    gtk::Orientation::Vertical
+                },
+                0,
+            );
             btn.set_child(Some(&bx));
             let bxw: gtk::Widget = bx.upcast();
             self.composite_boxes.insert(parent_id, bxw.clone());
             bxw
         };
+        // A horizontal (BUTTON) body centers its children on the cross axis,
+        // matching the HTML button's `align-items:center`.
+        if horizontal {
+            for child_id in children {
+                if let Some(w) = self.widgets.get(child_id) {
+                    w.set_valign(Align::Center);
+                }
+            }
+        }
         self.reconcile_box_children(&box_widget, children);
     }
 
@@ -285,6 +328,12 @@ impl GtkRenderer {
         // gated by the transport-aware event guards (a `BINDING_ID`).
         self.attach_control_events(node.id, &widget, node);
 
+        // App-driven media: an AUDIO/VIDEO node (or any node carrying a media
+        // source) gets a hidden native stream driven by its control properties.
+        if is_media_node(&node) {
+            self.sync_media(node.id, &node);
+        }
+
         match widget_kind(node.component_type) {
             WidgetKind::Stack => {
                 if let Ok(bx) = widget.downcast::<GtkBox>() {
@@ -321,10 +370,11 @@ impl GtkRenderer {
             WidgetKind::Image => {
                 if let Ok(pic) = widget.downcast::<gtk::Picture>() {
                     if let Some(src) = node.string_property(property_id::IMAGE_SOURCE) {
-                        pic.set_filename(Some(src));
+                        self.apply_image(node, &pic, src);
                     }
                 }
             }
+            WidgetKind::Media => {}
             WidgetKind::Toggle => {
                 let active = node.checked();
                 if let Ok(sw) = widget.clone().downcast::<gtk::Switch>() {
@@ -461,6 +511,183 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
         }
     }
 
+    /// Drive a node's native media stream from its control properties (the
+    /// app-driven media contract, spec/EVENTS.md Media): source, playback
+    /// state, position (seek, echo-guarded), and volume.
+    fn sync_media(&mut self, id: u32, node: &HostNode) {
+        let source = node
+            .string_property(property_id::AUDIO_SOURCE)
+            .or_else(|| node.string_property(property_id::VIDEO_SOURCE));
+        let Some(source) = source else {
+            // A media node with no source: nothing to play; drop any stream.
+            if let Some(player) = self.media_players.remove(&id) {
+                player.teardown();
+            }
+            return;
+        };
+        let resolved = resolve_asset(source);
+        let player = match self.media_players.get_mut(&id) {
+            Some(player) if player.source == resolved => player,
+            _ => {
+                if let Some(old) = self.media_players.remove(&id) {
+                    old.teardown();
+                }
+                let Some(player) = self.create_media_player(id, resolved.clone()) else {
+                    // GStreamer unavailable: nothing to play for this node.
+                    return;
+                };
+                self.media_players.insert(id, player);
+                self.media_players.get_mut(&id).expect("just inserted")
+            }
+        };
+
+        // Playback state: the node's current value (a source change re-emits only
+        // AUDIO_SOURCE, so the retained PLAYBACK_STATE is authoritative — a skip
+        // while playing therefore resumes automatically).
+        let playing = node.u32_property(property_id::PLAYBACK_STATE, 0) != 0;
+        player.requested_playing.set(playing);
+        let state = if playing {
+            gst::State::Playing
+        } else {
+            gst::State::Paused
+        };
+        let _ = player.pipeline.set_state(state);
+
+        // Seek — only when meaningful: the app echoes every MEDIA_TIME_UPDATED
+        // back as MEDIA_POSITION, so a near-identical write must NOT seek (it
+        // would interrupt just-started playback and echo the position around).
+        let target = f64::from(node.f32_property(property_id::MEDIA_POSITION, 0.0));
+        let now = player
+            .playbin
+            .query_position::<gst::ClockTime>()
+            .map(|t| t.nseconds() as f64 / 1_000_000_000.0)
+            .unwrap_or(0.0);
+        if should_seek(now, target) {
+            let _ = player.playbin.seek_simple(
+                gst::SeekFlags::FLUSH,
+                gst::ClockTime::from_seconds_f64(target),
+            );
+            player.suppress_until.set(monotonic_ms() + 250);
+        }
+
+        let volume = node.f32_property(property_id::MEDIA_VOLUME, 1.0);
+        player.playbin.set_property("volume", f64::from(volume.clamp(0.0, 1.0)));
+    }
+
+    /// Create a media player for a node: a GStreamer `playbin` pipeline driven by
+/// the node's control properties, with a periodic reporter that both polls the
+/// stream position (`MEDIA_TIME_UPDATED`) and drains the pipeline bus for
+/// `EOS` (`MEDIA_ENDED`) / errors (play-state false). The bus is polled on the
+/// main thread (not via `connect_message`, which requires a `Send` closure the
+/// renderer's `Rc`-based sink cannot provide). Returns `None` when GStreamer
+/// is unavailable.
+fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlayer> {
+    let (pipeline, playbin) = build_playbin(&resolved)?;
+    let suppress_until = Rc::new(Cell::new(0u64));
+    let last_reported = Rc::new(Cell::new(0f32));
+    let requested_playing = Rc::new(Cell::new(false));
+    let Some(sink) = self.event_sink.clone() else {
+        return Some(MediaPlayer {
+            pipeline,
+            playbin,
+            source: resolved,
+            requested_playing,
+            suppress_until,
+            timer: None,
+        });
+    };
+
+    // Periodic position reporter (~4 Hz while playing, mirroring the web
+    // client's `timeupdate` cadence). Suppressed briefly after a seek. Also
+    // drains the pipeline bus: EOS → MEDIA_ENDED, an error → play-state false
+    // (so the app's play button isn't left stuck on a failed stream).
+    let timer_pipeline = pipeline.clone();
+    let timer_playbin = playbin.clone();
+    let timer_sink = sink;
+    let timer_suppress = suppress_until.clone();
+    let timer_last = last_reported.clone();
+    let timer_playing = requested_playing.clone();
+    let timer = glib::timeout_add_local(Duration::from_millis(250), move || {
+        if let Some(bus) = timer_pipeline.bus() {
+            while let Some(msg) = bus.pop() {
+                match msg.view() {
+                    gst::MessageView::Eos(_) => {
+                        timer_sink.borrow_mut()(Event::MediaEnded { target: id });
+                        timer_playing.set(false);
+                    }
+                    gst::MessageView::Error(err) => {
+                        eprintln!(
+                            "pathland-gtk media error: {}",
+                            err.error().message()
+                        );
+                        timer_playing.set(false);
+                        timer_sink.borrow_mut()(Event::MediaPlayStateChanged {
+                            target: id,
+                            playing: false,
+                        });
+                    }
+                    _ => {}
+                }
+            }
+        }
+        if timer_playing.get() && monotonic_ms() >= timer_suppress.get() {
+            let seconds = timer_playbin
+                .query_position::<gst::ClockTime>()
+                .map(|t| t.nseconds() as f32 / 1_000_000_000.0)
+                .unwrap_or(0.0);
+            if should_report_time(timer_last.get(), seconds) {
+                timer_last.set(seconds);
+                timer_sink.borrow_mut()(Event::MediaTimeUpdated {
+                    target: id,
+                    seconds,
+                });
+            }
+        }
+        glib::ControlFlow::Continue
+    });
+    Some(MediaPlayer {
+        pipeline,
+        playbin,
+        source: resolved,
+        requested_playing,
+        suppress_until,
+        timer: Some(timer),
+    })
+}
+
+    /// Apply an image node: a fixed `WIDTH`×`HEIGHT` (logical points) scales the
+    /// decoded content into that box (Fit = contain/letterbox, Fill = cover/crop,
+    /// mirroring the web's `object-fit` and SwiftUI content modes); otherwise the
+    /// file is loaded natively and the picture scales itself. The scaled box is
+    /// cached per node so steady-state frames don't re-decode.
+    fn apply_image(&mut self, node: &HostNode, pic: &gtk::Picture, src: &str) {
+        let resolved = resolve_asset(src);
+        let mode = node
+            .f32_property(property_id::CONTENT_MODE, 0.0)
+            .round()
+            .max(0.0) as u32;
+        let (Some(box_w), Some(box_h)) = (
+            fixed_size(node, property_id::WIDTH),
+            fixed_size(node, property_id::HEIGHT),
+        ) else {
+            // No fixed points box: load natively and let the picture fit itself.
+            pic.set_filename(Some(&resolved));
+            self.image_cache.remove(&node.id);
+            return;
+        };
+        if self.image_cache.get(&node.id) == Some(&(resolved.clone(), box_w, box_h, mode)) {
+            return;
+        }
+        if let Some(boxed) = scale_image_to_box(&resolved, box_w, box_h, mode) {
+            pic.set_pixbuf(Some(&boxed));
+            self.image_cache.insert(node.id, (resolved, box_w, box_h, mode));
+        } else {
+            // Decode/scaling failed — fall back to the native loader.
+            pic.set_filename(Some(&resolved));
+            self.image_cache.remove(&node.id);
+        }
+    }
+
     /// Attach native input recognition for the listener bits not yet wired for
     /// `id`. Guarded by `attached_listeners` so delta frames don't double-attach.
     fn attach_listeners(&mut self, id: u32, widget: &gtk::Widget, mask: u32) {
@@ -500,8 +727,11 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
         }
     }
 
-    /// Reconcile a stack's children: apply cross-axis alignment to each child
-    /// and re-append the tree-ordered child widgets.
+    /// Reconcile a stack's children: apply the LAYOUT.md per-child alignment
+    /// rule (main axis: only `FILL`/greedy children stretch, leftover goes to
+    /// them; cross axis: only `FILL`/greedy children stretch, everything else
+    /// keeps its size and is positioned by the stack's `ALIGNMENT`, default
+    /// Leading) and re-append the tree-ordered child widgets.
     fn sync_stack_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
@@ -512,19 +742,24 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
         let Some(l) = layout::stack_layout(node) else {
             return;
         };
-
-        // Cross-axis alignment of each child: a vertical stack aligns children
-        // horizontally (`halign`), a horizontal stack vertically (`valign`).
+        let stack_align = layout::stack_align_option(node);
         for child_id in children {
-            if let Some(w) = self.widgets.get(child_id) {
-                if layout::cross_axis_is_horizontal(l.orientation) {
-                    w.set_halign(l.child_align);
-                } else {
-                    w.set_valign(l.child_align);
-                }
+            let Some(w) = self.widgets.get(child_id).cloned() else {
+                continue;
+            };
+            let Some(cn) = self.tree.node(*child_id) else {
+                continue;
+            };
+            let main = layout::main_axis_align(cn, l.orientation);
+            let cross = layout::cross_axis_align(cn, l.orientation, stack_align);
+            if layout::cross_axis_is_horizontal(l.orientation) {
+                w.set_halign(cross);
+                w.set_valign(main);
+            } else {
+                w.set_halign(main);
+                w.set_valign(cross);
             }
         }
-
         self.reconcile_box_children(&parent, children);
     }
 
@@ -537,6 +772,14 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
             return;
         };
         let columns = layout::grid_columns(node);
+        // Per-cell alignment (LAYOUT.md): a `FILL`/greedy cell stretches on an
+        // axis, anything else keeps its size and is positioned at the start.
+        for child_id in children {
+            if let (Some(w), Some(cn)) = (self.widgets.get(child_id), self.tree.node(*child_id)) {
+                w.set_halign(layout::grid_cell_align(cn, layout::Axis::Horizontal));
+                w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical));
+            }
+        }
         if grid_matches(grid, children, columns, &self.widgets) {
             return;
         }
@@ -781,6 +1024,9 @@ pub enum WidgetKind {
     Menu,
     /// `COLOR_PICKER` → `GtkColorButton`.
     ColorPicker,
+    /// `AUDIO`/`VIDEO` → a media container (playback is driven by the node's
+    /// media control properties; see [`GtkRenderer::sync_media`]).
+    Media,
     /// Any component the renderer does not map yet → a blank `GtkLabel`.
     Blank,
 }
@@ -801,6 +1047,7 @@ pub fn widget_kind(component_type: u16) -> WidgetKind {
         component_type::ZSTACK => WidgetKind::Overlay,
         component_type::SPACER => WidgetKind::Spacer,
         component_type::IMAGE => WidgetKind::Image,
+        component_type::AUDIO | component_type::VIDEO => WidgetKind::Media,
         component_type::TOGGLE => WidgetKind::Toggle,
         component_type::SLIDER => WidgetKind::Slider,
         component_type::TEXT_FIELD => WidgetKind::TextField,
@@ -884,6 +1131,13 @@ fn is_container(component_type: u16) -> bool {
     )
 }
 
+/// Whether a composite control body lays out horizontally: a `BUTTON` body is a
+/// row (the HTML renderer's `.pathland-button` is `display:inline-flex`);
+/// `TOGGLE`/`MENU` bodies stay vertical (HTML wraps those as block/inline-block).
+fn composite_horizontal(component_type: u16) -> bool {
+    component_type == component_type::BUTTON
+}
+
 /// Whether a semantic control has a custom body (Composite Override Mode):
 /// children present → the control renders the child tree wrapped in its native
 /// shell instead of its default chrome.
@@ -893,6 +1147,129 @@ fn is_composite(node: &HostNode) -> bool {
             node.component_type,
             component_type::BUTTON | component_type::TOGGLE | component_type::MENU
         )
+}
+
+/// Whether a node is app-driven media: an `AUDIO`/`VIDEO` component, or any
+/// node carrying a media source (a custom `AudioStyle`/`VideoStyle` body keeps
+/// its own component — e.g. a `VStack` — and adds the media properties).
+fn is_media_node(node: &HostNode) -> bool {
+    matches!(node.component_type, component_type::AUDIO | component_type::VIDEO)
+        || node.string_property(property_id::AUDIO_SOURCE).is_some()
+        || node.string_property(property_id::VIDEO_SOURCE).is_some()
+}
+
+/// The asset root directory (set once by a foreign host before `run`, via
+/// `pathland_gtk_set_asset_root`): web-style `/_pathland/...` source paths
+/// resolve against it so a desktop host can play/serve local copies of the
+/// same assets. Empty = sources used as-is.
+static ASSET_ROOT: Mutex<Option<String>> = Mutex::new(None);
+
+/// Set the asset root (see [`ASSET_ROOT`]). Returns the previous value.
+pub fn set_asset_root(root: String) -> Option<String> {
+    *ASSET_ROOT.lock().unwrap() = Some(root);
+    ASSET_ROOT.lock().unwrap().clone()
+}
+
+/// Resolve a media/image source path: `/_pathland/<rest>` → `<root>/<rest>`
+/// when an asset root is configured, otherwise the source unchanged.
+fn resolve_asset(source: &str) -> String {
+    let rest = source.strip_prefix("/_pathland/");
+    match (rest, ASSET_ROOT.lock().unwrap().as_deref()) {
+        (Some(rest), Some(root)) if !root.is_empty() => {
+            let root = root.trim_end_matches('/');
+            if root.is_empty() {
+                source.to_string()
+            } else {
+                format!("{root}/{rest}")
+            }
+        }
+        _ => source.to_string(),
+    }
+}
+
+/// Monotonic milliseconds (for echo-suppression windows), measured from the
+/// first call.
+fn monotonic_ms() -> u64 {
+    static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    START.get_or_init(Instant::now).elapsed().as_millis() as u64
+}
+
+/// Whether a `MEDIA_POSITION` write is a real seek (a user drag) rather than
+/// the app's echo of its own `MEDIA_TIME_UPDATED` — within 0.25s of the
+/// current position it is an echo and must not interrupt playback.
+fn should_seek(now_seconds: f64, target_seconds: f64) -> bool {
+    (now_seconds - target_seconds).abs() > 0.25
+}
+
+/// Whether a `MEDIA_TIME_UPDATED` should be reported: the playback position
+/// advanced ~1 second since the last report (the cadence the web client uses,
+/// so both renderers tick the seek bar once per second).
+fn should_report_time(last_seconds: f32, current_seconds: f32) -> bool {
+    (current_seconds - last_seconds).abs() >= 1.0
+}
+
+/// A renderer-owned media player: the native `GtkMediaFile` (GStreamer-backed,
+/// shipped inside GTK4) that plays a node's `AUDIO_SOURCE`/`VIDEO_SOURCE`, plus
+/// the state the event wiring shares with the stream's signals and the periodic
+/// time reporter. The app owns all playback state; this is only the rendered
+/// output (the desktop analog of the web client's hidden `<audio>`).
+struct MediaPlayer {
+    /// The GStreamer pipeline hosting the `playbin` (owns the bus).
+    pipeline: gst::Pipeline,
+    /// The `playbin` element (source URI, volume, position, seeks).
+    playbin: gst::Element,
+    /// The resolved source it was created for (to detect a source change).
+    source: String,
+    /// The app's last requested play state (drives the time reporter and
+    /// resume-on-source-change).
+    requested_playing: Rc<Cell<bool>>,
+    /// Monotonic ms until which time updates are suppressed (a just-applied
+    /// seek must not echo back as a new position).
+    suppress_until: Rc<Cell<u64>>,
+    /// The periodic time-update/bus-poll source (removed on teardown so a dead
+    /// node's pipeline is released).
+    timer: Option<glib::SourceId>,
+}
+
+impl MediaPlayer {
+    /// Cancel the periodic reporter and release the pipeline.
+    fn teardown(self) {
+        if let Some(timer) = self.timer {
+            timer.remove();
+        }
+        let _ = self.pipeline.set_state(gst::State::Null);
+    }
+}
+
+/// Build a `playbin` pipeline for a resolved local media file. GStreamer is
+/// initialized once per process (a no-op when already done).
+fn build_playbin(resolved: &str) -> Option<(gst::Pipeline, gst::Element)> {
+    static INIT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if !*INIT.get_or_init(|| gst::init().is_ok()) {
+        return None;
+    }
+    let pipeline = gst::Pipeline::new();
+    let playbin = gst::ElementFactory::make("playbin").build().ok()?;
+    pipeline.add(&playbin).ok()?;
+    playbin.set_property("uri", file_uri(resolved));
+    playbin.sync_state_with_parent().ok()?;
+    Some((pipeline, playbin))
+}
+
+/// A `file://` URI for a local path (percent-encoding the characters that break
+/// a URI).
+fn file_uri(path: &str) -> String {
+    let mut uri = String::from("file://");
+    for ch in path.chars() {
+        match ch {
+            ' ' => uri.push_str("%20"),
+            '#' => uri.push_str("%23"),
+            '?' => uri.push_str("%3F"),
+            '%' => uri.push_str("%25"),
+            _ => uri.push(ch),
+        }
+    }
+    uri
 }
 
 /// The current child widgets of a native widget, in child/draw order.
@@ -960,6 +1337,9 @@ fn build_widget(node: &HostNode) -> gtk::Widget {
             bx.upcast()
         }
         WidgetKind::Image => gtk::Picture::new().upcast(),
+        // Bare `AUDIO`/`VIDEO`: a hidden playback container (the stream itself is
+        // not a widget). A custom media style renders its own body container.
+        WidgetKind::Media => GtkBox::new(gtk::Orientation::Vertical, 0).upcast(),
         WidgetKind::Toggle => toggle_widget(node),
         WidgetKind::Slider => {
             let min = f64::from(node.f32_property(property_id::MIN_VALUE, 0.0));
@@ -1275,27 +1655,77 @@ fn apply_padding(widget: &gtk::Widget, node: &HostNode) {
     widget.set_margin_start(e.left);
 }
 
-/// How a `WIDTH`/`HEIGHT` property maps to GTK sizing.
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum SizeHint {
-    /// No hint: leave the widget's natural size and default expand state.
-    None,
-    /// Expand to the available space (`size::FILL`, i.e. SwiftUI `.infinity`).
-    Fill,
-    /// A fixed size request.
-    Fixed(i32),
+/// The finite points value of a `WIDTH`/`HEIGHT` property, or `None` when it is
+/// absent, `FILL`, or `HUG_CONTENT` (no fixed box).
+fn fixed_size(node: &HostNode, prop: u16) -> Option<i32> {
+    match layout::size_hint(node.properties.get(&prop).copied()) {
+        layout::SizeHint::Fixed(v) => Some(v),
+        _ => None,
+    }
 }
 
-/// Map a stored `WIDTH`/`HEIGHT` property (bit pattern) to a sizing hint.
-/// `FILL` (-1.0) → `Fill`; a positive finite value → `Fixed`; `HUG_CONTENT`
-/// (-2.0), zero, and non-finite (defensive: the ring path never normalizes) →
-/// `None`.
-fn size_hint(bits: Option<u32>) -> SizeHint {
-    match bits.map(f32::from_bits) {
-        None => SizeHint::None,
-        Some(v) if v == size::FILL => SizeHint::Fill,
-        Some(v) if v.is_finite() && v > 0.0 => SizeHint::Fixed(v as i32),
-        Some(_) => SizeHint::None,
+/// Where content of size `(src_w, src_h)` sits inside a `(box_w, box_h)` points
+/// box for a content mode: `Fit` (0) scales to fit, centered (letterboxed);
+/// `Fill` (1) scales to cover and crops. Returns the target `(x, y, w, h)` in
+/// box coordinates (for `Fit`, `w`/`h` are the fitted content size and `x`/`y`
+/// its centered offset; for `Fill`, the crop window over the scaled content).
+fn fit_rect(src_w: i32, src_h: i32, box_w: i32, box_h: i32, mode: u32) -> (i32, i32, i32, i32) {
+    let sw = src_w.max(1) as f64;
+    let sh = src_h.max(1) as f64;
+    let bw = box_w.max(1) as f64;
+    let bh = box_h.max(1) as f64;
+    let scale = if mode == 1 {
+        (bw / sw).max(bh / sh) // cover: fill the box
+    } else {
+        (bw / sw).min(bh / sh) // fit: fit within the box
+    };
+    let tw = (sw * scale).round() as i32;
+    let th = (sh * scale).round() as i32;
+    let x = (box_w - tw) / 2;
+    let y = (box_h - th) / 2;
+    (x, y, tw, th)
+}
+
+/// Decode a fixed-size image into a `box_w`×`box_h` points box: `Fit` (0)
+/// scales to fit and centers it on a transparent canvas (letterbox); `Fill` (1)
+/// scales to cover and crops to the box. The box-sized pixbuf makes
+/// `GtkPicture`'s natural size equal the requested box (logical points),
+/// matching the web/SwiftUI. Returns `None` on decode/scale failure.
+fn scale_image_to_box(path: &str, box_w: i32, box_h: i32, mode: u32) -> Option<gdk_pixbuf::Pixbuf> {
+    use gdk_pixbuf::{Colorspace, InterpType, Pixbuf};
+    let src = Pixbuf::from_file(path).ok()?;
+    if box_w <= 0 || box_h <= 0 {
+        return Some(src);
+    }
+    let (x, y, tw, th) = fit_rect(src.width(), src.height(), box_w, box_h, mode);
+    let scaled = src
+        .scale_simple(tw.max(1), th.max(1), InterpType::Bilinear)?;
+    if mode == 1 {
+        // Cover: crop the box-sized region from the center of the scaled content.
+        Some(scaled.new_subpixbuf(
+            (tw - box_w) / 2,
+            (th - box_h) / 2,
+            box_w,
+            box_h,
+        ))
+    } else {
+        // Fit: place the scaled content centered on a box-sized transparent canvas.
+        let canvas = Pixbuf::new(Colorspace::Rgb, true, 8, box_w, box_h)?;
+        canvas.fill(0);
+        scaled.composite(
+            &canvas,
+            x,
+            y,
+            tw,
+            th,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            InterpType::Bilinear,
+            255,
+        );
+        Some(canvas)
     }
 }
 
@@ -1311,21 +1741,21 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
     }
     let w = node.properties.get(&property_id::WIDTH).copied();
     let h = node.properties.get(&property_id::HEIGHT).copied();
-    let sw = size_hint(w);
-    let sh = size_hint(h);
+    let sw = layout::size_hint(w);
+    let sh = layout::size_hint(h);
     // FILL (-1.0) means "expand to available space": grow on the axis and align
     // the widget into it (SwiftUI `maxWidth/maxHeight: .infinity`). A finite
     // value becomes a size request; HUG_CONTENT / absence leaves the natural size.
     // A present-but-not-FILL axis resets a previous expansion so updates are
     // idempotent; an absent axis is left untouched (preserves widget defaults
     // such as Spacer's built-in expand).
-    if let SizeHint::Fill = sw {
+    if let layout::SizeHint::Fill = sw {
         widget.set_hexpand(true);
         widget.set_halign(Align::Fill);
     } else if w.is_some() {
         widget.set_hexpand(false);
     }
-    if let SizeHint::Fill = sh {
+    if let layout::SizeHint::Fill = sh {
         widget.set_vexpand(true);
         widget.set_valign(Align::Fill);
     } else if h.is_some() {
@@ -1334,11 +1764,11 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
     if w.is_some() || h.is_some() {
         widget.set_size_request(
             match sw {
-                SizeHint::Fixed(v) => v,
+                layout::SizeHint::Fixed(v) => v,
                 _ => -1,
             },
             match sh {
-                SizeHint::Fixed(v) => v,
+                layout::SizeHint::Fixed(v) => v,
                 _ => -1,
             },
         );
@@ -1650,18 +2080,61 @@ mod tests {
     use super::*;
     use pathland_engine::Engine;
     use pathland_core::tokens::Scheme;
-    use pathland_core::{init_memory, property_id, value_type, Guest, Host, MemoryLayout};
+    use pathland_core::{init_memory, property_id, size, value_type, Guest, Host, MemoryLayout};
     use pathland_view::{assign_ids, text, vstack, View, ViewExt};
 
     #[test]
     fn size_hint_maps_width_height_sentinels() {
-        assert_eq!(size_hint(None), SizeHint::None);
-        assert_eq!(size_hint(Some(size::FILL.to_bits())), SizeHint::Fill);
-        assert_eq!(size_hint(Some(24.0f32.to_bits())), SizeHint::Fixed(24));
+        assert_eq!(layout::size_hint(None), layout::SizeHint::None);
+        assert_eq!(
+            layout::size_hint(Some(size::FILL.to_bits())),
+            layout::SizeHint::Fill
+        );
+        assert_eq!(
+            layout::size_hint(Some(24.0f32.to_bits())),
+            layout::SizeHint::Fixed(24)
+        );
         // HUG_CONTENT (-2.0), zero, and non-finite values are natural size.
-        assert_eq!(size_hint(Some(size::HUG_CONTENT.to_bits())), SizeHint::None);
-        assert_eq!(size_hint(Some(0.0f32.to_bits())), SizeHint::None);
-        assert_eq!(size_hint(Some(f32::INFINITY.to_bits())), SizeHint::None);
+        assert_eq!(
+            layout::size_hint(Some(size::HUG_CONTENT.to_bits())),
+            layout::SizeHint::None
+        );
+        assert_eq!(layout::size_hint(Some(0.0f32.to_bits())), layout::SizeHint::None);
+        assert_eq!(
+            layout::size_hint(Some(f32::INFINITY.to_bits())),
+            layout::SizeHint::None
+        );
+    }
+
+    #[test]
+    fn fit_rect_matches_object_fit_semantics() {
+        // A 600x600 source in a 36x36 box → fills the box exactly.
+        assert_eq!(fit_rect(600, 600, 36, 36, 0), (0, 0, 36, 36));
+        // A 600x400 (3:2) source in a 36x36 box → fits by width, centered y.
+        assert_eq!(fit_rect(600, 400, 36, 36, 0), (0, 6, 36, 24));
+        // Fit scales up small sources too.
+        assert_eq!(fit_rect(20, 10, 36, 36, 0), (0, 9, 36, 18));
+        // Fill (cover): scale to cover the box; the scaled content extends past it
+        // (negative centering offsets; the crop window is derived from w/h).
+        assert_eq!(fit_rect(600, 400, 36, 36, 1), (-9, 0, 54, 36));
+        assert_eq!(fit_rect(400, 600, 36, 36, 1), (0, -9, 36, 54));
+    }
+
+    #[test]
+    fn scale_image_to_box_produces_a_points_sized_pixbuf() {
+        use gdk_pixbuf::{Colorspace, Pixbuf};
+        // A real 600x400 source, saved as PNG, then scaled into a 36x36 box:
+        // both Fit and Fill must yield a 36x36 pixbuf (GtkPicture's natural size
+        // then equals the requested points box).
+        let src = Pixbuf::new(Colorspace::Rgb, false, 8, 600, 400).unwrap();
+        src.fill(0x00FF0000); // red
+        let path = std::env::temp_dir().join("pathland-scale-test.png");
+        src.savev(&path, "png", &[]).unwrap();
+        let fit = scale_image_to_box(path.to_str().unwrap(), 36, 36, 0).unwrap();
+        assert_eq!((fit.width(), fit.height()), (36, 36));
+        let cover = scale_image_to_box(path.to_str().unwrap(), 36, 36, 1).unwrap();
+        assert_eq!((cover.width(), cover.height()), (36, 36));
+        std::fs::remove_file(&path).ok();
     }
 
     #[test]
@@ -1857,8 +2330,62 @@ mod tests {
         assert_eq!(widget_kind(PICKER), WidgetKind::Picker);
         assert_eq!(widget_kind(MENU), WidgetKind::Menu);
         assert_eq!(widget_kind(COLOR_PICKER), WidgetKind::ColorPicker);
+        assert_eq!(widget_kind(AUDIO), WidgetKind::Media);
+        assert_eq!(widget_kind(VIDEO), WidgetKind::Media);
         // Components without a mapping fall back to a blank widget.
         assert_eq!(widget_kind(COMMENT), WidgetKind::Blank);
+    }
+
+    #[test]
+    fn media_node_detection_and_asset_resolution() {
+        // An AUDIO/VIDEO component, or any node carrying a media source.
+        let audio = HostNode {
+            component_type: component_type::AUDIO,
+            ..Default::default()
+        };
+        assert!(is_media_node(&audio));
+        let mut vstack = HostNode {
+            component_type: component_type::VSTACK,
+            ..Default::default()
+        };
+        assert!(!is_media_node(&vstack));
+        vstack.strings.insert(property_id::AUDIO_SOURCE, "/_pathland/assets/audio/track1.mp3".into());
+        assert!(is_media_node(&vstack));
+
+        // No asset root → sources pass through unchanged.
+        *ASSET_ROOT.lock().unwrap() = None;
+        assert_eq!(resolve_asset("/_pathland/assets/audio/track1.mp3"), "/_pathland/assets/audio/track1.mp3");
+        assert_eq!(resolve_asset("/local/track.mp3"), "/local/track.mp3");
+
+        // An asset root maps web-style paths to the local copy.
+        set_asset_root("/tmp/pathland-assets/_pathland".to_string());
+        assert_eq!(resolve_asset("/_pathland/assets/audio/track1.mp3"), "/tmp/pathland-assets/_pathland/assets/audio/track1.mp3");
+        assert_eq!(resolve_asset("/local/track.mp3"), "/local/track.mp3");
+        *ASSET_ROOT.lock().unwrap() = None;
+    }
+
+    #[test]
+    fn media_seek_is_echo_guarded() {
+        // A user drag is a real seek (> 0.25s from the current position)…
+        assert!(should_seek(30.0, 120.0));
+        assert!(should_seek(120.0, 30.0));
+        // …but the app's MEDIA_TIME_UPDATED echo is near-identical and must not.
+        assert!(!should_seek(120.0, 120.1));
+        assert!(!should_seek(120.1, 120.0));
+        assert!(!should_seek(30.0, 30.0));
+    }
+
+    #[test]
+    fn media_time_reports_once_per_second() {
+        // A MEDIA_TIME_UPDATED is reported only when the position advanced ~1s
+        // since the last report (the web client's cadence — slider ticks 1/s).
+        assert!(!should_report_time(0.0, 0.9));
+        assert!(!should_report_time(10.0, 10.5));
+        assert!(should_report_time(0.0, 1.0));
+        assert!(should_report_time(0.0, 1.1));
+        assert!(should_report_time(10.0, 11.2));
+        // Backward jumps (a seek the app applied) also report.
+        assert!(should_report_time(30.0, 20.0));
     }
 
     #[test]
@@ -1870,6 +2397,17 @@ mod tests {
         for ct in [TEXT, BUTTON, SPACER, IMAGE, TOGGLE, SLIDER] {
             assert!(!is_container(ct), "{ct:#x} should not be a container");
         }
+    }
+
+    #[test]
+    fn composite_button_bodies_lay_out_horizontally() {
+        use component_type::*;
+        // A BUTTON composite body is a row (parity with the HTML inline-flex
+        // button); TOGGLE/MENU bodies stay vertical (HTML block/inline-block).
+        assert!(composite_horizontal(BUTTON));
+        assert!(!composite_horizontal(TOGGLE));
+        assert!(!composite_horizontal(MENU));
+        assert!(!composite_horizontal(HSTACK));
     }
 
     #[test]

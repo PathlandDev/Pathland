@@ -223,6 +223,29 @@ its own native control geometry.
 | --------- | ------- | --- | --- | --- | ------- | --------------------- |
 | `NAVIGATE` | 0x0E | 0 | URL string offset | 0 | `NAVIGATE_URL` (0x0001) | browser back/forward (`popstate`), a deep link, or a native back affordance |
 
+### Media
+
+Media events report a `AUDIO`/`VIDEO` node's playback state back to the app
+(target = the media node id). They are reported by the renderer by virtue of the
+media node's component type — no listener bit, mirroring `VALUE_CHANGED` — and
+only when the app has bound the corresponding control property (so a
+renderer-native `<audio controls>` reports nothing).
+
+| Command | Value | A | B | C | Flags | SwiftUI counterpart |
+| --------- | ------- | --- | --- | --- | ------- | --------------------- |
+| `MEDIA_PLAY_STATE_CHANGED` | 0x0F | targetId | playing (0/1) | 0 | — | `AVPlayer` play/pause |
+| `MEDIA_TIME_UPDATED` | 0x10 | targetId | seconds (f32) | 0 | — | periodic time observer |
+| `MEDIA_ENDED` | 0x11 | targetId | 0 | 0 | — | `AVPlayerItemDidPlayToEndTime` |
+| `MEDIA_VOLUME_CHANGED` | 0x12 | targetId | volume (f32, 0..1) | 0 | — | `AVPlayer.volume` |
+
+- **`MEDIA_TIME_UPDATED`**: the media's current playback position in seconds.
+  Reported **when the playback position advances ~1 second** (at most ~1/s)
+  while playing; a seek initiated by the app (`MEDIA_POSITION` change) is not
+  echoed back.
+- **Guards**: media events flow only when the app bound the matching control
+  property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`) on the node; a
+  plain `<audio controls>` reports nothing.
+
 - **`NAVIGATE` is a global event — never node-gated.** It carries **no
   `targetId`** (`A` = 0) and is **not** subject to `EVENT_LISTENERS` or the
   transport-aware event guards: the renderer/host emits it only when the

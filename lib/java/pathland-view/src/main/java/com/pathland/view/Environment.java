@@ -43,6 +43,22 @@ public final class Environment {
      * (defaulting to {@link LabelStyle#TITLE_AND_ICON}).
      */
     public static final EnvironmentKey<LabelStyle> LABEL_STYLE = EnvironmentKey.of("labelStyle");
+
+    /**
+     * The environment key for the active {@link AudioStyle} (SwiftUI
+     * {@code .audioStyle}). {@code AudioStyleMod} binds it down the wrapped subtree;
+     * {@link Audio} reads it with {@link #audioStyle()} (defaulting to
+     * {@link NativeAudioStyle}).
+     */
+    public static final EnvironmentKey<AudioStyle> AUDIO_STYLE = EnvironmentKey.of("audioStyle");
+
+    /**
+     * The environment key for the active {@link VideoStyle} (SwiftUI
+     * {@code .videoStyle}). {@code VideoStyleMod} binds it down the wrapped subtree;
+     * {@link Video} reads it with {@link #videoStyle()} (defaulting to
+     * {@link NativeVideoStyle}).
+     */
+    public static final EnvironmentKey<VideoStyle> VIDEO_STYLE = EnvironmentKey.of("videoStyle");
     private static final ThreadLocal<EnvironmentValues> VALUES = ThreadLocal.withInitial(EnvironmentValues::empty);
 
     /** The default environment (no persistent state; buttons render with {@link PlainButtonStyle}). */
@@ -77,6 +93,24 @@ public final class Environment {
     public LabelStyle labelStyle() {
         LabelStyle style = Environment.value(LABEL_STYLE).get();
         return style != null ? style : LabelStyle.TITLE_AND_ICON;
+    }
+
+    /**
+     * The audio style active for the current render — the scoped environment value
+     * {@link #AUDIO_STYLE}, defaulting to {@link NativeAudioStyle}.
+     */
+    public AudioStyle audioStyle() {
+        AudioStyle style = Environment.value(AUDIO_STYLE).get();
+        return style != null ? style : NativeAudioStyle.INSTANCE;
+    }
+
+    /**
+     * The video style active for the current render — the scoped environment value
+     * {@link #VIDEO_STYLE}, defaulting to {@link NativeVideoStyle}.
+     */
+    public VideoStyle videoStyle() {
+        VideoStyle style = Environment.value(VIDEO_STYLE).get();
+        return style != null ? style : NativeVideoStyle.INSTANCE;
     }
 
     // --- generic environment values ---
