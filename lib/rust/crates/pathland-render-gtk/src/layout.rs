@@ -152,6 +152,13 @@ pub fn stack_align_option(node: &HostNode) -> Option<Align> {
         .filter(|a| *a != Align::Fill)
 }
 
+/// The rounded, non-negative `SPACING` of a node (0 when absent or negative).
+/// Applies to stacks, grids, and composite-control bodies (a control whose
+/// label flattened a stack carries that stack's `SPACING`).
+pub fn spacing(node: &HostNode) -> i32 {
+    f32_prop(node, property_id::SPACING).map(round_nonneg).unwrap_or(0)
+}
+
 /// Main-axis alignment for a stack child: effectively-`FILL` children (and
 /// greedy main-axis primitives like `SPACER`) stretch; everything else is
 /// positioned at the start — leftover main-axis space goes to `FILL` children
@@ -206,12 +213,10 @@ pub fn grid_cell_align(node: &HostNode, axis: Axis) -> Align {
 /// Compute the stack layout from a node's component type + properties.
 ///
 /// Returns `None` for non-stack components. Defaults (absent properties):
-/// spacing `0`, cross-axis alignment `Fill`.
+/// spacing `0`, cross-axis alignment `Start`.
 pub fn stack_layout(node: &HostNode) -> Option<StackLayout> {
     let orientation = stack_orientation(node.component_type)?;
-    let spacing = f32_prop(node, property_id::SPACING)
-        .map(round_nonneg)
-        .unwrap_or(0);
+    let spacing = spacing(node);
     let child_align = node
         .properties
         .get(&property_id::ALIGNMENT)
@@ -559,6 +564,27 @@ mod tests {
         hug_tree.nodes.insert(2, node(component_type::TEXT, &[]));
         assert_eq!(main_axis_align(&stack, v, &hug_tree), Align::Start);
         assert_eq!(cross_axis_align(&stack, v, None, &hug_tree), Align::Start);
+    }
+
+    #[test]
+    fn spacing_clamps_and_rounds_for_any_node() {
+        // Absent → 0.
+        assert_eq!(spacing(&node(component_type::VSTACK, &[])), 0);
+        // Rounded from f32 bits; negative clamps to zero.
+        assert_eq!(
+            spacing(&node(component_type::HSTACK, &[(property_id::SPACING, f32_bits(12.4))])),
+            12
+        );
+        assert_eq!(
+            spacing(&node(component_type::HSTACK, &[(property_id::SPACING, f32_bits(-8.0))])),
+            0
+        );
+        // Works for non-stack components too (a composite control's flattened
+        // label carries the stack's SPACING on the control node).
+        assert_eq!(
+            spacing(&node(component_type::BUTTON, &[(property_id::SPACING, f32_bits(12.0))])),
+            12
+        );
     }
 
     #[test]

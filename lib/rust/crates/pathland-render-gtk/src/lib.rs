@@ -260,6 +260,16 @@ impl GtkRenderer {
             .tree
             .node(parent_id)
             .is_some_and(|n| composite_horizontal(n.component_type));
+        // The body's SPACING comes from the control node itself: a composite
+        // control whose label flattened a stack (e.g. `Button.of(HStack, …)`)
+        // carries that stack's `SPACING` on the button node, and the button's
+        // body box must reproduce the gap (HTML emits `gap` on the `<button>`).
+        // Re-applied on every reconcile so a `SPACING` delta takes effect.
+        let spacing = self
+            .tree
+            .node(parent_id)
+            .map(layout::spacing)
+            .unwrap_or(0);
         // The button's own main/cross-axis alignment is governed by its parent
         // stack's per-child rule in `sync_stack_children` (LAYOUT.md: a
         // composite control hugs on the main axis unless it is `FILL`-sized).
@@ -272,13 +282,16 @@ impl GtkRenderer {
                 } else {
                     gtk::Orientation::Vertical
                 },
-                0,
+                spacing,
             );
             btn.set_child(Some(&bx));
             let bxw: gtk::Widget = bx.upcast();
             self.composite_boxes.insert(parent_id, bxw.clone());
             bxw
         };
+        if let Ok(bx) = box_widget.clone().downcast::<GtkBox>() {
+            bx.set_spacing(spacing);
+        }
         // A horizontal (BUTTON) body centers its children on the cross axis,
         // matching the HTML button's `align-items:center`.
         if horizontal {
@@ -774,6 +787,10 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             return;
         };
         let columns = layout::grid_columns(node);
+        // SPACING → uniform row + column gap (HTML renders `gap` on grids).
+        let gap = layout::spacing(node);
+        grid.set_row_spacing(gap as u32);
+        grid.set_column_spacing(gap as u32);
         // Per-cell alignment (LAYOUT.md): a `FILL`/greedy cell stretches on an
         // axis, anything else keeps its size and is positioned at the start.
         for child_id in children {

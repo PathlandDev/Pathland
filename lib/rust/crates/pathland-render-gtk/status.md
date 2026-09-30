@@ -189,6 +189,13 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 - **CONTENT_MARGINS vs PADDING precedence**: `CONTENT_MARGINS` is applied after
   `PADDING` in `apply_style`, so it currently wins; the spec (PRIMITIVES.md)
   requires `PADDING` > `CONTENT_MARGINS`. Pending.
+- **SPACING** (spec/PRIMITIVES.md): applied on stacks (`GtkBox` spacing,
+  re-set every frame), on **grids** (`row_spacing`/`column_spacing` from
+  `SPACING`, `sync_grid_children`), and on **composite-control bodies**
+  (`sync_composite_children` reads the control node's `SPACING` — a control
+  whose label flattened a stack, e.g. `Button.of(HStack, …)`, carries the
+  stack's `SPACING`, and its body box reproduces the gap like the HTML
+  renderer's `gap`). Covered by `spacing_clamps_and_rounds_for_any_node`.
 - **`CLIPS_TO_BOUNDS`** is not implemented (no `set_overflow`/clip anywhere): a
   Fixed box's overflow is drawn outside the box instead of clipped (spec
   LAYOUT.md / PRIMITIVES.md, SwiftUI `.clipped()` parity). Pending.
