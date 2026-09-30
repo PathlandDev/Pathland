@@ -1,0 +1,53 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3RPZGENV6H8K7BSWMYSAYHA",
+  "session_id": "ses_f19ed713affeZaLNsSlXVxmfpL",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-30T08:30:41.952103Z",
+  "branch": "feat/music-player-demo",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "spec/LAYOUT.md",
+    "spec/OPCODE.md",
+    "spec/MODIFIERS.md",
+    "AGENTS.md",
+    "lib/rust/crates/pathland-render-gtk/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "6e12d7127955",
+  "checkpoint_transcript_start": 1369,
+  "transcript_lines_at_start": 1369,
+  "compact_transcript_start": 1369,
+  "token_usage": {
+    "input_tokens": 3419618,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 7543040,
+    "output_tokens": 18655,
+    "api_call_count": 17
+  },
+  "session_metrics": {
+    "turn_count": 96
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-30T08:30:40.50721Z",
+    "agent_lines": 172,
+    "agent_removed": 4,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 172,
+    "total_lines_changed": 176,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
