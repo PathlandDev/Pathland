@@ -28,7 +28,8 @@ public final class NowPlayingSidebar implements View {
                         .with(AccessibilityRole.of(Roles.HEADER)),
                 Image.of(computed(() -> MusicPlayerView.at(trackIndex.get()).cover()))
                         .with(FrameMod.of(220, 220), ScaledToFit.of())
-                        .with(Padding.of(0, 0, 0, 6)),
+                        .with(Padding.of(0, 0, 0, 6))
+                        with(Border.of(Color.BLACK, 1, 4)),
                 Text.of(computed(() -> MusicPlayerView.at(trackIndex.get()).title()))
                         .with(FontSize.of(20), FontWeightMod.of(FontWeight.BOLD)),
                 Text.of(computed(() -> MusicPlayerView.at(trackIndex.get()).artist()

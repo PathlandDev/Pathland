@@ -1,0 +1,222 @@
+1
+00:00:00,000 --> 00:00:10,000
+♪
+
+2
+00:00:10,000 --> 00:00:12,500
+♪ First you take your view logic and put it in the back,
+Forget about the bundlers and the JavaScript stack. ♪
+
+3
+00:00:12,500 --> 00:00:15,000
+♪ First you take your view logic and put it in the back,
+Forget about the bundlers and the JavaScript stack.
+Java or Rust writes a declarative tree, ♪
+
+4
+00:00:15,000 --> 00:00:17,500
+♪ Forget about the bundlers and the JavaScript stack.
+Java or Rust writes a declarative tree,
+That compiles down to binary for any eyes to see. ♪
+
+5
+00:00:17,500 --> 00:00:20,000
+♪ Java or Rust writes a declarative tree,
+That compiles down to binary for any eyes to see.
+Fixed sixteen byte opcodes flowing through the air, ♪
+
+6
+00:00:20,000 --> 00:00:22,500
+♪ That compiles down to binary for any eyes to see.
+Fixed sixteen byte opcodes flowing through the air,
+A universal contract that handles every single layer. ♪
+
+7
+00:00:22,500 --> 00:00:25,000
+♪ Fixed sixteen byte opcodes flowing through the air,
+A universal contract that handles every single layer.
+Pathland is the open UI protocol. ♪
+
+8
+00:00:25,000 --> 00:00:29,000
+♪ A universal contract that handles every single layer.
+Pathland is the open UI protocol.
+Pathland is the open UI protocol. ♪
+
+9
+00:00:29,000 --> 00:00:33,000
+♪ Pathland is the open UI protocol.
+Pathland is the open UI protocol.
+Write it once in any language. ♪
+
+10
+00:00:33,000 --> 00:00:37,000
+♪ Pathland is the open UI protocol.
+Write it once in any language.
+Render natively anywhere. ♪
+
+11
+00:00:37,000 --> 00:00:41,000
+♪ Write it once in any language.
+Render natively anywhere.
+Pathland is the open UI protocol. ♪
+
+12
+00:00:41,000 --> 00:00:45,000
+♪ Render natively anywhere.
+Pathland is the open UI protocol.
+The flagship path is running on a live WebSocket, ♪
+
+13
+00:00:45,000 --> 00:00:47,500
+♪ Pathland is the open UI protocol.
+The flagship path is running on a live WebSocket,
+Server side HTML is the fastest bet you get. ♪
+
+14
+00:00:47,500 --> 00:00:50,000
+♪ The flagship path is running on a live WebSocket,
+Server side HTML is the fastest bet you get.
+The first page loads instantly with zero lag at all, ♪
+
+15
+00:00:50,000 --> 00:00:52,500
+♪ Server side HTML is the fastest bet you get.
+The first page loads instantly with zero lag at all,
+Then tiny binary deltas answer every single call. ♪
+
+16
+00:00:52,500 --> 00:00:55,000
+♪ The first page loads instantly with zero lag at all,
+Then tiny binary deltas answer every single call.
+An unchanged screen transmits absolutely zero bytes, ♪
+
+17
+00:00:55,000 --> 00:00:57,500
+♪ Then tiny binary deltas answer every single call.
+An unchanged screen transmits absolutely zero bytes,
+Just sixty frames per second under native glowing lights. ♪
+
+18
+00:00:57,500 --> 00:01:00,000
+♪ An unchanged screen transmits absolutely zero bytes,
+Just sixty frames per second under native glowing lights.
+Pathland is the open UI protocol. ♪
+
+19
+00:01:00,000 --> 00:01:04,000
+♪ Just sixty frames per second under native glowing lights.
+Pathland is the open UI protocol.
+Pathland is the open UI protocol. ♪
+
+20
+00:01:04,000 --> 00:01:08,000
+♪ Pathland is the open UI protocol.
+Pathland is the open UI protocol.
+Write it once in any language. ♪
+
+21
+00:01:08,000 --> 00:01:12,000
+♪ Pathland is the open UI protocol.
+Write it once in any language.
+Render natively anywhere. ♪
+
+22
+00:01:12,000 --> 00:01:16,000
+♪ Write it once in any language.
+Render natively anywhere.
+Pathland is the open UI protocol. ♪
+
+23
+00:01:16,000 --> 00:01:20,000
+♪ Render natively anywhere.
+Pathland is the open UI protocol.
+It runs on desktop with GTK and WebAssembly too, ♪
+
+24
+00:01:20,000 --> 00:01:23,750
+♪ Pathland is the open UI protocol.
+It runs on desktop with GTK and WebAssembly too,
+Mobile and embedded devices can render views anew. ♪
+
+25
+00:01:23,750 --> 00:01:27,500
+♪ It runs on desktop with GTK and WebAssembly too,
+Mobile and embedded devices can render views anew.
+The logic stays in one place and compiles down to WASM, ♪
+
+26
+00:01:27,500 --> 00:01:31,250
+♪ Mobile and embedded devices can render views anew.
+The logic stays in one place and compiles down to WASM,
+Bridging every platform and every digital chasm. ♪
+
+27
+00:01:31,250 --> 00:01:35,000
+♪ The logic stays in one place and compiles down to WASM,
+Bridging every platform and every digital chasm.
+Pathland is the open UI protocol. ♪
+
+28
+00:01:35,000 --> 00:01:50,000
+♪
+
+29
+00:01:50,000 --> 00:01:54,000
+♪ Bridging every platform and every digital chasm.
+Pathland is the open UI protocol.
+Pathland is the open UI protocol. ♪
+
+30
+00:01:54,000 --> 00:01:58,000
+♪ Pathland is the open UI protocol.
+Pathland is the open UI protocol.
+Write it once in any language. ♪
+
+31
+00:01:58,000 --> 00:02:02,000
+♪ Pathland is the open UI protocol.
+Write it once in any language.
+Render natively anywhere. ♪
+
+32
+00:02:02,000 --> 00:02:06,000
+♪ Write it once in any language.
+Render natively anywhere.
+Pathland is the open UI protocol. ♪
+
+33
+00:02:06,000 --> 00:02:10,000
+♪ Render natively anywhere.
+Pathland is the open UI protocol.
+Check out the specs for the opcodes and vectors you need, ♪
+
+34
+00:02:10,000 --> 00:02:16,800
+♪ Pathland is the open UI protocol.
+Check out the specs for the opcodes and vectors you need,
+Run the simple scripts to experience the blinding speed. ♪
+
+35
+00:02:16,800 --> 00:02:23,600
+♪ Check out the specs for the opcodes and vectors you need,
+Run the simple scripts to experience the blinding speed.
+The wire is the contract from the start. ♪
+
+36
+00:02:23,600 --> 00:02:30,400
+♪ Run the simple scripts to experience the blinding speed.
+The wire is the contract from the start.
+Open UI protocol in every single part. ♪
+
+37
+00:02:30,400 --> 00:02:37,200
+♪ The wire is the contract from the start.
+Open UI protocol in every single part.
+Pathland is the open UI protocol. ♪
+
+38
+00:02:37,200 --> 00:02:44,000
+♪ Open UI protocol in every single part.
+Pathland is the open UI protocol. ♪
+
