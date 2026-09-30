@@ -91,17 +91,17 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   seconds) — bound to the media configuration's signals; the hidden media
   element plays the current track and reports time/ended/volume back into the
   player state (spec/EVENTS.md Media) — `MEDIA_ENDED` auto-advances. Track
-  selection / prev / next change app-owned state (position resets to 0). Each of
-  the 6 tracks is a **full-length** Kevin MacLeod track (incompetech.com, CC-BY
-  3.0 — the library shows the attribution credit), bundled mono-64k as
-  `trackN.mp3` with durations matching the real files, grouped into two albums
-  ("Country & Bluegrass", "Blues & Ragtime"). Album covers are **real
-  photographs** (`cover1/2.jpg`). Catalog (`Track` record, 2 albums)
-  with SVG album art + bundled royalty-free clips served from
-  `/_pathland/assets/albumart/*.svg` and `/_pathland/assets/audio/*.mp3` in both
+  selection / prev / next change app-owned state (position resets to 0). The 6
+  tracks are **Pathland concept songs** — one per album, genre-matched invented
+  artists (The Foundation, The Crossings, Rena Render, Ember Frame, Rowan
+  Frame, Neon Protocol) — sourced from bundled `.mp4` covers (the extracted
+  frame at ~1s is `coverN.jpg`) and re-encoded **mono-64k** `trackN.mp3` with
+  durations matching the real files. Catalog (`Track` record, 6 albums)
+  with album art + audio served from
+  `/_pathland/assets/albumart/*.jpg` and `/_pathland/assets/audio/*.mp3` in both
   SSR demos. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as
-  `newRoot()`; **`SplitNavDemo` stays the root for the Qt/GTK desktop hosts**
-  (`GtkHost`/`QtHost` mount it directly, unchanged).
+  `newRoot()` and by the **GTK desktop host** (`GtkHost` mounts it directly,
+  unchanged); `SplitNavDemo` remains the nav showcase for the Qt host.
 
 ## Not implemented / gaps
 

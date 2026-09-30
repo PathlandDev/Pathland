@@ -29,26 +29,25 @@ public final class MusicPlayerView implements View {
     static final Color BAR_BORDER = Color.rgb(0xE2, 0xE8, 0xF0);
     static final Color BAR_BG = Color.rgb(0xFB, 0xFB, 0xFD);
 
-    /** The demo library: Kevin MacLeod tracks (CC-BY 3.0 — see the attribution
- *  credit in {@link #body()}), grouped into two albums. */
+    /** The demo library: six Pathland concept tracks, one album each. */
     static final List<Track> TRACKS = List.of(
-            new Track("Fiddles McGinty", "Kevin MacLeod", "Country & Bluegrass", 207f,
+            new Track("Building on Solid Ground", "The Foundation", "The Open Horizon", 178f,
                     "/_pathland/assets/albumart/cover1.jpg",
                     "/_pathland/assets/audio/track1.mp3"),
-            new Track("Nano Hoedown", "Kevin MacLeod", "Country & Bluegrass", 154f,
-                    "/_pathland/assets/albumart/cover1.jpg",
+            new Track("Pathland Crossing", "The Crossings", "Native Operations", 166f,
+                    "/_pathland/assets/albumart/cover2.jpg",
                     "/_pathland/assets/audio/track2.mp3"),
-            new Track("Comin' Round the Mountain", "Kevin MacLeod", "Country & Bluegrass", 174f,
-                    "/_pathland/assets/albumart/cover1.jpg",
+            new Track("Rendered Free", "Rena Render", "Grace From The Source", 182f,
+                    "/_pathland/assets/albumart/cover3.jpg",
                     "/_pathland/assets/audio/track3.mp3"),
-            new Track("OctoBlues", "Kevin MacLeod", "Blues & Ragtime", 256f,
-                    "/_pathland/assets/albumart/cover2.jpg",
+            new Track("Rendered In Your Arms", "Ember Frame", "Architectures of Grace", 160f,
+                    "/_pathland/assets/albumart/cover4.jpg",
                     "/_pathland/assets/audio/track4.mp3"),
-            new Track("Fig Leaf Rag", "Kevin MacLeod", "Blues & Ragtime", 209f,
-                    "/_pathland/assets/albumart/cover2.jpg",
+            new Track("Sixty Frames Per Second", "Rowan Frame", "The Protocol Sessions", 164f,
+                    "/_pathland/assets/albumart/cover5.jpg",
                     "/_pathland/assets/audio/track5.mp3"),
-            new Track("Maple Leaf Rag", "Kevin MacLeod", "Blues & Ragtime", 179f,
-                    "/_pathland/assets/albumart/cover2.jpg",
+            new Track("The Pathland Dream", "Neon Protocol", "Velvet Horizons", 170f,
+                    "/_pathland/assets/albumart/cover6.jpg",
                     "/_pathland/assets/audio/track6.mp3"));
 
     // App-owned, persisted per-session (the annotation processor wires State fields

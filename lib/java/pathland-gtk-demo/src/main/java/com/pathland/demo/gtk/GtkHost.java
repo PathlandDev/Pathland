@@ -70,6 +70,10 @@ public final class GtkHost {
         "assets/audio/track6.mp3",
         "assets/albumart/cover1.jpg",
         "assets/albumart/cover2.jpg",
+        "assets/albumart/cover3.jpg",
+        "assets/albumart/cover4.jpg",
+        "assets/albumart/cover5.jpg",
+        "assets/albumart/cover6.jpg",
     };
 
     public static void main(String[] args) {

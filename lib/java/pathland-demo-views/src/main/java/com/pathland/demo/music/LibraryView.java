@@ -38,15 +38,12 @@ public final class LibraryView implements View {
         return VStack.of(
                 Text.of("Library").with(FontSize.of(26), FontWeightMod.of(FontWeight.BOLD))
                         .with(AccessibilityRole.of(Roles.HEADER)),
-                Text.of(MusicPlayerView.TRACKS.size() + " songs · 2 albums")
+                Text.of(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums")
                         .with(ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
                 Divider.of().with(Padding.of(0, 0, 0, 10)),
                 ScrollView.of(
                     VStack.of(rows)
-                ),
-                Text.of("Music by Kevin MacLeod (incompetech.com) — CC-BY 3.0")
-                        .with(FontSize.of(12), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG))
-                        .with(Padding.of(0, 0, 0, 8))
+                )
         )
         .with(Padding.of(24))
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL));

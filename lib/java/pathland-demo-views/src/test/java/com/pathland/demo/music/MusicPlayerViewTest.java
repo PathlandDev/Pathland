@@ -57,10 +57,10 @@ class MusicPlayerViewTest {
         Mounted m = mount();
         Frame frame = m.sink.frame();
 
-        assertTrue(anySetText(frame, "Fiddles McGinty"), "first track title renders");
-        assertTrue(anySetText(frame, "OctoBlues"), "a later track title renders");
-        assertTrue(anySetText(frame, "Maple Leaf Rag"), "last track title renders");
-        assertTrue(anySetText(frame, "Kevin MacLeod"), "an artist renders");
+        assertTrue(anySetText(frame, "Building on Solid Ground"), "first track title renders");
+        assertTrue(anySetText(frame, "Rendered Free"), "a later track title renders");
+        assertTrue(anySetText(frame, "The Pathland Dream"), "last track title renders");
+        assertTrue(anySetText(frame, "The Foundation"), "an artist renders");
         assertTrue(anySetText(frame, "Now Playing"), "the now-playing sidebar header renders");
         assertTrue(anySetText(frame, "Library"), "the library header renders");
         assertTrue(countCreate(frame, Components.IMAGE) >= 3, "album art images render");
