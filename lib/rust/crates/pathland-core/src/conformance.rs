@@ -223,6 +223,15 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x40, // C = 2.0 (f32 LE: 0x40000000) = two columns
         ],
     ),
+    (
+        "TREE:CREATE_NODE (id=1, GRID_ROW=0x001D)",
+        [
+            0x01, 0x01, 0x00, 0x00, // category TREE, command CREATE_NODE
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x1D, 0x00, 0x00, 0x00, // B = componentType = 0x001D (GRID_ROW)
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -355,6 +364,15 @@ mod tests {
                 (0x04u32 << 16) | 0x001E,
                 2.0f32.to_bits(),
                 VECTORS[23].1,
+            ),
+            (
+                0x01,
+                0x01,
+                0x0000,
+                1,
+                0x001D,
+                0,
+                VECTORS[24].1,
             ),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {

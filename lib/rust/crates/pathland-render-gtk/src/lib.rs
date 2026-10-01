@@ -797,40 +797,39 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         self.reconcile_box_children(&parent, children);
     }
 
-    /// Reconcile a `GtkGrid`'s children at their cell positions (row-major for
-    /// vertical grids, column-major for a horizontal `LAZY_HGRID`).
-    fn sync_grid_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
+    /// Reconcile a `GtkGrid`'s children at their flattened cell positions (spec
+    /// §GridRow): a `GRID_ROW`'s children are one row's cells; bare cells
+    /// auto-flow row-major (column-major for a horizontal `LAZY_HGRID`).
+    fn sync_grid_children(&mut self, parent_id: u32, _children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
         };
         let Some(grid) = parent.downcast_ref::<gtk::Grid>() else {
             return;
         };
-        let horizontal = layout::is_hgrid(node.component_type);
-        let track = layout::grid_track(node);
+        let cells = layout::grid_cells(node, &self.tree);
         // SPACING → uniform row + column gap (HTML renders `gap` on grids).
         let gap = layout::spacing(node);
         grid.set_row_spacing(gap as u32);
         grid.set_column_spacing(gap as u32);
         // Per-cell alignment (LAYOUT.md): a `FILL`/greedy cell stretches on an
         // axis, anything else keeps its size and is positioned at the start.
-        for child_id in children {
-            if let (Some(w), Some(cn)) = (self.widgets.get(child_id), self.tree.node(*child_id)) {
+        for (cell, _, _) in &cells {
+            if let (Some(w), Some(cn)) = (self.widgets.get(cell), self.tree.node(*cell)) {
                 w.set_halign(layout::grid_cell_align(cn, layout::Axis::Horizontal));
                 w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical));
             }
         }
-        if grid_matches(grid, children, track, horizontal, &self.widgets) {
+        if grid_matches(grid, &cells, &self.widgets) {
             return;
         }
         // Rebuild: remove all current children, then attach at target cells.
         for w in child_widgets(&parent) {
             grid.remove(&w);
         }
-        for (idx, child_id) in children.iter().enumerate() {
-            if let Some(w) = self.widgets.get(child_id) {
-                let (row, col) = layout::grid_cell_position(idx as u32, track, horizontal);
-                grid.attach(w, col as i32, row as i32, 1, 1);
+        for (cell, row, col) in &cells {
+            if let Some(w) = self.widgets.get(cell) {
+                grid.attach(w, *col as i32, *row as i32, 1, 1);
             }
         }
     }
@@ -1346,23 +1345,20 @@ fn child_widgets(widget: &gtk::Widget) -> Vec<gtk::Widget> {
     out
 }
 
-/// Whether a grid's children already sit at their target cell positions.
+/// Whether a grid's cells already sit at their target (row, col) positions.
 fn grid_matches(
     grid: &gtk::Grid,
-    children: &[u32],
-    track: Option<u32>,
-    horizontal: bool,
+    cells: &[(u32, u32, u32)],
     widgets: &HashMap<u32, gtk::Widget>,
 ) -> bool {
-    if child_widgets(&grid.clone().upcast()).len() != children.len() {
+    if child_widgets(&grid.clone().upcast()).len() != cells.len() {
         return false;
     }
-    for (idx, child_id) in children.iter().enumerate() {
-        let Some(w) = widgets.get(child_id) else {
+    for (cell, row, col) in cells {
+        let Some(w) = widgets.get(cell) else {
             return false;
         };
-        let (row, col) = layout::grid_cell_position(idx as u32, track, horizontal);
-        if grid.child_at(col as i32, row as i32).as_ref() != Some(w) {
+        if grid.child_at(*col as i32, *row as i32).as_ref() != Some(w) {
             return false;
         }
     }

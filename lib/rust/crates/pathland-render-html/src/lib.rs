@@ -1293,7 +1293,33 @@ if indeterminate {
             }
             component_type::GRID | component_type::LAZY_VGRID | component_type::LAZY_HGRID => {
                 let tag = semantic.unwrap_or("div");
-                let grid_css = grid_style(node);
+                // Explicit rows (spec §GridRow): a grid's children are cells or
+                // `GRID_ROW`s; a `GRID_ROW`'s children are one row's cells.
+                let explicit_rows = node
+                    .children
+                    .iter()
+                    .any(|&c| nodes.get(&c).is_some_and(|n| n.component == component_type::GRID_ROW));
+                // The effective 1fr column count: `GRID_COLUMNS`, or the widest
+                // row when rows are explicit (a short row leaves trailing
+                // columns empty — never pulls the next row's cells forward).
+                let base_columns = grid_columns(node);
+                let effective_columns = if explicit_rows {
+                    let mut width = base_columns.map(|c| c as usize).unwrap_or(0);
+                    let mut run = 0usize;
+                    for &child in &node.children {
+                        if nodes.get(&child).is_some_and(|n| n.component == component_type::GRID_ROW) {
+                            width = width.max(nodes.get(&child).map(|n| n.children.len()).unwrap_or(0));
+                            run = 0;
+                        } else {
+                            run += 1;
+                            width = width.max(run);
+                        }
+                    }
+                    base_columns.or(Some((width.max(1)) as u32))
+                } else {
+                    base_columns
+                };
+                let grid_css = grid_style(node, effective_columns);
                 let combined = format!("{grid_css}{css}");
                 let grid_style = style_attr(&combined);
                 // Per-cell alignment (spec/PRIMITIVES.md §grid model): each cell
@@ -1312,22 +1338,75 @@ if indeterminate {
                         }
                     }
                 };
-                let inner: String = node
-                    .children
-                    .iter()
-                    .filter_map(|&child| {
-                        let child_html = self.render_node(nodes, child, Some(node.component));
-                        if child_html.is_empty() {
-                            None
+                let cell_shell = |cell_html: String, row: usize, col: usize, cell: u32| {
+                    let placement = if explicit_rows {
+                        format!("grid-row:{};grid-column:{};", row + 1, col + 1)
+                    } else {
+                        String::new()
+                    };
+                    format!(
+                        "<div style=\"{placement}justify-self:{};align-self:{};\">{cell_html}</div>",
+                        pos(align, fills_axis(nodes, cell, true, false)),
+                        pos(align, fills_axis(nodes, cell, false, false)),
+                    )
+                };
+                let inner: String = if explicit_rows {
+                    // Flatten the explicit row structure into (row, col) cells,
+                    // keeping each GRID_ROW as a transparent `display:contents`
+                    // wrapper (its id hydrates the DOM client's registry).
+                    let columns = effective_columns.unwrap_or(1) as usize;
+                    let mut out = String::new();
+                    let mut row = 0usize;
+                    let mut col = 0usize;
+                    for &child in &node.children {
+                        let Some(cn) = nodes.get(&child) else { continue };
+                        if cn.component == component_type::GRID_ROW {
+                            // A GRID_ROW starts a new row: advance past an
+                            // in-progress bare-cell run (col > 0); a prior
+                            // GRID_ROW already advanced `row`.
+                            if col > 0 {
+                                row += 1;
+                            }
+                            col = 0;
+                            let mut cells = String::new();
+                            for &cell in &cn.children {
+                                let cell_html = self.render_node(nodes, cell, Some(node.component));
+                                if !cell_html.is_empty() {
+                                    cells.push_str(&cell_shell(cell_html, row, col, cell));
+                                }
+                                col += 1;
+                            }
+                            out.push_str(&format!(
+                                "<div data-pathland-id=\"{child}\" style=\"display:contents\">{cells}</div>"
+                            ));
+                            row += 1;
+                            col = 0;
                         } else {
-                            Some(format!(
-                                "<div style=\"justify-self:{};align-self:{};\">{child_html}</div>",
-                                pos(align, fills_axis(nodes, child, true, false)),
-                                pos(align, fills_axis(nodes, child, false, false)),
-                            ))
+                            if col >= columns {
+                                row += 1;
+                                col = 0;
+                            }
+                            let cell_html = self.render_node(nodes, child, Some(node.component));
+                            if !cell_html.is_empty() {
+                                out.push_str(&cell_shell(cell_html, row, col, child));
+                                col += 1;
+                            }
                         }
-                    })
-                    .collect();
+                    }
+                    out
+                } else {
+                    node.children
+                        .iter()
+                        .filter_map(|&child| {
+                            let cell_html = self.render_node(nodes, child, Some(node.component));
+                            if cell_html.is_empty() {
+                                None
+                            } else {
+                                Some(cell_shell(cell_html, 0, 0, child))
+                            }
+                        })
+                        .collect()
+                };
                 format!("<{tag}{data_id}{event}{aria}{grid_style}>{inner}</{tag}>")
             }
             component_type::SCROLLVIEW => {
@@ -1539,10 +1618,11 @@ if indeterminate {
 
 /// Inline grid CSS: `display:grid` + `justify-items`/`align-items` from the
 /// grid `ALIGNMENT` (cells position within their tracks; default Leading/start),
-/// plus the fixed track templates — `WIDTH` columns (GRID/LAZY_VGRID) and
-/// `HEIGHT` rows (GRID/LAZY_HGRID) as equal `1fr` tracks. `FILL`/absent count =
-/// auto-fit (no template; `LAZY_HGRID` columns auto-flow).
-fn grid_style(node: &Node) -> String {
+/// plus the fixed track templates — `columns` (GRID/LAZY_VGRID; the effective
+/// count — `GRID_COLUMNS` or the widest explicit row) and `HEIGHT` rows
+/// (GRID/LAZY_HGRID) as equal `1fr` tracks. `FILL`/absent count = auto-fit (no
+/// template; `LAZY_HGRID` columns auto-flow).
+fn grid_style(node: &Node, columns: Option<u32>) -> String {
     let align = match node.f32_property(property_id::ALIGNMENT, 3.0) as u8 {
         1 => "center",
         2 => "end",
@@ -1551,7 +1631,7 @@ fn grid_style(node: &Node) -> String {
     let mut css = format!("display:grid;justify-items:{align};align-items:{align};");
     match node.component {
         component_type::GRID => {
-            if let Some(n) = grid_columns(node) {
+            if let Some(n) = columns {
                 css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
             }
             if let Some(n) = grid_rows(node) {
@@ -1565,7 +1645,7 @@ fn grid_style(node: &Node) -> String {
             css.push_str("grid-auto-flow:column;grid-auto-columns:1fr;");
         }
         _ => {
-            if let Some(n) = grid_columns(node) {
+            if let Some(n) = columns {
                 css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
             }
         }
@@ -2219,6 +2299,39 @@ mod tests {
         let f = renderer.render_document(&opcodes, &[], 1);
         assert!(!f.contains("grid-template-columns:repeat"), "FILL count = auto-fit: {f}");
         assert!(f.contains("width:100%"), "FILL WIDTH frame expands: {f}");
+    }
+
+    #[test]
+    fn grid_rows_flatten_explicit_rows() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
+        // Row 0: a 2-cell GRID_ROW.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::GRID_ROW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 4, component_type::TEXT as u32, 0));
+        // Row 1: a short 1-cell GRID_ROW.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 5, component_type::GRID_ROW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 6, component_type::TEXT as u32, 0));
+        // A bare cell auto-flows into row 2.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 7, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 3, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 4, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 5, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 5, 6, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 7, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        // The widest row (2 cells) defines the equal-1fr columns.
+        assert!(html.contains("grid-template-columns:repeat(2,1fr)"), "widest row defines columns: {html}");
+        // Explicit placements: row 0 = [A,B], row 1 = [C], row 2 = [D].
+        assert!(html.contains("grid-row:1;grid-column:1;"), "cell at (0,0): {html}");
+        assert!(html.contains("grid-row:1;grid-column:2;"), "cell at (0,1): {html}");
+        assert!(html.contains("grid-row:2;grid-column:1;"), "short row's cell at (1,0): {html}");
+        assert!(html.contains("grid-row:3;grid-column:1;"), "bare cell auto-flows to row 2: {html}");
+        // The GRID_ROW nodes themselves render nothing.
+        assert!(!html.contains("GRID_ROW"), "GRID_ROW is structural: {html}");
     }
 
     #[test]

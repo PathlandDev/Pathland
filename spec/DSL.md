@@ -300,6 +300,7 @@ accessibility label.
 | `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.of(View...)` / `HStack.of(Alignment, float, View...)` | `HSTACK` 0x11 |
 | `ZStack` | `ZStack(alignment:) { … }` | `ZStack.of(View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
 | `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.of(View...)` / `Grid.of(int columns, View...)` / `Grid.of(int columns, int rows, View...)` / `Grid.of(int columns, int rows, Alignment, float, View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F |
+| `GridRow` | `GridRow { … }` | `GridRow.of(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
 | `ScrollView` | `ScrollView { … }` | `ScrollView.of(View...)` | `SCROLLVIEW` 0x14 |
 | `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.of(View...)` / `LazyVGrid.of(int columns, View...)` / `LazyVGrid.of(int columns, Alignment, float, View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS` |
 | `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` / `LazyHGrid.of(int rows, View...)` / `LazyHGrid.of(int rows, Alignment, float, View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS` |
@@ -962,7 +963,8 @@ are the companion specs.
 
 - [ ] **Views/controls** — every entry of [§4](#4-view-surface):
   `Text`, `Image`, `Color`, `Shape` (all `ShapeKind`s), `Divider`, `Spacer`,
-  `ProgressView`, `Gauge`; `VStack`, `HStack`, `ZStack`, `Grid`, `ScrollView`,
+  `ProgressView`, `Gauge`; `VStack`, `HStack`, `ZStack`, `Grid`, `GridRow`,
+  `ScrollView`,
   `LazyVGrid`, `LazyHGrid`, `LazyVStack`, `LazyHStack`; `Button`,
   `TextField`, `SecureField`, `TextEditor`, `Toggle`, `Slider`, `Stepper`,
   `Picker`, `Menu`, `DatePicker`, `ColorPicker`.

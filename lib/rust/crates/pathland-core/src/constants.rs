@@ -258,7 +258,11 @@ pub mod component_type {
     pub const LAZY_VSTACK: u16 = 0x1B;
     /// **Draft.** Virtualized horizontal stack.
     pub const LAZY_HSTACK: u16 = 0x1C;
-    // 0x1D–0x1F reserved (future layout nodes).
+    /// **Draft.** Explicit row grouping for a `GRID`: a grid child whose children
+    /// are one row's cells (the SwiftUI `GridRow` surface). Renders nothing
+    /// outside a `GRID`.
+    pub const GRID_ROW: u16 = 0x1D;
+    // 0x1E–0x1F reserved (future layout nodes).
 
     // ── Semantic Control Nodes (0x20–0x2F) ──────────────────────────────────
     /// Action trigger control.

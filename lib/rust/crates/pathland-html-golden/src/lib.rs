@@ -130,10 +130,40 @@ fn scenarios() -> Vec<Scenario> {
         form(),
         composite_controls(),
         layout(),
+        gridrow(),
         tokens(),
         semantics(),
         media(),
     ]
+}
+
+fn gridrow() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::GRID);
+    // Row 0: a 2-cell GRID_ROW; row 1: a short 1-cell GRID_ROW; a bare cell
+    // auto-flows into row 2 (widest row = 2 columns).
+    b.create(2, component_type::GRID_ROW);
+    b.create(3, component_type::TEXT);
+    b.create(4, component_type::TEXT);
+    b.create(5, component_type::GRID_ROW);
+    b.create(6, component_type::TEXT);
+    b.create(7, component_type::TEXT);
+    b.insert(1, 2);
+    b.insert(2, 3);
+    b.insert(2, 4);
+    b.insert(1, 5);
+    b.insert(5, 6);
+    b.insert(1, 7);
+    b.set_text(3, "A");
+    b.set_text(4, "B");
+    b.set_text(6, "C");
+    b.set_text(7, "D");
+    Scenario {
+        name: "gridrow",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
 }
 
 fn media() -> Scenario {

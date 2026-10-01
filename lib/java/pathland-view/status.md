@@ -49,7 +49,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   modifiers), shapes (`Rectangle`, `Circle`, `Capsule`, `Ellipse`,
   `RoundedRectangle`, generic `Shape.of(ShapeKind)` — all `SHAPE` nodes),
   `Button`, `TextField`, `Spacer`, `TextEditor`, `Toggle`, `Slider`, `Stepper`,
-  `ProgressView`, `Gauge`, `Divider`, `Grid`, `ScrollView`, `LazyVStack`,
+  `ProgressView`, `Gauge`, `Divider`, `Grid`, `GridRow`, `ScrollView`, `LazyVStack`,
   `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `Picker`, `Menu`, `ColorPicker`,
   `DatePicker`, **`Label`** (a composite — an `HStack` of an optional `Image` and
   an optional `Text`, title always driving the accessibility label; static and

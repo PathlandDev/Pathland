@@ -12,6 +12,7 @@ import {
   COMPONENT_DIVIDER,
   COMPONENT_GAUGE,
   COMPONENT_GRID,
+  COMPONENT_GRID_ROW,
   COMPONENT_HSTACK,
   COMPONENT_IMAGE,
   COMPONENT_LAZY_HGRID,
@@ -70,6 +71,15 @@ export function createElement(component: number): Node {
         el.style.gridAutoFlow = "column";
         el.style.gridAutoColumns = "1fr";
       }
+      return el;
+    }
+    case COMPONENT_GRID_ROW: {
+      // A grid's explicit row grouping (spec §GridRow): transparent
+      // (`display:contents`) — its cell children participate in the parent
+      // GRID's layout (mirrors the Rust SSR renderer). Renders nothing outside
+      // a GRID.
+      const el = document.createElement("div");
+      el.style.display = "contents";
       return el;
     }
     case COMPONENT_SCROLLVIEW: {

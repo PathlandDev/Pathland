@@ -422,6 +422,7 @@ pub fn emit_constants_ts() -> String {
             ("LAZY_HGRID", fmt_u16(component_type::LAZY_HGRID)),
             ("LAZY_VSTACK", fmt_u16(component_type::LAZY_VSTACK)),
             ("LAZY_HSTACK", fmt_u16(component_type::LAZY_HSTACK)),
+            ("GRID_ROW", fmt_u16(component_type::GRID_ROW)),
             ("BUTTON", fmt_u16(component_type::BUTTON)),
             ("TEXT_FIELD", fmt_u16(component_type::TEXT_FIELD)),
             ("TEXT_EDITOR", fmt_u16(component_type::TEXT_EDITOR)),

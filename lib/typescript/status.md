@@ -215,12 +215,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`; never a pixel
   width/height), `gap` from `SPACING`, greedy scroll
   (`flex:1 1 auto;align-self:stretch;overflow:auto`), and **per-cell grid
-  alignment** — grid children are wrapped in an auto-placed shell whose
+  alignment** — grid cells are wrapped in an auto-placed shell whose
   `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell else the
   grid `ALIGNMENT` position (`placedChild` + `applyLayout`, the ZStack mirror).
-  `SCROLL` and `WHEEL` events are wired to document-level listeners gated by
-  the listener bits. A runtime-inserted extra `SCROLLVIEW` child is a minor
-  residual (SSR renders only the first child).
+  **`GRID_ROW`** (0x1D) renders as a transparent `display:contents` element; its
+  cell shells get explicit `grid-row`/`grid-column` placement (short rows leave
+  trailing columns empty). `SCROLL` and `WHEEL` events are wired to
+  document-level listeners gated by the listener bits. A runtime-inserted extra
+  `SCROLLVIEW` child is a minor residual (SSR renders only the first child).
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

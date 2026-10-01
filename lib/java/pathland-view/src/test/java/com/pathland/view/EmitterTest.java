@@ -77,6 +77,27 @@ class EmitterTest {
     }
 
     @Test
+    void gridRowEmitsARowNodeWhoseChildrenAreTheRowCells() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+
+        emitter.mount(Grid.of(GridRow.of(Text.of("a"), Text.of("b")), Text.of("c")), Environment.DEFAULT);
+        Frame frame = sink.frame();
+
+        Opcode gridRow = frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE)
+                .filter(o -> (o.b() & 0xffff) == Components.GRID_ROW)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the Grid emits a GRID_ROW node for the GridRow child"));
+        // The row's two cells attach to the GRID_ROW node (its children).
+        long rowCells = frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.INSERT_CHILD)
+                .filter(o -> o.a() == gridRow.a())
+                .count();
+        assertEquals(2, rowCells, "the row's cells attach to the GRID_ROW");
+    }
+
+    @Test
     void signalDrivenDeltaEmitsOnlyTheBoundNodes() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);

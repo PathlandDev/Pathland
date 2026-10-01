@@ -216,11 +216,14 @@ contract both renderers must satisfy.
   alignment** — each cell is wrapped in an auto-placed shell whose
   `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell, else the
   grid `ALIGNMENT` position (default start) — with `justify-items`/
-  `align-items` on the container. `WIDTH`/`HEIGHT` on a grid are the universal
-  pixel box, never a count. `SCROLLVIEW` is greedy
+  `align-items` on the container. **`GRID_ROW`** (0x1D) rows are flattened with
+  explicit `grid-row`/`grid-column` placement; each row renders as a transparent
+  `<div style="display:contents">` (its id hydrates the DOM client), and a
+  short row leaves trailing columns empty. `WIDTH`/`HEIGHT` on a grid are the
+  universal pixel box, never a count. `SCROLLVIEW` is greedy
   (`flex:1 1 auto;align-self:stretch;overflow:auto`) and renders **only its
   first child** (the spec-pinned single content). Conformance cases C11–C14
-  covered by the SSR tests + golden fixtures.
+  covered by the SSR tests + golden fixtures (incl. the `gridrow` scenario).
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
 - **Inter is loaded from the rsms.me CDN** (Cloudflare, `font-display: swap`,

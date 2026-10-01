@@ -227,10 +227,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   grids set `row_spacing`/`column_spacing` from `SPACING`, per-cell alignment
   (`grid_cell_align`), and read the track counts from the `GRID_COLUMNS` /
   `GRID_ROWS` constructor properties (`grid_track` — columns for GRID/
-  LAZY_VGRID, rows for LAZY_HGRID, cells column-major there). `WIDTH`/`HEIGHT`
-  on a grid are the universal pixel box, never a count. `SCROLLVIEW` renders
-  its first (spec-pinned) content child with `Automatic`/`Automatic` scroll
-  policy and greedy `Align::Fill`. **SCROLL** (the v/h Adjustments'
+  LAZY_VGRID, rows for LAZY_HGRID, cells column-major there). **`GRID_ROW`**
+  (0x1D) rows are flattened via `grid_cells` — a row's cells attach at their
+  computed (row, col); the row node itself maps to no widget (blank). `WIDTH`/
+  `HEIGHT` on a grid are the universal pixel box, never a count. `SCROLLVIEW`
+  renders its first (spec-pinned) content child with `Automatic`/`Automatic`
+  scroll policy and greedy `Align::Fill`. **SCROLL** (the v/h Adjustments'
   `value_changed` → `Event::Scroll`) and **WHEEL** (`GtkEventControllerScroll`
   → `Event::Wheel`) are emitted for nodes with the listener bits (8/9).
   **Residuals**: `LAZY_*` realizes eagerly (spec-permitted), auto-fit grids

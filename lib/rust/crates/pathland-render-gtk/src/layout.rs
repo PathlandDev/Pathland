@@ -367,6 +367,83 @@ pub fn grid_cell_position(index: u32, track: Option<u32>, horizontal: bool) -> (
     }
 }
 
+/// The grid's flattened `(cell, row, col)` placements (spec §GridRow): a
+/// `GRID_ROW`'s children are one row's cells (always a new row starting at
+/// column 0); bare cells auto-flow, advancing after `GRID_COLUMNS` — or the
+/// widest row — columns. A short row leaves its trailing columns empty. A
+/// horizontal `LAZY_HGRID` flattens `GRID_ROW` children too but places
+/// column-major over `GRID_ROWS` tracks.
+pub fn grid_cells(node: &HostNode, tree: &RenderTree) -> Vec<(u32, u32, u32)> {
+    let horizontal = is_hgrid(node.component_type);
+    let explicit = node
+        .children
+        .iter()
+        .any(|&c| tree.node(c).is_some_and(|n| n.component_type == component_type::GRID_ROW));
+    if !horizontal && explicit {
+        // Widest-row columns when `GRID_COLUMNS` is absent (auto-fit).
+        let track = grid_track(node).map(|t| t.max(1)).unwrap_or_else(|| {
+            let mut width = 0u32;
+            let mut run = 0u32;
+            for &child in &node.children {
+                if tree.node(child).is_some_and(|n| n.component_type == component_type::GRID_ROW) {
+                    width = width.max(tree.node(child).map(|n| n.children.len() as u32).unwrap_or(0));
+                    run = 0;
+                } else {
+                    run += 1;
+                    width = width.max(run);
+                }
+            }
+            width.max(1)
+        });
+        let mut cells = Vec::new();
+        let mut row = 0u32;
+        let mut col = 0u32;
+        for &child in &node.children {
+            let Some(cn) = tree.node(child) else { continue };
+            if cn.component_type == component_type::GRID_ROW {
+                if col > 0 {
+                    row += 1;
+                }
+                col = 0;
+                for &cell in &cn.children {
+                    cells.push((cell, row, col));
+                    col += 1;
+                }
+                row += 1;
+                col = 0;
+            } else {
+                if col >= track {
+                    row += 1;
+                    col = 0;
+                }
+                cells.push((child, row, col));
+                col += 1;
+            }
+        }
+        return cells;
+    }
+    // Index-based placement (row-major, or column-major for an hgrid), with
+    // `GRID_ROW` children flattened into their cells.
+    let flat: Vec<u32> = node
+        .children
+        .iter()
+        .flat_map(|&c| {
+            if tree.node(c).is_some_and(|n| n.component_type == component_type::GRID_ROW) {
+                tree.node(c).map(|n| n.children.clone()).unwrap_or_default()
+            } else {
+                vec![c]
+            }
+        })
+        .collect();
+    flat.into_iter()
+        .enumerate()
+        .map(|(i, c)| {
+            let (row, col) = grid_cell_position(i as u32, grid_track(node), horizontal);
+            (c, row, col)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -763,5 +840,61 @@ mod tests {
         assert_eq!(grid_cell_position(1, Some(3), true), (1, 0));
         assert_eq!(grid_cell_position(3, Some(3), true), (0, 1));
         assert_eq!(grid_cell_position(4, Some(3), true), (1, 1));
+    }
+
+    #[test]
+    fn grid_cells_flatten_explicit_rows() {
+        let mk = |id: u32, component_type: u16, children: Vec<u32>| HostNode {
+            id,
+            component_type,
+            text: None,
+            parent: Some(1),
+            children,
+            properties: HashMap::new(),
+            strings: HashMap::new(),
+            token_refs: Default::default(),
+        };
+        let mut tree = RenderTree::default();
+        // GRID with a 2-cell GRID_ROW, a short 1-cell GRID_ROW, and a bare cell.
+        tree.nodes.insert(1, mk(1, component_type::GRID, vec![2, 5, 7]));
+        tree.nodes.insert(2, mk(2, component_type::GRID_ROW, vec![3, 4]));
+        tree.nodes.insert(3, mk(3, component_type::TEXT, vec![]));
+        tree.nodes.insert(4, mk(4, component_type::TEXT, vec![]));
+        tree.nodes.insert(5, mk(5, component_type::GRID_ROW, vec![6]));
+        tree.nodes.insert(6, mk(6, component_type::TEXT, vec![]));
+        tree.nodes.insert(7, mk(7, component_type::TEXT, vec![]));
+
+        let grid = tree.node(1).unwrap();
+        // Row 0 = [3, 4], row 1 = [6], bare 7 auto-flows to row 2 (widest row 2).
+        assert_eq!(
+            grid_cells(grid, &tree),
+            vec![(3, 0, 0), (4, 0, 1), (6, 1, 0), (7, 2, 0)]
+        );
+    }
+
+    #[test]
+    fn grid_cells_auto_flow_bare_cells_under_columns() {
+        let mk = |id: u32, component_type: u16, children: Vec<u32>, props: &[(u16, u32)]| HostNode {
+            id,
+            component_type,
+            text: None,
+            parent: Some(1),
+            children,
+            properties: props.iter().copied().collect(),
+            strings: HashMap::new(),
+            token_refs: Default::default(),
+        };
+        let mut tree = RenderTree::default();
+        // GRID_COLUMNS=2, three bare cells → row 0 = [2,3], row 1 = [4].
+        tree.nodes.insert(
+            1,
+            mk(1, component_type::GRID, vec![2, 3, 4], &[(property_id::GRID_COLUMNS, f32_bits(2.0))]),
+        );
+        tree.nodes.insert(2, mk(2, component_type::TEXT, vec![], &[]));
+        tree.nodes.insert(3, mk(3, component_type::TEXT, vec![], &[]));
+        tree.nodes.insert(4, mk(4, component_type::TEXT, vec![], &[]));
+
+        let grid = tree.node(1).unwrap();
+        assert_eq!(grid_cells(grid, &tree), vec![(2, 0, 0), (3, 0, 1), (4, 1, 0)]);
     }
 }

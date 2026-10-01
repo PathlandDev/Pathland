@@ -553,6 +553,28 @@ up to a Hug parent — a `Fill` cell fills its own track, and the grid's own siz
 comes from its own frame. Negative `SPACING` → 0; a Fixed box constrains layout
 but does not clip (`CLIPS_TO_BOUNDS` clips).
 
+### GridRow — `GRID_ROW` 0x1D
+
+An **explicit row grouping** for a `GRID` (the SwiftUI `GridRow` authoring
+surface): a grid's children are **cells or `GRID_ROW`s**, and a `GRID_ROW`'s
+children are the cells of **one row**. It lets the author control row layout
+directly instead of relying on row-major index flow.
+
+- **Row placement.** A `GRID_ROW` always starts a new row: its children are
+  placed left-to-right in that row starting at column 0, then the row advances.
+  **Bare cells** (direct `GRID` children) auto-flow row-major, advancing to the
+  next row after `GRID_COLUMNS` cells (or auto, below).
+- **Column count.** The equal-`1fr` track count is `GRID_COLUMNS` when set;
+  otherwise the **widest row** (a `GRID_ROW` or a bare-cell run) defines it. A
+  short row leaves its trailing columns **empty** — a cell never pulls the next
+  row's cells forward.
+- **Structure.** A `GRID_ROW` is structural only: it renders nothing outside a
+  `GRID` (like `COMMENT`), and renderers flatten its cells into the grid's rows.
+  Its own `ALIGNMENT`/`SPACING`/size properties are ignored.
+- **Example.** `Grid { GridRow { A; B }; GridRow { C; D }; E }` lays out row 0 =
+  `A B`, row 1 = `C D`, row 2 = `E` (auto-flowing to the next row after the two
+  columns defined by the widest row).
+
 ### ScrollView — `SCROLLVIEW` 0x14
 
 A scrollable content container. **Layout-greedy on both axes** by default — it

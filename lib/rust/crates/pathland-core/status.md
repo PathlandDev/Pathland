@@ -12,10 +12,14 @@ tracks what this crate implements.
 - **Component types** (`constants.rs::component_type`): the full grouped map —
   `TEXT 0x01, IMAGE 0x02, COLOR 0x03, SHAPE 0x04, DIVIDER 0x05, SPACER 0x06,
   PROGRESS_VIEW 0x07, GAUGE 0x08, AUDIO 0x09, VIDEO 0x0A, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
-  0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
-  LAZY_HSTACK 0x1C, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
-  0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
-  COLOR_PICKER 0x2A, COMMENT 0x7F`.
+0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
+   LAZY_HSTACK 0x1C, GRID_ROW 0x1D, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
+   0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
+   COLOR_PICKER 0x2A, COMMENT 0x7F`.
+- **`GRID_COLUMNS`/`GRID_ROWS`** (`0x001E`/`0x001F`, F32) track-count properties
+  for grids (positive = count, `FILL`/absent = auto-fit; never a pixel box) and
+  the **`GRID_ROW`** (`0x1D`) component (a grid child whose children are one
+  row's cells) — both covered by conformance vectors (34/35).
 - **Properties** (`property_id`): the full `spec/MODIFIERS.md` catalog —
   stack/text/styling/semantic IDs plus every draft modifier (`SHAPE_KIND`,
   layout `OFFSET`/`POSITION`/frame bounds/`FIXED_SIZE`/`LAYOUT_PRIORITY`/

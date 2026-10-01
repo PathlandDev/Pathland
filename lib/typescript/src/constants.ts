@@ -320,6 +320,7 @@ export const COMPONENT_LAZY_VGRID = 0x0015;
 export const COMPONENT_LAZY_HGRID = 0x0016;
 export const COMPONENT_LAZY_VSTACK = 0x001b;
 export const COMPONENT_LAZY_HSTACK = 0x001c;
+export const COMPONENT_GRID_ROW = 0x001d;
 export const COMPONENT_BUTTON = 0x0020;
 export const COMPONENT_TEXT_FIELD = 0x0021;
 export const COMPONENT_TEXT_EDITOR = 0x0022;

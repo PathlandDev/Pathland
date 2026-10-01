@@ -22,6 +22,7 @@ import {
   COMPONENT_COLOR,
   COMPONENT_DIVIDER,
   COMPONENT_GRID,
+  COMPONENT_GRID_ROW,
   COMPONENT_HSTACK,
   COMPONENT_LAZY_HGRID,
   COMPONENT_LAZY_HSTACK,
@@ -201,13 +202,76 @@ function applyLayout(r: DomRenderer): void {
     } else if (isGridComponent(comp)) {
       // Position each cell shell per the grid ALIGNMENT on both axes (spec
       // §grid model): a FILL-sized / greedy cell stretches to fill its track.
+      // Explicit rows (spec §GridRow): a GRID_ROW starts a new row; bare cells
+      // auto-flow, advancing after the effective column count (GRID_COLUMNS or
+      // the widest row) — short rows leave trailing columns empty.
       const token = el.style.alignItems || "start";
-      for (const w of Array.from(el.children)) {
-        if (!(w instanceof HTMLElement)) {
-          continue;
+      const children = Array.from(el.children).filter(
+        (c): c is HTMLElement => c instanceof HTMLElement,
+      );
+      const explicitRows = children.some(
+        (c) => componentByNode.get(c) === COMPONENT_GRID_ROW,
+      );
+      const parseCount = (s: string): number | null => {
+        const m = /repeat\(\s*(\d+)/.exec(s);
+        return m ? Number(m[1]) : null;
+      };
+      const setShell = (shell: HTMLElement, row: number, col: number): void => {
+        if (explicitRows) {
+          shell.style.gridRow = String(row + 1);
+          shell.style.gridColumn = String(col + 1);
         }
-        w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : token;
-        w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : token;
+        shell.style.justifySelf = fillsAxis(shell, true, false) ? "stretch" : token;
+        shell.style.alignSelf = fillsAxis(shell, false, false) ? "stretch" : token;
+      };
+      if (!explicitRows) {
+        for (const w of children) {
+          setShell(w, 0, 0);
+        }
+      } else {
+        let cols = parseCount(el.style.gridTemplateColumns);
+        let width = cols ?? 0;
+        let run = 0;
+        for (const c of children) {
+          if (componentByNode.get(c) === COMPONENT_GRID_ROW) {
+            width = Math.max(width, c.children.length);
+            run = 0;
+          } else {
+            run += 1;
+            width = Math.max(width, run);
+          }
+        }
+        width = Math.max(width, 1);
+        if (cols === null) {
+          el.style.gridTemplateColumns = `repeat(${width},1fr)`;
+          cols = width;
+        }
+        const columns = cols ?? width;
+        let row = 0;
+        let col = 0;
+        for (const c of children) {
+          if (componentByNode.get(c) === COMPONENT_GRID_ROW) {
+            if (col > 0) {
+              row += 1;
+            }
+            col = 0;
+            for (const shell of Array.from(c.children).filter(
+              (s): s is HTMLElement => s instanceof HTMLElement,
+            )) {
+              setShell(shell, row, col);
+              col += 1;
+            }
+            row += 1;
+            col = 0;
+          } else {
+            if (col >= columns) {
+              row += 1;
+              col = 0;
+            }
+            setShell(c, row, col);
+            col += 1;
+          }
+        }
       }
     }
   }
@@ -300,10 +364,12 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
 }
 
 /** The node actually inserted into a parent's container: ZStack children are
- *  wrapped in a `grid-area:1/1` cell shell and grid cells in an auto-placed
- *  cell shell (the layout pass sets their `justify-self`/`align-self` from the
- *  container's ALIGNMENT once the child's size styles exist — mirrors the Rust
- *  SSR renderer), everything else inserts directly. */
+ *  wrapped in a `grid-area:1/1` cell shell, grid cells (a GRID's bare children
+ *  or a GRID_ROW's children) in an auto-placed cell shell (the layout pass sets
+ *  their `justify-self`/`align-self` and explicit `grid-row`/`grid-column` from
+ *  the container's structure/ALIGNMENT — mirrors the Rust SSR renderer), a
+ *  GRID_ROW itself inserts directly (it is the row container, not a cell);
+ *  everything else inserts directly. */
 function placedChild(parent: Node, child: Node): Node {
   if (child instanceof HTMLElement) {
     const parentComp = componentByNode.get(parent);
@@ -315,7 +381,10 @@ function placedChild(parent: Node, child: Node): Node {
       wrapper.appendChild(child);
       return wrapper;
     }
-    if (isGridComponent(parentComp)) {
+    if (isGridComponent(parentComp) || parentComp === COMPONENT_GRID_ROW) {
+      if (componentByNode.get(child) === COMPONENT_GRID_ROW) {
+        return child; // a row container is a grid child, not a cell
+      }
       const wrapper = document.createElement("div");
       wrapper.appendChild(child);
       return wrapper;

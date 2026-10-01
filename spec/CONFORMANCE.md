@@ -599,6 +599,23 @@ a **constructor property**, never a pixel width — the grid's box comes from
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 00 40` C = 2.0 (f32 LE: 0x40000000) = two columns
 
+### 35. TREE:CREATE_NODE (id=1, GRID_ROW=0x001D)
+
+An explicit row grouping for a `GRID`: a grid child whose children are one row's
+cells (the SwiftUI `GridRow` surface). Structural only — renders nothing outside
+a `GRID`.
+
+```
+01 01 00 00 01 00 00 00 1D 00 00 00 00 00 00 00
+```
+
+- `01` category = TREE
+- `01` command = CREATE_NODE
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `1D 00 00 00` B = componentType = 0x001D (GRID_ROW)
+- `00 00 00 00` C = 0
+
 ---
 
 ## Design-Token Resolution Conformance
