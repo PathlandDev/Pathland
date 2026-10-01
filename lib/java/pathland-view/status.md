@@ -15,7 +15,11 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `DatePicker.of(mode, days)`, …); constructors are private and the former
   `View.*` static-factory surface is **removed**. `Slider`/`Stepper` are
   binding-first (initial value read from the signal); `Toggle` also offers the
-  SwiftUI-closer `of(label, isOn)` overload; `Color.of(int)` alias.
+  SwiftUI-closer `of(label, isOn)` overload; `Color.of(int)` alias. Grids take
+  their track counts as constructor args: `Grid.of(int columns[, int rows], …)`,
+  `LazyVGrid.of(int columns, …)`, `LazyHGrid.of(int rows, …)` — absent = auto-fit
+  (spec/PRIMITIVES.md §grid model); the counts emit `GRID_COLUMNS`/`GRID_ROWS`,
+  never a pixel `WIDTH`/`HEIGHT`.
 - **One modifier mechanism — no sugar on `View`**: core modifiers are
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,
   `Border.of(color, width)`, `FrameMod.of(w, h, align)`, …) applied via

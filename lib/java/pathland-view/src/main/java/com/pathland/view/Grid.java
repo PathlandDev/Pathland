@@ -21,12 +21,20 @@ public final class Grid implements View {
         this(null, null, columns, null, List.of(children));
     }
 
+    private Grid(int columns, int rows, View... children) {
+        this(null, null, columns, rows, List.of(children));
+    }
+
     private Grid(Alignment alignment, float spacing, View... children) {
         this(alignment, spacing, null, null, List.of(children));
     }
 
     private Grid(int columns, Alignment alignment, float spacing, View... children) {
         this(alignment, spacing, columns, null, List.of(children));
+    }
+
+    private Grid(int columns, int rows, Alignment alignment, float spacing, View... children) {
+        this(alignment, spacing, columns, rows, List.of(children));
     }
 
     private Grid(Alignment alignment, Float spacing, Integer columns, Integer rows, List<View> children) {
@@ -47,6 +55,11 @@ public final class Grid implements View {
         return new Grid(columns, children);
     }
 
+    /** A static 2D matrix grid with fixed column and row counts (equal `1fr` tracks). */
+    public static Grid of(int columns, int rows, View... children) {
+        return new Grid(columns, rows, children);
+    }
+
     /** A static 2D matrix grid with constructor layout properties. */
     public static Grid of(Alignment alignment, float spacing, View... children) {
         return new Grid(alignment, spacing, children);
@@ -55,6 +68,11 @@ public final class Grid implements View {
     /** A static 2D matrix grid with a fixed column count + constructor layout properties. */
     public static Grid of(int columns, Alignment alignment, float spacing, View... children) {
         return new Grid(columns, alignment, spacing, children);
+    }
+
+    /** A static 2D matrix grid with fixed column and row counts + constructor layout properties. */
+    public static Grid of(int columns, int rows, Alignment alignment, float spacing, View... children) {
+        return new Grid(columns, rows, alignment, spacing, children);
     }
 
     /** A static 2D matrix grid with constructor layout properties. */

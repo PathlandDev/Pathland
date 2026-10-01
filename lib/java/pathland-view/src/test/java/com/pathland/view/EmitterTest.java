@@ -54,6 +54,29 @@ class EmitterTest {
     }
 
     @Test
+    void gridColumnsRowsEmitTrackCounts() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+
+        emitter.mount(Grid.of(2, 3, Text.of("a"), Text.of("b")), Environment.DEFAULT);
+        Frame frame = sink.frame();
+
+        List<Float> columns = frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_PROPERTY)
+                .filter(o -> (o.b() & 0xffff) == Properties.GRID_COLUMNS)
+                .map(o -> Float.intBitsToFloat(o.c()))
+                .toList();
+        List<Float> rows = frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_PROPERTY)
+                .filter(o -> (o.b() & 0xffff) == Properties.GRID_ROWS)
+                .map(o -> Float.intBitsToFloat(o.c()))
+                .toList();
+
+        assertEquals(List.of(2.0f), columns, "the Grid emits its GRID_COLUMNS count");
+        assertEquals(List.of(3.0f), rows, "the Grid emits its GRID_ROWS count");
+    }
+
+    @Test
     void signalDrivenDeltaEmitsOnlyTheBoundNodes() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
