@@ -179,7 +179,8 @@ with SwiftUI's view categories and are the **single authoritative allocation**.
 | `0x17`–`0x1A` | — | Formerly `List`/`NavigationStack`/`NavigationSplitView` (composites, removed) — never reused |
 | `0x1B` | `LAZY_VSTACK` | Virtualized vertical stack |
 | `0x1C` | `LAZY_HSTACK` | Virtualized horizontal stack |
-| `0x1D`–`0x1F` | — | Future layout/container nodes |
+| `0x1D` | `GRID_ROW` | Explicit row grouping for `GRID` (planned): a grid child whose children are one row's cells — the SwiftUI `GridRow` authoring surface |
+| `0x1E`–`0x1F` | — | Future layout/container nodes |
 
 ### C. Semantic Control Nodes (`0x20`–`0x2F`)
 
@@ -506,8 +507,9 @@ Static 2D matrix grid, eagerly rendered with aligned rows & columns. Children
 are cells, **row-major in insertion order** — child *i* occupies the cell at
 `(row = i / columns, column = i % columns)`. **Properties**: `ALIGNMENT` (a
 single-axis enum applied to both axes, like `ZStack`), `SPACING` (uniform row +
-column gap), `WIDTH` (column count), `HEIGHT` (row count), plus layout modifiers
-(Fixed/Fill frames, `PADDING`/`CONTENT_MARGINS` as an inset).
+column gap), `GRID_COLUMNS` (column count), `GRID_ROWS` (row count), plus layout
+modifiers (`WIDTH`/`HEIGHT` frames — the grid's box, never a count —
+`PADDING`/`CONTENT_MARGINS` as an inset).
 
 #### The grid layout model
 
@@ -517,11 +519,12 @@ grid *places* it at its track intersection. Unlike a stack, a grid has no main
 axis — its two track axes (columns × rows) follow the size model
 [above](#the-stack-layout-model) independently, with two differences:
 
-**Cell counts.** `WIDTH` is the **column count** and `HEIGHT` the **row count**.
-A **Fixed** value pins that count; **`FILL` or absent means auto-fit** — the
-grid derives the count from the number of cells and the available space
-(Compose `GridCells.Fixed(N)` vs `Adaptive`; SwiftUI `LazyVGrid(columns:)` /
-`LazyHGrid(rows:)`).
+**Cell counts.** `GRID_COLUMNS` (`0x001E`) is the **column count** and
+`GRID_ROWS` (`0x001F`) the **row count**. A **Fixed** value pins that count;
+**`FILL` or absent means auto-fit** — the grid derives the count from the number
+of cells and the available space (Compose `GridCells.Fixed(N)` vs `Adaptive`;
+SwiftUI `LazyVGrid(columns:)` / `LazyHGrid(rows:)`). They are **constructor
+properties** (never chainable modifiers) and are **never pixel sizes**.
 
 **Tracks.** On a **fixed-count** axis the tracks are **equal `1fr` fractions**
 of the grid's size on that axis (`repeat(N, 1fr)` in CSS, Compose
@@ -542,12 +545,13 @@ on **both axes** — `Leading`(0) = top-leading, `Center`(1) = centered,
 Position-only: it never resizes a cell. Only a **`Fill`-sized cell** (or a
 greedy filler like `COLOR`) stretches to fill its track.
 
-**Own size & edge cases.** A Hug grid sizes to its content (tracks + `SPACING`);
-a Fixed `WIDTH`/`HEIGHT` makes the box exact; a `Fill` axis expands to the
-parent's proposal. A grid **never propagates** a `Fill` cell up to a Hug parent
-— a `Fill` cell fills its own track, and the grid's own size comes from its own
-frame. Negative `SPACING` → 0; a Fixed box constrains layout but does not clip
-(`CLIPS_TO_BOUNDS` clips).
+**Own size & edge cases.** A grid follows the universal size model: **Hug**
+(content tracks + `SPACING`), a Fixed `WIDTH`/`HEIGHT` **box**, or **`Fill`**
+(expands to the parent's proposal). `GRID_COLUMNS`/`GRID_ROWS` never size the
+grid — they only set the track counts. A grid **never propagates** a `Fill` cell
+up to a Hug parent — a `Fill` cell fills its own track, and the grid's own size
+comes from its own frame. Negative `SPACING` → 0; a Fixed box constrains layout
+but does not clip (`CLIPS_TO_BOUNDS` clips).
 
 ### ScrollView — `SCROLLVIEW` 0x14
 
@@ -577,9 +581,9 @@ reports wheel/trackpad deltas via `EVENT::WHEEL` (both draft — see
 ### LazyVGrid — `LAZY_VGRID` 0x15
 
 Virtualized vertical grid. **Allocation is identical to `GRID`** — row-major
-cells, `WIDTH` = column count (Fixed pins it, `FILL`/absent = auto-fit), equal
-`1fr` columns, uniform `SPACING` gap, per-cell alignment, hug-to-content own
-size. The only difference is **realization**: a renderer MAY defer realizing
+cells, `GRID_COLUMNS` = column count (Fixed pins it, `FILL`/absent = auto-fit),
+equal `1fr` columns, uniform `SPACING` gap, per-cell alignment, hug-to-content
+own size. The only difference is **realization**: a renderer MAY defer realizing
 off-screen cells until scrolled into view and MAY discard realized cells that
 leave the viewport. Realization never changes layout — a cell's position is
 always its row-major index in the full cell list. Typically nested inside a
@@ -589,7 +593,7 @@ always its row-major index in the full cell list. Typically nested inside a
 
 Virtualized horizontal grid; the flipped-axis form of `LAZY_VGRID`. **Allocation
 is identical to `GRID` mirrored**: cells are **column-major** in insertion
-order, `HEIGHT` = row count (Fixed pins it, `FILL`/absent = auto-fit), equal
+order, `GRID_ROWS` = row count (Fixed pins it, `FILL`/absent = auto-fit), equal
 `1fr` rows, columns auto-flow, uniform `SPACING` gap, per-cell alignment,
 windowed realization.
 
@@ -798,9 +802,9 @@ A native system color picker control.
 |-------|-----|
 | `0x01`–`0x08` | Primitive drawing nodes (allocated, this file) |
 | `0x09`–`0x0F` | Future drawing nodes (unallocated) |
-| `0x10`–`0x16`, `0x1B`–`0x1C` | Layout & container primitives (this file) |
+| `0x10`–`0x16`, `0x1B`–`0x1D` | Layout & container primitives (this file) |
 | `0x17`–`0x1A` | Reserved (formerly composites) — never reused |
-| `0x1D`–`0x1F` | Future layout nodes (unallocated) |
+| `0x1E`–`0x1F` | Future layout nodes (unallocated) |
 | `0x20`–`0x22`, `0x24`–`0x2A` | Semantic control nodes (this file) |
 | `0x23`, `0x2B`–`0x2F` | Future semantic controls (unallocated) |
 | `0x30`–`0x7E` | Future categories (unallocated) |

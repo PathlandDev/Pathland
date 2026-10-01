@@ -580,6 +580,25 @@ none. `PlatformDefault`=0 is the missing/default value.
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 80 3F` C = 1.0 (f32 LE: 0x3F800000) = Custom
 
+### 34. STYLE:SET_PROPERTY (id=1, propertyId=GRID_COLUMNS=0x001E, valueType=F32=0x04, 2.0)
+
+A grid's column count (positive = count; `FILL`/absent = auto-fit). The count is
+a **constructor property**, never a pixel width — the grid's box comes from
+`WIDTH`/`HEIGHT`.
+
+```
+02 01 00 00 01 00 00 00 1E 00 04 00 00 00 00 40
+```
+
+- `02` category = STYLE
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `1E 00 04 00` B = `(valueType << 16) | propertyId` = `(0x04 << 16) | 0x001E`
+  - low two bytes `1E 00` = propertyId = 0x001E (GRID_COLUMNS)
+  - high byte `04` = valueType = 0x04 (F32)
+- `00 00 00 40` C = 2.0 (f32 LE: 0x40000000) = two columns
+
 ---
 
 ## Design-Token Resolution Conformance

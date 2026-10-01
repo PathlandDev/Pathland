@@ -117,6 +117,11 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   content fitting — is in [LAYOUT.md](./LAYOUT.md).
 - **`frame(min/ideal/max)`**: each provided bound emits its own property.
   Renderers map them to the native min/ideal/max size.
+- **`GRID_COLUMNS` / `GRID_ROWS`** (`0x001E` / `0x001F`, F32) are **constructor
+  properties** on grids (never chainable modifiers): the column/row track
+  counts. A positive value pins the count (equal `1fr` tracks); `FILL` or absent
+  = auto-fit. They never size the grid — the grid's box comes from `WIDTH`/
+  `HEIGHT`. See [PRIMITIVES.md §Grid](./PRIMITIVES.md#grid--grid-0x13).
 - **`PADDING` vs per-edge**: `PADDING` is uniform and shorthand; a per-edge
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.
@@ -359,8 +364,8 @@ are never chainable modifiers.
 | `0x0001`–`0x0005` | Stack constraint (SPACING, ALIGNMENT, …, CONTENT_MARGINS) |
 | `0x0006` | `SHAPE_KIND` (ENUM; view-specific, see PRIMITIVES.md) |
 | `0x000A`–`0x000D` | Text (TEXT, LINE_LIMIT, TEXT_ALIGNMENT, TRUNCATION_MODE) |
-| `0x000E`–`0x001D` | Layout properties (allocated: OFFSET, POSITION, frame bounds, FIXED_SIZE, LAYOUT_PRIORITY, ASPECT_RATIO/CONTENT_MODE, MINIMUM_SCALE_FACTOR) |
-| `0x001E`–`0x00FF` | Future layout/format properties (unallocated) |
+| `0x000E`–`0x001F` | Layout properties (allocated: OFFSET, POSITION, frame bounds, FIXED_SIZE, LAYOUT_PRIORITY, ASPECT_RATIO/CONTENT_MODE, MINIMUM_SCALE_FACTOR, GRID_COLUMNS, GRID_ROWS) |
+| `0x0020`–`0x00FF` | Future layout/format properties (unallocated) |
 | `0x1001`–`0x1016` | Styling (BACKGROUND_COLOR, BORDER_*, FONT_SIZE/WEIGHT/FAMILY, COLOR, WIDTH, HEIGHT, OPACITY, VISIBLE, Z_INDEX, CLIPS_TO_BOUNDS, PADDING_*, BORDER_EDGES) |
 | `0x1002` | `IMAGE_SOURCE` (STRING; view-specific, see PRIMITIVES.md) |
 | `0x1017`–`0x102F` | Text-format properties (allocated: FONT_STYLE/DESIGN/WIDTH, KERNING, TRACKING, BASELINE_OFFSET, LINE_SPACING, TEXT_CASE, UNDERLINE, STRIKETHROUGH), effect properties (SHADOW_*, BLUR, SATURATION, CONTRAST, BRIGHTNESS, GRAYSCALE, HUE_ROTATION, COLOR_MULTIPLY, COLOR_INVERT), ROTATION_DEGREES, SCALE, ALLOWS_HIT_TESTING |

@@ -299,10 +299,10 @@ accessibility label.
 | `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.of(View...)` / `VStack.of(Alignment, float, View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
 | `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.of(View...)` / `HStack.of(Alignment, float, View...)` | `HSTACK` 0x11 |
 | `ZStack` | `ZStack(alignment:) { … }` | `ZStack.of(View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
-| `Grid` | `Grid(alignment:horizontalSpacing:verticalSpacing:) { … }` | `Grid.of(View...)` | `GRID` 0x13 |
+| `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.of(View...)` / `Grid.of(int columns, View...)` / `Grid.of(int columns, Alignment, float, View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F |
 | `ScrollView` | `ScrollView { … }` | `ScrollView.of(View...)` | `SCROLLVIEW` 0x14 |
-| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.of(View...)` | `LAZY_VGRID` 0x15 |
-| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` | `LAZY_HGRID` 0x16 |
+| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.of(View...)` / `LazyVGrid.of(int columns, View...)` / `LazyVGrid.of(int columns, Alignment, float, View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS` |
+| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` / `LazyHGrid.of(int rows, View...)` / `LazyHGrid.of(int rows, Alignment, float, View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS` |
 | `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.of(View...)` | `LAZY_VSTACK` 0x1B |
 | `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.of(View...)` | `LAZY_HSTACK` 0x1C |
 
@@ -311,6 +311,14 @@ using varargs (`VStack.of(children...)`), not a builder/trailing-closure
 block. Constructor layout properties come as a separate overload
 (`VStack.of(Alignment, float, View...)`). The canonical SwiftUI form passes
 `alignment`/`spacing` as labeled constructor arguments inside the braces' call.
+
+**Grid counts**: `GRID_COLUMNS`/`GRID_ROWS` are **constructor properties**
+(SwiftUI `LazyVGrid(columns:)` / Compose `GridCells.Fixed(n)` parity), never
+chainable modifiers. The grid's own size uses the universal `WIDTH`/`HEIGHT`
+frame model — a `.frame(width:)` on a grid is a pixel box, never a count. A
+count is `int` in the DSL and emits a positive F32; absent = auto-fit. The
+static `Grid` takes optional `columns:`/`rows:` (both absent = SwiftUI `Grid`
+auto-fit); `LazyVGrid` takes `columns:`; `LazyHGrid` takes `rows:`.
 
 ### 4.3 Semantic controls
 
@@ -1006,12 +1014,16 @@ are the companion specs.
    (`A` = arenaRef path, `B` = valueType, `C` = value); a `dark.`-prefixed path
    supplies the dark design (base = light — [TOKENS.md](./TOKENS.md)).
 4. `WIDTH`/`HEIGHT` sentinels: `FILL` = −1.0, `HUG_CONTENT` = −2.0.
-5. `DatePicker` value/event use the two-field encoding **days since epoch
+5. `Grid` counts map to the **constructor properties** `GRID_COLUMNS` (`0x001E`) /
+   `GRID_ROWS` (`0x001F`): a positive `int` count emits a positive F32; absent =
+   auto-fit. A `WIDTH`/`HEIGHT` frame on a grid is the grid's **box**, never a
+   count ([§4.2](#42-layout--container-nodes)).
+6. `DatePicker` value/event use the two-field encoding **days since epoch
    (I32) + millis of day (U32)**; there is no `DATE_VALUE` property.
-6. Value/text/date events are gated by the transport-aware event guards; the
+7. Value/text/date events are gated by the transport-aware event guards; the
    DSL's controls emit the `ACTION_ID`/`BINDING_ID`/`EVENT_LISTENERS` that
    declare intent.
-7. Emission is **diff-based and reactive**: the DSL describes values, the
+8. Emission is **diff-based and reactive**: the DSL describes values, the
    emitter diffs. A generated DSL must keep the retained tree + emitter
    separation; it must not hand-serialize full trees.
 
