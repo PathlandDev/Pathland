@@ -1,0 +1,85 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3VK6FCNYP7DH9TMNWPWS50R",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-01T11:22:08.345011Z",
+  "branch": "spec/core-components-layout",
+  "checkpoints_count": 9,
+  "save_step_count": 5,
+  "files_touched": [
+    "spec/PRIMITIVES.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "6893487290f2",
+  "checkpoint_transcript_start": 153,
+  "transcript_lines_at_start": 153,
+  "compact_transcript_start": 153,
+  "token_usage": {
+    "input_tokens": 1670689,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 33163008,
+    "output_tokens": 100963,
+    "api_call_count": 110
+  },
+  "session_metrics": {
+    "turn_count": 17
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-01T11:22:08.13671Z",
+    "agent_lines": 0,
+    "agent_removed": 6,
+    "human_added": 33,
+    "human_modified": 21,
+    "human_removed": 0,
+    "total_committed": 40,
+    "total_lines_changed": 64,
+    "agent_percentage": 9.375,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 289,
+      "agent_lines_removed": 54
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 289,
+      "agent_lines_removed": 54
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 289,
+      "agent_lines_removed": 54
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 289,
+      "agent_lines_removed": 54
+    }
+  ]
+}
