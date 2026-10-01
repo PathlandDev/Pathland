@@ -60,6 +60,10 @@ export function createElement(component: number): Node {
     case COMPONENT_LAZY_HGRID: {
       const el = document.createElement("div");
       el.style.display = "grid";
+      // Cells keep their size and position within their tracks (spec §grid
+      // model); `justify-items`/`align-items` come from the grid ALIGNMENT.
+      el.style.justifyItems = "start";
+      el.style.alignItems = "start";
       // Lazy horizontal grids flow into auto columns (mirrors the Rust SSR
       // renderer's `grid-auto-flow:column;grid-auto-columns:1fr`).
       if (component === COMPONENT_LAZY_HGRID) {

@@ -214,6 +214,15 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x80, 0x3F, // C = 1.0 (f32 LE: 0x3F800000) = Custom
         ],
     ),
+    (
+        "STYLE:SET_PROPERTY (id=1, GRID_COLUMNS=0x001E, valueType=F32=0x04, 2.0)",
+        [
+            0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x1E, 0x00, 0x04, 0x00, // B = (0x04 << 16) | 0x001E (F32 | GRID_COLUMNS)
+            0x00, 0x00, 0x00, 0x40, // C = 2.0 (f32 LE: 0x40000000) = two columns
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -337,6 +346,15 @@ mod tests {
                 (0x04u32 << 16) | 0x201B,
                 1.0f32.to_bits(),
                 VECTORS[22].1,
+            ),
+            (
+                0x02,
+                0x01,
+                0x0000,
+                1,
+                (0x04u32 << 16) | 0x001E,
+                2.0f32.to_bits(),
+                VECTORS[23].1,
             ),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {

@@ -36,12 +36,15 @@ import {
   COMPONENT_VSTACK,
   COMPONENT_VIDEO,
   COMPONENT_ZSTACK,
+  PROP_ALIGNMENT,
   PROP_BINDING_ID,
   PROP_AUDIO_SOURCE,
   PROP_COLOR,
   PROP_COLOR_VALUE,
   PROP_ENABLED,
   PROP_FONT_FAMILY,
+  PROP_GRID_COLUMNS,
+  PROP_GRID_ROWS,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
@@ -60,15 +63,15 @@ import {
   PROP_TEXT_STYLE,
   PROP_VALUE,
   PROP_VIDEO_SOURCE,
-  PROP_WIDTH,
   VAL_DESIGN_TOKEN,
+  VAL_ENUM,
   VAL_STRING,
   VAL_U8,
 } from "./constants";
 import type { Batch, Opcode } from "./plpl";
 import { readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
-import { applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
+import { applyEnabled, applyProperty, applyTokenRefProperty, gridAlignmentCss } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";
 import {
   encodeMediaEnded,
@@ -165,10 +168,10 @@ function applyLayout(r: DomRenderer): void {
   const els = Array.from(r.byId.values()).filter(
     (n): n is HTMLElement => n instanceof HTMLElement,
   );
-  // Phase 1: container fill propagation + ZStack sizing.
+  // Phase 1: container fill propagation + ZStack sizing + grid cell alignment.
   for (const el of els) {
     const comp = componentByNode.get(el) ?? 0;
-    if (!PROPAGATING.has(comp)) {
+    if (!PROPAGATING.has(comp) && !isGridComponent(comp)) {
       continue;
     }
     if (STACK_MAIN_HORIZONTAL.has(comp) || STACK_MAIN_VERTICAL.has(comp)) {
@@ -188,6 +191,17 @@ function applyLayout(r: DomRenderer): void {
       }
       // Position each child shell per the ZSTACK ALIGNMENT (both axes).
       const token = zstackAlignToken(el.style.alignItems);
+      for (const w of Array.from(el.children)) {
+        if (!(w instanceof HTMLElement)) {
+          continue;
+        }
+        w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : token;
+        w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : token;
+      }
+    } else if (isGridComponent(comp)) {
+      // Position each cell shell per the grid ALIGNMENT on both axes (spec
+      // §grid model): a FILL-sized / greedy cell stretches to fill its track.
+      const token = el.style.alignItems || "start";
       for (const w of Array.from(el.children)) {
         if (!(w instanceof HTMLElement)) {
           continue;
@@ -286,18 +300,26 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
 }
 
 /** The node actually inserted into a parent's container: ZStack children are
- *  wrapped in a `grid-area:1/1` cell shell (the layout pass sets its
- *  `justify-self`/`align-self` from the ZSTACK ALIGNMENT once the child's size
- *  styles exist — mirrors the Rust SSR renderer), everything else inserts
- *  directly. */
+ *  wrapped in a `grid-area:1/1` cell shell and grid cells in an auto-placed
+ *  cell shell (the layout pass sets their `justify-self`/`align-self` from the
+ *  container's ALIGNMENT once the child's size styles exist — mirrors the Rust
+ *  SSR renderer), everything else inserts directly. */
 function placedChild(parent: Node, child: Node): Node {
-  if (componentByNode.get(parent) === COMPONENT_ZSTACK && child instanceof HTMLElement) {
-    const wrapper = document.createElement("div");
-    wrapper.style.gridArea = "1/1";
-    wrapper.style.width = "max-content";
-    wrapper.style.height = "max-content";
-    wrapper.appendChild(child);
-    return wrapper;
+  if (child instanceof HTMLElement) {
+    const parentComp = componentByNode.get(parent);
+    if (parentComp === COMPONENT_ZSTACK) {
+      const wrapper = document.createElement("div");
+      wrapper.style.gridArea = "1/1";
+      wrapper.style.width = "max-content";
+      wrapper.style.height = "max-content";
+      wrapper.appendChild(child);
+      return wrapper;
+    }
+    if (isGridComponent(parentComp)) {
+      const wrapper = document.createElement("div");
+      wrapper.appendChild(child);
+      return wrapper;
+    }
   }
   return child;
 }
@@ -895,22 +917,50 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
     case PROP_ENABLED:
       applyEnabled(el, bits);
       break;
-    case PROP_WIDTH: {
-      // A GRID's WIDTH property is the cell-axis count, mirrored into
-      // `grid-template-columns` (the Rust SSR renderer's `grid_style`); the
-      // width is still applied literally by the generic handler below.
+    case PROP_ALIGNMENT: {
+      // Grids position cells within their tracks on BOTH axes (spec §grid
+      // model); stacks/others use the cross-axis `align-items` token.
       const comp = componentByNode.get(el);
-      if (comp === COMPONENT_GRID || comp === COMPONENT_LAZY_VGRID || comp === COMPONENT_LAZY_HGRID) {
-        const n = f32FromBits(bits);
+      if (isGridComponent(comp)) {
+        const code = valueType === VAL_ENUM ? bits & 0xff : Math.round(f32FromBits(bits));
+        const g = gridAlignmentCss(code);
+        el.style.justifyItems = g;
+        el.style.alignItems = g;
+      } else {
+        applyProperty(el, propId, valueType, bits);
+      }
+      break;
+    }
+    case PROP_GRID_COLUMNS: {
+      // A grid's column count (the fixed track of vertical grids): a positive
+      // count mirrors into `grid-template-columns` and NEVER into a pixel width
+      // (spec §grid model); FILL/absent = auto-fit (no template).
+      const comp = componentByNode.get(el);
+      const n = f32FromBits(bits);
+      if (comp !== COMPONENT_LAZY_HGRID && isGridComponent(comp)) {
         el.style.gridTemplateColumns = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
       }
-      applyProperty(el, propId, valueType, bits);
+      break;
+    }
+    case PROP_GRID_ROWS: {
+      // A grid's row count (the `LAZY_HGRID` fixed track): a positive count
+      // mirrors into `grid-template-rows`; FILL/absent = auto-fit.
+      const comp = componentByNode.get(el);
+      const n = f32FromBits(bits);
+      if ((comp === COMPONENT_GRID || comp === COMPONENT_LAZY_HGRID) && isGridComponent(comp)) {
+        el.style.gridTemplateRows = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
+      }
       break;
     }
     default:
       applyProperty(el, propId, valueType, bits);
       break;
   }
+}
+
+/** Whether `comp` is a grid container (GRID / lazy grids). */
+function isGridComponent(comp: number | undefined): boolean {
+  return comp === COMPONENT_GRID || comp === COMPONENT_LAZY_VGRID || comp === COMPONENT_LAZY_HGRID;
 }
 
 /**

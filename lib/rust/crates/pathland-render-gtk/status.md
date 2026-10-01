@@ -225,14 +225,18 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `CLIPS_TO_BOUNDS` clips overflow; other content may still exceed a Fixed box.
 - **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
   grids set `row_spacing`/`column_spacing` from `SPACING`, per-cell alignment
-  (`grid_cell_align`), and read `WIDTH` as the column count; `SCROLLVIEW`
-  renders its first (spec-pinned) content child with `Automatic`/`Automatic`
-  scroll policy and greedy `Align::Fill`. **Gaps**: a grid **`HEIGHT` row count
-  is not read** (only `WIDTH` → `grid_columns`), so a fixed-row grid /
-  `LAZY_HGRID` (whose fixed track is `HEIGHT`) is unexpressed; no
-  `SCROLL`/`WHEEL` events are emitted (TS client does); a Hug scroll axis
-  (`HEIGHT=HUG_CONTENT` sizing the viewport to content, C14) is not exercised —
-  greedy scroll sizing needs a visual check.
+  (`grid_cell_align`), and read the track counts from the `GRID_COLUMNS` /
+  `GRID_ROWS` constructor properties (`grid_track` — columns for GRID/
+  LAZY_VGRID, rows for LAZY_HGRID, cells column-major there). `WIDTH`/`HEIGHT`
+  on a grid are the universal pixel box, never a count. `SCROLLVIEW` renders
+  its first (spec-pinned) content child with `Automatic`/`Automatic` scroll
+  policy and greedy `Align::Fill`. **SCROLL** (the v/h Adjustments'
+  `value_changed` → `Event::Scroll`) and **WHEEL** (`GtkEventControllerScroll`
+  → `Event::Wheel`) are emitted for nodes with the listener bits (8/9).
+  **Residuals**: `LAZY_*` realizes eagerly (spec-permitted), auto-fit grids
+  collapse to a single track (spec-permitted; measurement is a follow-up), and
+  runtime scroll emission needs a visual check (headless tests cover the
+  wiring only).
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).

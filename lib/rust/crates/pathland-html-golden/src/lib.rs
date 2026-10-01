@@ -439,8 +439,9 @@ fn layout() -> Scenario {
         property_id::BORDER_RADIUS,
         8f32.to_bits(),
     );
-    // Grid with 2 columns (the GRID's WIDTH property is the cell-axis count).
-    b.set_prop(6, value_type::F32, property_id::WIDTH, 2f32.to_bits());
+    // Grid with 2 columns (the GRID's GRID_COLUMNS constructor property is the
+    // cell-axis count; WIDTH/HEIGHT would be the grid's box, never a count).
+    b.set_prop(6, value_type::F32, property_id::GRID_COLUMNS, 2f32.to_bits());
     b.set_text(7, "Cell");
     b.set_text(9, "Scroll");
     // HStack with FILL width / HUG height.

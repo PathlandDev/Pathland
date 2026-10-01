@@ -177,7 +177,8 @@ impl Node {
         }
         // WIDTH/HEIGHT: fixed values inline as px; FILL (-1) → `100%` (expand to
         // the available space in a flex parent — SwiftUI `maxWidth/maxHeight:
-        // .infinity`). HUG_CONTENT (-2) is left to the intrinsic size.
+        // .infinity`). HUG_CONTENT (-2) is left to the intrinsic size. (A grid's
+        // track counts live in `GRID_COLUMNS`/`GRID_ROWS`, never here.)
         if let Some(v) = self.token_ref(property_id::WIDTH) {
             css.push_str(&format!("width:{v};"));
         } else if let Some(v) = f32p(property_id::WIDTH) {
@@ -473,8 +474,6 @@ fn size_css(v: f32) -> String {
     }
 }
 
-/// The column count of a `GRID` from its `WIDTH` property (cell-axis count);
-
 /// The stack's main axis as a boolean (horizontal) when `component` is a flex
 /// stack; `None` otherwise.
 fn stack_main_horizontal(component: u16) -> Option<bool> {
@@ -564,16 +563,27 @@ fn fill_propagation(
     }
     extra
 }
-/// `FILL`/absent → auto-fit.
-/// The column count of a `GRID` from its `WIDTH` property (cell-axis count;
-/// `FILL`/absent → auto-fit).
-fn grid_columns(node: &Node) -> Option<u32> {
-    let w = node.f32_property(property_id::WIDTH, -1.0);
-    if w <= 0.0 {
+/// A grid's fixed track count from `prop`: a positive finite Fixed value pins
+/// the count; `FILL`/absent → auto-fit (`None`).
+fn grid_count(node: &Node, prop: u16) -> Option<u32> {
+    let v = node.f32_property(prop, -1.0);
+    if v <= 0.0 {
         None
     } else {
-        Some(w.round() as u32)
+        Some(v.round() as u32)
     }
+}
+
+/// A grid's column count from its `GRID_COLUMNS` constructor property
+/// (cell-axis count; `FILL`/absent → auto-fit).
+fn grid_columns(node: &Node) -> Option<u32> {
+    grid_count(node, property_id::GRID_COLUMNS)
+}
+
+/// A grid's row count from its `GRID_ROWS` constructor property (cell-axis
+/// count; a `LAZY_HGRID`'s fixed track).
+fn grid_rows(node: &Node) -> Option<u32> {
+    grid_count(node, property_id::GRID_ROWS)
 }
 
 /// Convert days since the Unix epoch (negative = before 1970) to a Gregorian
@@ -1283,20 +1293,58 @@ if indeterminate {
             }
             component_type::GRID | component_type::LAZY_VGRID | component_type::LAZY_HGRID => {
                 let tag = semantic.unwrap_or("div");
-                let cols = grid_columns(node);
-                let grid_css = grid_style(cols, node.component == component_type::LAZY_HGRID);
+                let grid_css = grid_style(node);
                 let combined = format!("{grid_css}{css}");
                 let grid_style = style_attr(&combined);
-                format!("<{tag}{data_id}{event}{aria}{grid_style}>{children}</{tag}>")
+                // Per-cell alignment (spec/PRIMITIVES.md §grid model): each cell
+                // keeps its own size (Fixed/Hug) and is positioned by the grid's
+                // ALIGNMENT on both axes; a `FILL`-sized cell (or a greedy
+                // filler like `COLOR`/`SCROLLVIEW`) stretches to fill its track.
+                let align = node.f32_property(property_id::ALIGNMENT, 3.0) as u8;
+                let pos = |code: u8, stretch: bool| -> &'static str {
+                    if stretch {
+                        "stretch"
+                    } else {
+                        match code {
+                            1 => "center",
+                            2 => "end",
+                            _ => "start",
+                        }
+                    }
+                };
+                let inner: String = node
+                    .children
+                    .iter()
+                    .filter_map(|&child| {
+                        let child_html = self.render_node(nodes, child, Some(node.component));
+                        if child_html.is_empty() {
+                            None
+                        } else {
+                            Some(format!(
+                                "<div style=\"justify-self:{};align-self:{};\">{child_html}</div>",
+                                pos(align, fills_axis(nodes, child, true, false)),
+                                pos(align, fills_axis(nodes, child, false, false)),
+                            ))
+                        }
+                    })
+                    .collect();
+                format!("<{tag}{data_id}{event}{aria}{grid_style}>{inner}</{tag}>")
             }
             component_type::SCROLLVIEW => {
                 let tag = semantic.unwrap_or("div");
                 // Layout-greedy on both axes (LAYOUT.md): a scroll region fills
                 // the available space (SwiftUI `ScrollView` semantics) unless a
-                // size frame overrides it.
+                // size frame overrides it. The **first child** is the content
+                // (spec/PRIMITIVES.md §ScrollView); additional children are not
+                // rendered.
                 let combined = format!("flex:1 1 auto;align-self:stretch;overflow:auto;{css}");
                 let scroll_style = style_attr(&combined);
-                format!("<{tag}{data_id}{event}{aria}{scroll_style}>{children}</{tag}>")
+                let content = node
+                    .children
+                    .first()
+                    .map(|&c| self.render_node(nodes, c, Some(node.component)))
+                    .unwrap_or_default();
+                format!("<{tag}{data_id}{event}{aria}{scroll_style}>{content}</{tag}>")
             }
             component_type::ZSTACK => {
                 let tag = semantic.unwrap_or("div");
@@ -1489,14 +1537,38 @@ if indeterminate {
         )
     }
 
-/// Inline grid CSS: `display:grid` + `grid-template-columns` from the column count.
-fn grid_style(columns: Option<u32>, horizontal: bool) -> String {
-    let mut css = String::from("display:grid;");
-    if let Some(n) = columns {
-        css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
-    }
-    if horizontal {
-        css.push_str("grid-auto-flow:column;grid-auto-columns:1fr;");
+/// Inline grid CSS: `display:grid` + `justify-items`/`align-items` from the
+/// grid `ALIGNMENT` (cells position within their tracks; default Leading/start),
+/// plus the fixed track templates — `WIDTH` columns (GRID/LAZY_VGRID) and
+/// `HEIGHT` rows (GRID/LAZY_HGRID) as equal `1fr` tracks. `FILL`/absent count =
+/// auto-fit (no template; `LAZY_HGRID` columns auto-flow).
+fn grid_style(node: &Node) -> String {
+    let align = match node.f32_property(property_id::ALIGNMENT, 3.0) as u8 {
+        1 => "center",
+        2 => "end",
+        _ => "start",
+    };
+    let mut css = format!("display:grid;justify-items:{align};align-items:{align};");
+    match node.component {
+        component_type::GRID => {
+            if let Some(n) = grid_columns(node) {
+                css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
+            }
+            if let Some(n) = grid_rows(node) {
+                css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
+            }
+        }
+        component_type::LAZY_HGRID => {
+            if let Some(n) = grid_rows(node) {
+                css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
+            }
+            css.push_str("grid-auto-flow:column;grid-auto-columns:1fr;");
+        }
+        _ => {
+            if let Some(n) = grid_columns(node) {
+                css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
+            }
+        }
     }
     css
 }
@@ -2090,7 +2162,7 @@ mod tests {
             style::SET_PROPERTY,
             0,
             1,
-            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32,
             2.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
@@ -2099,6 +2171,94 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("grid-template-columns:repeat(2,1fr)"), "grid inline");
+        assert!(!html.contains("width:2px"), "GRID_COLUMNS is a count, never a pixel box: {html}");
+        assert!(html.contains("justify-items:start;align-items:start"), "default cell alignment");
+        assert!(html.contains("justify-self:start;align-self:start;"), "cell wrapper positions per ALIGNMENT");
+    }
+
+    #[test]
+    fn grid_rows_and_lazy_hgrid_tracks() {
+        use pathland_core::value_type;
+        use pathland_core::size;
+
+        let build = |component: u16, columns: f32, rows: f32| {
+            let mut opcodes = Vec::new();
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component as u32, 0));
+            if columns != pathland_core::size::HUG_CONTENT {
+                opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 1,
+                    ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32, columns.to_bits()));
+            }
+            if rows != pathland_core::size::HUG_CONTENT {
+                opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 1,
+                    ((value_type::F32 as u32) << 16) | property_id::GRID_ROWS as u32, rows.to_bits()));
+            }
+            let renderer = HtmlRenderer::new();
+            renderer.render_document(&opcodes, &[], 1)
+        };
+
+        // GRID with both counts: columns from GRID_COLUMNS, rows from GRID_ROWS.
+        let g = build(component_type::GRID, 2.0, 3.0);
+        assert!(g.contains("grid-template-columns:repeat(2,1fr)"), "grid columns: {g}");
+        assert!(g.contains("grid-template-rows:repeat(3,1fr)"), "grid rows: {g}");
+        assert!(!g.contains("width:2px") && !g.contains("height:3px"), "counts never pixels: {g}");
+
+        // LAZY_HGRID: the fixed track is GRID_ROWS; columns auto-flow; GRID_COLUMNS is ignored.
+        let h = build(component_type::LAZY_HGRID, 2.0, 3.0);
+        assert!(h.contains("grid-template-rows:repeat(3,1fr)"), "hgrid rows: {h}");
+        assert!(h.contains("grid-auto-flow:column;grid-auto-columns:1fr"), "hgrid auto columns: {h}");
+        assert!(!h.contains("grid-template-columns:repeat(2,1fr)"), "hgrid ignores GRID_COLUMNS: {h}");
+
+        // FILL count = auto-fit (no template); a FILL WIDTH frame still expands (100%).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
+        opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 1,
+            ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32, size::FILL.to_bits()));
+        opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 1,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32, size::FILL.to_bits()));
+        let renderer = HtmlRenderer::new();
+        let f = renderer.render_document(&opcodes, &[], 1);
+        assert!(!f.contains("grid-template-columns:repeat"), "FILL count = auto-fit: {f}");
+        assert!(f.contains("width:100%"), "FILL WIDTH frame expands: {f}");
+    }
+
+    #[test]
+    fn grid_cells_stretch_when_fill_or_greedy() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 2,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32, pathland_core::size::FILL.to_bits()));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::COLOR as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 4, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 4, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        // A FILL-width cell stretches horizontally but keeps content height
+        // (start vertically); a greedy COLOR stretches on both axes; a Hug cell
+        // keeps its size and is positioned at start on both axes.
+        assert!(html.contains("justify-self:stretch;align-self:stretch;"), "greedy COLOR stretches: {html}");
+        assert!(html.contains("justify-self:stretch;align-self:start;"), "FILL-width cell: {html}");
+        assert!(html.contains("justify-self:start;align-self:start;"), "Hug cell positioned: {html}");
+    }
+
+    #[test]
+    fn scrollview_renders_only_the_first_child() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SCROLLVIEW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("data-pathland-id=\"2\""), "first child is the content: {html}");
+        assert!(!html.contains("data-pathland-id=\"3\""), "extra children not rendered: {html}");
     }
 
     #[test]

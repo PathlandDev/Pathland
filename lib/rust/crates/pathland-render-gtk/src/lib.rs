@@ -719,6 +719,15 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             if new & listener::POINTER_MOVE != 0 {
                 attach_motion(widget, id, sink.clone());
             }
+            if new & (listener::SCROLL | listener::WHEEL) != 0 {
+                attach_scroll_events(
+                    widget,
+                    id,
+                    sink.clone(),
+                    new & listener::SCROLL != 0,
+                    new & listener::WHEEL != 0,
+                );
+            }
         }
         self.attached_listeners.insert(id, mask);
     }
@@ -788,7 +797,8 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         self.reconcile_box_children(&parent, children);
     }
 
-    /// Reconcile a `GtkGrid`'s children at their row-major cell positions.
+    /// Reconcile a `GtkGrid`'s children at their cell positions (row-major for
+    /// vertical grids, column-major for a horizontal `LAZY_HGRID`).
     fn sync_grid_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
@@ -796,7 +806,8 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         let Some(grid) = parent.downcast_ref::<gtk::Grid>() else {
             return;
         };
-        let columns = layout::grid_columns(node);
+        let horizontal = layout::is_hgrid(node.component_type);
+        let track = layout::grid_track(node);
         // SPACING → uniform row + column gap (HTML renders `gap` on grids).
         let gap = layout::spacing(node);
         grid.set_row_spacing(gap as u32);
@@ -809,7 +820,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
                 w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical));
             }
         }
-        if grid_matches(grid, children, columns, &self.widgets) {
+        if grid_matches(grid, children, track, horizontal, &self.widgets) {
             return;
         }
         // Rebuild: remove all current children, then attach at target cells.
@@ -818,7 +829,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         }
         for (idx, child_id) in children.iter().enumerate() {
             if let Some(w) = self.widgets.get(child_id) {
-                let (row, col) = layout::grid_cell_position(idx as u32, columns);
+                let (row, col) = layout::grid_cell_position(idx as u32, track, horizontal);
                 grid.attach(w, col as i32, row as i32, 1, 1);
             }
         }
@@ -1339,7 +1350,8 @@ fn child_widgets(widget: &gtk::Widget) -> Vec<gtk::Widget> {
 fn grid_matches(
     grid: &gtk::Grid,
     children: &[u32],
-    columns: Option<u32>,
+    track: Option<u32>,
+    horizontal: bool,
     widgets: &HashMap<u32, gtk::Widget>,
 ) -> bool {
     if child_widgets(&grid.clone().upcast()).len() != children.len() {
@@ -1349,7 +1361,7 @@ fn grid_matches(
         let Some(w) = widgets.get(child_id) else {
             return false;
         };
-        let (row, col) = layout::grid_cell_position(idx as u32, columns);
+        let (row, col) = layout::grid_cell_position(idx as u32, track, horizontal);
         if grid.child_at(col as i32, row as i32).as_ref() != Some(w) {
             return false;
         }
@@ -1650,6 +1662,58 @@ fn attach_motion(widget: &gtk::Widget, target: u32, sink: Rc<RefCell<dyn FnMut(E
         });
     });
     widget.add_controller(motion);
+}
+
+/// Attach scroll reporting to a `GtkScrolledWindow` for `target` (spec
+/// EVENTS.md): `SCROLL` (the content offset in logical points via the v/h
+/// Adjustments' `value_changed`) and `WHEEL` (raw wheel/trackpad deltas via an
+/// `EventControllerScroll`). Gated by the `SCROLL`/`WHEEL` listener bits.
+fn attach_scroll_events(
+    widget: &gtk::Widget,
+    target: u32,
+    sink: Rc<RefCell<dyn FnMut(Event)>>,
+    want_scroll: bool,
+    want_wheel: bool,
+) {
+    if want_scroll {
+        if let Some(sw) = widget.downcast_ref::<gtk::ScrolledWindow>() {
+            let hadj = sw.hadjustment();
+            let vadj = sw.vadjustment();
+            let h_sink = sink.clone();
+            let v_sink = sink.clone();
+            let v_other = vadj.clone();
+            hadj.connect_value_changed(move |adj| {
+                h_sink.borrow_mut()(Event::Scroll {
+                    target,
+                    offset_x: adj.value() as f32,
+                    offset_y: v_other.value() as f32,
+                });
+            });
+            let h_other = hadj.clone();
+            vadj.connect_value_changed(move |adj| {
+                v_sink.borrow_mut()(Event::Scroll {
+                    target,
+                    offset_x: h_other.value() as f32,
+                    offset_y: adj.value() as f32,
+                });
+            });
+        }
+    }
+    if want_wheel {
+        let scroll_ctrl = gtk::EventControllerScroll::new(
+            gtk::EventControllerScrollFlags::VERTICAL | gtk::EventControllerScrollFlags::HORIZONTAL,
+        );
+        let wheel_sink = sink.clone();
+        scroll_ctrl.connect_scroll(move |_ctrl, dx, dy| {
+            wheel_sink.borrow_mut()(Event::Wheel {
+                target,
+                delta_x: dx as f32,
+                delta_y: dy as f32,
+            });
+            glib::Propagation::Proceed
+        });
+        widget.add_controller(scroll_ctrl);
+    }
 }
 
 /// Build a stack's native `GtkBox` from its mapped layout (orientation +

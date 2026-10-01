@@ -14,6 +14,8 @@ import {
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
   COMPONENT_BUTTON,
+  COMPONENT_GRID,
+  COMPONENT_LAZY_HGRID,
   COMPONENT_MENU,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_TEXT,
@@ -21,6 +23,8 @@ import {
   COMPONENT_ZSTACK,
   PROP_AUDIO_SOURCE,
   PROP_COLOR,
+  PROP_GRID_COLUMNS,
+  PROP_GRID_ROWS,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
@@ -666,6 +670,49 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     expect(zstack.contains(first)).toBe(true);
     expect(zstack.contains(second)).toBe(true);
     expect(first.parentElement).not.toBe(zstack);
+  });
+
+  it("mirrors GRID_COLUMNS/GRID_ROWS into track templates (never pixel sizes) and wraps cells", () => {
+    const r = renderer();
+    const batch = parseBatch(
+      buildBatch([
+        [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_GRID],
+        [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_GRID_COLUMNS, f32bits(2)],
+        [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_GRID_ROWS, f32bits(3)],
+        [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
+        [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
+      ]),
+    );
+    applyBatch(batch, r);
+    const grid = r.byId.get(1) as HTMLElement;
+    expect(grid.style.gridTemplateColumns).toBe("repeat(2,1fr)");
+    expect(grid.style.gridTemplateRows).toBe("repeat(3,1fr)");
+    expect(grid.style.width).not.toBe("2px"); // a count, never a pixel box
+    expect(grid.style.height).not.toBe("3px");
+    expect(grid.style.justifyItems).toBe("start");
+    expect(grid.style.alignItems).toBe("start");
+    // A Hug cell is wrapped in an auto-placed shell positioned at start.
+    const cell = r.byId.get(2) as HTMLElement;
+    const wrapper = cell.parentElement as HTMLElement;
+    expect(wrapper.tagName).toBe("DIV");
+    expect(wrapper.style.justifySelf).toBe("start");
+    expect(wrapper.style.alignSelf).toBe("start");
+  });
+
+  it("LAZY_HGRID reads GRID_ROWS (the fixed track) and ignores GRID_COLUMNS", () => {
+    const r = renderer();
+    const batch = parseBatch(
+      buildBatch([
+        [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_LAZY_HGRID],
+        [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_GRID_COLUMNS, f32bits(2)],
+        [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_GRID_ROWS, f32bits(3)],
+      ]),
+    );
+    applyBatch(batch, r);
+    const grid = r.byId.get(1) as HTMLElement;
+    expect(grid.style.gridTemplateRows).toBe("repeat(3,1fr)");
+    expect(grid.style.gridTemplateColumns).toBe("");
+    expect(grid.style.gridAutoFlow).toBe("column");
   });
 
   it("morphs a ProgressView between spinner and determinate progress", () => {

@@ -210,13 +210,17 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `META::RESYNC`; P3's `frameCount` sequencing lets it resync only when a gap is
   actually detected.
 - **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
-  mirrors the Rust SSR — `grid-template-columns` from `WIDTH`, `gap` from
-  `SPACING`, `grid-auto-flow:column;grid-auto-columns:1fr` for `LAZY_HGRID`,
-  greedy scroll (`flex:1 1 auto;align-self:stretch;overflow:auto`); `SCROLL` and
-  `WHEEL` events are wired to document-level listeners gated by the listener
-  bits. **Gaps**: **no per-cell grid alignment** (`justify-self`/`align-self`
-  not applied), a grid **`HEIGHT` row count is not read**, and runtime-created
-  grids share the SSR `LAZY_HGRID`/`WIDTH` caveat.
+  mirrors the Rust SSR — `grid-template-columns`/`grid-template-rows` from the
+  `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/
+  LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`; never a pixel
+  width/height), `gap` from `SPACING`, greedy scroll
+  (`flex:1 1 auto;align-self:stretch;overflow:auto`), and **per-cell grid
+  alignment** — grid children are wrapped in an auto-placed shell whose
+  `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell else the
+  grid `ALIGNMENT` position (`placedChild` + `applyLayout`, the ZStack mirror).
+  `SCROLL` and `WHEEL` events are wired to document-level listeners gated by
+  the listener bits. A runtime-inserted extra `SCROLLVIEW` child is a minor
+  residual (SSR renders only the first child).
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

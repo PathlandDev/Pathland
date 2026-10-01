@@ -145,6 +145,16 @@ export function alignmentCss(code: number): string {
     default: return "flex-start";
   }
 }
+/** A grid's per-cell position token (spec §grid model): cells position within
+ *  their tracks on BOTH axes; `start`/`center`/`end`, default start. `Fill`(3)
+ *  and absent mean the default Leading/start position. */
+export function gridAlignmentCss(code: number): string {
+  switch (code) {
+    case P.ALIGN_CENTER: return "center";
+    case P.ALIGN_TRAILING: return "end";
+    default: return "start";
+  }
+}
 function textAlignCss(code: number): string {
   switch (code) {
     case P.TEXT_ALIGN_LEADING: return "left";

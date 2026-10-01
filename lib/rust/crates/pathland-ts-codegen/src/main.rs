@@ -245,6 +245,8 @@ pub fn emit_constants_ts() -> String {
             ("ASPECT_RATIO", fmt_u16(property_id::ASPECT_RATIO)),
             ("CONTENT_MODE", fmt_u16(property_id::CONTENT_MODE)),
             ("MINIMUM_SCALE_FACTOR", fmt_u16(property_id::MINIMUM_SCALE_FACTOR)),
+            ("GRID_COLUMNS", fmt_u16(property_id::GRID_COLUMNS)),
+            ("GRID_ROWS", fmt_u16(property_id::GRID_ROWS)),
             ("BACKGROUND_COLOR", fmt_u16(property_id::BACKGROUND_COLOR)),
             ("IMAGE_SOURCE", fmt_u16(property_id::IMAGE_SOURCE)),
             ("AUDIO_SOURCE", fmt_u16(property_id::AUDIO_SOURCE)),

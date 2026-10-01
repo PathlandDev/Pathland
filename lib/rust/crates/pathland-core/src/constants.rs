@@ -341,6 +341,13 @@ pub mod property_id {
     pub const CONTENT_MODE: u16 = 0x001C;
     /// **Draft.** Minimum scale factor (F32). `.minimumScaleFactor(_:)`.
     pub const MINIMUM_SCALE_FACTOR: u16 = 0x001D;
+    /// **Draft.** Grid column count (F32, constructor property): a positive value
+    /// pins the count (equal `1fr` tracks); `FILL`/absent = auto-fit. Never a
+    /// pixel width — the grid's box comes from `WIDTH`/`HEIGHT`.
+    pub const GRID_COLUMNS: u16 = 0x001E;
+    /// **Draft.** Grid row count (F32, constructor property): the `LAZY_HGRID`
+    /// fixed track; positive = count, `FILL`/absent = auto-fit.
+    pub const GRID_ROWS: u16 = 0x001F;
     // Style (0x1000 range)
     pub const BACKGROUND_COLOR: u16 = 0x1001;
     /// **Draft.** Image source (STRING: a resource name, file path, or URL —

@@ -317,23 +317,54 @@ fn round_nonneg(f: f32) -> i32 {
     f.max(0.0).round() as i32
 }
 
-/// The column count of a `GRID` from its `WIDTH` property (the cell-axis
-/// count). `FILL` (-1.0), a non-positive value, or absence means auto-fit.
+/// The column count of a vertical grid (`GRID`/`LAZY_VGRID`) from its
+/// `GRID_COLUMNS` constructor property (the cell-axis count). `FILL` (-1.0), a
+/// non-positive value, or absence means auto-fit.
 pub fn grid_columns(node: &HostNode) -> Option<u32> {
-    let w = f32_prop(node, property_id::WIDTH)?;
+    let w = f32_prop(node, property_id::GRID_COLUMNS)?;
     if w <= 0.0 {
         return None;
     }
     Some(w.round() as u32)
 }
 
-/// Row-major cell position for a `GRID` child index.
-///
-/// `columns` is the `grid_columns` count; `None` (auto-fit) collapses to a
-/// single column. The position is `(row, column)`.
-pub fn grid_cell_position(index: u32, columns: Option<u32>) -> (u32, u32) {
-    let cols = columns.filter(|c| *c > 0).unwrap_or(1);
-    (index / cols, index % cols)
+/// The row count of a grid from its `GRID_ROWS` constructor property — the
+/// fixed track of a `LAZY_HGRID` (and a static `GRID`'s row count).
+pub fn grid_rows(node: &HostNode) -> Option<u32> {
+    let r = f32_prop(node, property_id::GRID_ROWS)?;
+    if r <= 0.0 {
+        return None;
+    }
+    Some(r.round() as u32)
+}
+
+/// Whether a grid is horizontal (`LAZY_HGRID`) — its fixed track is the rows
+/// axis and cells flow column-major.
+pub fn is_hgrid(component_type: u16) -> bool {
+    component_type == component_type::LAZY_HGRID
+}
+
+/// A grid's fixed track count: `WIDTH`-style columns for vertical grids
+/// (`GRID`/`LAZY_VGRID`), `HEIGHT`-style rows for a horizontal `LAZY_HGRID`.
+/// `None` (auto-fit) collapses to a single track.
+pub fn grid_track(node: &HostNode) -> Option<u32> {
+    if is_hgrid(node.component_type) {
+        grid_rows(node)
+    } else {
+        grid_columns(node)
+    }
+}
+
+/// Cell position for a grid child index. Vertical grids fill **row-major**
+/// (`(row = index / track, col = index % track)`); a horizontal `LAZY_HGRID`
+/// fills **column-major** (`(row = index % track, col = index / track)`).
+pub fn grid_cell_position(index: u32, track: Option<u32>, horizontal: bool) -> (u32, u32) {
+    let n = track.filter(|c| *c > 0).unwrap_or(1);
+    if horizontal {
+        (index % n, index / n)
+    } else {
+        (index / n, index % n)
+    }
 }
 
 #[cfg(test)]
@@ -691,27 +722,46 @@ mod tests {
     }
 
     #[test]
-    fn grid_columns_from_width_property() {
-        let n = node(component_type::GRID, &[(property_id::WIDTH, f32_bits(2.0))]);
+    fn grid_columns_from_grid_columns_property() {
+        let n = node(component_type::GRID, &[(property_id::GRID_COLUMNS, f32_bits(2.0))]);
         assert_eq!(grid_columns(&n), Some(2));
 
         let n = node(component_type::GRID, &[]);
         assert_eq!(grid_columns(&n), None);
 
         // FILL (-1.0) means auto-fit.
-        let n = node(component_type::GRID, &[(property_id::WIDTH, f32_bits(-1.0))]);
+        let n = node(component_type::GRID, &[(property_id::GRID_COLUMNS, f32_bits(-1.0))]);
         assert_eq!(grid_columns(&n), None);
     }
 
     #[test]
-    fn grid_cell_position_is_row_major() {
-        assert_eq!(grid_cell_position(0, Some(2)), (0, 0));
-        assert_eq!(grid_cell_position(1, Some(2)), (0, 1));
-        assert_eq!(grid_cell_position(2, Some(2)), (1, 0));
-        assert_eq!(grid_cell_position(3, Some(2)), (1, 1));
+    fn grid_track_reads_columns_or_rows_by_orientation() {
+        // A vertical grid's fixed track is GRID_COLUMNS.
+        let v = node(component_type::LAZY_VGRID, &[(property_id::GRID_COLUMNS, f32_bits(3.0))]);
+        assert_eq!(grid_track(&v), Some(3));
+        // A horizontal grid's fixed track is GRID_ROWS (GRID_COLUMNS is ignored).
+        let h = node(
+            component_type::LAZY_HGRID,
+            &[(property_id::GRID_COLUMNS, f32_bits(3.0)), (property_id::GRID_ROWS, f32_bits(4.0))],
+        );
+        assert_eq!(grid_track(&h), Some(4));
+    }
+
+    #[test]
+    fn grid_cell_position_is_row_major_or_column_major() {
+        // Vertical grids fill row-major.
+        assert_eq!(grid_cell_position(0, Some(2), false), (0, 0));
+        assert_eq!(grid_cell_position(1, Some(2), false), (0, 1));
+        assert_eq!(grid_cell_position(2, Some(2), false), (1, 0));
+        assert_eq!(grid_cell_position(3, Some(2), false), (1, 1));
         // Auto-fit collapses to a single column.
-        assert_eq!(grid_cell_position(3, None), (3, 0));
+        assert_eq!(grid_cell_position(3, None, false), (3, 0));
         // Zero columns is treated as auto.
-        assert_eq!(grid_cell_position(2, Some(0)), (2, 0));
+        assert_eq!(grid_cell_position(2, Some(0), false), (2, 0));
+        // Horizontal grids (LAZY_HGRID) fill column-major over GRID_ROWS tracks.
+        assert_eq!(grid_cell_position(0, Some(3), true), (0, 0));
+        assert_eq!(grid_cell_position(1, Some(3), true), (1, 0));
+        assert_eq!(grid_cell_position(3, Some(3), true), (0, 1));
+        assert_eq!(grid_cell_position(4, Some(3), true), (1, 1));
     }
 }

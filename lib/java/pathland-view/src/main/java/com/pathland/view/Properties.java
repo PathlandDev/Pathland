@@ -31,6 +31,10 @@ public final class Properties {
     public static final int ASPECT_RATIO = 0x001B;
     public static final int CONTENT_MODE = 0x001C;
     public static final int MINIMUM_SCALE_FACTOR = 0x001D;
+    /** Grid column count (constructor property; positive = count, FILL/absent = auto-fit). */
+    public static final int GRID_COLUMNS = 0x001E;
+    /** Grid row count (constructor property; the `LAZY_HGRID` fixed track). */
+    public static final int GRID_ROWS = 0x001F;
     // Style (0x1000 range)
     public static final int BACKGROUND_COLOR = 0x1001;
     public static final int IMAGE_SOURCE = 0x1002;
