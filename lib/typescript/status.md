@@ -164,7 +164,13 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `data-min`/`data-max`; grids mirror `grid-template-columns` / `grid-auto-flow`
   from the WIDTH property. A table-driven **drift
   guard** (`test/elements.test.ts`) pins the canonical shells against the Rust
-  renderer's SSR markup.
+  renderer's SSR markup. This element-shell map is the DOM renderer's
+  native-element mapping (the specs carry none): `TEXT` → `<span>`, `IMAGE` →
+  `<img>`, `DIVIDER` → `<hr>`, `TEXT_FIELD` → `<input>`, `TEXT_EDITOR` →
+  `<textarea>`, `TOGGLE` → checkbox/switch, `SLIDER` → `<input type="range">`,
+  `PICKER` → `<select>` + `<option>`, `DATE_PICKER` → date/time inputs,
+  `COLOR_PICKER` → `<input type="color">`, `MENU` → `.pathland-menu`,
+  `AUDIO`/`VIDEO` → `<audio>`/`<video controls>`.
 - **Cross-renderer SSR conformance** (`test/ssr-conformance.test.ts`): the golden
   fixtures emitted by `pathland-html-golden` (`test/fixtures/ssr/`) drive BOTH a
   fresh-DOM render (apply each `{name}.plpl` with `createElement` + `applyBatch`

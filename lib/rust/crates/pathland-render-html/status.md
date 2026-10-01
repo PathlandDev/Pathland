@@ -26,6 +26,21 @@ Statelessness). Protocol contract: `spec/`.
   value="{index}">` + `SELECTION`), `MENU` (the `.pathland-menu` composite:
   `.pathland-menu-trigger` label + `.pathland-menu-items` children),
   `COLOR_PICKER`, `COMMENT`.
+- **Native elements** (the specs carry no renderer mappings — this is the
+  concrete HTML map the removed spec hints lived in): `TEXT` → `<span>` (or
+  `<p>`/`<h1>`–`<h5>` by `ROLE`/heading `TEXT_STYLE`), `IMAGE` → `<img>`,
+  `COLOR` → `<div>`, `SHAPE` → CSS shapes / inline SVG, `DIVIDER` → `<hr>`,
+  `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
+  `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex
+  `div`, `ZSTACK` → grid overlay `div`, grids → CSS-grid `div`, `SCROLLVIEW` →
+  overflow `div`, `BUTTON` → `<button>`, `TEXT_FIELD` → `<input>` (secure →
+  `type="password"`), `TEXT_EDITOR` → `<textarea>`, `TOGGLE` → checkbox/switch
+  input, `SLIDER` → `<input type="range">`, `STEPPER` → `.pathland-stepper`,
+  `DATE_PICKER` → `<input type="date">`/`<input type="time">`, `PICKER` →
+  `<select>` + `<option>`, `MENU` → `.pathland-menu` composite, `COLOR_PICKER`
+  → `<input type="color">`, `AUDIO`/`VIDEO` → `<audio controls>` /
+  `<video controls>` (hidden media element + custom body when app-driven),
+  `COMMENT` → none.
 - **Media**: `IMAGE` renders `<img src alt>` (the `LABEL` accessibility text is
   the `alt`; empty = decorative) and honors `CONTENT_MODE`/`ASPECT_RATIO`
   inline (`Fit`→`object-fit:contain`, `Fill`→`object-fit:cover`); `VIDEO` →

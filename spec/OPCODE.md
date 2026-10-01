@@ -3,7 +3,7 @@
 **Wire protocol version:** 1
 **Status:** Draft
 **Format:** Fixed-size (16-byte) opcode engine
-**Last Updated:** September 3, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -159,9 +159,9 @@ B = (valueType << 16) | propertyId
 #### Constraint properties for native layout
 
 The following properties drive native layout; the renderer maps them to its
-native equivalents (e.g. `SPACING` → GTK box spacing / CSS `gap`, `WIDTH`/`HEIGHT`
-→ size requests). Special `WIDTH`/`HEIGHT` values: `-1` = FILL (expand to
-available), `-2` = HUG_CONTENT (native intrinsic size).
+native layout properties (e.g. `SPACING` → a gap between children,
+`WIDTH`/`HEIGHT` → size requests). Special `WIDTH`/`HEIGHT` values: `-1` = FILL
+(expand to available), `-2` = HUG_CONTENT (native intrinsic size).
 
 > **Allocation semantics** — the exact meaning of a Fixed / `FILL` / `HUG_CONTENT`
 > size, how containers distribute space to children (main axis: only `FILL`
@@ -173,9 +173,9 @@ available), `-2` = HUG_CONTENT (native intrinsic size).
 > unit — the same abstraction as SwiftUI points, Jetpack Compose `dp`, and CSS
 > pixels. A renderer MUST allocate the requested points box and fit content
 > within it; it must never treat the value as a device-pixel size. Each renderer
-> maps points to its native unit and resolves its own device resolution (e.g.
-> CSS `px`, GTK logical pixels × scale factor), so the same value yields the
-> same physical size across renderers.
+> maps points to its native unit and resolves its own device resolution (logical
+> points × scale factor), so the same value yields the same physical size across
+> renderers.
 
 | Property | Value | Type | Native meaning |
 |----------|-------|------|----------------|
@@ -204,7 +204,7 @@ consolidated in [MODIFIERS.md](./MODIFIERS.md#appendix-enumerated-values).
 
 Styling properties are **modifiers** — they apply to any view, not just stacks —
 and map to visual decoration rather than layout. `PADDING` (uniform) and its
-per-edge variants map to widget margins / CSS `padding`, alongside
+per-edge variants map to native padding, alongside
 `COLOR`/`BACKGROUND_COLOR`/`BORDER_*`:
 
 | Property | Value | Type | Native meaning |
@@ -258,7 +258,7 @@ delivery (see [EVENTS.md](./EVENTS.md#transport-aware-event-guards-must)).
 | `TOGGLE_STYLE` | `0x2018` | ENUM (F32 code) | Visual style token for a `TOGGLE`: `Switch`=0, `Checkbox`=1, `Button`=2 |
 | `ROUTE` | `0x2019` | STRING | Current navigation path (absolute, e.g. `/users/42`); drives web URL sync — see [DSL.md §4.5](./DSL.md#45-navigation) |
 | `NAV_DEPTH` | `0x201A` | U32 | Navigation back-stack depth (destinations in the app's path incl. current; `push`+1, `pop`−1, `replace` unchanged); lets native navigation adapters reconcile their page stack by depth — see [DSL.md §4.5](./DSL.md#45-navigation) |
-| `NAV_CHROME` | `0x201B` | F32 (enum code) | Navigation chrome mode on a `NavigationContainer` slot: `PlatformDefault`=0 (renderer supplies chrome — native container where one exists, renderer-drawn back affordance on DOM), `Custom`=1 (developer owns all nav UI; renderer adds none). Emitted once at mount; missing = `PlatformDefault` — see [DSL.md §4.5](./DSL.md#45-navigation) |
+| `NAV_CHROME` | `0x201B` | F32 (enum code) | Navigation chrome mode on a `NavigationContainer` slot: `PlatformDefault`=0 (renderer supplies chrome — native container where one exists, renderer-drawn back affordance where none exists), `Custom`=1 (developer owns all nav UI; renderer adds none). Emitted once at mount; missing = `PlatformDefault` — see [DSL.md §4.5](./DSL.md#45-navigation) |
 | `TEXT_STYLE` | `0x1032` | ENUM (F32 code) | Predefined typography from the design system (see below). The heading styles imply a heading element on a `TEXT`; raw font modifiers override the visual on top and never imply a heading |
 
 **`TEXT_STYLE` enumerated values** (predefined typography; carried as an `F32` numeric code, `value_type::F32`):
@@ -298,15 +298,14 @@ delivery (see [EVENTS.md](./EVENTS.md#transport-aware-event-guards-must)).
 
 > **`ROLE` is semantic structure only.** Interactive/control roles (button, link,
 > checkbox, slider, toggle, menu, text field, …) are **not roles** — they are
-> intrinsic to the control components (a `BUTTON` renders as a `<button>`, a
-> `TOGGLE` as an `<input type="checkbox">`/`role="switch"`, a `MENU` as
-> `role="menu"`), and a custom-looking button is expressed with `Button` +
-> `ButtonStyle`. The web renderer maps each semantic role onto its native element
-> on a generic `div`/`span` shell; control components keep their native element
-> and never take an ARIA role from `ROLE`. **Headings** come from a heading
-> `TEXT_STYLE` typography (always `<h1>`–`<h5>`) or from `ROLE=Header` (default
-> `<h2>`); a raw font modifier never implies a heading. Non-heading text defaults
-> to `<span>`.
+> intrinsic to the control components (a `BUTTON` is an interactive button, a
+> `TOGGLE` a checkbox/switch, a `MENU` a menu), and a custom-looking button is
+> expressed with `Button` + `ButtonStyle`. The renderer maps each semantic role
+> onto a semantically-structured native element; control components keep their
+> native element and never take an ARIA role from `ROLE`. **Headings** come from
+> a heading `TEXT_STYLE` typography (a heading element) or from `ROLE=Header` (a
+> heading); a raw font modifier never implies a heading. Non-heading text
+> defaults to a plain text element.
 
 **`STATE` enumerated values** (control/interaction state; carried as an `F32` numeric code, `value_type::F32`):
 

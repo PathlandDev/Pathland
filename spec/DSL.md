@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 3, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -379,11 +379,8 @@ when they ignore it.
 adds none. The container's chrome mode decides who supplies the navigation UI:
 
 - `PlatformDefault` (default): the **renderer** supplies the chrome — the
-  platform's native navigation container where one exists (GTK
-  `AdwNavigationView`, SwiftUI `NavigationStack`, Compose `NavHost`), and a
-  renderer-drawn back affordance where none exists (the DOM renderer shows a
-  back button once `NAV_DEPTH > 1`; a no-JS SSR page falls back to the browser
-  back button). `NavigationContainer.of(router)`.
+  platform's native navigation container where one exists, and a renderer-drawn
+  back affordance where none exists. `NavigationContainer.of(router)`.
 - `Custom`: the **developer owns all navigation UI** — they draw their own
   back buttons / bars in the destinations and call `router.back()` /
   `navigate(...)` directly; the renderer adds no chrome (no native header-bar
@@ -551,10 +548,8 @@ decides navigation — it only requests it.
 **Native integration** — each renderer **may** promote a `NavigationContainer`
 slot onto its platform navigation affordance. The trigger is structural, not a
 new primitive: a slot carrying the `ROUTE` (STRING) property is a navigation
-slot and may be rendered as the platform's native navigation container
-(SwiftUI `NavigationStack`, Compose `NavHost`, WinUI `NavigationView` / `Frame`,
-GTK `AdwNavigationView`, LVGL screens `lv_scr_load`). The contract keeps the
-renderer stateless:
+slot and may be rendered as the platform's native navigation container. The
+contract keeps the renderer stateless:
 
 - **App owns** the route signal, the back-stack, and which destination is
   current; it emits the current destination as the slot child plus `ROUTE`
@@ -569,20 +564,11 @@ renderer stateless:
   **without** a URL payload (= "back one step"). The renderer never holds the
   back-stack and never decides navigation — it renders whatever destination
   subtree the app emits and may animate the swap.
-- Platforms with no native navigation container (LVGL, terminal/canvas, plain
-  GTK4 boxes) render the slot as an ordinary container that swaps children in
+- Platforms with no native navigation container render the slot as an ordinary
+  container that swaps children in
   place; the app's own back-stack is the only stack. The app does not branch on
   platform — the same `NavigationContainer` works on both, and the renderer's
   use (or not) of a native container is purely a presentation decision.
-
-| Platform | Native container | Slot child swap maps to | Native back → |
-|---|---|---|---|
-| GTK/Linux | `AdwNavigationView` | `push`/`pop` the child widgets | `NAVIGATE` (no URL) |
-| SwiftUI | `NavigationStack(path:)` | bind emitted path → native path | `NAVIGATE` |
-| Android/Compose | `NavHost` | route string → `NavHostController.navigate` | `NAVIGATE` |
-| WinUI | `NavigationView` / `Frame` | `Frame.Navigate` / sidebar+detail | `NAVIGATE` |
-| Web (DOM client) | History API | `ROUTE` → `pushState` (already implemented) | `NAVIGATE` |
-| LVGL / embedded | none | whole-tree swap (app's back-stack) | n/a |
 
 **Deltas (Java)**: `Router` / `RouteTable` live in
 `com.pathland.view.router`; `Conditional` in `com.pathland.view`. The

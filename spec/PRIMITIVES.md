@@ -63,9 +63,10 @@ Mapping Range](#definitive-opcode-mapping-range)):
   and lay those elements out with their native layout engine. A renderer MAY
   retain its rendered-output tree for drawing, hit-testing, and event routing —
   this is a cache of its own output, not application state.
-- **Native elements everywhere**: VStack → GTK box / CSS flex column; Text → GTK label / `<span>`; semantic controls →
-  native OS controls in Native Token Mode (below). Never a generic canvas unless
-  a platform has no native equivalent.
+- **Native elements everywhere**: each primitive maps to the platform's native
+  element (a stack → the platform's native stack; text → the platform's native
+  text element); semantic controls → native OS controls in Native Token Mode
+  (below). Never a generic canvas unless a platform has no native equivalent.
 
 ---
 
@@ -94,19 +95,10 @@ the node has a child layout tree:
 
 When a semantic control node has **no child layout tree** (`childrenIds` is
 empty), the client platform **MUST delegate rendering entirely to its native OS
-control**:
-
-| Component | Native tokens |
-|-----------|---------------|
-| `Button` 0x20 | `UIButton`/`NSButton`, `GtkButton`, `<button>` |
-| `TextField`/`SecureField` 0x21 | `UITextField`/`NSTextField`, `GtkEntry`, `<input>` |
-| `Toggle` 0x24 | `UISwitch`/`NSSwitch`, `GtkSwitch`/`GtkCheckButton`, `<input type="checkbox">` |
-| `Slider` 0x25 | `UISlider`/`NSSlider`, `GtkScale`, `<input type="range">` |
-| `Stepper` 0x26 | `UIStepper`/`NSStepper`, `GtkSpinButton`, `-/+` buttons |
-| `DatePicker` 0x27 | `UIDatePicker`/`NSDatePicker`, `GtkCalendar`, `<input type="date">` |
-| `ColorPicker` 0x2A | native color panel, `GtkColorButton`, `<input type="color">` |
-| `Picker` 0x28 | `UISegmentedControl`/popup, `GtkDropDown`, `<select>` |
-| `Menu` 0x29 | `UIMenu`, `GtkPopoverMenu`, floating popover |
+control** — `Button`, `TextField`/`SecureField`, `Toggle`, `Slider`, `Stepper`,
+`DatePicker`, `ColorPicker`, `Picker`, and `Menu` each map to the platform's
+native control (the concrete widget per renderer lives in that renderer's
+`status.md`).
 
 **System style modifiers act as visual style tokens** — they force the platform
 to switch native control variants **without emitting child nodes over the
@@ -244,9 +236,8 @@ and renders.
   positions that ellipsis under a clamp; `CLIPS_TO_BOUNDS` clips the Text to its
   bounds box. Full contract: [LAYOUT.md](./LAYOUT.md#content-fitting-truncation--clipping).
 - **Events**: none by default; any listener via `EVENT_LISTENERS`.
-- **Renderer mapping**: GTK `GtkLabel`; HTML `<span>`/`<p>`.
-  Font handling is client-owned (the renderer resolves `FONT_FAMILY` /
-  `FONT_*` to its native text system).
+- **Font handling**: client-owned — the renderer resolves `FONT_FAMILY` /
+  `FONT_*` to its native text system.
 
 ### Image — `IMAGE` 0x02
 
@@ -257,7 +248,6 @@ A static image or icon asset. Asset loading is client-owned.
 - **Properties**: `IMAGE_SOURCE`, `CONTENT_MODE` (0x001C, enum `Fit`=0 /
   `Fill`=1), size modifiers, `OPACITY`, `CLIPS_TO_BOUNDS`.
 - **Events**: none by default.
-- **Renderer mapping**: GTK `GtkPicture`/`GtkImage`; HTML `<img>`.
 - **Note (SwiftUI `AsyncImage`)**: remote/async loading is **not a separate
   primitive** — it is `IMAGE` with `IMAGE_SOURCE` set to an absolute URL; the
   renderer loads asynchronously and re-issues `SET_PROPERTY(IMAGE_SOURCE)` if
@@ -265,8 +255,9 @@ A static image or icon asset. Asset loading is client-owned.
 
 ### Audio — `AUDIO` 0x09
 
-An audio playback node. Playback is **renderer-native by default** (the web
-renderer emits `controls`); the app supplies the source reference. A **custom
+An audio playback node. Playback is **renderer-native by default** (the
+renderer emits native playback controls); the app supplies the source
+reference. A **custom
 `AudioStyle`** supplies app-driven control children (transport buttons, seek,
 volume) — the node then carries the media control properties below and the
 renderer renders a hidden media element alongside the custom controls.
@@ -281,8 +272,6 @@ renderer renders a hidden media element alongside the custom controls.
 - **Events**: none by default; when a control property is bound, the renderer
   reports `MEDIA_PLAY_STATE_CHANGED` / `MEDIA_TIME_UPDATED` / `MEDIA_ENDED` /
   `MEDIA_VOLUME_CHANGED` (see EVENTS.md).
-- **Renderer mapping**: GTK `GtkMediaFile`/GStreamer; HTML `<audio controls>`
-  when there are no children, else a hidden `<audio>` + the children.
 
 ### Video — `VIDEO` 0x0A
 
@@ -295,8 +284,6 @@ a custom `VideoStyle` supplies app-driven control children, mirroring `AUDIO`.
   (`PLAYBACK_STATE`, `MEDIA_POSITION`, `MEDIA_VOLUME`), size modifiers.
 - **Events**: none by default; the media events above when a control property
   is bound.
-- **Renderer mapping**: GTK `GtkVideo`/`GtkMediaFile`; HTML `<video controls>`
-  when there are no children, else a hidden `<video>` + the children.
 - **Note**: a poster/preview frame is a planned draft (`POSTER_SOURCE`); a
   video plays fine without one.
 
@@ -318,8 +305,6 @@ a custom `VideoStyle` supplies app-driven control children, mirroring `AUDIO`.
   node in the UI tree; treat it as a **Value** when it appears in a modifier's
   parameter list.
 - **Events**: none by default.
-- **Renderer mapping**: GTK `GtkDrawingArea`/colored box (expands); HTML `<div>`
-  with `background-color` (`flex:1;align-self:stretch` — greedy). The renderer paints the pixel fill.
 - **Note**: `Color` is also a **property value** (`COLOR`,
   `BACKGROUND_COLOR`, `BORDER_COLOR`, `TINT`) — the node exists for when a
   color is a first-class view (backgrounds, fills, spacers).
@@ -335,9 +320,6 @@ the renderer owns the actual drawing.
   `BORDER_COLOR`, `BORDER_RADIUS` (RoundedRectangle corner), `BORDER_EDGES`;
   size = `WIDTH`/`HEIGHT`.
 - **Events**: none by default.
-- **Renderer mapping**: GTK/HTML/CSS drawing (CSS `border-radius`, `clip-path`,
-  or inline SVG for `Path`). `Path` is the documented
-  case where a renderer paints directly (no native element equivalent).
 
 ### Divider — `DIVIDER` 0x05
 
@@ -346,8 +328,7 @@ An axis-aligned 1px separator line.
 - **Protocol**: a leaf node; orientation implied by the parent stack axis.
 - **Properties**: `COLOR` (0x100A), `BORDER_WIDTH` (0x1003) — line thickness.
 - **Events**: none.
-- **Renderer mapping**: GTK `GtkSeparator`; HTML `<hr>` / `<div>` with a border.
-  **Layout-greedy on the cross axis** (fills the stack's available cross size,
+- **Layout-greedy on the cross axis** (fills the stack's available cross size,
   SwiftUI-style) — see LAYOUT.md; an explicit `WIDTH`/`HEIGHT` overrides it.
 
 ### Spacer — `SPACER` 0x06
@@ -355,7 +336,7 @@ An axis-aligned 1px separator line.
 A flexible expanding layout filler.
 
 - **Protocol**: a leaf node with no properties; expands to the remaining main
-  axis space (`flex-grow:1` in HTML, expanding box in GTK).
+  axis space.
 - **Events**: none.
 
 ### ProgressView — `PROGRESS_VIEW` 0x07
@@ -366,8 +347,6 @@ Determinate progress or an activity indicator.
   0.0–`MAX_VALUE` if set). Indeterminate: `IS_INDETERMINATE` (0x200F, U8 1) —
   the renderer animates a native activity indicator.
 - **Events**: none.
-- **Renderer mapping**: GTK `GtkProgressBar`/`GtkSpinner`; HTML
-  `<progress>`/`<div class="spinner">`.
 
 ### Gauge — `GAUGE` 0x08
 
@@ -383,8 +362,8 @@ A value shown against a scale (SwiftUI `Gauge`).
 
 Layout primitives arrange children. They carry `SPACING` (0x0001),
 `ALIGNMENT` (0x0002), and `CONTENT_MARGINS` (0x0005), plus layout modifiers from
-[MODIFIERS.md](./MODIFIERS.md#1-layout). Renderers map them to their native flex
-box / grid primitives (GTK `GtkBox`/`GtkGrid`, CSS flex/grid).
+[MODIFIERS.md](./MODIFIERS.md#1-layout). Renderers map them to their native
+layout primitives.
 
 ### The stack layout model
 
@@ -649,10 +628,9 @@ An action trigger control.
 | `EVENT_LISTENERS` | 0x2005 | U32 | Raw pointer listeners (down/move/up) for app-side tap composition |
 | `COLOR`/`FONT_*`/`PADDING`/`BACKGROUND_COLOR`/… | — | — | Text & appearance modifiers (MODIFIERS.md) |
 
-- **Native Token Mode (leaf):** no children → native button
-  (`UIButton`/`NSButton`, `GtkButton`, `<button>`); the label is the node's text
-  (`SET_TEXT`). If the text is also absent, render an empty platform button
-  shell (leaf fallback).
+- **Native Token Mode (leaf):** no children → native button; the label is the
+  node's text (`SET_TEXT`). If the text is also absent, render an empty
+  platform button shell (leaf fallback). Button styles are renderer/token-owned.
 - **Composite Override Mode (container):** children present → suppress default
   button chrome, render the custom label tree, wrap it with a native
   click/press gesture that reports `POINTER_DOWN`/`POINTER_UP` for the button's
@@ -661,8 +639,6 @@ An action trigger control.
   (`POINTER_DOWN` then `POINTER_UP` on the same target). Without `ACTION_ID` /
   `BINDING_ID` / `EVENT_LISTENERS`, a renderer MUST drop the interaction (Event
   Guards).
-- **Renderer mapping**: GTK `GtkButton`; HTML `<button>`.
-  Button styles are renderer/token-owned.
 - **Note (SwiftUI `Link`)**: SwiftUI's `Link` is `BUTTON` with an associated
   URL; the app handles the tap and opens the URL. No separate primitive.
 
@@ -681,8 +657,7 @@ Single-line text input; `SecureField` is the same component with `IS_SECURE`.
 - **Events** (see [EVENTS.md](./EVENTS.md)): `TEXT_CHANGED` (0x07) on every
   edit; `FOCUS_CHANGED` (0x08), `EDITING_CHANGED` (0x09), `SUBMIT` (0x0A) —
   draft. All gated by `BINDING_ID` or the matching `EVENT_LISTENERS` bits.
-- **Renderer mapping**: GTK `GtkEntry`; HTML `<input type="text">`.
-  A secure field MUST mask characters and MUST NOT echo the value.
+- **Security**: a secure field MUST mask characters and MUST NOT echo the value.
 
 ### TextEditor — `TEXT_EDITOR` 0x22
 
@@ -695,7 +670,6 @@ Multi-line text editing area.
 - **Events**: same as `TextField` — `TEXT_CHANGED` (0x07), `FOCUS_CHANGED`
   (0x08), `EDITING_CHANGED` (0x09), `SUBMIT` (0x0A) — gated by `BINDING_ID` /
   `EVENT_LISTENERS`.
-- **Renderer mapping**: GTK `GtkTextView`; HTML `<textarea>`.
 
 ### Toggle — `TOGGLE` 0x24
 
@@ -711,16 +685,13 @@ not a separate component:
 | `ENABLED`/`STATE` | 0x2003/0x2002 | — | Enabled / accessibility state |
 
 - **Native Token Mode (leaf):** renders the native control for the
-  `TOGGLE_STYLE` token — `UISwitch`/`NSSwitch`, `GtkSwitch`, checkbox input
-  (`TOGGLE_STYLE=Checkbox`), or a toggle button. The style token switches native
-  variants **without emitting child nodes**.
+  `TOGGLE_STYLE` token — a native switch, checkbox, or toggle button. The style
+  token switches native variants **without emitting child nodes**.
 - **Composite Override Mode (container):** a custom body (e.g. label + icon)
   wrapped with a native toggle gesture; `SELECTED` still drives the state.
 - **Events:** a user change emits `VALUE_CHANGED` (0x06) with `B` = 0/1 — gated
   by `BINDING_ID`. The app writes it into `SELECTED`; the engine re-emits the
   `SELECTED` property.
-- **Renderer mapping**: GTK `GtkSwitch`/`GtkCheckButton`; HTML checkbox / styled
-  switch / toggle button.
 
 ### Slider — `SLIDER` 0x25
 
@@ -735,14 +706,13 @@ A continuous or stepped numeric range control.
 | `BINDING_ID` | 0x2017 | U32 | Two-way binding id (numeric value) |
 | `ENABLED`/`STATE` | 0x2003/0x2002 | — | Enabled / accessibility state |
 
-- **Native Token Mode (leaf):** native slider (`UISlider`/`NSSlider`,
-  `GtkScale`, `<input type="range">`); the renderer owns 120 FPS client-side
-  thumb dragging and resolves the semantic value from its own track geometry.
+- **Native Token Mode (leaf):** native slider; the renderer owns 120 FPS
+  client-side thumb dragging and resolves the semantic value from its own track
+  geometry.
 - **Composite Override Mode (container):** a custom track/thumb body wrapped
   with a native drag gesture that reports `VALUE_CHANGED`.
 - **Events:** `VALUE_CHANGED` (0x06, `A=targetId, B=value (f32)`) — gated by
   `BINDING_ID`.
-- **Renderer mapping**: GTK `GtkScale`; HTML `<input type="range">`.
 
 ### Stepper — `STEPPER` 0x26
 
@@ -761,8 +731,6 @@ A date & time selection modal/popover control.
   `DateAndTime`=2), `BINDING_ID` (0x2017), size modifiers.
 - **Events**: `DATE_CHANGED` (draft 0x0D, `A=targetId, B=days (I32),
   C=millis of day (U32)`) — inline, gated by `BINDING_ID`.
-- **Renderer mapping**: GTK `GtkCalendar`/`GtkSpinButton`; HTML `<input
-  type="date">`/`<input type="time">`.
 
 ### Picker — `PICKER` 0x28
 
@@ -776,15 +744,12 @@ A selection control rendered as a segment, dropdown menu, or wheel.
   `BINDING_ID` (0x2017).
 - **Events**: `VALUE_CHANGED` with `B` = the new selected child index — gated
   by `BINDING_ID`.
-- **Renderer mapping**: GTK `GtkComboBoxText`/`GtkDropDown`; HTML `<select>` /
-  segmented buttons.
 
 ### Menu — `MENU` 0x29
 
 A **semantic control**: contextual action trigger and popover container. The
 client platform owns dynamic popover presentation, overlay placement, tap/focus
-management, and accessibility focus trapping (`UIMenu` on iOS, `GtkPopoverMenu`
-on GTK, floating popover on Web).
+management, and accessibility focus trapping.
 
 #### Dual-Mode Rendering Rules
 
@@ -814,8 +779,6 @@ to **native OS menu item slots** rather than standard canvas/layout nodes.
 
 - **Events**: `VALUE_CHANGED` with `B` = the chosen action item index — gated
   by `BINDING_ID` (0x2017).
-- **Renderer mapping**: GTK `GtkMenuButton`/`GtkPopoverMenu`; HTML `<div
-  role="menu">`.
 
 ### ColorPicker — `COLOR_PICKER` 0x2A
 
@@ -826,8 +789,6 @@ A native system color picker control.
 - **Events**: `VALUE_CHANGED` — the value field carries the packed color **as an
   f32 bit pattern** of `0xAARRGGBB` (the app reinterprets it) — gated by
   `BINDING_ID`.
-- **Renderer mapping**: native color panel / `GtkColorButton`; HTML `<input
-  type="color">`.
 
 ---
 

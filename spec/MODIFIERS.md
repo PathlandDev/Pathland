@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 30, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -68,8 +68,7 @@ Special `WIDTH`/`HEIGHT` values: `-1.0` = `FILL` (expand to available), `-2.0` =
 > the `FILL` sentinel on `WIDTH`/`HEIGHT`. DSLs accept `∞` (e.g. Rust
 > `f32::INFINITY`, Java `Float.POSITIVE_INFINITY`) and normalize it to `FILL`
 > before emission, so `.frame(maxWidth: .infinity)` ⇔ `WIDTH = FILL`. The
-> renderer then expands the element to the available space (GTK `hexpand`/`Fill`
-> alignment, CSS `width:100%`).
+> renderer then expands the element to the available space.
 
 > **Token references**: every property typed `COLOR` / `F32` / `STRING` / `ENUM`
 > in the tables below MAY instead carry the `DESIGN_TOKEN` value type (`0x08`),
@@ -117,8 +116,7 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   exact points box, container space distribution, cross-axis hug-not-stretch,
   content fitting — is in [LAYOUT.md](./LAYOUT.md).
 - **`frame(min/ideal/max)`**: each provided bound emits its own property.
-  Renderers map them to min/max/ideal size (GTK `set_size_request`, CSS
-  `min-width`/`max-width`/`width`).
+  Renderers map them to the native min/ideal/max size.
 - **`PADDING` vs per-edge**: `PADDING` is uniform and shorthand; a per-edge
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.
@@ -128,13 +126,11 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   only `FILL`-sized children stretch), and `Fill`=3 means default (hug)
   positioning, not stretch. Full contract: [LAYOUT.md](./LAYOUT.md).
 - **`CONTENT_MODE` enum**: `Fit`=0 (aspect-fit within the bounds),
-  `Fill`=1 (aspect-fill, cropped) — the web renderer maps them to
-  `object-fit: contain` / `object-fit: cover` (both SSR and the DOM client).
+  `Fill`=1 (aspect-fill, cropped).
 - **`OFFSET`** moves the element **after** layout without affecting layout
-  (post-layout translation; GTK margins/translation, CSS `transform:
-  translate`).
-- **`POSITION`** is absolute placement within the parent (CSS `position:
-  absolute; left/top`); the renderer resolves the anchor.
+  (post-layout translation).
+- **`POSITION`** is absolute placement within the parent; the renderer resolves
+  the anchor.
 
 ---
 
@@ -193,7 +189,7 @@ passes font families as string names (`.font(.custom("Georgia", size:))`).
   (SwiftUI-aligned) — it never forces a single line and never truncates by
   itself. Full contract: [LAYOUT.md](./LAYOUT.md#content-fitting-truncation--clipping).
 - **`TEXT_ALIGNMENT`** differs from stack `ALIGNMENT`: it aligns the text block
-  inside its own bounds (CSS `text-align`), not children of a stack.
+  inside its own bounds, not children of a stack.
 
 ---
 
@@ -238,8 +234,8 @@ Visual decoration. These never change layout; they decorate the element.
   axes): layout is unaffected, only painting is clipped — see
   [LAYOUT.md](./LAYOUT.md#clipping--clips_to_bounds).
 - **Color effects** (`SATURATION`, `CONTRAST`, …) are renderer-owned filters;
-  the renderer maps them to native filter APIs (CSS `filter`, GTK
-  `GtkSnapshot` effects). They compose in the order applied.
+  the renderer maps them to its native filter APIs. They compose in the order
+  applied.
 - **`TRANSITION`** is a presentation hint on a container: when its child
   subtree is structurally replaced (a `NavigationContainer` destination swap, a
   `Conditional.when` branch change) the renderer **may** animate the swap with
@@ -262,8 +258,7 @@ Geometric transforms applied after layout.
 ### Semantics
 
 - Transforms do **not** affect layout; the renderer applies them as a
-  post-layout visual transform (CSS `transform`, GTK `gtk_widget_allocate`
-  transform).
+  post-layout visual transform.
 - **Anchor** is renderer-token-owned (`.center` default); the protocol does not
   transmit anchors — the renderer owns presentation (see OPCODE.md design
   tokens). Non-uniform scale / 3D rotation are future extensions.
@@ -299,8 +294,8 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
 - **`ROLE`** is **semantic structure only** — its enumerated values are defined
   in [OPCODE.md](./OPCODE.md#semantic-properties), not here. Interactive/control
   roles (button, link, checkbox, …) are **not roles**: they are intrinsic to the
-  control components (a `BUTTON` is a `<button>`, a `TOGGLE` a checkbox/switch, a
-  `MENU` `role="menu"`), and a custom-looking button uses `Button` +
+  control components (a `BUTTON` is an interactive button element, a `TOGGLE` a
+  checkbox/switch, a `MENU` a menu), and a custom-looking button uses `Button` +
   `ButtonStyle`. The DSL rejects role codes outside the semantic catalog.
 - **`STATE`** is a semantic accessibility property — it never describes visual
   styling.
@@ -309,7 +304,7 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
   (`Font.custom(name, size)` → `FONT_FAMILY` + `FONT_SIZE`), or a system
   size/weight/design (`Font.system(size, weight, design)` → `FONT_SIZE` +
   `FONT_WEIGHT` + `FONT_DESIGN`). A heading typography (LargeTitle…Headline)
-  implies a heading element on a `TEXT` (`<h1>`–`<h5>`); a custom/system font
+  implies a heading element on a `TEXT`; a custom/system font
   never implies a heading — it only styles the text. Individual raw modifiers
   (`FontSize`, `FontWeightMod`, …) layer on top.
 - **`LABEL`** is a `STRING` property (the accessibility label), distinct from a

@@ -122,7 +122,7 @@ when the container is a `SCROLLVIEW`.
 
 ### Rationale
 
-These rules are the bugs-fixed-and-avoided model of the GTK renderer:
+These rules are the bugs-fixed-and-avoided model of the reference renderers:
 
 - A **Fixed image** in a row stays its box (never scaled to content or stretched
   by a tall row).
@@ -179,23 +179,6 @@ clipping it.
 Stacks, scroll, and other containers lay their children out inside; a Fixed box
 constrains them (scroll for `SCROLLVIEW`, otherwise overflow is visible unless
 `CLIPS_TO_BOUNDS` clips it).
-
----
-
-## Per-renderer mapping
-
-| Pathland kind | HTML/CSS | GTK4 | SwiftUI | Compose |
-|---|---|---|---|---|
-| Fixed `WIDTH`/`HEIGHT` | `width/height` (hard box) | allocate the exact box: content natural == box where possible (e.g. scaled image paintable); prevent cross-axis stretch of fixed children | `.frame(width:height:)` | `Modifier.size/width/height` |
-| `FILL` (`-1`) | `100%` / flex-grow | `set_hexpand/vexpand(true)` + `Align::Fill` | `.frame(maxWidth: .infinity)` | `Modifier.fillMaxWidth/Height` |
-| `HUG_CONTENT`/absent | `fit-content` / auto (and *not* stretched) | natural size; main-axis content alignment (`Center`) for composites | ideal size | `wrapContent*` |
-| Main-axis leftover | flex-grow → `Fill` children only | box: extra to `Fill` children only | proposed-size model | `weight()` / `fillMax` |
-| Cross-axis default | hug (NOT `align-items: stretch`) | children keep cross size; `Fill` fills | align children; no stretch | wrap content |
-
-> GTK4 note: GTK's box model allocates children the container's full cross size
-> by default. A Fixed cross-axis child must therefore be prevented from
-> stretching (non-`Fill` cross alignment and/or a content-fit that never
-> upscales beyond the box) to honor this contract.
 
 ---
 
