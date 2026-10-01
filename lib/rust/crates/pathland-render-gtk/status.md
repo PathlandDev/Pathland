@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** September 30, 2026
+**Last updated:** October 1, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -223,6 +223,16 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   Fixed box (e.g. a stack wider than its box) is allocated its natural size
   rather than clipped to the box. Text wraps within its box (above) and
   `CLIPS_TO_BOUNDS` clips overflow; other content may still exceed a Fixed box.
+- **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
+  grids set `row_spacing`/`column_spacing` from `SPACING`, per-cell alignment
+  (`grid_cell_align`), and read `WIDTH` as the column count; `SCROLLVIEW`
+  renders its first (spec-pinned) content child with `Automatic`/`Automatic`
+  scroll policy and greedy `Align::Fill`. **Gaps**: a grid **`HEIGHT` row count
+  is not read** (only `WIDTH` → `grid_columns`), so a fixed-row grid /
+  `LAZY_HGRID` (whose fixed track is `HEIGHT`) is unexpressed; no
+  `SCROLL`/`WHEEL` events are emitted (TS client does); a Hug scroll axis
+  (`HEIGHT=HUG_CONTENT` sizing the viewport to content, C14) is not exercised —
+  greedy scroll sizing needs a visual check.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).

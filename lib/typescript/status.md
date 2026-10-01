@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** September 25, 2026
+**Last updated:** October 1, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -203,6 +203,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **`frameCount` gap detection** (P3): the client now resyncs on EVERY reconnect via
   `META::RESYNC`; P3's `frameCount` sequencing lets it resync only when a gap is
   actually detected.
+- **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
+  mirrors the Rust SSR — `grid-template-columns` from `WIDTH`, `gap` from
+  `SPACING`, `grid-auto-flow:column;grid-auto-columns:1fr` for `LAZY_HGRID`,
+  greedy scroll (`flex:1 1 auto;align-self:stretch;overflow:auto`); `SCROLL` and
+  `WHEEL` events are wired to document-level listeners gated by the listener
+  bits. **Gaps**: **no per-cell grid alignment** (`justify-self`/`align-self`
+  not applied), a grid **`HEIGHT` row count is not read**, and runtime-created
+  grids share the SSR `LAZY_HGRID`/`WIDTH` caveat.
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 30, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -217,6 +217,12 @@ renderer** (HTML + GTK4 today; SwiftUI/Compose as they land).
 | C8 | `Text` long content, `LINE_LIMIT=2` | a `200`-wide column | at most 2 lines; overflow on the last visible line tail-ellipsized (`…`) |
 | C9 | `Text` `LINE_LIMIT=1`, `TRUNCATION_MODE=Head` | a `200`-wide column | single line, ellipsis at the start, the tail preserved |
 | C10 | `CLIPS_TO_BOUNDS=1` | a Fixed box with overflowing content | content (and the node's painted decoration) clipped to the allocated box; layout unchanged |
+| C11 | `Grid` `WIDTH=2`, `SPACING=8`, Hug cells | a definite-width parent | two **equal `1fr` columns** with an 8pt gap; Hug cells keep their natural size, positioned at Leading in their track |
+| C12 | `Grid` `WIDTH=2` with a `FILL`-width cell | a definite-width parent | the `FILL` cell **stretches to fill its column**; Hug cells keep their size; the grid does **not** propagate the `FILL` up to a Hug parent on the auto axis |
+| C13 | `ScrollView` (greedy, no frame) | a `FILL`-sized column | fills the available width and height; content taller/wider than the viewport **scrolls**, never clips or overflows the viewport |
+| C14 | `ScrollView` `HEIGHT=HUG_CONTENT` | a Hug column | the viewport's height is the content's **natural height** (no vertical scroll); the horizontal axis stays greedy |
+
+Grid/scroll/lazy allocation is specified in [PRIMITIVES.md §Grid / §ScrollView](./PRIMITIVES.md#grid--grid-0x13); the lazy containers are identical to their eager base with windowed realization only.
 
 Conformance tests (golden vectors) are wired in the renderer alignment passes
 that follow this document; see each project's `status.md`.

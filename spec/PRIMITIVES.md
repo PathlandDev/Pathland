@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 30, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -524,40 +524,107 @@ children occupy the same box by design; there is no gap between them.
 ### Grid — `GRID` 0x13
 
 Static 2D matrix grid, eagerly rendered with aligned rows & columns. Children
-are cells, row-major in insertion order. **Properties**: `ALIGNMENT`, `SPACING`,
-`WIDTH`/`HEIGHT` (cell-axis count; `FILL` = auto-fit). Renderer: GTK `GtkGrid`;
-HTML CSS grid.
+are cells, **row-major in insertion order** — child *i* occupies the cell at
+`(row = i / columns, column = i % columns)`. **Properties**: `ALIGNMENT` (a
+single-axis enum applied to both axes, like `ZStack`), `SPACING` (uniform row +
+column gap), `WIDTH` (column count), `HEIGHT` (row count), plus layout modifiers
+(Fixed/Fill frames, `PADDING`/`CONTENT_MARGINS` as an inset).
+
+#### The grid layout model
+
+`GRID` (and the lazy grids) follow the **SwiftUI / Jetpack Compose grid model**:
+a grid *proposes* a size to each cell, the cell reports its own size, and the
+grid *places* it at its track intersection. Unlike a stack, a grid has no main
+axis — its two track axes (columns × rows) follow the size model
+[above](#the-stack-layout-model) independently, with two differences:
+
+**Cell counts.** `WIDTH` is the **column count** and `HEIGHT` the **row count**.
+A **Fixed** value pins that count; **`FILL` or absent means auto-fit** — the
+grid derives the count from the number of cells and the available space
+(Compose `GridCells.Fixed(N)` vs `Adaptive`; SwiftUI `LazyVGrid(columns:)` /
+`LazyHGrid(rows:)`).
+
+**Tracks.** On a **fixed-count** axis the tracks are **equal `1fr` fractions**
+of the grid's size on that axis (`repeat(N, 1fr)` in CSS, Compose
+`GridCells.Fixed`, SwiftUI `.flexible()` columns): every track gets the same
+share. A Hug grid on that axis sizes the tracks to the content instead (each
+track as large as its widest/tallest cell) and hugs to the content + `SPACING`.
+The **auto** axis always sizes tracks to the content — each row/column is
+exactly as large as its cells need.
+
+**Spacing.** `SPACING` is a **uniform gap between tracks on both axes** — the
+row gap and the column gap are the same value (Compose `Arrangement.spacedBy`,
+CSS `gap`), clamped to ≥ 0, never before the first or after the last track.
+
+**Per-cell allocation.** Each cell keeps its own size on both axes (a Fixed box,
+or Hug content) and is **positioned** within its track by the grid's `ALIGNMENT`
+on **both axes** — `Leading`(0) = top-leading, `Center`(1) = centered,
+`Trailing`(2) = bottom-trailing, `Fill`(3)/absent = default Leading position.
+Position-only: it never resizes a cell. Only a **`Fill`-sized cell** (or a
+greedy filler like `COLOR`) stretches to fill its track.
+
+**Own size & edge cases.** A Hug grid sizes to its content (tracks + `SPACING`);
+a Fixed `WIDTH`/`HEIGHT` makes the box exact; a `Fill` axis expands to the
+parent's proposal. A grid **never propagates** a `Fill` cell up to a Hug parent
+— a `Fill` cell fills its own track, and the grid's own size comes from its own
+frame. Negative `SPACING` → 0; a Fixed box constrains layout but does not clip
+(`CLIPS_TO_BOUNDS` clips).
 
 ### ScrollView — `SCROLLVIEW` 0x14
 
-Scrollable content container. **Events**: with the `SCROLL` (bit 8) listener the
-renderer reports the scroll offset via `EVENT::SCROLL`; with `WHEEL` (bit 9) it
-reports deltas via `EVENT::WHEEL` (both draft — see [EVENTS.md](./EVENTS.md)).
-Renderer: GTK `GtkScrolledWindow`; HTML overflow container.
-**Layout-greedy on both axes** (fills the available space, SwiftUI-style) — see
-LAYOUT.md; an explicit `WIDTH`/`HEIGHT` overrides it.
+A scrollable content container. **Layout-greedy on both axes** by default — it
+fills the available space (SwiftUI `ScrollView` / Compose scroll semantics); an
+explicit `WIDTH`/`HEIGHT` overrides it (LAYOUT.md §layout-greedy primitives).
+**Properties**: layout modifiers (Fixed/Fill frames, `PADDING`/`CONTENT_MARGINS`
+as an inset).
+
+**Content.** The **first child** is the content; a scroll view carries a single
+content subtree (typically a stack), matching SwiftUI/Compose's single-content
+contract. The content is measured with an **unbounded proposal** on both axes —
+it may grow beyond the viewport (that is what scrolls). The **viewport** is the
+scroll view's allocated box; a Hug `WIDTH`/`HEIGHT` — or a Hug parent proposal
+on an axis — sizes the viewport to the content's natural size on that axis (the
+viewport fits the content, so that axis does not scroll).
+
+**Overflow.** A scroll view scrolls its content rather than clipping it — the
+viewport clips by virtue of scrolling; `CLIPS_TO_BOUNDS` on the scroll view has
+no further effect on the content.
+
+**Events.** With the `SCROLL` listener bit (bit 8) the renderer reports the
+content offset in logical points via `EVENT::SCROLL`; with `WHEEL` (bit 9) it
+reports wheel/trackpad deltas via `EVENT::WHEEL` (both draft — see
+[EVENTS.md](./EVENTS.md)).
 
 ### LazyVGrid — `LAZY_VGRID` 0x15
 
-Virtualized vertical grid: windowed rendering for large datasets; children are
-cells, row-major. **Properties**: `ALIGNMENT`, `SPACING`, `WIDTH` (column count;
-`FILL` = auto-fit). A renderer MAY defer realizing off-screen cells until
-scrolled into view.
+Virtualized vertical grid. **Allocation is identical to `GRID`** — row-major
+cells, `WIDTH` = column count (Fixed pins it, `FILL`/absent = auto-fit), equal
+`1fr` columns, uniform `SPACING` gap, per-cell alignment, hug-to-content own
+size. The only difference is **realization**: a renderer MAY defer realizing
+off-screen cells until scrolled into view and MAY discard realized cells that
+leave the viewport. Realization never changes layout — a cell's position is
+always its row-major index in the full cell list. Typically nested inside a
+`SCROLLVIEW`.
 
 ### LazyHGrid — `LAZY_HGRID` 0x16
 
-Virtualized horizontal grid; children are cells, column-major. **Properties**:
-`ALIGNMENT`, `SPACING`, `HEIGHT` (row count; `FILL` = auto-fit).
+Virtualized horizontal grid; the flipped-axis form of `LAZY_VGRID`. **Allocation
+is identical to `GRID` mirrored**: cells are **column-major** in insertion
+order, `HEIGHT` = row count (Fixed pins it, `FILL`/absent = auto-fit), equal
+`1fr` rows, columns auto-flow, uniform `SPACING` gap, per-cell alignment,
+windowed realization.
 
 ### LazyVStack — `LAZY_VSTACK` 0x1B
 
-Virtualized vertical stack; same properties as `VStack`, with windowed
-realization of children near the visible region.
+Virtualized vertical stack. **Allocation is identical to `VStack`** (the stack
+layout model above — same properties, sizing, spacing, alignment, and fill
+propagation); only **realization** differs: a renderer MAY defer realizing
+children outside the visible region.
 
 ### LazyHStack — `LAZY_HSTACK` 0x1C
 
-Virtualized horizontal stack; same properties as `HStack`, with windowed
-realization.
+Virtualized horizontal stack. **Allocation is identical to `HStack`**; only
+realization is windowed.
 
 ---
 

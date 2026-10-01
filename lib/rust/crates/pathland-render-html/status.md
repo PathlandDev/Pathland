@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** September 30, 2026
+**Last updated:** October 1, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -194,6 +194,16 @@ contract both renderers must satisfy.
   (colors, font size/weight, spacing/padding, corner radius, opacity,
   width/height, border width/color, shadow color). Compound accumulators that
   need concrete numbers (shadow radius/x/y) remain literal-only.
+- **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
+  grids emit `gap` from `SPACING` and `repeat(N,1fr)` from the `WIDTH` column
+  count; `SCROLLVIEW` is greedy (`flex:1 1 auto;align-self:stretch;
+  overflow:auto`). **Gaps**: **no per-cell grid alignment** (cells aren't
+  wrapped with `justify-self`/`align-self`; `FILL` cells don't stretch into
+  their track, `ALIGNMENT` doesn't position within it); a grid **`HEIGHT` row
+  count is not read**; `LAZY_HGRID` emits `grid-auto-flow:column;
+  grid-auto-columns:1fr` yet still reads `WIDTH` for `repeat(N,1fr)` — a fixed
+  `HEIGHT` row count is unexpressed and a `WIDTH` on a horizontal grid emits a
+  conflicting `repeat`.
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
 - **Inter is loaded from the rsms.me CDN** (Cloudflare, `font-display: swap`,
