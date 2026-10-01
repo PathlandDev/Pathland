@@ -534,6 +534,22 @@ track as large as its widest/tallest cell) and hugs to the content + `SPACING`.
 The **auto** axis always sizes tracks to the content — each row/column is
 exactly as large as its cells need.
 
+**Per-track sizes (`GRID_TRACKS`).** For per-track control a grid may carry a
+**`GRID_TRACKS`** (`0x0020`, STRING) constructor property — a comma-separated
+track list, one entry per track on the fixed-count axis, **taking precedence**
+over `GRID_COLUMNS`/`GRID_ROWS` (a bare count is the `N`×`flexible` sugar). Each
+entry is:
+
+| Token | Meaning | CSS | Compose | SwiftUI |
+|-------|---------|-----|---------|---------|
+| `flex` | equal `1fr` share (the count's track) | `1fr` | `GridCells.Fixed` column | `.flexible()` |
+| `fixed:<points>` | exactly `<points>` wide | `<points>px` | fixed dp column | `.fixed(_:)` |
+| `adaptive:<points>` | auto-fit, at least `<points>` (fit as many as fit) | `minmax(<points>px,1fr)` | `GridCells.Adaptive(minSize)` | `.adaptive(minimum:)` |
+
+The track list is **CSS-grid-native** — renderers whose native grid has no
+per-track sizing equivalent (GTK `GtkGrid`) size tracks naturally instead
+(renderer status, not a protocol contract).
+
 **Spacing.** `SPACING` is a **uniform gap between tracks on both axes** — the
 row gap and the column gap are the same value (Compose `Arrangement.spacedBy`,
 CSS `gap`), clamped to ≥ 0, never before the first or after the last track.

@@ -35,6 +35,8 @@ public final class Properties {
     public static final int GRID_COLUMNS = 0x001E;
     /** Grid row count (constructor property; the `LAZY_HGRID` fixed track). */
     public static final int GRID_ROWS = 0x001F;
+    /** Grid track spec (STRING): comma-separated `flex`/`fixed:<pts>`/`adaptive:<pts>`, takes precedence over the counts. */
+    public static final int GRID_TRACKS = 0x0020;
     // Style (0x1000 range)
     public static final int BACKGROUND_COLOR = 0x1001;
     public static final int IMAGE_SOURCE = 0x1002;

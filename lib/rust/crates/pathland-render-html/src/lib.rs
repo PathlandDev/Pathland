@@ -586,6 +586,34 @@ fn grid_rows(node: &Node) -> Option<u32> {
     grid_count(node, property_id::GRID_ROWS)
 }
 
+/// A grid's `GRID_TRACKS` tokens (comma-separated `flex`/`fixed:<pts>`/
+/// `adaptive:<pts>`, spec §grid model). `None` when absent.
+fn grid_tracks(node: &Node) -> Option<Vec<&str>> {
+    node.strings
+        .get(&property_id::GRID_TRACKS)
+        .map(|s| s.split(',').map(str::trim).collect())
+}
+
+/// The CSS track template for a `GRID_TRACKS` spec: `flex` → `1fr`,
+/// `fixed:<pts>` → `<pts>px`, `adaptive:<pts>` → `minmax(<pts>px,1fr)`.
+fn grid_tracks_css(node: &Node) -> Option<String> {
+    let tracks = grid_tracks(node)?;
+    let mut out = String::new();
+    for t in tracks {
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        if let Some(pts) = t.strip_prefix("fixed:") {
+            out.push_str(&format!("{pts}px"));
+        } else if let Some(pts) = t.strip_prefix("adaptive:") {
+            out.push_str(&format!("minmax({pts}px,1fr)"));
+        } else {
+            out.push_str("1fr");
+        }
+    }
+    Some(out)
+}
+
 /// Convert days since the Unix epoch (negative = before 1970) to a Gregorian
 /// `(year, month, day)` using the civil-from-days algorithm.
 fn days_to_date(days: i32) -> (i32, u32, u32) {
@@ -1299,11 +1327,15 @@ if indeterminate {
                     .children
                     .iter()
                     .any(|&c| nodes.get(&c).is_some_and(|n| n.component == component_type::GRID_ROW));
-                // The effective 1fr column count: `GRID_COLUMNS`, or the widest
-                // row when rows are explicit (a short row leaves trailing
-                // columns empty — never pulls the next row's cells forward).
+                // The effective 1fr column count: the `GRID_TRACKS` token count, else
+                // `GRID_COLUMNS`, else the widest row when rows are explicit
+                // (a short row leaves trailing columns empty — never pulls the
+                // next row's cells forward).
+                let track_count = grid_tracks(node).map(|t| t.len() as u32);
                 let base_columns = grid_columns(node);
-                let effective_columns = if explicit_rows {
+                let effective_columns = if let Some(n) = track_count {
+                    Some(n)
+                } else if explicit_rows {
                     let mut width = base_columns.map(|c| c as usize).unwrap_or(0);
                     let mut run = 0usize;
                     for &child in &node.children {
@@ -1618,8 +1650,8 @@ if indeterminate {
 
 /// Inline grid CSS: `display:grid` + `justify-items`/`align-items` from the
 /// grid `ALIGNMENT` (cells position within their tracks; default Leading/start),
-/// plus the fixed track templates — `columns` (GRID/LAZY_VGRID; the effective
-/// count — `GRID_COLUMNS` or the widest explicit row) and `HEIGHT` rows
+/// plus the fixed track templates — a `GRID_TRACKS` spec (per-track sizes) or
+/// `columns` (GRID/LAZY_VGRID; the effective count) and `HEIGHT` rows
 /// (GRID/LAZY_HGRID) as equal `1fr` tracks. `FILL`/absent count = auto-fit (no
 /// template; `LAZY_HGRID` columns auto-flow).
 fn grid_style(node: &Node, columns: Option<u32>) -> String {
@@ -1629,9 +1661,12 @@ fn grid_style(node: &Node, columns: Option<u32>) -> String {
         _ => "start",
     };
     let mut css = format!("display:grid;justify-items:{align};align-items:{align};");
+    let tracks_css = grid_tracks_css(node);
     match node.component {
         component_type::GRID => {
-            if let Some(n) = columns {
+            if let Some(t) = &tracks_css {
+                css.push_str(&format!("grid-template-columns:{t};"));
+            } else if let Some(n) = columns {
                 css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
             }
             if let Some(n) = grid_rows(node) {
@@ -1639,13 +1674,17 @@ fn grid_style(node: &Node, columns: Option<u32>) -> String {
             }
         }
         component_type::LAZY_HGRID => {
-            if let Some(n) = grid_rows(node) {
+            if let Some(t) = &tracks_css {
+                css.push_str(&format!("grid-template-rows:{t};"));
+            } else if let Some(n) = grid_rows(node) {
                 css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
             }
             css.push_str("grid-auto-flow:column;grid-auto-columns:1fr;");
         }
         _ => {
-            if let Some(n) = columns {
+            if let Some(t) = &tracks_css {
+                css.push_str(&format!("grid-template-columns:{t};"));
+            } else if let Some(n) = columns {
                 css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
             }
         }
@@ -2332,6 +2371,26 @@ mod tests {
         assert!(html.contains("grid-row:3;grid-column:1;"), "bare cell auto-flows to row 2: {html}");
         // The GRID_ROW nodes themselves render nothing.
         assert!(!html.contains("GRID_ROW"), "GRID_ROW is structural: {html}");
+    }
+
+    #[test]
+    fn grid_tracks_render_per_track_template() {
+        use pathland_core::value_type;
+
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&(25u32).to_le_bytes());
+        strings.extend_from_slice(b"flex,fixed:80,adaptive:50");
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+            ((value_type::STRING as u32) << 16) | property_id::GRID_TRACKS as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &strings, 1);
+        assert!(html.contains("grid-template-columns:1fr 80px minmax(50px,1fr);"), "track spec: {html}");
+        assert!(!html.contains("grid-template-columns:repeat"), "tracks override the count: {html}");
     }
 
     #[test]

@@ -24,7 +24,8 @@ public final class ValueTypes {
                     Properties.ALLOWS_HIT_TESTING, Properties.IS_SECURE, Properties.IS_INDETERMINATE,
                     Properties.FIXED_SIZE_HORIZONTAL, Properties.FIXED_SIZE_VERTICAL -> U8;
             case Properties.LABEL, Properties.PROMPT, Properties.FONT_FAMILY, Properties.IMAGE_SOURCE,
-                    Properties.AUDIO_SOURCE, Properties.VIDEO_SOURCE, Properties.ROUTE -> STRING;
+                    Properties.AUDIO_SOURCE, Properties.VIDEO_SOURCE, Properties.ROUTE,
+                    Properties.GRID_TRACKS -> STRING;
             case Properties.LINE_LIMIT, Properties.SELECTION, Properties.ACTION_ID, Properties.BINDING_ID,
                     Properties.NAV_DEPTH, Properties.PLAYBACK_STATE -> U32;
             // Enums ride the wire as F32 holding the numeric enum code (spec convention).

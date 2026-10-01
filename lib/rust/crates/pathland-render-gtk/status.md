@@ -238,7 +238,10 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   **Residuals**: `LAZY_*` realizes eagerly (spec-permitted), auto-fit grids
   collapse to a single track (spec-permitted; measurement is a follow-up), and
   runtime scroll emission needs a visual check (headless tests cover the
-  wiring only).
+  wiring only). **`GRID_TRACKS` is not implemented** (web-only for now):
+  `GtkGrid` has no per-column-width/fractional/adaptive API, so a grid carrying
+  only a `GRID_TRACKS` spec falls back to auto-fit/single-track — use
+  `GRID_COLUMNS`/`GRID_ROWS` on GTK.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).

@@ -186,6 +186,7 @@ native layout properties (e.g. `SPACING` → a gap between children,
 | `HEIGHT` | `0x100C` | F32 | Height hint (-1 FILL, -2 HUG) |
 | `GRID_COLUMNS` | `0x001E` | F32 | Grid column count (positive = count, -1/absent = auto-fit; a count, never a pixel width — see PRIMITIVES.md §Grid) |
 | `GRID_ROWS` | `0x001F` | F32 | Grid row count (positive = count, -1/absent = auto-fit) |
+| `GRID_TRACKS` | `0x0020` | STRING | Per-track grid spec (`flex`/`fixed:<pts>`/`adaptive:<pts>`, comma-separated) — takes precedence over the counts |
 
 #### Text properties
 

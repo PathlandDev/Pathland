@@ -46,6 +46,7 @@ import {
   PROP_FONT_FAMILY,
   PROP_GRID_COLUMNS,
   PROP_GRID_ROWS,
+  PROP_GRID_TRACKS,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
@@ -902,6 +903,27 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
     }
     case PROP_FONT_FAMILY: {
       el.style.fontFamily = text;
+      break;
+    }
+    case PROP_GRID_TRACKS: {
+      // A grid's per-track spec (spec §grid model): `flex`/`fixed:<pts>`/
+      // `adaptive:<pts>` comma-separated → the CSS track template; takes
+      // precedence over the count (the DSL emits one or the other).
+      const comp = componentByNode.get(el);
+      const isH = comp === COMPONENT_LAZY_HGRID;
+      const tracks = text.split(",").map((t) => t.trim());
+      const css = tracks
+        .map((t) => {
+          if (t.startsWith("fixed:")) return `${t.slice("fixed:".length)}px`;
+          if (t.startsWith("adaptive:")) return `minmax(${t.slice("adaptive:".length)}px,1fr)`;
+          return "1fr";
+        })
+        .join(" ");
+      if (isH) {
+        el.style.gridTemplateRows = css;
+      } else {
+        el.style.gridTemplateColumns = css;
+      }
       break;
     }
     default:

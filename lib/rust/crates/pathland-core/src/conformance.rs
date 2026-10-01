@@ -232,6 +232,15 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x00, // C = 0
         ],
     ),
+    (
+        "PARAMETER:SET_PROPERTY (id=1, GRID_TRACKS=0x0020, valueType=STRING=0x05, arenaRef=0)",
+        [
+            0x02, 0x01, 0x00, 0x00, // category PARAMETER, command SET_PROPERTY
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x20, 0x00, 0x05, 0x00, // B = (0x05 << 16) | 0x0020 (STRING | GRID_TRACKS)
+            0x00, 0x00, 0x00, 0x00, // C = arenaRef = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -373,6 +382,15 @@ mod tests {
                 0x001D,
                 0,
                 VECTORS[24].1,
+            ),
+            (
+                0x02,
+                0x01,
+                0x0000,
+                1,
+                (0x05u32 << 16) | 0x0020,
+                0,
+                VECTORS[25].1,
             ),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {

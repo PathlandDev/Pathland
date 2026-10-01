@@ -131,10 +131,31 @@ fn scenarios() -> Vec<Scenario> {
         composite_controls(),
         layout(),
         gridrow(),
+        gridtracks(),
         tokens(),
         semantics(),
         media(),
     ]
+}
+
+fn gridtracks() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::GRID);
+    b.create(2, component_type::TEXT);
+    b.create(3, component_type::TEXT);
+    b.insert(1, 2);
+    b.insert(1, 3);
+    b.set_text(2, "A");
+    b.set_text(3, "B");
+    // Per-track sizes (spec §grid model): flex / fixed / adaptive → the CSS
+    // track template takes precedence over a bare count.
+    b.set_string(1, property_id::GRID_TRACKS, "flex,fixed:80,adaptive:50");
+    Scenario {
+        name: "gridtracks",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
 }
 
 fn gridrow() -> Scenario {

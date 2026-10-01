@@ -352,6 +352,12 @@ pub mod property_id {
     /// **Draft.** Grid row count (F32, constructor property): the `LAZY_HGRID`
     /// fixed track; positive = count, `FILL`/absent = auto-fit.
     pub const GRID_ROWS: u16 = 0x001F;
+    /// **Draft.** Grid track spec (STRING, constructor property): a comma-
+    /// separated list of per-track sizes — `flex` | `fixed:<points>` |
+    /// `adaptive:<points>` — taking precedence over `GRID_COLUMNS`/`GRID_ROWS`
+    /// (the equal-`1fr` count is `N`×`flex` sugar). CSS-grid-native: renderers
+    /// without a native equivalent (GTK `GtkGrid`) fall back to natural sizing.
+    pub const GRID_TRACKS: u16 = 0x0020;
     // Style (0x1000 range)
     pub const BACKGROUND_COLOR: u16 = 0x1001;
     /// **Draft.** Image source (STRING: a resource name, file path, or URL —

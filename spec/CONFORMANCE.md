@@ -616,6 +616,24 @@ a `GRID`.
 - `1D 00 00 00` B = componentType = 0x001D (GRID_ROW)
 - `00 00 00 00` C = 0
 
+### 36. PARAMETER:SET_PROPERTY (id=1, propertyId=GRID_TRACKS=0x0020, valueType=STRING=0x05, arenaRef=0)
+
+The grid's per-track spec (`"flex,fixed:80,adaptive:50"`), a STRING property
+referenced by an arena offset — the same convention as `ROUTE`.
+
+```
+02 01 00 00 01 00 00 00 20 00 05 00 00 00 00 00
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `20 00 05 00` B = `(valueType << 16) | propertyId` = `(0x05 << 16) | 0x0020`
+  - low two bytes `20 00` = propertyId = 0x0020 (GRID_TRACKS)
+  - high byte `05` = valueType = 0x05 (STRING)
+- `00 00 00 00` C = arenaRef = 0 (`"flex,fixed:80,adaptive:50"`)
+
 ---
 
 ## Design-Token Resolution Conformance

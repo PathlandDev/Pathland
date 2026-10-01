@@ -17,9 +17,10 @@ tracks what this crate implements.
    0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
    COLOR_PICKER 0x2A, COMMENT 0x7F`.
 - **`GRID_COLUMNS`/`GRID_ROWS`** (`0x001E`/`0x001F`, F32) track-count properties
-  for grids (positive = count, `FILL`/absent = auto-fit; never a pixel box) and
-  the **`GRID_ROW`** (`0x1D`) component (a grid child whose children are one
-  row's cells) — both covered by conformance vectors (34/35).
+  for grids (positive = count, `FILL`/absent = auto-fit; never a pixel box),
+  **`GRID_TRACKS`** (`0x0020`, STRING) per-track specs (takes precedence over the
+  counts), and the **`GRID_ROW`** (`0x1D`) component (a grid child whose children
+  are one row's cells) — all covered by conformance vectors (34–36).
 - **Properties** (`property_id`): the full `spec/MODIFIERS.md` catalog —
   stack/text/styling/semantic IDs plus every draft modifier (`SHAPE_KIND`,
   layout `OFFSET`/`POSITION`/frame bounds/`FIXED_SIZE`/`LAYOUT_PRIORITY`/

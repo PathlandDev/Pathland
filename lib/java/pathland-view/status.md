@@ -19,7 +19,10 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   their track counts as constructor args: `Grid.of(int columns[, int rows], …)`,
   `LazyVGrid.of(int columns, …)`, `LazyHGrid.of(int rows, …)` — absent = auto-fit
   (spec/PRIMITIVES.md §grid model); the counts emit `GRID_COLUMNS`/`GRID_ROWS`,
-  never a pixel `WIDTH`/`HEIGHT`.
+  never a pixel `WIDTH`/`HEIGHT`. **Per-track sizes** via a `List<GridItem>`
+  overload (`GridItem.flexible()` / `.fixed(pts)` / `.adaptive(min)`) emit the
+  `GRID_TRACKS` STRING spec (takes precedence over the counts); CSS-grid-native —
+  GTK falls back to natural sizing (see render-gtk status).
 - **One modifier mechanism — no sugar on `View`**: core modifiers are
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,
   `Border.of(color, width)`, `FrameMod.of(w, h, align)`, …) applied via

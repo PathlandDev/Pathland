@@ -213,7 +213,9 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   mirrors the Rust SSR — `grid-template-columns`/`grid-template-rows` from the
   `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/
   LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`; never a pixel
-  width/height), `gap` from `SPACING`, greedy scroll
+  width/height), **`GRID_TRACKS`** per-track specs (`flex`/`fixed:<pts>`/
+  `adaptive:<pts>` → `1fr`/`<pts>px`/`minmax(<pts>px,1fr)`, precedence over the
+  count), `gap` from `SPACING`, greedy scroll
   (`flex:1 1 auto;align-self:stretch;overflow:auto`), and **per-cell grid
   alignment** — grid cells are wrapped in an auto-placed shell whose
   `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell else the

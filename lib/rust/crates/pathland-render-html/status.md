@@ -210,9 +210,11 @@ contract both renderers must satisfy.
   width/height, border width/color, shadow color). Compound accumulators that
   need concrete numbers (shadow radius/x/y) remain literal-only.
 - **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
-  grids emit `gap` from `SPACING`, `repeat(N,1fr)` track templates from the
+  grids emit `gap` from `SPACING`, equal-`1fr` track templates from the
   `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/
-  LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`), and **per-cell
+  LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`), **`GRID_TRACKS`**
+  per-track specs (`flex`/`fixed:<pts>`/`adaptive:<pts>` → `1fr`/`<pts>px`/
+  `minmax(<pts>px,1fr)`, taking precedence over the count), and **per-cell
   alignment** — each cell is wrapped in an auto-placed shell whose
   `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell, else the
   grid `ALIGNMENT` position (default start) — with `justify-items`/

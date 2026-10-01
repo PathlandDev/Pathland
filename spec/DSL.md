@@ -299,11 +299,11 @@ accessibility label.
 | `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.of(View...)` / `VStack.of(Alignment, float, View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
 | `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.of(View...)` / `HStack.of(Alignment, float, View...)` | `HSTACK` 0x11 |
 | `ZStack` | `ZStack(alignment:) { … }` | `ZStack.of(View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
-| `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.of(View...)` / `Grid.of(int columns, View...)` / `Grid.of(int columns, int rows, View...)` / `Grid.of(int columns, int rows, Alignment, float, View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F |
+| `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.of(View...)` / `Grid.of(int columns, View...)` / `Grid.of(int columns, int rows, View...)` / `Grid.of(int columns, int rows, Alignment, float, View...)` / `Grid.of(List<GridItem>, View...)` / `Grid.of(List<GridItem>, Alignment, float, View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
 | `GridRow` | `GridRow { … }` | `GridRow.of(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
 | `ScrollView` | `ScrollView { … }` | `ScrollView.of(View...)` | `SCROLLVIEW` 0x14 |
-| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.of(View...)` / `LazyVGrid.of(int columns, View...)` / `LazyVGrid.of(int columns, Alignment, float, View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS` |
-| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` / `LazyHGrid.of(int rows, View...)` / `LazyHGrid.of(int rows, Alignment, float, View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS` |
+| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.of(View...)` / `LazyVGrid.of(int columns, View...)` / `LazyVGrid.of(List<GridItem>, View...)` / `LazyVGrid.of(int columns, Alignment, float, View...)` / `LazyVGrid.of(List<GridItem>, Alignment, float, View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS` |
+| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` / `LazyHGrid.of(int rows, View...)` / `LazyHGrid.of(List<GridItem>, View...)` / `LazyHGrid.of(int rows, Alignment, float, View...)` / `LazyHGrid.of(List<GridItem>, Alignment, float, View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
 | `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.of(View...)` | `LAZY_VSTACK` 0x1B |
 | `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.of(View...)` | `LAZY_HSTACK` 0x1C |
 
@@ -320,6 +320,15 @@ frame model — a `.frame(width:)` on a grid is a pixel box, never a count. A
 count is `int` in the DSL and emits a positive F32; absent = auto-fit. The
 static `Grid` takes optional `columns:`/`rows:` (both absent = SwiftUI `Grid`
 auto-fit); `LazyVGrid` takes `columns:`; `LazyHGrid` takes `rows:`.
+
+**`GridItem` (per-track sizes)**: a **`List<GridItem>`** overload expresses
+per-track sizes (SwiftUI `GridItem` / Compose `GridCells` parity) —
+`GridItem.flexible()` (`flex`), `GridItem.fixed(pts)` (`fixed:<pts>`),
+`GridItem.adaptive(min)` (`adaptive:<min>`). The list serializes to the
+`GRID_TRACKS` STRING property (comma-separated), which **takes precedence** over
+the counts; a count overload is the `N`×`flexible` sugar. CSS-grid-native —
+renderers without a native per-track equivalent size tracks naturally
+(renderer status, spec/PRIMITIVES.md §grid model).
 
 ### 4.3 Semantic controls
 
@@ -1018,8 +1027,10 @@ are the companion specs.
 4. `WIDTH`/`HEIGHT` sentinels: `FILL` = −1.0, `HUG_CONTENT` = −2.0.
 5. `Grid` counts map to the **constructor properties** `GRID_COLUMNS` (`0x001E`) /
    `GRID_ROWS` (`0x001F`): a positive `int` count emits a positive F32; absent =
-   auto-fit. A `WIDTH`/`HEIGHT` frame on a grid is the grid's **box**, never a
-   count ([§4.2](#42-layout--container-nodes)).
+   auto-fit. A **`List<GridItem>`** overload serializes to the **`GRID_TRACKS`**
+   (`0x0020`, STRING) per-track spec, which takes precedence over the counts. A
+   `WIDTH`/`HEIGHT` frame on a grid is the grid's **box**, never a count
+   ([§4.2](#42-layout--container-nodes)).
 6. `DatePicker` value/event use the two-field encoding **days since epoch
    (I32) + millis of day (U32)**; there is no `DATE_VALUE` property.
 7. Value/text/date events are gated by the transport-aware event guards; the

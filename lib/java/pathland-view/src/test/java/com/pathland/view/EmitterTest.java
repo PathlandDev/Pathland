@@ -77,6 +77,26 @@ class EmitterTest {
     }
 
     @Test
+    void gridTracksEmitTheSerializedTrackSpec() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+
+        emitter.mount(Grid.of(
+                List.of(GridItem.flexible(), GridItem.fixed(80f), GridItem.adaptive(50f)),
+                Text.of("a")), Environment.DEFAULT);
+        Frame frame = sink.frame();
+
+        Opcode tracks = frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_PROPERTY)
+                .filter(o -> (o.b() & 0xffff) == Properties.GRID_TRACKS)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the Grid emits its GRID_TRACKS spec"));
+        assertEquals(ValueTypes.STRING, tracks.b() >>> 16, "GRID_TRACKS is a STRING property");
+        assertEquals("flex,fixed:80,adaptive:50", frame.stringAt(tracks.c()),
+                "the track spec serializes comma-separated tokens");
+    }
+
+    @Test
     void gridRowEmitsARowNodeWhoseChildrenAreTheRowCells() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
