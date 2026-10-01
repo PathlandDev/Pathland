@@ -99,8 +99,8 @@ class KitchenSinkViewTest {
         Frame frame = sink.frame();
 
         long overrides = frame.opcodes().stream()
-                .filter(op -> op.category() == Categories.STYLE
-                        && op.command() == Commands.Style.SET_DESIGN_TOKEN)
+                .filter(op -> op.category() == Categories.PARAMETER
+                        && op.command() == Commands.Parameter.SET_DESIGN_TOKEN)
                 .count();
         assertTrue(overrides >= 10, "DemoTheme rolls light + dark overrides: " + overrides);
         assertTrue(anyDesignToken(frame, "color.primary"), "light color.primary override");
@@ -117,7 +117,7 @@ class KitchenSinkViewTest {
 
     private static boolean anyDesignToken(Frame frame, String path) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_DESIGN_TOKEN
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_DESIGN_TOKEN
                     && path.equals(frame.stringAt(op.a()))) {
                 return true;
             }
@@ -127,7 +127,7 @@ class KitchenSinkViewTest {
 
     private static boolean anyDesignTokenRef(Frame frame, String path) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && ((op.b() >>> 16) & 0xFF) == com.pathland.view.ValueTypes.DESIGN_TOKEN
                     && path.equals(frame.stringAt(op.c()))) {
                 return true;
@@ -139,7 +139,7 @@ class KitchenSinkViewTest {
     private static String allSetText(Frame frame) {
         StringBuilder sb = new StringBuilder();
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
                 sb.append(frame.stringAt(op.b())).append('\n');
             }
         }
@@ -148,7 +148,7 @@ class KitchenSinkViewTest {
 
     private static boolean anySetText(Frame frame, String text) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
                 if (text.equals(frame.stringAt(op.b()))) {
                     return true;
                 }

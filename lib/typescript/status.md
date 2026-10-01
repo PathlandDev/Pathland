@@ -68,13 +68,13 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or
   `?pathland-log=debug`). Meaningful **receive/emit** logging of opcodes and
   events — `→ send EVENT POINTER_UP(target=4, …)`, `← recv frame=7 (2 ops):
-  STYLE SET_PROPERTY(ROUTE="/users", …)`, plus lifecycle (connect/reconnect,
+  PARAMETER SET_PROPERTY(ROUTE="/users", …)`, plus lifecycle (connect/reconnect,
   `pushState`, `popstate`, environment) — with a full per-opcode trace at
   `debug` (`src/describe.ts`).
 - **PLPL decode** (`src/plpl.ts`): bounds-checked batch parse — magic/version
   validation, truncated-opcode/string rejection, length-prefixed string reads.
 - **Full delta application** (`src/apply.ts`):
-  - **STYLE commands**: `SET_PROPERTY`, `SET_TEXT`, `SET_DATE` (date/time/
+  - **PARAMETER commands**: `SET_PROPERTY`, `SET_TEXT`, `SET_DATE` (date/time/
     datetime-local), **`SET_DESIGN_TOKEN`** (→ CSS variables, `src/tokens.ts`).
   - **TREE commands**: `CREATE_NODE`/`DELETE_NODE`/`INSERT_CHILD`/`REMOVE_CHILD`/
     `MOVE_CHILD` (`u32::MAX` append handled) — the element-shell factory
@@ -190,7 +190,7 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   deltas apply as inline style (or the style attribute for `DESIGN_TOKEN`
   references, so CSS expressions survive verbatim), literal colors inline,
   design tokens as CSS variables.
-- **Tests** (`test/`, vitest + happy-dom): codec round-trips, TREE/STYLE/META
+- **Tests** (`test/`, vitest + happy-dom): codec round-trips, TREE/PARAMETER/META
   application, design tokens (var mapping, dark scoping, px lengths, generative
   `space.N` refs), event byte layouts (incl. `NAVIGATE`), navigation (ROUTE →
   `onRoute`, transition animation, non-hinted slots), transport lifecycle

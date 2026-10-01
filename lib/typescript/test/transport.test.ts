@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { Transport } from "../src/transport";
 import {
-  CAT_STYLE,
+  CAT_PARAMETER,
   CMD_SET_TEXT,
   HEADER_SIZE,
   MAGIC,
@@ -69,7 +69,7 @@ describe("Transport", () => {
     const batch = new Uint8Array(HEADER_SIZE + OPCODE_SIZE + 4);
     applyBatchHeader(batch, 1);
     const view = new DataView(batch.buffer);
-    view.setUint8(HEADER_SIZE, CAT_STYLE);
+    view.setUint8(HEADER_SIZE, CAT_PARAMETER);
     view.setUint8(HEADER_SIZE + 1, CMD_SET_TEXT);
     view.setUint32(HEADER_SIZE + 4, 1, true);
     view.setUint32(HEADER_SIZE + 8, 0, true);

@@ -1,7 +1,7 @@
 //! Diff-based reactive emitter.
 //!
 //! The engine holds the application's retained view tree and emits the
-//! declarative structure as `TREE`/`STYLE` opcodes into the 16-byte ring
+//! declarative structure as `TREE`/`PARAMETER` opcodes into the 16-byte ring
 //! buffer (VStack, HStack, Text, spacing, padding, alignment). It does not
 //! compute rects or layout; native renderers lay out their own elements.
 //!
@@ -110,7 +110,7 @@ impl Engine {
         self.snapshot.iter().filter(|s| s.is_some()).count()
     }
 
-    /// Emit a global design-token override (`STYLE::SET_DESIGN_TOKEN`).
+    /// Emit a global design-token override (`PARAMETER::SET_DESIGN_TOKEN`).
     /// Overrides are renderer-global and apply everywhere the renderer resolves
     /// tokens; a `dark.`-prefixed path overrides the dark variant
     /// (spec/TOKENS.md). Returns the arena offset of the token path.
@@ -125,7 +125,7 @@ impl Engine {
     }
 
     /// Emit a batch of global design-token overrides ([`Theme`](crate::Theme))
-    /// as `STYLE::SET_DESIGN_TOKEN` opcodes. `STRING`-valued overrides allocate
+    /// as `PARAMETER::SET_DESIGN_TOKEN` opcodes. `STRING`-valued overrides allocate
     /// their value into the guest arena first (the wire carries an arena ref).
     ///
     /// Overrides are renderer-global: they never re-emit nodes and are not part

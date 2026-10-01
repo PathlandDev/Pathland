@@ -113,13 +113,13 @@ Statelessness). Protocol contract: `spec/`.
   can hydrate its default back button from the SSR HTML — the DOM renderer
   mirrors the route into the URL, may animate a swap, and draws the renderer's
   own back button (the web has no native navigation container).
-- `STYLE::SET_DATE` handled (days + millis-of-day → date/time).
+- `PARAMETER::SET_DATE` handled (days + millis-of-day → date/time).
 - **Design tokens (spec/TOKENS.md)**:
   - The naming/length conventions live in **`src/token_spec.rs`** — the single
     source of truth consumed by the renderer AND by `pathland-ts-codegen`, which
     emits the DOM client's `lib/typescript/src/generated/tokens-core.ts`
     (`tokenToCssVar`, `isDarkToken`, `isLengthToken`, `resolveTokenCssRef`).
-  - `STYLE::SET_DESIGN_TOKEN` overrides are collected per snapshot batch and
+  - `PARAMETER::SET_DESIGN_TOKEN` overrides are collected per snapshot batch and
     emitted into the document head as CSS: base (light) tokens as `:root`
     rules, `dark.*` overrides inside `@media (prefers-color-scheme: dark)` —
     the browser resolves the scheme natively, so SSR needs no client scheme.

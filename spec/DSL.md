@@ -333,7 +333,7 @@ Two-way value controls bind a `WritableSignal`. Actions bind a callback.
 | `Toggle` | `Toggle("label", isOn: writable)` | `Toggle.of(boolean, WritableSignal<Boolean>)` / `Toggle.of(String label, WritableSignal<Boolean>)` / `Toggle.of(ToggleStyle, boolean, WritableSignal<Boolean>, String)` | `TOGGLE` 0x24; `VALUE_CHANGED` → value input; `TOGGLE_STYLE` 0x2018 |
 | `Slider` | `Slider(value: writable, in: min...max)` | `Slider.of(WritableSignal<Float>, float min, float max)` | `SLIDER` 0x25; `VALUE_CHANGED` → value input |
 | `Stepper` | `Stepper("label", value: writable, in: min...max, step:)` | `Stepper.of(WritableSignal<Float>, float min, float max, float step)` | `STEPPER` 0x26; `VALUE_CHANGED` → value input |
-| `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.of(DatePickerMode, WritableSignal<Integer>)` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `STYLE::SET_DATE` |
+| `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.of(DatePickerMode, WritableSignal<Integer>)` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `PARAMETER::SET_DATE` |
 | `Picker` | `Picker("label", selection: writable) { options }` | `Picker.of(PickerStyle, WritableSignal<Integer>, View... options)` | `PICKER` 0x28; `VALUE_CHANGED` (index) → value input |
 | `Menu` | `Menu { actions } label: { trigger }` | `Menu.of(View trigger, View... actions)` / `Menu.of(View, WritableSignal<Integer>, View...)` | `MENU` 0x29; `VALUE_CHANGED` (item index) → value input |
 | `ColorPicker` | `ColorPicker("label", selection: writable)` | `ColorPicker.of(WritableSignal<Color>)` | `COLOR_PICKER` 0x2A; `VALUE_CHANGED` (packed `0xAARRGGBB` as f32) → value input |
@@ -823,7 +823,7 @@ Pathland theming is **application-owned over a renderer-owned token system**
    literal: `.foregroundStyle(Color.token("color.primary"))` emits a
    `DESIGN_TOKEN` reference the renderer resolves against the current scheme.
    No opcode is re-emitted when a token or the scheme changes.
-2. **Global theme overrides** — a batch of `STYLE::SET_DESIGN_TOKEN` commands
+2. **Global theme overrides** — a batch of `PARAMETER::SET_DESIGN_TOKEN` commands
    rolled at mount: a single-scheme `Theme` or an `AdaptiveTheme` light+dark
    pair (base = **light**, `dark.`-prefixed = **dark**).
 
@@ -871,7 +871,7 @@ theming.
 
 | Canonical (SwiftUI-shaped) | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view` / `pathland-engine`) | Emits |
 |----------------------------|--------------------------------|-----------------------------------------------|-------|
-| `Theme()` — one-scheme override batch | `new Theme()` (`ThemeData`) | `Theme::new()` | one `STYLE::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
+| `Theme()` — one-scheme override batch | `new Theme()` (`ThemeData`) | `Theme::new()` | one `PARAMETER::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
 | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `COLOR`-typed override (sRGB `0xAARRGGBB`) |
 | `.f32("space.base", 4.0)` | `.f32("space.base", 4.0f)` | `.f32("space.base", 4.0)` | `F32`-typed override (lengths in device pixels) |
 | `.u32("…", v)` / `.u8("…", v)` | `.u32(path, int)` / `.u8(path, int)` | `.u32(path, v)` / `.u8(path, v)` | `U32` / `U8`-typed override |
@@ -881,7 +881,7 @@ theming.
 Emission contract:
 
 - The theme is emitted **once at mount** as a frame of
-  `STYLE::SET_DESIGN_TOKEN` opcodes before the tree. Java: `new Emitter(sink,
+  `PARAMETER::SET_DESIGN_TOKEN` opcodes before the tree. Java: `new Emitter(sink,
   theme)` emits it at the start of the mount and `renderFull` (resync) frames;
   Rust: `Engine::apply_theme` / `Engine::apply_adaptive_theme`.
 - Overrides are **renderer state**: they never re-emit nodes and never
@@ -994,7 +994,7 @@ are the companion specs.
 - [ ] **Design tokens & theming** — a token surface: token-typed values usable
   in style modifiers (a `Color` accepting a token path, e.g. `Color.token("color.primary")`
   or the language's equivalent), a theme/override helper emitting
-  `STYLE::SET_DESIGN_TOKEN` (base values + `dark.`-prefixed dark values), and
+  `PARAMETER::SET_DESIGN_TOKEN` (base values + `dark.`-prefixed dark values), and
   the **base=light / `dark.*`** color-scheme convention with renderer-derived
   scheme detection — see [§7](#7-theme-management) and [TOKENS.md](./TOKENS.md).
 
@@ -1010,7 +1010,7 @@ are the companion specs.
 3. `Color` values pack as sRGB `0xAARRGGBB`. A **token-typed** value instead
    carries the `DESIGN_TOKEN` value type with the token path in the arena
    (never a packed literal); the renderer resolves it against the current
-   scheme. A theme/override helper emits `STYLE::SET_DESIGN_TOKEN`
+   scheme. A theme/override helper emits `PARAMETER::SET_DESIGN_TOKEN`
    (`A` = arenaRef path, `B` = valueType, `C` = value); a `dark.`-prefixed path
    supplies the dark design (base = light — [TOKENS.md](./TOKENS.md)).
 4. `WIDTH`/`HEIGHT` sentinels: `FILL` = −1.0, `HUG_CONTENT` = −2.0.
@@ -1044,7 +1044,7 @@ A generated DSL is verified by proving it **emits the same bytes** as the
 reference implementations:
 
 1. Port the golden vectors in [CONFORMANCE.md](./CONFORMANCE.md) into the new
-   DSL's test harness; assert byte-identical `TREE`/`STYLE`/`EVENT`/`META`
+   DSL's test harness; assert byte-identical `TREE`/`PARAMETER`/`EVENT`/`META`
    opcodes for each canonical element.
 2. Port the Java `EmitterTest` cases (mount → `SET_TEXT`/`SET_PROPERTY`/`SET_DATE`
    deltas; unchanged tree → zero opcodes; two-way routing: `TEXT_CHANGED`,

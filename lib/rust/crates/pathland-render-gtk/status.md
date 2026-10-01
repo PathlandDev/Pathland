@@ -93,7 +93,7 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `AdwNavigationView` is only the renderer's rendered-output cache.
   `libadwaita` (0.7, `v1_4` feature) is a new native dependency.
 - **Design tokens / theming (spec/TOKENS.md renderer contract)**:
-  - `STYLE::SET_DESIGN_TOKEN` overrides are stored (`host.rs`), base + `dark.*`
+  - `PARAMETER::SET_DESIGN_TOKEN` overrides are stored (`host.rs`), base + `dark.*`
     split by path prefix; STRING-valued overrides resolve the value string from
     the arena.
   - `DESIGN_TOKEN`-typed `SET_PROPERTY` values record the token path

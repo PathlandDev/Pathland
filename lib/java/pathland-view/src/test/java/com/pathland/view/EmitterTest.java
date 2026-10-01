@@ -47,8 +47,8 @@ class EmitterTest {
         assertTrue(countOps(frame, Categories.TREE, Commands.Tree.CREATE_NODE) >= 3,
                 "root + text + button nodes");
         assertTrue(countOps(frame, Categories.TREE, Commands.Tree.INSERT_CHILD) >= 2);
-        assertTrue(countOps(frame, Categories.STYLE, Commands.Style.SET_TEXT) >= 2);
-        assertTrue(countOps(frame, Categories.STYLE, Commands.Style.SET_PROPERTY) >= 1,
+        assertTrue(countOps(frame, Categories.PARAMETER, Commands.Parameter.SET_TEXT) >= 2);
+        assertTrue(countOps(frame, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 1,
                 "button declares EVENT_LISTENERS");
         assertEquals(1, result.tapActions().size(), "the button's tap action is routed");
     }
@@ -65,14 +65,14 @@ class EmitterTest {
 
         // The label's text node is id 3 (root=1, static text=2, reactive text=3).
         Frame initial = sink.frame();
-        assertEquals(2, countOps(initial, Categories.STYLE, Commands.Style.SET_TEXT));
+        assertEquals(2, countOps(initial, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
 
         count.set(5);
         Frame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "exactly one delta opcode");
         Opcode only = delta.opcodes().get(0);
-        assertEquals(Categories.STYLE, only.category());
-        assertEquals(Commands.Style.SET_TEXT, only.command());
+        assertEquals(Categories.PARAMETER, only.category());
+        assertEquals(Commands.Parameter.SET_TEXT, only.command());
         assertEquals(3, only.a(), "only node 3 re-emits");
         assertEquals("Count: 5", delta.stringAt(only.b()));
     }
@@ -100,8 +100,8 @@ class EmitterTest {
         Frame delta = sink.frame();
         assertEquals(1, delta.opcodes().size());
         Opcode only = delta.opcodes().get(0);
-        assertEquals(Categories.STYLE, only.category());
-        assertEquals(Commands.Style.SET_PROPERTY, only.command());
+        assertEquals(Categories.PARAMETER, only.category());
+        assertEquals(Commands.Parameter.SET_PROPERTY, only.command());
         assertEquals(Properties.COLOR, only.b() & 0xFFFF);
         assertEquals(Color.BLUE.argb(), only.c());
     }
@@ -119,15 +119,15 @@ class EmitterTest {
         emitter.mount(root, Environment.DEFAULT);
 
         Frame initial = sink.frame();
-        assertTrue(countOps(initial, Categories.STYLE, Commands.Style.SET_PROPERTY) >= 1,
+        assertTrue(countOps(initial, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 1,
                 "constant background emitted at mount");
-        assertEquals(2, countOps(initial, Categories.STYLE, Commands.Style.SET_TEXT));
+        assertEquals(2, countOps(initial, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
 
         text.set("b");
         Frame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "constant bound no re-emit effect");
         Opcode only = delta.opcodes().get(0);
-        assertEquals(Commands.Style.SET_TEXT, only.command());
+        assertEquals(Commands.Parameter.SET_TEXT, only.command());
         assertEquals("b", delta.stringAt(only.b()));
     }
 
@@ -146,7 +146,7 @@ class EmitterTest {
 
         boolean sawVisible = false, sawString = false;
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY) {
                 int property = op.b() & 0xFFFF;
                 int valueType = (op.b() >>> 16) & 0xFF;
                 switch (property) {
@@ -185,7 +185,7 @@ class EmitterTest {
         boolean sawPrimary = false;
         boolean sawDark = false;
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY) {
                 int property = op.b() & 0xFFFF;
                 int valueType = (op.b() >>> 16) & 0xFF;
                 if (property == Properties.COLOR) {
@@ -215,7 +215,7 @@ class EmitterTest {
         Frame frame = sink.frame();
 
         // The styled button carries background + border + EVENT_LISTENERS props.
-        assertTrue(countOps(frame, Categories.STYLE, Commands.Style.SET_PROPERTY) >= 4,
+        assertTrue(countOps(frame, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 4,
                 "bordered style adds background/border/radius/listeners");
         assertEquals(1, result.tapActions().size());
     }
@@ -345,8 +345,8 @@ class EmitterTest {
                 .count();
         assertEquals(structural, treeOps, "renderFull re-emits the complete structural tree");
         assertTrue(snapshot.opcodes().stream()
-                        .anyMatch(op -> op.category() == Categories.STYLE
-                                && op.command() == Commands.Style.SET_TEXT),
+                        .anyMatch(op -> op.category() == Categories.PARAMETER
+                                && op.command() == Commands.Parameter.SET_TEXT),
                 "renderFull re-emits text");
     }
 
@@ -360,20 +360,20 @@ class EmitterTest {
         Frame initial = sink.frame();
         boolean sawSetDate = false;
         for (Opcode op : initial.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_DATE) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_DATE) {
                 sawSetDate = true;
                 assertEquals(20487, op.b());
                 assertEquals(0, op.c());
             }
         }
-        assertTrue(sawSetDate, "DatePicker emits STYLE::SET_DATE at mount");
+        assertTrue(sawSetDate, "DatePicker emits PARAMETER::SET_DATE at mount");
 
         days.set(20488);
         Frame delta = sink.frame();
         assertEquals(1, delta.opcodes().size());
         Opcode only = delta.opcodes().get(0);
-        assertEquals(Categories.STYLE, only.category());
-        assertEquals(Commands.Style.SET_DATE, only.command());
+        assertEquals(Categories.PARAMETER, only.category());
+        assertEquals(Commands.Parameter.SET_DATE, only.command());
         assertEquals(20488, only.b());
     }
 
@@ -427,10 +427,10 @@ class EmitterTest {
 
     @Test
     void tokenConformanceVectors17And18AreGoldenBytes() {
-        // Vector 17: STYLE:SET_DESIGN_TOKEN (path="color.primary" arenaRef=0,
+        // Vector 17: PARAMETER:SET_DESIGN_TOKEN (path="color.primary" arenaRef=0,
         // valueType=COLOR=0x07, value=0xFF0000FF) — spec/CONFORMANCE.md.
         Opcode setToken = new Opcode(
-                Categories.STYLE, Commands.Style.SET_DESIGN_TOKEN, 0, 0, ValueTypes.COLOR, 0xFF0000FF);
+                Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN, 0, 0, ValueTypes.COLOR, 0xFF0000FF);
         assertArrayEquals(new byte[] {
                 0x02, 0x02, 0x00, 0x00,
                 0x00, 0x00, 0x00, 0x00,
@@ -438,10 +438,10 @@ class EmitterTest {
                 (byte) 0xFF, 0x00, 0x00, (byte) 0xFF
         }, setToken.toBytes());
 
-        // Vector 18: STYLE:SET_PROPERTY (id=1, COLOR=0x100A,
+        // Vector 18: PARAMETER:SET_PROPERTY (id=1, COLOR=0x100A,
         // valueType=DESIGN_TOKEN=0x08, arenaRef=0) — spec/CONFORMANCE.md.
         Opcode tokenRef = new Opcode(
-                Categories.STYLE, Commands.Style.SET_PROPERTY, 0, 1,
+                Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, 1,
                 (ValueTypes.DESIGN_TOKEN << 16) | Properties.COLOR, 0);
         assertArrayEquals(new byte[] {
                 0x02, 0x01, 0x00, 0x00,
@@ -463,7 +463,7 @@ class EmitterTest {
 
         boolean sawRef = false;
         for (Opcode op : decoded.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == Properties.COLOR) {
                 assertEquals(ValueTypes.DESIGN_TOKEN, (op.b() >>> 16) & 0xFF);
                 assertEquals("color.primary", decoded.stringAt(op.c()));
@@ -488,8 +488,8 @@ class EmitterTest {
         Frame frame = sink.frame();
         boolean sawLight = false, sawDark = false, sawF32 = false, sawString = false, sawDarkF32 = false;
         for (Opcode op : frame.opcodes()) {
-            assertEquals(Categories.STYLE, op.category());
-            assertEquals(Commands.Style.SET_DESIGN_TOKEN, op.command());
+            assertEquals(Categories.PARAMETER, op.category());
+            assertEquals(Commands.Parameter.SET_DESIGN_TOKEN, op.command());
             switch (op.b()) {
                 case ValueTypes.COLOR -> {
                     if ("color.primary".equals(frame.stringAt(op.a()))) {

@@ -227,7 +227,7 @@ from the primitives in this file, so no component IDs are allocated:
 A run of styled text. The server dictates content and style; the client measures
 and renders.
 
-- **Protocol**: a leaf node; content via `STYLE::SET_TEXT` or a bound signal.
+- **Protocol**: a leaf node; content via `PARAMETER::SET_TEXT` or a bound signal.
 - **Properties**: `LINE_LIMIT` (0x000B, U32), `TEXT_ALIGNMENT` (0x000C, enum
   code), `TRUNCATION_MODE` (0x000D, enum code), plus all text-formatting and
   appearance modifiers from [MODIFIERS.md](./MODIFIERS.md).
@@ -728,7 +728,7 @@ Events: `VALUE_CHANGED` after each press.
 
 A date & time selection modal/popover control.
 
-- **Protocol**: a leaf node whose value is set with the **`STYLE::SET_DATE`**
+- **Protocol**: a leaf node whose value is set with the **`PARAMETER::SET_DATE`**
   command (draft 0x04, see OPCODE.md): `A=nodeId, B=days since epoch (I32,
   pre-1970 negative), C=millis of day (U32, 0..86,400,000)`.
 - **Properties**: `DATE_PICKER_MODE` (0x2013, enum: `Date`=0, `Time`=1,

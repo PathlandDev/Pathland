@@ -62,7 +62,7 @@ class CounterViewTest {
 
     private static boolean anySetText(Frame frame, String text) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
                 if (text.equals(frame.stringAt(op.b()))) {
                     return true;
                 }

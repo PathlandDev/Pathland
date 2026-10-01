@@ -36,7 +36,7 @@ tracks what this crate implements.
   F32-enum chrome mode: `PlatformDefault`=0 / `Custom`=1 — the renderer
   supplies default navigation chrome, or the developer owns all nav UI)).
 - **Commands**: `TREE` create/delete/insert/remove/move (append = `u32::MAX`);
-  `STYLE` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`; `META`
+  `PARAMETER` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`; `META`
   `RESET`/`ENVIRONMENT`/`RESYNC`. `META::ENVIRONMENT` is the extensible
   platform-environment field family (`environment::VIEWPORT_WIDTH`/
   `VIEWPORT_HEIGHT`/`ROUTE` — the `ROUTE` string uses the `TEXT_CHANGED`/
@@ -48,8 +48,8 @@ tracks what this crate implements.
   / batch string section (same dual convention as `TEXT_CHANGED`);
   `Navigate { url: None }` is a native back request (decodes from a bare
   opcode).
-- **`Guest::set_date`** helper (`STYLE::SET_DATE`).
-- **`Guest::set_design_token`** helper (`STYLE::SET_DESIGN_TOKEN`): global token
+- **`Guest::set_date`** helper (`PARAMETER::SET_DATE`).
+- **`Guest::set_design_token`** helper (`PARAMETER::SET_DESIGN_TOKEN`): global token
   override (`path` arena string, `valueType`, `value`), incl. `dark.`-prefixed
   dark variants (spec/TOKENS.md).
 - **`Guest::set_design_token_string`** helper: STRING-valued token override —
@@ -81,7 +81,7 @@ tracks what this crate implements.
 - **Shared linear memory**: 80-byte header, guest→host ring, host→guest event
   ring, guest arena, host→guest **event arena** (two-way string section — a
   host `send_event(TextChanged)` round-trips text over the shared ring).
-- **Conformance vectors** (`conformance.rs`): TREE/STYLE/META/EVENT golden
+- **Conformance vectors** (`conformance.rs`): TREE/PARAMETER/META/EVENT golden
   bytes **incl. vectors 17–18, 20–27** (`SET_DESIGN_TOKEN` (COLOR +
   STRING-valued), `DESIGN_TOKEN`-typed `SET_PROPERTY`, `NAVIGATE`±URL,
   `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE) and a ring

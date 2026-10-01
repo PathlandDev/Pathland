@@ -76,7 +76,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 - **Value controls**: `Toggle`/`Slider`/`Stepper`/`Picker`/`ColorPicker`/
   `Menu` bind to writable signals and route `VALUE_CHANGED` through the
   emitter's value-input registry; `TextEditor` mirrors `TextField`.
-  `DatePicker` emits `STYLE::SET_DATE` (and re-emits it on signal change via a
+  `DatePicker` emits `PARAMETER::SET_DATE` (and re-emits it on signal change via a
   node-level date binding) and routes `DATE_CHANGED` through a dedicated
   date-input registry (`RenderResult.dateInputs`).
 - **Events**: the full catalog round-trips — pointer, `KEY_*`, `VALUE_CHANGED`,
@@ -233,7 +233,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   builders (`color`/`f32`/`u32`/`u8`/`string`) for one scheme; `AdaptiveTheme(light,
   dark)` composes a light + dark pair. Both implement the `ThemeData` interface
   (`emit`/`emitInto`); `Theme.emit`/`AdaptiveTheme.emit` write one frame of
-  `STYLE::SET_DESIGN_TOKEN` overrides (the dark theme's with the `dark.` prefix),
+  `PARAMETER::SET_DESIGN_TOKEN` overrides (the dark theme's with the `dark.` prefix),
   and `OpcodeSink.setDesignToken` puts path + STRING values into the string
   section (frame) / arena (ring). The `Emitter` takes a `ThemeData` and rides it
   into the mount + resync frames. Overrides are renderer-global — they never

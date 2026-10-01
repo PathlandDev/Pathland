@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    Opcode, border_edges, category, component_type, property_id, size, style,
+    Opcode, border_edges, category, component_type, parameter, property_id, size,
     tokens::TokenValue, tree, value_type,
 };
 
@@ -32,7 +32,7 @@ pub mod token_spec;
 pub struct Node {
     /// Protocol component type id (see `pathland_core::component_type`).
     pub component: u16,
-    /// Text content set via `STYLE::SET_TEXT`, if any.
+    /// Text content set via `PARAMETER::SET_TEXT`, if any.
     pub text: Option<String>,
     /// Constraint/style properties (`propertyId → value`).
     pub properties: BTreeMap<u16, u32>,
@@ -40,7 +40,7 @@ pub struct Node {
     pub strings: BTreeMap<u16, String>,
     /// `DESIGN_TOKEN`-typed properties (`propertyId → token path`).
     pub token_refs: BTreeMap<u16, String>,
-    /// Date value from `STYLE::SET_DATE`: (days since epoch, millis of day).
+    /// Date value from `PARAMETER::SET_DATE`: (days since epoch, millis of day).
     pub date: Option<(i32, u32)>,
     /// Child node ids in insertion order.
     pub children: Vec<u32>,
@@ -667,8 +667,8 @@ fn decode(opcodes: &[Opcode], strings: &[u8]) -> (BTreeMap<u32, Node>, Tokens) {
     for op in opcodes {
         match op.category() {
             category::TREE => apply_tree(&mut nodes, op.command(), *op),
-            category::STYLE => {
-                if op.command() == style::SET_DESIGN_TOKEN {
+            category::PARAMETER => {
+                if op.command() == parameter::SET_DESIGN_TOKEN {
                     // Global override: A = arenaRef (token path), B = valueType,
                     // C = value (for STRING, an arenaRef to the value string).
                     if let Some(path) = strings_str(strings, op.a()) {
@@ -861,14 +861,14 @@ fn apply_tree(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode) {
 
 fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings: &[u8]) {
     match command {
-        style::SET_TEXT => {
+        parameter::SET_TEXT => {
             if let Some(text) = strings_str(strings, op.b()) {
                 if let Some(node) = nodes.get_mut(&op.a()) {
                     node.text = Some(text);
                 }
             }
         }
-        style::SET_PROPERTY => {
+        parameter::SET_PROPERTY => {
             let property = (op.b() & 0xFFFF) as u16;
             if let Some(node) = nodes.get_mut(&op.a()) {
                 let vt = (op.b() >> 16) as u8;
@@ -887,7 +887,7 @@ fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings
                 }
             }
         }
-        style::SET_DATE => {
+        parameter::SET_DATE => {
             if let Some(node) = nodes.get_mut(&op.a()) {
                 // B = days since epoch (I32), C = millis of day (U32).
                 node.date = Some((op.b() as i32, op.c()));
@@ -1459,7 +1459,7 @@ if indeterminate {
                         let sel = if i as u32 == selected { " selected" } else { "" };
                         // Each option carries the child node's id so the DOM
                         // client can hydrate/reconcile it against the child's
-                        // own TREE/STYLE deltas.
+                        // own TREE/PARAMETER deltas.
                         format!(
                             "<option data-pathland-id=\"{child}\" value=\"{i}\"{sel}>{}</option>",
                             escape(&label)
@@ -1653,7 +1653,7 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Hello");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 2, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 2, 0, 0));
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
@@ -1684,27 +1684,27 @@ mod tests {
         ));
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Hello");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         // border: width 2, opaque red, all edges
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::BORDER_WIDTH as u32,
             2.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::COLOR as u32) << 16) | property_id::BORDER_COLOR as u32,
             0xFFFF_0000,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::BORDER_EDGES as u32,
@@ -1736,18 +1736,18 @@ mod tests {
         ));
         strings.extend_from_slice(&(7u32).to_le_bytes());
         strings.extend_from_slice(b"Enabled");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::TOGGLE_STYLE as u32,
             0.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::SELECTED as u32,
@@ -1777,18 +1777,18 @@ mod tests {
         ));
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Email");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::TOGGLE_STYLE as u32,
             1.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::SELECTED as u32,
@@ -1819,18 +1819,18 @@ mod tests {
         ));
         strings.extend_from_slice(&(4u32).to_le_bytes());
         strings.extend_from_slice(b"Mute");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::TOGGLE_STYLE as u32,
             2.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::SELECTED as u32,
@@ -1862,26 +1862,26 @@ mod tests {
         ));
         strings.extend_from_slice(&(6u32).to_le_bytes());
         strings.extend_from_slice(b"Volume");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::MIN_VALUE as u32,
             0.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::MAX_VALUE as u32,
             1.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::VALUE as u32,
@@ -1914,13 +1914,13 @@ mod tests {
         // value (node text)
         strings.extend_from_slice(&(3u32).to_le_bytes());
         strings.extend_from_slice(b"Bob");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         // label (STRING property)
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Name:");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::LABEL as u32,
@@ -1930,8 +1930,8 @@ mod tests {
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Enter");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::PROMPT as u32,
@@ -1967,7 +1967,7 @@ mod tests {
         ));
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Hello");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
 
         let bytes = encode_frame(&opcodes, &strings);
         assert!(bytes.len() > 16);
@@ -1996,8 +1996,8 @@ mod tests {
         strings.extend_from_slice(&(15u32).to_le_bytes());
         strings.extend_from_slice(b"assets/logo.png");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::IMAGE_SOURCE as u32,
@@ -2020,8 +2020,8 @@ mod tests {
         strings.extend_from_slice(&(32u32).to_le_bytes());
         strings.extend_from_slice(b"/_pathland/assets/icons/home.svg");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::IMAGE_SOURCE as u32,
@@ -2030,16 +2030,16 @@ mod tests {
         strings.extend_from_slice(&(4u32).to_le_bytes());
         strings.extend_from_slice(b"Home");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::LABEL as u32,
             36,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::CONTENT_MODE as u32,
@@ -2050,8 +2050,8 @@ mod tests {
         strings.extend_from_slice(&(30u32).to_le_bytes());
         strings.extend_from_slice(b"https://example.com/sample.mp4");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::STRING as u32) << 16) | property_id::VIDEO_SOURCE as u32,
@@ -2061,8 +2061,8 @@ mod tests {
         strings.extend_from_slice(&(30u32).to_le_bytes());
         strings.extend_from_slice(b"https://example.com/sample.mp3");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             3,
             ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
@@ -2095,8 +2095,8 @@ mod tests {
         strings.extend_from_slice(&(29u32).to_le_bytes());
         strings.extend_from_slice(b"https://example.com/track.mp3");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
@@ -2104,24 +2104,24 @@ mod tests {
         ));
         // The app-bound media control properties ride the node.
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::PLAYBACK_STATE as u32,
             1,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::MEDIA_POSITION as u32,
             12.5f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::MEDIA_VOLUME as u32,
@@ -2158,8 +2158,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32,
@@ -2185,11 +2185,11 @@ mod tests {
             let mut opcodes = Vec::new();
             opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component as u32, 0));
             if columns != pathland_core::size::HUG_CONTENT {
-                opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 1,
+                opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
                     ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32, columns.to_bits()));
             }
             if rows != pathland_core::size::HUG_CONTENT {
-                opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 1,
+                opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
                     ((value_type::F32 as u32) << 16) | property_id::GRID_ROWS as u32, rows.to_bits()));
             }
             let renderer = HtmlRenderer::new();
@@ -2211,9 +2211,9 @@ mod tests {
         // FILL count = auto-fit (no template); a FILL WIDTH frame still expands (100%).
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
-        opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 1,
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
             ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32, size::FILL.to_bits()));
-        opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 1,
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
             ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32, size::FILL.to_bits()));
         let renderer = HtmlRenderer::new();
         let f = renderer.render_document(&opcodes, &[], 1);
@@ -2228,7 +2228,7 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
-        opcodes.push(Opcode::new(category::STYLE, style::SET_PROPERTY, 0, 2,
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 2,
             ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32, pathland_core::size::FILL.to_bits()));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::COLOR as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 4, component_type::TEXT as u32, 0));
@@ -2289,8 +2289,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::PROGRESS_VIEW as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::PROGRESS as u32,
@@ -2298,8 +2298,8 @@ mod tests {
         ));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::PROGRESS_VIEW as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::U8 as u32) << 16) | property_id::IS_INDETERMINATE as u32,
@@ -2316,7 +2316,7 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::DATE_PICKER as u32, 0));
         // days=19723 → 2024-01-01; millis of day = 0.
-        opcodes.push(Opcode::new(category::STYLE, style::SET_DATE, 0, 1, 19_723, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_DATE, 0, 1, 19_723, 0));
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
@@ -2333,11 +2333,11 @@ mod tests {
         strings.extend_from_slice(&(3u32).to_le_bytes());
         strings.extend_from_slice(b"Red");
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 2, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 2, 0, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::SELECTION as u32,
@@ -2357,8 +2357,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::COLOR_PICKER as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::COLOR as u32) << 16) | property_id::COLOR_VALUE as u32,
@@ -2366,8 +2366,8 @@ mod tests {
         ));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::COLOR as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::COLOR as u32) << 16) | property_id::COLOR as u32,
@@ -2388,7 +2388,7 @@ mod tests {
         let mut strings = Vec::new();
         strings.extend_from_slice(&(1u32).to_le_bytes());
         strings.extend_from_slice(b"A");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 2, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 2, 0, 0));
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
@@ -2403,8 +2403,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::LINE_LIMIT as u32,
@@ -2413,7 +2413,7 @@ mod tests {
         let mut strings = Vec::new();
         strings.extend_from_slice(&(2u32).to_le_bytes());
         strings.extend_from_slice(b"Hi");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
 
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
         assert!(
@@ -2423,7 +2423,7 @@ mod tests {
         // 0 = unlimited: no clamp style (the unset case above is unchanged).
         let mut no_limit = Vec::new();
         no_limit.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
-        no_limit.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        no_limit.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         assert!(
             !HtmlRenderer::new()
                 .render_document(&no_limit, &strings, 1)
@@ -2444,8 +2444,8 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
         // Fixed width → wraps at the box (C7).
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
@@ -2453,8 +2453,8 @@ mod tests {
         ));
         // LINE_LIMIT=2 → clamp to 2 lines with a tail ellipsis (C8).
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::U32 as u32) << 16) | property_id::LINE_LIMIT as u32,
@@ -2463,8 +2463,8 @@ mod tests {
         // TRUNCATION_MODE=Head → still a 2-line clamp, no nowrap/ellipsis CSS
         // (CSS line-clamp tail-ellipsizes; head/middle are renderer-owned — C9).
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::TRUNCATION_MODE as u32,
@@ -2472,8 +2472,8 @@ mod tests {
         ));
         // CLIPS_TO_BOUNDS=1 → overflow:hidden (C10).
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::U8 as u32) << 16) | property_id::CLIPS_TO_BOUNDS as u32,
@@ -2490,8 +2490,8 @@ mod tests {
         let mut trunc_alone = Vec::new();
         trunc_alone.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
         trunc_alone.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::TRUNCATION_MODE as u32,
@@ -2510,24 +2510,24 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::BUTTON as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::EVENT_LISTENERS as u32,
             pathland_core::listener::POINTER_DOWN | pathland_core::listener::POINTER_UP,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::ACTION_ID as u32,
             42,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::ENABLED as u32,
@@ -2548,8 +2548,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
@@ -2581,8 +2581,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
@@ -2604,16 +2604,16 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::IMAGE as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
             220.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::HEIGHT as u32,
@@ -2656,8 +2656,8 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::BUTTON as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
@@ -2683,8 +2683,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT_FIELD as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::IS_SECURE as u32,
@@ -2703,24 +2703,24 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::COLOR as u32) << 16) | property_id::COLOR as u32,
             0xFF11_2233,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::FONT_SIZE as u32,
             18.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::VISIBLE as u32,
@@ -2741,16 +2741,16 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
             size::FILL.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::HEIGHT as u32,
@@ -2770,16 +2770,16 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::SPACING as u32,
             4.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
@@ -2944,8 +2944,8 @@ mod tests {
         let mut strings = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::SPACING as u32,
@@ -2954,8 +2954,8 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::PADDING as u32,
@@ -2963,7 +2963,7 @@ mod tests {
         ));
         strings.extend_from_slice(&(2u32).to_le_bytes());
         strings.extend_from_slice(b"Hi");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 2, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 2, 0, 0));
 
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
         assert!(html.contains("flex-direction:column"), "stack inline flex");
@@ -2987,8 +2987,8 @@ mod tests {
             (property_id::ROTATION_DEGREES, value_type::F32, 90.0f32.to_bits()),
         ] {
             opcodes.push(Opcode::new(
-                category::STYLE,
-                style::SET_PROPERTY,
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
                 0,
                 1,
                 ((vt as u32) << 16) | prop as u32,
@@ -2997,7 +2997,7 @@ mod tests {
         }
         strings.extend_from_slice(&(2u32).to_le_bytes());
         strings.extend_from_slice(b"Hi");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
 
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
         // Arbitrary numbers inline; enum-derived stays a Tailwind class.
@@ -3023,10 +3023,10 @@ mod tests {
         let strings = string_section(&["color.primary", "dark.color.primary"]);
         let dark_offset = (4 + 13) as u32; // entry 0: [len=13]"color.primary"
         let opcodes = vec![
-            Opcode::new(category::STYLE, style::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
+            Opcode::new(category::PARAMETER, parameter::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
             Opcode::new(
-                category::STYLE,
-                style::SET_DESIGN_TOKEN,
+                category::PARAMETER,
+                parameter::SET_DESIGN_TOKEN,
                 0,
                 dark_offset,
                 value_type::COLOR as u32,
@@ -3048,10 +3048,10 @@ mod tests {
         let strings = string_section(&["color.primary", "dark.color.primary"]);
         let dark_offset = (4 + 13) as u32; // entry 0: [len=13]"color.primary"
         let opcodes = vec![
-            Opcode::new(category::STYLE, style::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
+            Opcode::new(category::PARAMETER, parameter::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
             Opcode::new(
-                category::STYLE,
-                style::SET_DESIGN_TOKEN,
+                category::PARAMETER,
+                parameter::SET_DESIGN_TOKEN,
                 0,
                 dark_offset,
                 value_type::COLOR as u32,
@@ -3086,8 +3086,8 @@ mod tests {
     fn set_design_token_registers_a_length_token_with_px() {
         let strings = string_section(&["space.base"]);
         let opcodes = vec![Opcode::new(
-            category::STYLE,
-            style::SET_DESIGN_TOKEN,
+            category::PARAMETER,
+            parameter::SET_DESIGN_TOKEN,
             0,
             0,
             value_type::F32 as u32,
@@ -3103,8 +3103,8 @@ mod tests {
         // value "Inter" at offset 20 (conformance vector 20 wire shape).
         let strings = string_section(&["font.body.family", "Inter"]);
         let opcodes = vec![Opcode::new(
-            category::STYLE,
-            style::SET_DESIGN_TOKEN,
+            category::PARAMETER,
+            parameter::SET_DESIGN_TOKEN,
             0,
             0,
             value_type::STRING as u32,
@@ -3120,8 +3120,8 @@ mod tests {
         let opcodes = vec![
             Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
             Opcode::new(
-                category::STYLE,
-                style::SET_PROPERTY,
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
                 0,
                 1,
                 ((value_type::DESIGN_TOKEN as u32) << 16) | property_id::COLOR as u32,
@@ -3138,8 +3138,8 @@ mod tests {
         let opcodes = vec![
             Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0),
             Opcode::new(
-                category::STYLE,
-                style::SET_PROPERTY,
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
                 0,
                 1,
                 ((value_type::DESIGN_TOKEN as u32) << 16) | property_id::SPACING as u32,

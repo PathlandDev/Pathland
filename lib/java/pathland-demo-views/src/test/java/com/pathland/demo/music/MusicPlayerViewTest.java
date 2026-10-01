@@ -139,7 +139,7 @@ class MusicPlayerViewTest {
 
     private static boolean anySlider(Frame frame, float min, float max) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() != Categories.STYLE || op.command() != Commands.Style.SET_PROPERTY) {
+            if (op.category() != Categories.PARAMETER || op.command() != Commands.Parameter.SET_PROPERTY) {
                 continue;
             }
             if ((op.b() & 0xFFFF) == Properties.MIN_VALUE
@@ -152,7 +152,7 @@ class MusicPlayerViewTest {
 
     private static boolean anySliderValue(Frame frame, float value) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == Properties.VALUE
                     && Float.intBitsToFloat(op.c()) == value) {
                 return true;
@@ -163,7 +163,7 @@ class MusicPlayerViewTest {
 
     private static boolean hasProperty(Frame frame, int property, float value) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && Float.intBitsToFloat(op.c()) == value) {
                 return true;
             }
@@ -173,7 +173,7 @@ class MusicPlayerViewTest {
 
     private static boolean anySetText(Frame frame, String text) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT
                     && text.equals(frame.stringAt(op.b()))) {
                 return true;
             }
@@ -183,7 +183,7 @@ class MusicPlayerViewTest {
 
     private static boolean anySetProperty(Frame frame, int property, int value) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && op.c() == value) {
                 return true;
             }
@@ -193,7 +193,7 @@ class MusicPlayerViewTest {
 
     private static boolean anySetProperty(Frame frame, int property, float value) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && Float.intBitsToFloat(op.c()) == value) {
                 return true;
             }
@@ -203,7 +203,7 @@ class MusicPlayerViewTest {
 
     private static boolean anySetPropertyString(Frame frame, int property, String value) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property
                     && value.equals(frame.stringAt(op.c()))) {
                 return true;

@@ -9,8 +9,8 @@
 ## Purpose
 
 This document is the **catalog of core modifiers** the Pathland protocol must
-support. In the protocol these are the **`STYLE` properties**: the constraint
-properties and visual decorations carried by `STYLE::SET_PROPERTY`. The set
+support. In the protocol these are the **`PARAMETER` properties**: the constraint
+properties and visual decorations carried by `PARAMETER::SET_PROPERTY`. The set
 mirrors SwiftUI's core modifiers so that any SwiftUI-shaped UI can be expressed.
 
 Like SwiftUI, modifiers in Pathland are **decoupled from views**: any modifier
@@ -29,7 +29,7 @@ custom modifiers from these core ones.
 
 ### Emission rules
 
-Each modifier emits **one or more** `STYLE::SET_PROPERTY` opcodes — one per
+Each modifier emits **one or more** `PARAMETER::SET_PROPERTY` opcodes — one per
 underlying property. There is no compound-modifier opcode. Compound SwiftUI
 modifiers (`.frame(width:height:alignment:)`, `.shadow(color:radius:x:y:)`,
 `.border(_:width:)`) are expanded into several `SET_PROPERTY` opcodes, exactly
@@ -375,7 +375,7 @@ are never chainable modifiers.
 | `0x1033`–`0x1037` | Media — `AUDIO_SOURCE`, `VIDEO_SOURCE` (STRING asset references), `PLAYBACK_STATE` (U32), `MEDIA_POSITION` (F32), `MEDIA_VOLUME` (F32), see PRIMITIVES.md |
 | `0x1038`–`0x10FF` | Future styling properties (unallocated) |
 | `0x2001`–`0x200B` | Semantic (ROLE, STATE, ENABLED, SELECTED, EVENT_LISTENERS, VALUE, MIN_VALUE, MAX_VALUE, LABEL, PROMPT) |
-| `0x2009`, `0x200C`–`0x2014` | Control properties (allocated: STEP_VALUE, CONTROL_SIZE, IS_SECURE, PROGRESS, IS_INDETERMINATE, SELECTION, COLOR_VALUE, DATE_PICKER_MODE, PICKER_STYLE) — defined in PRIMITIVES.md controls. Note: a `DATE_PICKER`'s date is set via the `STYLE::SET_DATE` command (0x04), not a property; **`0x2011` is unallocated/reserved** (its former `DATE_VALUE` draft was dropped) |
+| `0x2009`, `0x200C`–`0x2014` | Control properties (allocated: STEP_VALUE, CONTROL_SIZE, IS_SECURE, PROGRESS, IS_INDETERMINATE, SELECTION, COLOR_VALUE, DATE_PICKER_MODE, PICKER_STYLE) — defined in PRIMITIVES.md controls. Note: a `DATE_PICKER`'s date is set via the `PARAMETER::SET_DATE` command (0x04), not a property; **`0x2011` is unallocated/reserved** (its former `DATE_VALUE` draft was dropped) |
 | `0x2016`–`0x2018` | Binding/action properties (allocated: `ACTION_ID`, `BINDING_ID`, `TOGGLE_STYLE`) — defined in PRIMITIVES.md semantic controls |
 | `0x2019` | `ROUTE` (STRING; navigation current path) — see §6 |
 | `0x201A` | `NAV_DEPTH` (U32; navigation back-stack depth) — see §6 |

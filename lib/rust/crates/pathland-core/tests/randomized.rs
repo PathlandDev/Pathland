@@ -86,8 +86,8 @@ fn random_sequences_round_trip_exactly() {
                         let value = rng.next_u32();
                         g.set_property(id, property_id::COLOR, value_type::U32, value).unwrap();
                         expected.push(Opcode::new(
-                            pathland_core::category::STYLE,
-                            pathland_core::style::SET_PROPERTY,
+                            pathland_core::category::PARAMETER,
+                            pathland_core::parameter::SET_PROPERTY,
                             0,
                             id,
                             (value_type::U32 as u32) << 16 | property_id::COLOR as u32,
@@ -116,8 +116,8 @@ fn random_sequences_round_trip_exactly() {
                         let arena_ref = g.set_text(id, &text).unwrap();
                         arena_strings.push((arena_ref, text));
                         expected.push(Opcode::new(
-                            pathland_core::category::STYLE,
-                            pathland_core::style::SET_TEXT,
+                            pathland_core::category::PARAMETER,
+                            pathland_core::parameter::SET_TEXT,
                             0,
                             id,
                             arena_ref,

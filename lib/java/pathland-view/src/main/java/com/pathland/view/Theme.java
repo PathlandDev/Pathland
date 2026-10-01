@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * A batch of **global, renderer-wide design-token overrides** for a single
- * scheme ({@code STYLE::SET_DESIGN_TOKEN}, spec/TOKENS.md). Every builder
+ * scheme ({@code PARAMETER::SET_DESIGN_TOKEN}, spec/TOKENS.md). Every builder
  * defines exactly **one value** — combine a light and a dark {@link Theme} via
  * {@link AdaptiveTheme} for adaptive theming (the dark one is emitted with the
  * {@code dark.} prefix).

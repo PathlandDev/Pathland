@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 
 /**
  * The fine-grained emitter. Mounts a {@link View} tree once: assigns stable node ids,
- * emits the structural frame (TREE + STYLE), and registers a node-level binding effect
+ * emits the structural frame (TREE + PARAMETER), and registers a node-level binding effect
  * per reactive text/property. A signal change re-emits only that binding's
  * {@code SET_TEXT} / {@code SET_PROPERTY} — an unchanged signal emits zero opcodes.
  *
@@ -65,7 +65,7 @@ public final class Emitter {
     /**
      * Create an emitter with a global theme ({@link ThemeData}: a single
      * {@link Theme} or an {@link AdaptiveTheme} light+dark pair). The theme's
-     * {@code STYLE::SET_DESIGN_TOKEN} overrides are emitted at the start of the
+     * {@code PARAMETER::SET_DESIGN_TOKEN} overrides are emitted at the start of the
      * **mount** and **renderFull** (resync) frames, so the SSR document and the
      * first client frame both carry them. Overrides are renderer-global and
      * never re-emit nodes; deltas are unaffected.
@@ -122,7 +122,7 @@ public final class Emitter {
     }
 
     /**
-     * Re-emit the complete retained tree as one full-snapshot frame (TREE + STYLE).
+     * Re-emit the complete retained tree as one full-snapshot frame (TREE + PARAMETER).
      * Used for {@code META::RESYNC} (reconnect/gap recovery) and no-JS refresh. Does
      * not re-mount or re-wire state — it replays the current tree through the sink.
      */

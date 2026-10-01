@@ -159,8 +159,8 @@ pub(crate) fn push_set_property(
         header,
         mask,
         &Opcode::new(
-            constants::category::STYLE,
-            constants::style::SET_PROPERTY,
+            constants::category::PARAMETER,
+            constants::parameter::SET_PROPERTY,
             0,
             node_id,
             ((value_type as u32) << 16) | property_id as u32,
@@ -181,8 +181,8 @@ pub(crate) fn push_set_text(
         header,
         mask,
         &Opcode::new(
-            constants::category::STYLE,
-            constants::style::SET_TEXT,
+            constants::category::PARAMETER,
+            constants::parameter::SET_TEXT,
             0,
             node_id,
             arena_ref,

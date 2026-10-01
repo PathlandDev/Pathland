@@ -73,7 +73,7 @@ public final class RingOpcodeSink implements OpcodeSink, AutoCloseable {
     @Override
     public void setText(int nodeId, String text) {
         int ref = core.arenaAlloc(handle, text.getBytes(StandardCharsets.UTF_8));
-        push(Categories.STYLE, Commands.Style.SET_TEXT, 0, nodeId, ref, 0);
+        push(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, nodeId, ref, 0);
     }
 
     @Override
@@ -81,19 +81,19 @@ public final class RingOpcodeSink implements OpcodeSink, AutoCloseable {
         int b = (valueType << 16) | (property & 0xFFFF);
         if (valueType == ValueTypes.STRING) {
             int ref = core.arenaAlloc(handle, ((String) value).getBytes(StandardCharsets.UTF_8));
-            push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b, ref);
+            push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, ref);
         } else if (valueType == ValueTypes.DESIGN_TOKEN) {
             int ref = core.arenaAlloc(handle, ((Color) value).token().getBytes(StandardCharsets.UTF_8));
-            push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b, ref);
+            push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, ref);
         } else {
-            push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b,
+            push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b,
                     ValueEncoder.encodeBits(valueType, value));
         }
     }
 
     @Override
     public void setDate(int nodeId, int days, int millisOfDay) {
-        push(Categories.STYLE, Commands.Style.SET_DATE, 0, nodeId, days, millisOfDay);
+        push(Categories.PARAMETER, Commands.Parameter.SET_DATE, 0, nodeId, days, millisOfDay);
     }
 
     @Override
@@ -105,7 +105,7 @@ public final class RingOpcodeSink implements OpcodeSink, AutoCloseable {
         } else {
             c = ValueEncoder.encodeBits(valueType, value);
         }
-        push(Categories.STYLE, Commands.Style.SET_DESIGN_TOKEN, 0, pathRef, valueType, c);
+        push(Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN, 0, pathRef, valueType, c);
     }
 
     private void push(int category, int command, int flags, int a, int b, int c) {

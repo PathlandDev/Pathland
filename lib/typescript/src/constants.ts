@@ -11,7 +11,7 @@ export const FLAG_HOST_TO_GUEST = 0x0001;
 
 // Categories
 export const CAT_TREE = 0x01;
-export const CAT_STYLE = 0x02;
+export const CAT_PARAMETER = 0x02;
 export const CAT_EVENT = 0x03;
 export const CAT_META = 0x04;
 
@@ -22,7 +22,7 @@ export const CMD_INSERT_CHILD = 0x03;
 export const CMD_REMOVE_CHILD = 0x04;
 export const CMD_MOVE_CHILD = 0x05;
 
-// STYLE commands
+// PARAMETER commands
 export const CMD_SET_PROPERTY = 0x01;
 export const CMD_SET_DESIGN_TOKEN = 0x02;
 export const CMD_SET_TEXT = 0x03;

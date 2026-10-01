@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    category, init_memory, listener, property_id, size, style, tree, value_type, Guest, Host,
+    category, init_memory, listener, property_id, size, parameter, tree, value_type, Guest, Host,
     MemoryLayout, Opcode,
 };
 use pathland_engine::{assign_ids, component_type_id, Component, Engine, Node};
@@ -93,7 +93,7 @@ fn first_emit_produces_full_structure() {
     }));
     assert!(ops
         .iter()
-        .any(|o| o.category() == category::STYLE && o.command() == style::SET_TEXT));
+        .any(|o| o.category() == category::PARAMETER && o.command() == parameter::SET_TEXT));
     assert!(engine.tracked_nodes() == 3);
 }
 
@@ -109,8 +109,8 @@ fn property_change_emits_only_delta() {
     let ops = emit_and_collect(&mut engine, &a);
 
     assert_eq!(ops.len(), 1, "only the spacing delta should emit");
-    assert_eq!(ops[0].category(), category::STYLE);
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].category(), category::PARAMETER);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].a(), 1);
     assert_eq!(ops[0].b() as u16, property_id::SPACING);
     assert_eq!(ops[0].c_f32(), 12.0);
@@ -147,7 +147,7 @@ fn emit_and_read_token(engine: &mut Engine, root: &Node) -> (u16, u8, String) {
     let frames = host.frames();
     let frame = frames.first().unwrap();
     for op in frame.opcodes() {
-        if op.category() == category::STYLE && op.command() == style::SET_PROPERTY {
+        if op.category() == category::PARAMETER && op.command() == parameter::SET_PROPERTY {
             let prop = op.b() as u16;
             let vt = (op.b() >> 16) as u8;
             let path = frame.arena_str(op.c()).map(str::to_owned).unwrap_or_default();
@@ -192,7 +192,7 @@ fn token_ref_change_emits_single_design_token_delta() {
         .insert(property_id::COLOR, "color.secondary".into());
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].b() as u16, property_id::COLOR);
     assert_eq!(ops[0].b() >> 16, value_type::DESIGN_TOKEN as u32);
 }
@@ -206,7 +206,7 @@ fn text_change_emits_single_set_text() {
     root.children[0].component = Component::Text { text: "xy".into() };
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].command(), style::SET_TEXT);
+    assert_eq!(ops[0].command(), parameter::SET_TEXT);
     assert_eq!(ops[0].a(), 2);
 }
 
@@ -289,7 +289,7 @@ fn frame_change_emits_only_size_delta() {
     root.properties.insert(property_id::WIDTH, 120.0f32.to_bits());
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 1, "only the width delta should emit");
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].b() as u16, property_id::WIDTH);
     assert_eq!(ops[0].c_f32(), 120.0);
 }

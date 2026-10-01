@@ -98,7 +98,7 @@ export function createTokenSink(): DesignTokenSink {
 }
 
 /**
- * Handle a STYLE `SET_DESIGN_TOKEN` opcode (spec/OPCODE.md design-token system):
+ * Handle a PARAMETER `SET_DESIGN_TOKEN` opcode (spec/OPCODE.md design-token system):
  * `A = arenaRef (token path)`, `B = valueType (u8, low byte)`, `C = value`. For
  * a `STRING` value type, `C` is an arenaRef to the value string, resolved here.
  */

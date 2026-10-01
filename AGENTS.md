@@ -32,7 +32,7 @@ This document provides essential context for AI agents (or human contributors) w
 > padding, alignment — never WHERE it is. It does not compute layout and does
 > not emit rects.**
 
-- The engine emits **declarative structure** (`TREE` create/delete/insert/remove/move) + **constraint properties** (`STYLE` spacing/padding/alignment/FILL/HUG hints).
+- The engine emits **declarative structure** (`TREE` create/delete/insert/remove/move) + **constraint properties** (`PARAMETER` spacing/padding/alignment/FILL/HUG hints).
 - **Native elements everywhere**: each platform's renderer maps the opcode stream onto that platform's native elements — GTK4 widgets on desktop, DOM elements in the browser, HTML server-side — and those native elements lay themselves out. Never a generic canvas unless a platform has no native equivalent.
 - **Reactive emission**: emission is diff-based. Only the nodes that changed emit opcodes (property diffs via `SET_PROPERTY`/`SET_TEXT`, structural diffs via `TREE` opcodes). An unchanged tree emits **zero** opcodes. Signals in the application mark the tree dirty; the engine reconciles.
 - **Zero dynamic heap allocations** during steady-state emission (proven by test).
@@ -89,7 +89,7 @@ crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative 
 lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer: a small
                            #   vanilla-TypeScript hydration client (no runtime deps):
                            #   hydrates the SSR HTML by data-pathland-id, decodes
-                           #   self-contained PLPL batches, applies STYLE + TREE deltas
+                           #   self-contained PLPL batches, applies PARAMETER + TREE deltas
                            #   in place, sends raw-input events over /ws. The server
                            #   NEVER replays the full tree on connect (the client already
                            #   has it from the HTML); a full snapshot is sent only on an
@@ -324,7 +324,7 @@ tests (golden byte layout + round-trips), replacing the old codegen assert pass.
 
 The semantic surface is catalogued in the companion specs: **`spec/PRIMITIVES.md`**
 (primitive views + component IDs), **`spec/MODIFIERS.md`** (core modifiers = the
-`STYLE` properties), **`spec/EVENTS.md`** (core events + listener bits),
+`PARAMETER` properties), **`spec/EVENTS.md`** (core events + listener bits),
 **`spec/LAYOUT.md`** (frame & layout allocation contract). The
 tables below are a quick recap of the protocol surface; the companion files
 carry the authoritative ID allocations.
@@ -351,7 +351,7 @@ See `spec/OPCODE.md` for the full format, ring buffer, arena, and frame lifecycl
 | Category | Value | Direction | Description |
 |----------|-------|-----------|-------------|
 | TREE | 0x01 | Guest → Host | Node create/delete/insert/remove/move |
-| STYLE | 0x02 | Guest → Host | Constraint properties (spacing, padding, …), design tokens |
+| PARAMETER | 0x02 | Guest → Host | Constraint properties (spacing, padding, …), design tokens |
 | EVENT | 0x03 | Host → Guest | Raw inputs: pointer down/move/up, key down/up |
 | META | 0x04 | Both | Reset, environment |
 

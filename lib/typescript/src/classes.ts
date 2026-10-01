@@ -1,6 +1,6 @@
 // Option A styling: the DOM renderer owns a bounded property → style/class map.
 // The protocol stays renderer-agnostic; web-specific Tailwind class resolution
-// is the HTML renderer's job (SSR). At runtime, STYLE deltas are applied as
+// is the HTML renderer's job (SSR). At runtime, PARAMETER deltas are applied as
 // inline style (which overrides the SSR Tailwind class for the current value),
 // literal colors via inline style, and semantic design tokens as CSS variables.
 

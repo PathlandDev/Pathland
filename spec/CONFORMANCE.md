@@ -66,13 +66,13 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
 - `02 00 00 00` B = childId = 2
 - `00 00 00 00` C = newIndex = 0
 
-### 4. STYLE:SET_PROPERTY (id=1, propertyId=SPACING=0x0001, valueType=F32, 4.0)
+### 4. PARAMETER:SET_PROPERTY (id=1, propertyId=SPACING=0x0001, valueType=F32, 4.0)
 
 ```
 02 01 00 00 01 00 00 00 01 00 04 00 00 00 80 40
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -81,13 +81,13 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 80 40` C = 4.0 (f32 LE: 0x40800000)
 
-### 5. STYLE:SET_PROPERTY (id=1, propertyId=COLOR=0x100A, valueType=COLOR=0x07, rgba=0xFF0000FF)
+### 5. PARAMETER:SET_PROPERTY (id=1, propertyId=COLOR=0x100A, valueType=COLOR=0x07, rgba=0xFF0000FF)
 
 ```
 02 01 00 00 01 00 00 00 0A 10 07 00 FF 00 00 FF
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -96,13 +96,13 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
   - high byte `07` = valueType = 0x07 (COLOR)
 - `FF 00 00 FF` C = 0xFF0000FF (opaque blue, `0xAARRGGBB`)
 
-### 6. STYLE:SET_TEXT (id=1, arenaRef=0)
+### 6. PARAMETER:SET_TEXT (id=1, arenaRef=0)
 
 ```
 02 03 00 00 01 00 00 00 00 00 00 00 00 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `03` command = SET_TEXT
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -204,7 +204,7 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
 
 ## Directions
 
-- `TREE` / `STYLE` are **guest → host** (application → renderer).
+- `TREE` / `PARAMETER` are **guest → host** (application → renderer).
 - `EVENT` is **host → guest** (renderer → application): raw pointer/keyboard
   inputs with a host-resolved `targetId`. A conforming EVENT encoder/decoder
   MUST reproduce vectors 8–12 and 21–22 exactly.
@@ -229,7 +229,7 @@ String-bearing events (`TEXT_CHANGED`, `NAVIGATE` with the `NAVIGATE_URL`
 flag) resolve their text from the host → guest **event arena** (header
 `eventArenaOffset` 0x40 / `eventArenaCursor` 0x48, host-owned, shared memory)
 or the batch's string section (network) — the same dual absolute/relative
-convention as `STYLE::SET_TEXT`. See OPCODE.md's
+convention as `PARAMETER::SET_TEXT`. See OPCODE.md's
 [event arena](./OPCODE.md#event-arena-host--guest) section.
 
 ## Network Batch Conformance
@@ -291,20 +291,20 @@ The single opcode is `META:RESYNC` (vector 13). The batch carries the
 - `04 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00` = the META:RESYNC opcode (16 bytes)
 - `00 00 00 00` = arenaDeltaLen = 0
 
-### 17. STYLE:SET_DESIGN_TOKEN (path="color.primary" arenaRef=0, valueType=COLOR=0x07, value=0xFF0000FF)
+### 17. PARAMETER:SET_DESIGN_TOKEN (path="color.primary" arenaRef=0, valueType=COLOR=0x07, value=0xFF0000FF)
 
 ```
 02 02 00 00 00 00 00 00 07 00 00 00 FF 00 00 FF
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `02` command = SET_DESIGN_TOKEN
 - `00 00` flags = 0
 - `00 00 00 00` A = arenaRef = 0 (entry is `[u32 length][bytes]` in the arena; the string is `"color.primary"`)
 - `07 00 00 00` B = valueType = 0x07 (COLOR)
 - `FF 00 00 FF` C = 0xFF0000FF (opaque blue, `0xAARRGGBB`)
 
-### 18. STYLE:SET_PROPERTY (id=1, propertyId=COLOR=0x100A, valueType=DESIGN_TOKEN=0x08, arenaRef=0)
+### 18. PARAMETER:SET_PROPERTY (id=1, propertyId=COLOR=0x100A, valueType=DESIGN_TOKEN=0x08, arenaRef=0)
 
 A color property carrying a **token reference** instead of a literal: the
 renderer resolves `"color.primary"` (arena entry at offset 0) against the token
@@ -314,7 +314,7 @@ tables and the current scheme.
 02 01 00 00 01 00 00 00 0A 10 08 00 00 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -343,7 +343,7 @@ The single opcode is vector 18. The arena delta is the self-describing entry for
 - `11 00 00 00` = arenaDeltaLen = 17
 - `0D 00 00 00 63 6F 6C 6F 72 2E 70 72 69 6D 61 72 79` = arena entry `[len=13]["color.primary"]`
 
-### 20. STYLE:SET_DESIGN_TOKEN (path="font.body.family" arenaRef=0, valueType=STRING=0x05, valueArenaRef=20)
+### 20. PARAMETER:SET_DESIGN_TOKEN (path="font.body.family" arenaRef=0, valueType=STRING=0x05, valueArenaRef=20)
 
 A **STRING-valued** token override: the token path lives at arena offset 0
 (`[len=16]["font.body.family"]`, 20 bytes), the value string `"Inter"` at
@@ -353,7 +353,7 @@ offset 20.
 02 02 00 00 00 00 00 00 05 00 00 00 14 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `02` command = SET_DESIGN_TOKEN
 - `00 00` flags = 0
 - `00 00 00 00` A = arenaRef = 0 (token path `"font.body.family"`)
@@ -452,7 +452,7 @@ The user changed the media volume (0..1, f32).
 - `00 00 00 3F` B = 0.5f (0x3F000000 LE)
 - `00 00 00 00` C = 0
 
-### 27. STYLE:SET_PROPERTY (id=1, propertyId=ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)
+### 27. PARAMETER:SET_PROPERTY (id=1, propertyId=ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)
 
 The `NavigationContainer` emits the current path as a STRING property; the DOM
 renderer reacts with `history.pushState`.
@@ -461,7 +461,7 @@ renderer reacts with `history.pushState`.
 02 01 00 00 01 00 00 00 19 20 05 00 00 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -470,7 +470,7 @@ renderer reacts with `history.pushState`.
   - high byte `05` = valueType = 0x05 (STRING)
 - `00 00 00 00` C = arenaRef = 0 (`"/users/42"`)
 
-### 28. STYLE:SET_PROPERTY (id=1, propertyId=TRANSITION=0x1031, valueType=F32=0x04, Slide=3)
+### 28. PARAMETER:SET_PROPERTY (id=1, propertyId=TRANSITION=0x1031, valueType=F32=0x04, Slide=3)
 
 A transition hint on the slot (enum code carried as an `F32` bit pattern):
 `Slide`=3 → `C` = 3.0 (0x40400000).
@@ -479,7 +479,7 @@ A transition hint on the slot (enum code carried as an `F32` bit pattern):
 02 01 00 00 01 00 00 00 31 10 04 00 00 00 40 40
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -542,7 +542,7 @@ A STRING-valued environment field: `B` is a string-section/event-arena offset
 - `00 00 00 00` B = string offset = 0 (`"/users/42"`)
 - `00 00 00 00` C = 0
 
-### 32. STYLE:SET_PROPERTY (id=1, propertyId=NAV_DEPTH=0x201A, valueType=U32=0x02, depth=3)
+### 32. PARAMETER:SET_PROPERTY (id=1, propertyId=NAV_DEPTH=0x201A, valueType=U32=0x02, depth=3)
 
 The `NavigationContainer` emits its back-stack depth as a U32 property — three
 destinations in the app's path (the current one included), so a native
@@ -552,7 +552,7 @@ navigation adapter reconciles its page stack by depth. `C` = 3 (U32 LE).
 02 01 00 00 01 00 00 00 1A 20 02 00 03 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -561,7 +561,7 @@ navigation adapter reconciles its page stack by depth. `C` = 3 (U32 LE).
   - high byte `02` = valueType = 0x02 (U32)
 - `03 00 00 00` C = 3 (U32 LE) = depth
 
-### 33. STYLE:SET_PROPERTY (id=1, propertyId=NAV_CHROME=0x201B, valueType=F32=0x04, Custom=1)
+### 33. PARAMETER:SET_PROPERTY (id=1, propertyId=NAV_CHROME=0x201B, valueType=F32=0x04, Custom=1)
 
 The `NavigationContainer`'s chrome mode (F32 enum code): `Custom`=1 → `C` =
 1.0 (0x3F800000) — the developer owns all navigation UI and the renderer adds
@@ -571,7 +571,7 @@ none. `PlatformDefault`=0 is the missing/default value.
 02 01 00 00 01 00 00 00 1B 20 04 00 00 00 80 3F
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -580,7 +580,7 @@ none. `PlatformDefault`=0 is the missing/default value.
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 80 3F` C = 1.0 (f32 LE: 0x3F800000) = Custom
 
-### 34. STYLE:SET_PROPERTY (id=1, propertyId=GRID_COLUMNS=0x001E, valueType=F32=0x04, 2.0)
+### 34. PARAMETER:SET_PROPERTY (id=1, propertyId=GRID_COLUMNS=0x001E, valueType=F32=0x04, 2.0)
 
 A grid's column count (positive = count; `FILL`/absent = auto-fit). The count is
 a **constructor property**, never a pixel width — the grid's box comes from
@@ -590,7 +590,7 @@ a **constructor property**, never a pixel width — the grid's box comes from
 02 01 00 00 01 00 00 00 1E 00 04 00 00 00 00 40
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1

@@ -54,8 +54,8 @@ class LabelTest {
     /** The SET_PROPERTY ops on a node for a property. */
     private static List<Opcode> props(Frame frame, int nodeId, int property) {
         return frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE
-                        && o.command() == Commands.Style.SET_PROPERTY
+                .filter(o -> o.category() == Categories.PARAMETER
+                        && o.command() == Commands.Parameter.SET_PROPERTY
                         && o.a() == nodeId
                         && (o.b() & 0xFFFF) == property)
                 .toList();
@@ -88,8 +88,8 @@ class LabelTest {
     /** The text last SET_TEXT on a node, or null. */
     private static String textOf(Frame frame, int nodeId) {
         return frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE
-                        && o.command() == Commands.Style.SET_TEXT
+                .filter(o -> o.category() == Categories.PARAMETER
+                        && o.command() == Commands.Parameter.SET_TEXT
                         && o.a() == nodeId)
                 .reduce((a, b) -> b)
                 .map(o -> frame.stringAt(o.b()))
@@ -322,7 +322,7 @@ class LabelTest {
         public void setText(int nodeId, String text) {
             int offset = strings.size();
             writeString(text);
-            push(Categories.STYLE, Commands.Style.SET_TEXT, 0, nodeId, offset, 0);
+            push(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, nodeId, offset, 0);
         }
 
         @Override
@@ -331,20 +331,20 @@ class LabelTest {
             if (valueType == ValueTypes.STRING) {
                 int offset = strings.size();
                 writeString((String) value);
-                push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b, offset);
+                push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, offset);
             } else if (valueType == ValueTypes.DESIGN_TOKEN) {
                 int offset = strings.size();
                 writeString(((Color) value).token());
-                push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b, offset);
+                push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, offset);
             } else {
-                push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b,
+                push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b,
                         ValueEncoder.encodeBits(valueType, value));
             }
         }
 
         @Override
         public void setDate(int nodeId, int days, int millisOfDay) {
-            push(Categories.STYLE, Commands.Style.SET_DATE, 0, nodeId, days, millisOfDay);
+            push(Categories.PARAMETER, Commands.Parameter.SET_DATE, 0, nodeId, days, millisOfDay);
         }
 
         @Override
@@ -358,7 +358,7 @@ class LabelTest {
             } else {
                 c = ValueEncoder.encodeBits(valueType, value);
             }
-            push(Categories.STYLE, Commands.Style.SET_DESIGN_TOKEN, 0, pathOffset, valueType, c);
+            push(Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN, 0, pathOffset, valueType, c);
         }
     }
 }

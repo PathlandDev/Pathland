@@ -35,7 +35,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_PROPERTY (id=1, SPACING=0x0001, valueType=F32, 4.0)",
+        "PARAMETER:SET_PROPERTY (id=1, SPACING=0x0001, valueType=F32, 4.0)",
         [
             0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
@@ -44,7 +44,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_PROPERTY (id=1, COLOR=0x100A, valueType=COLOR, rgba=0xFF0000FF)",
+        "PARAMETER:SET_PROPERTY (id=1, COLOR=0x100A, valueType=COLOR, rgba=0xFF0000FF)",
         [
             0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
@@ -53,7 +53,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_TEXT (id=1, arenaRef=0)",
+        "PARAMETER:SET_TEXT (id=1, arenaRef=0)",
         [
             0x02, 0x03, 0x00, 0x00, // category STYLE, command SET_TEXT
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
@@ -116,7 +116,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_DESIGN_TOKEN (path=\"color.primary\" arenaRef=0, valueType=COLOR=0x07, value=0xFF0000FF)",
+        "PARAMETER:SET_DESIGN_TOKEN (path=\"color.primary\" arenaRef=0, valueType=COLOR=0x07, value=0xFF0000FF)",
         [
             0x02, 0x02, 0x00, 0x00, // category STYLE, command SET_DESIGN_TOKEN
             0x00, 0x00, 0x00, 0x00, // A = arenaRef = 0 ("color.primary")
@@ -125,7 +125,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_PROPERTY (id=1, COLOR=0x100A, valueType=DESIGN_TOKEN=0x08, arenaRef=0)",
+        "PARAMETER:SET_PROPERTY (id=1, COLOR=0x100A, valueType=DESIGN_TOKEN=0x08, arenaRef=0)",
         [
             0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
@@ -134,7 +134,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_DESIGN_TOKEN (path=\"font.body.family\" arenaRef=0, valueType=STRING=0x05, valueArenaRef=20)",
+        "PARAMETER:SET_DESIGN_TOKEN (path=\"font.body.family\" arenaRef=0, valueType=STRING=0x05, valueArenaRef=20)",
         [
             0x02, 0x02, 0x00, 0x00, // category STYLE, command SET_DESIGN_TOKEN
             0x00, 0x00, 0x00, 0x00, // A = arenaRef = 0 ("font.body.family")
@@ -161,7 +161,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_PROPERTY (id=1, ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)",
+        "PARAMETER:SET_PROPERTY (id=1, ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)",
         [
             0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
@@ -170,7 +170,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_PROPERTY (id=1, TRANSITION=0x1031, valueType=F32=0x04, Slide=3)",
+        "PARAMETER:SET_PROPERTY (id=1, TRANSITION=0x1031, valueType=F32=0x04, Slide=3)",
         [
             0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
@@ -197,7 +197,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_PROPERTY (id=1, NAV_DEPTH=0x201A, valueType=U32=0x02, depth=3)",
+        "PARAMETER:SET_PROPERTY (id=1, NAV_DEPTH=0x201A, valueType=U32=0x02, depth=3)",
         [
             0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
@@ -206,7 +206,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_PROPERTY (id=1, NAV_CHROME=0x201B, valueType=F32=0x04, Custom=1)",
+        "PARAMETER:SET_PROPERTY (id=1, NAV_CHROME=0x201B, valueType=F32=0x04, Custom=1)",
         [
             0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
@@ -215,7 +215,7 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
         ],
     ),
     (
-        "STYLE:SET_PROPERTY (id=1, GRID_COLUMNS=0x001E, valueType=F32=0x04, 2.0)",
+        "PARAMETER:SET_PROPERTY (id=1, GRID_COLUMNS=0x001E, valueType=F32=0x04, 2.0)",
         [
             0x02, 0x01, 0x00, 0x00, // category STYLE, command SET_PROPERTY
             0x01, 0x00, 0x00, 0x00, // A = nodeId = 1

@@ -425,7 +425,7 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
         fn sample_opcodes() -> Vec<Opcode> {
         vec![
             Opcode::new(category::TREE, 0x01, 0, 1, 0x0010, 0),
-            Opcode::new(category::STYLE, 0x03, 0, 1, 0, 0),
+            Opcode::new(category::PARAMETER, 0x03, 0, 1, 0, 0),
         ]
     }
 
@@ -649,7 +649,7 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
         strings.extend_from_slice(b"Hello");
         let opcodes = vec![
             Opcode::new(category::TREE, 0x01, 0, 1, 0x0010, 0),
-            Opcode::new(category::STYLE, 0x03, 0, 2, 0, 0), // SET_TEXT, B = relative offset 0
+            Opcode::new(category::PARAMETER, 0x03, 0, 2, 0, 0), // SET_TEXT, B = relative offset 0
         ];
 
         let bytes = encode_frame(&opcodes, &strings);

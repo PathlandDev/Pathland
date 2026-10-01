@@ -88,7 +88,7 @@ pub struct Opcode {
 | Category | Value | Name | Producer | Description |
 |----------|-------|------|----------|-------------|
 | `TREE` | `0x01` | Tree mutations | Guest engine | Node create/delete/insert/remove/move |
-| `STYLE` | `0x02` | Constraints & tokens | Guest engine | Property values (spacing, padding, …), design tokens |
+| `PARAMETER` | `0x02` | Constraints & tokens | Guest engine | Property values (spacing, padding, …), design tokens |
 | `EVENT` | `0x03` | Raw inputs | Host renderer | Pointer down/move/up, key down/up |
 | `META` | `0x04` | Control | Both | Reset, environment |
 
@@ -111,9 +111,9 @@ the wire-format authority.
 | `REMOVE_CHILD` | `0x04` | parentId | childId | 0 | — | Remove `childId` from `parentId` |
 | `MOVE_CHILD` | `0x05` | parentId | childId | newIndex | — | Move child to `newIndex` (after removal); append is `newIndex = u32::MAX` (`APPEND`) |
 
-### STYLE (0x02)
+### PARAMETER (0x02)
 
-The engine does not emit positions. `STYLE` carries the **constraint properties**
+The engine does not emit positions. `PARAMETER` carries the **constraint properties**
 that native renderers feed to their own layout — spacing, alignment, FILL/HUG
 size hints — plus **styling modifiers** (padding, colors, fonts, borders).
 
@@ -230,7 +230,7 @@ selecting which edges of a node's border are drawn. Bits are direction-aware:
 | 3 | `0x00000008` | `TRAILING` | right |
 
 Full property catalog: see [MODIFIERS.md](./MODIFIERS.md) — the core modifiers
-(the protocol's `STYLE` properties) grouped by SwiftUI modifier, with the same
+(the protocol's `PARAMETER` properties) grouped by SwiftUI modifier, with the same
 IDs — and the Rust `constants.rs` (carried forward from the historical
 protocol).
 
@@ -387,7 +387,7 @@ element.
 | `KEY_DOWN` | `0x04` | targetId | keyCode (u16, low) | modifiers (u8, low) | `KEY_REPEAT` | Key pressed (bit 1 = auto-repeat) |
 | `KEY_UP` | `0x05` | targetId | keyCode (u16, low) | modifiers (u8, low) | — | Key released |
 | `VALUE_CHANGED` | `0x06` | targetId | value (f32) | 0 | — | A value-bearing control changed (e.g. slider); the renderer resolves the semantic value from its track geometry |
-| `TEXT_CHANGED` | `0x07` | targetId | string offset | 0 | — | A text field's value changed; the new text is a length-prefixed entry in the **event arena** (shared memory, absolute `B` offset) or the batch's string section (network, *relative* `B` offset) — the same dual convention as `STYLE::SET_TEXT` |
+| `TEXT_CHANGED` | `0x07` | targetId | string offset | 0 | — | A text field's value changed; the new text is a length-prefixed entry in the **event arena** (shared memory, absolute `B` offset) or the batch's string section (network, *relative* `B` offset) — the same dual convention as `PARAMETER::SET_TEXT` |
 | `NAVIGATE` | `0x0E` | 0 | URL string offset | 0 | `NAVIGATE_URL` | Global navigation request: with the flag, `B` is the destination URL (browser `popstate`/back/forward/deep-link, same dual string convention as `TEXT_CHANGED`); without the flag, "back one step" (native back affordance). Never node-keyed, never `EVENT_LISTENERS`-gated — see [EVENTS.md](./EVENTS.md#navigation) |
 
 ### META (0x04)
@@ -396,12 +396,12 @@ element.
 |---------|-------|---|---|---|-------------|
 | `RESET` | `0x01` | 0 | 0 | 0 | Host must clear all rendered output |
 | `ENVIRONMENT` | `0x02` | fieldId (u16, low) | field value | 0 | A platform environment field (host → guest) — see [Environment fields](#environment-fields) |
-| `RESYNC` | `0x03` | 0 | 0 | 0 | The host (renderer) requests a **full snapshot** of the current tree (host → guest). The guest answers with a single full-snapshot batch (the same TREE + STYLE stream as a mount). Used for reconnect/gap recovery and no-JS refresh. |
+| `RESYNC` | `0x03` | 0 | 0 | 0 | The host (renderer) requests a **full snapshot** of the current tree (host → guest). The guest answers with a single full-snapshot batch (the same TREE + PARAMETER stream as a mount). Used for reconnect/gap recovery and no-JS refresh. |
 
 #### Environment fields
 
 `META::ENVIRONMENT` is an **extensible field family** (mirroring
-`STYLE::SET_PROPERTY`): each opcode sets one platform environment field, so
+`PARAMETER::SET_PROPERTY`): each opcode sets one platform environment field, so
 any number of fields ride one batch and new fields are new ids — never new
 commands. The platform (renderer / DOM client / SSR host) delivers the
 application's launch context this way; an HTTP request supplies what it offers,
@@ -437,7 +437,7 @@ The engine emits **only what changed** relative to its previous emission:
 
 The **`frame` compound modifier** (width/height/alignment) is not a distinct
 protocol concept: it emits `WIDTH`/`HEIGHT`/`ALIGNMENT` as ordinary
-`STYLE:SET_PROPERTY` deltas, exactly like any other constraint property. There
+`PARAMETER:SET_PROPERTY` deltas, exactly like any other constraint property. There
 is no `frame` opcode or dedicated wire type.
 
 Signals in the application drive this: a signal marks the tree dirty; the
@@ -686,7 +686,7 @@ Golden byte vectors for this protocol are in [CONFORMANCE.md](./CONFORMANCE.md).
 
 The protocol's semantic surface is catalogued in four companion documents:
 [PRIMITIVES.md](./PRIMITIVES.md) (the primitive views), [MODIFIERS.md](./MODIFIERS.md)
-(the core modifiers, i.e. the `STYLE` properties), [EVENTS.md](./EVENTS.md)
+(the core modifiers, i.e. the `PARAMETER` properties), [EVENTS.md](./EVENTS.md)
 (the core events, i.e. the raw inputs), and [TOKENS.md](./TOKENS.md) (the design
 tokens / theming contract). IDs are allocated there spec-first;
 this file remains the wire-format authority and must be updated when new IDs

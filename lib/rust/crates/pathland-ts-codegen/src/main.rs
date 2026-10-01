@@ -11,7 +11,7 @@
 //! same maps the HTML renderers implement.
 
 use pathland_core::{
-    category, component_type, environment, event, flag, listener, meta, property_id, role, style,
+    category, component_type, environment, event, flag, listener, meta, parameter, property_id, role,
     text_style, tree, value_type,
 };
 use pathland_render_html::{role_spec, token_spec};
@@ -133,7 +133,7 @@ pub fn emit_constants_ts() -> String {
     out.push_str("\n// Categories\n");
     write_consts(&mut out, "CAT_", &[
         ("TREE", fmt_u8(category::TREE)),
-        ("STYLE", fmt_u8(category::STYLE)),
+        ("PARAMETER", fmt_u8(category::PARAMETER)),
         ("EVENT", fmt_u8(category::EVENT)),
         ("META", fmt_u8(category::META)),
     ]);
@@ -145,12 +145,12 @@ pub fn emit_constants_ts() -> String {
         ("REMOVE_CHILD", fmt_u8(tree::REMOVE_CHILD)),
         ("MOVE_CHILD", fmt_u8(tree::MOVE_CHILD)),
     ]);
-    out.push_str("\n// STYLE commands\n");
+    out.push_str("\n// PARAMETER commands\n");
     write_consts(&mut out, "CMD_", &[
-        ("SET_PROPERTY", fmt_u8(style::SET_PROPERTY)),
-        ("SET_DESIGN_TOKEN", fmt_u8(style::SET_DESIGN_TOKEN)),
-        ("SET_TEXT", fmt_u8(style::SET_TEXT)),
-        ("SET_DATE", fmt_u8(style::SET_DATE)),
+        ("SET_PROPERTY", fmt_u8(parameter::SET_PROPERTY)),
+        ("SET_DESIGN_TOKEN", fmt_u8(parameter::SET_DESIGN_TOKEN)),
+        ("SET_TEXT", fmt_u8(parameter::SET_TEXT)),
+        ("SET_DATE", fmt_u8(parameter::SET_DATE)),
     ]);
     out.push_str("\n// META commands\n");
     write_consts(&mut out, "CMD_", &[

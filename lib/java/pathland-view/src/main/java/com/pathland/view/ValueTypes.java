@@ -1,6 +1,6 @@
 package com.pathland.view;
 
-/** Value types for {@code STYLE::SET_PROPERTY} (mirrors {@code pathland_core::value_type}). */
+/** Value types for {@code PARAMETER::SET_PROPERTY} (mirrors {@code pathland_core::value_type}). */
 public final class ValueTypes {
 
     public static final int U8 = 0x01;

@@ -7,7 +7,7 @@ import { readString } from "./plpl";
 import {
   CAT_EVENT,
   CAT_META,
-  CAT_STYLE,
+  CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
   CMD_DATE_CHANGED,
@@ -108,7 +108,7 @@ const TREE_NAME: Record<number, string> = {
   [CMD_MOVE_CHILD]: "MOVE_CHILD",
 };
 
-const STYLE_NAME: Record<number, string> = {
+const PARAMETER_NAME: Record<number, string> = {
   [CMD_SET_PROPERTY]: "SET_PROPERTY",
   [CMD_SET_DESIGN_TOKEN]: "SET_DESIGN_TOKEN",
   [CMD_SET_TEXT]: "SET_TEXT",
@@ -267,8 +267,8 @@ function describeOpcode(batch: Batch, op: Opcode): string {
           return `TREE ${tn}(a=${op.a}, b=${op.b}, c=${op.c})`;
       }
     }
-    case CAT_STYLE: {
-      const sn = name(STYLE_NAME, op.command);
+    case CAT_PARAMETER: {
+      const sn = name(PARAMETER_NAME, op.command);
       switch (op.command) {
         case CMD_SET_PROPERTY:
           return `STYLE ${sn}(${describeProperty(batch, op)}, node=${op.a})`;

@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    category, init_memory, property_id, style, value_type, Guest, Host, MemoryLayout, Opcode,
+    category, init_memory, property_id, parameter, value_type, Guest, Host, MemoryLayout, Opcode,
 };
 use pathland_engine::{assign_ids, Component, Engine, Node, SignalId, SignalValue};
 
@@ -91,8 +91,8 @@ fn text_signal_change_emits_only_bound_node() {
     );
     assert_eq!(n, 1, "exactly one opcode for the bound node");
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].category(), category::STYLE);
-    assert_eq!(ops[0].command(), style::SET_TEXT);
+    assert_eq!(ops[0].category(), category::PARAMETER);
+    assert_eq!(ops[0].command(), parameter::SET_TEXT);
     assert_eq!(ops[0].a(), 2, "node 2 is the bound text");
 }
 
@@ -141,8 +141,8 @@ fn property_signal_change_emits_set_property() {
     );
     assert_eq!(n, 1);
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].category(), category::STYLE);
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].category(), category::PARAMETER);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].a(), 1);
     assert_eq!(ops[0].b() as u16, property_id::SPACING);
     assert_eq!(ops[0].c_f32(), 12.0);
@@ -195,7 +195,7 @@ fn multiple_nodes_on_one_signal_emit_together() {
     );
     assert_eq!(n, 2, "both bound nodes re-emit");
     assert_eq!(ops.len(), 2);
-    assert!(ops.iter().all(|o| o.command() == style::SET_TEXT));
+    assert!(ops.iter().all(|o| o.command() == parameter::SET_TEXT));
     let ids: Vec<u32> = ops.iter().map(|o| o.a()).collect();
     assert_eq!(ids, vec![2, 4]);
 }

@@ -1,11 +1,11 @@
 // Delta application: decode each opcode and apply it to the DOM via the
-// retained `id → Node` registry. STYLE deltas mutate the hydrated element in
+// retained `id → Node` registry. PARAMETER deltas mutate the hydrated element in
 // place; TREE deltas build the element shell and insert/remove/move it; META
 // deltas reset/environment.
 
 import {
   CAT_META,
-  CAT_STYLE,
+  CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
   CMD_DELETE_NODE,
@@ -87,7 +87,7 @@ import {
 } from "./generated/role-spec";
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 
-/** Component type per retained node, so STYLE/TREE application can special-case
+/** Component type per retained node, so PARAMETER/TREE application can special-case
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
  *  spinner/progress morph) without baking it into the DOM. */
 const componentByNode = new WeakMap<Node, number>();
@@ -260,14 +260,14 @@ export interface DomRenderer {
   onMediaEvent?: (batch: Uint8Array) => void;
 }
 
-/** Apply every opcode in a batch to the DOM (TREE structure + STYLE/META deltas). */
+/** Apply every opcode in a batch to the DOM (TREE structure + PARAMETER/META deltas). */
 export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   for (const op of batch.opcodes) {
     switch (op.category) {
       case CAT_TREE:
         applyTree(op, renderer);
         break;
-      case CAT_STYLE:
+      case CAT_PARAMETER:
         applyStyle(op, batch.strings, renderer);
         break;
       case CAT_META:
@@ -326,7 +326,7 @@ function placedChild(parent: Node, child: Node): Node {
 
 /** Materialize a PICKER's child TEXT node as a native `<option>` (the Rust SSR
  *  renderer emits `<option data-pathland-id="{child}" value="{index}">` per
- *  child). The option keeps the child's id so its STYLE deltas resolve to it. */
+ *  child). The option keeps the child's id so its PARAMETER deltas resolve to it. */
 function pickerOption(child: HTMLElement): HTMLElement {
   const opt = document.createElement("option");
   opt.textContent = child.textContent ?? "";

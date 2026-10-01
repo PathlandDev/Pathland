@@ -20,7 +20,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use pathland_core::{
-    Opcode, category, component_type, property_id, style, tree, value_type,
+    Opcode, category, component_type, property_id, parameter, tree, value_type,
 };
 use pathland_core_transport::encode_frame;
 use pathland_render_html::HtmlRenderer;
@@ -72,7 +72,7 @@ impl Builder {
 
     fn style(&mut self, command: u8, a: u32, b: u32, c: u32) {
         self.opcodes
-            .push(Opcode::new(category::STYLE, command, 0, a, b, c));
+            .push(Opcode::new(category::PARAMETER, command, 0, a, b, c));
     }
 
     fn create(&mut self, id: u32, component: u16) {
@@ -85,12 +85,12 @@ impl Builder {
 
     fn set_text(&mut self, id: u32, text: &str) {
         let offset = self.string(text);
-        self.style(style::SET_TEXT, id, offset, 0);
+        self.style(parameter::SET_TEXT, id, offset, 0);
     }
 
     fn set_prop(&mut self, id: u32, vt: u8, prop: u16, value: u32) {
         self.style(
-            style::SET_PROPERTY,
+            parameter::SET_PROPERTY,
             id,
             ((vt as u32) << 16) | prop as u32,
             value,
@@ -111,7 +111,7 @@ impl Builder {
     /// A `SET_DESIGN_TOKEN` override: `A` = arena offset of the token path.
     fn set_token(&mut self, path: &str, vt: u8, value: u32) {
         let offset = self.string(path);
-        self.style(style::SET_DESIGN_TOKEN, offset, vt as u32, value);
+        self.style(parameter::SET_DESIGN_TOKEN, offset, vt as u32, value);
     }
 }
 

@@ -43,7 +43,7 @@ public interface OpcodeSink {
     void setDate(int nodeId, int days, int millisOfDay);
 
     /**
-     * Emit a global design-token override {@code STYLE::SET_DESIGN_TOKEN}
+     * Emit a global design-token override {@code PARAMETER::SET_DESIGN_TOKEN}
      * (spec/TOKENS.md): {@code A}=arena offset of the token path,
      * {@code B}=valueType, {@code C}=value (for {@code STRING}, the arena offset
      * of the value string). {@code value} is typed like

@@ -21,7 +21,7 @@ System](./OPCODE.md#design-token-system). It defines:
 - the **color-scheme contract** (base = light, `dark.` = dark), and
 - the **renderer integration contract** (how future native renderers adopt it).
 
-The wire encoding (`STYLE::SET_DESIGN_TOKEN`, the `DESIGN_TOKEN` value type)
+The wire encoding (`PARAMETER::SET_DESIGN_TOKEN`, the `DESIGN_TOKEN` value type)
 lives in [OPCODE.md](./OPCODE.md). Modifier mapping lives in
 [MODIFIERS.md](./MODIFIERS.md). The DSL surface is specified in
 [DSL.md](./DSL.md).
@@ -321,7 +321,7 @@ A renderer MUST:
 
 1. Provide platform-appropriate **light and dark defaults** for all Tier 1
    tokens.
-2. Accept `STYLE::SET_DESIGN_TOKEN` commands and store overrides.
+2. Accept `PARAMETER::SET_DESIGN_TOKEN` commands and store overrides.
 3. Derive the effective color scheme from the platform and re-resolve on change.
 4. Resolve token references (`DESIGN_TOKEN` value type) in properties.
 5. Fall back to defaults when no override exists.

@@ -280,12 +280,12 @@ impl<'a> Guest<'a> {
         Ok(arena_ref)
     }
 
-    /// Set a node's date value via `STYLE::SET_DATE` (draft): `days` since the
+    /// Set a node's date value via `PARAMETER::SET_DATE` (draft): `days` since the
     /// epoch (I32, pre-1970 negative) and `millis` of day (U32, 0..86,400,000).
     pub fn set_date(&mut self, node_id: u32, days: i32, millis: u32) -> Result<(), RingError> {
         let op = Opcode::new(
-            category::STYLE,
-            crate::style::SET_DATE,
+            category::PARAMETER,
+            crate::parameter::SET_DATE,
             0,
             node_id,
             days as u32,
@@ -294,7 +294,7 @@ impl<'a> Guest<'a> {
         ring_fn::push(self.slots, self.header, self.mask(), &op)
     }
 
-    /// Override a design token globally via `STYLE::SET_DESIGN_TOKEN`:
+    /// Override a design token globally via `PARAMETER::SET_DESIGN_TOKEN`:
     /// `path` (arena string) → `value` of `value_type`. Applies everywhere the
     /// renderer resolves tokens (spec/TOKENS.md). A `dark.`-prefixed path
     /// overrides the dark variant. Returns the arena offset of the path.
@@ -307,8 +307,8 @@ impl<'a> Guest<'a> {
         let arena_ref = arena_fn::alloc_str(self.arena, self.header, path)
             .map_err(|_| RingError::Full)?;
         let op = Opcode::new(
-            category::STYLE,
-            crate::style::SET_DESIGN_TOKEN,
+            category::PARAMETER,
+            crate::parameter::SET_DESIGN_TOKEN,
             0,
             arena_ref,
             u32::from(value_type),
@@ -318,7 +318,7 @@ impl<'a> Guest<'a> {
         Ok(arena_ref)
     }
 
-    /// Override a design token with a **STRING value** via `STYLE::SET_DESIGN_TOKEN`
+    /// Override a design token with a **STRING value** via `PARAMETER::SET_DESIGN_TOKEN`
     /// (spec/TOKENS.md): both the token path and the value are arena strings —
     /// `A` = path ref, `B` = `STRING` value type, `C` = value ref. Returns the
     /// arena offset of the path.
@@ -332,8 +332,8 @@ impl<'a> Guest<'a> {
         let value_ref = arena_fn::alloc_str(self.arena, self.header, value)
             .map_err(|_| RingError::Full)?;
         let op = Opcode::new(
-            category::STYLE,
-            crate::style::SET_DESIGN_TOKEN,
+            category::PARAMETER,
+            crate::parameter::SET_DESIGN_TOKEN,
             0,
             arena_ref,
             u32::from(crate::value_type::STRING),
@@ -677,8 +677,8 @@ mod tests {
         let frame = &host.frames()[0];
         let ops: Vec<Opcode> = frame.opcodes().collect();
         assert_eq!(ops.len(), 2);
-        assert_eq!(ops[0].category(), category::STYLE);
-        assert_eq!(ops[0].command(), style::SET_DESIGN_TOKEN);
+        assert_eq!(ops[0].category(), category::PARAMETER);
+        assert_eq!(ops[0].command(), parameter::SET_DESIGN_TOKEN);
         assert_eq!(ops[0].b(), u32::from(value_type::COLOR));
         assert_eq!(ops[0].c(), 0xFF_2563EB);
         assert_eq!(frame.arena_str(arena_ref).unwrap(), "color.primary");
@@ -700,8 +700,8 @@ mod tests {
         let frame = &host.frames()[0];
         let ops: Vec<Opcode> = frame.opcodes().collect();
         assert_eq!(ops.len(), 1);
-        assert_eq!(ops[0].category(), category::STYLE);
-        assert_eq!(ops[0].command(), style::SET_DESIGN_TOKEN);
+        assert_eq!(ops[0].category(), category::PARAMETER);
+        assert_eq!(ops[0].command(), parameter::SET_DESIGN_TOKEN);
         assert_eq!(ops[0].b(), u32::from(value_type::STRING));
         assert_eq!(frame.arena_str(ops[0].a()).unwrap(), "font.body.family");
         assert_eq!(frame.arena_str(ops[0].c()).unwrap(), "Inter");

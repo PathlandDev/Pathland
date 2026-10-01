@@ -152,8 +152,8 @@ fn all_value_types_encode_into_b_field() {
     let ops: Vec<Opcode> = h.frames()[0].opcodes().collect();
     assert_eq!(ops.len(), cases.len());
     for (op, (vt, pid, _)) in ops.iter().zip(cases) {
-        assert_eq!(op.category(), pathland_core::category::STYLE);
-        assert_eq!(op.command(), pathland_core::style::SET_PROPERTY);
+        assert_eq!(op.category(), pathland_core::category::PARAMETER);
+        assert_eq!(op.command(), pathland_core::parameter::SET_PROPERTY);
         assert_eq!(op.b(), (*vt as u32) << 16 | *pid as u32);
     }
 }
