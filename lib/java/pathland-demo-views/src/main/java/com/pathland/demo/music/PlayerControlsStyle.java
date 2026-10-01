@@ -53,7 +53,7 @@ public final class PlayerControlsStyle implements AudioStyle {
                 // Center the three groups in the full-width bar.
                 HStack.of(
                     Spacer.of(),
-                    VStack.of(groups,
+                    VStack.of(Alignment.FILL, 0, groups,
                             Slider.of(new PercentSeek(config.position(),
                                     () -> MusicPlayerView.at(trackIndex.get()).duration()),
                                 0f, 100f)),
