@@ -1913,9 +1913,10 @@ fn apply_text_style(label: &Label, node: &HostNode) {
 
     // Layout (spec LAYOUT.md §content fitting): a Fixed `WIDTH` wraps the text
     // within the box (a GTK label otherwise takes its natural un-wrapped width);
-    // `LINE_LIMIT` clamps the line count with an end ellipsis; `TRUNCATION_MODE`
-    // ellipsizes on a single line at the given position (SwiftUI
-    // `.truncationMode` parity: Head=0 → start, Middle=1 → middle, Tail=2 → end).
+    // `LINE_LIMIT` clamps the line count and truncates with an ellipsis, whose
+    // position follows `TRUNCATION_MODE` when present (Tail default). A
+    // `TRUNCATION_MODE` **alone** has no observable effect (SwiftUI-aligned):
+    // it never forces a single line and never truncates by itself.
     let fixed_width = fixed_size(node, property_id::WIDTH).is_some();
     let line_limit = node.properties.get(&property_id::LINE_LIMIT).copied();
     let trunc = node
@@ -1925,18 +1926,19 @@ fn apply_text_style(label: &Label, node: &HostNode) {
     if fixed_width || line_limit.is_some_and(|n| n > 0) {
         label.set_wrap(true);
         label.set_wrap_mode(pango::WrapMode::WordChar);
-    } else if trunc.is_some() {
-        label.set_wrap(false);
     }
     if let Some(n) = line_limit {
         if n > 0 {
             label.set_lines(n as i32);
+            // Only a LINE_LIMIT clamp truncates; TRUNCATION_MODE positions the
+            // ellipsis (renderer-owned fidelity: Start/Middle are reliable for
+            // single-line labels, best-effort on a multi-line clamp).
+            label.set_ellipsize(
+                trunc
+                    .map(layout::ellipsize_from)
+                    .unwrap_or(pango::EllipsizeMode::End),
+            );
         }
-    }
-    if let Some(mode) = trunc {
-        label.set_ellipsize(layout::ellipsize_from(mode));
-    } else if line_limit.is_some_and(|n| n > 0) {
-        label.set_ellipsize(pango::EllipsizeMode::End);
     }
 }
 

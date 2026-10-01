@@ -185,11 +185,11 @@ contract both renderers must satisfy.
 
 ## Not implemented / gaps
 
-- **`TRUNCATION_MODE` alone (spec/LAYOUT.md)**: currently emits
-  `text-overflow:ellipsis;overflow:hidden;white-space:nowrap` (single-line) when
-  `TRUNCATION_MODE` is present; the pinned contract (SwiftUI-aligned) says it
-  positions the ellipsis **only when a `LINE_LIMIT` clamp truncates** and has no
-  standalone effect. Alignment pending (SSR + TS DOM client).
+- **`TRUNCATION_MODE`** (spec/LAYOUT.md §content fitting): aligned — it **alone**
+  has no observable effect (the old `nowrap`+`text-overflow:ellipsis` emission is
+  gone, SSR + TS DOM client); under a `LINE_LIMIT` clamp the renderer tail-
+  ellipsizes via `line-clamp`. Renderer-owned fidelity: CSS cannot place a
+  head/middle ellipsis, so non-Tail modes fall back to the tail ellipsis.
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset
   (colors, font size/weight, spacing/padding, corner radius, opacity,
   width/height, border width/color, shadow color). Compound accumulators that

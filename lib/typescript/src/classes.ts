@@ -152,12 +152,6 @@ function textAlignCss(code: number): string {
     default: return "center";
   }
 }
-function truncationCss(code: number): string {
-  switch (code) {
-    case P.TRUNCATION_HEAD: return "clip";
-    default: return "ellipsis";
-  }
-}
 function fontStyleCss(code: number): string {
   return code === P.FONT_STYLE_ITALIC ? "italic" : "normal";
 }
@@ -289,7 +283,13 @@ const HANDLERS: Record<number, Handler> = {
       (el.style as unknown as Record<string, string>).boxOrient = "vertical";
     }
   },
-  [P.PROP_TRUNCATION_MODE]: (el, vt, c) => (el.style.textOverflow = truncationCss(enumCode(vt, c))),
+  [P.PROP_TRUNCATION_MODE]: () => {
+    // TRUNCATION_MODE alone has no observable effect (spec LAYOUT.md §content
+    // fitting, SwiftUI-aligned): it only positions the ellipsis under a
+    // LINE_LIMIT clamp, which the renderer tail-ellipsizes via line-clamp
+    // (renderer-owned fidelity: CSS cannot place a head/middle ellipsis). The
+    // property is consumed and ignored.
+  },
   [P.PROP_OFFSET_X]: (el, vt, c) => {
     transformOf(el).translateX = f32(vt, c);
     recomposeTransform(el);

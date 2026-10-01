@@ -385,10 +385,10 @@ impl Node {
                 css.push_str("filter:invert(1);");
             }
         }
-        // TRUNCATION_MODE → ellipsis.
-        if self.properties.contains_key(&property_id::TRUNCATION_MODE) {
-            css.push_str("text-overflow:ellipsis;overflow:hidden;white-space:nowrap;");
-        }
+        // TRUNCATION_MODE alone has no observable effect (spec LAYOUT.md §content
+        // fitting, SwiftUI-aligned): it only positions the ellipsis under a
+        // `LINE_LIMIT` clamp, which the renderer tail-ellipsizes via `line-clamp`
+        // (renderer-owned fidelity: CSS cannot place a head/middle ellipsis).
         // CONTENT_MODE → object-fit (Fit=contain, Fill=cover); ASPECT_RATIO.
         if let Some(v) = f32p(property_id::CONTENT_MODE) {
             css.push_str(&format!(
@@ -2270,6 +2270,77 @@ mod tests {
                 .contains("line-clamp"),
             "no LINE_LIMIT means unlimited (no clamp)"
         );
+    }
+
+    #[test]
+    fn content_fitting_contract_c7_c10() {
+        use pathland_core::value_type;
+        // C7 (wrap at a Fixed width), C8 (LINE_LIMIT → line-clamp tail ellipsis),
+        // C9 (TRUNCATION_MODE positions the ellipsis under a clamp, never forces
+        // single-line by itself), C10 (CLIPS_TO_BOUNDS → overflow:hidden).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        // Fixed width → wraps at the box (C7).
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            120.0f32.to_bits(),
+        ));
+        // LINE_LIMIT=2 → clamp to 2 lines with a tail ellipsis (C8).
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::U32 as u32) << 16) | property_id::LINE_LIMIT as u32,
+            2,
+        ));
+        // TRUNCATION_MODE=Head → still a 2-line clamp, no nowrap/ellipsis CSS
+        // (CSS line-clamp tail-ellipsizes; head/middle are renderer-owned — C9).
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::TRUNCATION_MODE as u32,
+            0.0f32.to_bits(),
+        ));
+        // CLIPS_TO_BOUNDS=1 → overflow:hidden (C10).
+        opcodes.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::U8 as u32) << 16) | property_id::CLIPS_TO_BOUNDS as u32,
+            1,
+        ));
+        let html = HtmlRenderer::new().render_document(&opcodes, &[], 1);
+        assert!(html.contains("width:120px"), "C7 fixed-width wraps: {html}");
+        assert!(html.contains("line-clamp:2"), "C8 LINE_LIMIT clamps: {html}");
+        assert!(html.contains("overflow:hidden"), "C10 clips to bounds: {html}");
+        assert!(!html.contains("white-space:nowrap"), "C9 no forced single line");
+        assert!(!html.contains("text-overflow"), "C9 no standalone ellipsis");
+
+        // TRUNCATION_MODE ALONE (no LINE_LIMIT) has no observable effect.
+        let mut trunc_alone = Vec::new();
+        trunc_alone.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
+        trunc_alone.push(Opcode::new(
+            category::STYLE,
+            style::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::TRUNCATION_MODE as u32,
+            0.0f32.to_bits(),
+        ));
+        let html = HtmlRenderer::new().render_document(&trunc_alone, &[], 1);
+        assert!(!html.contains("line-clamp"), "TRUNCATION alone does not clamp");
+        assert!(!html.contains("white-space:nowrap"), "TRUNCATION alone does not force single-line");
+        assert!(!html.contains("text-overflow"), "TRUNCATION alone emits no ellipsis");
     }
 
     #[test]
