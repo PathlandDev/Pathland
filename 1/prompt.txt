@@ -1,0 +1,12 @@
+Analyze the Rust crate at /Users/michael/Development/michaelkrog/Pathland/lib/rust/crates/pathland-render-gtk (very thorough). I'm planning a new Ratatui (TUI) renderer and need to understand the retained-host + event model. Report:
+
+1. The public API: `GtkRenderer`, `run`, `run_with_pump`, `run_ring`, `pathland_gtk_run[_ring]`, `pathland_gtk_set_asset_root` in capi.rs — signatures and how they take the ring/host, plus the `wake`/event callback model.
+2. The host reader: how it consumes frames from the shared-memory ring (RingTransport / NativeHost), the RenderTree type, how `emit`/apply-frame works, and how the host is drained.
+3. The event path: how native inputs (pointer, key, scroll, wheel, value/text changes) become EVENT-category opcodes, `Pump::send_input`, the event arena, `pathland_native_drain_events`, BINDING_ID gating, EVENT_LISTENERS gating.
+4. The retained widget map: `id -> gtk::Widget`, how container children sync (sync_stack_children, sync_overlay_children, sync_grid_children), widget_kind mapping of component_type -> widget.
+5. How the Rust demo (pathland-render-gtk-demo) authors the DSL and drives the renderer (main.rs).
+6. The layout decisions in layout.rs: how ALIGNMENT 2D codes 0-8 are split into h/v (align_h/align_v), effective_fill, per-child expansion, grid_cell_align.
+7. Cargo.toml: crate-type, deps (gtk4, libadwaita, gstreamer...), std vs no_std.
+8. status.md structure.
+
+Return file:line references for the key items. Be concrete about the event-encoding details (how events are written back to the ring and woken).
