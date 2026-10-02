@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3YH58AGSV2GC1N8AHX2QZBH",
+  "session_id": "ses_f046e428dffehyfRiGl2Fh3J7r",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-02T14:44:14.632741Z",
+  "branch": "refactor/shared-demo-assets",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-spring-boot-demo/src/main/java/com/pathland/demo/spring/DemoAssetsConfig.java",
+    "lib/java/pathland-spring-boot-demo/src/main/java/com/pathland/demo/spring/SpringDemoApplication.java",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandIndexController.java"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "98354c6b6d47",
+  "checkpoint_transcript_start": 25,
+  "transcript_lines_at_start": 25,
+  "compact_transcript_start": 25,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-02T14:44:14.552493Z",
+    "agent_lines": 45,
+    "agent_removed": 33,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 45,
+    "total_lines_changed": 78,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
