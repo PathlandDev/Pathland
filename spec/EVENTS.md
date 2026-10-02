@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 3, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -33,8 +33,8 @@ the consumer. Both directions of the protocol are binary and share the same
 
 ### Who emits what
 
-- The **renderer** observes native input (a GTK controller, a DOM listener) and
-  writes raw `EVENT` opcodes. It never interprets them into high-level actions.
+- The **renderer** observes native input and writes raw `EVENT` opcodes. It never
+  interprets them into high-level actions.
 - The **app** drains the events, composes gestures/handlers, and updates its
   bound `State` signals (which in turn re-emit `SET_PROPERTY`/`SET_TEXT`
   deltas).
@@ -86,7 +86,7 @@ Every event is a 16-byte opcode:
 `TEXT_CHANGED` is the exception: its payload is an offset into the host → guest
 event arena (shared memory) or the batch's string section (network), so it is
 only fully decodable with that string source (the same convention as
-`STYLE::SET_TEXT`).
+`PARAMETER::SET_TEXT`).
 
 ---
 
@@ -169,7 +169,7 @@ its own native control geometry.
 
 - The date is encoded as two 32-bit fields — `B` = **days since epoch**
   (signed I32; pre-1970 is negative) and `C` = **millis of day** (U32,
-  0..86,400,000) — matching the `STYLE::SET_DATE` command (OPCODE.md). No
+  0..86,400,000) — matching the `PARAMETER::SET_DATE` command (OPCODE.md). No
   string/arena indirection: the event is fully inline. It works over the
   shared-memory ring today and will use the same inline encoding for host →
   guest network batches once that direction lands (see OPCODE.md Transport).
@@ -189,7 +189,7 @@ its own native control geometry.
   (`[u32 byteLength][bytes…]`). Over the **shared-memory ring** the renderer
   bump-allocates it into the host-owned **event arena** and `B` is its absolute
   offset (see OPCODE.md); over the **network** it lives in the batch's string
-  section referenced by a *relative* `B` offset — exactly the `STYLE::SET_TEXT`
+  section referenced by a *relative* `B` offset — exactly the `PARAMETER::SET_TEXT`
   dual convention. A bare opcode cannot resolve the text; batch-aware decoders
   (`pathland-core-transport`, Java `FrameCodec`, TS `decoder.ts`) resolve it.
   The event is reported on **every** edit, including intermediate edits, not
@@ -215,7 +215,7 @@ its own native control geometry.
   reports the absolute offset after each scroll delta.
 - **`WHEEL`**: raw wheel/trackpad deltas (logical points), reported for nodes
   that declared the `WHEEL` listener bit (bit 9). Renderers map native scroll
-  deltas (GTK `GtkEventControllerScroll`, DOM `wheel`) onto x/y deltas.
+  deltas onto x/y deltas.
 
 ### Navigation
 
@@ -229,7 +229,7 @@ Media events report a `AUDIO`/`VIDEO` node's playback state back to the app
 (target = the media node id). They are reported by the renderer by virtue of the
 media node's component type — no listener bit, mirroring `VALUE_CHANGED` — and
 only when the app has bound the corresponding control property (so a
-renderer-native `<audio controls>` reports nothing).
+renderer-native media element with default controls reports nothing).
 
 | Command | Value | A | B | C | Flags | SwiftUI counterpart |
 | --------- | ------- | --- | --- | --- | ------- | --------------------- |
@@ -244,7 +244,7 @@ renderer-native `<audio controls>` reports nothing).
   echoed back.
 - **Guards**: media events flow only when the app bound the matching control
   property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`) on the node; a
-  plain `<audio controls>` reports nothing.
+  plain renderer-native media element reports nothing.
 
 - **`NAVIGATE` is a global event — never node-gated.** It carries **no
   `targetId`** (`A` = 0) and is **not** subject to `EVENT_LISTENERS` or the

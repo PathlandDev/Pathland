@@ -1,4 +1,4 @@
-//! Global design-token theme overrides (`STYLE::SET_DESIGN_TOKEN`).
+//! Global design-token theme overrides (`PARAMETER::SET_DESIGN_TOKEN`).
 //!
 //! A [`Theme`] is a batch of **global, renderer-wide token overrides** for a
 //! single scheme — every builder defines **one value** (spec/TOKENS.md). An
@@ -131,8 +131,8 @@ mod tests {
         let ops: Vec<_> = frame.opcodes().collect();
         assert_eq!(ops.len(), 3, "one SET_DESIGN_TOKEN per override");
         for op in &ops {
-            assert_eq!(op.category(), pathland_core::category::STYLE);
-            assert_eq!(op.command(), pathland_core::style::SET_DESIGN_TOKEN);
+            assert_eq!(op.category(), pathland_core::category::PARAMETER);
+            assert_eq!(op.command(), pathland_core::parameter::SET_DESIGN_TOKEN);
         }
         // Light color, light string, then the dark.* color.
         assert_eq!(ops[0].b(), u32::from(value_type::COLOR));

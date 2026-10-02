@@ -1,6 +1,6 @@
 // Option A styling: the DOM renderer owns a bounded property → style/class map.
 // The protocol stays renderer-agnostic; web-specific Tailwind class resolution
-// is the HTML renderer's job (SSR). At runtime, STYLE deltas are applied as
+// is the HTML renderer's job (SSR). At runtime, PARAMETER deltas are applied as
 // inline style (which overrides the SSR Tailwind class for the current value),
 // literal colors via inline style, and semantic design tokens as CSS variables.
 
@@ -136,8 +136,8 @@ function applyBorderEdges(el: HTMLElement): void {
 // --- enum → CSS ---
 
 export function alignmentCss(code: number): string {
-  // Cross-axis POSITION (LAYOUT.md): positions children, never stretches.
-  // `Fill` (3) and absent mean the default hug positioning → flex-start.
+  // Cross-axis POSITION (LAYOUT.md): positions children, never stretches. A
+  // stack reads one axis of the 2D code (`0/1/2`); the default is start.
   switch (code) {
     case P.ALIGN_LEADING: return "flex-start";
     case P.ALIGN_CENTER: return "center";
@@ -145,17 +145,42 @@ export function alignmentCss(code: number): string {
     default: return "flex-start";
   }
 }
+/** The horizontal position of an `ALIGNMENT` 2D code (spec PRIMITIVES.md
+ *  §ZStack): `start`/`center`/`end`. */
+export function alignHCss(code: number): string {
+  switch (code) {
+    case P.ALIGN_CENTER:
+    case P.ALIGN_TOP_CENTER:
+    case P.ALIGN_BOTTOM_CENTER:
+      return "center";
+    case P.ALIGN_TRAILING:
+    case P.ALIGN_CENTER_TRAILING:
+    case P.ALIGN_TOP_TRAILING:
+      return "end";
+    default:
+      return "start";
+  }
+}
+/** The vertical position of an `ALIGNMENT` 2D code: `start`/`center`/`end`. */
+export function alignVCss(code: number): string {
+  switch (code) {
+    case P.ALIGN_CENTER:
+    case P.ALIGN_CENTER_LEADING:
+    case P.ALIGN_CENTER_TRAILING:
+      return "center";
+    case P.ALIGN_TRAILING:
+    case P.ALIGN_BOTTOM_CENTER:
+    case P.ALIGN_BOTTOM_LEADING:
+      return "end";
+    default:
+      return "start";
+  }
+}
 function textAlignCss(code: number): string {
   switch (code) {
     case P.TEXT_ALIGN_LEADING: return "left";
     case P.TEXT_ALIGN_TRAILING: return "right";
     default: return "center";
-  }
-}
-function truncationCss(code: number): string {
-  switch (code) {
-    case P.TRUNCATION_HEAD: return "clip";
-    default: return "ellipsis";
   }
 }
 function fontStyleCss(code: number): string {
@@ -289,7 +314,13 @@ const HANDLERS: Record<number, Handler> = {
       (el.style as unknown as Record<string, string>).boxOrient = "vertical";
     }
   },
-  [P.PROP_TRUNCATION_MODE]: (el, vt, c) => (el.style.textOverflow = truncationCss(enumCode(vt, c))),
+  [P.PROP_TRUNCATION_MODE]: () => {
+    // TRUNCATION_MODE alone has no observable effect (spec LAYOUT.md §content
+    // fitting, SwiftUI-aligned): it only positions the ellipsis under a
+    // LINE_LIMIT clamp, which the renderer tail-ellipsizes via line-clamp
+    // (renderer-owned fidelity: CSS cannot place a head/middle ellipsis). The
+    // property is consumed and ignored.
+  },
   [P.PROP_OFFSET_X]: (el, vt, c) => {
     transformOf(el).translateX = f32(vt, c);
     recomposeTransform(el);

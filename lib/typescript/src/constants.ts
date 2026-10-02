@@ -11,7 +11,7 @@ export const FLAG_HOST_TO_GUEST = 0x0001;
 
 // Categories
 export const CAT_TREE = 0x01;
-export const CAT_STYLE = 0x02;
+export const CAT_PARAMETER = 0x02;
 export const CAT_EVENT = 0x03;
 export const CAT_META = 0x04;
 
@@ -22,7 +22,7 @@ export const CMD_INSERT_CHILD = 0x03;
 export const CMD_REMOVE_CHILD = 0x04;
 export const CMD_MOVE_CHILD = 0x05;
 
-// STYLE commands
+// PARAMETER commands
 export const CMD_SET_PROPERTY = 0x01;
 export const CMD_SET_DESIGN_TOKEN = 0x02;
 export const CMD_SET_TEXT = 0x03;
@@ -112,6 +112,9 @@ export const PROP_LAYOUT_PRIORITY = 0x001a;
 export const PROP_ASPECT_RATIO = 0x001b;
 export const PROP_CONTENT_MODE = 0x001c;
 export const PROP_MINIMUM_SCALE_FACTOR = 0x001d;
+export const PROP_GRID_COLUMNS = 0x001e;
+export const PROP_GRID_ROWS = 0x001f;
+export const PROP_GRID_TRACKS = 0x0020;
 export const PROP_BACKGROUND_COLOR = 0x1001;
 export const PROP_IMAGE_SOURCE = 0x1002;
 export const PROP_AUDIO_SOURCE = 0x1033;
@@ -200,7 +203,14 @@ export const WIDTH_HUG = -2;
 export const ALIGN_LEADING = 0;
 export const ALIGN_CENTER = 1;
 export const ALIGN_TRAILING = 2;
-export const ALIGN_FILL = 3;
+export const ALIGN_TOP_LEADING = 0;
+export const ALIGN_BOTTOM_TRAILING = 2;
+export const ALIGN_TOP_CENTER = 3;
+export const ALIGN_BOTTOM_CENTER = 4;
+export const ALIGN_CENTER_LEADING = 5;
+export const ALIGN_CENTER_TRAILING = 6;
+export const ALIGN_TOP_TRAILING = 7;
+export const ALIGN_BOTTOM_LEADING = 8;
 
 // SHAPE_KIND
 export const SHAPE_CIRCLE = 0;
@@ -318,6 +328,7 @@ export const COMPONENT_LAZY_VGRID = 0x0015;
 export const COMPONENT_LAZY_HGRID = 0x0016;
 export const COMPONENT_LAZY_VSTACK = 0x001b;
 export const COMPONENT_LAZY_HSTACK = 0x001c;
+export const COMPONENT_GRID_ROW = 0x001d;
 export const COMPONENT_BUTTON = 0x0020;
 export const COMPONENT_TEXT_FIELD = 0x0021;
 export const COMPONENT_TEXT_EDITOR = 0x0022;

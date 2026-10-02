@@ -32,14 +32,14 @@ public final class PlayerControlsStyle implements AudioStyle {
     public View makeBody(Configuration config) {
         var current = computed(() -> MusicPlayerView.at(trackIndex.get()));
         var glyph = computed(() -> config.playing().get() ? "⏸" : "▶");
-        var groups = HStack.of(Alignment.CENTER, 18f,
+        var groups = HStack.of(VerticalAlignment.CENTER, 18f,
                 Button.of("⏮", () -> { prev(); config.position().set(0f); }).with(FontSize.of(20)),
                 Button.of(Text.of(glyph), () -> config.playing().update(v -> !v)).with(FontSize.of(28)),
                 Button.of("⏭", () -> { next(); config.position().set(0f); }).with(FontSize.of(20)),
                 Text.of("|").with(FontSize.of(18), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
                 Image.of(computed(() -> current.get().cover()))
                         .with(FrameMod.of(36, 36), ScaledToFit.of()),
-                VStack.of(Alignment.LEADING, 2,
+                VStack.of(HorizontalAlignment.LEADING, 2,
                         Text.of(computed(() -> current.get().title()))
                                 .with(FontWeightMod.of(FontWeight.SEMIBOLD), LineLimit.of(1)),
                         Text.of(computed(() -> current.get().artist()))
@@ -49,16 +49,15 @@ public final class PlayerControlsStyle implements AudioStyle {
                 Text.of("🔊").with(FontSize.of(16)),
                 Slider.of(config.volume(), 0f, 1f)
         );
-        return VStack.of(Alignment.CENTER, 0,
-                // Center the three groups in the full-width bar.
-                HStack.of(
-                    Spacer.of(),
-                    VStack.of(groups,
-                            Slider.of(new PercentSeek(config.position(),
-                                    () -> MusicPlayerView.at(trackIndex.get()).duration()),
-                                0f, 100f)),
-                    Spacer.of()
-                )
+        return VStack.of(HorizontalAlignment.CENTER, 0,
+                // Centered groups over a full-width seek bar (the slider's FILL
+                // width spans the bar via fill propagation; the groups stay
+                // centered above it).
+                groups,
+                Slider.of(new PercentSeek(config.position(),
+                                () -> MusicPlayerView.at(trackIndex.get()).duration()),
+                        0f, 100f)
+                        .with(FrameMod.of(Float.POSITIVE_INFINITY), Padding.of(0, 16, 0, 16))
         );
     }
 

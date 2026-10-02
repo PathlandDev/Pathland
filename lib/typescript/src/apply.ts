@@ -1,11 +1,11 @@
 // Delta application: decode each opcode and apply it to the DOM via the
-// retained `id → Node` registry. STYLE deltas mutate the hydrated element in
+// retained `id → Node` registry. PARAMETER deltas mutate the hydrated element in
 // place; TREE deltas build the element shell and insert/remove/move it; META
 // deltas reset/environment.
 
 import {
   CAT_META,
-  CAT_STYLE,
+  CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
   CMD_DELETE_NODE,
@@ -20,21 +20,33 @@ import {
   CMD_SET_TEXT,
   COMPONENT_AUDIO,
   COMPONENT_COLOR,
+  COMPONENT_DIVIDER,
   COMPONENT_GRID,
+  COMPONENT_GRID_ROW,
+  COMPONENT_HSTACK,
   COMPONENT_LAZY_HGRID,
+  COMPONENT_LAZY_HSTACK,
   COMPONENT_LAZY_VGRID,
+  COMPONENT_LAZY_VSTACK,
   COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
+  COMPONENT_SCROLLVIEW,
   COMPONENT_SHAPE,
+  COMPONENT_SPACER,
   COMPONENT_TEXT,
+  COMPONENT_VSTACK,
   COMPONENT_VIDEO,
   COMPONENT_ZSTACK,
+  PROP_ALIGNMENT,
   PROP_BINDING_ID,
   PROP_AUDIO_SOURCE,
   PROP_COLOR,
   PROP_COLOR_VALUE,
   PROP_ENABLED,
   PROP_FONT_FAMILY,
+  PROP_GRID_COLUMNS,
+  PROP_GRID_ROWS,
+  PROP_GRID_TRACKS,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
@@ -53,15 +65,15 @@ import {
   PROP_TEXT_STYLE,
   PROP_VALUE,
   PROP_VIDEO_SOURCE,
-  PROP_WIDTH,
   VAL_DESIGN_TOKEN,
+  VAL_ENUM,
   VAL_STRING,
   VAL_U8,
 } from "./constants";
 import type { Batch, Opcode } from "./plpl";
 import { readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
-import { applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
+import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";
 import {
   encodeMediaEnded,
@@ -77,10 +89,200 @@ import {
 } from "./generated/role-spec";
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 
-/** Component type per retained node, so STYLE/TREE application can special-case
+/** Component type per retained node, so PARAMETER/TREE application can special-case
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
  *  spinner/progress morph) without baking it into the DOM. */
 const componentByNode = new WeakMap<Node, number>();
+
+/** Flex stacks (main axis horizontal). */
+const STACK_MAIN_HORIZONTAL = new Set([COMPONENT_HSTACK, COMPONENT_LAZY_HSTACK]);
+/** Flex stacks (main axis vertical). */
+const STACK_MAIN_VERTICAL = new Set([COMPONENT_VSTACK, COMPONENT_LAZY_VSTACK]);
+/** Hug-to-content containers that propagate a FILL descendant up (LAYOUT.md). */
+const PROPAGATING = new Set([
+  COMPONENT_VSTACK,
+  COMPONENT_HSTACK,
+  COMPONENT_ZSTACK,
+  COMPONENT_LAZY_VSTACK,
+  COMPONENT_LAZY_HSTACK,
+]);
+
+/** Whether `el` is effectively FILL-sized on `horizontal` (LAYOUT.md §fill
+ *  propagation, SwiftUI/Compose parity): FILL itself (`width/height:100%`), a
+ *  layout-greedy primitive, or a Hug container whose subtree carries one. A
+ *  Fixed px box bounds its subtree. `mainAxis` = whether the axis is the
+ *  element's parent's main axis (governs SPACER/DIVIDER greediness). A
+ *  component-less shell (a ZStack child wrapper) is transparent. */
+function fillsAxis(el: Element, horizontal: boolean, mainAxis: boolean): boolean {
+  const comp = componentByNode.get(el) ?? 0;
+  if (comp === 0) {
+    return Array.from(el.children).some(
+      (c) => c instanceof HTMLElement && fillsAxis(c, horizontal, mainAxis),
+    );
+  }
+  const style = (el as HTMLElement).style;
+  const hint = horizontal ? style.width : style.height;
+  if (hint === "100%") {
+    return true;
+  }
+  if (hint !== "") {
+    return false; // a Fixed px box bounds its subtree
+  }
+  const greedy =
+    comp === COMPONENT_COLOR ||
+    comp === COMPONENT_SCROLLVIEW ||
+    (comp === COMPONENT_SPACER && mainAxis) ||
+    (comp === COMPONENT_DIVIDER && !mainAxis);
+  if (greedy) {
+    return true;
+  }
+  if (!PROPAGATING.has(comp)) {
+    return false;
+  }
+  const childMain = STACK_MAIN_HORIZONTAL.has(comp)
+    ? horizontal
+    : STACK_MAIN_VERTICAL.has(comp)
+      ? !horizontal
+      : false;
+  return Array.from(el.children).some(
+    (c) => c instanceof HTMLElement && fillsAxis(c, horizontal, childMain),
+  );
+}
+
+/** Derived layout pass (LAYOUT.md): fill propagation (a Hug stack/ZStack with a
+ *  FILL descendant becomes FILL on that axis), ZStack hug-to-largest-child
+ *  sizing, cross-axis `align-self:stretch` for FILL children, and ZStack child
+ *  positioning. Mirrors the Rust SSR renderer's whole-tree layout decisions;
+ *  runs after every batch so a delta leaves the derived styles consistent. */
+function applyLayout(r: DomRenderer): void {
+  const els = Array.from(r.byId.values()).filter(
+    (n): n is HTMLElement => n instanceof HTMLElement,
+  );
+  // Phase 1: container fill propagation + ZStack sizing + grid cell alignment.
+  for (const el of els) {
+    const comp = componentByNode.get(el) ?? 0;
+    if (!PROPAGATING.has(comp) && !isGridComponent(comp)) {
+      continue;
+    }
+    if (STACK_MAIN_HORIZONTAL.has(comp) || STACK_MAIN_VERTICAL.has(comp)) {
+      const mainH = STACK_MAIN_HORIZONTAL.has(comp);
+      if (el.style.width === "" && fillsAxis(el, true, mainH)) {
+        el.style.width = "100%";
+      }
+      if (el.style.height === "" && fillsAxis(el, false, !mainH)) {
+        el.style.height = "100%";
+      }
+    } else if (comp === COMPONENT_ZSTACK) {
+      if (el.style.width === "") {
+        el.style.width = fillsAxis(el, true, false) ? "100%" : "max-content";
+      }
+      if (el.style.height === "") {
+        el.style.height = fillsAxis(el, false, false) ? "100%" : "max-content";
+      }
+      // Position each child shell per the ZSTACK ALIGNMENT (2D code, both axes).
+      const hToken = el.style.justifyItems || "start";
+      const vToken = el.style.alignItems || "start";
+      for (const w of Array.from(el.children)) {
+        if (!(w instanceof HTMLElement)) {
+          continue;
+        }
+        w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : hToken;
+        w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : vToken;
+      }
+    } else if (isGridComponent(comp)) {
+      // Position each cell shell per the grid ALIGNMENT (2D code) on both axes
+      // (spec §grid model): a FILL-sized / greedy cell stretches to fill its
+      // track. Explicit rows (spec §GridRow): a GRID_ROW starts a new row; bare
+      // cells auto-flow, advancing after the effective column count
+      // (GRID_COLUMNS or the widest row) — short rows leave trailing columns
+      // empty.
+      const hToken = el.style.justifyItems || "start";
+      const vToken = el.style.alignItems || "start";
+      const children = Array.from(el.children).filter(
+        (c): c is HTMLElement => c instanceof HTMLElement,
+      );
+      const explicitRows = children.some(
+        (c) => componentByNode.get(c) === COMPONENT_GRID_ROW,
+      );
+      const parseCount = (s: string): number | null => {
+        const m = /repeat\(\s*(\d+)/.exec(s);
+        return m ? Number(m[1]) : null;
+      };
+      const setShell = (shell: HTMLElement, row: number, col: number): void => {
+        if (explicitRows) {
+          shell.style.gridRow = String(row + 1);
+          shell.style.gridColumn = String(col + 1);
+        }
+        shell.style.justifySelf = fillsAxis(shell, true, false) ? "stretch" : hToken;
+        shell.style.alignSelf = fillsAxis(shell, false, false) ? "stretch" : vToken;
+      };
+      if (!explicitRows) {
+        for (const w of children) {
+          setShell(w, 0, 0);
+        }
+      } else {
+        let cols = parseCount(el.style.gridTemplateColumns);
+        let width = cols ?? 0;
+        let run = 0;
+        for (const c of children) {
+          if (componentByNode.get(c) === COMPONENT_GRID_ROW) {
+            width = Math.max(width, c.children.length);
+            run = 0;
+          } else {
+            run += 1;
+            width = Math.max(width, run);
+          }
+        }
+        width = Math.max(width, 1);
+        if (cols === null) {
+          el.style.gridTemplateColumns = `repeat(${width},1fr)`;
+          cols = width;
+        }
+        const columns = cols ?? width;
+        let row = 0;
+        let col = 0;
+        for (const c of children) {
+          if (componentByNode.get(c) === COMPONENT_GRID_ROW) {
+            if (col > 0) {
+              row += 1;
+            }
+            col = 0;
+            for (const shell of Array.from(c.children).filter(
+              (s): s is HTMLElement => s instanceof HTMLElement,
+            )) {
+              setShell(shell, row, col);
+              col += 1;
+            }
+            row += 1;
+            col = 0;
+          } else {
+            if (col >= columns) {
+              row += 1;
+              col = 0;
+            }
+            setShell(c, row, col);
+            col += 1;
+          }
+        }
+      }
+    }
+  }
+  // Phase 2: cross-axis FILL children in a stack stretch via align-self.
+  for (const el of els) {
+    const parent = el.parentElement;
+    if (!parent) {
+      continue;
+    }
+    const parentComp = componentByNode.get(parent) ?? 0;
+    const mainH = STACK_MAIN_HORIZONTAL.has(parentComp);
+    if (!STACK_MAIN_HORIZONTAL.has(parentComp) && !STACK_MAIN_VERTICAL.has(parentComp)) {
+      continue;
+    }
+    if (fillsAxis(el, !mainH, false)) {
+      el.style.alignSelf = "stretch";
+    }
+  }
+}
 
 /** The last `ROLE` code applied per element (morphing needs both role and text
  *  style to resolve the effective tag). */
@@ -114,14 +316,14 @@ export interface DomRenderer {
   onMediaEvent?: (batch: Uint8Array) => void;
 }
 
-/** Apply every opcode in a batch to the DOM (TREE structure + STYLE/META deltas). */
+/** Apply every opcode in a batch to the DOM (TREE structure + PARAMETER/META deltas). */
 export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   for (const op of batch.opcodes) {
     switch (op.category) {
       case CAT_TREE:
         applyTree(op, renderer);
         break;
-      case CAT_STYLE:
+      case CAT_PARAMETER:
         applyStyle(op, batch.strings, renderer);
         break;
       case CAT_META:
@@ -131,6 +333,9 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
         break;
     }
   }
+  // Derived layout (fill propagation, ZStack sizing/positioning, cross-axis
+  // align-self) — mirrors the Rust SSR renderer's whole-tree decisions.
+  applyLayout(renderer);
 }
 
 function applyMeta(op: Opcode, r: DomRenderer): void {
@@ -151,23 +356,38 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
 }
 
 /** The node actually inserted into a parent's container: ZStack children are
- *  wrapped in `<div style="position:absolute;inset:0">` (mirrors the Rust SSR
- *  renderer's per-child wrapper), everything else inserts directly. */
+ *  wrapped in a `grid-area:1/1` cell shell, grid cells (a GRID's bare children
+ *  or a GRID_ROW's children) in an auto-placed cell shell (the layout pass sets
+ *  their `justify-self`/`align-self` and explicit `grid-row`/`grid-column` from
+ *  the container's structure/ALIGNMENT — mirrors the Rust SSR renderer), a
+ *  GRID_ROW itself inserts directly (it is the row container, not a cell);
+ *  everything else inserts directly. */
 function placedChild(parent: Node, child: Node): Node {
-  if (componentByNode.get(parent) === COMPONENT_ZSTACK && child instanceof HTMLElement) {
-    // Set via the style attribute so `inset:0` survives verbatim (the CSSOM
-    // drops the property in some engines); mirrors the Rust SSR wrapper exactly.
-    const wrapper = document.createElement("div");
-    wrapper.setAttribute("style", "position:absolute;inset:0");
-    wrapper.appendChild(child);
-    return wrapper;
+  if (child instanceof HTMLElement) {
+    const parentComp = componentByNode.get(parent);
+    if (parentComp === COMPONENT_ZSTACK) {
+      const wrapper = document.createElement("div");
+      wrapper.style.gridArea = "1/1";
+      wrapper.style.width = "max-content";
+      wrapper.style.height = "max-content";
+      wrapper.appendChild(child);
+      return wrapper;
+    }
+    if (isGridComponent(parentComp) || parentComp === COMPONENT_GRID_ROW) {
+      if (componentByNode.get(child) === COMPONENT_GRID_ROW) {
+        return child; // a row container is a grid child, not a cell
+      }
+      const wrapper = document.createElement("div");
+      wrapper.appendChild(child);
+      return wrapper;
+    }
   }
   return child;
 }
 
 /** Materialize a PICKER's child TEXT node as a native `<option>` (the Rust SSR
  *  renderer emits `<option data-pathland-id="{child}" value="{index}">` per
- *  child). The option keeps the child's id so its STYLE deltas resolve to it. */
+ *  child). The option keeps the child's id so its PARAMETER deltas resolve to it. */
 function pickerOption(child: HTMLElement): HTMLElement {
   const opt = document.createElement("option");
   opt.textContent = child.textContent ?? "";
@@ -676,6 +896,27 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
       el.style.fontFamily = text;
       break;
     }
+    case PROP_GRID_TRACKS: {
+      // A grid's per-track spec (spec §grid model): `flex`/`fixed:<pts>`/
+      // `adaptive:<pts>` comma-separated → the CSS track template; takes
+      // precedence over the count (the DSL emits one or the other).
+      const comp = componentByNode.get(el);
+      const isH = comp === COMPONENT_LAZY_HGRID;
+      const tracks = text.split(",").map((t) => t.trim());
+      const css = tracks
+        .map((t) => {
+          if (t.startsWith("fixed:")) return `${t.slice("fixed:".length)}px`;
+          if (t.startsWith("adaptive:")) return `minmax(${t.slice("adaptive:".length)}px,1fr)`;
+          return "1fr";
+        })
+        .join(" ");
+      if (isH) {
+        el.style.gridTemplateRows = css;
+      } else {
+        el.style.gridTemplateColumns = css;
+      }
+      break;
+    }
     default:
       break;
   }
@@ -758,22 +999,49 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
     case PROP_ENABLED:
       applyEnabled(el, bits);
       break;
-    case PROP_WIDTH: {
-      // A GRID's WIDTH property is the cell-axis count, mirrored into
-      // `grid-template-columns` (the Rust SSR renderer's `grid_style`); the
-      // width is still applied literally by the generic handler below.
+    case PROP_ALIGNMENT: {
+      // ZStack/grids position on BOTH axes with a 2D code (spec §grid model /
+      // §ZStack); stacks/others use the single-axis cross `align-items` token.
       const comp = componentByNode.get(el);
-      if (comp === COMPONENT_GRID || comp === COMPONENT_LAZY_VGRID || comp === COMPONENT_LAZY_HGRID) {
-        const n = f32FromBits(bits);
+      if (isGridComponent(comp) || comp === COMPONENT_ZSTACK) {
+        const code = valueType === VAL_ENUM ? bits & 0xff : Math.round(f32FromBits(bits));
+        el.style.justifyItems = alignHCss(code);
+        el.style.alignItems = alignVCss(code);
+      } else {
+        applyProperty(el, propId, valueType, bits);
+      }
+      break;
+    }
+    case PROP_GRID_COLUMNS: {
+      // A grid's column count (the fixed track of vertical grids): a positive
+      // count mirrors into `grid-template-columns` and NEVER into a pixel width
+      // (spec §grid model); FILL/absent = auto-fit (no template).
+      const comp = componentByNode.get(el);
+      const n = f32FromBits(bits);
+      if (comp !== COMPONENT_LAZY_HGRID && isGridComponent(comp)) {
         el.style.gridTemplateColumns = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
       }
-      applyProperty(el, propId, valueType, bits);
+      break;
+    }
+    case PROP_GRID_ROWS: {
+      // A grid's row count (the `LAZY_HGRID` fixed track): a positive count
+      // mirrors into `grid-template-rows`; FILL/absent = auto-fit.
+      const comp = componentByNode.get(el);
+      const n = f32FromBits(bits);
+      if ((comp === COMPONENT_GRID || comp === COMPONENT_LAZY_HGRID) && isGridComponent(comp)) {
+        el.style.gridTemplateRows = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
+      }
       break;
     }
     default:
       applyProperty(el, propId, valueType, bits);
       break;
   }
+}
+
+/** Whether `comp` is a grid container (GRID / lazy grids). */
+function isGridComponent(comp: number | undefined): boolean {
+  return comp === COMPONENT_GRID || comp === COMPONENT_LAZY_VGRID || comp === COMPONENT_LAZY_HGRID;
 }
 
 /**

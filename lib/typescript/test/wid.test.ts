@@ -9,7 +9,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildBatch, stringEntry } from "./plpl.test";
-import { CAT_STYLE, CMD_SET_PROPERTY, PROP_ROUTE, VAL_STRING } from "../src/constants";
+import { CAT_PARAMETER, CMD_SET_PROPERTY, PROP_ROUTE, VAL_STRING } from "../src/constants";
 
 const WID_KEY = "pathland.wid";
 
@@ -123,7 +123,7 @@ describe("per-window id (wid)", () => {
     // client must push the app's REAL address — the mount prefix prepended.
     socket.emitMessage(
       buildBatch(
-        [[CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ROUTE, 0]],
+        [[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ROUTE, 0]],
         stringEntry("/home"),
       ).buffer as ArrayBuffer,
     );

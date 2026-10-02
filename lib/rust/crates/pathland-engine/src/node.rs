@@ -1,7 +1,7 @@
 //! Retained view tree types.
 //!
 //! The retained tree is the application's canonical UI tree: the single source
-//! of truth the engine diffs into declarative `TREE`/`STYLE` opcodes. It lives
+//! of truth the engine diffs into declarative `TREE`/`PARAMETER` opcodes. It lives
 //! here (in the opcode-engine core) so the diff emitter can walk it without the
 //! engine depending on the authoring DSL.
 
@@ -23,10 +23,10 @@ pub struct Node {
     pub component: Component,
     pub children: Vec<Node>,
     /// Constraint/style properties (propertyId to value) emitted as
-    /// `STYLE:SET_PROPERTY`.
+    /// `PARAMETER:SET_PROPERTY`.
     pub properties: BTreeMap<u16, u32>,
     /// Token-referenced properties (`propertyId → token path`), emitted as
-    /// `STYLE:SET_PROPERTY` with the `DESIGN_TOKEN` value type. A token ref
+    /// `PARAMETER:SET_PROPERTY` with the `DESIGN_TOKEN` value type. A token ref
     /// overrides the literal `properties` entry for the same id (spec/TOKENS.md).
     pub token_properties: BTreeMap<u16, String>,
     /// A signal the node's text is bound to (overrides `Component::Text` /

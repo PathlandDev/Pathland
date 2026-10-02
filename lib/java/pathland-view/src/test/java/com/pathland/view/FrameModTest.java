@@ -39,9 +39,9 @@ class FrameModTest {
 
     @Test
     void widthWithAlignmentStillEmitted() {
-        PathlandNode node = render(FrameMod.of(200f, Alignment.LEADING));
+        PathlandNode node = render(FrameMod.of(200f, Alignment.TOP_LEADING));
         assertTrue(node.properties.containsKey(Properties.WIDTH));
-        assertEquals((float) Alignment.LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
+        assertEquals((float) Alignment.TOP_LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
     }
 
     @Test
@@ -53,10 +53,10 @@ class FrameModTest {
 
     @Test
     void infiniteAxesNormalizeToFillWithAlignment() {
-        PathlandNode node = render(FrameMod.of(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Alignment.LEADING));
+        PathlandNode node = render(FrameMod.of(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Alignment.TOP_LEADING));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.HEIGHT));
-        assertEquals((float) Alignment.LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
+        assertEquals((float) Alignment.TOP_LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
     }
 
     @Test

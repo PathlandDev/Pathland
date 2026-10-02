@@ -68,7 +68,10 @@ class HtmlRendererTest {
 
         assertTrue(html.contains("<!DOCTYPE html>"));
         assertTrue(html.contains("flex-direction:column"), "stack rendered inline flex");
-        assertTrue(html.contains("<link rel=\"stylesheet\" href=\"https://rsms.me/inter/inter.css\">"), "Inter font from the rsms.me CDN");
+        // Typography is the platform system font stack — no external webfont.
+        assertFalse(html.contains("rsms.me"), "no font CDN link");
+        assertFalse(html.contains("<link rel=\"stylesheet\""), "no external stylesheets");
+        assertTrue(html.contains("--pl-font-body-family: system-ui, -apple-system"), "system font stack");
         assertTrue(html.contains("<span data-pathland-id=\"2\">Hello Pathland</span>"));
         assertTrue(html.contains("<button data-pathland-id=\"3\""), "button keeps its node id");
         assertTrue(html.contains("class=\"pathland-button\""), "button uses the design-system class");

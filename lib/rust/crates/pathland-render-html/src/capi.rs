@@ -106,7 +106,7 @@ pub unsafe extern "C" fn pathland_html_free(ptr: *const c_char) {
 mod tests {
     use std::ffi::CStr;
 
-    use pathland_core::{Opcode, category, component_type, property_id, style, tree};
+    use pathland_core::{Opcode, category, component_type, property_id, parameter, tree};
     use pathland_core_transport::encode_frame;
 
     use super::*;
@@ -118,7 +118,7 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
         strings.extend_from_slice(&(2u32).to_le_bytes());
         strings.extend_from_slice(b"Hi");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         let bytes = encode_frame(&opcodes, &strings);
 
         let ptr = unsafe { pathland_html_render(bytes.as_ptr(), bytes.len() as u32, 1) };
@@ -145,32 +145,32 @@ mod tests {
         strings.extend_from_slice(&(9u32).to_le_bytes());
         strings.extend_from_slice(b"/users/42");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             (0x05u32 << 16) | property_id::ROUTE as u32,
             0,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             (0x04u32 << 16) | property_id::TRANSITION as u32,
             3.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             (0x04u32 << 16) | property_id::NAV_CHROME as u32,
             1.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             (0x02u32 << 16) | property_id::NAV_DEPTH as u32,
@@ -192,8 +192,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             (0x04u32 << 16) | property_id::SPACING as u32,

@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** September 30, 2026
+**Last updated:** October 1, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -93,7 +93,7 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `AdwNavigationView` is only the renderer's rendered-output cache.
   `libadwaita` (0.7, `v1_4` feature) is a new native dependency.
 - **Design tokens / theming (spec/TOKENS.md renderer contract)**:
-  - `STYLE::SET_DESIGN_TOKEN` overrides are stored (`host.rs`), base + `dark.*`
+  - `PARAMETER::SET_DESIGN_TOKEN` overrides are stored (`host.rs`), base + `dark.*`
     split by path prefix; STRING-valued overrides resolve the value string from
     the arena.
   - `DESIGN_TOKEN`-typed `SET_PROPERTY` values record the token path
@@ -176,6 +176,72 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   both) fill by nature. The old composite-button main-axis hack was retired
   (superseded by the parent stack's rule). Conformance C1–C6 covered by the
   pure decision tests in `layout.rs`.
+- **Per-child expansion is explicit** (`sync_stack_children`): each child's
+  `hexpand`/`vexpand` is set from the same effective-`FILL` decision as its
+  alignment, so a Hug main-axis child (`valign=Start`, `vexpand=false`) can
+  never claim leftover — a `GtkBox` otherwise hands extra space to children
+  left at GTK's default `Align::Fill`, which spread e.g. a library's rows
+  vertically instead of pinning them to the leading edge (the trailing
+  `SPACER` absorbs the leftover). This also makes `SPACER` cross-axis
+  non-expanding.
+- **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: implemented —
+  `effective_fill` in `layout.rs` resolves a Hug-sized stack/ZStack that
+  contains a `FILL` child / `Spacer` / greedy primitive on an axis as `FILL` on
+  that axis (SwiftUI/Compose parity), so it fills its parent's proposal.
+  Covered by `fill_propagates_through_a_hug_stack`.
+- **ZStack (spec/PRIMITIVES.md)**: implemented — every child is an overlay
+  (later = on top) that keeps its own size unless effectively `FILL`, positioned
+  by the ZStack `ALIGNMENT` on **both** axes (`sync_overlay_children`); the
+  overlay hugs to its largest child; fill propagation applies. The old
+  first-child-pinned-to-fill `GtkOverlay` main-child behavior is gone.
+- **CONTENT_MARGINS vs PADDING precedence**: implemented — `CONTENT_MARGINS` is
+  folded into the margins by `apply_padding` as the **lowest-precedence base**
+  (per-edge `PADDING_*` > `PADDING` > `CONTENT_MARGINS`, spec PRIMITIVES.md §stack
+  layout model) and no longer applied in `apply_style` (where it previously
+  overrode the higher-precedence `PADDING`). Matches the HTML renderer.
+  Covered by `content_margins_are_the_lowest_precedence_base`.
+- **SPACING** (spec/PRIMITIVES.md): applied on stacks (`GtkBox` spacing,
+  re-set every frame), on **grids** (`row_spacing`/`column_spacing` from
+  `SPACING`, `sync_grid_children`), and on **composite-control bodies**
+  (`sync_composite_children` reads the control node's `SPACING` — a control
+  whose label flattened a stack, e.g. `Button.of(HStack, …)`, carries the
+  stack's `SPACING`, and its body box reproduces the gap like the HTML
+  renderer's `gap`). Covered by `spacing_clamps_and_rounds_for_any_node`.
+- **`CLIPS_TO_BOUNDS`**: implemented — applied in `apply_style` via
+  `set_overflow(Overflow::Hidden)` (SwiftUI `.clipped()` parity, spec LAYOUT.md /
+  PRIMITIVES.md: a Fixed box constrains layout but only clips when set).
+- **Text layout (spec LAYOUT.md §content fitting)**: aligned — a Fixed `WIDTH`
+  wraps the label within the box (`set_wrap` + `WordChar`); `LINE_LIMIT` clamps
+  the line count (`set_lines`) and truncates with an ellipsis positioned by
+  `TRUNCATION_MODE` (Tail default). `TRUNCATION_MODE` **alone** has no observable
+  effect (`apply_text_style` no longer forces single-line). Renderer-owned
+  fidelity: `ellipsize_from` maps Head/Middle/Tail → `EllipsizeMode::Start/
+  Middle/End` — reliable for single-line labels, best-effort on a multi-line
+  clamp.
+- **Known GTK limitation**: a GTK Fixed box (`set_size_request`) is a **minimum**
+  request — GTK has no max-size API, so a widget whose natural size exceeds its
+  Fixed box (e.g. a stack wider than its box) is allocated its natural size
+  rather than clipped to the box. Text wraps within its box (above) and
+  `CLIPS_TO_BOUNDS` clips overflow; other content may still exceed a Fixed box.
+- **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
+  grids set `row_spacing`/`column_spacing` from `SPACING`, per-cell alignment
+  (`grid_cell_align`), and read the track counts from the `GRID_COLUMNS` /
+  `GRID_ROWS` constructor properties (`grid_track` — columns for GRID/
+  LAZY_VGRID, rows for LAZY_HGRID, cells column-major there). **`GRID_ROW`**
+  (0x1D) rows are flattened via `grid_cells` — a row's cells attach at their
+  computed (row, col); the row node itself maps to no widget (blank). `WIDTH`/
+  `HEIGHT` on a grid are the universal pixel box, never a count. `SCROLLVIEW`
+  renders its first (spec-pinned) content child with `Automatic`/`Automatic`
+  scroll policy and greedy `Align::Fill`. **SCROLL** (the v/h Adjustments'
+  `value_changed` → `Event::Scroll`) and **WHEEL** (`GtkEventControllerScroll`
+  → `Event::Wheel`) are emitted for nodes with the listener bits (8/9).
+  **Residuals**: `LAZY_*` realizes eagerly (spec-permitted), auto-fit grids
+  collapse to a single track (spec-permitted; measurement is a follow-up), and
+  runtime scroll emission needs a visual check (headless tests cover the
+  wiring only). **`GRID_TRACKS` is not implemented** (web-only for now):
+  `GtkGrid` has no per-column-width/fractional/adaptive API, so a grid carrying
+  only a `GRID_TRACKS` spec falls back to auto-fit/single-track — use
+  `GRID_COLUMNS`/`GRID_ROWS` on GTK.
 - `SHAPE` `Path`/rounded rendering is an approximation (rectangle/circle fill).
 - `MENU` renders a menu button without a popover item list.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).

@@ -12,7 +12,7 @@ public final class KitchenSinkView implements View {
 
     @Override
     public View body() {
-        return ScrollView.of(VStack.of(Alignment.LEADING, 10,
+        return ScrollView.of(VStack.of(HorizontalAlignment.LEADING, 10,
                 // The kitchen-sink title is a heading → `<h2>`.
                 Text.of("Pathland Kitchensink").with(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD), Padding.of(8, 0 ,8 ,0))
                         .with(AccessibilityRole.of(Roles.HEADER)),

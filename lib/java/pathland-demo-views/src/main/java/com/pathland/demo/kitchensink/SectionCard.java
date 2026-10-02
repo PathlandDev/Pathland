@@ -51,6 +51,6 @@ public final class SectionCard implements View {
                 Background.of(Color.WHITE),
                 Border.of(BORDER, 1, 10),
                 CornerRadius.of(10),
-                FrameMod.of(Commands.Size.FILL, Float.NaN, Alignment.FILL));
+                FrameMod.of(Commands.Size.FILL, Float.NaN));
     }
 }

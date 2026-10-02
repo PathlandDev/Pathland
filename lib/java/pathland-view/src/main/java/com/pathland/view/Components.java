@@ -31,6 +31,8 @@ public final class Components {
     public static final int LAZY_HGRID = 0x16;
     public static final int LAZY_VSTACK = 0x1B;
     public static final int LAZY_HSTACK = 0x1C;
+    /** Explicit row grouping for a {@code GRID}: a grid child whose children are one row's cells. */
+    public static final int GRID_ROW = 0x1D;
 
     // ── Semantic Control Nodes (0x20–0x2F) ─────────────────────────────────
     public static final int BUTTON = 0x20;

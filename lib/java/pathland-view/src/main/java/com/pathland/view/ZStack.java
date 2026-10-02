@@ -11,13 +11,23 @@ import java.util.List;
 public final class ZStack implements View {
 
     private final List<View> children;
+    private final Alignment alignment;
 
     private ZStack(View... children) {
-        this(List.of(children));
+        this(null, List.of(children));
     }
 
     private ZStack(List<View> children) {
+        this(null, children);
+    }
+
+    private ZStack(Alignment alignment, View... children) {
+        this(alignment, List.of(children));
+    }
+
+    private ZStack(Alignment alignment, List<View> children) {
         this.children = List.copyOf(children);
+        this.alignment = alignment;
     }
 
     /** An overlapping stack. */
@@ -30,9 +40,22 @@ public final class ZStack implements View {
         return new ZStack(children);
     }
 
+    /** An overlapping stack with a 2D alignment (positions children on both axes). */
+    public static ZStack of(Alignment alignment, View... children) {
+        return new ZStack(alignment, children);
+    }
+
+    /** An overlapping stack with a 2D alignment (positions children on both axes). */
+    public static ZStack of(Alignment alignment, List<View> children) {
+        return new ZStack(alignment, children);
+    }
+
     @Override
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.ZSTACK);
+        if (alignment != null) {
+            node.properties.put(Properties.ALIGNMENT, (float) alignment.wire());
+        }
         for (View child : children) {
             node.children.add(child.render(env));
         }

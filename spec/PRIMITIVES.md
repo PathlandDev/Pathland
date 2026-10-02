@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 3, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -63,9 +63,10 @@ Mapping Range](#definitive-opcode-mapping-range)):
   and lay those elements out with their native layout engine. A renderer MAY
   retain its rendered-output tree for drawing, hit-testing, and event routing —
   this is a cache of its own output, not application state.
-- **Native elements everywhere**: VStack → GTK box / CSS flex column; Text → GTK label / `<span>`; semantic controls →
-  native OS controls in Native Token Mode (below). Never a generic canvas unless
-  a platform has no native equivalent.
+- **Native elements everywhere**: each primitive maps to the platform's native
+  element (a stack → the platform's native stack; text → the platform's native
+  text element); semantic controls → native OS controls in Native Token Mode
+  (below). Never a generic canvas unless a platform has no native equivalent.
 
 ---
 
@@ -94,19 +95,10 @@ the node has a child layout tree:
 
 When a semantic control node has **no child layout tree** (`childrenIds` is
 empty), the client platform **MUST delegate rendering entirely to its native OS
-control**:
-
-| Component | Native tokens |
-|-----------|---------------|
-| `Button` 0x20 | `UIButton`/`NSButton`, `GtkButton`, `<button>` |
-| `TextField`/`SecureField` 0x21 | `UITextField`/`NSTextField`, `GtkEntry`, `<input>` |
-| `Toggle` 0x24 | `UISwitch`/`NSSwitch`, `GtkSwitch`/`GtkCheckButton`, `<input type="checkbox">` |
-| `Slider` 0x25 | `UISlider`/`NSSlider`, `GtkScale`, `<input type="range">` |
-| `Stepper` 0x26 | `UIStepper`/`NSStepper`, `GtkSpinButton`, `-/+` buttons |
-| `DatePicker` 0x27 | `UIDatePicker`/`NSDatePicker`, `GtkCalendar`, `<input type="date">` |
-| `ColorPicker` 0x2A | native color panel, `GtkColorButton`, `<input type="color">` |
-| `Picker` 0x28 | `UISegmentedControl`/popup, `GtkDropDown`, `<select>` |
-| `Menu` 0x29 | `UIMenu`, `GtkPopoverMenu`, floating popover |
+control** — `Button`, `TextField`/`SecureField`, `Toggle`, `Slider`, `Stepper`,
+`DatePicker`, `ColorPicker`, `Picker`, and `Menu` each map to the platform's
+native control (the concrete widget per renderer lives in that renderer's
+`status.md`).
 
 **System style modifiers act as visual style tokens** — they force the platform
 to switch native control variants **without emitting child nodes over the
@@ -187,7 +179,8 @@ with SwiftUI's view categories and are the **single authoritative allocation**.
 | `0x17`–`0x1A` | — | Formerly `List`/`NavigationStack`/`NavigationSplitView` (composites, removed) — never reused |
 | `0x1B` | `LAZY_VSTACK` | Virtualized vertical stack |
 | `0x1C` | `LAZY_HSTACK` | Virtualized horizontal stack |
-| `0x1D`–`0x1F` | — | Future layout/container nodes |
+| `0x1D` | `GRID_ROW` | Explicit row grouping for `GRID` (planned): a grid child whose children are one row's cells — the SwiftUI `GridRow` authoring surface |
+| `0x1E`–`0x1F` | — | Future layout/container nodes |
 
 ### C. Semantic Control Nodes (`0x20`–`0x2F`)
 
@@ -234,14 +227,18 @@ from the primitives in this file, so no component IDs are allocated:
 A run of styled text. The server dictates content and style; the client measures
 and renders.
 
-- **Protocol**: a leaf node; content via `STYLE::SET_TEXT` or a bound signal.
+- **Protocol**: a leaf node; content via `PARAMETER::SET_TEXT` or a bound signal.
 - **Properties**: `LINE_LIMIT` (0x000B, U32), `TEXT_ALIGNMENT` (0x000C, enum
   code), `TRUNCATION_MODE` (0x000D, enum code), plus all text-formatting and
   appearance modifiers from [MODIFIERS.md](./MODIFIERS.md).
+- **Content fitting**: an unconstrained Text is a single line at its natural
+  width; a constrained width (Fixed `WIDTH`) wraps at word boundaries;
+  `LINE_LIMIT` clamps the line count with a tail ellipsis; `TRUNCATION_MODE`
+  positions that ellipsis under a clamp; `CLIPS_TO_BOUNDS` clips the Text to its
+  bounds box. Full contract: [LAYOUT.md](./LAYOUT.md#content-fitting-truncation--clipping).
 - **Events**: none by default; any listener via `EVENT_LISTENERS`.
-- **Renderer mapping**: GTK `GtkLabel`; HTML `<span>`/`<p>`.
-  Font handling is client-owned (the renderer resolves `FONT_FAMILY` /
-  `FONT_*` to its native text system).
+- **Font handling**: client-owned — the renderer resolves `FONT_FAMILY` /
+  `FONT_*` to its native text system.
 
 ### Image — `IMAGE` 0x02
 
@@ -252,7 +249,6 @@ A static image or icon asset. Asset loading is client-owned.
 - **Properties**: `IMAGE_SOURCE`, `CONTENT_MODE` (0x001C, enum `Fit`=0 /
   `Fill`=1), size modifiers, `OPACITY`, `CLIPS_TO_BOUNDS`.
 - **Events**: none by default.
-- **Renderer mapping**: GTK `GtkPicture`/`GtkImage`; HTML `<img>`.
 - **Note (SwiftUI `AsyncImage`)**: remote/async loading is **not a separate
   primitive** — it is `IMAGE` with `IMAGE_SOURCE` set to an absolute URL; the
   renderer loads asynchronously and re-issues `SET_PROPERTY(IMAGE_SOURCE)` if
@@ -260,8 +256,9 @@ A static image or icon asset. Asset loading is client-owned.
 
 ### Audio — `AUDIO` 0x09
 
-An audio playback node. Playback is **renderer-native by default** (the web
-renderer emits `controls`); the app supplies the source reference. A **custom
+An audio playback node. Playback is **renderer-native by default** (the
+renderer emits native playback controls); the app supplies the source
+reference. A **custom
 `AudioStyle`** supplies app-driven control children (transport buttons, seek,
 volume) — the node then carries the media control properties below and the
 renderer renders a hidden media element alongside the custom controls.
@@ -276,8 +273,6 @@ renderer renders a hidden media element alongside the custom controls.
 - **Events**: none by default; when a control property is bound, the renderer
   reports `MEDIA_PLAY_STATE_CHANGED` / `MEDIA_TIME_UPDATED` / `MEDIA_ENDED` /
   `MEDIA_VOLUME_CHANGED` (see EVENTS.md).
-- **Renderer mapping**: GTK `GtkMediaFile`/GStreamer; HTML `<audio controls>`
-  when there are no children, else a hidden `<audio>` + the children.
 
 ### Video — `VIDEO` 0x0A
 
@@ -290,8 +285,6 @@ a custom `VideoStyle` supplies app-driven control children, mirroring `AUDIO`.
   (`PLAYBACK_STATE`, `MEDIA_POSITION`, `MEDIA_VOLUME`), size modifiers.
 - **Events**: none by default; the media events above when a control property
   is bound.
-- **Renderer mapping**: GTK `GtkVideo`/`GtkMediaFile`; HTML `<video controls>`
-  when there are no children, else a hidden `<video>` + the children.
 - **Note**: a poster/preview frame is a planned draft (`POSTER_SOURCE`); a
   video plays fine without one.
 
@@ -313,8 +306,6 @@ a custom `VideoStyle` supplies app-driven control children, mirroring `AUDIO`.
   node in the UI tree; treat it as a **Value** when it appears in a modifier's
   parameter list.
 - **Events**: none by default.
-- **Renderer mapping**: GTK `GtkDrawingArea`/colored box (expands); HTML `<div>`
-  with `background-color` (`flex:1;align-self:stretch` — greedy). The renderer paints the pixel fill.
 - **Note**: `Color` is also a **property value** (`COLOR`,
   `BACKGROUND_COLOR`, `BORDER_COLOR`, `TINT`) — the node exists for when a
   color is a first-class view (backgrounds, fills, spacers).
@@ -330,9 +321,6 @@ the renderer owns the actual drawing.
   `BORDER_COLOR`, `BORDER_RADIUS` (RoundedRectangle corner), `BORDER_EDGES`;
   size = `WIDTH`/`HEIGHT`.
 - **Events**: none by default.
-- **Renderer mapping**: GTK/HTML/CSS drawing (CSS `border-radius`, `clip-path`,
-  or inline SVG for `Path`). `Path` is the documented
-  case where a renderer paints directly (no native element equivalent).
 
 ### Divider — `DIVIDER` 0x05
 
@@ -341,8 +329,7 @@ An axis-aligned 1px separator line.
 - **Protocol**: a leaf node; orientation implied by the parent stack axis.
 - **Properties**: `COLOR` (0x100A), `BORDER_WIDTH` (0x1003) — line thickness.
 - **Events**: none.
-- **Renderer mapping**: GTK `GtkSeparator`; HTML `<hr>` / `<div>` with a border.
-  **Layout-greedy on the cross axis** (fills the stack's available cross size,
+- **Layout-greedy on the cross axis** (fills the stack's available cross size,
   SwiftUI-style) — see LAYOUT.md; an explicit `WIDTH`/`HEIGHT` overrides it.
 
 ### Spacer — `SPACER` 0x06
@@ -350,7 +337,7 @@ An axis-aligned 1px separator line.
 A flexible expanding layout filler.
 
 - **Protocol**: a leaf node with no properties; expands to the remaining main
-  axis space (`flex-grow:1` in HTML, expanding box in GTK).
+  axis space.
 - **Events**: none.
 
 ### ProgressView — `PROGRESS_VIEW` 0x07
@@ -361,8 +348,6 @@ Determinate progress or an activity indicator.
   0.0–`MAX_VALUE` if set). Indeterminate: `IS_INDETERMINATE` (0x200F, U8 1) —
   the renderer animates a native activity indicator.
 - **Events**: none.
-- **Renderer mapping**: GTK `GtkProgressBar`/`GtkSpinner`; HTML
-  `<progress>`/`<div class="spinner">`.
 
 ### Gauge — `GAUGE` 0x08
 
@@ -378,61 +363,306 @@ A value shown against a scale (SwiftUI `Gauge`).
 
 Layout primitives arrange children. They carry `SPACING` (0x0001),
 `ALIGNMENT` (0x0002), and `CONTENT_MARGINS` (0x0005), plus layout modifiers from
-[MODIFIERS.md](./MODIFIERS.md#1-layout). Renderers map them to their native flex
-box / grid primitives (GTK `GtkBox`/`GtkGrid`, CSS flex/grid).
+[MODIFIERS.md](./MODIFIERS.md#1-layout). Renderers map them to their native
+layout primitives.
+
+### The stack layout model
+
+`VStack`/`HStack` (and the lazy stacks) follow the **SwiftUI / Jetpack Compose
+layout model**: a stack *proposes* a size to each child, the child reports its
+own size, and the stack *places* it. The protocol transmits **intent** — size
+kinds and alignment — never geometry; the renderer resolves the proposal with
+its native layout engine. The full allocation contract is
+[LAYOUT.md](./LAYOUT.md); the essentials:
+
+**Size kinds.** Each `WIDTH`/`HEIGHT` is one of three kinds (LAYOUT.md §size
+model):
+
+| Kind | Wire value | Meaning |
+|------|-----------|---------|
+| **Fixed** | finite `F32` | exactly that many points |
+| **Fill** | `-1` | expand to available space |
+| **Hug** | `-2` / absent | natural size |
+
+**Main vs cross axis.** The **main axis** is the stack's layout direction
+(VStack = vertical, HStack = horizontal); the other is the **cross axis**.
+
+**Main-axis allocation.** A child is Fixed (exact box), Fill (expands), or Hug
+(natural). **Leftover main-axis space goes only to `Fill` children** (and to
+`Spacer`, which is Fill by nature); a stack with no Fill child leaves the
+leftover empty at the end. Every other child is packed from the start.
+
+**Cross-axis allocation.** A child keeps its own size on the cross axis and is
+**positioned** by `ALIGNMENT` — position-only, it never resizes. A stack reads a
+**single axis** of the 2D position code (see the [ZStack alignment
+table](#zstack--zstack-0x12)): a `VStack` reads the horizontal component
+(`0/1/2` = leading/center/trailing), an `HStack` the vertical (`0/1/2` =
+top/center/bottom). The default is the start position (Compose `Column` defaults
+`Alignment.Start`, `Row` defaults `Alignment.Top`; SwiftUI's stack default is
+`.center` — a per-framework difference, all three are expressible with an
+explicit `ALIGNMENT`). Only a **`Fill`-sized child** stretches to the stack's
+cross size.
+
+**Fill propagation.** A Hug-sized stack that contains a **`Fill`-sized child or
+`Spacer` on an axis is itself `Fill`-sized on that axis** — the child's
+expansion propagates to the stack, which then fills its parent's proposal on
+that axis. This matches both reference frameworks:
+
+- SwiftUI `VStack { Button().frame(maxWidth: .infinity) }` fills the width.
+- Compose `Column { Box(Modifier.fillMaxWidth()) }` fills the width.
+- `VStack { Spacer() }` fills the proposed height.
+
+A full-width row is therefore expressed as a `Fill`-width child (or `Spacer`)
+inside the stack, never by stretching the stack itself.
+
+**Spacing.** `SPACING` is a fixed gap between **adjacent** children (never
+before the first or after the last), clamped to ≥ 0. It matches SwiftUI
+`VStack(spacing:)` and Compose `Arrangement.spacedBy(...)`. Leftover space is
+distributed by `Fill` children / `Spacer`, never by the gap.
+
+**Insets.** `CONTENT_MARGINS` is the stack's uniform content inset
+(equivalently, `PADDING` on the stack). Both compose; when both are present on
+the same node, precedence is per-edge `PADDING_*` > `PADDING` >
+`CONTENT_MARGINS`.
+
+**Overflow.** A Fixed box **constrains layout but does not clip**: content that
+exceeds the box is drawn outside it unless `CLIPS_TO_BOUNDS` clips it (SwiftUI
+`.clipped()` parity). A stack inside a `SCROLLVIEW` scrolls instead.
 
 ### VStack — `VSTACK` 0x10
 
 Vertical flex stack. **Properties**: `SPACING`, `ALIGNMENT` (enum: `Leading`=0,
 `Center`=1, `Trailing`=2, `Fill`=3), `CONTENT_MARGINS`.
 
+**Layout & sizing**
+
+- **Main axis (vertical)**: children are allocated per the stack model —
+  Fixed exact, Fill expands (leftover only to `Fill`/`Spacer`), Hug natural. A
+  Hug VStack's height is the sum of its children's heights plus `SPACING`
+  between them.
+- **Cross axis (horizontal)**: children keep their own width (a Fixed box, or a
+  Hug natural width); `Fill`-width children stretch to the stack's width. Narrow
+  children are positioned per `ALIGNMENT` (default Leading/Start).
+- **Own size**: Hug by default (height = content + spacing; width = widest
+  child). A Fixed `WIDTH`/`HEIGHT` makes the box exact; a `Fill` axis — or fill
+  propagation — expands to the parent's proposal. A `Fill`-width child makes
+  the stack full-width; a `Fill`-height child makes it full-height.
+- **Edge cases**: negative `SPACING` → 0; no Fill child + leftover → empty at
+  the end; a Fixed-width child narrower than the stack keeps its exact box and
+  is aligned; a `Fill` child in a Hug stack propagates (fills the parent's
+  proposal); root stacks are typically `Fill` (`FrameMod.of(FILL, FILL)`).
+
 ### HStack — `HSTACK` 0x11
 
-Horizontal flex stack. Same properties as `VStack`.
+Horizontal flex stack. Same properties as `VStack`, mirrored:
+
+- **Main axis (horizontal)**: children per the stack model — Fixed exact, Fill
+  expands (leftover only to `Fill`/`Spacer`), Hug natural. A Hug HStack's width
+  is the sum of its children's widths plus `SPACING`.
+- **Cross axis (vertical)**: children keep their own height (Fixed or Hug);
+  `Fill`-height children stretch. Positioned per `ALIGNMENT` (default
+  Leading/Start; Compose `Row` defaults to `Top`, SwiftUI's HStack to `.center`).
+- **Own size**: Hug by default (width = content + spacing; height = tallest
+  child); a Fixed box exact; `Fill`/propagation expands.
+- **Edge cases**: as VStack.
 
 ### ZStack — `ZSTACK` 0x12
 
-Depth-overlapping layer stack; child index = draw order (later = on top).
-**Properties**: `ALIGNMENT`. Renderer: GTK `GtkOverlay`; HTML absolutely
-positioned children.
+Depth-overlapping layer stack: children are drawn in depth order — **child index =
+draw order**, later = on top. **Properties**: `ALIGNMENT` (enum: `Leading`=0,
+`Center`=1, `Trailing`=2, `Fill`=3), plus layout modifiers (Fixed/Fill
+`WIDTH`/`HEIGHT`, `PADDING`, `CONTENT_MARGINS` as an inset). **No `SPACING`** —
+children occupy the same box by design; there is no gap between them.
+
+**Layout & sizing** (SwiftUI `ZStack` / Compose `Box` semantics)
+
+- **Overlay allocation**: unlike a flex stack, children do **not** add to each
+  other along an axis — they share one box. Each child keeps its own size (a
+  Fixed box, or a Hug natural size) and is **positioned** by `ALIGNMENT` on
+  **both axes**; only a **`Fill`-sized child** stretches to the stack's size.
+- **Own size**: the stack **hugs to its largest child** by default — on each
+  axis its size is the **maximum** of its children's sizes, never the sum. A
+  Fixed `WIDTH`/`HEIGHT` makes the box exact; a `Fill` axis — or fill
+  propagation (a `Fill` child on an axis makes the Hug stack `Fill` on that
+  axis, see the stack layout model above) — expands to the parent's proposal.
+  `ZStack { Color.red }` fills (Color is layout-greedy); `ZStack { Text("hi") }`
+  hugs the text.
+- **Alignment**: `ALIGNMENT` positions each child on **both** axes with a
+  **2D position code** (SwiftUI `Alignment` / Compose `Alignment` parity) — the
+  code's horizontal and vertical components place the child within the stack's
+  box. Position-only: it never resizes a child.
+
+  | code | horizontal | vertical | meaning |
+  |------|------------|----------|---------|
+  | `0` | start | start | top-leading |
+  | `1` | center | center | centered |
+  | `2` | end | end | bottom-trailing |
+  | `3` | center | start | top-center |
+  | `4` | center | end | bottom-center |
+  | `5` | start | center | center-leading |
+  | `6` | end | center | center-trailing |
+  | `7` | end | start | top-trailing |
+  | `8` | start | end | bottom-leading |
+
+  `0`/absent is the default (top-leading, Compose `TopStart` parity; SwiftUI
+  `ZStack` defaults to `.center`). A **stack** (`VStack`/`HStack`) reads a
+  **single axis** of the same code — the `VStack` cross-axis is horizontal
+  (`0/1/2` = leading/center/trailing), the `HStack` cross-axis vertical
+  (`0/1/2` = top/center/bottom).
+- **Overflow**: a Fixed box constrains layout but does not clip — content that
+  exceeds it is drawn outside the box unless `CLIPS_TO_BOUNDS` clips it
+  (SwiftUI `.clipped()` parity).
+- **Edge cases**: the first child is **not** a special "background" — it follows
+  the same size model (a Fixed first child keeps its exact box; a `Fill` one
+  stretches); draw order is always child index; a `Fill` child in a Hug ZStack
+  propagates (fills the parent's proposal).
 
 ### Grid — `GRID` 0x13
 
 Static 2D matrix grid, eagerly rendered with aligned rows & columns. Children
-are cells, row-major in insertion order. **Properties**: `ALIGNMENT`, `SPACING`,
-`WIDTH`/`HEIGHT` (cell-axis count; `FILL` = auto-fit). Renderer: GTK `GtkGrid`;
-HTML CSS grid.
+are cells, **row-major in insertion order** — child *i* occupies the cell at
+`(row = i / columns, column = i % columns)`. **Properties**: `ALIGNMENT` (a 2D
+position code applied per-cell, like `ZStack` — the [ZStack alignment
+table](#zstack--zstack-0x12)), `SPACING`
+(uniform row + column gap), `GRID_COLUMNS` (column count), `GRID_ROWS` (row
+count), plus layout modifiers (`WIDTH`/`HEIGHT` frames — the grid's box, never a
+count — `PADDING`/`CONTENT_MARGINS` as an inset).
+
+#### The grid layout model
+
+`GRID` (and the lazy grids) follow the **SwiftUI / Jetpack Compose grid model**:
+a grid *proposes* a size to each cell, the cell reports its own size, and the
+grid *places* it at its track intersection. Unlike a stack, a grid has no main
+axis — its two track axes (columns × rows) follow the size model
+[above](#the-stack-layout-model) independently, with two differences:
+
+**Cell counts.** `GRID_COLUMNS` (`0x001E`) is the **column count** and
+`GRID_ROWS` (`0x001F`) the **row count**. A **Fixed** value pins that count;
+**`FILL` or absent means auto-fit** — the grid derives the count from the number
+of cells and the available space (Compose `GridCells.Fixed(N)` vs `Adaptive`;
+SwiftUI `LazyVGrid(columns:)` / `LazyHGrid(rows:)`). They are **constructor
+properties** (never chainable modifiers) and are **never pixel sizes**.
+
+**Tracks.** On a **fixed-count** axis the tracks are **equal `1fr` fractions**
+of the grid's size on that axis (`repeat(N, 1fr)` in CSS, Compose
+`GridCells.Fixed`, SwiftUI `.flexible()` columns): every track gets the same
+share. A Hug grid on that axis sizes the tracks to the content instead (each
+track as large as its widest/tallest cell) and hugs to the content + `SPACING`.
+The **auto** axis always sizes tracks to the content — each row/column is
+exactly as large as its cells need.
+
+**Per-track sizes (`GRID_TRACKS`).** For per-track control a grid may carry a
+**`GRID_TRACKS`** (`0x0020`, STRING) constructor property — a comma-separated
+track list, one entry per track on the fixed-count axis, **taking precedence**
+over `GRID_COLUMNS`/`GRID_ROWS` (a bare count is the `N`×`flexible` sugar). Each
+entry is:
+
+| Token | Meaning | CSS | Compose | SwiftUI |
+|-------|---------|-----|---------|---------|
+| `flex` | equal `1fr` share (the count's track) | `1fr` | `GridCells.Fixed` column | `.flexible()` |
+| `fixed:<points>` | exactly `<points>` wide | `<points>px` | fixed dp column | `.fixed(_:)` |
+| `adaptive:<points>` | auto-fit, at least `<points>` (fit as many as fit) | `minmax(<points>px,1fr)` | `GridCells.Adaptive(minSize)` | `.adaptive(minimum:)` |
+
+The track list is **CSS-grid-native** — renderers whose native grid has no
+per-track sizing equivalent (GTK `GtkGrid`) size tracks naturally instead
+(renderer status, not a protocol contract).
+
+**Spacing.** `SPACING` is a **uniform gap between tracks on both axes** — the
+row gap and the column gap are the same value (Compose `Arrangement.spacedBy`,
+CSS `gap`), clamped to ≥ 0, never before the first or after the last track.
+
+**Per-cell allocation.** Each cell keeps its own size on both axes (a Fixed box,
+or Hug content) and is **positioned** within its track by the grid's `ALIGNMENT`
+(a **2D position code**, like `ZStack` — the [table
+above](#zstack--zstack-0x12)) — e.g. `0`/absent = top-leading, `3` = top-center.
+Position-only: it never resizes a cell. Only a **`Fill`-sized cell** (or a
+greedy filler like `COLOR`) stretches to fill its track.
+
+**Own size & edge cases.** A grid follows the universal size model: **Hug**
+(content tracks + `SPACING`), a Fixed `WIDTH`/`HEIGHT` **box**, or **`Fill`**
+(expands to the parent's proposal). `GRID_COLUMNS`/`GRID_ROWS` never size the
+grid — they only set the track counts. A grid **never propagates** a `Fill` cell
+up to a Hug parent — a `Fill` cell fills its own track, and the grid's own size
+comes from its own frame. Negative `SPACING` → 0; a Fixed box constrains layout
+but does not clip (`CLIPS_TO_BOUNDS` clips).
+
+### GridRow — `GRID_ROW` 0x1D
+
+An **explicit row grouping** for a `GRID` (the SwiftUI `GridRow` authoring
+surface): a grid's children are **cells or `GRID_ROW`s**, and a `GRID_ROW`'s
+children are the cells of **one row**. It lets the author control row layout
+directly instead of relying on row-major index flow.
+
+- **Row placement.** A `GRID_ROW` always starts a new row: its children are
+  placed left-to-right in that row starting at column 0, then the row advances.
+  **Bare cells** (direct `GRID` children) auto-flow row-major, advancing to the
+  next row after `GRID_COLUMNS` cells (or auto, below).
+- **Column count.** The equal-`1fr` track count is `GRID_COLUMNS` when set;
+  otherwise the **widest row** (a `GRID_ROW` or a bare-cell run) defines it. A
+  short row leaves its trailing columns **empty** — a cell never pulls the next
+  row's cells forward.
+- **Structure.** A `GRID_ROW` is structural only: it renders nothing outside a
+  `GRID` (like `COMMENT`), and renderers flatten its cells into the grid's rows.
+  Its own `ALIGNMENT`/`SPACING`/size properties are ignored.
+- **Example.** `Grid { GridRow { A; B }; GridRow { C; D }; E }` lays out row 0 =
+  `A B`, row 1 = `C D`, row 2 = `E` (auto-flowing to the next row after the two
+  columns defined by the widest row).
 
 ### ScrollView — `SCROLLVIEW` 0x14
 
-Scrollable content container. **Events**: with the `SCROLL` (bit 8) listener the
-renderer reports the scroll offset via `EVENT::SCROLL`; with `WHEEL` (bit 9) it
-reports deltas via `EVENT::WHEEL` (both draft — see [EVENTS.md](./EVENTS.md)).
-Renderer: GTK `GtkScrolledWindow`; HTML overflow container.
-**Layout-greedy on both axes** (fills the available space, SwiftUI-style) — see
-LAYOUT.md; an explicit `WIDTH`/`HEIGHT` overrides it.
+A scrollable content container. **Layout-greedy on both axes** by default — it
+fills the available space (SwiftUI `ScrollView` / Compose scroll semantics); an
+explicit `WIDTH`/`HEIGHT` overrides it (LAYOUT.md §layout-greedy primitives).
+**Properties**: layout modifiers (Fixed/Fill frames, `PADDING`/`CONTENT_MARGINS`
+as an inset).
+
+**Content.** The **first child** is the content; a scroll view carries a single
+content subtree (typically a stack), matching SwiftUI/Compose's single-content
+contract. The content is measured with an **unbounded proposal** on both axes —
+it may grow beyond the viewport (that is what scrolls). The **viewport** is the
+scroll view's allocated box; a Hug `WIDTH`/`HEIGHT` — or a Hug parent proposal
+on an axis — sizes the viewport to the content's natural size on that axis (the
+viewport fits the content, so that axis does not scroll).
+
+**Overflow.** A scroll view scrolls its content rather than clipping it — the
+viewport clips by virtue of scrolling; `CLIPS_TO_BOUNDS` on the scroll view has
+no further effect on the content.
+
+**Events.** With the `SCROLL` listener bit (bit 8) the renderer reports the
+content offset in logical points via `EVENT::SCROLL`; with `WHEEL` (bit 9) it
+reports wheel/trackpad deltas via `EVENT::WHEEL` (both draft — see
+[EVENTS.md](./EVENTS.md)).
 
 ### LazyVGrid — `LAZY_VGRID` 0x15
 
-Virtualized vertical grid: windowed rendering for large datasets; children are
-cells, row-major. **Properties**: `ALIGNMENT`, `SPACING`, `WIDTH` (column count;
-`FILL` = auto-fit). A renderer MAY defer realizing off-screen cells until
-scrolled into view.
+Virtualized vertical grid. **Allocation is identical to `GRID`** — row-major
+cells, `GRID_COLUMNS` = column count (Fixed pins it, `FILL`/absent = auto-fit),
+equal `1fr` columns, uniform `SPACING` gap, per-cell alignment, hug-to-content
+own size. The only difference is **realization**: a renderer MAY defer realizing
+off-screen cells until scrolled into view and MAY discard realized cells that
+leave the viewport. Realization never changes layout — a cell's position is
+always its row-major index in the full cell list. Typically nested inside a
+`SCROLLVIEW`.
 
 ### LazyHGrid — `LAZY_HGRID` 0x16
 
-Virtualized horizontal grid; children are cells, column-major. **Properties**:
-`ALIGNMENT`, `SPACING`, `HEIGHT` (row count; `FILL` = auto-fit).
+Virtualized horizontal grid; the flipped-axis form of `LAZY_VGRID`. **Allocation
+is identical to `GRID` mirrored**: cells are **column-major** in insertion
+order, `GRID_ROWS` = row count (Fixed pins it, `FILL`/absent = auto-fit), equal
+`1fr` rows, columns auto-flow, uniform `SPACING` gap, per-cell alignment,
+windowed realization.
 
 ### LazyVStack — `LAZY_VSTACK` 0x1B
 
-Virtualized vertical stack; same properties as `VStack`, with windowed
-realization of children near the visible region.
+Virtualized vertical stack. **Allocation is identical to `VStack`** (the stack
+layout model above — same properties, sizing, spacing, alignment, and fill
+propagation); only **realization** differs: a renderer MAY defer realizing
+children outside the visible region.
 
 ### LazyHStack — `LAZY_HSTACK` 0x1C
 
-Virtualized horizontal stack; same properties as `HStack`, with windowed
-realization.
+Virtualized horizontal stack. **Allocation is identical to `HStack`**; only
+realization is windowed.
 
 ---
 
@@ -457,10 +687,9 @@ An action trigger control.
 | `EVENT_LISTENERS` | 0x2005 | U32 | Raw pointer listeners (down/move/up) for app-side tap composition |
 | `COLOR`/`FONT_*`/`PADDING`/`BACKGROUND_COLOR`/… | — | — | Text & appearance modifiers (MODIFIERS.md) |
 
-- **Native Token Mode (leaf):** no children → native button
-  (`UIButton`/`NSButton`, `GtkButton`, `<button>`); the label is the node's text
-  (`SET_TEXT`). If the text is also absent, render an empty platform button
-  shell (leaf fallback).
+- **Native Token Mode (leaf):** no children → native button; the label is the
+  node's text (`SET_TEXT`). If the text is also absent, render an empty
+  platform button shell (leaf fallback). Button styles are renderer/token-owned.
 - **Composite Override Mode (container):** children present → suppress default
   button chrome, render the custom label tree, wrap it with a native
   click/press gesture that reports `POINTER_DOWN`/`POINTER_UP` for the button's
@@ -469,8 +698,6 @@ An action trigger control.
   (`POINTER_DOWN` then `POINTER_UP` on the same target). Without `ACTION_ID` /
   `BINDING_ID` / `EVENT_LISTENERS`, a renderer MUST drop the interaction (Event
   Guards).
-- **Renderer mapping**: GTK `GtkButton`; HTML `<button>`.
-  Button styles are renderer/token-owned.
 - **Note (SwiftUI `Link`)**: SwiftUI's `Link` is `BUTTON` with an associated
   URL; the app handles the tap and opens the URL. No separate primitive.
 
@@ -489,8 +716,7 @@ Single-line text input; `SecureField` is the same component with `IS_SECURE`.
 - **Events** (see [EVENTS.md](./EVENTS.md)): `TEXT_CHANGED` (0x07) on every
   edit; `FOCUS_CHANGED` (0x08), `EDITING_CHANGED` (0x09), `SUBMIT` (0x0A) —
   draft. All gated by `BINDING_ID` or the matching `EVENT_LISTENERS` bits.
-- **Renderer mapping**: GTK `GtkEntry`; HTML `<input type="text">`.
-  A secure field MUST mask characters and MUST NOT echo the value.
+- **Security**: a secure field MUST mask characters and MUST NOT echo the value.
 
 ### TextEditor — `TEXT_EDITOR` 0x22
 
@@ -503,7 +729,6 @@ Multi-line text editing area.
 - **Events**: same as `TextField` — `TEXT_CHANGED` (0x07), `FOCUS_CHANGED`
   (0x08), `EDITING_CHANGED` (0x09), `SUBMIT` (0x0A) — gated by `BINDING_ID` /
   `EVENT_LISTENERS`.
-- **Renderer mapping**: GTK `GtkTextView`; HTML `<textarea>`.
 
 ### Toggle — `TOGGLE` 0x24
 
@@ -519,16 +744,13 @@ not a separate component:
 | `ENABLED`/`STATE` | 0x2003/0x2002 | — | Enabled / accessibility state |
 
 - **Native Token Mode (leaf):** renders the native control for the
-  `TOGGLE_STYLE` token — `UISwitch`/`NSSwitch`, `GtkSwitch`, checkbox input
-  (`TOGGLE_STYLE=Checkbox`), or a toggle button. The style token switches native
-  variants **without emitting child nodes**.
+  `TOGGLE_STYLE` token — a native switch, checkbox, or toggle button. The style
+  token switches native variants **without emitting child nodes**.
 - **Composite Override Mode (container):** a custom body (e.g. label + icon)
   wrapped with a native toggle gesture; `SELECTED` still drives the state.
 - **Events:** a user change emits `VALUE_CHANGED` (0x06) with `B` = 0/1 — gated
   by `BINDING_ID`. The app writes it into `SELECTED`; the engine re-emits the
   `SELECTED` property.
-- **Renderer mapping**: GTK `GtkSwitch`/`GtkCheckButton`; HTML checkbox / styled
-  switch / toggle button.
 
 ### Slider — `SLIDER` 0x25
 
@@ -543,14 +765,13 @@ A continuous or stepped numeric range control.
 | `BINDING_ID` | 0x2017 | U32 | Two-way binding id (numeric value) |
 | `ENABLED`/`STATE` | 0x2003/0x2002 | — | Enabled / accessibility state |
 
-- **Native Token Mode (leaf):** native slider (`UISlider`/`NSSlider`,
-  `GtkScale`, `<input type="range">`); the renderer owns 120 FPS client-side
-  thumb dragging and resolves the semantic value from its own track geometry.
+- **Native Token Mode (leaf):** native slider; the renderer owns 120 FPS
+  client-side thumb dragging and resolves the semantic value from its own track
+  geometry.
 - **Composite Override Mode (container):** a custom track/thumb body wrapped
   with a native drag gesture that reports `VALUE_CHANGED`.
 - **Events:** `VALUE_CHANGED` (0x06, `A=targetId, B=value (f32)`) — gated by
   `BINDING_ID`.
-- **Renderer mapping**: GTK `GtkScale`; HTML `<input type="range">`.
 
 ### Stepper — `STEPPER` 0x26
 
@@ -562,15 +783,13 @@ Events: `VALUE_CHANGED` after each press.
 
 A date & time selection modal/popover control.
 
-- **Protocol**: a leaf node whose value is set with the **`STYLE::SET_DATE`**
+- **Protocol**: a leaf node whose value is set with the **`PARAMETER::SET_DATE`**
   command (draft 0x04, see OPCODE.md): `A=nodeId, B=days since epoch (I32,
   pre-1970 negative), C=millis of day (U32, 0..86,400,000)`.
 - **Properties**: `DATE_PICKER_MODE` (0x2013, enum: `Date`=0, `Time`=1,
   `DateAndTime`=2), `BINDING_ID` (0x2017), size modifiers.
 - **Events**: `DATE_CHANGED` (draft 0x0D, `A=targetId, B=days (I32),
   C=millis of day (U32)`) — inline, gated by `BINDING_ID`.
-- **Renderer mapping**: GTK `GtkCalendar`/`GtkSpinButton`; HTML `<input
-  type="date">`/`<input type="time">`.
 
 ### Picker — `PICKER` 0x28
 
@@ -584,15 +803,12 @@ A selection control rendered as a segment, dropdown menu, or wheel.
   `BINDING_ID` (0x2017).
 - **Events**: `VALUE_CHANGED` with `B` = the new selected child index — gated
   by `BINDING_ID`.
-- **Renderer mapping**: GTK `GtkComboBoxText`/`GtkDropDown`; HTML `<select>` /
-  segmented buttons.
 
 ### Menu — `MENU` 0x29
 
 A **semantic control**: contextual action trigger and popover container. The
 client platform owns dynamic popover presentation, overlay placement, tap/focus
-management, and accessibility focus trapping (`UIMenu` on iOS, `GtkPopoverMenu`
-on GTK, floating popover on Web).
+management, and accessibility focus trapping.
 
 #### Dual-Mode Rendering Rules
 
@@ -622,8 +838,6 @@ to **native OS menu item slots** rather than standard canvas/layout nodes.
 
 - **Events**: `VALUE_CHANGED` with `B` = the chosen action item index — gated
   by `BINDING_ID` (0x2017).
-- **Renderer mapping**: GTK `GtkMenuButton`/`GtkPopoverMenu`; HTML `<div
-  role="menu">`.
 
 ### ColorPicker — `COLOR_PICKER` 0x2A
 
@@ -634,8 +848,6 @@ A native system color picker control.
 - **Events**: `VALUE_CHANGED` — the value field carries the packed color **as an
   f32 bit pattern** of `0xAARRGGBB` (the app reinterprets it) — gated by
   `BINDING_ID`.
-- **Renderer mapping**: native color panel / `GtkColorButton`; HTML `<input
-  type="color">`.
 
 ---
 
@@ -645,9 +857,9 @@ A native system color picker control.
 |-------|-----|
 | `0x01`–`0x08` | Primitive drawing nodes (allocated, this file) |
 | `0x09`–`0x0F` | Future drawing nodes (unallocated) |
-| `0x10`–`0x16`, `0x1B`–`0x1C` | Layout & container primitives (this file) |
+| `0x10`–`0x16`, `0x1B`–`0x1D` | Layout & container primitives (this file) |
 | `0x17`–`0x1A` | Reserved (formerly composites) — never reused |
-| `0x1D`–`0x1F` | Future layout nodes (unallocated) |
+| `0x1E`–`0x1F` | Future layout nodes (unallocated) |
 | `0x20`–`0x22`, `0x24`–`0x2A` | Semantic control nodes (this file) |
 | `0x23`, `0x2B`–`0x2F` | Future semantic controls (unallocated) |
 | `0x30`–`0x7E` | Future categories (unallocated) |

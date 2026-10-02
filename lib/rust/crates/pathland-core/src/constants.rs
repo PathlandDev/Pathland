@@ -8,10 +8,10 @@
 pub mod category {
     /// Tree mutations (guest → host): node create/delete/insert/remove/move.
     pub const TREE: u8 = 0x01;
-    /// Properties and design tokens (guest → host): the constraint properties
-    /// (spacing, padding, alignment, …) that native renderers use to lay out
-    /// native elements. The engine does NOT emit rects.
-    pub const STYLE: u8 = 0x02;
+    /// Parameters and design tokens (guest → host): the constraint properties
+    /// (spacing, padding, alignment, …) and content that native renderers use
+    /// to lay out and style native elements. The engine does NOT emit rects.
+    pub const PARAMETER: u8 = 0x02;
     /// Raw input events (host → guest): pointer down/move/up, key down/up.
     pub const EVENT: u8 = 0x03;
     /// Control (both directions): reset, environment, custom data.
@@ -32,8 +32,8 @@ pub mod tree {
     pub const MOVE_CHILD: u8 = 0x05;
 }
 
-/// Commands within the `STYLE` category.
-pub mod style {
+/// Commands within the `PARAMETER` category.
+pub mod parameter {
     /// `A=nodeId, B=(valueType << 16) | propertyId, C=value`
     pub const SET_PROPERTY: u8 = 0x01;
     /// `A=arenaRef (path), B=valueType (u8), C=value`
@@ -68,7 +68,7 @@ pub mod event {
     pub const VALUE_CHANGED: u8 = 0x06;
     /// `A=targetId, B=string offset` — a text field's value changed (host →
     /// guest). The new text lives in the batch's string section, referenced by
-    /// the *relative* offset in `B` (the same convention as `STYLE::SET_TEXT`).
+    /// the *relative* offset in `B` (the same convention as `PARAMETER::SET_TEXT`).
     pub const TEXT_CHANGED: u8 = 0x07;
     /// **Draft.** `A=targetId, B=focused (0/1)` — a node gained/lost focus.
     pub const FOCUS_CHANGED: u8 = 0x08;
@@ -81,7 +81,7 @@ pub mod event {
     /// **Draft.** `A=targetId, B=deltaX (f32), C=deltaY (f32)` — wheel/trackpad.
     pub const WHEEL: u8 = 0x0C;
     /// **Draft.** `A=targetId, B=days since epoch (I32), C=millis of day (U32)`
-    /// — a `DATE_PICKER`'s value changed (matches `STYLE::SET_DATE`).
+    /// — a `DATE_PICKER`'s value changed (matches `PARAMETER::SET_DATE`).
     pub const DATE_CHANGED: u8 = 0x0D;
     /// **Draft.** Global navigation request (host → guest), never node-keyed.
     /// With the `NAVIGATE_URL` flag, `B` is a string offset (event arena /
@@ -194,7 +194,7 @@ pub mod border_edges {
     pub const ALL: u32 = TOP | LEADING | BOTTOM | TRAILING;
 }
 
-/// Value types for `STYLE` properties (u8, encoded in the high byte of `B`).
+/// Value types for `PARAMETER` properties (u8, encoded in the high byte of `B`).
 pub mod value_type {
     pub const U8: u8 = 0x01;
     pub const U32: u8 = 0x02;
@@ -258,7 +258,11 @@ pub mod component_type {
     pub const LAZY_VSTACK: u16 = 0x1B;
     /// **Draft.** Virtualized horizontal stack.
     pub const LAZY_HSTACK: u16 = 0x1C;
-    // 0x1D–0x1F reserved (future layout nodes).
+    /// **Draft.** Explicit row grouping for a `GRID`: a grid child whose children
+    /// are one row's cells (the SwiftUI `GridRow` surface). Renders nothing
+    /// outside a `GRID`.
+    pub const GRID_ROW: u16 = 0x1D;
+    // 0x1E–0x1F reserved (future layout nodes).
 
     // ── Semantic Control Nodes (0x20–0x2F) ──────────────────────────────────
     /// Action trigger control.
@@ -275,7 +279,7 @@ pub mod component_type {
     pub const SLIDER: u16 = 0x25;
     /// **Draft.** Discrete increment/decrement control.
     pub const STEPPER: u16 = 0x26;
-    /// **Draft.** Date & time selection control (`STYLE::SET_DATE` value).
+    /// **Draft.** Date & time selection control (`PARAMETER::SET_DATE` value).
     pub const DATE_PICKER: u16 = 0x27;
     /// **Draft.** Selection control (options are child nodes).
     pub const PICKER: u16 = 0x28;
@@ -289,7 +293,7 @@ pub mod component_type {
     pub const COMMENT: u16 = 0x7F;
 }
 
-/// Property IDs (u16, encoded in the low half of `B` of `STYLE::SET_PROPERTY`).
+/// Property IDs (u16, encoded in the low half of `B` of `PARAMETER::SET_PROPERTY`).
 ///
 /// IDs are specified in `spec/OPCODE.md` (carried forward from the historical protocol).
 pub mod property_id {
@@ -341,6 +345,19 @@ pub mod property_id {
     pub const CONTENT_MODE: u16 = 0x001C;
     /// **Draft.** Minimum scale factor (F32). `.minimumScaleFactor(_:)`.
     pub const MINIMUM_SCALE_FACTOR: u16 = 0x001D;
+    /// **Draft.** Grid column count (F32, constructor property): a positive value
+    /// pins the count (equal `1fr` tracks); `FILL`/absent = auto-fit. Never a
+    /// pixel width — the grid's box comes from `WIDTH`/`HEIGHT`.
+    pub const GRID_COLUMNS: u16 = 0x001E;
+    /// **Draft.** Grid row count (F32, constructor property): the `LAZY_HGRID`
+    /// fixed track; positive = count, `FILL`/absent = auto-fit.
+    pub const GRID_ROWS: u16 = 0x001F;
+    /// **Draft.** Grid track spec (STRING, constructor property): a comma-
+    /// separated list of per-track sizes — `flex` | `fixed:<points>` |
+    /// `adaptive:<points>` — taking precedence over `GRID_COLUMNS`/`GRID_ROWS`
+    /// (the equal-`1fr` count is `N`×`flex` sugar). CSS-grid-native: renderers
+    /// without a native equivalent (GTK `GtkGrid`) fall back to natural sizing.
+    pub const GRID_TRACKS: u16 = 0x0020;
     // Style (0x1000 range)
     pub const BACKGROUND_COLOR: u16 = 0x1001;
     /// **Draft.** Image source (STRING: a resource name, file path, or URL —

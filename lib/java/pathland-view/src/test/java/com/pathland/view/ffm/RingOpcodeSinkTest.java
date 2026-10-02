@@ -60,7 +60,7 @@ class RingOpcodeSinkTest {
                 if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE) {
                     sawCreate = true;
                 }
-                if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT) {
+                if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
                     sawSetText = true;
                 }
             }

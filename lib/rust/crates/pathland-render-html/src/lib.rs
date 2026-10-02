@@ -17,8 +17,8 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    Opcode, border_edges, category, component_type, property_id, style, tokens::TokenValue, tree,
-    value_type,
+    Opcode, border_edges, category, component_type, parameter, property_id, size,
+    tokens::TokenValue, tree, value_type,
 };
 
 mod capi;
@@ -32,7 +32,7 @@ pub mod token_spec;
 pub struct Node {
     /// Protocol component type id (see `pathland_core::component_type`).
     pub component: u16,
-    /// Text content set via `STYLE::SET_TEXT`, if any.
+    /// Text content set via `PARAMETER::SET_TEXT`, if any.
     pub text: Option<String>,
     /// Constraint/style properties (`propertyId → value`).
     pub properties: BTreeMap<u16, u32>,
@@ -40,7 +40,7 @@ pub struct Node {
     pub strings: BTreeMap<u16, String>,
     /// `DESIGN_TOKEN`-typed properties (`propertyId → token path`).
     pub token_refs: BTreeMap<u16, String>,
-    /// Date value from `STYLE::SET_DATE`: (days since epoch, millis of day).
+    /// Date value from `PARAMETER::SET_DATE`: (days since epoch, millis of day).
     pub date: Option<(i32, u32)>,
     /// Child node ids in insertion order.
     pub children: Vec<u32>,
@@ -177,7 +177,8 @@ impl Node {
         }
         // WIDTH/HEIGHT: fixed values inline as px; FILL (-1) → `100%` (expand to
         // the available space in a flex parent — SwiftUI `maxWidth/maxHeight:
-        // .infinity`). HUG_CONTENT (-2) is left to the intrinsic size.
+        // .infinity`). HUG_CONTENT (-2) is left to the intrinsic size. (A grid's
+        // track counts live in `GRID_COLUMNS`/`GRID_ROWS`, never here.)
         if let Some(v) = self.token_ref(property_id::WIDTH) {
             css.push_str(&format!("width:{v};"));
         } else if let Some(v) = f32p(property_id::WIDTH) {
@@ -292,19 +293,28 @@ impl Node {
 
         // Enum-derived properties (previously Tailwind classes) now inline.
         // ALIGNMENT cross-axis position (Leading=0, Center=1, Trailing=2,
-        // Fill=3 → default). Positions children; the default is hug
-        // (flex-start), never CSS stretch — only FILL-sized children stretch
-        // (LAYOUT.md).
+        // → start). Positions children; the default is hug (flex-start), never
+        // CSS stretch — only FILL-sized children stretch (LAYOUT.md). A
+        // `ZSTACK`/grid positions on BOTH axes (its own branch emits the
+        // per-axis values), so the single-axis `align-items` is skipped there.
         if let Some(v) = f32p(property_id::ALIGNMENT) {
-            css.push_str(&format!(
-                "align-items:{};",
-                match v as u8 {
-                    0 => "flex-start",
-                    1 => "center",
-                    2 => "flex-end",
-                    _ => "flex-start",
-                }
-            ));
+            if !matches!(
+                self.component,
+                component_type::ZSTACK
+                    | component_type::GRID
+                    | component_type::LAZY_VGRID
+                    | component_type::LAZY_HGRID
+            ) {
+                css.push_str(&format!(
+                    "align-items:{};",
+                    match v as u8 {
+                        0 => "flex-start",
+                        1 => "center",
+                        2 => "flex-end",
+                        _ => "flex-start",
+                    }
+                ));
+            }
         }
         // TEXT_ALIGNMENT (Leading=0, Center=1, Trailing=2).
         if let Some(v) = f32p(property_id::TEXT_ALIGNMENT) {
@@ -385,10 +395,10 @@ impl Node {
                 css.push_str("filter:invert(1);");
             }
         }
-        // TRUNCATION_MODE → ellipsis.
-        if self.properties.contains_key(&property_id::TRUNCATION_MODE) {
-            css.push_str("text-overflow:ellipsis;overflow:hidden;white-space:nowrap;");
-        }
+        // TRUNCATION_MODE alone has no observable effect (spec LAYOUT.md §content
+        // fitting, SwiftUI-aligned): it only positions the ellipsis under a
+        // `LINE_LIMIT` clamp, which the renderer tail-ellipsizes via `line-clamp`
+        // (renderer-owned fidelity: CSS cannot place a head/middle ellipsis).
         // CONTENT_MODE → object-fit (Fit=contain, Fill=cover); ASPECT_RATIO.
         if let Some(v) = f32p(property_id::CONTENT_MODE) {
             css.push_str(&format!(
@@ -473,15 +483,163 @@ fn size_css(v: f32) -> String {
     }
 }
 
-/// The column count of a `GRID` from its `WIDTH` property (cell-axis count);
-/// `FILL`/absent → auto-fit.
-fn grid_columns(node: &Node) -> Option<u32> {
-    let w = node.f32_property(property_id::WIDTH, -1.0);
-    if w <= 0.0 {
+/// The stack's main axis as a boolean (horizontal) when `component` is a flex
+/// stack; `None` otherwise.
+fn stack_main_horizontal(component: u16) -> Option<bool> {
+    match component {
+        component_type::HSTACK | component_type::LAZY_HSTACK => Some(true),
+        component_type::VSTACK | component_type::LAZY_VSTACK => Some(false),
+        _ => None,
+    }
+}
+
+/// Whether a node is **effectively `FILL`-sized on an axis** (LAYOUT.md §fill
+/// propagation, SwiftUI/Compose parity): it is `FILL` itself, a layout-greedy
+/// primitive that fills the axis by nature, or a Hug-sized container whose
+/// subtree carries such a child. A Fixed box bounds its subtree.
+///
+/// `axis_horizontal` selects `WIDTH` (true) or `HEIGHT`; `main_axis` tells
+/// whether the axis is the node's parent's main axis (governs `SPACER`/`DIVIDER`
+/// greediness).
+fn fills_axis(
+    nodes: &BTreeMap<u32, Node>,
+    id: u32,
+    axis_horizontal: bool,
+    main_axis: bool,
+) -> bool {
+    let Some(node) = nodes.get(&id) else {
+        return false;
+    };
+    let prop = if axis_horizontal {
+        property_id::WIDTH
+    } else {
+        property_id::HEIGHT
+    };
+    let hint = node.properties.get(&prop).map(|b| f32::from_bits(*b));
+    match hint {
+        Some(v) if v == size::FILL => return true,
+        Some(v) if v.is_finite() && v > 0.0 => return false, // Fixed bounds
+        _ => {}
+    }
+    let greedy = match node.component {
+        component_type::COLOR | component_type::SCROLLVIEW => true,
+        component_type::SPACER => main_axis,
+        component_type::DIVIDER => !main_axis,
+        _ => false,
+    };
+    if greedy {
+        return true;
+    }
+    if !matches!(
+        node.component,
+        component_type::VSTACK
+            | component_type::HSTACK
+            | component_type::ZSTACK
+            | component_type::LAZY_VSTACK
+            | component_type::LAZY_HSTACK
+    ) {
+        return false;
+    }
+    // A child's greedy nature is relative to its own parent (this node).
+    let child_main = stack_main_horizontal(node.component)
+        .map(|main_h| main_h == axis_horizontal)
+        .unwrap_or(false); // ZSTACK has no main axis
+    node.children
+        .iter()
+        .any(|&child| fills_axis(nodes, child, axis_horizontal, child_main))
+}
+
+/// Fill-propagation sizing for a flex stack: a Hug-sized stack that contains an
+/// effectively-`FILL` descendant on an axis becomes `FILL` on that axis (emit
+/// `100%`), matching SwiftUI/Compose. Returns the extra CSS, empty when the
+/// stack is Fixed/FILL-sized itself (its own frame already covers it).
+fn fill_propagation(
+    nodes: &BTreeMap<u32, Node>,
+    id: u32,
+    node: &Node,
+    main_horizontal: bool,
+) -> String {
+    let mut extra = String::new();
+    for (axis_h, prop, css) in [
+        (true, property_id::WIDTH, "width:100%;"),
+        (false, property_id::HEIGHT, "height:100%;"),
+    ] {
+        let hint = node.properties.get(&prop).map(|b| f32::from_bits(*b));
+        let hug = hint.is_none() || hint == Some(size::HUG_CONTENT);
+        if hug && fills_axis(nodes, id, axis_h, main_horizontal == axis_h) {
+            extra.push_str(css);
+        }
+    }
+    extra
+}
+/// A grid's fixed track count from `prop`: a positive finite Fixed value pins
+/// the count; `FILL`/absent → auto-fit (`None`).
+fn grid_count(node: &Node, prop: u16) -> Option<u32> {
+    let v = node.f32_property(prop, -1.0);
+    if v <= 0.0 {
         None
     } else {
-        Some(w.round() as u32)
+        Some(v.round() as u32)
     }
+}
+
+/// A grid's column count from its `GRID_COLUMNS` constructor property
+/// (cell-axis count; `FILL`/absent → auto-fit).
+fn grid_columns(node: &Node) -> Option<u32> {
+    grid_count(node, property_id::GRID_COLUMNS)
+}
+
+/// A grid's row count from its `GRID_ROWS` constructor property (cell-axis
+/// count; a `LAZY_HGRID`'s fixed track).
+fn grid_rows(node: &Node) -> Option<u32> {
+    grid_count(node, property_id::GRID_ROWS)
+}
+
+/// The horizontal position component of an `ALIGNMENT` 2D code (0–8, spec
+/// PRIMITIVES.md §ZStack).
+fn align_h(code: u8) -> &'static str {
+    match code {
+        1 | 3 | 4 => "center",
+        2 | 6 | 7 => "end",
+        _ => "start",
+    }
+}
+
+/// The vertical position component of an `ALIGNMENT` 2D code (0–8).
+fn align_v(code: u8) -> &'static str {
+    match code {
+        1 | 5 | 6 => "center",
+        2 | 4 | 8 => "end",
+        _ => "start",
+    }
+}
+
+/// A grid's `GRID_TRACKS` tokens (comma-separated `flex`/`fixed:<pts>`/
+/// `adaptive:<pts>`, spec §grid model). `None` when absent.
+fn grid_tracks(node: &Node) -> Option<Vec<&str>> {
+    node.strings
+        .get(&property_id::GRID_TRACKS)
+        .map(|s| s.split(',').map(str::trim).collect())
+}
+
+/// The CSS track template for a `GRID_TRACKS` spec: `flex` → `1fr`,
+/// `fixed:<pts>` → `<pts>px`, `adaptive:<pts>` → `minmax(<pts>px,1fr)`.
+fn grid_tracks_css(node: &Node) -> Option<String> {
+    let tracks = grid_tracks(node)?;
+    let mut out = String::new();
+    for t in tracks {
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        if let Some(pts) = t.strip_prefix("fixed:") {
+            out.push_str(&format!("{pts}px"));
+        } else if let Some(pts) = t.strip_prefix("adaptive:") {
+            out.push_str(&format!("minmax({pts}px,1fr)"));
+        } else {
+            out.push_str("1fr");
+        }
+    }
+    Some(out)
 }
 
 /// Convert days since the Unix epoch (negative = before 1970) to a Gregorian
@@ -565,8 +723,8 @@ fn decode(opcodes: &[Opcode], strings: &[u8]) -> (BTreeMap<u32, Node>, Tokens) {
     for op in opcodes {
         match op.category() {
             category::TREE => apply_tree(&mut nodes, op.command(), *op),
-            category::STYLE => {
-                if op.command() == style::SET_DESIGN_TOKEN {
+            category::PARAMETER => {
+                if op.command() == parameter::SET_DESIGN_TOKEN {
                     // Global override: A = arenaRef (token path), B = valueType,
                     // C = value (for STRING, an arenaRef to the value string).
                     if let Some(path) = strings_str(strings, op.a()) {
@@ -759,14 +917,14 @@ fn apply_tree(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode) {
 
 fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings: &[u8]) {
     match command {
-        style::SET_TEXT => {
+        parameter::SET_TEXT => {
             if let Some(text) = strings_str(strings, op.b()) {
                 if let Some(node) = nodes.get_mut(&op.a()) {
                     node.text = Some(text);
                 }
             }
         }
-        style::SET_PROPERTY => {
+        parameter::SET_PROPERTY => {
             let property = (op.b() & 0xFFFF) as u16;
             if let Some(node) = nodes.get_mut(&op.a()) {
                 let vt = (op.b() >> 16) as u8;
@@ -785,7 +943,7 @@ fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings
                 }
             }
         }
-        style::SET_DATE => {
+        parameter::SET_DATE => {
             if let Some(node) = nodes.get_mut(&op.a()) {
                 // B = days since epoch (I32), C = millis of day (U32).
                 node.date = Some((op.b() as i32, op.c()));
@@ -836,7 +994,7 @@ impl HtmlRenderer {
     #[must_use]
     pub fn render_document(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
         let (nodes, tokens) = decode(opcodes, strings);
-        let body = self.render_node(&nodes, root);
+        let body = self.render_node(&nodes, root, None);
         // Token overrides render as their own `<style data-pathland-tokens>`
         // element AFTER the built-in block so their `:root` variables win the
         // cascade (same specificity, later wins) — matching the JS DOM client's
@@ -851,8 +1009,6 @@ impl HtmlRenderer {
             "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n\
              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
              <title>Pathland</title>\n\
-             <link rel=\"preconnect\" href=\"https://rsms.me/\">\n\
-             <link rel=\"stylesheet\" href=\"https://rsms.me/inter/inter.css\">\n\
              {}{}\n</head>\n<body>{body}</body>\n</html>\n",
             css::STYLE,
             token_style
@@ -866,17 +1022,22 @@ impl HtmlRenderer {
     #[must_use]
     pub fn render_fragment(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
         let (nodes, _) = decode(opcodes, strings);
-        self.render_node(&nodes, root)
+        self.render_node(&nodes, root, None)
     }
 
-    fn render_node(&self, nodes: &BTreeMap<u32, Node>, id: u32) -> String {
+    fn render_node(
+        &self,
+        nodes: &BTreeMap<u32, Node>,
+        id: u32,
+        parent_component: Option<u16>,
+    ) -> String {
         let Some(node) = nodes.get(&id) else {
             return String::new();
         };
         let mut children: String = node
             .children
             .iter()
-            .map(|&child| self.render_node(nodes, child))
+            .map(|&child| self.render_node(nodes, child, Some(node.component)))
             .collect();
         let mut data_id = format!(" data-pathland-id=\"{id}\"");
         data_id.push_str(&slot_attrs(node));
@@ -905,6 +1066,20 @@ impl HtmlRenderer {
         }
         data_id.push_str(&media_attr);
         let mut css = format!("{}{}", node.style_css(), node.border_style());
+        // Derived layout (LAYOUT.md), separate from the node's own css so
+        // components with hardcoded shells (e.g. DIVIDER) can append it without
+        // duplicating their base styles.
+        let mut derived = String::new();
+        // Cross-axis FILL: a child that is effectively FILL on its parent
+        // stack's cross axis stretches via `align-self:stretch` (fills the
+        // cross size even when the container's cross size is content-driven).
+        if let Some(parent) = parent_component {
+            if let Some(main_horizontal) = stack_main_horizontal(parent) {
+                if fills_axis(nodes, id, !main_horizontal, false) {
+                    derived.push_str("align-self:stretch;");
+                }
+            }
+        }
         // LINE_LIMIT truncation: a positive line limit clamps the text to N lines
         // (mirrors the DOM client's PROP_LINE_LIMIT application, classes.ts).
         let line_limit = node.u32_property(property_id::LINE_LIMIT, 0);
@@ -913,7 +1088,7 @@ impl HtmlRenderer {
                 "display:-webkit-box;-webkit-line-clamp:{line_limit};-webkit-box-orient:vertical;"
             ));
         }
-        let style = style_attr(&css);
+        let style = style_attr(&format!("{css}{derived}"));
         let event = event_attrs(node);
         let aria = aria_attrs(node);
         // A semantic role may retag a generic div/span shell (role_spec);
@@ -922,13 +1097,17 @@ impl HtmlRenderer {
         let semantic = role_spec::semantic_tag(kind, node.role_code());
 
         let element = match node.component {
-            component_type::VSTACK => wrap_stack(id, "column", semantic, node, &media_attr, &children, &css, &event, &aria),
-            component_type::HSTACK => wrap_stack(id, "row", semantic, node, &media_attr, &children, &css, &event, &aria),
+            component_type::VSTACK => {
+                wrap_stack(id, "column", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
+            }
+            component_type::HSTACK => {
+                wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
+            }
             component_type::LAZY_VSTACK => {
-                wrap_stack(id, "column", semantic, node, &media_attr, &children, &css, &event, &aria)
+                wrap_stack(id, "column", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
             }
             component_type::LAZY_HSTACK => {
-                wrap_stack(id, "row", semantic, node, &media_attr, &children, &css, &event, &aria)
+                wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
             }
             component_type::TEXT => {
                 // A TEXT's tag is resolved by typography + role: a heading
@@ -1128,9 +1307,11 @@ impl HtmlRenderer {
                     .unwrap_or_else(|| "rgba(0,0,0,0.2)".to_string());
                 // Layout-greedy on the cross axis (LAYOUT.md): the separator
                 // spans the stack's available cross size unless a size frame
-                // overrides it (SwiftUI `Divider()` semantics).
+                // overrides it (SwiftUI `Divider()` semantics). The derived css
+                // (e.g. cross-axis `align-self:stretch`) is appended so the
+                // divider participates in stack layout like any other child.
                 format!(
-                    "<div{data_id}{event}{aria} style=\"height:0;width:100%;border-top:{width}px solid {color};\"></div>"
+                    "<div{data_id}{event}{aria} style=\"height:0;width:100%;border-top:{width}px solid {color};{derived}\"></div>"
                 )
             }
             component_type::PROGRESS_VIEW => {
@@ -1166,36 +1347,182 @@ if indeterminate {
             }
             component_type::GRID | component_type::LAZY_VGRID | component_type::LAZY_HGRID => {
                 let tag = semantic.unwrap_or("div");
-                let cols = grid_columns(node);
-                let grid_css = grid_style(cols, node.component == component_type::LAZY_HGRID);
+                // Explicit rows (spec §GridRow): a grid's children are cells or
+                // `GRID_ROW`s; a `GRID_ROW`'s children are one row's cells.
+                let explicit_rows = node
+                    .children
+                    .iter()
+                    .any(|&c| nodes.get(&c).is_some_and(|n| n.component == component_type::GRID_ROW));
+                // The effective 1fr column count: the `GRID_TRACKS` token count, else
+                // `GRID_COLUMNS`, else the widest row when rows are explicit
+                // (a short row leaves trailing columns empty — never pulls the
+                // next row's cells forward).
+                let track_count = grid_tracks(node).map(|t| t.len() as u32);
+                let base_columns = grid_columns(node);
+                let effective_columns = if let Some(n) = track_count {
+                    Some(n)
+                } else if explicit_rows {
+                    let mut width = base_columns.map(|c| c as usize).unwrap_or(0);
+                    let mut run = 0usize;
+                    for &child in &node.children {
+                        if nodes.get(&child).is_some_and(|n| n.component == component_type::GRID_ROW) {
+                            width = width.max(nodes.get(&child).map(|n| n.children.len()).unwrap_or(0));
+                            run = 0;
+                        } else {
+                            run += 1;
+                            width = width.max(run);
+                        }
+                    }
+                    base_columns.or(Some((width.max(1)) as u32))
+                } else {
+                    base_columns
+                };
+                let grid_css = grid_style(node, effective_columns);
                 let combined = format!("{grid_css}{css}");
                 let grid_style = style_attr(&combined);
-                format!("<{tag}{data_id}{event}{aria}{grid_style}>{children}</{tag}>")
+                // Per-cell alignment (spec/PRIMITIVES.md §grid model): each cell
+                // keeps its own size (Fixed/Hug) and is positioned by the grid's
+                // ALIGNMENT on both axes; a `FILL`-sized cell (or a greedy
+                // filler like `COLOR`/`SCROLLVIEW`) stretches to fill its track.
+                let align = node.f32_property(property_id::ALIGNMENT, 0.0) as u8;
+                let pos_h = |stretch: bool| if stretch { "stretch" } else { align_h(align) };
+                let pos_v = |stretch: bool| if stretch { "stretch" } else { align_v(align) };
+                let cell_shell = |cell_html: String, row: usize, col: usize, cell: u32| {
+                    let placement = if explicit_rows {
+                        format!("grid-row:{};grid-column:{};", row + 1, col + 1)
+                    } else {
+                        String::new()
+                    };
+                    format!(
+                        "<div style=\"{placement}justify-self:{};align-self:{};\">{cell_html}</div>",
+                        pos_h(fills_axis(nodes, cell, true, false)),
+                        pos_v(fills_axis(nodes, cell, false, false)),
+                    )
+                };
+                let inner: String = if explicit_rows {
+                    // Flatten the explicit row structure into (row, col) cells,
+                    // keeping each GRID_ROW as a transparent `display:contents`
+                    // wrapper (its id hydrates the DOM client's registry).
+                    let columns = effective_columns.unwrap_or(1) as usize;
+                    let mut out = String::new();
+                    let mut row = 0usize;
+                    let mut col = 0usize;
+                    for &child in &node.children {
+                        let Some(cn) = nodes.get(&child) else { continue };
+                        if cn.component == component_type::GRID_ROW {
+                            // A GRID_ROW starts a new row: advance past an
+                            // in-progress bare-cell run (col > 0); a prior
+                            // GRID_ROW already advanced `row`.
+                            if col > 0 {
+                                row += 1;
+                            }
+                            col = 0;
+                            let mut cells = String::new();
+                            for &cell in &cn.children {
+                                let cell_html = self.render_node(nodes, cell, Some(node.component));
+                                if !cell_html.is_empty() {
+                                    cells.push_str(&cell_shell(cell_html, row, col, cell));
+                                }
+                                col += 1;
+                            }
+                            out.push_str(&format!(
+                                "<div data-pathland-id=\"{child}\" style=\"display:contents\">{cells}</div>"
+                            ));
+                            row += 1;
+                            col = 0;
+                        } else {
+                            if col >= columns {
+                                row += 1;
+                                col = 0;
+                            }
+                            let cell_html = self.render_node(nodes, child, Some(node.component));
+                            if !cell_html.is_empty() {
+                                out.push_str(&cell_shell(cell_html, row, col, child));
+                                col += 1;
+                            }
+                        }
+                    }
+                    out
+                } else {
+                    node.children
+                        .iter()
+                        .filter_map(|&child| {
+                            let cell_html = self.render_node(nodes, child, Some(node.component));
+                            if cell_html.is_empty() {
+                                None
+                            } else {
+                                Some(cell_shell(cell_html, 0, 0, child))
+                            }
+                        })
+                        .collect()
+                };
+                format!("<{tag}{data_id}{event}{aria}{grid_style}>{inner}</{tag}>")
             }
             component_type::SCROLLVIEW => {
                 let tag = semantic.unwrap_or("div");
                 // Layout-greedy on both axes (LAYOUT.md): a scroll region fills
                 // the available space (SwiftUI `ScrollView` semantics) unless a
-                // size frame overrides it.
+                // size frame overrides it. The **first child** is the content
+                // (spec/PRIMITIVES.md §ScrollView); additional children are not
+                // rendered.
                 let combined = format!("flex:1 1 auto;align-self:stretch;overflow:auto;{css}");
                 let scroll_style = style_attr(&combined);
-                format!("<{tag}{data_id}{event}{aria}{scroll_style}>{children}</{tag}>")
+                let content = node
+                    .children
+                    .first()
+                    .map(|&c| self.render_node(nodes, c, Some(node.component)))
+                    .unwrap_or_default();
+                format!("<{tag}{data_id}{event}{aria}{scroll_style}>{content}</{tag}>")
             }
             component_type::ZSTACK => {
                 let tag = semantic.unwrap_or("div");
+                // ZStack (SwiftUI `ZStack` / Compose `Box`): children overlap in
+                // one box. The container hugs to its largest child by default
+                // (grid `max-content` tracks); a Fixed/FILL frame sizes it
+                // exactly; a FILL child propagates (`100%`). Each child keeps
+                // its own size and is positioned by `ALIGNMENT` on both axes
+                // (spec/PRIMITIVES.md §ZStack).
+                let align = node.f32_property(property_id::ALIGNMENT, 0.0) as u8;
+                let pos_h = |stretch: bool| if stretch { "stretch" } else { align_h(align) };
+                let pos_v = |stretch: bool| if stretch { "stretch" } else { align_v(align) };
                 let inner: String = node
                     .children
                     .iter()
-                    .map(|&child| {
-                        let child_html = self.render_node(nodes, child);
+                    .filter_map(|&child| {
+                        let child_html = self.render_node(nodes, child, Some(node.component));
                         if child_html.is_empty() {
-                            String::new()
+                            None
                         } else {
-                            format!("<div style=\"position:absolute;inset:0\">{child_html}</div>")
+                            Some(format!(
+                                "<div style=\"grid-area:1/1;width:max-content;height:max-content;justify-self:{};align-self:{};\">{child_html}</div>",
+                                pos_h(fills_axis(nodes, child, true, false)),
+                                pos_v(fills_axis(nodes, child, false, false)),
+                            ))
                         }
                     })
                     .collect();
-                let combined = format!("position:relative;width:100%;height:100%;{css}");
+                // Container sizing: Hug → max-content, or `100%` on an axis a
+                // FILL child propagates; Fixed/FILL frames come from `css`.
+                let mut zcss = format!(
+                    "display:grid;grid-template-columns:1fr;grid-template-rows:1fr;justify-items:{};align-items:{};",
+                    align_h(align),
+                    align_v(align)
+                );
+                for (axis_h, prop, hug_css, fill_css) in [
+                    (true, property_id::WIDTH, "width:max-content;", "width:100%;"),
+                    (false, property_id::HEIGHT, "height:max-content;", "height:100%;"),
+                ] {
+                    let hint = node.properties.get(&prop).map(|b| f32::from_bits(*b));
+                    let hug = hint.is_none() || hint == Some(size::HUG_CONTENT);
+                    if hug {
+                        zcss.push_str(if fills_axis(nodes, id, axis_h, false) {
+                            fill_css
+                        } else {
+                            hug_css
+                        });
+                    }
+                }
+                let combined = format!("{zcss}{css}{derived}");
                 let zstyle = style_attr(&combined);
                 format!("<{tag}{data_id}{event}{aria}{zstyle}>{inner}</{tag}>")
             }
@@ -1254,7 +1581,7 @@ if indeterminate {
                         let sel = if i as u32 == selected { " selected" } else { "" };
                         // Each option carries the child node's id so the DOM
                         // client can hydrate/reconcile it against the child's
-                        // own TREE/STYLE deltas.
+                        // own TREE/PARAMETER deltas.
                         format!(
                             "<option data-pathland-id=\"{child}\" value=\"{i}\"{sel}>{}</option>",
                             escape(&label)
@@ -1332,14 +1659,46 @@ if indeterminate {
         )
     }
 
-/// Inline grid CSS: `display:grid` + `grid-template-columns` from the column count.
-fn grid_style(columns: Option<u32>, horizontal: bool) -> String {
-    let mut css = String::from("display:grid;");
-    if let Some(n) = columns {
-        css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
-    }
-    if horizontal {
-        css.push_str("grid-auto-flow:column;grid-auto-columns:1fr;");
+/// Inline grid CSS: `display:grid` + `justify-items`/`align-items` from the
+/// grid `ALIGNMENT` (cells position within their tracks; default Leading/start),
+/// plus the fixed track templates — a `GRID_TRACKS` spec (per-track sizes) or
+/// `columns` (GRID/LAZY_VGRID; the effective count) and `HEIGHT` rows
+/// (GRID/LAZY_HGRID) as equal `1fr` tracks. `FILL`/absent count = auto-fit (no
+/// template; `LAZY_HGRID` columns auto-flow).
+fn grid_style(node: &Node, columns: Option<u32>) -> String {
+    let align = node.f32_property(property_id::ALIGNMENT, 0.0) as u8;
+    let mut css = format!(
+        "display:grid;justify-items:{};align-items:{};",
+        align_h(align),
+        align_v(align)
+    );
+    let tracks_css = grid_tracks_css(node);
+    match node.component {
+        component_type::GRID => {
+            if let Some(t) = &tracks_css {
+                css.push_str(&format!("grid-template-columns:{t};"));
+            } else if let Some(n) = columns {
+                css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
+            }
+            if let Some(n) = grid_rows(node) {
+                css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
+            }
+        }
+        component_type::LAZY_HGRID => {
+            if let Some(t) = &tracks_css {
+                css.push_str(&format!("grid-template-rows:{t};"));
+            } else if let Some(n) = grid_rows(node) {
+                css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
+            }
+            css.push_str("grid-auto-flow:column;grid-auto-columns:1fr;");
+        }
+        _ => {
+            if let Some(t) = &tracks_css {
+                css.push_str(&format!("grid-template-columns:{t};"));
+            } else if let Some(n) = columns {
+                css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
+            }
+        }
     }
     css
 }
@@ -1424,7 +1783,7 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Hello");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 2, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 2, 0, 0));
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
@@ -1455,27 +1814,27 @@ mod tests {
         ));
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Hello");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         // border: width 2, opaque red, all edges
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::BORDER_WIDTH as u32,
             2.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::COLOR as u32) << 16) | property_id::BORDER_COLOR as u32,
             0xFFFF_0000,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::BORDER_EDGES as u32,
@@ -1507,18 +1866,18 @@ mod tests {
         ));
         strings.extend_from_slice(&(7u32).to_le_bytes());
         strings.extend_from_slice(b"Enabled");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::TOGGLE_STYLE as u32,
             0.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::SELECTED as u32,
@@ -1548,18 +1907,18 @@ mod tests {
         ));
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Email");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::TOGGLE_STYLE as u32,
             1.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::SELECTED as u32,
@@ -1590,18 +1949,18 @@ mod tests {
         ));
         strings.extend_from_slice(&(4u32).to_le_bytes());
         strings.extend_from_slice(b"Mute");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::TOGGLE_STYLE as u32,
             2.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::SELECTED as u32,
@@ -1633,26 +1992,26 @@ mod tests {
         ));
         strings.extend_from_slice(&(6u32).to_le_bytes());
         strings.extend_from_slice(b"Volume");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::MIN_VALUE as u32,
             0.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::MAX_VALUE as u32,
             1.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::VALUE as u32,
@@ -1685,13 +2044,13 @@ mod tests {
         // value (node text)
         strings.extend_from_slice(&(3u32).to_le_bytes());
         strings.extend_from_slice(b"Bob");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         // label (STRING property)
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Name:");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::LABEL as u32,
@@ -1701,8 +2060,8 @@ mod tests {
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Enter");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::PROMPT as u32,
@@ -1738,7 +2097,7 @@ mod tests {
         ));
         strings.extend_from_slice(&(5u32).to_le_bytes());
         strings.extend_from_slice(b"Hello");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
 
         let bytes = encode_frame(&opcodes, &strings);
         assert!(bytes.len() > 16);
@@ -1767,8 +2126,8 @@ mod tests {
         strings.extend_from_slice(&(15u32).to_le_bytes());
         strings.extend_from_slice(b"assets/logo.png");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::IMAGE_SOURCE as u32,
@@ -1791,8 +2150,8 @@ mod tests {
         strings.extend_from_slice(&(32u32).to_le_bytes());
         strings.extend_from_slice(b"/_pathland/assets/icons/home.svg");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::IMAGE_SOURCE as u32,
@@ -1801,16 +2160,16 @@ mod tests {
         strings.extend_from_slice(&(4u32).to_le_bytes());
         strings.extend_from_slice(b"Home");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::LABEL as u32,
             36,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::CONTENT_MODE as u32,
@@ -1821,8 +2180,8 @@ mod tests {
         strings.extend_from_slice(&(30u32).to_le_bytes());
         strings.extend_from_slice(b"https://example.com/sample.mp4");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::STRING as u32) << 16) | property_id::VIDEO_SOURCE as u32,
@@ -1832,8 +2191,8 @@ mod tests {
         strings.extend_from_slice(&(30u32).to_le_bytes());
         strings.extend_from_slice(b"https://example.com/sample.mp3");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             3,
             ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
@@ -1866,8 +2225,8 @@ mod tests {
         strings.extend_from_slice(&(29u32).to_le_bytes());
         strings.extend_from_slice(b"https://example.com/track.mp3");
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
@@ -1875,24 +2234,24 @@ mod tests {
         ));
         // The app-bound media control properties ride the node.
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::PLAYBACK_STATE as u32,
             1,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::MEDIA_POSITION as u32,
             12.5f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::MEDIA_VOLUME as u32,
@@ -1929,11 +2288,11 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
-            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32,
             2.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
@@ -1942,6 +2301,163 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("grid-template-columns:repeat(2,1fr)"), "grid inline");
+        assert!(!html.contains("width:2px"), "GRID_COLUMNS is a count, never a pixel box: {html}");
+        assert!(html.contains("justify-items:start;align-items:start"), "default cell alignment");
+        assert!(html.contains("justify-self:start;align-self:start;"), "cell wrapper positions per ALIGNMENT");
+    }
+
+    #[test]
+    fn grid_rows_and_lazy_hgrid_tracks() {
+        use pathland_core::value_type;
+        use pathland_core::size;
+
+        let build = |component: u16, columns: f32, rows: f32| {
+            let mut opcodes = Vec::new();
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component as u32, 0));
+            if columns != pathland_core::size::HUG_CONTENT {
+                opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+                    ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32, columns.to_bits()));
+            }
+            if rows != pathland_core::size::HUG_CONTENT {
+                opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+                    ((value_type::F32 as u32) << 16) | property_id::GRID_ROWS as u32, rows.to_bits()));
+            }
+            let renderer = HtmlRenderer::new();
+            renderer.render_document(&opcodes, &[], 1)
+        };
+
+        // GRID with both counts: columns from GRID_COLUMNS, rows from GRID_ROWS.
+        let g = build(component_type::GRID, 2.0, 3.0);
+        assert!(g.contains("grid-template-columns:repeat(2,1fr)"), "grid columns: {g}");
+        assert!(g.contains("grid-template-rows:repeat(3,1fr)"), "grid rows: {g}");
+        assert!(!g.contains("width:2px") && !g.contains("height:3px"), "counts never pixels: {g}");
+
+        // LAZY_HGRID: the fixed track is GRID_ROWS; columns auto-flow; GRID_COLUMNS is ignored.
+        let h = build(component_type::LAZY_HGRID, 2.0, 3.0);
+        assert!(h.contains("grid-template-rows:repeat(3,1fr)"), "hgrid rows: {h}");
+        assert!(h.contains("grid-auto-flow:column;grid-auto-columns:1fr"), "hgrid auto columns: {h}");
+        assert!(!h.contains("grid-template-columns:repeat(2,1fr)"), "hgrid ignores GRID_COLUMNS: {h}");
+
+        // FILL count = auto-fit (no template); a FILL WIDTH frame still expands (100%).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+            ((value_type::F32 as u32) << 16) | property_id::GRID_COLUMNS as u32, size::FILL.to_bits()));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32, size::FILL.to_bits()));
+        let renderer = HtmlRenderer::new();
+        let f = renderer.render_document(&opcodes, &[], 1);
+        assert!(!f.contains("grid-template-columns:repeat"), "FILL count = auto-fit: {f}");
+        assert!(f.contains("width:100%"), "FILL WIDTH frame expands: {f}");
+    }
+
+    #[test]
+    fn grid_rows_flatten_explicit_rows() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
+        // Row 0: a 2-cell GRID_ROW.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::GRID_ROW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 4, component_type::TEXT as u32, 0));
+        // Row 1: a short 1-cell GRID_ROW.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 5, component_type::GRID_ROW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 6, component_type::TEXT as u32, 0));
+        // A bare cell auto-flows into row 2.
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 7, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 3, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 4, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 5, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 5, 6, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 7, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        // The widest row (2 cells) defines the equal-1fr columns.
+        assert!(html.contains("grid-template-columns:repeat(2,1fr)"), "widest row defines columns: {html}");
+        // Explicit placements: row 0 = [A,B], row 1 = [C], row 2 = [D].
+        assert!(html.contains("grid-row:1;grid-column:1;"), "cell at (0,0): {html}");
+        assert!(html.contains("grid-row:1;grid-column:2;"), "cell at (0,1): {html}");
+        assert!(html.contains("grid-row:2;grid-column:1;"), "short row's cell at (1,0): {html}");
+        assert!(html.contains("grid-row:3;grid-column:1;"), "bare cell auto-flows to row 2: {html}");
+        // The GRID_ROW nodes themselves render nothing.
+        assert!(!html.contains("GRID_ROW"), "GRID_ROW is structural: {html}");
+    }
+
+    #[test]
+    fn grid_tracks_render_per_track_template() {
+        use pathland_core::value_type;
+
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&(25u32).to_le_bytes());
+        strings.extend_from_slice(b"flex,fixed:80,adaptive:50");
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+            ((value_type::STRING as u32) << 16) | property_id::GRID_TRACKS as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &strings, 1);
+        assert!(html.contains("grid-template-columns:1fr 80px minmax(50px,1fr);"), "track spec: {html}");
+        assert!(!html.contains("grid-template-columns:repeat"), "tracks override the count: {html}");
+    }
+
+    #[test]
+    fn zstack_2d_alignment_splits_h_and_v() {
+        use pathland_core::value_type;
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::ZSTACK as u32, 0));
+        // topTrailing = 7 → horizontal end, vertical start.
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+            ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32, 7.0f32.to_bits()));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("justify-self:end;align-self:start;"), "topTrailing splits h/v: {html}");
+    }
+
+    #[test]
+    fn grid_cells_stretch_when_fill_or_greedy() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::GRID as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 2,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32, pathland_core::size::FILL.to_bits()));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::COLOR as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 4, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 4, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        // A FILL-width cell stretches horizontally but keeps content height
+        // (start vertically); a greedy COLOR stretches on both axes; a Hug cell
+        // keeps its size and is positioned at start on both axes.
+        assert!(html.contains("justify-self:stretch;align-self:stretch;"), "greedy COLOR stretches: {html}");
+        assert!(html.contains("justify-self:stretch;align-self:start;"), "FILL-width cell: {html}");
+        assert!(html.contains("justify-self:start;align-self:start;"), "Hug cell positioned: {html}");
+    }
+
+    #[test]
+    fn scrollview_renders_only_the_first_child() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SCROLLVIEW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("data-pathland-id=\"2\""), "first child is the content: {html}");
+        assert!(!html.contains("data-pathland-id=\"3\""), "extra children not rendered: {html}");
     }
 
     #[test]
@@ -1959,8 +2475,10 @@ mod tests {
         assert!(scroll.contains("overflow:auto"), "scrollview inline");
         assert!(scroll.contains("<span data-pathland-id=\"2\"></span>"));
         let zstack = renderer.render_document(&opcodes, &[], 3);
-        assert!(zstack.contains("position:relative"), "zstack inline");
-        assert!(zstack.contains("position:absolute;inset:0"), "zstack child inline");
+        assert!(zstack.contains("display:grid"), "zstack grid inline");
+        assert!(zstack.contains("width:max-content"), "zstack hugs to its largest child");
+        assert!(zstack.contains("grid-area:1/1"), "zstack child overlaps in one cell");
+        assert!(zstack.contains("justify-self:start"), "zstack child positioned per ALIGNMENT");
     }
 
     #[test]
@@ -1970,8 +2488,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::PROGRESS_VIEW as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::PROGRESS as u32,
@@ -1979,8 +2497,8 @@ mod tests {
         ));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::PROGRESS_VIEW as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::U8 as u32) << 16) | property_id::IS_INDETERMINATE as u32,
@@ -1997,7 +2515,7 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::DATE_PICKER as u32, 0));
         // days=19723 → 2024-01-01; millis of day = 0.
-        opcodes.push(Opcode::new(category::STYLE, style::SET_DATE, 0, 1, 19_723, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_DATE, 0, 1, 19_723, 0));
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
@@ -2014,11 +2532,11 @@ mod tests {
         strings.extend_from_slice(&(3u32).to_le_bytes());
         strings.extend_from_slice(b"Red");
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 2, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 2, 0, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::SELECTION as u32,
@@ -2038,8 +2556,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::COLOR_PICKER as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::COLOR as u32) << 16) | property_id::COLOR_VALUE as u32,
@@ -2047,8 +2565,8 @@ mod tests {
         ));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::COLOR as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::COLOR as u32) << 16) | property_id::COLOR as u32,
@@ -2069,7 +2587,7 @@ mod tests {
         let mut strings = Vec::new();
         strings.extend_from_slice(&(1u32).to_le_bytes());
         strings.extend_from_slice(b"A");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 2, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 2, 0, 0));
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
@@ -2084,8 +2602,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::LINE_LIMIT as u32,
@@ -2094,7 +2612,7 @@ mod tests {
         let mut strings = Vec::new();
         strings.extend_from_slice(&(2u32).to_le_bytes());
         strings.extend_from_slice(b"Hi");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
 
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
         assert!(
@@ -2104,7 +2622,7 @@ mod tests {
         // 0 = unlimited: no clamp style (the unset case above is unchanged).
         let mut no_limit = Vec::new();
         no_limit.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
-        no_limit.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        no_limit.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
         assert!(
             !HtmlRenderer::new()
                 .render_document(&no_limit, &strings, 1)
@@ -2114,30 +2632,101 @@ mod tests {
     }
 
     #[test]
+    fn content_fitting_contract_c7_c10() {
+        use pathland_core::value_type;
+        // C7 (wrap at a Fixed width), C8 (LINE_LIMIT → line-clamp tail ellipsis),
+        // C9 (TRUNCATION_MODE positions the ellipsis under a clamp, never forces
+        // single-line by itself), C10 (CLIPS_TO_BOUNDS → overflow:hidden).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        // Fixed width → wraps at the box (C7).
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            120.0f32.to_bits(),
+        ));
+        // LINE_LIMIT=2 → clamp to 2 lines with a tail ellipsis (C8).
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::U32 as u32) << 16) | property_id::LINE_LIMIT as u32,
+            2,
+        ));
+        // TRUNCATION_MODE=Head → still a 2-line clamp, no nowrap/ellipsis CSS
+        // (CSS line-clamp tail-ellipsizes; head/middle are renderer-owned — C9).
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::TRUNCATION_MODE as u32,
+            0.0f32.to_bits(),
+        ));
+        // CLIPS_TO_BOUNDS=1 → overflow:hidden (C10).
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::U8 as u32) << 16) | property_id::CLIPS_TO_BOUNDS as u32,
+            1,
+        ));
+        let html = HtmlRenderer::new().render_document(&opcodes, &[], 1);
+        assert!(html.contains("width:120px"), "C7 fixed-width wraps: {html}");
+        assert!(html.contains("line-clamp:2"), "C8 LINE_LIMIT clamps: {html}");
+        assert!(html.contains("overflow:hidden"), "C10 clips to bounds: {html}");
+        assert!(!html.contains("white-space:nowrap"), "C9 no forced single line");
+        assert!(!html.contains("text-overflow"), "C9 no standalone ellipsis");
+
+        // TRUNCATION_MODE ALONE (no LINE_LIMIT) has no observable effect.
+        let mut trunc_alone = Vec::new();
+        trunc_alone.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
+        trunc_alone.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::TRUNCATION_MODE as u32,
+            0.0f32.to_bits(),
+        ));
+        let html = HtmlRenderer::new().render_document(&trunc_alone, &[], 1);
+        assert!(!html.contains("line-clamp"), "TRUNCATION alone does not clamp");
+        assert!(!html.contains("white-space:nowrap"), "TRUNCATION alone does not force single-line");
+        assert!(!html.contains("text-overflow"), "TRUNCATION alone emits no ellipsis");
+    }
+
+    #[test]
     fn event_attrs_and_aria_are_emitted() {
         use pathland_core::value_type;
 
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::BUTTON as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::EVENT_LISTENERS as u32,
             pathland_core::listener::POINTER_DOWN | pathland_core::listener::POINTER_UP,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U32 as u32) << 16) | property_id::ACTION_ID as u32,
             42,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::ENABLED as u32,
@@ -2158,8 +2747,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
@@ -2191,8 +2780,8 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
@@ -2214,16 +2803,16 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::IMAGE as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
             220.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::HEIGHT as u32,
@@ -2256,14 +2845,45 @@ mod tests {
     }
 
     #[test]
+    fn fill_propagates_through_a_hug_stack() {
+        use pathland_core::{size, value_type};
+        // A Hug VStack with a FILL-width child: the child stretches on the
+        // cross axis (`align-self:stretch`) and the stack itself becomes
+        // full-width (`width:100%` propagation) — SwiftUI/Compose parity.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::BUTTON as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
+            size::FILL.to_bits(),
+        ));
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("width:100%"), "fill propagation: {}", html);
+        assert!(html.contains("align-self:stretch"), "cross-axis fill: {}", html);
+        // A Hug stack with no FILL child does NOT propagate.
+        let mut hug = Vec::new();
+        hug.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        hug.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        hug.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        let html_hug = renderer.render_document(&hug, &[], 1);
+        assert!(!html_hug.contains("width:100%"), "no propagation: {}", html_hug);
+    }
+
+    #[test]
     fn text_field_secure_uses_password_input() {
         use pathland_core::value_type;
 
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT_FIELD as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::IS_SECURE as u32,
@@ -2282,24 +2902,24 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::COLOR as u32) << 16) | property_id::COLOR as u32,
             0xFF11_2233,
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::FONT_SIZE as u32,
             18.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::U8 as u32) << 16) | property_id::VISIBLE as u32,
@@ -2320,16 +2940,16 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::WIDTH as u32,
             size::FILL.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::HEIGHT as u32,
@@ -2349,16 +2969,16 @@ mod tests {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::SPACING as u32,
             4.0f32.to_bits(),
         ));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
@@ -2404,10 +3024,11 @@ mod tests {
         assert!(css.contains(".pathland-gauge"), "gauge component");
         // Dark mode media query.
         assert!(css.contains("prefers-color-scheme: dark"), "dark mode");
-        // Inter font loading (rsms.me CDN) + variable-font enhancement.
+        // System font stack (no external font loading; the family resolves to
+        // the platform's UI font).
         assert!(css.contains("font-feature-settings: 'liga' 1, 'calt' 1"), "Chrome ligature fix");
-        assert!(css.contains("font-variation-settings: normal"), "InterVariable enhancement");
-        assert!(css.contains("'InterVariable', 'Inter'"), "variable font preferred when supported");
+        assert!(css.contains("--pl-font-body-family: system-ui, -apple-system"), "system font stack");
+        assert!(!css.contains("Inter"), "no bundled/external font family");
         // Document background + input field styling (Tailwind-style inset outline).
         assert!(css.contains("--pl-color-background"), "page background token");
         assert!(css.contains("color-scheme: light dark"), "native form controls follow the theme");
@@ -2504,15 +3125,19 @@ mod tests {
     }
 
     #[test]
-    fn document_head_loads_inter_from_the_rsms_cdn() {
+    fn document_head_loads_no_external_fonts() {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&[], &[], 0);
-        assert!(html.contains("<link rel=\"preconnect\" href=\"https://rsms.me/\">"), "preconnect to the font CDN");
-        assert!(html.contains("<link rel=\"stylesheet\" href=\"https://rsms.me/inter/inter.css\">"), "Inter stylesheet link");
-        // The font links must come before the built-in <style> block.
-        let preconnect = html.find("rsms.me/inter/inter.css").unwrap();
+        assert!(!html.contains("rsms.me"), "no font CDN link: {html}");
+        assert!(!html.contains("preconnect"), "no preconnect: {html}");
+        assert!(
+            !html.contains("<link rel=\"stylesheet\""),
+            "no external stylesheets (fonts are system-native): {html}"
+        );
+        // The built-in <style> block still arrives before the body.
         let style = html.find("<style>").unwrap();
-        assert!(preconnect < style, "Inter CSS loads before the design-system style block");
+        let body = html.find("<body>").unwrap();
+        assert!(style < body, "style block before body");
     }
 
     #[test]
@@ -2523,8 +3148,8 @@ mod tests {
         let mut strings = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             1,
             ((value_type::F32 as u32) << 16) | property_id::SPACING as u32,
@@ -2533,8 +3158,8 @@ mod tests {
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
         opcodes.push(Opcode::new(
-            category::STYLE,
-            style::SET_PROPERTY,
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
             0,
             2,
             ((value_type::F32 as u32) << 16) | property_id::PADDING as u32,
@@ -2542,7 +3167,7 @@ mod tests {
         ));
         strings.extend_from_slice(&(2u32).to_le_bytes());
         strings.extend_from_slice(b"Hi");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 2, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 2, 0, 0));
 
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
         assert!(html.contains("flex-direction:column"), "stack inline flex");
@@ -2566,8 +3191,8 @@ mod tests {
             (property_id::ROTATION_DEGREES, value_type::F32, 90.0f32.to_bits()),
         ] {
             opcodes.push(Opcode::new(
-                category::STYLE,
-                style::SET_PROPERTY,
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
                 0,
                 1,
                 ((vt as u32) << 16) | prop as u32,
@@ -2576,7 +3201,7 @@ mod tests {
         }
         strings.extend_from_slice(&(2u32).to_le_bytes());
         strings.extend_from_slice(b"Hi");
-        opcodes.push(Opcode::new(category::STYLE, style::SET_TEXT, 0, 1, 0, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
 
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
         // Arbitrary numbers inline; enum-derived stays a Tailwind class.
@@ -2602,10 +3227,10 @@ mod tests {
         let strings = string_section(&["color.primary", "dark.color.primary"]);
         let dark_offset = (4 + 13) as u32; // entry 0: [len=13]"color.primary"
         let opcodes = vec![
-            Opcode::new(category::STYLE, style::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
+            Opcode::new(category::PARAMETER, parameter::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
             Opcode::new(
-                category::STYLE,
-                style::SET_DESIGN_TOKEN,
+                category::PARAMETER,
+                parameter::SET_DESIGN_TOKEN,
                 0,
                 dark_offset,
                 value_type::COLOR as u32,
@@ -2627,10 +3252,10 @@ mod tests {
         let strings = string_section(&["color.primary", "dark.color.primary"]);
         let dark_offset = (4 + 13) as u32; // entry 0: [len=13]"color.primary"
         let opcodes = vec![
-            Opcode::new(category::STYLE, style::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
+            Opcode::new(category::PARAMETER, parameter::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
             Opcode::new(
-                category::STYLE,
-                style::SET_DESIGN_TOKEN,
+                category::PARAMETER,
+                parameter::SET_DESIGN_TOKEN,
                 0,
                 dark_offset,
                 value_type::COLOR as u32,
@@ -2665,8 +3290,8 @@ mod tests {
     fn set_design_token_registers_a_length_token_with_px() {
         let strings = string_section(&["space.base"]);
         let opcodes = vec![Opcode::new(
-            category::STYLE,
-            style::SET_DESIGN_TOKEN,
+            category::PARAMETER,
+            parameter::SET_DESIGN_TOKEN,
             0,
             0,
             value_type::F32 as u32,
@@ -2682,8 +3307,8 @@ mod tests {
         // value "Inter" at offset 20 (conformance vector 20 wire shape).
         let strings = string_section(&["font.body.family", "Inter"]);
         let opcodes = vec![Opcode::new(
-            category::STYLE,
-            style::SET_DESIGN_TOKEN,
+            category::PARAMETER,
+            parameter::SET_DESIGN_TOKEN,
             0,
             0,
             value_type::STRING as u32,
@@ -2699,8 +3324,8 @@ mod tests {
         let opcodes = vec![
             Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
             Opcode::new(
-                category::STYLE,
-                style::SET_PROPERTY,
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
                 0,
                 1,
                 ((value_type::DESIGN_TOKEN as u32) << 16) | property_id::COLOR as u32,
@@ -2717,8 +3342,8 @@ mod tests {
         let opcodes = vec![
             Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0),
             Opcode::new(
-                category::STYLE,
-                style::SET_PROPERTY,
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
                 0,
                 1,
                 ((value_type::DESIGN_TOKEN as u32) << 16) | property_id::SPACING as u32,

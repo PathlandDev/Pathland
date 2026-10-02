@@ -39,7 +39,7 @@ class RouterTest {
 
     private static String lastText(Frame frame) {
         Opcode text = frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE && o.command() == Commands.Style.SET_TEXT)
+                .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_TEXT)
                 .reduce((a, b) -> b)
                 .orElseThrow();
         return frame.stringAt(text.b());
@@ -54,8 +54,8 @@ class RouterTest {
     /** The last NAV_DEPTH SET_PROPERTY value in a frame (the current back-stack depth). */
     private static int lastNavDepth(Frame frame) {
         return frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE
-                        && o.command() == Commands.Style.SET_PROPERTY
+                .filter(o -> o.category() == Categories.PARAMETER
+                        && o.command() == Commands.Parameter.SET_PROPERTY
                         && (o.b() & 0xFFFF) == Properties.NAV_DEPTH)
                 .reduce((a, b) -> b)
                 .orElseThrow().c();
@@ -64,8 +64,8 @@ class RouterTest {
     /** The NAV_CHROME enum code in a frame (F32 bits; PlatformDefault=0, Custom=1). */
     private static float lastNavChrome(Frame frame) {
         return Float.intBitsToFloat(frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE
-                        && o.command() == Commands.Style.SET_PROPERTY
+                .filter(o -> o.category() == Categories.PARAMETER
+                        && o.command() == Commands.Parameter.SET_PROPERTY
                         && (o.b() & 0xFFFF) == Properties.NAV_CHROME)
                 .findFirst().orElseThrow().c());
     }
@@ -114,8 +114,8 @@ class RouterTest {
 
         Frame frame = sink.frame();
         Opcode route = frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE
-                        && o.command() == Commands.Style.SET_PROPERTY
+                .filter(o -> o.category() == Categories.PARAMETER
+                        && o.command() == Commands.Parameter.SET_PROPERTY
                         && (o.b() & 0xFFFF) == Properties.ROUTE)
                 .findFirst().orElseThrow();
         assertEquals(ValueTypes.STRING, (route.b() >>> 16) & 0xFF, "ROUTE is a STRING property");
@@ -133,8 +133,8 @@ class RouterTest {
         Frame frame = sink.frame();
         assertEquals("Users", lastText(frame), "the host-seeded initial route rendered");
         Opcode route = frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE
-                        && o.command() == Commands.Style.SET_PROPERTY
+                .filter(o -> o.category() == Categories.PARAMETER
+                        && o.command() == Commands.Parameter.SET_PROPERTY
                         && (o.b() & 0xFFFF) == Properties.ROUTE)
                 .findFirst().orElseThrow();
         assertEquals("/users", frame.stringAt(route.c()));
@@ -151,8 +151,8 @@ class RouterTest {
         Frame frame = sink.frame();
         assertEquals("Home", lastText(frame), "a failing guard on the initial URL redirects");
         Opcode route = frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE
-                        && o.command() == Commands.Style.SET_PROPERTY
+                .filter(o -> o.category() == Categories.PARAMETER
+                        && o.command() == Commands.Parameter.SET_PROPERTY
                         && (o.b() & 0xFFFF) == Properties.ROUTE)
                 .findFirst().orElseThrow();
         assertEquals("/", frame.stringAt(route.c()), "ROUTE carries the redirect target");
@@ -168,17 +168,17 @@ class RouterTest {
         Frame delta = sink.frame();
 
         // Structural swap (VSTACK home -> VSTACK users; the text child differs) plus ROUTE.
-        assertTrue(countOps(delta, Categories.STYLE, Commands.Style.SET_PROPERTY) >= 1);
+        assertTrue(countOps(delta, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 1);
         boolean sawRoute = false;
         for (Opcode op : delta.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == Properties.ROUTE) {
                 assertEquals("/users", delta.stringAt(op.c()));
                 sawRoute = true;
             }
         }
         assertTrue(sawRoute, "navigating re-emits the ROUTE property");
-        assertTrue(countOps(delta, Categories.STYLE, Commands.Style.SET_TEXT) >= 1,
+        assertTrue(countOps(delta, Categories.PARAMETER, Commands.Parameter.SET_TEXT) >= 1,
                 "the destination text is re-emitted");
     }
 
@@ -266,7 +266,7 @@ class RouterTest {
         Frame delta = sink.frame();
         boolean sawUser = false;
         for (Opcode op : delta.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT
                     && "User 42".equals(delta.stringAt(op.b()))) {
                 sawUser = true;
             }
@@ -293,7 +293,7 @@ class RouterTest {
         Frame delta = sink.frame();
         boolean sawNotFound = false;
         for (Opcode op : delta.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT
                     && "Not Found".equals(delta.stringAt(op.b()))) {
                 sawNotFound = true;
             }

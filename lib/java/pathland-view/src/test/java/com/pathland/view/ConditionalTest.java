@@ -51,8 +51,8 @@ class ConditionalTest {
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.DELETE_NODE), "old node deleted");
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.CREATE_NODE), "new node created");
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.INSERT_CHILD), "new child inserted");
-        assertEquals(1, countOps(delta, Categories.STYLE, Commands.Style.SET_TEXT), "new button label");
-        assertTrue(countOps(delta, Categories.STYLE, Commands.Style.SET_PROPERTY) >= 1,
+        assertEquals(1, countOps(delta, Categories.PARAMETER, Commands.Parameter.SET_TEXT), "new button label");
+        assertTrue(countOps(delta, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 1,
                 "button declares EVENT_LISTENERS");
 
         // The live routing map now routes the button's tap (structural reconcile updates it).
@@ -83,8 +83,8 @@ class ConditionalTest {
         Frame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "same component, changed text -> one SET_TEXT");
         Opcode only = delta.opcodes().get(0);
-        assertEquals(Categories.STYLE, only.category());
-        assertEquals(Commands.Style.SET_TEXT, only.command());
+        assertEquals(Categories.PARAMETER, only.category());
+        assertEquals(Commands.Parameter.SET_TEXT, only.command());
         assertEquals("other", delta.stringAt(only.b()));
     }
 
@@ -100,9 +100,9 @@ class ConditionalTest {
         emitter.mount(root, Environment.DEFAULT);
 
         Frame initial = sink.frame();
-        assertEquals(1, countOps(initial, Categories.STYLE, Commands.Style.SET_TEXT));
+        assertEquals(1, countOps(initial, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
         Opcode text = initial.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE && o.command() == Commands.Style.SET_TEXT)
+                .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_TEXT)
                 .findFirst().orElseThrow();
         assertEquals("Users", initial.stringAt(text.b()));
 
@@ -129,7 +129,7 @@ class ConditionalTest {
         Frame refill = sink.frame();
         assertEquals(1, countOps(refill, Categories.TREE, Commands.Tree.CREATE_NODE));
         assertEquals(1, countOps(refill, Categories.TREE, Commands.Tree.INSERT_CHILD));
-        assertEquals(1, countOps(refill, Categories.STYLE, Commands.Style.SET_TEXT));
+        assertEquals(1, countOps(refill, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
     }
 
     @Test
@@ -145,7 +145,7 @@ class ConditionalTest {
         flag.set(false);
         Frame inner = sink.frame();
         assertEquals(1, inner.opcodes().size());
-        assertEquals(Commands.Style.SET_TEXT, inner.opcodes().get(0).command());
+        assertEquals(Commands.Parameter.SET_TEXT, inner.opcodes().get(0).command());
 
         // Outer swap replaces the whole inner slot subtree (VSTACK -> TEXT): the inner slot's
         // structural effect and bindings must be destroyed, not leaked. DELETE_NODE covers the
@@ -156,7 +156,7 @@ class ConditionalTest {
         assertEquals(1, countOps(outer, Categories.TREE, Commands.Tree.DELETE_NODE),
                 "the inner slot node is deleted (DELETE_NODE covers its subtree)");
         assertEquals(1, countOps(outer, Categories.TREE, Commands.Tree.CREATE_NODE));
-        assertEquals(1, countOps(outer, Categories.STYLE, Commands.Style.SET_TEXT));
+        assertEquals(1, countOps(outer, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
 
         // If the inner structural effect leaked, mutating `flag` would now emit against a
         // deleted node. It must not.
@@ -180,8 +180,8 @@ class ConditionalTest {
         Frame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "reactive text inside a branch is one SET_TEXT");
         Opcode only = delta.opcodes().get(0);
-        assertEquals(Categories.STYLE, only.category());
-        assertEquals(Commands.Style.SET_TEXT, only.command());
+        assertEquals(Categories.PARAMETER, only.category());
+        assertEquals(Commands.Parameter.SET_TEXT, only.command());
         assertEquals("Hello", delta.stringAt(only.b()));
     }
 
@@ -211,7 +211,7 @@ class ConditionalTest {
 
     private static String lastText(Frame frame) {
         Opcode text = frame.opcodes().stream()
-                .filter(o -> o.category() == Categories.STYLE && o.command() == Commands.Style.SET_TEXT)
+                .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_TEXT)
                 .reduce((a, b) -> b)
                 .orElseThrow();
         return frame.stringAt(text.b());

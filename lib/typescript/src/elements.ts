@@ -12,6 +12,7 @@ import {
   COMPONENT_DIVIDER,
   COMPONENT_GAUGE,
   COMPONENT_GRID,
+  COMPONENT_GRID_ROW,
   COMPONENT_HSTACK,
   COMPONENT_IMAGE,
   COMPONENT_LAZY_HGRID,
@@ -45,10 +46,17 @@ export function createElement(component: number): Node {
     case COMPONENT_LAZY_HSTACK:
       return flexBox("row");
     case COMPONENT_ZSTACK: {
+      // ZStack (SwiftUI ZStack / Compose Box): an overlapping grid — children
+      // share one cell (`grid-area:1/1`) and are positioned per ALIGNMENT
+      // (mirrors the Rust SSR renderer). The container's size (hug-to-largest-
+      // child / Fixed / FILL / fill-propagation) is resolved by the layout pass.
       const el = document.createElement("div");
-      el.style.position = "relative";
-      el.style.width = "100%";
-      el.style.height = "100%";
+      el.style.display = "grid";
+      el.style.gridTemplateColumns = "1fr";
+      el.style.gridTemplateRows = "1fr";
+      // Position children on both axes per the ZSTACK ALIGNMENT (default start).
+      el.style.justifyItems = "start";
+      el.style.alignItems = "start";
       return el;
     }
     case COMPONENT_GRID:
@@ -56,12 +64,25 @@ export function createElement(component: number): Node {
     case COMPONENT_LAZY_HGRID: {
       const el = document.createElement("div");
       el.style.display = "grid";
+      // Cells keep their size and position within their tracks (spec §grid
+      // model); `justify-items`/`align-items` come from the grid ALIGNMENT.
+      el.style.justifyItems = "start";
+      el.style.alignItems = "start";
       // Lazy horizontal grids flow into auto columns (mirrors the Rust SSR
       // renderer's `grid-auto-flow:column;grid-auto-columns:1fr`).
       if (component === COMPONENT_LAZY_HGRID) {
         el.style.gridAutoFlow = "column";
         el.style.gridAutoColumns = "1fr";
       }
+      return el;
+    }
+    case COMPONENT_GRID_ROW: {
+      // A grid's explicit row grouping (spec §GridRow): transparent
+      // (`display:contents`) — its cell children participate in the parent
+      // GRID's layout (mirrors the Rust SSR renderer). Renders nothing outside
+      // a GRID.
+      const el = document.createElement("div");
+      el.style.display = "contents";
       return el;
     }
     case COMPONENT_SCROLLVIEW: {

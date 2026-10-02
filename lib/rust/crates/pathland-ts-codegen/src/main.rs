@@ -11,7 +11,7 @@
 //! same maps the HTML renderers implement.
 
 use pathland_core::{
-    category, component_type, environment, event, flag, listener, meta, property_id, role, style,
+    category, component_type, environment, event, flag, listener, meta, parameter, property_id, role,
     text_style, tree, value_type,
 };
 use pathland_render_html::{role_spec, token_spec};
@@ -56,7 +56,19 @@ fn write_consts(out: &mut String, prefix: &str, items: &[(&str, String)]) {
 /// (These codes are protocol-semantic and have no `pathland_core` consts yet.)
 fn enum_codes() -> Vec<(&'static str, Vec<(&'static str, u32)>)> {
     vec![
-        ("ALIGN_", vec![("LEADING", 0), ("CENTER", 1), ("TRAILING", 2), ("FILL", 3)]),
+        ("ALIGN_", vec![
+            ("LEADING", 0),
+            ("CENTER", 1),
+            ("TRAILING", 2),
+            ("TOP_LEADING", 0),
+            ("BOTTOM_TRAILING", 2),
+            ("TOP_CENTER", 3),
+            ("BOTTOM_CENTER", 4),
+            ("CENTER_LEADING", 5),
+            ("CENTER_TRAILING", 6),
+            ("TOP_TRAILING", 7),
+            ("BOTTOM_LEADING", 8),
+        ]),
         (
             "SHAPE_",
             vec![
@@ -133,7 +145,7 @@ pub fn emit_constants_ts() -> String {
     out.push_str("\n// Categories\n");
     write_consts(&mut out, "CAT_", &[
         ("TREE", fmt_u8(category::TREE)),
-        ("STYLE", fmt_u8(category::STYLE)),
+        ("PARAMETER", fmt_u8(category::PARAMETER)),
         ("EVENT", fmt_u8(category::EVENT)),
         ("META", fmt_u8(category::META)),
     ]);
@@ -145,12 +157,12 @@ pub fn emit_constants_ts() -> String {
         ("REMOVE_CHILD", fmt_u8(tree::REMOVE_CHILD)),
         ("MOVE_CHILD", fmt_u8(tree::MOVE_CHILD)),
     ]);
-    out.push_str("\n// STYLE commands\n");
+    out.push_str("\n// PARAMETER commands\n");
     write_consts(&mut out, "CMD_", &[
-        ("SET_PROPERTY", fmt_u8(style::SET_PROPERTY)),
-        ("SET_DESIGN_TOKEN", fmt_u8(style::SET_DESIGN_TOKEN)),
-        ("SET_TEXT", fmt_u8(style::SET_TEXT)),
-        ("SET_DATE", fmt_u8(style::SET_DATE)),
+        ("SET_PROPERTY", fmt_u8(parameter::SET_PROPERTY)),
+        ("SET_DESIGN_TOKEN", fmt_u8(parameter::SET_DESIGN_TOKEN)),
+        ("SET_TEXT", fmt_u8(parameter::SET_TEXT)),
+        ("SET_DATE", fmt_u8(parameter::SET_DATE)),
     ]);
     out.push_str("\n// META commands\n");
     write_consts(&mut out, "CMD_", &[
@@ -245,6 +257,9 @@ pub fn emit_constants_ts() -> String {
             ("ASPECT_RATIO", fmt_u16(property_id::ASPECT_RATIO)),
             ("CONTENT_MODE", fmt_u16(property_id::CONTENT_MODE)),
             ("MINIMUM_SCALE_FACTOR", fmt_u16(property_id::MINIMUM_SCALE_FACTOR)),
+            ("GRID_COLUMNS", fmt_u16(property_id::GRID_COLUMNS)),
+            ("GRID_ROWS", fmt_u16(property_id::GRID_ROWS)),
+            ("GRID_TRACKS", fmt_u16(property_id::GRID_TRACKS)),
             ("BACKGROUND_COLOR", fmt_u16(property_id::BACKGROUND_COLOR)),
             ("IMAGE_SOURCE", fmt_u16(property_id::IMAGE_SOURCE)),
             ("AUDIO_SOURCE", fmt_u16(property_id::AUDIO_SOURCE)),
@@ -420,6 +435,7 @@ pub fn emit_constants_ts() -> String {
             ("LAZY_HGRID", fmt_u16(component_type::LAZY_HGRID)),
             ("LAZY_VSTACK", fmt_u16(component_type::LAZY_VSTACK)),
             ("LAZY_HSTACK", fmt_u16(component_type::LAZY_HSTACK)),
+            ("GRID_ROW", fmt_u16(component_type::GRID_ROW)),
             ("BUTTON", fmt_u16(component_type::BUTTON)),
             ("TEXT_FIELD", fmt_u16(component_type::TEXT_FIELD)),
             ("TEXT_EDITOR", fmt_u16(component_type::TEXT_EDITOR)),

@@ -12,7 +12,7 @@ import com.pathland.view.Padding;
 
 /**
  * Date section: a {@code DatePicker} bound to a persisted {@code State<Integer>}
- * holding days since epoch (the {@code STYLE::SET_DATE} value), with a computed
+ * holding days since epoch (the {@code PARAMETER::SET_DATE} value), with a computed
  * human-readable date label.
  */
 public final class DateSection implements View {
@@ -23,7 +23,7 @@ public final class DateSection implements View {
     public View body() {
         var dateLabel = computed(() ->
                 java.time.LocalDate.ofEpochDay(days.get()).toString());
-        return new SectionCard("DatePicker · STYLE::SET_DATE",
+        return new SectionCard("DatePicker · PARAMETER::SET_DATE",
                 VStack.of(
                         DatePicker.of(DatePickerMode.DATE, days.signal()),
                         Text.of(dateLabel).with(Padding.of(4))

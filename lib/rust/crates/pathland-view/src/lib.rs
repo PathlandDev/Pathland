@@ -3,7 +3,7 @@
 //! The Pathland SwiftUI-style view DSL. Core components (`VStack`, `HStack`,
 //! `Text`) and chainable modifiers (`spacing`, `padding`, `font_size`, `color`,
 //! `background`) build a retained **view tree** (`pathland_engine::Node`) that the
-//! diff emitter in `pathland-core` turns into declarative `TREE`/`STYLE` opcodes.
+//! diff emitter in `pathland-core` turns into declarative `TREE`/`PARAMETER` opcodes.
 //!
 //! ## Building a tree
 //!
@@ -130,7 +130,10 @@ pub fn spacer() -> Spacer {
 /// Cross-axis alignment values for stacks and the `Frame` compound modifier.
 ///
 /// These are emitted as the `ALIGNMENT` (0x0002) property with an `ENUM` value
-/// type (low byte of the property value).
+/// type (low byte of the property value). Alignment is **position-only**
+/// (codes 0–2; the protocol's 2D codes 3–8 are the other positions, see
+/// spec/PRIMITIVES.md §ZStack): stretching is a child's `FILL` size, never an
+/// alignment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Align {
     /// Align to the leading (start) edge.
@@ -139,8 +142,6 @@ pub enum Align {
     Center,
     /// Align to the trailing (end) edge.
     Trailing,
-    /// Fill the available cross-axis space.
-    Fill,
 }
 
 impl Align {
@@ -150,7 +151,6 @@ impl Align {
             Align::Leading => 0,
             Align::Center => 1,
             Align::Trailing => 2,
-            Align::Fill => 3,
         }
     }
 }

@@ -260,6 +260,16 @@ impl GtkRenderer {
             .tree
             .node(parent_id)
             .is_some_and(|n| composite_horizontal(n.component_type));
+        // The body's SPACING comes from the control node itself: a composite
+        // control whose label flattened a stack (e.g. `Button.of(HStack, …)`)
+        // carries that stack's `SPACING` on the button node, and the button's
+        // body box must reproduce the gap (HTML emits `gap` on the `<button>`).
+        // Re-applied on every reconcile so a `SPACING` delta takes effect.
+        let spacing = self
+            .tree
+            .node(parent_id)
+            .map(layout::spacing)
+            .unwrap_or(0);
         // The button's own main/cross-axis alignment is governed by its parent
         // stack's per-child rule in `sync_stack_children` (LAYOUT.md: a
         // composite control hugs on the main axis unless it is `FILL`-sized).
@@ -272,13 +282,16 @@ impl GtkRenderer {
                 } else {
                     gtk::Orientation::Vertical
                 },
-                0,
+                spacing,
             );
             btn.set_child(Some(&bx));
             let bxw: gtk::Widget = bx.upcast();
             self.composite_boxes.insert(parent_id, bxw.clone());
             bxw
         };
+        if let Ok(bx) = box_widget.clone().downcast::<GtkBox>() {
+            bx.set_spacing(spacing);
+        }
         // A horizontal (BUTTON) body centers its children on the cross axis,
         // matching the HTML button's `align-items:center`.
         if horizontal {
@@ -706,6 +719,15 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             if new & listener::POINTER_MOVE != 0 {
                 attach_motion(widget, id, sink.clone());
             }
+            if new & (listener::SCROLL | listener::WHEEL) != 0 {
+                attach_scroll_events(
+                    widget,
+                    id,
+                    sink.clone(),
+                    new & listener::SCROLL != 0,
+                    new & listener::WHEEL != 0,
+                );
+            }
         }
         self.attached_listeners.insert(id, mask);
     }
@@ -722,7 +744,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             WidgetKind::Stack => self.sync_stack_children(parent_id, children, node),
             WidgetKind::Grid => self.sync_grid_children(parent_id, children, node),
             WidgetKind::ScrollView => self.sync_scroll_children(parent_id, children),
-            WidgetKind::Overlay => self.sync_overlay_children(parent_id, children),
+            WidgetKind::Overlay => self.sync_overlay_children(parent_id, children, node),
             _ => {}
         }
     }
@@ -732,6 +754,12 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
     /// them; cross axis: only `FILL`/greedy children stretch, everything else
     /// keeps its size and is positioned by the stack's `ALIGNMENT`, default
     /// Leading) and re-append the tree-ordered child widgets.
+    ///
+    /// The `hexpand`/`vexpand` flags are set from the SAME effective-FILL
+    /// decision, so a non-FILL main-axis child is explicitly non-expanding
+    /// (`valign=Start`, `vexpand=false`) and can never claim leftover space —
+    /// a `GtkBox` otherwise hands it to children left at GTK's default
+    /// `Align::Fill`/expand state, which spreads e.g. a library's rows.
     fn sync_stack_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
@@ -743,6 +771,8 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             return;
         };
         let stack_align = layout::stack_align_option(node);
+        // Fill propagation: a Hug child stack that contains a FILL child fills
+        // the axis (resolved through the tree).
         for child_id in children {
             let Some(w) = self.widgets.get(child_id).cloned() else {
                 continue;
@@ -750,47 +780,57 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             let Some(cn) = self.tree.node(*child_id) else {
                 continue;
             };
-            let main = layout::main_axis_align(cn, l.orientation);
-            let cross = layout::cross_axis_align(cn, l.orientation, stack_align);
+            let main = layout::main_axis_align(cn, l.orientation, &self.tree);
+            let cross = layout::cross_axis_align(cn, l.orientation, stack_align, &self.tree);
             if layout::cross_axis_is_horizontal(l.orientation) {
                 w.set_halign(cross);
                 w.set_valign(main);
+                w.set_hexpand(cross == Align::Fill);
+                w.set_vexpand(main == Align::Fill);
             } else {
                 w.set_halign(main);
                 w.set_valign(cross);
+                w.set_hexpand(main == Align::Fill);
+                w.set_vexpand(cross == Align::Fill);
             }
         }
         self.reconcile_box_children(&parent, children);
     }
 
-    /// Reconcile a `GtkGrid`'s children at their row-major cell positions.
-    fn sync_grid_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
+    /// Reconcile a `GtkGrid`'s children at their flattened cell positions (spec
+    /// §GridRow): a `GRID_ROW`'s children are one row's cells; bare cells
+    /// auto-flow row-major (column-major for a horizontal `LAZY_HGRID`).
+    fn sync_grid_children(&mut self, parent_id: u32, _children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
         };
         let Some(grid) = parent.downcast_ref::<gtk::Grid>() else {
             return;
         };
-        let columns = layout::grid_columns(node);
+        let cells = layout::grid_cells(node, &self.tree);
+        // SPACING → uniform row + column gap (HTML renders `gap` on grids).
+        let gap = layout::spacing(node);
+        grid.set_row_spacing(gap as u32);
+        grid.set_column_spacing(gap as u32);
         // Per-cell alignment (LAYOUT.md): a `FILL`/greedy cell stretches on an
         // axis, anything else keeps its size and is positioned at the start.
-        for child_id in children {
-            if let (Some(w), Some(cn)) = (self.widgets.get(child_id), self.tree.node(*child_id)) {
-                w.set_halign(layout::grid_cell_align(cn, layout::Axis::Horizontal));
-                w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical));
+        let grid_align = node.properties.get(&property_id::ALIGNMENT).copied().unwrap_or(0);
+        for (cell, _, _) in &cells {
+            if let (Some(w), Some(cn)) = (self.widgets.get(cell), self.tree.node(*cell)) {
+                w.set_halign(layout::grid_cell_align(cn, layout::Axis::Horizontal, grid_align));
+                w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical, grid_align));
             }
         }
-        if grid_matches(grid, children, columns, &self.widgets) {
+        if grid_matches(grid, &cells, &self.widgets) {
             return;
         }
         // Rebuild: remove all current children, then attach at target cells.
         for w in child_widgets(&parent) {
             grid.remove(&w);
         }
-        for (idx, child_id) in children.iter().enumerate() {
-            if let Some(w) = self.widgets.get(child_id) {
-                let (row, col) = layout::grid_cell_position(idx as u32, columns);
-                grid.attach(w, col as i32, row as i32, 1, 1);
+        for (cell, row, col) in &cells {
+            if let Some(w) = self.widgets.get(cell) {
+                grid.attach(w, *col as i32, *row as i32, 1, 1);
             }
         }
     }
@@ -815,30 +855,53 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         }
     }
 
-    /// Reconcile a `GtkOverlay`: the first child is the main child, the rest
-    /// are overlays (later = drawn on top).
-    fn sync_overlay_children(&mut self, parent_id: u32, children: &[u32]) {
+    /// Reconcile a `GtkOverlay`: every child is an overlay (later = drawn on top),
+    /// keeps its own size unless it is effectively `FILL`, and is positioned by
+    /// the ZStack's `ALIGNMENT` on **both** axes (default Leading/Start) —
+    /// spec/PRIMITIVES.md §ZStack.
+    fn sync_overlay_children(&mut self, parent_id: u32, children: &[u32], node: &HostNode) {
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
         };
         let Some(ov) = parent.downcast_ref::<gtk::Overlay>() else {
             return;
         };
+        let raw_align = node.properties.get(&property_id::ALIGNMENT).copied().unwrap_or(0);
         let target: Vec<gtk::Widget> = children
             .iter()
             .filter_map(|id| self.widgets.get(id).cloned())
             .collect();
+        // Apply per-child alignment on every reconcile (cheap; needed even when
+        // the child set is unchanged, e.g. an ALIGNMENT delta).
+        let position = |child_id: &u32, w: &gtk::Widget| {
+            let Some(cn) = self.tree.node(*child_id) else {
+                return;
+            };
+            let halign = if layout::effective_fill(cn, layout::Axis::Horizontal, false, &self.tree) {
+                Align::Fill
+            } else {
+                layout::align_h(raw_align)
+            };
+            let valign = if layout::effective_fill(cn, layout::Axis::Vertical, false, &self.tree) {
+                Align::Fill
+            } else {
+                layout::align_v(raw_align)
+            };
+            w.set_halign(halign);
+            w.set_valign(valign);
+        };
         if child_widgets(&parent) == target {
+            for (child_id, w) in children.iter().zip(&target) {
+                position(child_id, w);
+            }
             return;
         }
         for w in child_widgets(&parent) {
             ov.remove_overlay(&w);
         }
-        if let Some(main) = target.first() {
-            ov.set_child(Some(main));
-            for overlay in target.iter().skip(1) {
-                ov.add_overlay(overlay);
-            }
+        for (child_id, w) in children.iter().zip(&target) {
+            position(child_id, w);
+            ov.add_overlay(w);
         }
     }
 
@@ -1283,22 +1346,20 @@ fn child_widgets(widget: &gtk::Widget) -> Vec<gtk::Widget> {
     out
 }
 
-/// Whether a grid's children already sit at their target cell positions.
+/// Whether a grid's cells already sit at their target (row, col) positions.
 fn grid_matches(
     grid: &gtk::Grid,
-    children: &[u32],
-    columns: Option<u32>,
+    cells: &[(u32, u32, u32)],
     widgets: &HashMap<u32, gtk::Widget>,
 ) -> bool {
-    if child_widgets(&grid.clone().upcast()).len() != children.len() {
+    if child_widgets(&grid.clone().upcast()).len() != cells.len() {
         return false;
     }
-    for (idx, child_id) in children.iter().enumerate() {
-        let Some(w) = widgets.get(child_id) else {
+    for (cell, row, col) in cells {
+        let Some(w) = widgets.get(cell) else {
             return false;
         };
-        let (row, col) = layout::grid_cell_position(idx as u32, columns);
-        if grid.child_at(col as i32, row as i32).as_ref() != Some(w) {
+        if grid.child_at(*col as i32, *row as i32).as_ref() != Some(w) {
             return false;
         }
     }
@@ -1600,6 +1661,58 @@ fn attach_motion(widget: &gtk::Widget, target: u32, sink: Rc<RefCell<dyn FnMut(E
     widget.add_controller(motion);
 }
 
+/// Attach scroll reporting to a `GtkScrolledWindow` for `target` (spec
+/// EVENTS.md): `SCROLL` (the content offset in logical points via the v/h
+/// Adjustments' `value_changed`) and `WHEEL` (raw wheel/trackpad deltas via an
+/// `EventControllerScroll`). Gated by the `SCROLL`/`WHEEL` listener bits.
+fn attach_scroll_events(
+    widget: &gtk::Widget,
+    target: u32,
+    sink: Rc<RefCell<dyn FnMut(Event)>>,
+    want_scroll: bool,
+    want_wheel: bool,
+) {
+    if want_scroll {
+        if let Some(sw) = widget.downcast_ref::<gtk::ScrolledWindow>() {
+            let hadj = sw.hadjustment();
+            let vadj = sw.vadjustment();
+            let h_sink = sink.clone();
+            let v_sink = sink.clone();
+            let v_other = vadj.clone();
+            hadj.connect_value_changed(move |adj| {
+                h_sink.borrow_mut()(Event::Scroll {
+                    target,
+                    offset_x: adj.value() as f32,
+                    offset_y: v_other.value() as f32,
+                });
+            });
+            let h_other = hadj.clone();
+            vadj.connect_value_changed(move |adj| {
+                v_sink.borrow_mut()(Event::Scroll {
+                    target,
+                    offset_x: h_other.value() as f32,
+                    offset_y: adj.value() as f32,
+                });
+            });
+        }
+    }
+    if want_wheel {
+        let scroll_ctrl = gtk::EventControllerScroll::new(
+            gtk::EventControllerScrollFlags::VERTICAL | gtk::EventControllerScrollFlags::HORIZONTAL,
+        );
+        let wheel_sink = sink.clone();
+        scroll_ctrl.connect_scroll(move |_ctrl, dx, dy| {
+            wheel_sink.borrow_mut()(Event::Wheel {
+                target,
+                delta_x: dx as f32,
+                delta_y: dy as f32,
+            });
+            glib::Propagation::Proceed
+        });
+        widget.add_controller(scroll_ctrl);
+    }
+}
+
 /// Build a stack's native `GtkBox` from its mapped layout (orientation +
 /// spacing). Padding is applied later, in `update`, so the spacing here is the
 /// only stack-specific layout decision made at creation time.
@@ -1646,9 +1759,6 @@ fn nav_page(route: &str, title: &str, child: &gtk::Widget, custom_chrome: bool) 
 /// Apply a node's padding as widget margins (styling, any widget type).
 fn apply_padding(widget: &gtk::Widget, node: &HostNode) {
     let e = layout::padding_from(node);
-    if e.is_zero() {
-        return;
-    }
     widget.set_margin_top(e.top);
     widget.set_margin_end(e.right);
     widget.set_margin_bottom(e.bottom);
@@ -1739,6 +1849,16 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
     if let Some(bits) = node.properties.get(&property_id::OPACITY) {
         widget.set_opacity(f64::from(f32::from_bits(*bits)));
     }
+    // CLIPS_TO_BOUNDS → native overflow clipping (SwiftUI `.clipped()` parity,
+    // spec LAYOUT.md / PRIMITIVES.md: a Fixed box constrains layout but only
+    // clips when this property is set).
+    if let Some(bits) = node.properties.get(&property_id::CLIPS_TO_BOUNDS) {
+        widget.set_overflow(if *bits != 0 {
+            gtk::Overflow::Hidden
+        } else {
+            gtk::Overflow::Visible
+        });
+    }
     let w = node.properties.get(&property_id::WIDTH).copied();
     let h = node.properties.get(&property_id::HEIGHT).copied();
     let sw = layout::size_hint(w);
@@ -1773,13 +1893,10 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
             },
         );
     }
-    if let Some(bits) = node.properties.get(&property_id::CONTENT_MARGINS) {
-        let m = f32::from_bits(*bits) as i32;
-        widget.set_margin_top(m);
-        widget.set_margin_end(m);
-        widget.set_margin_bottom(m);
-        widget.set_margin_start(m);
-    }
+    // CONTENT_MARGINS is folded into the padding margins by `apply_padding` as
+    // the lowest-precedence base (per-edge PADDING_* > PADDING > CONTENT_MARGINS,
+    // spec PRIMITIVES.md §stack layout model) — it must NOT be applied here,
+    // or it would override the higher-precedence PADDING margins.
 
     let css = style_css(node);
     if !css.is_empty() {
@@ -1854,6 +1971,36 @@ fn apply_text_style(label: &Label, node: &HostNode) {
         attrs.insert(fg);
     }
     label.set_attributes(Some(&attrs));
+
+    // Layout (spec LAYOUT.md §content fitting): a Fixed `WIDTH` wraps the text
+    // within the box (a GTK label otherwise takes its natural un-wrapped width);
+    // `LINE_LIMIT` clamps the line count and truncates with an ellipsis, whose
+    // position follows `TRUNCATION_MODE` when present (Tail default). A
+    // `TRUNCATION_MODE` **alone** has no observable effect (SwiftUI-aligned):
+    // it never forces a single line and never truncates by itself.
+    let fixed_width = fixed_size(node, property_id::WIDTH).is_some();
+    let line_limit = node.properties.get(&property_id::LINE_LIMIT).copied();
+    let trunc = node
+        .properties
+        .get(&property_id::TRUNCATION_MODE)
+        .map(|b| f32::from_bits(*b) as u8);
+    if fixed_width || line_limit.is_some_and(|n| n > 0) {
+        label.set_wrap(true);
+        label.set_wrap_mode(pango::WrapMode::WordChar);
+    }
+    if let Some(n) = line_limit {
+        if n > 0 {
+            label.set_lines(n as i32);
+            // Only a LINE_LIMIT clamp truncates; TRUNCATION_MODE positions the
+            // ellipsis (renderer-owned fidelity: Start/Middle are reliable for
+            // single-line labels, best-effort on a multi-line clamp).
+            label.set_ellipsize(
+                trunc
+                    .map(layout::ellipsize_from)
+                    .unwrap_or(pango::EllipsizeMode::End),
+            );
+        }
+    }
 }
 
 /// Run the GTK renderer over a shared ring, pumping frames in and waking the

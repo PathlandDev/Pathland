@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** September 30, 2026
+**Last updated:** October 2, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -26,6 +26,21 @@ Statelessness). Protocol contract: `spec/`.
   value="{index}">` + `SELECTION`), `MENU` (the `.pathland-menu` composite:
   `.pathland-menu-trigger` label + `.pathland-menu-items` children),
   `COLOR_PICKER`, `COMMENT`.
+- **Native elements** (the specs carry no renderer mappings — this is the
+  concrete HTML map the removed spec hints lived in): `TEXT` → `<span>` (or
+  `<p>`/`<h1>`–`<h5>` by `ROLE`/heading `TEXT_STYLE`), `IMAGE` → `<img>`,
+  `COLOR` → `<div>`, `SHAPE` → CSS shapes / inline SVG, `DIVIDER` → `<hr>`,
+  `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
+  `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex
+  `div`, `ZSTACK` → grid overlay `div`, grids → CSS-grid `div`, `SCROLLVIEW` →
+  overflow `div`, `BUTTON` → `<button>`, `TEXT_FIELD` → `<input>` (secure →
+  `type="password"`), `TEXT_EDITOR` → `<textarea>`, `TOGGLE` → checkbox/switch
+  input, `SLIDER` → `<input type="range">`, `STEPPER` → `.pathland-stepper`,
+  `DATE_PICKER` → `<input type="date">`/`<input type="time">`, `PICKER` →
+  `<select>` + `<option>`, `MENU` → `.pathland-menu` composite, `COLOR_PICKER`
+  → `<input type="color">`, `AUDIO`/`VIDEO` → `<audio controls>` /
+  `<video controls>` (hidden media element + custom body when app-driven),
+  `COMMENT` → none.
 - **Media**: `IMAGE` renders `<img src alt>` (the `LABEL` accessibility text is
   the `alt`; empty = decorative) and honors `CONTENT_MODE`/`ASPECT_RATIO`
   inline (`Fit`→`object-fit:contain`, `Fill`→`object-fit:cover`); `VIDEO` →
@@ -56,6 +71,15 @@ Statelessness). Protocol contract: `spec/`.
   default). `DIVIDER` is greedy on the cross axis (`width:100%`); `SCROLLVIEW`
   is greedy on both axes (`flex:1 1 auto;align-self:stretch`); fixed frames emit
   exact px boxes. Conformance cases C1–C6 asserted in `lib.rs` tests.
+- **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: implemented —
+  `fills_axis` resolves a Hug stack/ZStack containing a `FILL` child / greedy
+  primitive on an axis as `FILL`, emitting `width/height:100%` on that axis, and
+  cross-axis `FILL` children stretch via `align-self:stretch` (SSR + TS DOM
+  client, kept canonical via the layout pass in `applyLayout`).
+- **ZStack (spec/PRIMITIVES.md)**: implemented — an overlapping grid
+  (`grid-area:1/1` cells); the container hugs to its largest child (`max-content`)
+  unless Fixed/FILL (or fill propagation → `100%`); each child keeps its own
+  size and is positioned by `ALIGNMENT` on both axes (SSR + TS DOM client).
 - **ARIA ROLE/STATE maps match the DOM client**: the full `ROLE` set (button…
   menu, incl. `text`/`img`/`radio`/`spinbutton`/`tablist`/`list`/`grid`/
   `region`/`menu`) and the `STATE` semantics (one true `aria-*` per state) are
@@ -89,13 +113,13 @@ Statelessness). Protocol contract: `spec/`.
   can hydrate its default back button from the SSR HTML — the DOM renderer
   mirrors the route into the URL, may animate a swap, and draws the renderer's
   own back button (the web has no native navigation container).
-- `STYLE::SET_DATE` handled (days + millis-of-day → date/time).
+- `PARAMETER::SET_DATE` handled (days + millis-of-day → date/time).
 - **Design tokens (spec/TOKENS.md)**:
   - The naming/length conventions live in **`src/token_spec.rs`** — the single
     source of truth consumed by the renderer AND by `pathland-ts-codegen`, which
     emits the DOM client's `lib/typescript/src/generated/tokens-core.ts`
     (`tokenToCssVar`, `isDarkToken`, `isLengthToken`, `resolveTokenCssRef`).
-  - `STYLE::SET_DESIGN_TOKEN` overrides are collected per snapshot batch and
+  - `PARAMETER::SET_DESIGN_TOKEN` overrides are collected per snapshot batch and
     emitted into the document head as CSS: base (light) tokens as `:root`
     rules, `dark.*` overrides inside `@media (prefers-color-scheme: dark)` —
     the browser resolves the scheme natively, so SSR needs no client scheme.
@@ -176,18 +200,40 @@ contract both renderers must satisfy.
 
 ## Not implemented / gaps
 
+- **`TRUNCATION_MODE`** (spec/LAYOUT.md §content fitting): aligned — it **alone**
+  has no observable effect (the old `nowrap`+`text-overflow:ellipsis` emission is
+  gone, SSR + TS DOM client); under a `LINE_LIMIT` clamp the renderer tail-
+  ellipsizes via `line-clamp`. Renderer-owned fidelity: CSS cannot place a
+  head/middle ellipsis, so non-Tail modes fall back to the tail ellipsis.
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset
   (colors, font size/weight, spacing/padding, corner radius, opacity,
   width/height, border width/color, shadow color). Compound accumulators that
   need concrete numbers (shadow radius/x/y) remain literal-only.
+- **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
+  grids emit `gap` from `SPACING`, equal-`1fr` track templates from the
+  `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/
+  LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`), **`GRID_TRACKS`**
+  per-track specs (`flex`/`fixed:<pts>`/`adaptive:<pts>` → `1fr`/`<pts>px`/
+  `minmax(<pts>px,1fr)`, taking precedence over the count), and **per-cell
+  alignment** — each cell is wrapped in an auto-placed shell whose
+  `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell, else the
+  grid `ALIGNMENT` position (default start) — with `justify-items`/
+  `align-items` on the container. **`GRID_ROW`** (0x1D) rows are flattened with
+  explicit `grid-row`/`grid-column` placement; each row renders as a transparent
+  `<div style="display:contents">` (its id hydrates the DOM client), and a
+  short row leaves trailing columns empty. `WIDTH`/`HEIGHT` on a grid are the
+  universal pixel box, never a count. `SCROLLVIEW` is greedy
+  (`flex:1 1 auto;align-self:stretch;overflow:auto`) and renders **only its
+  first child** (the spec-pinned single content). Conformance cases C11–C14
+  covered by the SSR tests + golden fixtures (incl. the `gridrow` scenario).
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
-- **Inter is loaded from the rsms.me CDN** (Cloudflare, `font-display: swap`,
-  with the InterVariable progressive enhancement for variable-font browsers) —
-  the renderer emits the preconnect + stylesheet links in the document head. It
-  is **not bundled**: self-hosting a subsetted, OFL-licensed woff2 (embedded in
-  the renderer / jar) is a planned follow-up for offline and enterprise
-  deployments (see `THIRD_PARTY_NOTICES`).
+- **Typography uses the platform system font stack** (`system-ui,
+  -apple-system, 'Segoe UI', Roboto, …`) — no external/webfont loading, so the
+  rendered document makes no network requests for fonts and works offline.
+  An app can still pick its own typeface via a `font.body.family`
+  `SET_DESIGN_TOKEN` override (any STRING value, e.g. `"Inter"` if the app
+  hosts it).
 
 ## Verified by
 

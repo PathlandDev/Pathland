@@ -1,7 +1,7 @@
 # Pathland Design Tokens
 
 **Status:** Draft
-**Last Updated:** September 2, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -21,7 +21,7 @@ System](./OPCODE.md#design-token-system). It defines:
 - the **color-scheme contract** (base = light, `dark.` = dark), and
 - the **renderer integration contract** (how future native renderers adopt it).
 
-The wire encoding (`STYLE::SET_DESIGN_TOKEN`, the `DESIGN_TOKEN` value type)
+The wire encoding (`PARAMETER::SET_DESIGN_TOKEN`, the `DESIGN_TOKEN` value type)
 lives in [OPCODE.md](./OPCODE.md). Modifier mapping lives in
 [MODIFIERS.md](./MODIFIERS.md). The DSL surface is specified in
 [DSL.md](./DSL.md).
@@ -238,17 +238,8 @@ Small sets; only where a component's semantics genuinely differ from
 Base token paths define the **light** design. A `dark.`-prefixed path defines
 the **dark** design for the same token.
 
-The renderer derives the **effective color scheme** from the platform — it is
-**never** carried by the protocol:
-
-| Platform | Scheme signal |
-|----------|---------------|
-| Browser / HTML | `prefers-color-scheme` |
-| GTK (desktop) | Native theme dark variant |
-| Apple (SwiftUI/AppKit/UIKit) | `traitCollection` / `NSAppearance` / `@Environment(\.colorScheme)` |
-| Android (Jetpack Compose) | `isSystemInDarkTheme()` |
-| Windows (WinUI) | `Application.RequestedTheme` / `Element.ActualTheme` |
-| Embedded (LVGL) | Renderer theme flag (no OS signal; base stays light unless enabled) |
+The renderer derives the **effective color scheme** from its platform's native
+light/dark signal — it is **never** carried by the protocol.
 
 ### Rules
 
@@ -330,7 +321,7 @@ A renderer MUST:
 
 1. Provide platform-appropriate **light and dark defaults** for all Tier 1
    tokens.
-2. Accept `STYLE::SET_DESIGN_TOKEN` commands and store overrides.
+2. Accept `PARAMETER::SET_DESIGN_TOKEN` commands and store overrides.
 3. Derive the effective color scheme from the platform and re-resolve on change.
 4. Resolve token references (`DESIGN_TOKEN` value type) in properties.
 5. Fall back to defaults when no override exists.
@@ -353,11 +344,10 @@ values.
 
 ## Renderer Integration Contract
 
-A future native renderer (SwiftUI/AppKit/UIKit, Jetpack Compose, WinUI, LVGL, …)
-adopts the token system by implementing five pieces:
+A future native renderer adopts the token system by implementing five pieces:
 
 1. **Default token table** — Tier 1 light + dark defaults from native resources.
-2. **Scheme detection** — the platform's native light/dark signal (table above).
+2. **Scheme detection** — the platform's native light/dark signal.
 3. **Resolution** — the override → default → parent → fallback algorithm, with
    the `dark.*` layer keyed on the effective scheme.
 4. **Property resolution** — any property carrying a `DESIGN_TOKEN` reference
@@ -369,25 +359,3 @@ adopts the token system by implementing five pieces:
 The same contract powers the reference renderers (`pathland-render-html`,
 `pathland-render-gtk`, the JS DOM renderer) and is checked in their `status.md`
 files.
-
-### CSS variable mapping (HTML-family renderers)
-
-HTML renderers map a token path to a CSS custom property deterministically so
-server-side rendering and client hydration agree:
-
-```
-tokenPathToVar("color.primary")      → --pl-color-primary
-tokenPathToVar("dark.color.primary") → --pl-color-primary
-```
-
-- The rule: `--pl-` prefix + the path with `.` → `-`. The `dark.` scheme prefix
-  is **stripped** — the dark variant overrides the *same* variable, scoped
-  inside the media query below.
-- A **base** token is emitted as a plain `:root { --pl-…: value; }` rule.
-- A `dark.*` token override is emitted **inside** `@media (prefers-color-scheme:
-  dark) { :root { … } }` — never as a bare `--pl-dark-*` variable — so the
-  browser resolves the scheme natively and server-side rendering needs no
-  knowledge of the client's scheme.
-- Inline `documentElement.style` overrides (the client delta path) MUST respect
-  the same scoping; a dark override applied inline always would beat the media
-  query and break light mode.

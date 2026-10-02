@@ -1,7 +1,7 @@
 //! # pathland-engine
 //!
 //! The retained view tree (`Node`/`Component`) and the diff-based reactive
-//! emitter (`Engine`) that turns it into declarative `TREE`/`STYLE` opcodes,
+//! emitter (`Engine`) that turns it into declarative `TREE`/`PARAMETER` opcodes,
 //! plus the reactive signals (`SignalStore`/`SignalId`/`SignalValue`) the
 //! engine records during emission.
 //!

@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 30, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -77,10 +77,14 @@ A child's main-axis size comes from its size kind:
 - A **Fixed** or **Hug** child keeps its own size on the cross axis and is
   **positioned** by the container's `ALIGNMENT`.
 - **`ALIGNMENT` positions but never resizes.** It selects the placement of
-  Fixed/Hug children within leftover space; it does not stretch them. With no
-  `ALIGNMENT`, the default cross-axis position is **Leading/Start**. The enum's
-  `Fill` (3) therefore means *default (hug) positioning*, not stretch.
-- Only a **`Fill`** child fills the container's cross size.
+  Fixed/Hug children within leftover space; it does not stretch them. The value
+  is a **2D position code** (the [ZStack table](./PRIMITIVES.md#zstack--zstack-0x12)):
+  a stack reads a single axis (a `VStack` the horizontal component, an `HStack`
+  the vertical — codes `0/1/2`), a `ZStack`/grid both axes. With no `ALIGNMENT`
+  (code `0`/absent) the default cross-axis position is the **start**. Code `3`
+  is `top-center`, never a stretch; stretching lives in the **child's size
+  kind** (`WIDTH`/`HEIGHT` = `FILL`).
+- Only a **`Fill`-sized child** fills the container's cross size.
 - **The default is *hug*, not stretch.** A child with no cross-axis size is NOT
   stretched to fill the cross axis. This deliberately matches **SwiftUI**
   (children report their ideal size; a `VStack`/`HStack` aligns them) and
@@ -115,12 +119,14 @@ Rules:
 ### A container that is itself Fixed
 
 A container with a **Fixed** `WIDTH`/`HEIGHT` is allocated exactly that box and
-lays its children out *within* it. Content that overflows the fixed box is
-clipped, or scrolled when the container is a `SCROLLVIEW`.
+lays its children out *within* it. A Fixed box **constrains layout but does not
+clip**: content that overflows it is drawn outside the box unless
+`CLIPS_TO_BOUNDS` clips it (SwiftUI `.clipped()` parity); it scrolls instead
+when the container is a `SCROLLVIEW`.
 
 ### Rationale
 
-These rules are the bugs-fixed-and-avoided model of the GTK renderer:
+These rules are the bugs-fixed-and-avoided model of the reference renderers:
 
 - A **Fixed image** in a row stays its box (never scaled to content or stretched
   by a tall row).
@@ -131,7 +137,7 @@ These rules are the bugs-fixed-and-avoided model of the GTK renderer:
 
 ---
 
-## Content fitting
+## Content fitting, truncation & clipping
 
 Content-bearing views fit their content **inside** their allocated box:
 
@@ -139,27 +145,44 @@ Content-bearing views fit their content **inside** their allocated box:
   `CONTENT_MODE` — `Fit` (0) scales to contain (letterboxed), `Fill` (1) scales
   to cover (cropped). The box is the allocation, never the content's intrinsic
   size.
-- **Text**: wraps within a Fixed width; `LINE_LIMIT` / `TRUNCATION_MODE` apply
-  within the box. A Hug text takes its natural (wrapped) size.
-- **Containers** (stacks, scroll): children lay out inside; a Fixed box
-  constrains them (scroll for `SCROLLVIEW`, clip otherwise).
 
----
+### Text
 
-## Per-renderer mapping
+- **Wrapping.** An unconstrained `TEXT` lays out on a **single line at its
+  natural width**. It **wraps at word boundaries only when its width is
+  constrained** — a Fixed `WIDTH`, or a `LINE_LIMIT` that needs multiple lines.
+  An unbreakable word wider than the box may break by character. A wrapped
+  Text's natural height is its **line count × line height** (so a Hug container
+  can compute its size). A Fixed `HEIGHT` constrains the box; overflow follows
+  the overflow rules ([above](#a-container-that-is-itself-fixed)).
+- **`LINE_LIMIT`.** A positive `LINE_LIMIT` (N) clamps the rendered text to **at
+  most N lines**; any overflow beyond the last visible line is replaced by an
+  ellipsis `…` at its end (**tail** truncation). `0`/absent = unlimited. It does
+  not force a single line — lines are formed by wrapping at the available width
+  and by explicit line breaks.
+- **`TRUNCATION_MODE`.** `Head`=0, `Middle`=1, `Tail`=2 **positions the
+  ellipsis** (at the start / middle / end of the last visible line) whenever a
+  `LINE_LIMIT` clamp truncates. It applies **only when such a clamp truncates**:
+  on its own it has **no observable effect** (SwiftUI-aligned) — it never forces
+  a single line and never truncates by itself.
 
-| Pathland kind | HTML/CSS | GTK4 | SwiftUI | Compose |
-|---|---|---|---|---|
-| Fixed `WIDTH`/`HEIGHT` | `width/height` (hard box) | allocate the exact box: content natural == box where possible (e.g. scaled image paintable); prevent cross-axis stretch of fixed children | `.frame(width:height:)` | `Modifier.size/width/height` |
-| `FILL` (`-1`) | `100%` / flex-grow | `set_hexpand/vexpand(true)` + `Align::Fill` | `.frame(maxWidth: .infinity)` | `Modifier.fillMaxWidth/Height` |
-| `HUG_CONTENT`/absent | `fit-content` / auto (and *not* stretched) | natural size; main-axis content alignment (`Center`) for composites | ideal size | `wrapContent*` |
-| Main-axis leftover | flex-grow → `Fill` children only | box: extra to `Fill` children only | proposed-size model | `weight()` / `fillMax` |
-| Cross-axis default | hug (NOT `align-items: stretch`) | children keep cross size; `Fill` fills | align children; no stretch | wrap content |
+### Clipping — `CLIPS_TO_BOUNDS`
 
-> GTK4 note: GTK's box model allocates children the container's full cross size
-> by default. A Fixed cross-axis child must therefore be prevented from
-> stretching (non-`Fill` cross alignment and/or a content-fit that never
-> upscales beyond the box) to honor this contract.
+`CLIPS_TO_BOUNDS` (0x1010, U8) is a **post-layout visual clip**: the node's
+content and its own painted decoration (fills, backgrounds, borders) are
+clipped to its **allocated bounds box** — on **both axes**. Layout is
+unaffected: the node is still allocated and positioned exactly as if unclipped;
+only what is painted is clipped. `0`/absent = no clipping. A `SHAPE_KIND`
+(0x0006) carried alongside constrains the clip to that geometry instead of the
+plain bounds box (a bare `.clipped()` is `CLIPS_TO_BOUNDS` with no shape, so the
+clip is the bounds box). A `SCROLLVIEW` scrolls its content rather than
+clipping it.
+
+### Containers
+
+Stacks, scroll, and other containers lay their children out inside; a Fixed box
+constrains them (scroll for `SCROLLVIEW`, otherwise overflow is visible unless
+`CLIPS_TO_BOUNDS` clips it).
 
 ---
 
@@ -176,7 +199,17 @@ renderer** (HTML + GTK4 today; SwiftUI/Compose as they land).
 | C3 | `Fill`-height container | a `HUG`-height child | the child keeps its natural height; leftover stays empty / goes to a `Fill` sibling |
 | C4 | Composite button, no frame | a `Fill`-height column | content height (not absorbed/stretched to the viewport) |
 | C5 | Hug `Text` | a stack | natural size on both axes (not stretched cross-axis) |
-| C6 | Fixed-width `VStack` | fixed `200` box, taller children | children lay out within `200`; overflow clipped/scrolls |
+| C6 | Fixed-width `VStack` | fixed `200` box, taller children | children lay out within `200`; overflow is visible unless `CLIPS_TO_BOUNDS` clips it |
+| C7 | `Text` `WIDTH=120`, longer content | a column | wraps at word boundaries within `120`; natural height = line count × line height |
+| C8 | `Text` long content, `LINE_LIMIT=2` | a `200`-wide column | at most 2 lines; overflow on the last visible line tail-ellipsized (`…`) |
+| C9 | `Text` `LINE_LIMIT=1`, `TRUNCATION_MODE=Head` | a `200`-wide column | single line, ellipsis at the start, the tail preserved |
+| C10 | `CLIPS_TO_BOUNDS=1` | a Fixed box with overflowing content | content (and the node's painted decoration) clipped to the allocated box; layout unchanged |
+| C11 | `Grid` `GRID_COLUMNS=2`, `SPACING=8`, Hug cells | a definite-width parent | two **equal `1fr` columns** with an 8pt gap; Hug cells keep their natural size, positioned at Leading in their track |
+| C12 | `Grid` `GRID_COLUMNS=2` with a `FILL`-width cell | a definite-width parent | the `FILL` cell **stretches to fill its column**; Hug cells keep their size; the grid does **not** propagate the `FILL` up to a Hug parent on the auto axis |
+| C13 | `ScrollView` (greedy, no frame) | a `FILL`-sized column | fills the available width and height; content taller/wider than the viewport **scrolls**, never clips or overflows the viewport |
+| C14 | `ScrollView` `HEIGHT=HUG_CONTENT` | a Hug column | the viewport's height is the content's **natural height** (no vertical scroll); the horizontal axis stays greedy |
+
+Grid/scroll/lazy allocation is specified in [PRIMITIVES.md §Grid / §ScrollView](./PRIMITIVES.md#grid--grid-0x13); the lazy containers are identical to their eager base with windowed realization only.
 
 Conformance tests (golden vectors) are wired in the renderer alignment passes
 that follow this document; see each project's `status.md`.

@@ -77,7 +77,7 @@ public class FrameOpcodeSink implements OpcodeSink {
     public void setText(int nodeId, String text) {
         int offset = strings.size();
         writeString(text);
-        push(Categories.STYLE, Commands.Style.SET_TEXT, 0, nodeId, offset, 0);
+        push(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, nodeId, offset, 0);
     }
 
     @Override
@@ -86,20 +86,20 @@ public class FrameOpcodeSink implements OpcodeSink {
         if (valueType == ValueTypes.STRING) {
             int offset = strings.size();
             writeString((String) value);
-            push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b, offset);
+            push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, offset);
         } else if (valueType == ValueTypes.DESIGN_TOKEN) {
             // C = arena offset of the token path (spec/TOKENS.md).
             int offset = strings.size();
             writeString(((Color) value).token());
-            push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b, offset);
+            push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, offset);
         } else {
-            push(Categories.STYLE, Commands.Style.SET_PROPERTY, 0, nodeId, b, ValueEncoder.encodeBits(valueType, value));
+            push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, ValueEncoder.encodeBits(valueType, value));
         }
     }
 
     @Override
     public void setDate(int nodeId, int days, int millisOfDay) {
-        push(Categories.STYLE, Commands.Style.SET_DATE, 0, nodeId, days, millisOfDay);
+        push(Categories.PARAMETER, Commands.Parameter.SET_DATE, 0, nodeId, days, millisOfDay);
     }
 
     @Override
@@ -113,7 +113,7 @@ public class FrameOpcodeSink implements OpcodeSink {
         } else {
             c = ValueEncoder.encodeBits(valueType, value);
         }
-        push(Categories.STYLE, Commands.Style.SET_DESIGN_TOKEN, 0, pathOffset, valueType, c);
+        push(Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN, 0, pathOffset, valueType, c);
     }
 
     /** Append a length-prefixed string to the string section, returning its offset. */

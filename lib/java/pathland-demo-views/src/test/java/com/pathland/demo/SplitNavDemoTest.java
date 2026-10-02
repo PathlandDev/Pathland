@@ -162,7 +162,7 @@ class SplitNavDemoTest {
 
     private static String routeOf(Frame frame) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == Properties.ROUTE) {
                 return frame.stringAt(op.c());
             }
@@ -173,7 +173,7 @@ class SplitNavDemoTest {
     /** The ROUTE path in a frame, or null when the frame carries no ROUTE. */
     private static String routeOfOrNull(Frame frame) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == Properties.ROUTE) {
                 return frame.stringAt(op.c());
             }
@@ -183,7 +183,7 @@ class SplitNavDemoTest {
 
     private static boolean anySetText(Frame frame, String text) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_TEXT
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT
                     && text.equals(frame.stringAt(op.b()))) {
                 return true;
             }
@@ -203,7 +203,7 @@ class SplitNavDemoTest {
 
     private static boolean anySetPropertyString(Frame frame, int property, String value) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property
                     && value.equals(frame.stringAt(op.c()))) {
                 return true;
@@ -214,7 +214,7 @@ class SplitNavDemoTest {
 
     private static boolean anySetPropertyBits(Frame frame, int property, int bits) {
         for (Opcode op : frame.opcodes()) {
-            if (op.category() == Categories.STYLE && op.command() == Commands.Style.SET_PROPERTY
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && (int) op.c() == bits) {
                 return true;
             }

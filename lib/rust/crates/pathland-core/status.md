@@ -1,6 +1,6 @@
 # pathland-core — implementation status
 
-**Last updated:** September 25, 2026
+**Last updated:** October 2, 2026
 
 The **protocol core**: 16-byte opcode, SPSC ring buffers (both directions),
 bump arenas (both directions), memory layout, typed events, and the golden
@@ -12,10 +12,22 @@ tracks what this crate implements.
 - **Component types** (`constants.rs::component_type`): the full grouped map —
   `TEXT 0x01, IMAGE 0x02, COLOR 0x03, SHAPE 0x04, DIVIDER 0x05, SPACER 0x06,
   PROGRESS_VIEW 0x07, GAUGE 0x08, AUDIO 0x09, VIDEO 0x0A, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
-  0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
-  LAZY_HSTACK 0x1C, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
-  0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
-  COLOR_PICKER 0x2A, COMMENT 0x7F`.
+0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
+   LAZY_HSTACK 0x1C, GRID_ROW 0x1D, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
+   0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
+   COLOR_PICKER 0x2A, COMMENT 0x7F`.
+- **`GRID_COLUMNS`/`GRID_ROWS`** (`0x001E`/`0x001F`, F32) track-count properties
+  for grids (positive = count, `FILL`/absent = auto-fit; never a pixel box),
+  **`GRID_TRACKS`** (`0x0020`, STRING) per-track specs (takes precedence over the
+  counts), and the **`GRID_ROW`** (`0x1D`) component (a grid child whose children
+  are one row's cells) — all covered by conformance vectors (34–36).
+- **`ALIGNMENT` (0x0002) is a 2D position code (0–8)**: `0` topLeading, `1`
+  center, `2` bottomTrailing, `3` topCenter, `4` bottomCenter, `5` centerLeading,
+  `6` centerTrailing, `7` topTrailing, `8` bottomLeading. Stacks read one axis
+  (`VSTACK`→horizontal, `HSTACK`→vertical; codes 0/1/2 backward-compatible);
+  `ZSTACK`/grids read both. Position-only — stretching is a child's `FILL`
+  `WIDTH`/`HEIGHT`, never an alignment (spec/PRIMITIVES.md §ZStack). Covered by
+  conformance vector 37 (`ALIGNMENT` topCenter = 3).
 - **Properties** (`property_id`): the full `spec/MODIFIERS.md` catalog —
   stack/text/styling/semantic IDs plus every draft modifier (`SHAPE_KIND`,
   layout `OFFSET`/`POSITION`/frame bounds/`FIXED_SIZE`/`LAYOUT_PRIORITY`/
@@ -36,7 +48,7 @@ tracks what this crate implements.
   F32-enum chrome mode: `PlatformDefault`=0 / `Custom`=1 — the renderer
   supplies default navigation chrome, or the developer owns all nav UI)).
 - **Commands**: `TREE` create/delete/insert/remove/move (append = `u32::MAX`);
-  `STYLE` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`; `META`
+  `PARAMETER` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`; `META`
   `RESET`/`ENVIRONMENT`/`RESYNC`. `META::ENVIRONMENT` is the extensible
   platform-environment field family (`environment::VIEWPORT_WIDTH`/
   `VIEWPORT_HEIGHT`/`ROUTE` — the `ROUTE` string uses the `TEXT_CHANGED`/
@@ -48,8 +60,8 @@ tracks what this crate implements.
   / batch string section (same dual convention as `TEXT_CHANGED`);
   `Navigate { url: None }` is a native back request (decodes from a bare
   opcode).
-- **`Guest::set_date`** helper (`STYLE::SET_DATE`).
-- **`Guest::set_design_token`** helper (`STYLE::SET_DESIGN_TOKEN`): global token
+- **`Guest::set_date`** helper (`PARAMETER::SET_DATE`).
+- **`Guest::set_design_token`** helper (`PARAMETER::SET_DESIGN_TOKEN`): global token
   override (`path` arena string, `valueType`, `value`), incl. `dark.`-prefixed
   dark variants (spec/TOKENS.md).
 - **`Guest::set_design_token_string`** helper: STRING-valued token override —
@@ -81,10 +93,12 @@ tracks what this crate implements.
 - **Shared linear memory**: 80-byte header, guest→host ring, host→guest event
   ring, guest arena, host→guest **event arena** (two-way string section — a
   host `send_event(TextChanged)` round-trips text over the shared ring).
-- **Conformance vectors** (`conformance.rs`): TREE/STYLE/META/EVENT golden
+- **Conformance vectors** (`conformance.rs`): TREE/PARAMETER/META/EVENT golden
   bytes **incl. vectors 17–18, 20–27** (`SET_DESIGN_TOKEN` (COLOR +
   STRING-valued), `DESIGN_TOKEN`-typed `SET_PROPERTY`, `NAVIGATE`±URL,
-  `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE) and a ring
+  `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE), vectors
+  **34–37** (grid `GRID_COLUMNS`/`GRID_ROWS`/`GRID_TRACKS`, `GRID_ROW`,
+  `ALIGNMENT` topCenter) and a ring
   test proving `Guest::set_design_token` emits vector 17 byte-exactly;
   `cargo test` enforces them.
 

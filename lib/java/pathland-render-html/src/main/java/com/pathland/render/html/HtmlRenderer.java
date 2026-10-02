@@ -171,7 +171,7 @@ public final class HtmlRenderer {
 
     /**
      * Render a full snapshot frame as a complete HTML document. The frame is the
-     * self-contained mount/snapshot batch (TREE + STYLE) the emitter produced.
+     * self-contained mount/snapshot batch (TREE + PARAMETER) the emitter produced.
      */
     public String render(Frame frame, int root) {
         return renderFrame(frame, root, true);

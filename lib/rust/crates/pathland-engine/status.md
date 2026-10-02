@@ -3,7 +3,7 @@
 **Last updated:** September 2, 2026
 
 The retained-tree **emitter**: the application's canonical UI tree and the
-diff-based reactive emission into `TREE`/`STYLE` opcodes. Protocol contract:
+diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
 `spec/`.
 
 ## Implemented
@@ -22,7 +22,7 @@ diff-based reactive emission into `TREE`/`STYLE` opcodes. Protocol contract:
   path) emit as `SET_PROPERTY` with the `DESIGN_TOKEN` value type; unchanged
   refs reuse their arena offset across passes — **steady-state emission stays
   zero-alloc with token refs present** (proven by test).
-- **`Engine::set_design_token`** — emits a global `STYLE::SET_DESIGN_TOKEN`
+- **`Engine::set_design_token`** — emits a global `PARAMETER::SET_DESIGN_TOKEN`
   override (base or `dark.`-prefixed) into the current frame.
 - **Global theme overrides** (`theme.rs`): `Theme` — single-value builders
   (`color`/`f32`/`u32`/`u8`/`string`) for one scheme; `AdaptiveTheme { light,

@@ -20,7 +20,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use pathland_core::{
-    Opcode, category, component_type, property_id, style, tree, value_type,
+    Opcode, category, component_type, property_id, parameter, tree, value_type,
 };
 use pathland_core_transport::encode_frame;
 use pathland_render_html::HtmlRenderer;
@@ -72,7 +72,7 @@ impl Builder {
 
     fn style(&mut self, command: u8, a: u32, b: u32, c: u32) {
         self.opcodes
-            .push(Opcode::new(category::STYLE, command, 0, a, b, c));
+            .push(Opcode::new(category::PARAMETER, command, 0, a, b, c));
     }
 
     fn create(&mut self, id: u32, component: u16) {
@@ -85,12 +85,12 @@ impl Builder {
 
     fn set_text(&mut self, id: u32, text: &str) {
         let offset = self.string(text);
-        self.style(style::SET_TEXT, id, offset, 0);
+        self.style(parameter::SET_TEXT, id, offset, 0);
     }
 
     fn set_prop(&mut self, id: u32, vt: u8, prop: u16, value: u32) {
         self.style(
-            style::SET_PROPERTY,
+            parameter::SET_PROPERTY,
             id,
             ((vt as u32) << 16) | prop as u32,
             value,
@@ -111,7 +111,7 @@ impl Builder {
     /// A `SET_DESIGN_TOKEN` override: `A` = arena offset of the token path.
     fn set_token(&mut self, path: &str, vt: u8, value: u32) {
         let offset = self.string(path);
-        self.style(style::SET_DESIGN_TOKEN, offset, vt as u32, value);
+        self.style(parameter::SET_DESIGN_TOKEN, offset, vt as u32, value);
     }
 }
 
@@ -130,10 +130,78 @@ fn scenarios() -> Vec<Scenario> {
         form(),
         composite_controls(),
         layout(),
+        gridrow(),
+        gridtracks(),
+        zstack2d(),
         tokens(),
         semantics(),
         media(),
     ]
+}
+
+fn gridtracks() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::GRID);
+    b.create(2, component_type::TEXT);
+    b.create(3, component_type::TEXT);
+    b.insert(1, 2);
+    b.insert(1, 3);
+    b.set_text(2, "A");
+    b.set_text(3, "B");
+    // Per-track sizes (spec §grid model): flex / fixed / adaptive → the CSS
+    // track template takes precedence over a bare count.
+    b.set_string(1, property_id::GRID_TRACKS, "flex,fixed:80,adaptive:50");
+    Scenario {
+        name: "gridtracks",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn zstack2d() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::ZSTACK);
+    b.create(2, component_type::TEXT);
+    b.insert(1, 2);
+    b.set_text(2, "Layered");
+    // topTrailing = 7 → horizontal end × vertical start (2D alignment).
+    b.set_prop(1, value_type::F32, property_id::ALIGNMENT, 7f32.to_bits());
+    Scenario {
+        name: "zstack2d",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn gridrow() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::GRID);
+    // Row 0: a 2-cell GRID_ROW; row 1: a short 1-cell GRID_ROW; a bare cell
+    // auto-flows into row 2 (widest row = 2 columns).
+    b.create(2, component_type::GRID_ROW);
+    b.create(3, component_type::TEXT);
+    b.create(4, component_type::TEXT);
+    b.create(5, component_type::GRID_ROW);
+    b.create(6, component_type::TEXT);
+    b.create(7, component_type::TEXT);
+    b.insert(1, 2);
+    b.insert(2, 3);
+    b.insert(2, 4);
+    b.insert(1, 5);
+    b.insert(5, 6);
+    b.insert(1, 7);
+    b.set_text(3, "A");
+    b.set_text(4, "B");
+    b.set_text(6, "C");
+    b.set_text(7, "D");
+    Scenario {
+        name: "gridrow",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
 }
 
 fn media() -> Scenario {
@@ -439,8 +507,9 @@ fn layout() -> Scenario {
         property_id::BORDER_RADIUS,
         8f32.to_bits(),
     );
-    // Grid with 2 columns (the GRID's WIDTH property is the cell-axis count).
-    b.set_prop(6, value_type::F32, property_id::WIDTH, 2f32.to_bits());
+    // Grid with 2 columns (the GRID's GRID_COLUMNS constructor property is the
+    // cell-axis count; WIDTH/HEIGHT would be the grid's box, never a count).
+    b.set_prop(6, value_type::F32, property_id::GRID_COLUMNS, 2f32.to_bits());
     b.set_text(7, "Cell");
     b.set_text(9, "Scroll");
     // HStack with FILL width / HUG height.

@@ -15,13 +15,13 @@ public final class Commands {
         private Tree() {}
     }
 
-    /** STYLE commands. */
-    public static final class Style {
+    /** PARAMETER commands. */
+    public static final class Parameter {
         public static final int SET_PROPERTY = 0x01;
         public static final int SET_DESIGN_TOKEN = 0x02;
         public static final int SET_TEXT = 0x03;
         public static final int SET_DATE = 0x04;
-        private Style() {}
+        private Parameter() {}
     }
 
     /** EVENT commands (host → guest raw inputs). */

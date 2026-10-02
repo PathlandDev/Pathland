@@ -3,7 +3,7 @@ import { describeBatch, describeBatchDetail } from "../src/describe";
 import { parseBatch } from "../src/plpl";
 import { encodeEnvironment, encodeNavigate, encodePointerUp, encodeResync } from "../src/events";
 import {
-  CAT_STYLE,
+  CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
   CMD_INSERT_CHILD,
@@ -39,7 +39,7 @@ describe("describeBatch", () => {
           [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_VSTACK],
           [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
           [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2, -1],
-          [CAT_STYLE, CMD_SET_TEXT, 0, 2, 0],
+          [CAT_PARAMETER, CMD_SET_TEXT, 0, 2, 0],
         ],
         stringEntry("Users"),
       ),
@@ -57,7 +57,7 @@ describe("describeBatch", () => {
 
   it("describes a ROUTE property with its value", () => {
     const batch = parseBatch(
-      buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ROUTE, 0]], stringEntry("/users")),
+      buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ROUTE, 0]], stringEntry("/users")),
     );
     expect(describeBatchDetail(batch)).toContain('STYLE SET_PROPERTY(ROUTE="/users", node=1)');
   });

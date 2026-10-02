@@ -1,7 +1,7 @@
 //! Host-side reader: opcode frames -> native-element description.
 //!
 //! Consumes frames and builds a **native-element description**: the tree
-//! structure (`TREE`) plus constraint properties (`STYLE`) a renderer maps onto
+//! structure (`TREE`) plus constraint properties (`PARAMETER`) a renderer maps onto
 //! that platform's native elements (GTK widgets, DOM elements, HTML).
 //!
 //! The engine does not compute layout; this stores only what the renderer needs
@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use pathland_core::tokens::{resolve as resolve_token, Scheme, TokenTables, TokenValue};
-use pathland_core::{category, component_type, style, tree, value_type, Frame, Opcode};
+use pathland_core::{category, component_type, parameter, tree, value_type, Frame, Opcode};
 
 /// A decoded node in the host's native-element description.
 #[derive(Debug, Clone, PartialEq)]
@@ -85,7 +85,7 @@ impl Default for HostNode {
 pub struct RenderTree {
     /// nodeId -> node.
     pub nodes: HashMap<u32, HostNode>,
-    /// Design-token overrides (`STYLE::SET_DESIGN_TOKEN`), base (light) values
+    /// Design-token overrides (`PARAMETER::SET_DESIGN_TOKEN`), base (light) values
     /// keyed by full path.
     overrides: BTreeMap<String, TokenValue>,
     /// `dark.*` overrides keyed by the bare path (the prefix stripped).
@@ -217,7 +217,7 @@ impl RenderTree {
                         p.children.insert(idx, child);
                     }
                 }
-                (category::STYLE, style::SET_PROPERTY) => {
+                (category::PARAMETER, parameter::SET_PROPERTY) => {
                     let prop_id = op.b() as u16;
                     let vt = (op.b() >> 16) as u8;
                     if let Some(n) = self.nodes.get_mut(&op.a()) {
@@ -238,12 +238,12 @@ impl RenderTree {
                         }
                     }
                 }
-                (category::STYLE, style::SET_TEXT) => {
+                (category::PARAMETER, parameter::SET_TEXT) => {
                     if let Some(n) = self.nodes.get_mut(&op.a()) {
                         n.text = frame.arena_str(op.b()).ok().map(|s| s.to_string());
                     }
                 }
-                (category::STYLE, style::SET_DESIGN_TOKEN) => {
+                (category::PARAMETER, parameter::SET_DESIGN_TOKEN) => {
                     // Global override: A = arenaRef (token path), B = valueType,
                     // C = value (for STRING, an arenaRef to the value string).
                     if let Ok(path) = frame.arena_str(op.a()) {
@@ -290,7 +290,7 @@ pub fn render_tree_from_frame(frame: &Frame<'_>) -> RenderTree {
 /// Concrete Tier-1 design-token defaults (light + dark) — platform-appropriate
 /// fallbacks used headless and as the base the GTK-native enrichment in
 /// `crate::tokens::gtk_defaults` overwrites. Values are renderer-owned; apps
-/// override via `STYLE::SET_DESIGN_TOKEN` (spec/TOKENS.md).
+/// override via `PARAMETER::SET_DESIGN_TOKEN` (spec/TOKENS.md).
 pub(crate) fn concrete_default_tables() -> (
     BTreeMap<String, TokenValue>,
     BTreeMap<String, TokenValue>,
@@ -417,17 +417,17 @@ pub fn describe(op: &Opcode) -> String {
             op.b(),
             op.c()
         ),
-        (category::STYLE, style::SET_PROPERTY) => format!(
-            "STYLE:SET_PROPERTY id={} prop=0x{:04x} value=0x{:08x}",
+        (category::PARAMETER, parameter::SET_PROPERTY) => format!(
+            "PARAMETER:SET_PROPERTY id={} prop=0x{:04x} value=0x{:08x}",
             op.a(),
             op.b() as u16,
             op.c()
         ),
-        (category::STYLE, style::SET_TEXT) => {
-            format!("STYLE:SET_TEXT id={} arenaRef={}", op.a(), op.b())
+        (category::PARAMETER, parameter::SET_TEXT) => {
+            format!("PARAMETER:SET_TEXT id={} arenaRef={}", op.a(), op.b())
         }
-        (category::STYLE, style::SET_DESIGN_TOKEN) => format!(
-            "STYLE:SET_DESIGN_TOKEN pathArenaRef={} valueType=0x{:02x} value=0x{:08x}",
+        (category::PARAMETER, parameter::SET_DESIGN_TOKEN) => format!(
+            "PARAMETER:SET_DESIGN_TOKEN pathArenaRef={} valueType=0x{:02x} value=0x{:08x}",
             op.a(),
             op.b() & 0xFF,
             op.c()

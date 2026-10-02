@@ -15,7 +15,21 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `DatePicker.of(mode, days)`, …); constructors are private and the former
   `View.*` static-factory surface is **removed**. `Slider`/`Stepper` are
   binding-first (initial value read from the signal); `Toggle` also offers the
-  SwiftUI-closer `of(label, isOn)` overload; `Color.of(int)` alias.
+  SwiftUI-closer `of(label, isOn)` overload; `Color.of(int)` alias. Grids take
+  their track counts as constructor args: `Grid.of(int columns[, int rows], …)`,
+  `LazyVGrid.of(int columns, …)`, `LazyHGrid.of(int rows, …)` — absent = auto-fit
+  (spec/PRIMITIVES.md §grid model); the counts emit `GRID_COLUMNS`/`GRID_ROWS`,
+  never a pixel `WIDTH`/`HEIGHT`. **Per-track sizes** via a `List<GridItem>`
+  overload (`GridItem.flexible()` / `.fixed(pts)` / `.adaptive(min)`) emit the
+  `GRID_TRACKS` STRING spec (takes precedence over the counts); CSS-grid-native —
+- **Alignment is three typed enums (SwiftUI parity), all position-only**:
+  `HorizontalAlignment` (leading/center/trailing) for `VStack`s,
+  `VerticalAlignment` (top/center/bottom) for `HStack`s, and a 2D `Alignment`
+  (topLeading…bottomTrailing) for `ZStack`s, grids, and `FrameMod`'s content
+  placement — all encoding the single wire `ALIGNMENT` 2D code (0–8, spec
+  PRIMITIVES.md §ZStack). Stretching is a child's `FILL` size kind, never an
+  alignment.
+  GTK falls back to natural sizing (see render-gtk status).
 - **One modifier mechanism — no sugar on `View`**: core modifiers are
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,
   `Border.of(color, width)`, `FrameMod.of(w, h, align)`, …) applied via
@@ -45,7 +59,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   modifiers), shapes (`Rectangle`, `Circle`, `Capsule`, `Ellipse`,
   `RoundedRectangle`, generic `Shape.of(ShapeKind)` — all `SHAPE` nodes),
   `Button`, `TextField`, `Spacer`, `TextEditor`, `Toggle`, `Slider`, `Stepper`,
-  `ProgressView`, `Gauge`, `Divider`, `Grid`, `ScrollView`, `LazyVStack`,
+  `ProgressView`, `Gauge`, `Divider`, `Grid`, `GridRow`, `ScrollView`, `LazyVStack`,
   `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `Picker`, `Menu`, `ColorPicker`,
   `DatePicker`, **`Label`** (a composite — an `HStack` of an optional `Image` and
   an optional `Text`, title always driving the accessibility label; static and
@@ -76,7 +90,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 - **Value controls**: `Toggle`/`Slider`/`Stepper`/`Picker`/`ColorPicker`/
   `Menu` bind to writable signals and route `VALUE_CHANGED` through the
   emitter's value-input registry; `TextEditor` mirrors `TextField`.
-  `DatePicker` emits `STYLE::SET_DATE` (and re-emits it on signal change via a
+  `DatePicker` emits `PARAMETER::SET_DATE` (and re-emits it on signal change via a
   node-level date binding) and routes `DATE_CHANGED` through a dedicated
   date-input registry (`RenderResult.dateInputs`).
 - **Events**: the full catalog round-trips — pointer, `KEY_*`, `VALUE_CHANGED`,
@@ -233,7 +247,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   builders (`color`/`f32`/`u32`/`u8`/`string`) for one scheme; `AdaptiveTheme(light,
   dark)` composes a light + dark pair. Both implement the `ThemeData` interface
   (`emit`/`emitInto`); `Theme.emit`/`AdaptiveTheme.emit` write one frame of
-  `STYLE::SET_DESIGN_TOKEN` overrides (the dark theme's with the `dark.` prefix),
+  `PARAMETER::SET_DESIGN_TOKEN` overrides (the dark theme's with the `dark.` prefix),
   and `OpcodeSink.setDesignToken` puts path + STRING values into the string
   section (frame) / arena (ring). The `Emitter` takes a `ThemeData` and rides it
   into the mount + resync frames. Overrides are renderer-global — they never

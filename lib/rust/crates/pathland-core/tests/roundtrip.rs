@@ -108,7 +108,7 @@ fn set_text_round_trips_through_arena() {
     assert_eq!(frame.arena_str(arena_ref).unwrap(), text);
 
     let ops: Vec<Opcode> = frame.opcodes().collect();
-    assert_eq!(ops[1].command(), pathland_core::style::SET_TEXT);
+    assert_eq!(ops[1].command(), pathland_core::parameter::SET_TEXT);
     assert_eq!(ops[1].a(), 1);
     assert_eq!(ops[1].b(), arena_ref);
 }
@@ -152,8 +152,8 @@ fn set_property_encodes_b_field_correctly() {
     assert_eq!(ops.len(), 3);
 
     // COLOR: B = (valueType<<16)|propertyId = (0x07<<16)|0x100A
-    assert_eq!(ops[1].category(), category::STYLE);
-    assert_eq!(ops[1].command(), pathland_core::style::SET_PROPERTY);
+    assert_eq!(ops[1].category(), category::PARAMETER);
+    assert_eq!(ops[1].command(), pathland_core::parameter::SET_PROPERTY);
     assert_eq!(ops[1].a(), 1);
     assert_eq!(ops[1].b(), (value_type::COLOR as u32) << 16 | property_id::COLOR as u32);
     assert_eq!(ops[1].c(), 0xFF00_00FF);

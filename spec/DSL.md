@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 3, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -296,21 +296,45 @@ accessibility label.
 
 | View | Canonical (SwiftUI-shaped) | Java DSL (current) | Emits / Binds |
 |------|---------------------------|--------------------|---------------|
-| `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.of(View...)` / `VStack.of(Alignment, float, View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
-| `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.of(View...)` / `HStack.of(Alignment, float, View...)` | `HSTACK` 0x11 |
-| `ZStack` | `ZStack(alignment:) { … }` | `ZStack.of(View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
-| `Grid` | `Grid(alignment:horizontalSpacing:verticalSpacing:) { … }` | `Grid.of(View...)` | `GRID` 0x13 |
+| `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.of(View...)` / `VStack.of(HorizontalAlignment, float, View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
+| `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.of(View...)` / `HStack.of(VerticalAlignment, float, View...)` | `HSTACK` 0x11 |
+| `ZStack` | `ZStack(alignment:) { … }` | `ZStack.of(View...)` / `ZStack.of(Alignment, View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
+| `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.of(View...)` / `Grid.of(int columns, View...)` / `Grid.of(int columns, int rows, View...)` / `Grid.of(int columns, int rows, Alignment, float, View...)` / `Grid.of(List<GridItem>, View...)` / `Grid.of(List<GridItem>, Alignment, float, View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
+| `GridRow` | `GridRow { … }` | `GridRow.of(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
 | `ScrollView` | `ScrollView { … }` | `ScrollView.of(View...)` | `SCROLLVIEW` 0x14 |
-| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.of(View...)` | `LAZY_VGRID` 0x15 |
-| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` | `LAZY_HGRID` 0x16 |
+| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.of(View...)` / `LazyVGrid.of(int columns, View...)` / `LazyVGrid.of(List<GridItem>, View...)` / `LazyVGrid.of(int columns, Alignment, float, View...)` / `LazyVGrid.of(List<GridItem>, Alignment, float, View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS` |
+| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` / `LazyHGrid.of(int rows, View...)` / `LazyHGrid.of(List<GridItem>, View...)` / `LazyHGrid.of(int rows, Alignment, float, View...)` / `LazyHGrid.of(List<GridItem>, Alignment, float, View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
 | `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.of(View...)` | `LAZY_VSTACK` 0x1B |
 | `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.of(View...)` | `LAZY_HSTACK` 0x1C |
+
+Alignment is **position-only** (SwiftUI/Compose parity): `VStack` takes a
+`HorizontalAlignment` (leading/center/trailing), `HStack` a `VerticalAlignment`
+(top/center/bottom), and `ZStack`/grids (plus the `frame` modifier's content
+alignment) a 2D `Alignment` (topLeading … bottomTrailing). Stretching a child is
+its `FILL` size kind, never an alignment.
 
 **Deltas (Java)**: stacks are constructed with the `<ViewName>.of(...)` factory
 using varargs (`VStack.of(children...)`), not a builder/trailing-closure
 block. Constructor layout properties come as a separate overload
 (`VStack.of(Alignment, float, View...)`). The canonical SwiftUI form passes
 `alignment`/`spacing` as labeled constructor arguments inside the braces' call.
+
+**Grid counts**: `GRID_COLUMNS`/`GRID_ROWS` are **constructor properties**
+(SwiftUI `LazyVGrid(columns:)` / Compose `GridCells.Fixed(n)` parity), never
+chainable modifiers. The grid's own size uses the universal `WIDTH`/`HEIGHT`
+frame model — a `.frame(width:)` on a grid is a pixel box, never a count. A
+count is `int` in the DSL and emits a positive F32; absent = auto-fit. The
+static `Grid` takes optional `columns:`/`rows:` (both absent = SwiftUI `Grid`
+auto-fit); `LazyVGrid` takes `columns:`; `LazyHGrid` takes `rows:`.
+
+**`GridItem` (per-track sizes)**: a **`List<GridItem>`** overload expresses
+per-track sizes (SwiftUI `GridItem` / Compose `GridCells` parity) —
+`GridItem.flexible()` (`flex`), `GridItem.fixed(pts)` (`fixed:<pts>`),
+`GridItem.adaptive(min)` (`adaptive:<min>`). The list serializes to the
+`GRID_TRACKS` STRING property (comma-separated), which **takes precedence** over
+the counts; a count overload is the `N`×`flexible` sugar. CSS-grid-native —
+renderers without a native per-track equivalent size tracks naturally
+(renderer status, spec/PRIMITIVES.md §grid model).
 
 ### 4.3 Semantic controls
 
@@ -325,7 +349,7 @@ Two-way value controls bind a `WritableSignal`. Actions bind a callback.
 | `Toggle` | `Toggle("label", isOn: writable)` | `Toggle.of(boolean, WritableSignal<Boolean>)` / `Toggle.of(String label, WritableSignal<Boolean>)` / `Toggle.of(ToggleStyle, boolean, WritableSignal<Boolean>, String)` | `TOGGLE` 0x24; `VALUE_CHANGED` → value input; `TOGGLE_STYLE` 0x2018 |
 | `Slider` | `Slider(value: writable, in: min...max)` | `Slider.of(WritableSignal<Float>, float min, float max)` | `SLIDER` 0x25; `VALUE_CHANGED` → value input |
 | `Stepper` | `Stepper("label", value: writable, in: min...max, step:)` | `Stepper.of(WritableSignal<Float>, float min, float max, float step)` | `STEPPER` 0x26; `VALUE_CHANGED` → value input |
-| `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.of(DatePickerMode, WritableSignal<Integer>)` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `STYLE::SET_DATE` |
+| `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.of(DatePickerMode, WritableSignal<Integer>)` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `PARAMETER::SET_DATE` |
 | `Picker` | `Picker("label", selection: writable) { options }` | `Picker.of(PickerStyle, WritableSignal<Integer>, View... options)` | `PICKER` 0x28; `VALUE_CHANGED` (index) → value input |
 | `Menu` | `Menu { actions } label: { trigger }` | `Menu.of(View trigger, View... actions)` / `Menu.of(View, WritableSignal<Integer>, View...)` | `MENU` 0x29; `VALUE_CHANGED` (item index) → value input |
 | `ColorPicker` | `ColorPicker("label", selection: writable)` | `ColorPicker.of(WritableSignal<Color>)` | `COLOR_PICKER` 0x2A; `VALUE_CHANGED` (packed `0xAARRGGBB` as f32) → value input |
@@ -379,11 +403,8 @@ when they ignore it.
 adds none. The container's chrome mode decides who supplies the navigation UI:
 
 - `PlatformDefault` (default): the **renderer** supplies the chrome — the
-  platform's native navigation container where one exists (GTK
-  `AdwNavigationView`, SwiftUI `NavigationStack`, Compose `NavHost`), and a
-  renderer-drawn back affordance where none exists (the DOM renderer shows a
-  back button once `NAV_DEPTH > 1`; a no-JS SSR page falls back to the browser
-  back button). `NavigationContainer.of(router)`.
+  platform's native navigation container where one exists, and a renderer-drawn
+  back affordance where none exists. `NavigationContainer.of(router)`.
 - `Custom`: the **developer owns all navigation UI** — they draw their own
   back buttons / bars in the destinations and call `router.back()` /
   `navigate(...)` directly; the renderer adds no chrome (no native header-bar
@@ -551,10 +572,8 @@ decides navigation — it only requests it.
 **Native integration** — each renderer **may** promote a `NavigationContainer`
 slot onto its platform navigation affordance. The trigger is structural, not a
 new primitive: a slot carrying the `ROUTE` (STRING) property is a navigation
-slot and may be rendered as the platform's native navigation container
-(SwiftUI `NavigationStack`, Compose `NavHost`, WinUI `NavigationView` / `Frame`,
-GTK `AdwNavigationView`, LVGL screens `lv_scr_load`). The contract keeps the
-renderer stateless:
+slot and may be rendered as the platform's native navigation container. The
+contract keeps the renderer stateless:
 
 - **App owns** the route signal, the back-stack, and which destination is
   current; it emits the current destination as the slot child plus `ROUTE`
@@ -569,20 +588,11 @@ renderer stateless:
   **without** a URL payload (= "back one step"). The renderer never holds the
   back-stack and never decides navigation — it renders whatever destination
   subtree the app emits and may animate the swap.
-- Platforms with no native navigation container (LVGL, terminal/canvas, plain
-  GTK4 boxes) render the slot as an ordinary container that swaps children in
+- Platforms with no native navigation container render the slot as an ordinary
+  container that swaps children in
   place; the app's own back-stack is the only stack. The app does not branch on
   platform — the same `NavigationContainer` works on both, and the renderer's
   use (or not) of a native container is purely a presentation decision.
-
-| Platform | Native container | Slot child swap maps to | Native back → |
-|---|---|---|---|
-| GTK/Linux | `AdwNavigationView` | `push`/`pop` the child widgets | `NAVIGATE` (no URL) |
-| SwiftUI | `NavigationStack(path:)` | bind emitted path → native path | `NAVIGATE` |
-| Android/Compose | `NavHost` | route string → `NavHostController.navigate` | `NAVIGATE` |
-| WinUI | `NavigationView` / `Frame` | `Frame.Navigate` / sidebar+detail | `NAVIGATE` |
-| Web (DOM client) | History API | `ROUTE` → `pushState` (already implemented) | `NAVIGATE` |
-| LVGL / embedded | none | whole-tree swap (app's back-stack) | n/a |
 
 **Deltas (Java)**: `Router` / `RouteTable` live in
 `com.pathland.view.router`; `Conditional` in `com.pathland.view`. The
@@ -617,7 +627,7 @@ surface ([§5.6](#56-custom-modifiers-developer-authored)).
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `frame` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(float width))` / `.with(FrameMod.of(float width, float height))` / `.with(FrameMod.of(float width, float height, Alignment))` — alignment optional (omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved) | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
+| `frame` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(float width))` / `.with(FrameMod.of(float width, float height))` / `.with(FrameMod.of(float width, float height, Alignment))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
 | `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.with(FrameMod.of(float, float, float, float, float, float))` (NaN = unset) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
 | `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.with(Padding.of(int))` / `.with(Padding.of(float))` / `.with(Padding.of(int top, int right, int bottom, int left))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
 | `offset` | `.offset(x:y:)` | `.with(Offset.of(float x, float y))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
@@ -785,8 +795,12 @@ A conformant DSL follows these conventions:
    per argument.
 3. **Constructor vs modifier**: structural (alignment, spacing) in the
    constructor; everything else chainable.
-4. **Typed enums**: `Alignment` (leading/center/trailing/fill),
-   `TextAlignment`, `FontWeight` (100–900), `Truncation` (head/middle/tail),
+4. **Typed enums**: `HorizontalAlignment` (leading/center/trailing, for
+   `VStack`), `VerticalAlignment` (top/center/bottom, for `HStack`), `Alignment`
+   (2D — topLeading … bottomTrailing — for `ZStack`/grids and the `frame`
+   modifier's content alignment); all **position-only, never stretching** (a
+   child's `FILL` size kind stretches). Plus `TextAlignment`, `FontWeight`
+   (100–900), `Truncation` (head/middle/tail),
    `TextCase` (none/uppercase/lowercase), `FontStyle` (normal/italic),
    `FontDesign` (default/serif/rounded/monospaced), `ContentMode` (fit/fill),
    `ControlSize` (small/regular/large), `ToggleStyle`
@@ -829,7 +843,7 @@ Pathland theming is **application-owned over a renderer-owned token system**
    literal: `.foregroundStyle(Color.token("color.primary"))` emits a
    `DESIGN_TOKEN` reference the renderer resolves against the current scheme.
    No opcode is re-emitted when a token or the scheme changes.
-2. **Global theme overrides** — a batch of `STYLE::SET_DESIGN_TOKEN` commands
+2. **Global theme overrides** — a batch of `PARAMETER::SET_DESIGN_TOKEN` commands
    rolled at mount: a single-scheme `Theme` or an `AdaptiveTheme` light+dark
    pair (base = **light**, `dark.`-prefixed = **dark**).
 
@@ -877,7 +891,7 @@ theming.
 
 | Canonical (SwiftUI-shaped) | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view` / `pathland-engine`) | Emits |
 |----------------------------|--------------------------------|-----------------------------------------------|-------|
-| `Theme()` — one-scheme override batch | `new Theme()` (`ThemeData`) | `Theme::new()` | one `STYLE::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
+| `Theme()` — one-scheme override batch | `new Theme()` (`ThemeData`) | `Theme::new()` | one `PARAMETER::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
 | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `COLOR`-typed override (sRGB `0xAARRGGBB`) |
 | `.f32("space.base", 4.0)` | `.f32("space.base", 4.0f)` | `.f32("space.base", 4.0)` | `F32`-typed override (lengths in device pixels) |
 | `.u32("…", v)` / `.u8("…", v)` | `.u32(path, int)` / `.u8(path, int)` | `.u32(path, v)` / `.u8(path, v)` | `U32` / `U8`-typed override |
@@ -887,7 +901,7 @@ theming.
 Emission contract:
 
 - The theme is emitted **once at mount** as a frame of
-  `STYLE::SET_DESIGN_TOKEN` opcodes before the tree. Java: `new Emitter(sink,
+  `PARAMETER::SET_DESIGN_TOKEN` opcodes before the tree. Java: `new Emitter(sink,
   theme)` emits it at the start of the mount and `renderFull` (resync) frames;
   Rust: `Engine::apply_theme` / `Engine::apply_adaptive_theme`.
 - Overrides are **renderer state**: they never re-emit nodes and never
@@ -968,7 +982,8 @@ are the companion specs.
 
 - [ ] **Views/controls** — every entry of [§4](#4-view-surface):
   `Text`, `Image`, `Color`, `Shape` (all `ShapeKind`s), `Divider`, `Spacer`,
-  `ProgressView`, `Gauge`; `VStack`, `HStack`, `ZStack`, `Grid`, `ScrollView`,
+  `ProgressView`, `Gauge`; `VStack`, `HStack`, `ZStack`, `Grid`, `GridRow`,
+  `ScrollView`,
   `LazyVGrid`, `LazyHGrid`, `LazyVStack`, `LazyHStack`; `Button`,
   `TextField`, `SecureField`, `TextEditor`, `Toggle`, `Slider`, `Stepper`,
   `Picker`, `Menu`, `DatePicker`, `ColorPicker`.
@@ -1000,7 +1015,7 @@ are the companion specs.
 - [ ] **Design tokens & theming** — a token surface: token-typed values usable
   in style modifiers (a `Color` accepting a token path, e.g. `Color.token("color.primary")`
   or the language's equivalent), a theme/override helper emitting
-  `STYLE::SET_DESIGN_TOKEN` (base values + `dark.`-prefixed dark values), and
+  `PARAMETER::SET_DESIGN_TOKEN` (base values + `dark.`-prefixed dark values), and
   the **base=light / `dark.*`** color-scheme convention with renderer-derived
   scheme detection — see [§7](#7-theme-management) and [TOKENS.md](./TOKENS.md).
 
@@ -1016,16 +1031,22 @@ are the companion specs.
 3. `Color` values pack as sRGB `0xAARRGGBB`. A **token-typed** value instead
    carries the `DESIGN_TOKEN` value type with the token path in the arena
    (never a packed literal); the renderer resolves it against the current
-   scheme. A theme/override helper emits `STYLE::SET_DESIGN_TOKEN`
+   scheme. A theme/override helper emits `PARAMETER::SET_DESIGN_TOKEN`
    (`A` = arenaRef path, `B` = valueType, `C` = value); a `dark.`-prefixed path
    supplies the dark design (base = light — [TOKENS.md](./TOKENS.md)).
 4. `WIDTH`/`HEIGHT` sentinels: `FILL` = −1.0, `HUG_CONTENT` = −2.0.
-5. `DatePicker` value/event use the two-field encoding **days since epoch
+5. `Grid` counts map to the **constructor properties** `GRID_COLUMNS` (`0x001E`) /
+   `GRID_ROWS` (`0x001F`): a positive `int` count emits a positive F32; absent =
+   auto-fit. A **`List<GridItem>`** overload serializes to the **`GRID_TRACKS`**
+   (`0x0020`, STRING) per-track spec, which takes precedence over the counts. A
+   `WIDTH`/`HEIGHT` frame on a grid is the grid's **box**, never a count
+   ([§4.2](#42-layout--container-nodes)).
+6. `DatePicker` value/event use the two-field encoding **days since epoch
    (I32) + millis of day (U32)**; there is no `DATE_VALUE` property.
-6. Value/text/date events are gated by the transport-aware event guards; the
+7. Value/text/date events are gated by the transport-aware event guards; the
    DSL's controls emit the `ACTION_ID`/`BINDING_ID`/`EVENT_LISTENERS` that
    declare intent.
-7. Emission is **diff-based and reactive**: the DSL describes values, the
+8. Emission is **diff-based and reactive**: the DSL describes values, the
    emitter diffs. A generated DSL must keep the retained tree + emitter
    separation; it must not hand-serialize full trees.
 
@@ -1046,7 +1067,7 @@ A generated DSL is verified by proving it **emits the same bytes** as the
 reference implementations:
 
 1. Port the golden vectors in [CONFORMANCE.md](./CONFORMANCE.md) into the new
-   DSL's test harness; assert byte-identical `TREE`/`STYLE`/`EVENT`/`META`
+   DSL's test harness; assert byte-identical `TREE`/`PARAMETER`/`EVENT`/`META`
    opcodes for each canonical element.
 2. Port the Java `EmitterTest` cases (mount → `SET_TEXT`/`SET_PROPERTY`/`SET_DATE`
    deltas; unchanged tree → zero opcodes; two-way routing: `TEXT_CHANGED`,

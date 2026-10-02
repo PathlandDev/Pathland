@@ -69,7 +69,7 @@ mod tests {
         let opcodes = [
             Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, 0x0010, 0),
             Opcode::new(
-                category::STYLE,
+                category::PARAMETER,
                 0x01,
                 0,
                 1,

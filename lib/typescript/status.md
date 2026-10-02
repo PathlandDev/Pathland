@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** September 25, 2026
+**Last updated:** October 1, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -68,13 +68,13 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or
   `?pathland-log=debug`). Meaningful **receive/emit** logging of opcodes and
   events — `→ send EVENT POINTER_UP(target=4, …)`, `← recv frame=7 (2 ops):
-  STYLE SET_PROPERTY(ROUTE="/users", …)`, plus lifecycle (connect/reconnect,
+  PARAMETER SET_PROPERTY(ROUTE="/users", …)`, plus lifecycle (connect/reconnect,
   `pushState`, `popstate`, environment) — with a full per-opcode trace at
   `debug` (`src/describe.ts`).
 - **PLPL decode** (`src/plpl.ts`): bounds-checked batch parse — magic/version
   validation, truncated-opcode/string rejection, length-prefixed string reads.
 - **Full delta application** (`src/apply.ts`):
-  - **STYLE commands**: `SET_PROPERTY`, `SET_TEXT`, `SET_DATE` (date/time/
+  - **PARAMETER commands**: `SET_PROPERTY`, `SET_TEXT`, `SET_DATE` (date/time/
     datetime-local), **`SET_DESIGN_TOKEN`** (→ CSS variables, `src/tokens.ts`).
   - **TREE commands**: `CREATE_NODE`/`DELETE_NODE`/`INSERT_CHILD`/`REMOVE_CHILD`/
     `MOVE_CHILD` (`u32::MAX` append handled) — the element-shell factory
@@ -164,7 +164,13 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `data-min`/`data-max`; grids mirror `grid-template-columns` / `grid-auto-flow`
   from the WIDTH property. A table-driven **drift
   guard** (`test/elements.test.ts`) pins the canonical shells against the Rust
-  renderer's SSR markup.
+  renderer's SSR markup. This element-shell map is the DOM renderer's
+  native-element mapping (the specs carry none): `TEXT` → `<span>`, `IMAGE` →
+  `<img>`, `DIVIDER` → `<hr>`, `TEXT_FIELD` → `<input>`, `TEXT_EDITOR` →
+  `<textarea>`, `TOGGLE` → checkbox/switch, `SLIDER` → `<input type="range">`,
+  `PICKER` → `<select>` + `<option>`, `DATE_PICKER` → date/time inputs,
+  `COLOR_PICKER` → `<input type="color">`, `MENU` → `.pathland-menu`,
+  `AUDIO`/`VIDEO` → `<audio>`/`<video controls>`.
 - **Cross-renderer SSR conformance** (`test/ssr-conformance.test.ts`): the golden
   fixtures emitted by `pathland-html-golden` (`test/fixtures/ssr/`) drive BOTH a
   fresh-DOM render (apply each `{name}.plpl` with `createElement` + `applyBatch`
@@ -184,7 +190,7 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   deltas apply as inline style (or the style attribute for `DESIGN_TOKEN`
   references, so CSS expressions survive verbatim), literal colors inline,
   design tokens as CSS variables.
-- **Tests** (`test/`, vitest + happy-dom): codec round-trips, TREE/STYLE/META
+- **Tests** (`test/`, vitest + happy-dom): codec round-trips, TREE/PARAMETER/META
   application, design tokens (var mapping, dark scoping, px lengths, generative
   `space.N` refs), event byte layouts (incl. `NAVIGATE`), navigation (ROUTE →
   `onRoute`, transition animation, non-hinted slots), transport lifecycle
@@ -203,6 +209,22 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **`frameCount` gap detection** (P3): the client now resyncs on EVERY reconnect via
   `META::RESYNC`; P3's `frameCount` sequencing lets it resync only when a gap is
   actually detected.
+- **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
+  mirrors the Rust SSR — `grid-template-columns`/`grid-template-rows` from the
+  `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/
+  LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`; never a pixel
+  width/height), **`GRID_TRACKS`** per-track specs (`flex`/`fixed:<pts>`/
+  `adaptive:<pts>` → `1fr`/`<pts>px`/`minmax(<pts>px,1fr)`, precedence over the
+  count), `gap` from `SPACING`, greedy scroll
+  (`flex:1 1 auto;align-self:stretch;overflow:auto`), and **per-cell grid
+  alignment** — grid cells are wrapped in an auto-placed shell whose
+  `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell else the
+  grid `ALIGNMENT` position (`placedChild` + `applyLayout`, the ZStack mirror).
+  **`GRID_ROW`** (0x1D) renders as a transparent `display:contents` element; its
+  cell shells get explicit `grid-row`/`grid-column` placement (short rows leave
+  trailing columns empty). `SCROLL` and `WHEEL` events are wired to
+  document-level listeners gated by the listener bits. A runtime-inserted extra
+  `SCROLLVIEW` child is a minor residual (SSR renders only the first child).
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

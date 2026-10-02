@@ -3,7 +3,7 @@
 
 use pathland_gtk::RenderTree;
 use pathland_native::{component_from_id, NativeHost};
-use pathland_core::{property_id, SharedHeader, style};
+use pathland_core::{property_id, SharedHeader, parameter};
 use pathland_engine::SignalValue;
 use pathland_core_transport::FrameSource;
 
@@ -77,7 +77,7 @@ fn signal_set_writes_a_set_text_delta_for_the_bound_node() {
     let batch = host.next_frame().unwrap().expect("a delta frame");
     let ops: Vec<pathland_core::Opcode> = batch.frame().opcodes().collect();
     assert_eq!(ops.len(), 1, "only the bound node emits");
-    assert_eq!(ops[0].command(), style::SET_TEXT);
+    assert_eq!(ops[0].command(), parameter::SET_TEXT);
     assert_eq!(ops[0].a(), 2);
 }
 
@@ -100,7 +100,7 @@ fn signal_property_change_emits_set_property() {
     let batch = host.next_frame().unwrap().expect("a delta frame");
     let ops: Vec<pathland_core::Opcode> = batch.frame().opcodes().collect();
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].a(), 1);
     assert_eq!(ops[0].b() as u16, property_id::SPACING);
     assert_eq!(ops[0].c_f32(), 12.0);
