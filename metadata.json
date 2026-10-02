@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3XWTTD72ZX5H7XQ8221PD77",
+  "strategy": "manual-commit",
+  "branch": "feat/ratatui-renderer",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "lib/rust/Cargo.lock",
+    "lib/rust/Cargo.toml",
+    "lib/rust/crates/pathland-host/Cargo.toml",
+    "lib/rust/crates/pathland-host/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/Cargo.toml",
+    "lib/rust/crates/pathland-render-gtk/src/host.rs",
+    "lib/rust/crates/pathland-render-gtk/src/layout.rs",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/src/tokens.rs",
+    "lib/rust/crates/pathland-render-gtk/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 978774,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 16229888,
+    "output_tokens": 89347,
+    "api_call_count": 79
+  }
+}
