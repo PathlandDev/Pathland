@@ -1,0 +1,17 @@
+Explore the WebSocket endpoints and server config for Pathland's two SSR+WS demo starters:
+- /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-quarkus-starter/
+- /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-spring-boot-starter/
+and the demos:
+- /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-quarkus-demo/
+- /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-spring-boot-demo/
+
+I'm investigating why server->client WebSocket deltas stop reaching the browser client after a little while (works initially, then events stop). Look for:
+1. The WebSocket endpoint/handler classes (search for @ServerEndpoint, WebSocketHandler, @OnMessage, @OnClose, textMessage, WebSocketSession, configurator). Report their full lifecycle handling.
+2. Idle timeout / maxSessionIdleTimeout / maxIdleTimeout settings — any value set anywhere (application.properties, application.yml, config classes, DEFAULT values).
+3. Ping/pong keepalive handling: does the endpoint handle PING/PONG? Does anything send periodic pings? 
+4. OnClose/onError handling: does the server close the session on exceptions? Is there any code path that closes the connection after a time or on an error that the client wouldn't notice?
+5. How the PathlandSession/DeltaBatcher is wired to the WS endpoint (push seam): is there a thread that writes to the WebSocket session? Could a write from a non-WebSocket thread throw and get swallowed?
+6. application.properties of both demos: server.websocket, http.max-connections, quarkus.http.websocket, undertow/vertx settings, any timeouts.
+7. Any deadman/heartbeat in the server.
+
+Report concrete file:line references and quotes of the relevant config. Be thorough.
