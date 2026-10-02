@@ -9,6 +9,7 @@ publish = false
 
 [lib]
 name = "pathland_render_tui"
+crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 pathland-core = { path = "../pathland-core" }

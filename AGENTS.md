@@ -90,8 +90,9 @@ crates/pathland-host/      # SHARED HOST READER — the canonical retained Rende
                            #   every renderer (GTK, TUI, …); renderer token tables stay
                            #   per-renderer.
 crates/pathland-render-tui/ # RENDERER — Ratatui (TUI) renderer: retained tree → terminal
-#   widgets (Layout stacks, Paragraph text, Gauge progress) via TestBackend tests;
-                           #   interactive input + grids/zstack/scroll are follow-ups.
+#   widgets (Layout stacks, Paragraph text, Gauge progress), mouse/keyboard input
+#   + focus + VALUE/TEXT events + pathland_tui_run_ring C ABI (Java via JNA);
+                           #   grids/zstack/scroll are follow-ups.
 crates/pathland-render-tui-demo/ # DEMO — DSL → shared ring → pathland-render-tui.
 # ── Web client (DOM renderer, lib/typescript) ──────────────────────────────
 lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer: a small
@@ -153,6 +154,8 @@ lib/java/
                         #   a PathlandApp bean → SSR at any path + /ws deltas + state
   pathland-demo-views/  # com.pathland.demo — shared demo views (CounterView/CounterControls/
                         #   NameField) declaring State fields; consumed by both demos
+  pathland-tui-demo/    # com.pathland.demo.tui — the shared MusicPlayerView under the Rust
+                        #   Ratatui renderer via JNA (pathland_tui_run_ring)
   pathland-quarkus-demo/# Quarkus SSR + WebSocket demo (com.pathland.demo.quarkus)
   pathland-spring-boot-demo/ # Spring Boot SSR + WebSocket demo (com.pathland.demo.spring)
 ```
@@ -161,6 +164,8 @@ lib/java/
 - Build/test the Java libraries: `cd lib/java && mvn install`.
 - Run the GTK demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-gtk-demo`.
 - Run the TUI demo (terminal UI, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-tui-demo`.
+- Run the Java + TUI demo (the shared `MusicPlayerView`, terminal UI):
+  `./scripts/run-java-tui-demo.sh`.
 - Run the Quarkus demo (SSR + WebSocket deltas, dev mode):
   `cd lib/java/pathland-quarkus-demo && mvn quarkus:dev` (or `mvn package && java -jar target/quarkus-app/quarkus-run.jar`).
   Needs JDK 17+ (the whole stack runs on every LTS from 17) and Quarkus ≥ 3.18.

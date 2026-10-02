@@ -54,6 +54,16 @@ fn f32_prop(node: &HostNode, prop: u16) -> Option<f32> {
     node.properties.get(&prop).copied().map(f32::from_bits)
 }
 
+/// Trim a float for display (e.g. `1` not `1.0`).
+fn format_float(v: f32) -> String {
+    let r = v.round();
+    if (v - r).abs() < f32::EPSILON {
+        format!("{}", r as i64)
+    } else {
+        format!("{v:.1}")
+    }
+}
+
 /// A finite, positive `WIDTH`/`HEIGHT` (Fixed size hint) in cells.
 fn fixed(node: &HostNode, prop: u16) -> Option<u16> {
     match f32_prop(node, prop) {
@@ -206,6 +216,42 @@ pub fn natural_size(tree: &RenderTree, id: u32) -> Size {
             width: fixed(node, property_id::WIDTH).unwrap_or(20),
             height: 1,
         },
+        component_type::SLIDER => Size {
+            width: fixed(node, property_id::WIDTH).unwrap_or(20),
+            height: 1,
+        },
+        component_type::STEPPER => {
+            let value = format_float(node.f32_property(property_id::VALUE, 0.0));
+            Size {
+                width: 3 + value.chars().count() as u16,
+                height: 1,
+            }
+        }
+        component_type::TOGGLE => {
+            let label = node
+                .string_property(property_id::LABEL)
+                .or(node.text.as_deref())
+                .unwrap_or("");
+            let t = text_size(label);
+            Size {
+                width: 4 + t.width,
+                height: 1,
+            }
+        }
+        component_type::TEXT_FIELD | component_type::TEXT_EDITOR => {
+            let content = node.text.as_deref().unwrap_or("");
+            let t = text_size(content);
+            let width = fixed(node, property_id::WIDTH)
+                .unwrap_or(t.width.max(20).min(40));
+            Size {
+                width,
+                height: if node.component_type == component_type::TEXT_EDITOR {
+                    t.height.max(3)
+                } else {
+                    t.height.max(1)
+                },
+            }
+        }
         _ => Size { width: 1, height: 1 },
     };
     if let Some(w) = fixed(node, property_id::WIDTH) {

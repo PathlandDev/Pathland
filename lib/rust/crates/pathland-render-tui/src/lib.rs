@@ -28,6 +28,9 @@
 
 pub mod layout;
 pub mod render;
+mod capi;
+mod run;
 
 pub use pathland_host::{HostNode, RenderTree};
 pub use render::TuiRenderer;
+pub use run::{run, Pump};

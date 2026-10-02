@@ -21,7 +21,30 @@ terminal widgets (immediate-mode redraw each terminal frame). Protocol contract:
   - `SPACER` → flexible `Constraint`; `DIVIDER` → `─` line; `COLOR` → `Fill`
     background,
   - `PROGRESS_VIEW` → `Gauge` (determinate) / animated braille spinner
-    (indeterminate), `GAUGE` → `LineGauge` (`VALUE`/`MIN_VALUE`/`MAX_VALUE`).
+    (indeterminate), `GAUGE` → `LineGauge` (`VALUE`/`MIN_VALUE`/`MAX_VALUE`),
+  - `SLIDER` → `LineGauge` at the value ratio, `TOGGLE` → `[x] label`,
+    `STEPPER` → `− value +`, `TEXT_FIELD`/`TEXT_EDITOR` → `Paragraph` + a focus
+    cursor.
+- **Interactive input** (`render.rs` + `run.rs`):
+  - Mouse down/up/move/drag → `POINTER_DOWN`/`UP`/`MOVE`, wheel → `WHEEL`,
+    routed by hit-testing the per-frame `id → Rect` cache (draw order =
+    z-order); keyboard: `Tab`/`Shift+Tab` focus cycling, `Enter`/`Space`
+    activates the focused button (a synthesized press+release the app's
+    `TapRecognizer` turns into a tap), arrows adjust `SLIDER`/`STEPPER` →
+    `VALUE_CHANGED`, typing → `TEXT_CHANGED`/`SUBMIT`, keys forward as
+    `KEY_DOWN`.
+  - **Gating (GTK parity)**: `EVENT_LISTENERS` bits gate pointer/key/wheel
+    (buttons default to pointer listeners); `BINDING_ID` gates value/text
+    events.
+  - Focus model: single `focus` id, REVERSED focus styling, cursor placement
+    on text inputs.
+  - `run(pump, wake)` event loop over a `Pump` (`FrameSource` +
+    `DriverTransport`, `Rc<RefCell<P>>`): apply frames → draw → route input →
+    `send_input` + wake; the **host drains** (renderer only writes, GTK rule).
+    Quit `q`/`Ctrl+C`; `Esc` clears focus or sends `NAVIGATE` back.
+  - **C ABI** (`capi.rs`, cdylib): `pathland_tui_run_ring(ring, on_event)`
+    borrows a `libpathland_core` `RingTransport` in-process via a
+    `CoreRingHandle` pump (mirror of `pathland_gtk_run_ring`).
 - **Layout** (`layout.rs`, pure + headless-testable): bottom-up natural cell
   size, top-down `Rect` assignment; per-edge `PADDING` (`PADDING_*` > `PADDING`
   > `CONTENT_MARGINS`), `SPACING` gaps, 2D `ALIGNMENT` → cross-axis position
@@ -32,29 +55,35 @@ terminal widgets (immediate-mode redraw each terminal frame). Protocol contract:
 - **Retained-tree decoding** via `pathland_host::RenderTree` (`apply_frame`),
   incl. `SET_DESIGN_TOKEN` overrides + token refs; `TuiRenderer::set_scheme`
   re-resolves on scheme change.
-- **Demo** (`pathland-render-tui-demo`): DSL → `Engine` → shared ring →
-  renderer; quits on `q`/`Esc`/`Ctrl+C`.
+- **Demos**: `pathland-render-tui-demo` (Rust DSL counter, interactive via
+  `TapRecognizer`) and `pathland-tui-demo` (Java DSL `MusicPlayerView` through
+  `pathland_tui_run_ring`, mirroring `GtkHost`); both quit on `q`/`Ctrl+C`.
 
 ## Not implemented / gaps
 
-- **No input yet** (M2 planned): mouse hit-testing → `POINTER_*`, keyboard →
-  `KEY_*`, `VALUE_CHANGED`/`TEXT_CHANGED` from controls, `EVENT_LISTENERS`/
-  `BINDING_ID` gating, event write + wake/drain loop.
 - **No grid/ZStack/ScrollView yet** (M3 planned): `GRID`/`GRID_ROW`/
   `GRID_TRACKS`, `ZSTACK` overlay + 2D alignment, `SCROLLVIEW` + `Scrollbar` +
-  `SCROLL`/`WHEEL`, `PICKER`/`MENU`/`DATE_PICKER`, `SHAPE`.
+  `SCROLL`/`WHEEL` scrolling (a `SCROLLVIEW` currently shows its first child at
+  natural size), `PICKER`/`MENU`/`DATE_PICKER`, `SHAPE`.
+- **`IMAGE`** deferred (feature-gated `ratatui-image`, M5); **`AUDIO`/`VIDEO`**
+  out of scope (render as empty placeholders — the music player's controls work,
+  playback/covers do not).
 - **No design-token default tables for TUI colors** yet (`SET_DESIGN_TOKEN`
   overrides decode, but `COLOR`-token refs resolve to the shared `pathland-host`
   concrete defaults; a TUI-specific table + scheme detection is a follow-up).
 - **No terminal-resize reporting** (`META::ENVIRONMENT` viewport) — the app
   re-draws to `frame.area()` automatically, but the guest is not notified.
-- **`IMAGE`** deferred (feature-gated `ratatui-image`, M5); **`AUDIO`/`VIDEO`**
-  out of scope (status line only); effects (`SHADOW_*`/`BLUR`/`ROTATION`/
-  `SCALE`/`OPACITY`) and `FONT_SIZE`/`BORDER_RADIUS` ignored (renderer fidelity).
+- Effects (`SHADOW_*`/`BLUR`/`ROTATION`/`SCALE`/`OPACITY`) and
+  `FONT_SIZE`/`BORDER_RADIUS` ignored (renderer fidelity).
+- Value/text events require `BINDING_ID` (`ACTION_ID`-only gating not
+  implemented, GTK parity).
 
 ## Verified by
 
 `cargo test -p pathland-render-tui` — layout decisions (stack placement,
-spacing gaps, filler absorption, `FILL` stretch, cross-axis alignment, padding)
-and `TestBackend` buffer assertions (text, spacing, button border, fill color,
-gauge ratio). `cargo run -p pathland-render-tui-demo` for a visual check.
+spacing gaps, filler absorption, `FILL` stretch, cross-axis alignment, padding),
+`TestBackend` buffer assertions (text, spacing, button border, fill color,
+gauge ratio), and input routing (click → pointer events on the button,
+Tab focus cycling, slider arrows → `VALUE_CHANGED`, button activation
+synthesizes press+release). `cargo run -p pathland-render-tui-demo` and the
+Java `pathland-tui-demo` (`./scripts/run-java-tui-demo.sh`) for visual checks.
