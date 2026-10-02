@@ -179,6 +179,11 @@ public final class PathlandRegistry {
         actor.execute(() -> session(sessionId, EnvironmentData.of("/")).resync());
     }
 
+    /** Handle a META::PING heartbeat probe: reply with a META::PONG (network transport liveness). */
+    public void pong(String sessionId) {
+        actor.execute(() -> session(sessionId, EnvironmentData.of("/")).pong());
+    }
+
     /** Close and remove a session (and drop any pending connection). */
     public void close(String sessionId) {
         actor.execute(() -> {

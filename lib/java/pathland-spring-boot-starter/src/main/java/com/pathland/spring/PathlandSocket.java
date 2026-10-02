@@ -53,6 +53,9 @@ public class PathlandSocket extends AbstractWebSocketHandler {
             byte[] bytes = toByteArray(binary.getPayload());
             if (FrameCodec.isResync(bytes)) {
                 registry.resync(uiId(session));
+            } else if (FrameCodec.isPing(bytes)) {
+                // A transport-liveness heartbeat probe (guest → host): reply PONG.
+                registry.pong(uiId(session));
             } else if (FrameCodec.isEnvironment(bytes)) {
                 // The DOM client's FIRST message: seeds the session (created lazily) from
                 // the ROUTE field; later messages enrich the environment (viewport, …).

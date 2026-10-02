@@ -61,11 +61,31 @@ public final class FrameCodec {
         return out.toByteArray();
     }
 
+    /** Encode a `META::PONG` reply batch (host → guest): the heartbeat reply to a `META::PING`. */
+    public static byte[] encodePong() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, HOST_TO_GUEST, 0, 1);
+        writeBytes(out, new Opcode(Categories.META, Commands.Meta.PONG, 0, 0, 0, 0).toBytes());
+        writeIntLE(out, 0); // empty string section
+        return out.toByteArray();
+    }
+
     /** True when the batch is a `META::RESYNC` request (host → guest). */
     public static boolean isResync(byte[] bytes) {
         Parsed parsed = parse(bytes);
         for (Opcode op : parsed.opcodes()) {
             if (op.category() == Categories.META && op.command() == Commands.Meta.RESYNC) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when the batch carries a `META::PING` heartbeat probe (guest → host). */
+    public static boolean isPing(byte[] bytes) {
+        Parsed parsed = parse(bytes);
+        for (Opcode op : parsed.opcodes()) {
+            if (op.category() == Categories.META && op.command() == Commands.Meta.PING) {
                 return true;
             }
         }

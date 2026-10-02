@@ -33,6 +33,11 @@ subpaths (the BFF layout).
   (`@Value("${pathland.debug-html:false}")`) and forwards it to each registry, enabling
   per-node HTML comments in SSR output when set.
 - **`SpringConnection`** — adapts `WebSocketSession` to `PathlandConnection`.
+  `AutoCloseable`: a failed send surfaces as a close (the session's
+  `closeConnection` closes the underlying session) so the DOM client reconnects +
+  `META::RESYNC` instead of silently stalling on an open socket.
+- **Heartbeat** — the socket routes a client `META::PING` to `registry.pong`
+  (spec/OPCODE.md §Transport heartbeat): the server answers with a `META::PONG` batch.
 
 ## App DX
 

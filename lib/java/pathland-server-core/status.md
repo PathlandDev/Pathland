@@ -43,14 +43,18 @@ dependency — framework glue lives in the starters.
   (`DeltaBatcher` coalesces per-signal frames into one batch — flush ~20 ms or 16 KB,
   string offsets rebased — so a continuous input burst can't overflow a remote WebSocket
   send queue), `applyEnvironment` (re-route guard-aware via the bound router),
-  `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `renderHtml`, `close`.
+  `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `pong`, `renderHtml`, `close`.
   `sendBatch` drops the connection on any send failure (a client reconnect then
-  re-syncs via `META::RESYNC` instead of silently stalling on an "open" socket).
+  re-syncs via `META::RESYNC` instead of silently stalling on an "open" socket);
+  `closeConnection` best-effort closes an `AutoCloseable` adapter (the starters now
+  close their underlying WebSocket on failure).
   Now takes the app's `base` and `stateScope` explicitly (the registry supplies them).
 - **`DeltaBatcher`** — merges session delta frames (opcodes + a single rebased string
   section) and flushes as one network batch on a timer/byte threshold; the Java analogue
-  of the Rust transport's `Batcher`. Coalescing tests cover merging + rebasing and a
-  100-frame burst collapsing to one send.
+  of the Rust transport's `Batcher`. The **sender runs OUTSIDE the monitor** — a
+  blocking/queueing send can never stall the actor thread's `append` or the flush
+  scheduler. Coalescing tests cover merging + rebasing, a 100-frame burst collapsing to
+  one send, and a blocking sender not holding the lock.
 - **`PathlandConnection`** — the transport seam (`send(byte[])`/`isOpen()`); each starter
   adapts its WebSocket type to it.
 - **`StateStores`** — default state store: Redis when reachable, else the supplied

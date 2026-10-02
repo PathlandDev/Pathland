@@ -29,7 +29,16 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
   Sends are **serialized** (one `sendBinary` subscription in flight, the rest queued),
   and a **send failure closes the connection** so the session drops it and the DOM
   client reconnects + `META::RESYNC` (recoverable) instead of silently stalling on an
-  "open" socket that never delivers (the remote seekbar symptom).
+  "open" socket that never delivers (the remote seekbar symptom). **Send timeout**: a
+  `sendBinary` that neither completes nor fails within 10 s (a half-dead connection /
+  a dropped proxy upstream leg) is marked failed and closed — a hung send would
+  otherwise wedge the serialized drain forever. **Keep-alive pings**: the connection
+  sends a WS-protocol ping every 15 s (browsers auto-pong) to keep the connection warm
+  through middleboxes and detect a dead client; `close()` stops the keep-alive
+  scheduler (the sockets' `@OnClose` calls it).
+- **Heartbeat** — both sockets route a client `META::PING` to `registry.pong`
+  (spec/OPCODE.md §Transport heartbeat): the server answers with a `META::PONG` batch,
+  giving the DOM client its liveness signal.
 - `META-INF/beans.xml` so Quarkus discovers the starter.
 
 ## App DX

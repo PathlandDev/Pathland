@@ -250,6 +250,24 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x40, 0x40, // C = 3.0 (f32 LE: 0x40400000) = topCenter
         ],
     ),
+    (
+        "META:PING (transport-liveness heartbeat, network batch only)",
+        [
+            0x04, 0x04, 0x00, 0x00, // category META, command PING
+            0x00, 0x00, 0x00, 0x00, // A = 0
+            0x00, 0x00, 0x00, 0x00, // B = 0
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
+    (
+        "META:PONG (reply to META::PING, network batch only)",
+        [
+            0x04, 0x05, 0x00, 0x00, // category META, command PONG
+            0x00, 0x00, 0x00, 0x00, // A = 0
+            0x00, 0x00, 0x00, 0x00, // B = 0
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -410,6 +428,8 @@ mod tests {
                 3.0f32.to_bits(),
                 VECTORS[26].1,
             ),
+            (0x04, 0x04, 0x0000, 0, 0, 0, VECTORS[27].1),
+            (0x04, 0x05, 0x0000, 0, 0, 0, VECTORS[28].1),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {
             let op = Opcode::new(*cat, *cmd, *flags, *a, *b, *c);

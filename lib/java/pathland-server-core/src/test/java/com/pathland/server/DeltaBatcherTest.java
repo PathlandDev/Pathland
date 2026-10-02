@@ -12,8 +12,11 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The session delta batcher: merges per-signal frames into one network batch
@@ -75,6 +78,38 @@ class DeltaBatcherTest {
         assertEquals(1, sent.size(), "a drag burst collapses to a single message");
         Frame merged = FrameCodec.decodeFrame(sent.get(0));
         assertEquals(100, merged.opcodes().size());
+    }
+
+    @Test
+    void blockingSenderDoesNotHoldTheBatcherLock() throws Exception {
+        // The sender runs OUTSIDE the monitor, so a blocking send (a slow/half-dead
+        // client) can never stall the actor thread's append.
+        List<byte[]> sent = new ArrayList<>();
+        CountDownLatch senderEntered = new CountDownLatch(1);
+        DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, bytes -> {
+            sent.add(bytes);
+            senderEntered.countDown();
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+        });
+
+        batcher.append(new Frame(List.of(new Opcode(
+                Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, 0, 0)), new byte[0]));
+        Thread flusher = new Thread(batcher::flush);
+        flusher.start();
+        assertTrue(senderEntered.await(2, TimeUnit.SECONDS), "sender entered and is blocking");
+
+        long t0 = System.nanoTime();
+        batcher.append(new Frame(List.of(new Opcode(
+                Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 2, 0, 0)), new byte[0]));
+        long elapsedMs = (System.nanoTime() - t0) / 1_000_000;
+        assertTrue(elapsedMs < 100, "append blocked behind a blocking sender (" + elapsedMs + " ms)");
+
+        flusher.join();
+        batcher.close();
     }
 
     private static byte[] stringSection(String... entries) {
