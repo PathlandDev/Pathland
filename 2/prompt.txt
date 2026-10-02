@@ -1,0 +1,11 @@
+Analyze the Rust crate at /Users/michael/Development/michaelkrog/Pathland/lib/rust/crates/pathland-render-html (very thorough). I'm planning a new Ratatui (TUI) renderer modeled on it. Report:
+
+1. The public API surface: what functions the crate exposes (both Rust and C ABI in capi.rs), e.g. `pathland_html_render`, `_fragment`, `_debug`, how it takes input (batch bytes + root id? opcodes + strings?), and how the caller frees results.
+2. How it decodes frames: the `decode(opcodes, strings)` function, the node model (RetainedNode or similar), how component types, properties (property_id + value type), strings/arenas are resolved.
+3. The main render entry point: `render_node` / `render_document` / `render_fragment` — how the node tree is walked, how stacks/grids/ZStack/ScrollView/text/button/controls are mapped to HTML elements, and how style properties become CSS.
+4. How design tokens / SET_DESIGN_TOKEN are handled (tokens.css, style_css, resolve).
+5. What the crate does NOT handle (e.g. event emission, state) — is it purely a pure function of the stream?
+6. The `status.md` top-level structure (Implemented / Not implemented) so I can mirror it.
+7. Its Cargo.toml: crate-type (rlib+cdylib?), deps, features, whether it's no_std or std, target requirements.
+
+Return file:line references for the key items. Be concrete and exhaustive on the API surface and component mapping.

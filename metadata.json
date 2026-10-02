@@ -3,7 +3,7 @@
   "checkpoint_id": "01M3YGVGQKCG1SAH8T1Z03BHHK",
   "strategy": "manual-commit",
   "branch": "refactor/shared-demo-assets",
-  "checkpoints_count": 2,
+  "checkpoints_count": 3,
   "files_touched": [
     "lib/java/pathland-quarkus-demo/src/main/java/com/pathland/demo/quarkus/DemoAssetsRoute.java"
   ],
@@ -21,13 +21,20 @@
       "compact_transcript": "/1/transcript.jsonl",
       "content_hash": "/1/content_hash.txt",
       "prompt": "/1/prompt.txt"
+    },
+    {
+      "metadata": "/2/metadata.json",
+      "transcript": "/2/full.jsonl",
+      "compact_transcript": "/2/transcript.jsonl",
+      "content_hash": "/2/content_hash.txt",
+      "prompt": "/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 201727,
+    "input_tokens": 282944,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 2959872,
-    "output_tokens": 32874,
-    "api_call_count": 39
+    "cache_read_tokens": 4055808,
+    "output_tokens": 44243,
+    "api_call_count": 61
   }
 }
