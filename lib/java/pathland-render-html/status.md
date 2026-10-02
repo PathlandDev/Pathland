@@ -1,6 +1,6 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** September 25, 2026
+**Last updated:** October 2, 2026
 
 The **Java binding to the Rust HTML renderer** (`com.pathland.render.html`) — a
 thin **JNA shim** over `libpathland_render_html`. There is a **single renderer**
@@ -43,11 +43,11 @@ Java renderer is removed. Protocol contract: `spec/`.
 
 ## Not implemented / gaps
 
-- **Inter is loaded from the rsms.me CDN** (Cloudflare) — the Rust renderer emits
-  the preconnect + stylesheet links in the document head; the demo pages render
-  through it, so no Java-side font serving is needed. The font is **not bundled**
-  with the renderer jar; self-hosting a subsetted, OFL-licensed woff2 is a
-  planned follow-up for offline and enterprise deployments.
+- **Typography uses the platform system font stack** (`system-ui,
+  -apple-system, 'Segoe UI', Roboto, …`) — the Rust renderer's document head
+  makes no external/webfont requests, so the demo pages render without loading
+  any font files and work offline. An app can still override `font.body.family`
+  via a `SET_DESIGN_TOKEN` to any font it hosts.
 - The shim is unaffected by the Rust renderer's September 2026 shell alignment
   (SPACER/MENU/STEPPER/GAUGE/PICKER markup now matches the DOM client's runtime
   shells); the demos' SSR output reflects the Rust renderer as-is, pinned by the
