@@ -1,1 +1,1 @@
-Also, the spring boot demo app cannot serve the assets. Wrog path perhaps?
+continue
