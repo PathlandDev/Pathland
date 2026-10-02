@@ -1,0 +1,9 @@
+Analyze these crates under /Users/michael/Development/michaelkrog/Pathland/lib/rust/crates: pathland-core, pathland-engine, pathland-core-transport, pathland-view-native (very thorough). I'm planning a new Ratatui (TUI) renderer and need the protocol/host surface. Report:
+
+1. pathland-core: the 16-byte Opcode struct + categories (TREE/PARAMETER/EVENT/META) and commands; the component_type enum (full list with hex ids); property_id constants (the full MODIFIERS catalog, especially stack/text/style/semantic/control properties); value_type enum; the Guest/Host/Frame surface (what a "frame" is, header block, frameCount); the ring buffer layout; the arena layout; the Event enum (all variants + how they encode); size::FILL/HUG_CONTENT sentinels; listener bits.
+2. pathland-engine: the RenderTree/Node/Component retained tree, the diff emitter, signals (SignalId, set_signal), RenderResult (tap-action / text-input / value-input registries — what exactly does it return to a host?).
+3. pathland-core-transport: RingTransport (who owns it, SPSC), network batch encode/decode (PLPL format), batching policy — how a renderer would read frames and write events.
+4. pathland-view-native: NativeHost, the flat C ABI functions (pathland_native_* list), the shared-memory ring world — how a host would consume frames zero-copy and drain events.
+5. How events flow: the event ring / event arena, who writes (renderer) and who drains (host), the wake mechanism.
+
+Return file:line references. Give me the complete component_type and property_id listings, the complete Event variant list, and the value_type list.
