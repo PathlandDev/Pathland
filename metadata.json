@@ -3,7 +3,7 @@
   "checkpoint_id": "01M3Z5B0244GYA9F2HWRPGBQWR",
   "strategy": "manual-commit",
   "branch": "fix/ws-heartbeat-ping",
-  "checkpoints_count": 4,
+  "checkpoints_count": 5,
   "files_touched": [
     "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java",
     "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/QuarkusConnectionTest.java"
@@ -35,6 +35,13 @@
       "transcript": "/3/full.jsonl",
       "compact_transcript": "/3/transcript.jsonl",
       "content_hash": "/3/content_hash.txt",
+      "prompt": ""
+    },
+    {
+      "metadata": "/4/metadata.json",
+      "transcript": "/4/full.jsonl",
+      "compact_transcript": "/4/transcript.jsonl",
+      "content_hash": "/4/content_hash.txt",
       "prompt": ""
     }
   ],
