@@ -60,7 +60,10 @@ public final class GtkHost {
     private static final int WINDOW_WIDTH = 1180;
     private static final int WINDOW_HEIGHT = 800;
 
-    /** The demo's media assets, extracted from the classpath at startup. */
+    /** The demo's media assets, extracted from the shared {@code pathland-demo-views}
+     *  jar at startup (a single embedded copy serves every demo). The extraction
+     *  target keeps the {@code assets/…} layout so web-style
+     *  {@code /_pathland/assets/…} paths resolve under the asset root. */
     private static final String[] ASSET_FILES = {
         "assets/audio/track1.mp3",
         "assets/audio/track2.mp3",
@@ -117,7 +120,7 @@ public final class GtkHost {
         }
     }
 
-    /** Extract the demo's audio + covers to a stable runtime directory. */
+    /** Extract the demo's audio + covers from the shared demo-views jar to a stable runtime directory. */
     private static Path extractAssets() {
         Path dir = Paths.get(System.getProperty("java.io.tmpdir"), "pathland-gtk-assets");
         try {
@@ -128,7 +131,10 @@ public final class GtkHost {
                 // run (e.g. an older track set), and a stale copy must never win
                 // over the assets shipped with this build.
                 Files.createDirectories(target.getParent());
-                try (InputStream in = GtkHost.class.getResourceAsStream("/" + path)) {
+                // The single embedded copy lives in the shared pathland-demo-views
+                // jar under META-INF/resources/_pathland/ (served by the web demos
+                // and extracted here); ASSET_FILES keep the assets/… relative layout.
+                try (InputStream in = GtkHost.class.getResourceAsStream("/META-INF/resources/_pathland/" + path)) {
                     if (in == null) {
                         throw new IllegalStateException("missing asset: " + path);
                     }
