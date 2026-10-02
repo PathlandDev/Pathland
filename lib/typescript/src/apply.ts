@@ -1110,6 +1110,7 @@ const mediaState = new WeakMap<HTMLMediaElement, {
   suppressTimeUntil: number;
   playing: boolean;
   lastReported: number;
+  lastReportedVolume: number;
 }>();
 
 /** The media element of a node: the element itself when it IS the media, else the
@@ -1142,7 +1143,7 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
   if (!media || mediaState.has(media)) {
     return;
   }
-  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0 };
+  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1 };
   mediaState.set(media, state);
   const id = Number(el.getAttribute("data-pathland-id"));
   const send = r.onMediaEvent;
@@ -1166,6 +1167,7 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
     });
     media.addEventListener("volumechange", () => {
       if (performance.now() >= state.suppressUntil) {
+        state.lastReportedVolume = media.volume;
         send(encodeMediaVolumeChanged(id, media.volume));
       }
     });
@@ -1185,6 +1187,15 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
   media.addEventListener("ended", () => {
     send(encodeMediaEnded(id));
   });
+}
+
+/** Test-only: set a media element's last-reported position (the echo-guard
+ *  basis for `MEDIA_POSITION` writes, spec/EVENTS.md Media). */
+export function __setMediaLastReported(el: HTMLMediaElement, seconds: number): void {
+  const state = mediaState.get(el);
+  if (state) {
+    state.lastReported = seconds;
+  }
 }
 
 /** Apply a media control property: drive the media element, suppress the echo,
@@ -1210,20 +1221,30 @@ function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, val
       state.suppressUntil = performance.now() + 100;
     }
   } else if (propId === PROP_MEDIA_POSITION) {
-    // A seek only when it is meaningful: the app's position echoes every
-    // timeupdate, so a near-identical write must NOT seek — it would interrupt
-    // the just-started playback (and echo a pause back, locking the player).
+    // A seek only when it is meaningful (spec/EVENTS.md Media echo guard): the
+    // app echoes every timeupdate back as MEDIA_POSITION, so a write matching
+    // the position we last REPORTED must not seek — even when network delay
+    // means currentTime has advanced (per-second jitter otherwise). A real seek
+    // (user drag / prev / next) to a different position still fires.
     const target = f32FromBits(bits);
-    if (Math.abs(media.currentTime - target) > 0.25) {
+    const reported = state ? state.lastReported : media.currentTime;
+    if (Math.abs(reported - target) > 0.25) {
       media.currentTime = target;
       if (state) {
         state.suppressTimeUntil = performance.now() + 250;
       }
     }
   } else if (propId === PROP_MEDIA_VOLUME) {
-    media.volume = Math.min(1, Math.max(0, f32FromBits(bits)));
-    if (state) {
-      state.suppressUntil = performance.now() + 100;
+    // Echo guard: a write matching the volume we last reported is the app
+    // echoing MEDIA_VOLUME_CHANGED back — skip it (it would re-trigger the
+    // native volumechange echo). A genuine user change still applies.
+    const target = Math.min(1, Math.max(0, f32FromBits(bits)));
+    const reported = state ? state.lastReportedVolume : -1;
+    if (reported < 0 || Math.abs(reported - target) > 0.01) {
+      media.volume = target;
+      if (state) {
+        state.suppressUntil = performance.now() + 100;
+      }
     }
   }
 }

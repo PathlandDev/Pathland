@@ -281,6 +281,21 @@ renderer-native media element with default controls reports nothing).
   Reported **when the playback position advances ~1 second** (at most ~1/s)
   while playing; a seek initiated by the app (`MEDIA_POSITION` change) is not
   echoed back.
+- **Commands vs reports (MUST)**: `MEDIA_POSITION`/`MEDIA_VOLUME` are **seek /
+  volume commands** the app writes to control playback; `MEDIA_TIME_UPDATED` /
+  `MEDIA_VOLUME_CHANGED` are **position / volume reports** the renderer emits.
+  An app **MUST NOT** bind a command property to the signal its matching report
+  updates — that echoes every report back as a command (e.g. each second's
+  position report re-emits a `MEDIA_POSITION` seek, causing per-second seek
+  jitter). The app binds the command to a **user-interaction-only** signal and
+  routes the report to a separate display signal.
+- **Renderer echo guard (MUST)**: a renderer **MUST NOT** act on a command write
+  that matches the value it last **reported** (within an epsilon): the app is
+  echoing the report back, not interacting. E.g. a `MEDIA_POSITION` write within
+  `0.25 s` of the last `MEDIA_TIME_UPDATED` must not seek; a `MEDIA_VOLUME`
+  write within `0.01` of the last `MEDIA_VOLUME_CHANGED` must not re-apply. This
+  is defense-in-depth: it holds at **any** network latency (the echo *is* the
+  last-reported value), so a delayed echo cannot fight the playback position.
 - **Guards**: media events flow only when the app bound the matching control
   property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`) on the node; a
   plain renderer-native media element reports nothing.

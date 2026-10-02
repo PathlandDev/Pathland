@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -126,6 +127,25 @@ class MusicPlayerViewTest {
                 "ended advances the track");
     }
 
+    @Test
+    void timeUpdatesDoNotEchoBackAsMediaPosition() {
+        StateStore store = new InMemoryStateStore();
+        PersistentState state = new PersistentState(store, "session-3");
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        RenderResult result = new Emitter(sink).mount(new MusicPlayerView(), new Environment(state));
+        InputDispatcher dispatcher = new InputDispatcher(result, Signals.signal("/"));
+        int audioId = result.mediaInputs().entrySet().iterator().next().getKey();
+
+        // A MEDIA_TIME_UPDATED report updates the seek-bar DISPLAY but MUST NOT be
+        // echoed back as a MEDIA_POSITION seek command (spec/EVENTS.md Media) —
+        // that per-second echo is what caused the seek jitter. The seek command
+        // is written only by a user drag (seekRequest), never by a report.
+        dispatcher.dispatch(com.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
+        Frame delta = sink.frame();
+        assertFalse(anyProperty(delta, Properties.MEDIA_POSITION),
+                "a position report must not emit a MEDIA_POSITION seek");
+    }
+
     private static int countCreate(Frame frame, int component) {
         int n = 0;
         for (Opcode op : frame.opcodes()) {
@@ -185,6 +205,16 @@ class MusicPlayerViewTest {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && op.c() == value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean anyProperty(Frame frame, int property) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == property) {
                 return true;
             }
         }
