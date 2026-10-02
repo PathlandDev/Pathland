@@ -1,6 +1,6 @@
 # pathland-core — implementation status
 
-**Last updated:** September 25, 2026
+**Last updated:** October 2, 2026
 
 The **protocol core**: 16-byte opcode, SPSC ring buffers (both directions),
 bump arenas (both directions), memory layout, typed events, and the golden
@@ -21,6 +21,13 @@ tracks what this crate implements.
   **`GRID_TRACKS`** (`0x0020`, STRING) per-track specs (takes precedence over the
   counts), and the **`GRID_ROW`** (`0x1D`) component (a grid child whose children
   are one row's cells) — all covered by conformance vectors (34–36).
+- **`ALIGNMENT` (0x0002) is a 2D position code (0–8)**: `0` topLeading, `1`
+  center, `2` bottomTrailing, `3` topCenter, `4` bottomCenter, `5` centerLeading,
+  `6` centerTrailing, `7` topTrailing, `8` bottomLeading. Stacks read one axis
+  (`VSTACK`→horizontal, `HSTACK`→vertical; codes 0/1/2 backward-compatible);
+  `ZSTACK`/grids read both. Position-only — stretching is a child's `FILL`
+  `WIDTH`/`HEIGHT`, never an alignment (spec/PRIMITIVES.md §ZStack). Covered by
+  conformance vector 37 (`ALIGNMENT` topCenter = 3).
 - **Properties** (`property_id`): the full `spec/MODIFIERS.md` catalog —
   stack/text/styling/semantic IDs plus every draft modifier (`SHAPE_KIND`,
   layout `OFFSET`/`POSITION`/frame bounds/`FIXED_SIZE`/`LAYOUT_PRIORITY`/
@@ -89,7 +96,9 @@ tracks what this crate implements.
 - **Conformance vectors** (`conformance.rs`): TREE/PARAMETER/META/EVENT golden
   bytes **incl. vectors 17–18, 20–27** (`SET_DESIGN_TOKEN` (COLOR +
   STRING-valued), `DESIGN_TOKEN`-typed `SET_PROPERTY`, `NAVIGATE`±URL,
-  `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE) and a ring
+  `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE), vectors
+  **34–37** (grid `GRID_COLUMNS`/`GRID_ROWS`/`GRID_TRACKS`, `GRID_ROW`,
+  `ALIGNMENT` topCenter) and a ring
   test proving `Guest::set_design_token` emits vector 17 byte-exactly;
   `cargo test` enforces them.
 

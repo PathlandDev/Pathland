@@ -57,7 +57,7 @@ public final class PlayerControlsStyle implements AudioStyle {
                 Slider.of(new PercentSeek(config.position(),
                                 () -> MusicPlayerView.at(trackIndex.get()).duration()),
                         0f, 100f)
-                        .with(FrameMod.of(Float.POSITIVE_INFINITY))
+                        .with(FrameMod.of(Float.POSITIVE_INFINITY), Padding.of(0, 16, 0, 16))
         );
     }
 
