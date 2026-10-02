@@ -160,6 +160,7 @@ lib/java/
 - Test: `cd lib/rust && cargo test` (runs all crates).
 - Build/test the Java libraries: `cd lib/java && mvn install`.
 - Run the GTK demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-gtk-demo`.
+- Run the TUI demo (terminal UI, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-tui-demo`.
 - Run the Quarkus demo (SSR + WebSocket deltas, dev mode):
   `cd lib/java/pathland-quarkus-demo && mvn quarkus:dev` (or `mvn package && java -jar target/quarkus-app/quarkus-run.jar`).
   Needs JDK 17+ (the whole stack runs on every LTS from 17) and Quarkus ≥ 3.18.

@@ -175,6 +175,7 @@ and launches:
 | `./scripts/run-spring-demo.sh` | Spring Boot SSR + WebSocket | http://localhost:8080 |
 | `./scripts/run-quarkus-demo.sh` | Quarkus SSR + WebSocket (hot reload) | http://localhost:8080 |
 | `./scripts/run-rust-gtk-demo.sh` | Rust DSL → GTK4 desktop renderer | a native window |
+| `./scripts/run-rust-tui-demo.sh` | Rust DSL → Ratatui (TUI) renderer | the terminal (quit: `q`/`Esc`/`Ctrl+C`) |
 | `./scripts/run-java-gtk-demo.sh` | Java DSL → GTK4 desktop renderer (the shared `SplitNavDemo`) | a native window |
 
 ```bash
