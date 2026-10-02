@@ -26,6 +26,10 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
   it down. Reads the `pathland.debug-html` config property (default `false`) to enable
   per-node HTML comments in SSR output.
 - **`QuarkusConnection`** — adapts `WebSocketConnection` to `PathlandConnection`.
+  Sends are **serialized** (one `sendBinary` subscription in flight, the rest queued),
+  and a **send failure closes the connection** so the session drops it and the DOM
+  client reconnects + `META::RESYNC` (recoverable) instead of silently stalling on an
+  "open" socket that never delivers (the remote seekbar symptom).
 - `META-INF/beans.xml` so Quarkus discovers the starter.
 
 ## App DX
