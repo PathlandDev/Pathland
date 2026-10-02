@@ -1,0 +1,1 @@
+it still loads the font in the browser event t
