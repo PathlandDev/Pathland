@@ -1,6 +1,7 @@
 package com.pathland.demo.gtk;
 
 import com.pathland.demo.DemoTheme;
+import com.pathland.demo.assets.DemoAssets;
 import com.pathland.demo.music.MusicPlayerView;
 import com.pathland.view.Environment;
 import com.pathland.view.emit.Emitter;
@@ -14,14 +15,6 @@ import com.pathland.view.state.InMemoryStateStore;
 import com.pathland.view.state.PersistentState;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 
 /**
  * Runs the shared {@link MusicPlayerView} under the native GTK4 renderer — the
@@ -60,25 +53,6 @@ public final class GtkHost {
     private static final int WINDOW_WIDTH = 1180;
     private static final int WINDOW_HEIGHT = 800;
 
-    /** The demo's media assets, extracted from the shared {@code pathland-demo-views}
-     *  jar at startup (a single embedded copy serves every demo). The extraction
-     *  target keeps the {@code assets/…} layout so web-style
-     *  {@code /_pathland/assets/…} paths resolve under the asset root. */
-    private static final String[] ASSET_FILES = {
-        "assets/audio/track1.mp3",
-        "assets/audio/track2.mp3",
-        "assets/audio/track3.mp3",
-        "assets/audio/track4.mp3",
-        "assets/audio/track5.mp3",
-        "assets/audio/track6.mp3",
-        "assets/albumart/cover1.jpg",
-        "assets/albumart/cover2.jpg",
-        "assets/albumart/cover3.jpg",
-        "assets/albumart/cover4.jpg",
-        "assets/albumart/cover5.jpg",
-        "assets/albumart/cover6.jpg",
-    };
-
     public static void main(String[] args) {
         PathlandCore core = PathlandCore.instance();
         try (RingOpcodeSink sink = new RingOpcodeSink(core)) {
@@ -99,9 +73,10 @@ public final class GtkHost {
                     new RingEventReader(core.ringPtr(handle), core.ringLen(handle));
 
             // The app references its assets with web-style /_pathland/... paths;
-            // the renderer resolves them against a local copy.
+            // the renderer resolves them against a local copy extracted once from
+            // the shared demo-views jar (see DemoAssets).
             GtkRendererNative renderer = GtkRendererNative.instance();
-            renderer.setAssetRoot(extractAssets().toString());
+            renderer.setAssetRoot(DemoAssets.extractToTemp().toString());
 
             // Wake callback: drain raw EVENT opcodes from the shared ring and route
             // them into the app's bindings. Re-emission (signal → emitter → ring)
@@ -117,33 +92,6 @@ public final class GtkHost {
 
             // Blocks until the window closes; the ring (handle) must outlive it.
             renderer.runRing(core.ringMut(handle), onEvent, WINDOW_WIDTH, WINDOW_HEIGHT);
-        }
-    }
-
-    /** Extract the demo's audio + covers from the shared demo-views jar to a stable runtime directory. */
-    private static Path extractAssets() {
-        Path dir = Paths.get(System.getProperty("java.io.tmpdir"), "pathland-gtk-assets");
-        try {
-            Files.createDirectories(dir);
-            for (String path : ASSET_FILES) {
-                Path target = dir.resolve(path);
-                // Always overwrite: the temp dir may hold assets from a previous
-                // run (e.g. an older track set), and a stale copy must never win
-                // over the assets shipped with this build.
-                Files.createDirectories(target.getParent());
-                // The single embedded copy lives in the shared pathland-demo-views
-                // jar under META-INF/resources/_pathland/ (served by the web demos
-                // and extracted here); ASSET_FILES keep the assets/… relative layout.
-                try (InputStream in = GtkHost.class.getResourceAsStream("/META-INF/resources/_pathland/" + path)) {
-                    if (in == null) {
-                        throw new IllegalStateException("missing asset: " + path);
-                    }
-                    Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-                }
-            }
-            return dir;
-        } catch (IOException e) {
-            throw new UncheckedIOException("could not extract demo assets", e);
         }
     }
 }

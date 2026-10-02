@@ -121,3 +121,9 @@ media events drive position/volume/ended). Both SSR demos are verified by
 running them and curling the routes (`/` renders the music player's
 `<img>`s + range sliders + transport buttons + the `.pathland-media` audio
 wrapper; the albumart + audio assets serve from `/_pathland/assets/`).
+- **Single embedded asset copy** (`com.pathland.demo.assets.DemoAssets`): the
+  media + icon assets live once in this jar under
+  `META-INF/resources/_pathland/assets/`; `DemoAssets.extractToTemp()` unpacks
+  them to a temp dir (with `Range`/caching headers) that every host serves from —
+  the web demos mount their framework static handler on `<root>/assets/…`, the
+  GTK host sets it as the asset root. `DemoAssetsTest` guards all 24 assets.

@@ -2,9 +2,8 @@ package com.pathland.demo.assets;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The demo's media + icon assets are embedded **once** in this project (the shared
@@ -14,25 +13,20 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class DemoAssetsTest {
 
-    private static final String RESOURCE_BASE = "/META-INF/resources/_pathland/assets/";
-
-    /** Every asset path the shared views reference (music + sidebar/kitchensink icons). */
-    private static final List<String> ASSETS = List.of(
-            "audio/track1.mp3", "audio/track2.mp3", "audio/track3.mp3",
-            "audio/track4.mp3", "audio/track5.mp3", "audio/track6.mp3",
-            "albumart/cover1.jpg", "albumart/cover2.jpg", "albumart/cover3.jpg",
-            "albumart/cover4.jpg", "albumart/cover5.jpg", "albumart/cover6.jpg",
-            "icons/home.svg", "icons/kitchen.svg", "icons/settings.svg",
-            "icons/save.svg", "icons/cloud.svg", "icons/status.svg",
-            "lyrics/Building_on_Solid_Ground.srt", "lyrics/Pathland_Crossing.srt",
-            "lyrics/Rendered_Free.srt", "lyrics/Rendered_In_Your_Arms.srt",
-            "lyrics/Sixty_Frames_Per_Second.srt", "lyrics/The_Pathland_Dream.srt");
-
     @Test
     void allReferencedDemoAssetsResolveOnTheClasspath() {
-        for (String asset : ASSETS) {
-            assertNotNull(DemoAssetsTest.class.getResourceAsStream(RESOURCE_BASE + asset),
+        for (String asset : DemoAssets.ASSETS) {
+            assertNotNull(DemoAssetsTest.class.getResourceAsStream(DemoAssets.RESOURCE_BASE + asset),
                     "missing shared demo asset: " + asset);
+        }
+    }
+
+    @Test
+    void extractToTempMaterializesEveryAsset() {
+        java.nio.file.Path root = DemoAssets.extractToTemp();
+        for (String asset : DemoAssets.ASSETS) {
+            assertTrue(root.resolve("assets").resolve(asset).toFile().isFile(),
+                    "extraction missed: " + asset);
         }
     }
 }

@@ -23,8 +23,8 @@ cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
   GStreamer `playbin` (driven by the node's media control properties) and
   reports `MEDIA_*` events back through the ring. The app's web-style
   `/_pathland/assets/...` paths are resolved against a local asset root: the
-  demo extracts its audio + covers from the classpath at startup and calls
-  `pathland_gtk_set_asset_root`.
+  demo extracts its audio + covers from the shared `pathland-demo-views` jar at
+  startup (`DemoAssets.extractToTemp`) and calls `pathland_gtk_set_asset_root`.
 
 ## Implemented
 
