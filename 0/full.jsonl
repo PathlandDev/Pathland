@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 4.434945833999994,
+    "cost": 4.441849763999994,
     "tokens": {
-      "input": 16635651,
-      "output": 775847,
+      "input": 16636998,
+      "output": 776924,
       "reasoning": 0,
       "cache": {
-        "read": 491363328,
+        "read": 493381888,
         "write": 0
       }
     },
     "time": {
       "created": 1790832158874,
-      "updated": 1790948214192
+      "updated": 1790948357524
     }
   },
   "messages": [
@@ -202388,21 +202388,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001707492,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 504691,
+          "input": 402,
+          "output": 225,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 504064
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1790948214270
+          "created": 1790948214270,
+          "completed": 1790948343069
         },
+        "finish": "tool-calls",
         "id": "msg_0fcd505fe002KqTib1uTNPka29",
         "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s"
       },
@@ -202441,21 +202444,369 @@
           "tool": "bash",
           "callID": "call_c1900ebcd5694840b8c8fbfc",
           "state": {
-            "metadata": {
-              "output": " M lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java\n M lib/java/pathland-quarkus-starter/status.md\n M lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java\n M lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandSessionTest.java\n M lib/java/pathland-server-core/status.md\n?? lib/java/pathland-server-core/src/main/java/com/pathland/server/DeltaBatcher.java\n?? lib/java/pathland-server-core/src/test/java/com/pathland/server/DeltaBatcherTest.java\n"
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git status --short && git add -A && git commit -q -m \"server: fix remote WebSocket silent-stop — Quarkus send failure-surfacing + serialized sends, Java DeltaBatcher coalescing, send-path hardening\" && git log --oneline -1",
               "timeout": 120000
             },
+            "output": " M lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java\n M lib/java/pathland-quarkus-starter/status.md\n M lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java\n M lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandSessionTest.java\n M lib/java/pathland-server-core/status.md\n?? lib/java/pathland-server-core/src/main/java/com/pathland/server/DeltaBatcher.java\n?? lib/java/pathland-server-core/src/test/java/com/pathland/server/DeltaBatcherTest.java\n\n\n<shell_metadata>\nshell tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.\n</shell_metadata>",
+            "metadata": {
+              "output": " M lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java\n M lib/java/pathland-quarkus-starter/status.md\n M lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java\n M lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandSessionTest.java\n M lib/java/pathland-server-core/status.md\n?? lib/java/pathland-server-core/src/main/java/com/pathland/server/DeltaBatcher.java\n?? lib/java/pathland-server-core/src/test/java/com/pathland/server/DeltaBatcherTest.java\n",
+              "exit": null,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git status --short && git add -A && git commit -q -m \"server: fix remote WebSocket silent-stop — Quarkus send failure-surfacing + serialized sends, Java DeltaBatcher coalescing, send-path hardening\" && git log --oneline -1",
             "time": {
-              "start": 1790948219774
+              "start": 1790948219774,
+              "end": 1790948342946
             }
           },
           "id": "prt_0fcd51b77001jgHmjsMMVAL8b6",
           "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
           "messageID": "msg_0fcd505fe002KqTib1uTNPka29"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "c906719434b10f535f108fab7fd5d1646d7cbc9d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 504691,
+            "input": 402,
+            "output": 225,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 504064
+            }
+          },
+          "cost": 0.001707492,
+          "id": "prt_0fcd6fcf6001MrcdbtNDUucOvm",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd505fe002KqTib1uTNPka29"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0fcd1453a0014yB1S2qB47bUPz",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001605828,
+        "tokens": {
+          "total": 504968,
+          "input": 318,
+          "output": 74,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 504576
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790948343310,
+          "completed": 1790948347132
+        },
+        "finish": "tool-calls",
+        "id": "msg_0fcd6fe0e002FPpNkgu1ouavsg",
+        "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s"
+      },
+      "parts": [
+        {
+          "snapshot": "c906719434b10f535f108fab7fd5d1646d7cbc9d",
+          "type": "step-start",
+          "id": "prt_0fcd70b12001RPR6R7B4gRNz6c",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd6fe0e002FPpNkgu1ouavsg"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_8e427f3e3584421e95fc50f5",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && git log --oneline -1 && git status --short | head -3"
+            },
+            "output": "235b6035 server: fix remote WebSocket silent-stop — Quarkus send failure-surfacing + serialized sends, Java DeltaBatcher coalescing, send-path hardening\n",
+            "metadata": {
+              "output": "235b6035 server: fix remote WebSocket silent-stop — Quarkus send failure-surfacing + serialized sends, Java DeltaBatcher coalescing, send-path hardening\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git log --oneline -1 && git status --short | head -3",
+            "time": {
+              "start": 1790948346928,
+              "end": 1790948346980
+            }
+          },
+          "id": "prt_0fcd70b15001zmd8lR3uYJ135G",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd6fe0e002FPpNkgu1ouavsg"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "c906719434b10f535f108fab7fd5d1646d7cbc9d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 504968,
+            "input": 318,
+            "output": 74,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 504576
+            }
+          },
+          "cost": 0.001605828,
+          "id": "prt_0fcd70cd7001fyJVcNuBJ9VlsZ",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd6fe0e002FPpNkgu1ouavsg"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0fcd1453a0014yB1S2qB47bUPz",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001705896,
+        "tokens": {
+          "total": 505289,
+          "input": 184,
+          "output": 273,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 504832
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790948347225,
+          "completed": 1790948352186
+        },
+        "finish": "tool-calls",
+        "id": "msg_0fcd70d59002NI4sCsmuggc4Bv",
+        "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s"
+      },
+      "parts": [
+        {
+          "snapshot": "c906719434b10f535f108fab7fd5d1646d7cbc9d",
+          "type": "step-start",
+          "id": "prt_0fcd71d0f0019d437skE2FBq8A",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd70d59002NI4sCsmuggc4Bv"
+        },
+        {
+          "type": "reasoning",
+          "text": "Committed (235b6035), tree clean. Let me update todos and summarize.",
+          "time": {
+            "start": 1790948351249,
+            "end": 1790948351252
+          },
+          "id": "prt_0fcd71d11001R9pUd9lhuyUbEL",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd70d59002NI4sCsmuggc4Bv"
+        },
+        {
+          "type": "text",
+          "text": "Committed `235b6035` on `fix/ws-send-recovery`, tree clean.",
+          "time": {
+            "start": 1790948351254,
+            "end": 1790948352096
+          },
+          "id": "prt_0fcd71d16001ldDk3COgEWGFuM",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd70d59002NI4sCsmuggc4Bv"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "call_21c6249b0b5948b5b4c4b760",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "Create branch fix/ws-send-recovery from main",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "QuarkusConnection: surface send failures (close on failure) + serialize sends",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "DeltaBatcher in pathland-server-core + wire into PathlandSession (coalesce endFrame sends)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Harden PathlandSession.send (encodeFrame inside try + close on failure)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Tests: failing-connection recovery + DeltaBatcher coalescing",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Verify (mvn install + tests) + commit",
+                  "priority": "high",
+                  "status": "completed"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"Create branch fix/ws-send-recovery from main\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"QuarkusConnection: surface send failures (close on failure) + serialize sends\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"DeltaBatcher in pathland-server-core + wire into PathlandSession (coalesce endFrame sends)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Harden PathlandSession.send (encodeFrame inside try + close on failure)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Tests: failing-connection recovery + DeltaBatcher coalescing\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Verify (mvn install + tests) + commit\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "Create branch fix/ws-send-recovery from main",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "QuarkusConnection: surface send failures (close on failure) + serialize sends",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "DeltaBatcher in pathland-server-core + wire into PathlandSession (coalesce endFrame sends)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Harden PathlandSession.send (encodeFrame inside try + close on failure)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Tests: failing-connection recovery + DeltaBatcher coalescing",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Verify (mvn install + tests) + commit",
+                  "status": "completed",
+                  "priority": "high"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "0 todos",
+            "time": {
+              "start": 1790948352051,
+              "end": 1790948352054
+            }
+          },
+          "id": "prt_0fcd71d18001d1sckbAtzrPrNP",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd70d59002NI4sCsmuggc4Bv"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "c906719434b10f535f108fab7fd5d1646d7cbc9d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 505289,
+            "input": 184,
+            "output": 273,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 504832
+            }
+          },
+          "cost": 0.001705896,
+          "id": "prt_0fcd7208c001MDnz12v7k8FM18",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd70d59002NI4sCsmuggc4Bv"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0fcd1453a0014yB1S2qB47bUPz",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001884714,
+        "tokens": {
+          "total": 506036,
+          "input": 443,
+          "output": 505,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 505088
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790948352278,
+          "completed": 1790948357486
+        },
+        "finish": "stop",
+        "id": "msg_0fcd72116002c3L8XJVt52mQNS",
+        "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s"
+      },
+      "parts": [
+        {
+          "snapshot": "c906719434b10f535f108fab7fd5d1646d7cbc9d",
+          "type": "step-start",
+          "id": "prt_0fcd72bd8001v7khqkON0aEhE4",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd72116002c3L8XJVt52mQNS"
+        },
+        {
+          "type": "text",
+          "text": "Done. The remote WebSocket silent-stop is fixed on `fix/ws-send-recovery`.\n\n## What was wrong\nThe **Quarkus** WebSocket adapter swallowed every send failure (`failure -> {}`), so `PathlandSession` never learned deliveries stopped. Meanwhile the Java server sent **one tiny WS frame per signal change, unbuffered** — a seekbar drag bursts dozens of frames/sec, which overflows the send queue on a remote/slow link. Result: the browser's WS stayed \"open\" but the server delivered nothing, and the DOM client never reconnects (it only reconnects on close).\n\n## What landed (all four)\n1. **`QuarkusConnection`** — sends are now **serialized** (one `sendBinary` subscription in flight, rest queued), and a **send failure closes the connection** → the session drops it → the client's WS closes → it reconnects + requests `META::RESYNC`. Recoverable instead of silent-stall.\n2. **`DeltaBatcher`** (new, `pathland-server-core`) — merges per-signal frames (opcodes + a single **rebased string section**) into one network batch, flushed ~20 ms or 16 KB — the Java analogue of the Rust `Batcher`. A drag burst collapses to ~50 messages/sec. Wired into `PathlandSession`'s `endFrame` (only for live, connected sessions).\n3. **`PathlandSession.sendBatch`** — dropped connection on any send failure (+ best-effort close); `resync()` flushes immediately; `close()` shuts down the batcher.\n4. **status.md** updates for `pathland-server-core` + the Quarkus starter.\n\n## Verified\n`mvn` reactor tests green — `PathlandSessionTest` 9 (incl. new *drops failed connection + recovers on reconnect*), `DeltaBatcherTest` 2 (rebased-string merge + 100-frame burst → 1 send). No Rust/TS changes.\n\n## To try it\nRebuild the demo (`cargo build -p pathland-render-html` if needed, then `./scripts/run-quarkus-demo.sh`), host it remotely, drag the seekbar — deltas keep flowing, and a network break now recovers via reconnect+RESYNC instead of freezing.",
+          "time": {
+            "start": 1790948355034,
+            "end": 1790948357409
+          },
+          "id": "prt_0fcd72bda0019ms1qfCQqmARZO",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd72116002c3L8XJVt52mQNS"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "c906719434b10f535f108fab7fd5d1646d7cbc9d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 506036,
+            "input": 443,
+            "output": 505,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 505088
+            }
+          },
+          "cost": 0.001884714,
+          "id": "prt_0fcd735470018VnHaBvC37fvGG",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fcd72116002c3L8XJVt52mQNS"
         }
       ]
     }
