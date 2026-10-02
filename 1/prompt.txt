@@ -1,0 +1,13 @@
+Explore the Java server runtime at /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-server-core/src/main/java/com/pathland/server/. This is a Pathland SSR + WebSocket server. I'm investigating why server->client WebSocket deltas stop reaching the client after a little while (works at first, then events stop).
+
+Read and report in detail (with file:line references):
+1. PathlandSession — the full session lifecycle: how it drains the renderer/eager signals, how deltas are produced, whether it runs on an actor thread, how the thread loop terminates, any exception handling that could kill the loop silently, any timers/executors.
+2. PathlandConnection — the send seam: how sends are queued/serialized, failure handling, any backpressure, close-on-failure.
+3. DeltaBatcher — batching policy: timer, size, flush, and whether a batch could get stuck (e.g. timer cancelled, batch never flushed on close, exception mid-batch).
+4. PathlandRegistry — session registry, 1:1 lifecycle, any eviction/timeout that could silently detach a session.
+5. Any periodic tasks, scheduled executors, or watchers (e.g. the session's environment ticking, signal re-emission loops) that could stop firing after a while.
+6. Anything that could cause a silent dead-stop: swallowed exceptions, infinite loops, executor shutdown, condition await without notify, ring buffer full.
+
+Also check whether there's a heartbeat/ping mechanism in the protocol (search for heartbeat, ping, keepalive, PONG, alive) across server-core.
+
+Be very thorough. Report concrete code paths and likely failure points.
