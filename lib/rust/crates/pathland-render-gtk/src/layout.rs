@@ -9,7 +9,7 @@
 //! needs GTK initialized - which keeps the mapping unit-testable headlessly.
 
 use gtk::{Align, Orientation};
-use crate::host::{HostNode, RenderTree};
+use pathland_host::{HostNode, RenderTree};
 use pathland_core::{component_type, property_id, size};
 
 /// Map a component type to its native stack orientation.

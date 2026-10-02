@@ -85,6 +85,14 @@ crates/pathland-render-gtk/ # RENDERER — host reader (RenderTree) + maps opcod
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
 #   stacks, spans, buttons) as a pure function of the stream; the
                            #   server-side/remote-projection target (Goal #15).
+crates/pathland-host/      # SHARED HOST READER — the canonical retained RenderTree/
+                           #   HostNode decoder (+ design-token resolution) shared by
+                           #   every renderer (GTK, TUI, …); renderer token tables stay
+                           #   per-renderer.
+crates/pathland-render-tui/ # RENDERER — Ratatui (TUI) renderer: retained tree → terminal
+#   widgets (Layout stacks, Paragraph text, Gauge progress) via TestBackend tests;
+                           #   interactive input + grids/zstack/scroll are follow-ups.
+crates/pathland-render-tui-demo/ # DEMO — DSL → shared ring → pathland-render-tui.
 # ── Web client (DOM renderer, lib/typescript) ──────────────────────────────
 lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer: a small
                            #   vanilla-TypeScript hydration client (no runtime deps):

@@ -1,0 +1,16 @@
+[package]
+name = "pathland-render-tui-demo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Pathland Ratatui (TUI) demo: drives the shared ring through the pathland-render-tui renderer"
+publish = false
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+pathland-core-transport = { path = "../pathland-core-transport" }
+pathland-engine = { path = "../pathland-engine" }
+pathland-view = { path = "../pathland-view" }
+pathland-render-tui = { path = "../pathland-render-tui" }
+ratatui = "0.30"

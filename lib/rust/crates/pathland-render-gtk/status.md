@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** October 1, 2026
+**Last updated:** October 2, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -93,7 +93,8 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `AdwNavigationView` is only the renderer's rendered-output cache.
   `libadwaita` (0.7, `v1_4` feature) is a new native dependency.
 - **Design tokens / theming (spec/TOKENS.md renderer contract)**:
-  - `PARAMETER::SET_DESIGN_TOKEN` overrides are stored (`host.rs`), base + `dark.*`
+  - `PARAMETER::SET_DESIGN_TOKEN` overrides are stored (shared `pathland-host`
+    decoder), base + `dark.*`
     split by path prefix; STRING-valued overrides resolve the value string from
     the arena.
   - `DESIGN_TOKEN`-typed `SET_PROPERTY` values record the token path
@@ -101,7 +102,7 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
     the active scheme, and the parent-fallback chain into concrete
     `properties`/`strings` (`RenderTree::resolve_tokens`, reusing
     `pathland_core::tokens`).
-  - **Tier-1 default tables** (light + dark) in `host.rs`
+  - **Tier-1 default tables** (light + dark) in `pathland-host`
     (`concrete_default_tables`) — concrete platform-appropriate fallbacks,
     **enriched with GTK-native theme colors** (`tokens.rs`:
     `StyleContext::lookup_color` of `@theme_*`/`@borders`/`@success_color`…)

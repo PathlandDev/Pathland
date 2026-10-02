@@ -1,0 +1,18 @@
+[package]
+name = "pathland-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Pathland canonical host reader: retained RenderTree decoder shared by the GTK and TUI renderers"
+publish = false
+
+[lib]
+name = "pathland_host"
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+
+[dev-dependencies]
+pathland-engine = { path = "../pathland-engine" }
+pathland-view = { path = "../pathland-view" }

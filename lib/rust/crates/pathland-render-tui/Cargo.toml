@@ -1,0 +1,21 @@
+[package]
+name = "pathland-render-tui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Pathland Ratatui (TUI) renderer: maps opcode frames onto terminal widgets incrementally"
+publish = false
+
+[lib]
+name = "pathland_render_tui"
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+pathland-core-transport = { path = "../pathland-core-transport" }
+pathland-host = { path = "../pathland-host" }
+ratatui = "0.30"
+
+[dev-dependencies]
+pathland-engine = { path = "../pathland-engine" }
+pathland-view = { path = "../pathland-view" }

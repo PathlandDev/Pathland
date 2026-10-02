@@ -1,7 +1,7 @@
 //! # pathland-render-gtk
 //!
-//! The Pathland **GTK4 renderer**. It consumes opcode frames (via
-//! [`crate::host::RenderTree`]) and maps them **incrementally** onto native GTK4
+//! The Pathland **GTK4 renderer**. It consumes opcode frames (via the shared
+//! [`pathland_host::RenderTree`]) and maps them **incrementally** onto native GTK4
 //! widgets — `GtkBox` for stacks, `GtkLabel` for text, `GtkButton` for buttons.
 //!
 //! This is the only place in the desktop path that touches GTK/glib/pango APIs.
@@ -21,11 +21,10 @@
 //! in-process over the `pathland-view-native` host's shared ring.
 
 mod capi;
-mod host;
 mod layout;
 mod tokens;
 
-pub use host::{describe, render_tree_from_frame, HostNode, RenderTree};
+pub use pathland_host::{describe, render_tree_from_frame, HostNode, RenderTree};
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;

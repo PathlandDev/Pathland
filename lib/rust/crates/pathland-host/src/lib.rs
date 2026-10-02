@@ -1,4 +1,8 @@
-//! Host-side reader: opcode frames -> native-element description.
+//! # pathland-host
+//!
+//! The **canonical host reader**: the retained `RenderTree` that decodes opcode
+//! frames into a native-element description shared by every renderer (GTK4
+//! desktop, HTML, TUI).
 //!
 //! Consumes frames and builds a **native-element description**: the tree
 //! structure (`TREE`) plus constraint properties (`PARAMETER`) a renderer maps onto
@@ -91,8 +95,8 @@ pub struct RenderTree {
     /// `dark.*` overrides keyed by the bare path (the prefix stripped).
     dark_overrides: BTreeMap<String, TokenValue>,
     /// Renderer default token values (Tier 1 light + dark, spec/TOKENS.md) —
-    /// concrete platform-appropriate fallbacks, optionally enriched with GTK
-    /// native theme colors (see `crate::tokens::gtk_defaults`).
+    /// concrete platform-appropriate fallbacks, optionally enriched with
+    /// platform-native theme colors (see each renderer's token module).
     defaults: BTreeMap<String, TokenValue>,
     dark_defaults: BTreeMap<String, TokenValue>,
     /// The effective color scheme (renderer-derived, never carried by the
@@ -288,10 +292,10 @@ pub fn render_tree_from_frame(frame: &Frame<'_>) -> RenderTree {
 }
 
 /// Concrete Tier-1 design-token defaults (light + dark) — platform-appropriate
-/// fallbacks used headless and as the base the GTK-native enrichment in
-/// `crate::tokens::gtk_defaults` overwrites. Values are renderer-owned; apps
-/// override via `PARAMETER::SET_DESIGN_TOKEN` (spec/TOKENS.md).
-pub(crate) fn concrete_default_tables() -> (
+/// fallbacks used headless and as the base a renderer's platform-native
+/// enrichment overwrites. Values are renderer-owned; apps override via
+/// `PARAMETER::SET_DESIGN_TOKEN` (spec/TOKENS.md).
+pub fn concrete_default_tables() -> (
     BTreeMap<String, TokenValue>,
     BTreeMap<String, TokenValue>,
 ) {

@@ -15,6 +15,7 @@ crate-type = ["cdylib", "rlib"]
 pathland-core = { path = "../pathland-core" }
 pathland-core-transport = { path = "../pathland-core-transport" }
 pathland-view-native = { path = "../pathland-view-native" }
+pathland-host = { path = "../pathland-host" }
 gtk = { package = "gtk4", version = "0.9" }
 glib = "0.20"
 pango = "0.20"
