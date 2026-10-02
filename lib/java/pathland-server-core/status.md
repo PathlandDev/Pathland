@@ -39,10 +39,18 @@ dependency — framework glue lives in the starters.
   `wid`, and a same-tab reload re-syncs that window's persisted state over the
   WebSocket. The old `session` cookie is removed.
 - **`PathlandSession`** — per-session: builds the `Platform.ACTIVE_PATH` signal, mounts
-  `app.newRoot().environment(ACTIVE_PATH, activePath)`, send-on-`endFrame` sink over a
-  `PathlandConnection`, `applyEnvironment` (re-route guard-aware via the bound router),
+  `app.newRoot().environment(ACTIVE_PATH, activePath)`, **delta-batched send-on-`endFrame`**
+  (`DeltaBatcher` coalesces per-signal frames into one batch — flush ~20 ms or 16 KB,
+  string offsets rebased — so a continuous input burst can't overflow a remote WebSocket
+  send queue), `applyEnvironment` (re-route guard-aware via the bound router),
   `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `renderHtml`, `close`.
+  `sendBatch` drops the connection on any send failure (a client reconnect then
+  re-syncs via `META::RESYNC` instead of silently stalling on an "open" socket).
   Now takes the app's `base` and `stateScope` explicitly (the registry supplies them).
+- **`DeltaBatcher`** — merges session delta frames (opcodes + a single rebased string
+  section) and flushes as one network batch on a timer/byte threshold; the Java analogue
+  of the Rust transport's `Batcher`. Coalescing tests cover merging + rebasing and a
+  100-frame burst collapsing to one send.
 - **`PathlandConnection`** — the transport seam (`send(byte[])`/`isOpen()`); each starter
   adapts its WebSocket type to it.
 - **`StateStores`** — default state store: Redis when reachable, else the supplied

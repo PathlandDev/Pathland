@@ -43,6 +43,7 @@ public final class PathlandSession {
 
     private final String base;
     private final FrameOpcodeSink sink;
+    private final DeltaBatcher batcher;
     private final Emitter emitter;
     private final InputDispatcher inputDispatcher;
     private final int rootId;
@@ -85,15 +86,21 @@ public final class PathlandSession {
             @Override
             public void endFrame() {
                 super.endFrame();
+                // Only live deltas go out: the mount frame (emitted in the
+                // constructor, before the session attaches) is NOT sent — the
+                // client already has the whole UI from the HTML. A dead
+                // connection's frames are dropped (a reconnect re-syncs).
+                PathlandConnection conn = connection;
+                if (conn == null || !conn.isOpen()) {
+                    return;
+                }
                 Frame frame = frame();
                 if (!frame.opcodes().isEmpty()) {
-                    // The mount frame (emitted in the constructor, before the session
-                    // attaches) is NOT sent — the client already has the whole UI from
-                    // the HTML. Only deltas + resync snapshots go out.
-                    send(frame);
+                    batcher.append(frame);
                 }
             }
         };
+        this.batcher = new DeltaBatcher(this::sendBatch);
         this.emitter = new Emitter(sink, app.theme());
 
         // Mount wires State fields, then renders and emits the structural frame. The
@@ -123,22 +130,40 @@ public final class PathlandSession {
         this.connection = connection;
     }
 
-    /** Re-send the current tree as a full snapshot (META::RESYNC). */
+    /** Re-send the current tree as a full snapshot (META::RESYNC), flushed immediately. */
     public void resync() {
         emitter.renderFull();
+        batcher.flush();
     }
 
-    private void send(Frame frame) {
+    /**
+     * Send an encoded batch to the connection. On any send failure (or a closed
+     * connection) the connection is dropped and best-effort closed, so the DOM
+     * client reconnects and requests a {@code META::RESYNC} instead of silently
+     * stalling on an "open" WebSocket that never delivers.
+     */
+    private void sendBatch(byte[] bytes) {
         PathlandConnection conn = connection;
         if (conn == null || !conn.isOpen()) {
             connection = null;
             return;
         }
-        byte[] bytes = FrameCodec.encodeFrame(frame);
         try {
             conn.send(bytes);
         } catch (Exception e) {
             connection = null;
+            closeConnection(conn);
+        }
+    }
+
+    /** Best-effort close of a failed connection (the adapters may expose a close). */
+    private static void closeConnection(PathlandConnection conn) {
+        if (conn instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+            } catch (Exception ignored) {
+                // best-effort: the session already dropped the connection
+            }
         }
     }
 
@@ -176,10 +201,11 @@ public final class PathlandSession {
                 .replace("</body>", "<script src=\"" + base + "/dom-renderer.js\" defer></script></body>");
     }
 
-    /** Tear down: close the persistent state, unsubscribe the emitter, drop the connection. */
+    /** Tear down: close the persistent state, unsubscribe the emitter, stop the batcher, drop the connection. */
     public void close() {
         state.close();
         emitter.destroy();
+        batcher.close();
         connection = null;
     }
 

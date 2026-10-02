@@ -68,6 +68,30 @@ class PathlandSessionTest {
     }
 
     @Test
+    void dropsFailedConnectionAndRecoversOnReconnect() {
+        PathlandApp app = () -> Button.of("Tap", () -> {});
+        PathlandSession session = new PathlandSession("s2", STORE, app, EnvironmentData.of("/"));
+
+        // A send failure must drop the connection (the client then reconnects +
+        // requests a RESYNC) instead of silently stalling on an "open" socket.
+        FailingConnection failing = new FailingConnection();
+        session.connect(failing);
+        session.resync();
+        assertEquals(1, failing.attempts, "the first send is attempted");
+
+        session.resync();
+        assertEquals(1, failing.attempts, "a dropped connection is never re-sent to");
+
+        // Reconnecting a healthy connection resumes delivery.
+        RecordingConnection good = new RecordingConnection();
+        session.connect(good);
+        session.resync();
+        assertTrue(good.sent >= 1, "a reconnected session sends again");
+
+        session.close();
+    }
+
+    @Test
     void registryRendersHtmlAndTearsDown() {
         PathlandRegistry registry = new PathlandRegistry(() -> Button.of("Tap", () -> {}), STORE);
         String html = registry.renderHtml("/");
@@ -253,6 +277,22 @@ class PathlandSessionTest {
         @Override
         public void send(byte[] bytes) {
             // no-op
+        }
+
+        @Override
+        public boolean isOpen() {
+            return true;
+        }
+    }
+
+    /** A connection whose send always fails (an overflowing/remote send path). */
+    private static final class FailingConnection implements PathlandConnection {
+        int attempts;
+
+        @Override
+        public void send(byte[] bytes) {
+            attempts++;
+            throw new RuntimeException("send failed");
         }
 
         @Override
