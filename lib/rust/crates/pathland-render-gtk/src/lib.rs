@@ -648,15 +648,12 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
         let _ = player.pipeline.set_state(state);
 
         // Seek — only when meaningful: the app echoes every MEDIA_TIME_UPDATED
-        // back as MEDIA_POSITION, so a near-identical write must NOT seek (it
-        // would interrupt just-started playback and echo the position around).
+        // back as MEDIA_POSITION, so a write matching the position we last
+        // reported must NOT seek (it would fight the network-delayed echo and
+        // cause per-second jitter). A real seek (user drag / prev / next) to a
+        // different position still fires.
         let target = f64::from(node.f32_property(property_id::MEDIA_POSITION, 0.0));
-        let now = player
-            .playbin
-            .query_position::<gst::ClockTime>()
-            .map(|t| t.nseconds() as f64 / 1_000_000_000.0)
-            .unwrap_or(0.0);
-        if should_seek(now, target) {
+        if should_seek(player.last_reported.get() as f64, target) {
             let _ = player.playbin.seek_simple(
                 gst::SeekFlags::FLUSH,
                 gst::ClockTime::from_seconds_f64(target),
@@ -687,6 +684,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             source: resolved,
             requested_playing,
             suppress_until,
+            last_reported,
             timer: None,
         });
     };
@@ -745,6 +743,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         source: resolved,
         requested_playing,
         suppress_until,
+        last_reported,
         timer: Some(timer),
     })
 }
@@ -1341,8 +1340,13 @@ fn monotonic_ms() -> u64 {
 /// Whether a `MEDIA_POSITION` write is a real seek (a user drag) rather than
 /// the app's echo of its own `MEDIA_TIME_UPDATED` — within 0.25s of the
 /// current position it is an echo and must not interrupt playback.
-fn should_seek(now_seconds: f64, target_seconds: f64) -> bool {
-    (now_seconds - target_seconds).abs() > 0.25
+/// Whether a `MEDIA_POSITION` write is a real seek rather than the app echoing
+/// the renderer's own `MEDIA_TIME_UPDATED` report back (spec/EVENTS.md Media).
+/// Compared against the **last-reported** position, so a network-delayed echo is
+/// recognized at any latency; a write within `0.25 s` of the report is a no-op
+/// seek and suppressed.
+fn should_seek(last_reported_seconds: f64, target_seconds: f64) -> bool {
+    (last_reported_seconds - target_seconds).abs() > 0.25
 }
 
 /// Whether a `MEDIA_TIME_UPDATED` should be reported: the playback position
@@ -1370,6 +1374,11 @@ struct MediaPlayer {
     /// Monotonic ms until which time updates are suppressed (a just-applied
     /// seek must not echo back as a new position).
     suppress_until: Rc<Cell<u64>>,
+    /// The position of the last `MEDIA_TIME_UPDATED` this renderer reported —
+    /// the echo guard for `MEDIA_POSITION` writes (spec/EVENTS.md Media: a
+    /// write matching the last reported position is the app echoing the report
+    /// back, not a seek, and must not seek regardless of network latency).
+    last_reported: Rc<Cell<f32>>,
     /// The periodic time-update/bus-poll source (removed on teardown so a dead
     /// node's pipeline is released).
     timer: Option<glib::SourceId>,

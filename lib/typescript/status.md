@@ -39,6 +39,11 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   advances **~1 second** (throttled, matching the GTK renderer's cadence) and
   `MEDIA_ENDED` at track end; play/pause/volume are reported only for
   native-controls media.
+  **Media echo guards (spec/EVENTS.md Media)**: a `MEDIA_POSITION` write within
+  `0.25 s` of the **last-reported** position (not `currentTime`) does not seek —
+  so a network-delayed `MEDIA_TIME_UPDATED` echo can't cause per-second seek
+  jitter; a `MEDIA_VOLUME` write within `0.01` of the last-reported volume is
+  likewise skipped.
   The reserved framework root (`/_pathland/**`) is read from the SSR page's
   `data-pathland-base` (WS URL + bundle resolved from it).
 - **Hydration**: builds the `data-pathland-id → element` registry from the SSR

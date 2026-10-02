@@ -91,7 +91,13 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   seconds) — bound to the media configuration's signals; the hidden media
   element plays the current track and reports time/ended/volume back into the
   player state (spec/EVENTS.md Media) — `MEDIA_ENDED` auto-advances. Track
-  selection / prev / next change app-owned state (position resets to 0). The 6
+  selection / prev / next change app-owned state (position resets to 0). The
+  seek + volume sliders **decouple the seek/volume command from the report**
+  (`SeekControl`/`VolumeControl`: display from the report signals, command
+  bound to `MEDIA_POSITION`/`MEDIA_VOLUME` written only on a user drag) so a
+  `MEDIA_TIME_UPDATED`/`MEDIA_VOLUME_CHANGED` report never echoes back as a
+  seek/volume command (spec/EVENTS.md Media — the per-second echo caused seek
+  jitter). The 6
   tracks are **Pathland concept songs** — one per album, genre-matched invented
   artists (The Foundation, The Crossings, Rena Render, Ember Frame, Rowan
   Frame, Neon Protocol) — sourced from bundled `.mp4` covers (the extracted

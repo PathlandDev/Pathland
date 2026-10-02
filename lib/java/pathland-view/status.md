@@ -78,6 +78,11 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   registers a **`MediaInput`** and `RenderResult.mediaInputs` routes the
   `MEDIA_*` events (spec/EVENTS.md 0x0F–0x12) into the bound signals via
   `InputDispatcher` (time→position, ended→`onEnded`, play state/volume).
+  `.onPositionReport`/`.onVolumeReport` **decouple the report sink from the
+  command binding** — `MEDIA_TIME_UPDATED`/`MEDIA_VOLUME_CHANGED` then update a
+  display signal while `MEDIA_POSITION`/`MEDIA_VOLUME` stay bound to a
+  user-interaction command, so a report never echoes back as a seek/volume
+  command (spec/EVENTS.md Media echo guard).
   `Commands.Event`/`transport.Event`/`FrameCodec` decode the new events.
 - **Component IDs**: synced to the spec's grouped ranges (`Components.java`:
   `TEXT 0x01`, `IMAGE 0x02`, `COLOR 0x03`, `SHAPE 0x04`, `DIVIDER 0x05`,

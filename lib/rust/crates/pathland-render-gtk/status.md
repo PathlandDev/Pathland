@@ -128,8 +128,9 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   driven by the node's media control properties: `AUDIO_SOURCE`/`VIDEO_SOURCE`
   sets the source URI (re-created on change, resuming if the app was playing),
   `PLAYBACK_STATE` → pipeline `Playing`/`Paused`, `MEDIA_POSITION` → seek
-  (**echo-guarded**: a near-identical write — the app's `MEDIA_TIME_UPDATED` echo
-  — does not seek), `MEDIA_VOLUME` → playbin volume. Media events report back
+  (**echo-guarded**: a write matching the position the renderer last REPORTED
+  — the app's `MEDIA_TIME_UPDATED` echo — does not seek, even at network
+  latency; spec/EVENTS.md Media), `MEDIA_VOLUME` → playbin volume. Media events report back
   through the shared event sink/ring: `MEDIA_TIME_UPDATED` (a 250 ms reporter
   polls `query_position` while the app requested playing and reports only when
   the position advanced ~1 second — the same cadence as the web client — 

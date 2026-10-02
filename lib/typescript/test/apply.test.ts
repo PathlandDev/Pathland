@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { applyBatch, setNodeText, updateNavBackButtons, type DomRenderer } from "../src/apply";
+import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, __setMediaLastReported, type DomRenderer } from "../src/apply";
 import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
 import {
@@ -79,11 +79,16 @@ describe("applyBatch · media", () => {
     const r = renderer();
     r.byId.set(1, wrapper);
 
-    // A near-identical position (a timeupdate echo) must NOT seek the element.
-    audio.currentTime = 3;
+    // A near-identical position (a timeupdate echo) must NOT seek the element —
+    // even when the network delay means the element's currentTime has advanced
+    // past the reported position (the guard compares against the last-reported
+    // position, not currentTime).
+    setupMediaElement(wrapper, r);
+    audio.currentTime = 3.5;
+    __setMediaLastReported(audio, 3);
     applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
       ((VAL_F32 << 16) | PROP_MEDIA_POSITION) >>> 0, f32bits(3.1)]], stringEntry(""))), r);
-    expect(audio.currentTime).toBe(3);
+    expect(audio.currentTime).toBe(3.5);
 
     // A real seek (a user drag) does.
     applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,

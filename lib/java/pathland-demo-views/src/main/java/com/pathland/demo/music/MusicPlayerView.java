@@ -56,6 +56,12 @@ public final class MusicPlayerView implements View {
     State<Boolean> playing = new State<>(false, "player.playing");
     State<Integer> trackIndex = new State<>(0, "player.track");
     State<Float> volume = new State<>(0.7f, "player.volume");
+    // The SEEK / VOLUME commands (bound to MEDIA_POSITION / MEDIA_VOLUME) —
+    // written only on user interaction, decoupled from the display signals above
+    // so a MEDIA_TIME_UPDATED / MEDIA_VOLUME_CHANGED report never echoes back as
+    // a seek command (spec/EVENTS.md Media).
+    State<Float> seekRequest = new State<>(0f, "player.seekRequest");
+    State<Float> volumeRequest = new State<>(0.7f, "player.volumeRequest");
 
     @Override
     public View body() {
@@ -64,7 +70,8 @@ public final class MusicPlayerView implements View {
                         new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
                         new NowPlayingSidebar(trackIndex.signal())
                 ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL)),
-                new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal())
+                new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
+                        seekRequest.signal(), volumeRequest.signal())
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
