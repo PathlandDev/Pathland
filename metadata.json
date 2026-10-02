@@ -3,7 +3,7 @@
   "checkpoint_id": "01M3YH58AGSV2GC1N8AHX2QZBH",
   "strategy": "manual-commit",
   "branch": "refactor/shared-demo-assets",
-  "checkpoints_count": 3,
+  "checkpoints_count": 4,
   "files_touched": [
     "lib/java/pathland-spring-boot-demo/src/main/java/com/pathland/demo/spring/DemoAssetsConfig.java",
     "lib/java/pathland-spring-boot-demo/src/main/java/com/pathland/demo/spring/SpringDemoApplication.java",
@@ -30,13 +30,20 @@
       "compact_transcript": "/2/transcript.jsonl",
       "content_hash": "/2/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/3/metadata.json",
+      "transcript": "/3/full.jsonl",
+      "compact_transcript": "/3/transcript.jsonl",
+      "content_hash": "/3/content_hash.txt",
+      "prompt": "/3/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
+    "input_tokens": 13933,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "cache_read_tokens": 16706560,
+    "output_tokens": 31222,
+    "api_call_count": 28
   }
 }
