@@ -1,0 +1,78 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3Z43SJJZYWD2TH0DP383KMR",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-02T20:15:45.284089Z",
+  "branch": "feat/ws-heartbeat",
+  "checkpoints_count": 11,
+  "files_touched": [
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Commands.java",
+    "lib/rust/crates/pathland-ts-codegen/src/main.rs",
+    "spec/OPCODE.md",
+    "spec/CONFORMANCE.md",
+    "lib/rust/crates/pathland-core/src/conformance.rs",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/transport/FrameCodec.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/MountedPathlandSocket.java",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/DeltaBatcher.java",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/SpringConnection.java",
+    "lib/typescript/src/events.ts",
+    "lib/typescript/src/transport.ts",
+    "lib/typescript/test/transport.test.ts",
+    "lib/typescript/test/events.test.ts",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/DeltaBatcherTest.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandSessionTest.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/transport/FrameCodecTest.java",
+    "lib/java/pathland-quarkus-starter/pom.xml",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/QuarkusConnectionTest.java",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/java/pathland-server-core/status.md",
+    "lib/typescript/status.md",
+    "lib/rust/crates/pathland-core/status.md",
+    "lib/java/pathland-view/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "7cac6cdfe9f7",
+  "checkpoint_transcript_start": 1553,
+  "transcript_lines_at_start": 1553,
+  "compact_transcript_start": 1553,
+  "token_usage": {
+    "input_tokens": 958309,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 35988480,
+    "output_tokens": 148216,
+    "api_call_count": 180
+  },
+  "session_metrics": {
+    "turn_count": 98
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-02T20:15:43.841458Z",
+    "agent_lines": 841,
+    "agent_removed": 38,
+    "human_added": 2,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 843,
+    "total_lines_changed": 881,
+    "agent_percentage": 99.77298524404085,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
