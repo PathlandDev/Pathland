@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 3.3106881359999956,
+    "cost": 3.3147671999999955,
     "tokens": {
-      "input": 11601780,
-      "output": 612278,
+      "input": 11602740,
+      "output": 613367,
       "reasoning": 0,
       "cache": {
-        "read": 401018112,
+        "read": 402112000,
         "write": 0
       }
     },
     "time": {
       "created": 1790832158874,
-      "updated": 1790930934896
+      "updated": 1790931072663
     }
   },
   "messages": [
@@ -128574,21 +128574,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.000932706,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 273490,
+          "input": 199,
+          "output": 139,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 273152
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1790930934972
+          "created": 1790930934972,
+          "completed": 1790931061270
         },
+        "finish": "tool-calls",
         "id": "msg_0fbcd5cbc002O4gVxresU84mZc",
         "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s"
       },
@@ -128616,21 +128619,368 @@
           "tool": "bash",
           "callID": "call_7daf7d2aa3e7465c8f048180",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"tui: pathland-render-tui (Ratatui) M0+M1 — shared pathland-host decoder, static layout+draw pass, demo\" && git log --oneline -1",
               "timeout": 120000
             },
+            "output": "(no output)\n\n<shell_metadata>\nshell tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.\n</shell_metadata>",
+            "metadata": {
+              "output": "(no output)\n\n<shell_metadata>\nshell tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.\n</shell_metadata>",
+              "exit": null,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"tui: pathland-render-tui (Ratatui) M0+M1 — shared pathland-host decoder, static layout+draw pass, demo\" && git log --oneline -1",
             "time": {
-              "start": 1790930937883
+              "start": 1790930937883,
+              "end": 1790931061134
             }
           },
           "id": "prt_0fbcd66e50011008sP9pDExblh",
           "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
           "messageID": "msg_0fbcd5cbc002O4gVxresU84mZc"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "e966da6d08375744950a6d3c6230a25a58468b22",
+          "type": "step-finish",
+          "tokens": {
+            "total": 273490,
+            "input": 199,
+            "output": 139,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 273152
+            }
+          },
+          "cost": 0.000932706,
+          "id": "prt_0fbcf49e8001kEPcGkDBRZJjQF",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcd5cbc002O4gVxresU84mZc"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0fbbf79ac001dGkQgEvw1lXrYp",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000886074,
+        "tokens": {
+          "total": 273625,
+          "input": 143,
+          "output": 74,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 273408
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790931061481,
+          "completed": 1790931064895
+        },
+        "finish": "tool-calls",
+        "id": "msg_0fbcf4ae9002lcFxElBM2ggR58",
+        "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s"
+      },
+      "parts": [
+        {
+          "snapshot": "e966da6d08375744950a6d3c6230a25a58468b22",
+          "type": "step-start",
+          "id": "prt_0fbcf56f00011PCHkiPlLt2bRH",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf4ae9002lcFxElBM2ggR58"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_d459c03e88264a2db48ec76e",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && git log --oneline -1 && git status --short | head -3"
+            },
+            "output": "fa62845e tui: pathland-render-tui (Ratatui) M0+M1 — shared pathland-host decoder, static layout+draw pass, demo\n",
+            "metadata": {
+              "output": "fa62845e tui: pathland-render-tui (Ratatui) M0+M1 — shared pathland-host decoder, static layout+draw pass, demo\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git log --oneline -1 && git status --short | head -3",
+            "time": {
+              "start": 1790931064774,
+              "end": 1790931064818
+            }
+          },
+          "id": "prt_0fbcf5712001XsKkJj8DeR7cBJ",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf4ae9002lcFxElBM2ggR58"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "e966da6d08375744950a6d3c6230a25a58468b22",
+          "type": "step-finish",
+          "tokens": {
+            "total": 273625,
+            "input": 143,
+            "output": 74,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 273408
+            }
+          },
+          "cost": 0.000886074,
+          "id": "prt_0fbcf581c001mfySXfupjAe8Jz",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf4ae9002lcFxElBM2ggR58"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0fbbf79ac001dGkQgEvw1lXrYp",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001041774,
+        "tokens": {
+          "total": 273976,
+          "input": 265,
+          "output": 303,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 273408
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790931064979,
+          "completed": 1790931068338
+        },
+        "finish": "tool-calls",
+        "id": "msg_0fbcf5893002rS2U4QVbb8Uau1",
+        "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s"
+      },
+      "parts": [
+        {
+          "snapshot": "e966da6d08375744950a6d3c6230a25a58468b22",
+          "type": "step-start",
+          "id": "prt_0fbcf62a2001EmzeIeOwpXsU0P",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf5893002rS2U4QVbb8Uau1"
+        },
+        {
+          "type": "reasoning",
+          "text": "Committed (fa62845e), working tree clean. Let me update the todo and summarize.",
+          "time": {
+            "start": 1790931067562,
+            "end": 1790931067635
+          },
+          "id": "prt_0fbcf62aa001a3UKdTVTn5csTP",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf5893002rS2U4QVbb8Uau1"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "call_0b12f192b4984fa5ba8a2f3c",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "M0: Create pathland-host crate with RenderTree/HostNode moved from render-gtk",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "M0: Refactor render-gtk to depend on pathland-host; cargo test green",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "M0: Scaffold pathland-render-tui crate + status.md + workspace entry",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "M1: layout.rs (TUI rects/constraints)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "M1: draw.rs widget pass (stacks/text/spacer/divider/color/button/progress/gauge)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "M1: render.rs apply_frame + static demo",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "M1: TestBackend golden tests + full workspace verify + commit",
+                  "priority": "high",
+                  "status": "completed"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"M0: Create pathland-host crate with RenderTree/HostNode moved from render-gtk\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"M0: Refactor render-gtk to depend on pathland-host; cargo test green\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"M0: Scaffold pathland-render-tui crate + status.md + workspace entry\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"M1: layout.rs (TUI rects/constraints)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"M1: draw.rs widget pass (stacks/text/spacer/divider/color/button/progress/gauge)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"M1: render.rs apply_frame + static demo\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"M1: TestBackend golden tests + full workspace verify + commit\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "M0: Create pathland-host crate with RenderTree/HostNode moved from render-gtk",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "M0: Refactor render-gtk to depend on pathland-host; cargo test green",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "M0: Scaffold pathland-render-tui crate + status.md + workspace entry",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "M1: layout.rs (TUI rects/constraints)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "M1: draw.rs widget pass (stacks/text/spacer/divider/color/button/progress/gauge)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "M1: render.rs apply_frame + static demo",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "M1: TestBackend golden tests + full workspace verify + commit",
+                  "status": "completed",
+                  "priority": "high"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "0 todos",
+            "time": {
+              "start": 1790931068227,
+              "end": 1790931068229
+            }
+          },
+          "id": "prt_0fbcf62f5001DXfOCqmm4fMTH2",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf5893002rS2U4QVbb8Uau1"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "e966da6d08375744950a6d3c6230a25a58468b22",
+          "type": "step-finish",
+          "tokens": {
+            "total": 273976,
+            "input": 265,
+            "output": 303,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 273408
+            }
+          },
+          "cost": 0.001041774,
+          "id": "prt_0fbcf6587001VAe8nb1LZTzgLY",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf5893002rS2U4QVbb8Uau1"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_0fbbf79ac001dGkQgEvw1lXrYp",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00121851,
+        "tokens": {
+          "total": 274846,
+          "input": 353,
+          "output": 573,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 273920
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1790931068416,
+          "completed": 1790931072627
+        },
+        "finish": "stop",
+        "id": "msg_0fbcf6600002x558YakNhOy3xN",
+        "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s"
+      },
+      "parts": [
+        {
+          "snapshot": "e966da6d08375744950a6d3c6230a25a58468b22",
+          "type": "step-start",
+          "id": "prt_0fbcf6e58001pEwOJ5AVDYszuD",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf6600002x558YakNhOy3xN"
+        },
+        {
+          "type": "text",
+          "text": "M0+M1 landed as `fa62845e`. Summary:\n\n## M0 — Shared host reader + scaffold\n- **New `pathland-host` crate**: the canonical `RenderTree`/`HostNode` decoder (`apply_frame`, `resolve_tokens`, `concrete_default_tables`, `describe`) moved verbatim out of `pathland-render-gtk/src/host.rs`, now shared by GTK and TUI. `render-gtk` depends on it (re-exports for compat); its token enrichment stays GTK-owned. render-gtk still green.\n- **New `pathland-render-tui`** (rlib, deps `pathland-host` + `ratatui 0.30`) + **`pathland-render-tui-demo`**, both in the workspace. `status.md` written.\n\n## M1 — Static rendering\n- **`layout.rs`** — pure, headless-tested layout: bottom-up natural cell size, top-down `Rect` assignment; per-edge `PADDING` (`PADDING_*` > `PADDING` > `CONTENT_MARGINS`), `SPACING` gaps, 2D `ALIGNMENT` → cross-axis position (codes 0–8, f32-encoded), `FILL`/`HUG`/Fixed `WIDTH`/`HEIGHT`, greedy primitives. 1 pt = 1 cell.\n- **`render.rs`** — `TuiRenderer`: `apply_frame`, `draw` (immediate-mode redraw), per-frame `id → Rect` cache, `TEXT`→`Paragraph` (styles/align/`LINE_LIMIT`), stacks→`Layout`, `BUTTON`→`Block` border, `SPACER`/`DIVIDER`/`COLOR`/`PROGRESS_VIEW` (`Gauge`/spinner)/`GAUGE` (`LineGauge` % label).\n- **Demo** — DSL → `Engine` → shared ring → renderer; quits on `q`/`Esc`/`Ctrl+C`.\n\n## Verified\n`cargo test` → **35 suites ok** (incl. 13 new TUI tests via `TestBackend`), `check-wasm.sh` still green, no warnings. Visual check of `cargo run -p pathland-render-tui-demo` is on your display.\n\nNext (M2, when you're ready): input — mouse hit-testing via the rect cache, keyboard/focus, control `VALUE_CHANGED`/`TEXT_CHANGED`, the `send_input`+wake/drain loop.",
+          "time": {
+            "start": 1790931070559,
+            "end": 1790931072544
+          },
+          "id": "prt_0fbcf6e5f001SxpejF77xTHfts",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf6600002x558YakNhOy3xN"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "e966da6d08375744950a6d3c6230a25a58468b22",
+          "type": "step-finish",
+          "tokens": {
+            "total": 274846,
+            "input": 353,
+            "output": 573,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 273920
+            }
+          },
+          "cost": 0.00121851,
+          "id": "prt_0fbcf764c001AgRjRzAWMOfc62",
+          "sessionID": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+          "messageID": "msg_0fbcf6600002x558YakNhOy3xN"
         }
       ]
     }
