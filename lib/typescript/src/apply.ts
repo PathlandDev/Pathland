@@ -88,6 +88,7 @@ import {
   textTag,
 } from "./generated/role-spec";
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
+import { isRangeInFlight } from "./inFlight";
 
 /** Component type per retained node, so PARAMETER/TREE application can special-case
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
@@ -940,7 +941,10 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
     }
     case PROP_VALUE: {
       const range = el.querySelector<HTMLInputElement>("input[type=range]");
-      if (range) {
+      // In-flight interaction (spec EVENTS.md): while the user is dragging the
+      // slider, its thumb is user-authoritative — a server echo of VALUE must
+      // not fight the pointer (flicker).
+      if (range && !isRangeInFlight(range)) {
         range.value = String(f32FromBits(bits));
       }
       const stepText = el.querySelector(".pathland-stepper span");

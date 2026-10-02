@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { applyBatch, setNodeText, updateNavBackButtons, type DomRenderer } from "../src/apply";
+import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
 import {
   CAT_META,
@@ -190,6 +191,30 @@ describe("applyBatch · STYLE", () => {
     r.byId.set(6, slider);
     const bits = new Uint32Array(new Float32Array([0.75]).buffer)[0]!;
     applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, 1, 0, 6, (0 << 16) | PROP_VALUE, bits]])), r);
+    expect(range.value).toBe("0.75");
+  });
+
+  it("suppresses VALUE while a slider is being dragged (in-flight)", () => {
+    const slider = document.createElement("label");
+    slider.className = "pathland-slider";
+    const range = document.createElement("input");
+    range.type = "range";
+    range.value = "0.3";
+    slider.appendChild(range);
+    const r = renderer();
+    r.byId.set(6, slider);
+    const bits = new Uint32Array(new Float32Array([0.75]).buffer)[0]!;
+    const batch = () =>
+      parseBatch(buildBatch([[CAT_PARAMETER, 1, 0, 6, (0 << 16) | PROP_VALUE, bits]]));
+
+    // While the drag is in flight the server echo must not move the thumb.
+    markRangeInFlight(range);
+    applyBatch(batch(), r);
+    expect(range.value).toBe("0.3");
+
+    // On release, inbound VALUE applies again.
+    clearInFlightRange();
+    applyBatch(batch(), r);
     expect(range.value).toBe("0.75");
   });
 });

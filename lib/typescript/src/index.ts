@@ -7,6 +7,7 @@ import type { DomRenderer } from "./apply";
 import { setupMediaElement, updateNavBackButtons } from "./apply";
 import { Transport } from "./transport";
 import { log } from "./log";
+import { clearInFlightRange, markRangeInFlight } from "./inFlight";
 import {
   encodeDateChanged,
   encodeEditingChanged,
@@ -230,6 +231,24 @@ function boot(): void {
     const secondary = event.button !== 0 ? FLAG_POINTER_SECONDARY : 0;
     transport.send(encodePointerDown(id, event.clientX, event.clientY, secondary));
   });
+
+  // In-flight interaction (spec EVENTS.md): while a range slider is being
+  // dragged, inbound VALUE deltas are suppressed (the thumb is
+  // user-authoritative until release), so a server echo can't cause flicker.
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const target = event.target as Element | null;
+      const range = target?.closest<HTMLInputElement>("input[type=range]");
+      if (range) {
+        markRangeInFlight(range);
+      }
+    },
+    true,
+  );
+  document.addEventListener("pointerup", () => clearInFlightRange());
+  document.addEventListener("pointercancel", () => clearInFlightRange());
+  document.addEventListener("blur", () => clearInFlightRange(), true);
 
   document.addEventListener("pointermove", (event) => {
     const target = event.target as Element;

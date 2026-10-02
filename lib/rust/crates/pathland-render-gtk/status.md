@@ -68,6 +68,14 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   (`VALUE_CHANGED` from toggle/slider/picker, `TEXT_CHANGED` from text field)
   **gated by `BINDING_ID`** (transport-aware event guards), sent through the
   two-way event arena.
+- **In-flight interaction (spec EVENTS.md)**: a capture-phase `GestureClick`
+  on a `SLIDER` marks the drag session (`drag_state`); while a slider is being
+  dragged, inbound `VALUE` writes are **suppressed** (the drag position is
+  user-authoritative, so a server echo can't flicker the thumb), and the
+  session boundaries are reported as **`EDITING_CHANGED`** (press/release) and
+  **`FOCUS_CHANGED`** (`EventControllerFocus` enter/leave) when the node
+  declares the `LISTEN_EDITING`/`LISTEN_FOCUS` bits — the app-side escape
+  hatch to suppress echoes of any derived state during a session.
 - **Platform back / `NAVIGATE`**: a window-level `EventControllerKey`
   (capture phase, attached once in `run_with_pump`) maps Escape — and
   BackSpace when no text entry has focus — to `Event::Navigate { url: None }`
