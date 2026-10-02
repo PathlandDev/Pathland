@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3XY8CCCM3ECFM993Y7KTVHB",
+  "strategy": "manual-commit",
+  "branch": "feat/ratatui-renderer",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "AGENTS.md",
+    "README.md",
+    "lib/java/pathland-tui-demo/pom.xml",
+    "lib/java/pathland-tui-demo/src/main/java/com/pathland/demo/tui/RingEventReader.java",
+    "lib/java/pathland-tui-demo/src/main/java/com/pathland/demo/tui/TuiHost.java",
+    "lib/java/pathland-tui-demo/src/main/java/com/pathland/demo/tui/TuiRendererNative.java",
+    "lib/java/pom.xml",
+    "lib/rust/crates/pathland-render-tui-demo/src/main.rs",
+    "lib/rust/crates/pathland-render-tui/Cargo.toml",
+    "lib/rust/crates/pathland-render-tui/src/capi.rs",
+    "lib/rust/crates/pathland-render-tui/src/layout.rs",
+    "lib/rust/crates/pathland-render-tui/src/lib.rs",
+    "lib/rust/crates/pathland-render-tui/src/render.rs",
+    "lib/rust/crates/pathland-render-tui/src/run.rs",
+    "lib/rust/crates/pathland-render-tui/status.md",
+    "scripts/run-java-tui-demo.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1427960,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 22625792,
+    "output_tokens": 58699,
+    "api_call_count": 75
+  }
+}
