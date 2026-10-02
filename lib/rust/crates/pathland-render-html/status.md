@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** October 1, 2026
+**Last updated:** October 2, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -228,12 +228,12 @@ contract both renderers must satisfy.
   covered by the SSR tests + golden fixtures (incl. the `gridrow` scenario).
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
-- **Inter is loaded from the rsms.me CDN** (Cloudflare, `font-display: swap`,
-  with the InterVariable progressive enhancement for variable-font browsers) —
-  the renderer emits the preconnect + stylesheet links in the document head. It
-  is **not bundled**: self-hosting a subsetted, OFL-licensed woff2 (embedded in
-  the renderer / jar) is a planned follow-up for offline and enterprise
-  deployments (see `THIRD_PARTY_NOTICES`).
+- **Typography uses the platform system font stack** (`system-ui,
+  -apple-system, 'Segoe UI', Roboto, …`) — no external/webfont loading, so the
+  rendered document makes no network requests for fonts and works offline.
+  An app can still pick its own typeface via a `font.body.family`
+  `SET_DESIGN_TOKEN` override (any STRING value, e.g. `"Inter"` if the app
+  hosts it).
 
 ## Verified by
 

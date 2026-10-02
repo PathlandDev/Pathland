@@ -28,19 +28,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
-## Inter (default font)
-
-The default `--pl-font-sans` uses the **Inter** typeface, loaded at runtime from
-the **rsms.me CDN** (served by Cloudflare) via
-`https://rsms.me/inter/inter.css` — the renderer does **not** bundle the font
-binary. Inter is distributed under the SIL Open Font License 1.1; Rasmus
-Andersson's copyright notice and the OFL 1.1 license text apply. See
-https://github.com/rsms/inter/blob/master/LICENSE.txt for the canonical license
-text.
-
-**Follow-up:** self-hosting the Inter webfont (subsetted woff2, bundled with the
-renderer / embedded in the renderer jar) is planned for offline and
-enterprise/air-gapped deployments. When a self-hosted Inter webfont is bundled,
-the OFL 1.1 license text and the Inter copyright notice must be included
-alongside it.

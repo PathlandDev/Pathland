@@ -77,7 +77,8 @@ body  {
   /* Typography (Tier 1) */
   --pl-font-body-size: 16px;
   --pl-font-body-weight: 400;
-  --pl-font-body-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --pl-font-body-family: system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif;
   --pl-font-sans: var(--pl-font-body-family);
 
   /* Radius (Tier 1) */
@@ -136,12 +137,6 @@ body  {
   --pl-elevation-high-x: 0px;
   --pl-elevation-high-y: 4px;
   --pl-elevation-high-blur: 12px;
-}
-
-/* InterVariable (variable font, loaded from the rsms.me CDN) for browsers that
-   support it: one file covers every weight. Others fall back to static Inter. */
-@supports (font-variation-settings: normal) {
-  :root { --pl-font-body-family: 'InterVariable', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; }
 }
 
 /* ===== Buttons ===== */

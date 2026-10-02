@@ -1009,8 +1009,6 @@ impl HtmlRenderer {
             "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n\
              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
              <title>Pathland</title>\n\
-             <link rel=\"preconnect\" href=\"https://rsms.me/\">\n\
-             <link rel=\"stylesheet\" href=\"https://rsms.me/inter/inter.css\">\n\
              {}{}\n</head>\n<body>{body}</body>\n</html>\n",
             css::STYLE,
             token_style
@@ -3026,10 +3024,11 @@ mod tests {
         assert!(css.contains(".pathland-gauge"), "gauge component");
         // Dark mode media query.
         assert!(css.contains("prefers-color-scheme: dark"), "dark mode");
-        // Inter font loading (rsms.me CDN) + variable-font enhancement.
+        // System font stack (no external font loading; the family resolves to
+        // the platform's UI font).
         assert!(css.contains("font-feature-settings: 'liga' 1, 'calt' 1"), "Chrome ligature fix");
-        assert!(css.contains("font-variation-settings: normal"), "InterVariable enhancement");
-        assert!(css.contains("'InterVariable', 'Inter'"), "variable font preferred when supported");
+        assert!(css.contains("--pl-font-body-family: system-ui, -apple-system"), "system font stack");
+        assert!(!css.contains("Inter"), "no bundled/external font family");
         // Document background + input field styling (Tailwind-style inset outline).
         assert!(css.contains("--pl-color-background"), "page background token");
         assert!(css.contains("color-scheme: light dark"), "native form controls follow the theme");
@@ -3126,15 +3125,19 @@ mod tests {
     }
 
     #[test]
-    fn document_head_loads_inter_from_the_rsms_cdn() {
+    fn document_head_loads_no_external_fonts() {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&[], &[], 0);
-        assert!(html.contains("<link rel=\"preconnect\" href=\"https://rsms.me/\">"), "preconnect to the font CDN");
-        assert!(html.contains("<link rel=\"stylesheet\" href=\"https://rsms.me/inter/inter.css\">"), "Inter stylesheet link");
-        // The font links must come before the built-in <style> block.
-        let preconnect = html.find("rsms.me/inter/inter.css").unwrap();
+        assert!(!html.contains("rsms.me"), "no font CDN link: {html}");
+        assert!(!html.contains("preconnect"), "no preconnect: {html}");
+        assert!(
+            !html.contains("<link rel=\"stylesheet\""),
+            "no external stylesheets (fonts are system-native): {html}"
+        );
+        // The built-in <style> block still arrives before the body.
         let style = html.find("<style>").unwrap();
-        assert!(preconnect < style, "Inter CSS loads before the design-system style block");
+        let body = html.find("<body>").unwrap();
+        assert!(style < body, "style block before body");
     }
 
     #[test]
