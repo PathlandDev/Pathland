@@ -80,6 +80,20 @@ class QuarkusConnectionTest {
         assertEquals(pings, fake.pingCount.get(), "no pings after close");
     }
 
+    @Test
+    void pingSkipsWhileASendIsInFlight() throws Exception {
+        // A ping must never race an in-flight sendBinary (quarkus-websockets-next
+        // allows one message at a time): while a send is hanging, no ping is sent.
+        FakeWebSocketConnection fake = new FakeWebSocketConnection();
+        fake.binaryResult = Uni.createFrom().nothing(); // in-flight forever
+        QuarkusConnection conn = new QuarkusConnection(fake, 60_000, /*pingInterval*/ 30);
+        conn.send(new byte[] {1}); // starts the in-flight send
+
+        Thread.sleep(200); // several ping cadences elapse
+        assertEquals(0, fake.pingCount.get(), "a ping is skipped while a send is in flight");
+        conn.close();
+    }
+
     /** A minimal {@link WebSocketConnection} that records sends/pings/closes. */
     private static final class FakeWebSocketConnection implements WebSocketConnection {
         volatile boolean closed;

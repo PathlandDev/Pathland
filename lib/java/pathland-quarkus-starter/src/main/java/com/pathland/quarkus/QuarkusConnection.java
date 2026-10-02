@@ -119,14 +119,28 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
         }, sendTimeoutMillis, TimeUnit.MILLISECONDS);
     }
 
-    /** WS-protocol ping (browsers auto-pong): keep-alive + detect a dead client. */
+    /** WS-protocol ping (browsers auto-pong): keep-alive + detect a dead client.
+     *  Serialized with {@code sendBinary} through the same {@code sending} flag —
+     *  quarkus-websockets-next allows ONE message in flight per connection, so an
+     *  unsynchronized ping would be rejected while a delta send is in flight (and
+     *  that rejection would close a healthy connection). When a send is in flight
+     *  or data is queued, this cadence is skipped; the next one retries. */
     private void sendProtocolPing() {
         if (failed.get() || !connection.isOpen()) {
             return;
         }
+        if (!sending.compareAndSet(false, true)) {
+            return; // a sendBinary is in flight — skip (avoids the concurrent-send rejection)
+        }
+        if (!pending.isEmpty()) {
+            sending.set(false);
+            return; // queued data will drain — let drain own the wire; skip the ping
+        }
+        long token = sendToken.incrementAndGet();
+        scheduleSendTimeout(token);
         connection.sendPing(Buffer.buffer(8)).subscribe().with(
-                ignored -> { },
-                failure -> fail("ping failed: " + failure.getMessage()));
+                ignored -> onSendComplete(token, null),
+                failure -> onSendComplete(token, failure));
     }
 
     /** Surface a failure: mark failed and close so the session drops us and the
