@@ -398,6 +398,8 @@ element.
 | `RESET` | `0x01` | 0 | 0 | 0 | Host must clear all rendered output |
 | `ENVIRONMENT` | `0x02` | fieldId (u16, low) | field value | 0 | A platform environment field (host → guest) — see [Environment fields](#environment-fields) |
 | `RESYNC` | `0x03` | 0 | 0 | 0 | The host (renderer) requests a **full snapshot** of the current tree (host → guest). The guest answers with a single full-snapshot batch (the same TREE + PARAMETER stream as a mount). Used for reconnect/gap recovery and no-JS refresh. |
+| `PING` | `0x04` | 0 | 0 | 0 | A transport-liveness **heartbeat probe** (guest → host). No payload. **Network batch transport only** — a shared-memory ring consumer MUST NOT expect, emit, or relay it. See [Transport heartbeat](#transport-heartbeat). |
+| `PONG` | `0x05` | 0 | 0 | 0 | The reply to `META::PING` (host → guest). No payload. Network batch transport only. |
 
 #### Environment fields
 
@@ -676,6 +678,34 @@ reached (first trigger wins):
 
 Both thresholds are configurable; a producer MAY flush eagerly (e.g. on the
 first frame after connection).
+
+### Transport heartbeat
+
+The **network batch backend** (a WebSocket / streamed connection) can fail
+silently: a proxy or load balancer may drop the connection without a close
+frame, or the peer's send path may wedge, leaving the socket "open" while
+nothing is delivered. Neither side can detect this from the batch stream alone.
+The heartbeat is the transport-liveness mechanism for this backend:
+
+- **Probe**: the guest (client) sends a `META::PING` batch at a fixed cadence
+  (default **every 5 s**). `A/B/C = 0`, no string section.
+- **Reply**: the host (server) MUST answer each `META::PING` with a `META::PONG`
+  batch as promptly as its send path allows.
+- **Liveness**: a peer's *liveness* is any received batch — deltas, `PONG`, or
+  anything else. A guest that receives no batch for **more than two probe
+  intervals** SHOULD treat the connection as dead: close it and reconnect (the
+  reconnect flow already re-syncs via `META::RESYNC`).
+- **Host-side detection**: a host MAY additionally send WebSocket-protocol-level
+  ping frames (browsers auto-answer) to detect a dead client and keep
+  middleboxes from timing the connection out; a host whose send fails (or a
+  probe that is never answered) SHOULD close the connection so the client
+  reconnects instead of stalling.
+- **Scope**: the heartbeat is **transport liveness only, NOT app state**. A
+  `META::PING`/`META::PONG` batch MUST NOT be routed into the application — it
+  never touches the retained tree, signals, or events. The **shared-memory ring
+  backend MUST NOT use it**: ring peers are co-located and their liveness is the
+  host process's concern, so the ring never carries, expects, or relays
+  `META::PING`/`META::PONG`.
 
 ---
 

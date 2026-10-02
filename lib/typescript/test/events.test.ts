@@ -12,6 +12,7 @@ import {
   encodeMediaVolumeChanged,
   encodeNavigate,
   encodeNavigateBack,
+  encodePing,
   encodePointerDown,
   encodePointerMove,
   encodePointerUp,
@@ -154,6 +155,28 @@ describe("event encoders", () => {
     expect(batch.opcodes[0]?.a).toBe(0);
     expect(batch.opcodes[0]?.b).toBe(0);
     expect(batch.opcodes[0]?.c).toBe(0);
+  });
+
+  it("encodePing is a guest->host META::PING heartbeat batch (spec vector 16a)", () => {
+    const bytes = encodePing();
+    expect(bytes.length).toBe(HEADER_SIZE + 16 + 4);
+    const view = new DataView(bytes.buffer);
+    expect(view.getUint32(0, true)).toBe(MAGIC);
+    expect(view.getUint16(4, true)).toBe(VERSION);
+    expect(view.getUint16(6, true)).toBe(0x0000); // GUEST_TO_HOST
+    expect(view.getUint32(12, true)).toBe(1); // opcodeCount
+    const batch = parseBatch(bytes);
+    expect(batch.opcodes[0]?.category).toBe(0x04); // META
+    expect(batch.opcodes[0]?.command).toBe(0x04); // PING
+    expect(batch.opcodes[0]?.a).toBe(0);
+    expect(batch.opcodes[0]?.b).toBe(0);
+    expect(batch.opcodes[0]?.c).toBe(0);
+    // byte-exact vs spec/CONFORMANCE.md vector 16a
+    expect([...bytes]).toEqual([
+      0x4c, 0x50, 0x4c, 0x50, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x04, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+    ]);
   });
 
   it("encodeNavigate rides the URL in the string section (no target, global)", () => {

@@ -32,6 +32,8 @@ export const CMD_SET_DATE = 0x04;
 export const CMD_RESET = 0x01;
 export const CMD_ENVIRONMENT = 0x02;
 export const CMD_RESYNC = 0x03;
+export const CMD_PING = 0x04;
+export const CMD_PONG = 0x05;
 
 // META::ENVIRONMENT field ids (spec/OPCODE.md §Environment fields)
 export const ENV_VIEWPORT_WIDTH = 0x0001;

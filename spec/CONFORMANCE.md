@@ -200,6 +200,37 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
 - `00 00 00 00` B = 0
 - `00 00 00 00` C = 0
 
+### 13a. META:PING
+
+```
+04 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `04` command = PING (guest → host: transport-liveness heartbeat probe)
+- `00 00` flags = 0
+- `00 00 00 00` A = 0
+- `00 00 00 00` B = 0
+- `00 00 00 00` C = 0
+
+### 13b. META:PONG
+
+```
+04 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `05` command = PONG (host → guest: reply to `META::PING`)
+- `00 00` flags = 0
+- `00 00 00 00` A = 0
+- `00 00 00 00` B = 0
+- `00 00 00 00` C = 0
+
+> Heartbeat scope: `META::PING`/`META::PONG` are **network batch transport only**
+> (see [OPCODE.md §Transport heartbeat](./OPCODE.md#transport-heartbeat)). A
+> shared-memory ring consumer MUST NOT emit, expect, or relay them; they carry no
+> application state and are never routed into the app's tree, signals, or events.
+
 ---
 
 ## Directions
@@ -289,6 +320,26 @@ The single opcode is `META:RESYNC` (vector 13). The batch carries the
 - `00 00 00 00` = frameCount = 0
 - `01 00 00 00` = opcodeCount = 1
 - `04 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00` = the META:RESYNC opcode (16 bytes)
+- `00 00 00 00` = arenaDeltaLen = 0
+
+### 16a. NETWORK:BATCH (META:PING heartbeat, guest → host)
+
+The single opcode is `META:PING` (vector 13a). The batch carries the
+`GUEST_TO_HOST` direction flag (0x0000) and an empty arena delta — a guest
+sends exactly this to probe host liveness.
+
+```
+4C 50 4C 50 01 00 00 00 00 00 00 00 01 00 00 00
+04 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00
+```
+
+- `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
+- `01 00` = version 1
+- `00 00` = flags = `GUEST_TO_HOST` (0x0000)
+- `00 00 00 00` = frameCount = 0
+- `01 00 00 00` = opcodeCount = 1
+- `04 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00` = the META:PING opcode (16 bytes)
 - `00 00 00 00` = arenaDeltaLen = 0
 
 ### 17. PARAMETER:SET_DESIGN_TOKEN (path="color.primary" arenaRef=0, valueType=COLOR=0x07, value=0xFF0000FF)

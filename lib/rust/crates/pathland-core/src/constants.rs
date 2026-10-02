@@ -112,6 +112,13 @@ pub mod meta {
     /// The host (renderer) requests a full snapshot of the current tree
     /// (host → guest). `A/B/C = 0`. Used for reconnect/gap recovery.
     pub const RESYNC: u8 = 0x03;
+    /// A transport-liveness heartbeat probe (guest → host). `A/B/C = 0`, no
+    /// payload. **Network batch transport only** (spec/OPCODE.md §Transport —
+    /// heartbeat): the shared-memory ring MUST NOT emit, expect, or relay it.
+    pub const PING: u8 = 0x04;
+    /// The reply to `META::PING` (host → guest). `A/B/C = 0`, no payload.
+    /// Network batch transport only (see [`PING`]).
+    pub const PONG: u8 = 0x05;
 }
 
 /// Environment field ids for `META::ENVIRONMENT` (host → guest).

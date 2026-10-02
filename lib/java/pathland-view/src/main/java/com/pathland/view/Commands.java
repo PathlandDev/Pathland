@@ -59,6 +59,10 @@ public static final class Meta {
             public static final int ENVIRONMENT = 0x02;
             /** The host (renderer) requests a full snapshot of the current tree (host → guest). */
             public static final int RESYNC = 0x03;
+            /** A transport-liveness heartbeat probe (guest → host): `A/B/C = 0`. Network batch transport only (spec/OPCODE.md §Transport). */
+            public static final int PING = 0x04;
+            /** The reply to {@link #PING} (host → guest): `A/B/C = 0`. Network batch transport only. */
+            public static final int PONG = 0x05;
             private Meta() {}
         }
 

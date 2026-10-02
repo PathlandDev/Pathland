@@ -49,7 +49,10 @@ tracks what this crate implements.
   supplies default navigation chrome, or the developer owns all nav UI)).
 - **Commands**: `TREE` create/delete/insert/remove/move (append = `u32::MAX`);
   `PARAMETER` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`; `META`
-  `RESET`/`ENVIRONMENT`/`RESYNC`. `META::ENVIRONMENT` is the extensible
+  `RESET`/`ENVIRONMENT`/`RESYNC`. **`META::PING`/`PONG`** (0x04/0x05) are the
+  transport-liveness heartbeat — **network batch transport only** (a shared-memory
+  ring consumer MUST NOT emit/expect/relay them); the core engine never produces
+  them. `META::ENVIRONMENT` is the extensible
   platform-environment field family (`environment::VIEWPORT_WIDTH`/
   `VIEWPORT_HEIGHT`/`ROUTE` — the `ROUTE` string uses the `TEXT_CHANGED`/
   `NAVIGATE` dual convention).
@@ -98,7 +101,8 @@ tracks what this crate implements.
   STRING-valued), `DESIGN_TOKEN`-typed `SET_PROPERTY`, `NAVIGATE`±URL,
   `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE), vectors
   **34–37** (grid `GRID_COLUMNS`/`GRID_ROWS`/`GRID_TRACKS`, `GRID_ROW`,
-  `ALIGNMENT` topCenter) and a ring
+  `ALIGNMENT` topCenter), and the network-only **`META::PING`/`PONG`** heartbeat
+  opcodes; a ring
   test proving `Guest::set_design_token` emits vector 17 byte-exactly;
   `cargo test` enforces them.
 

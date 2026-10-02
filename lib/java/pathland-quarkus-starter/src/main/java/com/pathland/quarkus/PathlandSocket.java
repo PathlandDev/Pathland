@@ -37,6 +37,7 @@ public class PathlandSocket {
 
     private volatile String uiId;
     private volatile String windowId;
+    private volatile QuarkusConnection transport;
 
     @OnOpen
     void open() {
@@ -49,11 +50,18 @@ public class PathlandSocket {
         // unwraps it to the real connection, whose send methods work from any thread.
         WebSocketConnection resolved =
                 ClientProxy.unwrap(Arc.container().instance(WebSocketConnection.class).get());
-        registry.open(uiId(), windowId(), new QuarkusConnection(resolved));
+        QuarkusConnection transport = new QuarkusConnection(resolved);
+        this.transport = transport;
+        registry.open(uiId(), windowId(), transport);
     }
 
     @OnClose
     void close() {
+        QuarkusConnection transport = this.transport;
+        this.transport = null;
+        if (transport != null) {
+            transport.close(); // stop the keep-alive scheduler + mark failed
+        }
         PathlandRegistry registry = host.registry("/");
         if (registry != null) {
             registry.close(uiId());
@@ -68,6 +76,9 @@ public class PathlandSocket {
         }
         if (FrameCodec.isResync(message)) {
             registry.resync(uiId());
+        } else if (FrameCodec.isPing(message)) {
+            // A transport-liveness heartbeat probe (guest → host): reply PONG.
+            registry.pong(uiId());
         } else if (FrameCodec.isEnvironment(message)) {
             // The DOM client's FIRST message: seeds the session (created lazily) from the
             // ROUTE field; later messages enrich the environment (viewport, …).

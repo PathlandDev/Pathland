@@ -192,9 +192,18 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   the fixtures together with the generated TS.
 - **`META::RESYNC`** (`encodeResync`): the client requests a full snapshot after
   **reconnect** (never on first connect — the UI is already the SSR HTML).
+- **Heartbeat + watchdog** (`transport.ts` + `encodePing`, spec/OPCODE.md §Transport
+  heartbeat): the client sends a `META::PING` every **5 s** and treats the connection
+  as dead when **no server batch of any kind** (deltas, `META::PONG`) arrives for
+  **15 s** — then it forces a `close()` so the reconnect + `META::RESYNC` flow
+  recovers. This detects a silently-stalled server / a proxy-dropped upstream leg
+  (the "deltas stop but the socket stays open" failure), which `onclose` never fires
+  for. The PING also counts as inbound WS traffic (keeps Render-free instances from
+  spinning down). Tests cover the ping cadence, the no-activity reconnect, and a
+  `PONG` resetting the watchdog.
 - **Transport** (`src/transport.ts`): WebSocket connect, protocol-version
   negotiation (mismatch → reload), exponential-backoff reconnect, defensive
-  per-batch try/catch.
+  per-batch try/catch, `META::PING`/`META::PONG` heartbeat (above).
 - **Styling (Option A)**: the protocol stays renderer-agnostic; the SSR HTML
   carries the Rust renderer's inline styles + `pathland-*` classes; runtime style
   deltas apply as inline style (or the style attribute for `DESIGN_TOKEN`

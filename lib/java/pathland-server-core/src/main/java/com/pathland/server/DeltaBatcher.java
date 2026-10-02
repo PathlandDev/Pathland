@@ -84,17 +84,23 @@ public final class DeltaBatcher {
         }
     }
 
-    /** Encode + send everything pending, as one batch. Safe to call anytime. */
-    public synchronized void flush() {
-        flushScheduled.set(false);
-        if (opcodes.isEmpty()) {
-            return;
+    /** Encode + send everything pending, as one batch. Safe to call anytime.
+     *  The {@code sender} runs OUTSIDE the monitor so a blocking/queueing send
+     *  can never stall the actor thread's {@link #append} or the flush scheduler. */
+    public void flush() {
+        byte[] encoded;
+        synchronized (this) {
+            flushScheduled.set(false);
+            if (opcodes.isEmpty()) {
+                return;
+            }
+            Frame merged = new Frame(List.copyOf(opcodes), strings.toByteArray());
+            opcodes.clear();
+            strings.reset();
+            approxBytes = 0;
+            encoded = FrameCodec.encodeFrame(merged);
         }
-        Frame merged = new Frame(List.copyOf(opcodes), strings.toByteArray());
-        opcodes.clear();
-        strings.reset();
-        approxBytes = 0;
-        sender.accept(FrameCodec.encodeFrame(merged));
+        sender.accept(encoded);
     }
 
     /** Stop the flush scheduler (call when the session closes). */

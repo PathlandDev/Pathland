@@ -169,6 +169,8 @@ pub fn emit_constants_ts() -> String {
         ("RESET", fmt_u8(meta::RESET)),
         ("ENVIRONMENT", fmt_u8(meta::ENVIRONMENT)),
         ("RESYNC", fmt_u8(meta::RESYNC)),
+        ("PING", fmt_u8(meta::PING)),
+        ("PONG", fmt_u8(meta::PONG)),
     ]);
     out.push_str("\n// META::ENVIRONMENT field ids (spec/OPCODE.md §Environment fields)\n");
     write_consts(&mut out, "ENV_", &[

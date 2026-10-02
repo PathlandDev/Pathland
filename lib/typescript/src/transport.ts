@@ -7,7 +7,7 @@
 import type { Batch } from "./plpl";
 import { ProtocolError, parseBatch } from "./plpl";
 import { applyBatch, type DomRenderer } from "./apply";
-import { encodeResync } from "./events";
+import { encodePing, encodeResync } from "./events";
 import { VERSION } from "./constants";
 import { log } from "./log";
 import { describeBatch, describeBatchDetail } from "./describe";
@@ -36,6 +36,17 @@ const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 30000;
 const MAX_ATTEMPTS = 30;
 
+// Heartbeat (spec/OPCODE.md §Transport heartbeat): the client probes server
+// liveness with META::PING every HEARTBEAT_INTERVAL_MS. It treats the connection
+// as dead when NO server batch of any kind (deltas, META::PONG) has arrived for
+// HEARTBEAT_TIMEOUT_MS — a stalled-but-"open" socket never fires onclose, so the
+// watchdog forces a close to trigger the reconnect flow (which re-sends the
+// environment + requests a META::RESYNC). The PING also counts as inbound WS
+// traffic, keeping the connection warm through proxies and idle-spin-down.
+const HEARTBEAT_INTERVAL_MS = 5000;
+const HEARTBEAT_TIMEOUT_MS = 15000;
+const WATCHDOG_CHECK_MS = 1000;
+
 // Numeric readyState (the WebSocket global may be absent in test environments).
 const WS_OPEN = 1;
 
@@ -44,6 +55,9 @@ export class Transport {
   private attempt = 0;
   private stopped = false;
   private readonly options: TransportOptions;
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private lastActivityAt = 0;
 
   constructor(options: TransportOptions) {
     this.options = options;
@@ -52,12 +66,15 @@ export class Transport {
   /** Connect and stay connected (auto-reconnect with exponential backoff). */
   start(): void {
     this.stopped = false;
+    this.lastActivityAt = Date.now();
+    this.startHeartbeat();
     this.connect();
   }
 
   /** Permanently close the socket and cancel reconnects. */
   stop(): void {
     this.stopped = true;
+    this.stopHeartbeat();
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.close();
@@ -84,6 +101,38 @@ export class Transport {
     this.ws!.send(bytes);
   }
 
+  /** Start the META::PING sender + the no-activity watchdog (one-shot, survives reconnects). */
+  private startHeartbeat(): void {
+    if (this.pingTimer || this.watchdogTimer) {
+      return;
+    }
+    this.pingTimer = setInterval(() => {
+      if (this.open) {
+        this.send(encodePing());
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+    this.watchdogTimer = setInterval(() => {
+      if (!this.open) {
+        return;
+      }
+      if (Date.now() - this.lastActivityAt > HEARTBEAT_TIMEOUT_MS) {
+        log.warn("ws", `no server frame for ${HEARTBEAT_TIMEOUT_MS} ms — reconnecting`);
+        this.ws?.close();
+      }
+    }, WATCHDOG_CHECK_MS);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
+    if (this.watchdogTimer) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = null;
+    }
+  }
+
   private connect(): void {
     log.debug("ws", "connecting", this.options.url);
     const ws = this.options.createSocket
@@ -96,6 +145,7 @@ export class Transport {
       // full snapshot (META::RESYNC). The first connect never does — the client
       // already has the whole UI from the SSR HTML. On EVERY open (before any
       // resync) the client sends its environment (viewport + route).
+      this.lastActivityAt = Date.now();
       const reconnected = this.attempt > 0;
       this.attempt = 0;
       log.info("ws", reconnected ? "connected (reconnect)" : "connected");
@@ -133,6 +183,9 @@ export class Transport {
   }
 
   private handleMessage(data: unknown): void {
+    // Any server batch (a delta, a META::PONG, anything) proves the connection
+    // is alive — reset the heartbeat watchdog.
+    this.lastActivityAt = Date.now();
     let bytes: Uint8Array;
     if (data instanceof ArrayBuffer) {
       bytes = new Uint8Array(data);
