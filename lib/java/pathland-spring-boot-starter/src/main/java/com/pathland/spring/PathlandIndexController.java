@@ -2,7 +2,11 @@ package com.pathland.spring;
 
 import com.pathland.server.PathlandHost;
 import com.pathland.server.PathlandHost.MountMatch;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,6 +20,9 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
 
 /**
  * Server-side rendering entry point. Dispatches each request to the app whose mount path
@@ -36,6 +43,11 @@ import java.io.InputStream;
 public class PathlandIndexController {
 
     private final PathlandHost host;
+
+    /** An optional filesystem directory served under {@code /_pathland/**} (e.g. a
+     *  temp-dir extraction of the demo's media assets — see the demo hosts). */
+    @Value("${pathland.asset-dir:}")
+    private String assetDir;
 
     public PathlandIndexController(PathlandHost host) {
         this.host = host;
@@ -83,8 +95,11 @@ public class PathlandIndexController {
             return ResponseEntity.notFound().build();
         }
         String file = uri.substring(idx + "/_pathland/".length());
-        ClassPathResource resource = new ClassPathResource("static/_pathland/" + file);
-        if (!resource.exists()) {
+        Resource resource = classpathFrameworkResource(file);
+        if (resource == null) {
+            resource = diskAsset(file);
+        }
+        if (resource == null || !resource.exists()) {
             return ResponseEntity.notFound().build();
         }
         // Spring's built-in extension → MIME detection (js, svg, mp4, mp3, …).
@@ -97,13 +112,34 @@ public class PathlandIndexController {
         try (InputStream in = resource.getInputStream()) {
             return ResponseEntity.ok().contentType(type)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                    .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().immutable())
                     .body(in.readAllBytes());
         }
     }
 
+    /** The DOM client bundle (+ any app-local assets) from {@code static/_pathland/**}. */
+    private Resource classpathFrameworkResource(String file) {
+        ClassPathResource resource = new ClassPathResource("static/_pathland/" + file);
+        return resource.exists() ? resource : null;
+    }
+
+    /** A media/icon asset from the configured {@code pathland.asset-dir} (fast disk
+     *  serving of the demo-views extraction; traversal-guarded). */
+    private Resource diskAsset(String file) {
+        if (assetDir == null || assetDir.isBlank()) {
+            return null;
+        }
+        Path base = Path.of(assetDir).toAbsolutePath().normalize();
+        Path resolved = base.resolve(file).normalize();
+        if (!resolved.startsWith(base) || !Files.isRegularFile(resolved)) {
+            return null;
+        }
+        return new FileSystemResource(resolved);
+    }
+
     /** Answer a single {@code Range: bytes=…} request with the partial content
      *  ({@code 206}) or {@code 416} for an unsatisfiable range. */
-    private ResponseEntity<?> rangeResponse(ClassPathResource resource, MediaType type, String rangeHeader)
+    private ResponseEntity<?> rangeResponse(Resource resource, MediaType type, String rangeHeader)
             throws IOException {
         long length = resource.contentLength();
         ResponseEntity<?> unsatisfiable = ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
@@ -144,6 +180,7 @@ public class PathlandIndexController {
                 .contentType(type)
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
                 .header(HttpHeaders.CONTENT_RANGE, "bytes " + start + "-" + end + "/" + length)
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().immutable())
                 .contentLength(body.length)
                 .body(body);
     }

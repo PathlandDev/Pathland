@@ -3,6 +3,7 @@ package com.pathland.demo.quarkus;
 import com.pathland.demo.assets.DemoAssets;
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.FileSystemAccess;
 import io.vertx.ext.web.handler.StaticHandler;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
@@ -31,6 +32,6 @@ public class DemoAssetsRoute {
         Path root = DemoAssets.extractToTemp();
         router.route("/_pathland/assets/*")
                 .order(-10)
-                .handler(StaticHandler.create(root.resolve("assets").toString()));
+                .handler(StaticHandler.create(FileSystemAccess.ROOT, root.resolve("assets").toString()));
     }
 }
