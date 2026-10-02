@@ -1,6 +1,7 @@
 package com.pathland.demo.spring;
 
 import com.pathland.demo.DemoTheme;
+import com.pathland.demo.assets.DemoAssets;
 import com.pathland.demo.music.MusicPlayerView;
 import com.pathland.server.MountedApp;
 import com.pathland.server.PathlandApp;
@@ -22,6 +23,10 @@ import org.springframework.context.annotation.Bean;
 public class SpringDemoApplication {
 
     public static void main(String[] args) {
+        // The demo's media + icons are served from a temp-dir extraction of the
+        // shared demo-views jar (fast disk serving with Range, spec the starter's
+        // PathlandIndexController); extract once, before the app boots.
+        System.setProperty("pathland.asset-dir", DemoAssets.extractToTemp().toString());
         SpringApplication.run(SpringDemoApplication.class, args);
     }
 
