@@ -28,7 +28,7 @@ mod tokens;
 pub use host::{describe, render_tree_from_frame, HostNode, RenderTree};
 
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -36,8 +36,8 @@ use std::time::{Duration, Instant};
 use libadwaita::prelude::*;
 use libadwaita::NavigationView;
 use gtk::{
-    Align, Box as GtkBox, Button, EventControllerKey, EventControllerMotion, GestureClick, Label,
-    PropagationPhase,
+    Align, Box as GtkBox, Button, EventControllerFocus, EventControllerKey, EventControllerMotion,
+    GestureClick, Label, PropagationPhase,
 };
 use pathland_core::tokens::Scheme;
 use pathland_core::{component_type, listener, property_id, Event, Frame};
@@ -105,6 +105,13 @@ pub struct GtkRenderer {
     /// Per-node cache of the last applied fixed-size image content, so steady-
     /// state frames don't re-decode: (source, box width, box height, content mode).
     image_cache: HashMap<u32, (String, i32, i32, u32)>,
+    /// Node ids with an **in-flight user value interaction** (a slider being
+    /// dragged): inbound `VALUE` updates are suppressed for these (spec
+    /// EVENTS.md "In-flight interaction (MUST)").
+    drag_state: Rc<RefCell<HashSet<u32>>>,
+    /// Node ids whose in-flight session controllers (drag gesture / focus) are
+    /// already attached (idempotency guard).
+    attached_sessions: HashSet<u32>,
 }
 
 impl Default for GtkRenderer {
@@ -128,6 +135,8 @@ impl GtkRenderer {
             nav_reconciling: HashMap::new(),
             media_players: HashMap::new(),
             image_cache: HashMap::new(),
+            drag_state: Rc::new(RefCell::new(HashSet::new())),
+            attached_sessions: HashSet::new(),
         }
     }
 
@@ -340,6 +349,9 @@ impl GtkRenderer {
         // Value/text events: value-bearing controls report by component type,
         // gated by the transport-aware event guards (a `BINDING_ID`).
         self.attach_control_events(node.id, &widget, node);
+        // In-flight interaction session controllers (drag suppression + focus/
+        // editing boundaries, spec EVENTS.md "In-flight interaction").
+        self.attach_drag_sessions(node.id, &widget, node);
 
         // App-driven media: an AUDIO/VIDEO node (or any node carrying a media
         // source) gets a hidden native stream driven by its control properties.
@@ -406,7 +418,12 @@ impl GtkRenderer {
                     if step > 0.0 {
                         scale.set_increments(step, step * 10.0);
                     }
-                    scale.set_value(value);
+                    // In-flight interaction (spec EVENTS.md): while the user is
+                    // dragging this slider, the drag position is authoritative —
+                    // a server echo of VALUE must not fight the pointer (flicker).
+                    if should_apply_value(self.drag_state.borrow().contains(&node.id)) {
+                        scale.set_value(value);
+                    }
                 }
             }
             WidgetKind::TextField => {
@@ -521,6 +538,70 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Attach a node's **in-flight interaction session** controllers (spec
+    /// EVENTS.md "In-flight interaction (MUST)"):
+    ///
+    /// - a capture-phase press/release on a value control marks the drag
+    ///   session (suppressing inbound `VALUE` until release), and reports
+    ///   `EDITING_CHANGED` (0x09) boundaries when the node listens for it;
+    /// - `EventControllerFocus` on the widget reports `FOCUS_CHANGED` (0x08)
+    ///   boundaries when the node listens for it — the app-side escape hatch to
+    ///   suppress echoes of any derived state during a session.
+    fn attach_drag_sessions(&mut self, id: u32, widget: &gtk::Widget, node: &HostNode) {
+        if !self.attached_sessions.insert(id) {
+            return;
+        }
+        let listeners = node.u32_property(property_id::EVENT_LISTENERS, 0);
+        let want_editing = listeners & listener::EDITING != 0;
+        let want_focus = listeners & listener::FOCUS != 0;
+        let drag_state = self.drag_state.clone();
+        let sink = self.event_sink.clone();
+
+        match widget_kind(node.component_type) {
+            WidgetKind::Slider => {
+                let gesture = GestureClick::new();
+                gesture.set_propagation_phase(PropagationPhase::Capture);
+                let gs = drag_state.clone();
+                gesture.connect_pressed(move |_, _, _, _| {
+                    gs.borrow_mut().insert(id);
+                });
+                let gs = drag_state.clone();
+                gesture.connect_released(move |_, _, _, _| {
+                    gs.borrow_mut().remove(&id);
+                });
+                if want_editing {
+                    if let Some(sink) = sink.clone() {
+                        let s = sink.clone();
+                        gesture.connect_pressed(move |_, _, _, _| {
+                            s.borrow_mut()(Event::EditingChanged { target: id, editing: true });
+                        });
+                        let s = sink.clone();
+                        gesture.connect_released(move |_, _, _, _| {
+                            s.borrow_mut()(Event::EditingChanged { target: id, editing: false });
+                        });
+                    }
+                }
+                widget.add_controller(gesture);
+            }
+            _ => {}
+        }
+
+        if want_focus {
+            if let Some(sink) = sink {
+                let focus = EventControllerFocus::new();
+                let s = sink.clone();
+                focus.connect_enter(move |_| {
+                    s.borrow_mut()(Event::FocusChanged { target: id, focused: true });
+                });
+                let s = sink.clone();
+                focus.connect_leave(move |_| {
+                    s.borrow_mut()(Event::FocusChanged { target: id, focused: false });
+                });
+                widget.add_controller(focus);
+            }
         }
     }
 
@@ -1586,6 +1667,12 @@ fn desired_listeners(node: &HostNode) -> u32 {
     mask
 }
 
+/// Whether an inbound `VALUE` write should be applied to a value control (spec
+/// EVENTS.md "In-flight interaction"): skipped while the user is dragging it.
+fn should_apply_value(dragging: bool) -> bool {
+    !dragging
+}
+
 /// Attach a `GestureClick` to `widget`, reporting raw `POINTER_DOWN` /
 /// `POINTER_UP` events for `target`. Uses the capture phase so it observes both
 /// press and release even on a widget (like a button) whose own internal
@@ -2479,6 +2566,10 @@ mod tests {
         assert_eq!(widget_kind(COLOR_PICKER), WidgetKind::ColorPicker);
         assert_eq!(widget_kind(AUDIO), WidgetKind::Media);
         assert_eq!(widget_kind(VIDEO), WidgetKind::Media);
+        // In-flight interaction: an inbound VALUE write is skipped while the
+        // user is dragging the control (spec EVENTS.md).
+        assert!(should_apply_value(false));
+        assert!(!should_apply_value(true));
         // Components without a mapping fall back to a blank widget.
         assert_eq!(widget_kind(COMMENT), WidgetKind::Blank);
     }

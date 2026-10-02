@@ -115,6 +115,11 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   URL in the string section + `NAVIGATE_URL` flag; `encodeNavigateBack` no URL),
   and **`META::ENVIRONMENT`** (`encodeEnvironment(width, height, route)`) — guest →
   host (flags `0x0000`).
+- **In-flight interaction (spec EVENTS.md)**: a range slider being dragged is
+  tracked via `src/inFlight.ts` (marked on `pointerdown`, cleared on
+  `pointerup`/`pointercancel`/`blur`); while in-flight, inbound `VALUE` deltas
+  are **suppressed** (`apply.ts` `PROP_VALUE`), so a server echo can't fight
+  the pointer and flicker the thumb.
 - **Platform environment** (spec/OPCODE.md §Environment fields): the client sends
   `encodeEnvironment` as its **first** WS message (`transport.ts` `onOpen`, before
   any resync) so the server session seeds its router from the `ROUTE` field, and

@@ -61,6 +61,45 @@ never serialized to the event ring or a network batch. This is the wire-level
 guard: a `Button` tap with no `ACTION_ID`, no `BINDING_ID`, and no
 `EVENT_LISTENERS` produces no events.
 
+### In-flight interaction (MUST)
+
+A node with an **active continuous-input session** — a slider being dragged, a
+text input being typed into, a pointer-drag the app is following — is the
+authoritative owner of the state it is editing. Renderers **MUST** honor this
+for the duration of the session:
+
+1. **Do not apply inbound updates to the in-edit state.** While the session is
+   active, a `SET_PROPERTY` of the state under edit (e.g. `VALUE` (0x2006) on a
+   `SLIDER` being dragged) is **skipped at the renderer** — the interaction's
+   position wins, so a server echo cannot fight the pointer and cause flicker.
+   Structural properties (`MIN_VALUE`/`MAX_VALUE`/`STEP_VALUE`, size, style)
+   still apply.
+2. **Do not re-report events for skipped writes.** Because the write was not
+   applied, no change signal fires and no `VALUE_CHANGED` is re-emitted — the
+   echo loop is broken at the source.
+3. **Resume on session end.** When the interaction ends (release / blur), the
+   in-flight state clears and inbound updates apply again; the final position
+   was already reported by the interaction's own events.
+
+This is **renderer state, not application state** (AGENTS.md Principle 1): the
+in-edit value is transient input/rendered-output state, like the scroll offset
+and the text caret.
+
+The session boundaries are also **reported as events** so the application can
+suppress echoes of *derived* state the renderer cannot know about (a custom
+drag offset, a drawn position):
+
+- `FOCUS_CHANGED` (0x08) — the control gained/lost focus.
+- `EDITING_CHANGED` (0x09) — a value/text edit session started/ended.
+
+Both are reported **only when the target declared the matching `EVENT_LISTENERS`
+bit** (`FOCUS` = `1<<5`, `EDITING` = `1<<6`). An application that observes
+`EDITING_CHANGED { editing: true }` should hold back authoritative echoes of the
+edited state until `{ editing: false }`.
+
+The mechanism is **per-state / per-session**: implemented today for value drags
+(`SLIDER`); text editing and other continuous inputs use the same path.
+
 ### Target resolution
 
 The renderer resolves `targetId` from its own rendered-output tree (its
