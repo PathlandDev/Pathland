@@ -1,0 +1,56 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3Y63PYC03BXWWGFJTNS57CP",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-02T11:31:19.531617Z",
+  "branch": "fix/seekbar-issue",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "spec/EVENTS.md",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/typescript/src/inFlight.ts",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/index.ts",
+    "lib/typescript/test/apply.test.ts",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/typescript/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "e845efcf5edc",
+  "checkpoint_transcript_start": 1130,
+  "transcript_lines_at_start": 1130,
+  "compact_transcript_start": 1130,
+  "token_usage": {
+    "input_tokens": 1877423,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 31841024,
+    "output_tokens": 44971,
+    "api_call_count": 86
+  },
+  "session_metrics": {
+    "turn_count": 66
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-02T11:31:18.650239Z",
+    "agent_lines": 234,
+    "agent_removed": 12,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 234,
+    "total_lines_changed": 246,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
