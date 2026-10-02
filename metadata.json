@@ -3,7 +3,7 @@
   "checkpoint_id": "01M3Z5B0244GYA9F2HWRPGBQWR",
   "strategy": "manual-commit",
   "branch": "fix/ws-heartbeat-ping",
-  "checkpoints_count": 5,
+  "checkpoints_count": 8,
   "files_touched": [
     "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java",
     "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/QuarkusConnectionTest.java"
@@ -43,13 +43,20 @@
       "compact_transcript": "/4/transcript.jsonl",
       "content_hash": "/4/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/5/metadata.json",
+      "transcript": "/5/full.jsonl",
+      "compact_transcript": "/5/transcript.jsonl",
+      "content_hash": "/5/content_hash.txt",
+      "prompt": "/5/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 140217,
+    "input_tokens": 753168,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 3811840,
-    "output_tokens": 57911,
-    "api_call_count": 63
+    "cache_read_tokens": 16940544,
+    "output_tokens": 99140,
+    "api_call_count": 108
   }
 }

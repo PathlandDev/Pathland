@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M3Z5B0244GYA9F2HWRPGBQWR",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-02T20:37:17.03346Z",
+  "branch": "fix/ws-heartbeat-ping",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/QuarkusConnectionTest.java"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "653ff384fd55",
+  "checkpoint_transcript_start": 1750,
+  "transcript_lines_at_start": 1750,
+  "compact_transcript_start": 1750,
+  "token_usage": {
+    "input_tokens": 612951,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 13128704,
+    "output_tokens": 41229,
+    "api_call_count": 45
+  },
+  "session_metrics": {
+    "turn_count": 101
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-02T20:37:15.604977Z",
+    "agent_lines": 31,
+    "agent_removed": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 31,
+    "total_lines_changed": 34,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
