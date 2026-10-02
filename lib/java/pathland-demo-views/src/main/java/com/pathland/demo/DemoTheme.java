@@ -18,7 +18,6 @@ public final class DemoTheme {
             .color("color.surface", 0xFFFFFFFF)
             .color("color.accent", 0xFF2563EB)
             .f32("space.base", 4.0f)
-            .string("font.body.family", "Inter")
             .color("control.background", 0xFFF9FAFB)
             .color("control.foreground", 0xFF111827)
             .color("control.accent", 0xFF2563EB);
