@@ -54,6 +54,9 @@ export function createElement(component: number): Node {
       el.style.display = "grid";
       el.style.gridTemplateColumns = "1fr";
       el.style.gridTemplateRows = "1fr";
+      // Position children on both axes per the ZSTACK ALIGNMENT (default start).
+      el.style.justifyItems = "start";
+      el.style.alignItems = "start";
       return el;
     }
     case COMPONENT_GRID:

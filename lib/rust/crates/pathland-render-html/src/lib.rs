@@ -293,19 +293,28 @@ impl Node {
 
         // Enum-derived properties (previously Tailwind classes) now inline.
         // ALIGNMENT cross-axis position (Leading=0, Center=1, Trailing=2,
-        // Fill=3 → default). Positions children; the default is hug
-        // (flex-start), never CSS stretch — only FILL-sized children stretch
-        // (LAYOUT.md).
+        // → start). Positions children; the default is hug (flex-start), never
+        // CSS stretch — only FILL-sized children stretch (LAYOUT.md). A
+        // `ZSTACK`/grid positions on BOTH axes (its own branch emits the
+        // per-axis values), so the single-axis `align-items` is skipped there.
         if let Some(v) = f32p(property_id::ALIGNMENT) {
-            css.push_str(&format!(
-                "align-items:{};",
-                match v as u8 {
-                    0 => "flex-start",
-                    1 => "center",
-                    2 => "flex-end",
-                    _ => "flex-start",
-                }
-            ));
+            if !matches!(
+                self.component,
+                component_type::ZSTACK
+                    | component_type::GRID
+                    | component_type::LAZY_VGRID
+                    | component_type::LAZY_HGRID
+            ) {
+                css.push_str(&format!(
+                    "align-items:{};",
+                    match v as u8 {
+                        0 => "flex-start",
+                        1 => "center",
+                        2 => "flex-end",
+                        _ => "flex-start",
+                    }
+                ));
+            }
         }
         // TEXT_ALIGNMENT (Leading=0, Center=1, Trailing=2).
         if let Some(v) = f32p(property_id::TEXT_ALIGNMENT) {
@@ -584,6 +593,25 @@ fn grid_columns(node: &Node) -> Option<u32> {
 /// count; a `LAZY_HGRID`'s fixed track).
 fn grid_rows(node: &Node) -> Option<u32> {
     grid_count(node, property_id::GRID_ROWS)
+}
+
+/// The horizontal position component of an `ALIGNMENT` 2D code (0–8, spec
+/// PRIMITIVES.md §ZStack).
+fn align_h(code: u8) -> &'static str {
+    match code {
+        1 | 3 | 4 => "center",
+        2 | 6 | 7 => "end",
+        _ => "start",
+    }
+}
+
+/// The vertical position component of an `ALIGNMENT` 2D code (0–8).
+fn align_v(code: u8) -> &'static str {
+    match code {
+        1 | 5 | 6 => "center",
+        2 | 4 | 8 => "end",
+        _ => "start",
+    }
 }
 
 /// A grid's `GRID_TRACKS` tokens (comma-separated `flex`/`fixed:<pts>`/
@@ -1358,18 +1386,9 @@ if indeterminate {
                 // keeps its own size (Fixed/Hug) and is positioned by the grid's
                 // ALIGNMENT on both axes; a `FILL`-sized cell (or a greedy
                 // filler like `COLOR`/`SCROLLVIEW`) stretches to fill its track.
-                let align = node.f32_property(property_id::ALIGNMENT, 3.0) as u8;
-                let pos = |code: u8, stretch: bool| -> &'static str {
-                    if stretch {
-                        "stretch"
-                    } else {
-                        match code {
-                            1 => "center",
-                            2 => "end",
-                            _ => "start",
-                        }
-                    }
-                };
+                let align = node.f32_property(property_id::ALIGNMENT, 0.0) as u8;
+                let pos_h = |stretch: bool| if stretch { "stretch" } else { align_h(align) };
+                let pos_v = |stretch: bool| if stretch { "stretch" } else { align_v(align) };
                 let cell_shell = |cell_html: String, row: usize, col: usize, cell: u32| {
                     let placement = if explicit_rows {
                         format!("grid-row:{};grid-column:{};", row + 1, col + 1)
@@ -1378,8 +1397,8 @@ if indeterminate {
                     };
                     format!(
                         "<div style=\"{placement}justify-self:{};align-self:{};\">{cell_html}</div>",
-                        pos(align, fills_axis(nodes, cell, true, false)),
-                        pos(align, fills_axis(nodes, cell, false, false)),
+                        pos_h(fills_axis(nodes, cell, true, false)),
+                        pos_v(fills_axis(nodes, cell, false, false)),
                     )
                 };
                 let inner: String = if explicit_rows {
@@ -1465,19 +1484,9 @@ if indeterminate {
                 // exactly; a FILL child propagates (`100%`). Each child keeps
                 // its own size and is positioned by `ALIGNMENT` on both axes
                 // (spec/PRIMITIVES.md §ZStack).
-                let align = node.f32_property(property_id::ALIGNMENT, 3.0) as u8;
-                let pos = |code: u8, stretch: bool| -> &'static str {
-                    if stretch {
-                        "stretch"
-                    } else {
-                        match code {
-                            0 => "start",
-                            1 => "center",
-                            2 => "end",
-                            _ => "start",
-                        }
-                    }
-                };
+                let align = node.f32_property(property_id::ALIGNMENT, 0.0) as u8;
+                let pos_h = |stretch: bool| if stretch { "stretch" } else { align_h(align) };
+                let pos_v = |stretch: bool| if stretch { "stretch" } else { align_v(align) };
                 let inner: String = node
                     .children
                     .iter()
@@ -1488,15 +1497,19 @@ if indeterminate {
                         } else {
                             Some(format!(
                                 "<div style=\"grid-area:1/1;width:max-content;height:max-content;justify-self:{};align-self:{};\">{child_html}</div>",
-                                pos(align, fills_axis(nodes, child, true, false)),
-                                pos(align, fills_axis(nodes, child, false, false)),
+                                pos_h(fills_axis(nodes, child, true, false)),
+                                pos_v(fills_axis(nodes, child, false, false)),
                             ))
                         }
                     })
                     .collect();
                 // Container sizing: Hug → max-content, or `100%` on an axis a
                 // FILL child propagates; Fixed/FILL frames come from `css`.
-                let mut zcss = String::from("display:grid;grid-template-columns:1fr;grid-template-rows:1fr;");
+                let mut zcss = format!(
+                    "display:grid;grid-template-columns:1fr;grid-template-rows:1fr;justify-items:{};align-items:{};",
+                    align_h(align),
+                    align_v(align)
+                );
                 for (axis_h, prop, hug_css, fill_css) in [
                     (true, property_id::WIDTH, "width:max-content;", "width:100%;"),
                     (false, property_id::HEIGHT, "height:max-content;", "height:100%;"),
@@ -1655,12 +1668,12 @@ if indeterminate {
 /// (GRID/LAZY_HGRID) as equal `1fr` tracks. `FILL`/absent count = auto-fit (no
 /// template; `LAZY_HGRID` columns auto-flow).
 fn grid_style(node: &Node, columns: Option<u32>) -> String {
-    let align = match node.f32_property(property_id::ALIGNMENT, 3.0) as u8 {
-        1 => "center",
-        2 => "end",
-        _ => "start",
-    };
-    let mut css = format!("display:grid;justify-items:{align};align-items:{align};");
+    let align = node.f32_property(property_id::ALIGNMENT, 0.0) as u8;
+    let mut css = format!(
+        "display:grid;justify-items:{};align-items:{};",
+        align_h(align),
+        align_v(align)
+    );
     let tracks_css = grid_tracks_css(node);
     match node.component {
         component_type::GRID => {
@@ -2391,6 +2404,22 @@ mod tests {
         let html = renderer.render_document(&opcodes, &strings, 1);
         assert!(html.contains("grid-template-columns:1fr 80px minmax(50px,1fr);"), "track spec: {html}");
         assert!(!html.contains("grid-template-columns:repeat"), "tracks override the count: {html}");
+    }
+
+    #[test]
+    fn zstack_2d_alignment_splits_h_and_v() {
+        use pathland_core::value_type;
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::ZSTACK as u32, 0));
+        // topTrailing = 7 → horizontal end, vertical start.
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+            ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32, 7.0f32.to_bits()));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("justify-self:end;align-self:start;"), "topTrailing splits h/v: {html}");
     }
 
     #[test]

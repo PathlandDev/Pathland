@@ -22,6 +22,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   never a pixel `WIDTH`/`HEIGHT`. **Per-track sizes** via a `List<GridItem>`
   overload (`GridItem.flexible()` / `.fixed(pts)` / `.adaptive(min)`) emit the
   `GRID_TRACKS` STRING spec (takes precedence over the counts); CSS-grid-native —
+- **Alignment is three typed enums (SwiftUI parity), all position-only**:
+  `HorizontalAlignment` (leading/center/trailing) for `VStack`s,
+  `VerticalAlignment` (top/center/bottom) for `HStack`s, and a 2D `Alignment`
+  (topLeading…bottomTrailing) for `ZStack`s, grids, and `FrameMod`'s content
+  placement — all encoding the single wire `ALIGNMENT` 2D code (0–8, spec
+  PRIMITIVES.md §ZStack). Stretching is a child's `FILL` size kind, never an
+  alignment.
   GTK falls back to natural sizing (see render-gtk status).
 - **One modifier mechanism — no sugar on `View`**: core modifiers are
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,

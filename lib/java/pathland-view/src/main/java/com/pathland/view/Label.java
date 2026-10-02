@@ -82,7 +82,7 @@ public final class Label implements View {
             children.add(text);
         }
 
-        View stack = HStack.of(Alignment.CENTER, 2f, children);
+        View stack = HStack.of(VerticalAlignment.CENTER, 2f, children);
         if (nonBlank(title)) {
             stack = stack.with(AccessibilityLabel.of(titleSignal));
         }

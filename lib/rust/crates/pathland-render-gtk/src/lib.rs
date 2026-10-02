@@ -814,10 +814,11 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         grid.set_column_spacing(gap as u32);
         // Per-cell alignment (LAYOUT.md): a `FILL`/greedy cell stretches on an
         // axis, anything else keeps its size and is positioned at the start.
+        let grid_align = node.properties.get(&property_id::ALIGNMENT).copied().unwrap_or(0);
         for (cell, _, _) in &cells {
             if let (Some(w), Some(cn)) = (self.widgets.get(cell), self.tree.node(*cell)) {
-                w.set_halign(layout::grid_cell_align(cn, layout::Axis::Horizontal));
-                w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical));
+                w.set_halign(layout::grid_cell_align(cn, layout::Axis::Horizontal, grid_align));
+                w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical, grid_align));
             }
         }
         if grid_matches(grid, &cells, &self.widgets) {
@@ -865,7 +866,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         let Some(ov) = parent.downcast_ref::<gtk::Overlay>() else {
             return;
         };
-        let align = layout::stack_align_option(node).unwrap_or(Align::Start);
+        let raw_align = node.properties.get(&property_id::ALIGNMENT).copied().unwrap_or(0);
         let target: Vec<gtk::Widget> = children
             .iter()
             .filter_map(|id| self.widgets.get(id).cloned())
@@ -879,12 +880,12 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             let halign = if layout::effective_fill(cn, layout::Axis::Horizontal, false, &self.tree) {
                 Align::Fill
             } else {
-                align
+                layout::align_h(raw_align)
             };
             let valign = if layout::effective_fill(cn, layout::Axis::Vertical, false, &self.tree) {
                 Align::Fill
             } else {
-                align
+                layout::align_v(raw_align)
             };
             w.set_halign(halign);
             w.set_valign(valign);

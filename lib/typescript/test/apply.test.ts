@@ -21,6 +21,8 @@ import {
   COMPONENT_TEXT,
   COMPONENT_VSTACK,
   COMPONENT_ZSTACK,
+  ALIGN_TOP_TRAILING,
+  PROP_ALIGNMENT,
   PROP_AUDIO_SOURCE,
   PROP_COLOR,
   PROP_GRID_COLUMNS,
@@ -670,6 +672,25 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     expect(zstack.contains(first)).toBe(true);
     expect(zstack.contains(second)).toBe(true);
     expect(first.parentElement).not.toBe(zstack);
+  });
+
+  it("splits a ZStack 2D ALIGNMENT into justify-self/align-self (topTrailing)", () => {
+    const r = renderer();
+    const batch = parseBatch(
+      buildBatch([
+        [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_ZSTACK],
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_ALIGNMENT, f32bits(ALIGN_TOP_TRAILING)],
+        [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
+        [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
+      ]),
+    );
+    applyBatch(batch, r);
+    const zstack = r.byId.get(1) as HTMLElement;
+    expect(zstack.style.justifyItems).toBe("end"); // horizontal end
+    expect(zstack.style.alignItems).toBe("start"); // vertical start
+    const shell = zstack.children[0] as HTMLElement;
+    expect(shell.style.justifySelf).toBe("end");
+    expect(shell.style.alignSelf).toBe("start");
   });
 
   it("mirrors GRID_COLUMNS/GRID_ROWS into track templates (never pixel sizes) and wraps cells", () => {

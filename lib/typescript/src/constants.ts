@@ -203,7 +203,14 @@ export const WIDTH_HUG = -2;
 export const ALIGN_LEADING = 0;
 export const ALIGN_CENTER = 1;
 export const ALIGN_TRAILING = 2;
-export const ALIGN_FILL = 3;
+export const ALIGN_TOP_LEADING = 0;
+export const ALIGN_BOTTOM_TRAILING = 2;
+export const ALIGN_TOP_CENTER = 3;
+export const ALIGN_BOTTOM_CENTER = 4;
+export const ALIGN_CENTER_LEADING = 5;
+export const ALIGN_CENTER_TRAILING = 6;
+export const ALIGN_TOP_TRAILING = 7;
+export const ALIGN_BOTTOM_LEADING = 8;
 
 // SHAPE_KIND
 export const SHAPE_CIRCLE = 0;

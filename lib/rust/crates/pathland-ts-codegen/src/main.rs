@@ -56,7 +56,19 @@ fn write_consts(out: &mut String, prefix: &str, items: &[(&str, String)]) {
 /// (These codes are protocol-semantic and have no `pathland_core` consts yet.)
 fn enum_codes() -> Vec<(&'static str, Vec<(&'static str, u32)>)> {
     vec![
-        ("ALIGN_", vec![("LEADING", 0), ("CENTER", 1), ("TRAILING", 2), ("FILL", 3)]),
+        ("ALIGN_", vec![
+            ("LEADING", 0),
+            ("CENTER", 1),
+            ("TRAILING", 2),
+            ("TOP_LEADING", 0),
+            ("BOTTOM_TRAILING", 2),
+            ("TOP_CENTER", 3),
+            ("BOTTOM_CENTER", 4),
+            ("CENTER_LEADING", 5),
+            ("CENTER_TRAILING", 6),
+            ("TOP_TRAILING", 7),
+            ("BOTTOM_LEADING", 8),
+        ]),
         (
             "SHAPE_",
             vec![

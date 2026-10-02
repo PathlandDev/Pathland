@@ -207,8 +207,10 @@ pub fn cross_axis_align(
 
 /// Per-axis alignment for a `GRID` cell (no stack direction): a `FILL`-sized
 /// cell (or a greedy filler) stretches; otherwise the cell keeps its size and
-/// is positioned at the start.
-pub fn grid_cell_align(node: &HostNode, axis: Axis) -> Align {
+/// is positioned by the grid's `ALIGNMENT` on that axis (its 2D code's
+/// horizontal component for `Horizontal`, vertical for `Vertical`, spec
+/// PRIMITIVES.md §ZStack). `grid_align` is the grid's raw `ALIGNMENT`.
+pub fn grid_cell_align(node: &HostNode, axis: Axis, grid_align: u32) -> Align {
     if matches!(axis_hint(node, axis), SizeHint::Fill)
         || matches!(
             node.component_type,
@@ -217,7 +219,39 @@ pub fn grid_cell_align(node: &HostNode, axis: Axis) -> Align {
     {
         Align::Fill
     } else {
-        Align::Start
+        match axis {
+            Axis::Horizontal => align_h(grid_align),
+            Axis::Vertical => align_v(grid_align),
+        }
+    }
+}
+
+/// The horizontal position component of an `ALIGNMENT` 2D code (0–8, spec
+/// PRIMITIVES.md §ZStack).
+pub fn align_h(raw: u32) -> Align {
+    match align_code(raw) {
+        1 | 3 | 4 => Align::Center,
+        2 | 6 | 7 => Align::End,
+        _ => Align::Start,
+    }
+}
+
+/// The vertical position component of an `ALIGNMENT` 2D code (0–8).
+pub fn align_v(raw: u32) -> Align {
+    match align_code(raw) {
+        1 | 5 | 6 => Align::Center,
+        2 | 4 | 8 => Align::End,
+        _ => Align::Start,
+    }
+}
+
+/// Decode an `ALIGNMENT` code (f32 bit pattern or low-byte ENUM; 0..=8).
+fn align_code(raw: u32) -> u8 {
+    let f = f32::from_bits(raw);
+    if f.is_finite() && f.fract() == 0.0 && (0.0..=8.0).contains(&f) {
+        f as u8
+    } else {
+        (raw & 0xFF) as u8
     }
 }
 
@@ -254,14 +288,12 @@ pub fn cross_axis_is_horizontal(orientation: Orientation) -> bool {
 /// Both DSLs emit the enum index as an f32 bit pattern (`0.0..=3.0`); a raw
 /// low-byte ENUM encoding is also accepted for robustness. Out-of-range values
 /// fall back to `Fill`.
+/// The stack's single-axis cross position from an `ALIGNMENT` code. Stacks read
+/// one axis (`VStack` horizontal / `HStack` vertical); codes `0/1/2` are the
+/// positions, anything else (2D codes, absent default) yields `None` (the
+/// default start, LAYOUT.md).
 pub fn align_from(raw: u32) -> Align {
-    let f = f32::from_bits(raw);
-    let idx = if f.is_finite() && f.fract() == 0.0 && (0.0..=3.0).contains(&f) {
-        f as u8
-    } else {
-        (raw & 0xFF) as u8
-    };
-    match idx {
+    match align_code(raw) {
         0 => Align::Start,
         1 => Align::Center,
         2 => Align::End,
@@ -714,14 +746,41 @@ mod tests {
     }
 
     #[test]
-    fn grid_cell_align_fill_stretches_else_start() {
+    fn grid_cell_align_fill_stretches_else_positions() {
         let h = Axis::Horizontal;
-        assert_eq!(grid_cell_align(&node(component_type::TEXT, &[]), h), Align::Start);
+        // A non-FILL cell is positioned by the grid's ALIGNMENT on that axis
+        // (default 0 = start).
+        assert_eq!(grid_cell_align(&node(component_type::TEXT, &[]), h, 0), Align::Start);
+        // 2D code 3 (topCenter): horizontal = center, vertical = start.
+        assert_eq!(grid_cell_align(&node(component_type::TEXT, &[]), h, 3), Align::Center);
         assert_eq!(
-            grid_cell_align(&node(component_type::TEXT, &[(property_id::WIDTH, f32_bits(-1.0))]), h),
+            grid_cell_align(&node(component_type::TEXT, &[]), Axis::Vertical, 3),
+            Align::Start
+        );
+        assert_eq!(
+            grid_cell_align(&node(component_type::TEXT, &[(property_id::WIDTH, f32_bits(-1.0))]), h, 3),
             Align::Fill
         );
-        assert_eq!(grid_cell_align(&node(component_type::COLOR, &[]), h), Align::Fill);
+        assert_eq!(grid_cell_align(&node(component_type::COLOR, &[]), h, 3), Align::Fill);
+    }
+
+    #[test]
+    fn align_h_v_split_2d_codes() {
+        assert_eq!(align_h(0), Align::Start);
+        assert_eq!(align_v(0), Align::Start);
+        assert_eq!(align_h(1), Align::Center);
+        assert_eq!(align_v(1), Align::Center);
+        assert_eq!(align_h(2), Align::End);
+        assert_eq!(align_v(2), Align::End);
+        // topCenter = 3 → horizontal center, vertical start.
+        assert_eq!(align_h(3), Align::Center);
+        assert_eq!(align_v(3), Align::Start);
+        // bottomLeading = 8 → horizontal start, vertical end.
+        assert_eq!(align_h(8), Align::Start);
+        assert_eq!(align_v(8), Align::End);
+        // topTrailing = 7 → horizontal end, vertical start.
+        assert_eq!(align_h(7), Align::End);
+        assert_eq!(align_v(7), Align::Start);
     }
 
     #[test]

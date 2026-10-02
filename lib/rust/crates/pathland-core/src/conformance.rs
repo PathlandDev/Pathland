@@ -241,6 +241,15 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x00, // C = arenaRef = 0
         ],
     ),
+    (
+        "PARAMETER:SET_PROPERTY (id=1, ALIGNMENT=0x0002, valueType=F32=0x04, topCenter=3)",
+        [
+            0x02, 0x01, 0x00, 0x00, // category PARAMETER, command SET_PROPERTY
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x02, 0x00, 0x04, 0x00, // B = (0x04 << 16) | 0x0002 (F32 | ALIGNMENT)
+            0x00, 0x00, 0x40, 0x40, // C = 3.0 (f32 LE: 0x40400000) = topCenter
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -391,6 +400,15 @@ mod tests {
                 (0x05u32 << 16) | 0x0020,
                 0,
                 VECTORS[25].1,
+            ),
+            (
+                0x02,
+                0x01,
+                0x0000,
+                1,
+                (0x04u32 << 16) | 0x0002,
+                3.0f32.to_bits(),
+                VECTORS[26].1,
             ),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {

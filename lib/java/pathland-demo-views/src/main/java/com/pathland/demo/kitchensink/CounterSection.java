@@ -7,6 +7,7 @@ import com.pathland.view.FontWeight;
 import com.pathland.view.HStack;
 import com.pathland.view.Stepper;
 import com.pathland.view.Text;
+import com.pathland.view.VerticalAlignment;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
 import static com.pathland.view.signal.Signals.*;
@@ -33,7 +34,7 @@ public final class CounterSection implements View {
         return new SectionCard("Counter · State + Button + Stepper",
                 VStack.of(
                         Text.of(countLabel).with(FontSize.of(28), FontWeightMod.of(FontWeight.BOLD)),
-                        HStack.of(Alignment.LEADING, 4,
+                        HStack.of(VerticalAlignment.TOP, 4,
                                 Button.of("−", () -> count.update(v -> v - step.get().intValue())),
                                 Button.of("+", () -> count.update(v -> v + step.get().intValue())),
                                 Button.of("Reset", () -> count.set(0))

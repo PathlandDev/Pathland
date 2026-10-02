@@ -136,8 +136,8 @@ function applyBorderEdges(el: HTMLElement): void {
 // --- enum → CSS ---
 
 export function alignmentCss(code: number): string {
-  // Cross-axis POSITION (LAYOUT.md): positions children, never stretches.
-  // `Fill` (3) and absent mean the default hug positioning → flex-start.
+  // Cross-axis POSITION (LAYOUT.md): positions children, never stretches. A
+  // stack reads one axis of the 2D code (`0/1/2`); the default is start.
   switch (code) {
     case P.ALIGN_LEADING: return "flex-start";
     case P.ALIGN_CENTER: return "center";
@@ -145,14 +145,35 @@ export function alignmentCss(code: number): string {
     default: return "flex-start";
   }
 }
-/** A grid's per-cell position token (spec §grid model): cells position within
- *  their tracks on BOTH axes; `start`/`center`/`end`, default start. `Fill`(3)
- *  and absent mean the default Leading/start position. */
-export function gridAlignmentCss(code: number): string {
+/** The horizontal position of an `ALIGNMENT` 2D code (spec PRIMITIVES.md
+ *  §ZStack): `start`/`center`/`end`. */
+export function alignHCss(code: number): string {
   switch (code) {
-    case P.ALIGN_CENTER: return "center";
-    case P.ALIGN_TRAILING: return "end";
-    default: return "start";
+    case P.ALIGN_CENTER:
+    case P.ALIGN_TOP_CENTER:
+    case P.ALIGN_BOTTOM_CENTER:
+      return "center";
+    case P.ALIGN_TRAILING:
+    case P.ALIGN_CENTER_TRAILING:
+    case P.ALIGN_TOP_TRAILING:
+      return "end";
+    default:
+      return "start";
+  }
+}
+/** The vertical position of an `ALIGNMENT` 2D code: `start`/`center`/`end`. */
+export function alignVCss(code: number): string {
+  switch (code) {
+    case P.ALIGN_CENTER:
+    case P.ALIGN_CENTER_LEADING:
+    case P.ALIGN_CENTER_TRAILING:
+      return "center";
+    case P.ALIGN_TRAILING:
+    case P.ALIGN_BOTTOM_CENTER:
+    case P.ALIGN_BOTTOM_LEADING:
+      return "end";
+    default:
+      return "start";
   }
 }
 function textAlignCss(code: number): string {

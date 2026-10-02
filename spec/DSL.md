@@ -296,9 +296,9 @@ accessibility label.
 
 | View | Canonical (SwiftUI-shaped) | Java DSL (current) | Emits / Binds |
 |------|---------------------------|--------------------|---------------|
-| `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.of(View...)` / `VStack.of(Alignment, float, View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
-| `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.of(View...)` / `HStack.of(Alignment, float, View...)` | `HSTACK` 0x11 |
-| `ZStack` | `ZStack(alignment:) { … }` | `ZStack.of(View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
+| `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.of(View...)` / `VStack.of(HorizontalAlignment, float, View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
+| `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.of(View...)` / `HStack.of(VerticalAlignment, float, View...)` | `HSTACK` 0x11 |
+| `ZStack` | `ZStack(alignment:) { … }` | `ZStack.of(View...)` / `ZStack.of(Alignment, View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
 | `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.of(View...)` / `Grid.of(int columns, View...)` / `Grid.of(int columns, int rows, View...)` / `Grid.of(int columns, int rows, Alignment, float, View...)` / `Grid.of(List<GridItem>, View...)` / `Grid.of(List<GridItem>, Alignment, float, View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
 | `GridRow` | `GridRow { … }` | `GridRow.of(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
 | `ScrollView` | `ScrollView { … }` | `ScrollView.of(View...)` | `SCROLLVIEW` 0x14 |
@@ -306,6 +306,12 @@ accessibility label.
 | `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` / `LazyHGrid.of(int rows, View...)` / `LazyHGrid.of(List<GridItem>, View...)` / `LazyHGrid.of(int rows, Alignment, float, View...)` / `LazyHGrid.of(List<GridItem>, Alignment, float, View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
 | `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.of(View...)` | `LAZY_VSTACK` 0x1B |
 | `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.of(View...)` | `LAZY_HSTACK` 0x1C |
+
+Alignment is **position-only** (SwiftUI/Compose parity): `VStack` takes a
+`HorizontalAlignment` (leading/center/trailing), `HStack` a `VerticalAlignment`
+(top/center/bottom), and `ZStack`/grids (plus the `frame` modifier's content
+alignment) a 2D `Alignment` (topLeading … bottomTrailing). Stretching a child is
+its `FILL` size kind, never an alignment.
 
 **Deltas (Java)**: stacks are constructed with the `<ViewName>.of(...)` factory
 using varargs (`VStack.of(children...)`), not a builder/trailing-closure
@@ -621,7 +627,7 @@ surface ([§5.6](#56-custom-modifiers-developer-authored)).
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `frame` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(float width))` / `.with(FrameMod.of(float width, float height))` / `.with(FrameMod.of(float width, float height, Alignment))` — alignment optional (omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved) | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
+| `frame` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(float width))` / `.with(FrameMod.of(float width, float height))` / `.with(FrameMod.of(float width, float height, Alignment))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
 | `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.with(FrameMod.of(float, float, float, float, float, float))` (NaN = unset) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
 | `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.with(Padding.of(int))` / `.with(Padding.of(float))` / `.with(Padding.of(int top, int right, int bottom, int left))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
 | `offset` | `.offset(x:y:)` | `.with(Offset.of(float x, float y))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
@@ -789,8 +795,12 @@ A conformant DSL follows these conventions:
    per argument.
 3. **Constructor vs modifier**: structural (alignment, spacing) in the
    constructor; everything else chainable.
-4. **Typed enums**: `Alignment` (leading/center/trailing/fill),
-   `TextAlignment`, `FontWeight` (100–900), `Truncation` (head/middle/tail),
+4. **Typed enums**: `HorizontalAlignment` (leading/center/trailing, for
+   `VStack`), `VerticalAlignment` (top/center/bottom, for `HStack`), `Alignment`
+   (2D — topLeading … bottomTrailing — for `ZStack`/grids and the `frame`
+   modifier's content alignment); all **position-only, never stretching** (a
+   child's `FILL` size kind stretches). Plus `TextAlignment`, `FontWeight`
+   (100–900), `Truncation` (head/middle/tail),
    `TextCase` (none/uppercase/lowercase), `FontStyle` (normal/italic),
    `FontDesign` (default/serif/rounded/monospaced), `ContentMode` (fit/fill),
    `ControlSize` (small/regular/large), `ToggleStyle`

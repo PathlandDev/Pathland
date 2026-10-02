@@ -73,7 +73,7 @@ import {
 import type { Batch, Opcode } from "./plpl";
 import { readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
-import { applyEnabled, applyProperty, applyTokenRefProperty, gridAlignmentCss } from "./classes";
+import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";
 import {
   encodeMediaEnded,
@@ -149,18 +149,6 @@ function fillsAxis(el: Element, horizontal: boolean, mainAxis: boolean): boolean
   );
 }
 
-/** The SSR's alignment token for a ZSTACK child position from the element's
- *  `align-items` value (`flex-start`/`center`/`flex-end`, default start). */
-function zstackAlignToken(alignItems: string): string {
-  if (alignItems === "center") {
-    return "center";
-  }
-  if (alignItems === "flex-end") {
-    return "end";
-  }
-  return "start";
-}
-
 /** Derived layout pass (LAYOUT.md): fill propagation (a Hug stack/ZStack with a
  *  FILL descendant becomes FILL on that axis), ZStack hug-to-largest-child
  *  sizing, cross-axis `align-self:stretch` for FILL children, and ZStack child
@@ -191,22 +179,25 @@ function applyLayout(r: DomRenderer): void {
       if (el.style.height === "") {
         el.style.height = fillsAxis(el, false, false) ? "100%" : "max-content";
       }
-      // Position each child shell per the ZSTACK ALIGNMENT (both axes).
-      const token = zstackAlignToken(el.style.alignItems);
+      // Position each child shell per the ZSTACK ALIGNMENT (2D code, both axes).
+      const hToken = el.style.justifyItems || "start";
+      const vToken = el.style.alignItems || "start";
       for (const w of Array.from(el.children)) {
         if (!(w instanceof HTMLElement)) {
           continue;
         }
-        w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : token;
-        w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : token;
+        w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : hToken;
+        w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : vToken;
       }
     } else if (isGridComponent(comp)) {
-      // Position each cell shell per the grid ALIGNMENT on both axes (spec
-      // §grid model): a FILL-sized / greedy cell stretches to fill its track.
-      // Explicit rows (spec §GridRow): a GRID_ROW starts a new row; bare cells
-      // auto-flow, advancing after the effective column count (GRID_COLUMNS or
-      // the widest row) — short rows leave trailing columns empty.
-      const token = el.style.alignItems || "start";
+      // Position each cell shell per the grid ALIGNMENT (2D code) on both axes
+      // (spec §grid model): a FILL-sized / greedy cell stretches to fill its
+      // track. Explicit rows (spec §GridRow): a GRID_ROW starts a new row; bare
+      // cells auto-flow, advancing after the effective column count
+      // (GRID_COLUMNS or the widest row) — short rows leave trailing columns
+      // empty.
+      const hToken = el.style.justifyItems || "start";
+      const vToken = el.style.alignItems || "start";
       const children = Array.from(el.children).filter(
         (c): c is HTMLElement => c instanceof HTMLElement,
       );
@@ -222,8 +213,8 @@ function applyLayout(r: DomRenderer): void {
           shell.style.gridRow = String(row + 1);
           shell.style.gridColumn = String(col + 1);
         }
-        shell.style.justifySelf = fillsAxis(shell, true, false) ? "stretch" : token;
-        shell.style.alignSelf = fillsAxis(shell, false, false) ? "stretch" : token;
+        shell.style.justifySelf = fillsAxis(shell, true, false) ? "stretch" : hToken;
+        shell.style.alignSelf = fillsAxis(shell, false, false) ? "stretch" : vToken;
       };
       if (!explicitRows) {
         for (const w of children) {
@@ -1009,14 +1000,13 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       applyEnabled(el, bits);
       break;
     case PROP_ALIGNMENT: {
-      // Grids position cells within their tracks on BOTH axes (spec §grid
-      // model); stacks/others use the cross-axis `align-items` token.
+      // ZStack/grids position on BOTH axes with a 2D code (spec §grid model /
+      // §ZStack); stacks/others use the single-axis cross `align-items` token.
       const comp = componentByNode.get(el);
-      if (isGridComponent(comp)) {
+      if (isGridComponent(comp) || comp === COMPONENT_ZSTACK) {
         const code = valueType === VAL_ENUM ? bits & 0xff : Math.round(f32FromBits(bits));
-        const g = gridAlignmentCss(code);
-        el.style.justifyItems = g;
-        el.style.alignItems = g;
+        el.style.justifyItems = alignHCss(code);
+        el.style.alignItems = alignVCss(code);
       } else {
         applyProperty(el, propId, valueType, bits);
       }

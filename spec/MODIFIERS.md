@@ -130,11 +130,13 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 - **`PADDING` vs per-edge**: `PADDING` is uniform and shorthand; a per-edge
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.
-- **`ALIGNMENT` enum**: `Leading`=0, `Center`=1, `Trailing`=2, `Fill`=3.
+- **`ALIGNMENT` code** (2D position, `0`–`8`): a stack reads a single axis (a
+  `VStack` the horizontal component — `0/1/2` = leading/center/trailing — an
+  `HStack` the vertical — `0/1/2` = top/center/bottom), a `ZStack`/grid both
+  axes (full table in [PRIMITIVES.md §ZStack](./PRIMITIVES.md#zstack--zstack-0x12)).
   `ALIGNMENT` **positions** children in the leftover cross-axis space; it never
   resizes them. The cross-axis default is *hug* (children keep their size;
-  only `FILL`-sized children stretch), and `Fill`=3 means default (hug)
-  positioning, not stretch. Full contract: [LAYOUT.md](./LAYOUT.md).
+  only `FILL`-sized children stretch). Full contract: [LAYOUT.md](./LAYOUT.md).
 - **`CONTENT_MODE` enum**: `Fit`=0 (aspect-fit within the bounds),
   `Fill`=1 (aspect-fill, cropped).
 - **`OFFSET`** moves the element **after** layout without affecting layout
@@ -429,7 +431,7 @@ resolution](#default-value-type-resolution).
 
 | Property | ID | Values |
 |----------|----|--------|
-| `ALIGNMENT` | 0x0002 | `Leading`=0, `Center`=1, `Trailing`=2, `Fill`=3 |
+| `ALIGNMENT` | 0x0002 | 2D position code `0`–`8` (see PRIMITIVES.md §ZStack); stacks read one axis |
 | `SHAPE_KIND` | 0x0006 | `Circle`=0, `Rectangle`=1, `RoundedRectangle`=2, `Capsule`=3, `Ellipse`=4, `Path`=5 |
 | `TEXT_ALIGNMENT` | 0x000C | `Leading`=0, `Center`=1, `Trailing`=2 |
 | `TRUNCATION_MODE` | 0x000D | `Head`=0, `Middle`=1, `Tail`=2 |

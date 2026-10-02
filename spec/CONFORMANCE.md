@@ -634,6 +634,24 @@ referenced by an arena offset — the same convention as `ROUTE`.
   - high byte `05` = valueType = 0x05 (STRING)
 - `00 00 00 00` C = arenaRef = 0 (`"flex,fixed:80,adaptive:50"`)
 
+### 37. PARAMETER:SET_PROPERTY (id=1, propertyId=ALIGNMENT=0x0002, valueType=F32=0x04, topCenter=3)
+
+A `ZStack`/grid's 2D position code: `3` = horizontal center × vertical start
+(`top-center`). Stacks read a single axis of the same code (`0/1/2`).
+
+```
+02 01 00 00 01 00 00 00 02 00 04 00 00 00 40 40
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `02 00 04 00` B = `(valueType << 16) | propertyId` = `(0x04 << 16) | 0x0002`
+  - low two bytes `02 00` = propertyId = 0x0002 (ALIGNMENT)
+  - high byte `04` = valueType = 0x04 (F32)
+- `00 00 40 40` C = 3.0 (f32 LE: 0x40400000) = topCenter
+
 ---
 
 ## Design-Token Resolution Conformance

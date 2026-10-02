@@ -8,18 +8,18 @@ import java.util.List;
 public final class LazyVStack implements View {
 
     private final List<View> children;
-    private final Alignment alignment;
+    private final HorizontalAlignment alignment;
     private final Float spacing;
 
     private LazyVStack(View... children) {
         this(null, null, List.of(children));
     }
 
-    private LazyVStack(Alignment alignment, float spacing, View... children) {
+    private LazyVStack(HorizontalAlignment alignment, float spacing, View... children) {
         this(alignment, spacing, List.of(children));
     }
 
-    private LazyVStack(Alignment alignment, Float spacing, List<View> children) {
+    private LazyVStack(HorizontalAlignment alignment, Float spacing, List<View> children) {
         this.children = List.copyOf(children);
         this.alignment = alignment;
         this.spacing = spacing;
@@ -31,12 +31,12 @@ public final class LazyVStack implements View {
     }
 
     /** A virtualized vertical stack with constructor layout properties. */
-    public static LazyVStack of(Alignment alignment, float spacing, View... children) {
+    public static LazyVStack of(HorizontalAlignment alignment, float spacing, View... children) {
         return new LazyVStack(alignment, spacing, children);
     }
 
     /** A virtualized vertical stack with constructor layout properties. */
-    public static LazyVStack of(Alignment alignment, Float spacing, List<View> children) {
+    public static LazyVStack of(HorizontalAlignment alignment, Float spacing, List<View> children) {
         return new LazyVStack(alignment, spacing, children);
     }
 

@@ -20,7 +20,7 @@ public class Sidebar implements View {
     public View body() {
         // The router signal resolves here, inside SplitNavDemo's pushed
         // .environment(Navigation.ROUTER, router) scope.
-        return VStack.of(Alignment.FILL, 8,
+        return VStack.of(HorizontalAlignment.LEADING, 8,
                         Text.of("Pathland").with(
                                 FontSize.of(18), FontWeightMod.of(FontWeight.BOLD)),
                         menuRow("/home", "Home", "/_pathland/assets/icons/home.svg"),

@@ -77,10 +77,14 @@ A child's main-axis size comes from its size kind:
 - A **Fixed** or **Hug** child keeps its own size on the cross axis and is
   **positioned** by the container's `ALIGNMENT`.
 - **`ALIGNMENT` positions but never resizes.** It selects the placement of
-  Fixed/Hug children within leftover space; it does not stretch them. With no
-  `ALIGNMENT`, the default cross-axis position is **Leading/Start**. The enum's
-  `Fill` (3) therefore means *default (hug) positioning*, not stretch.
-- Only a **`Fill`** child fills the container's cross size.
+  Fixed/Hug children within leftover space; it does not stretch them. The value
+  is a **2D position code** (the [ZStack table](./PRIMITIVES.md#zstack--zstack-0x12)):
+  a stack reads a single axis (a `VStack` the horizontal component, an `HStack`
+  the vertical — codes `0/1/2`), a `ZStack`/grid both axes. With no `ALIGNMENT`
+  (code `0`/absent) the default cross-axis position is the **start**. Code `3`
+  is `top-center`, never a stretch; stretching lives in the **child's size
+  kind** (`WIDTH`/`HEIGHT` = `FILL`).
+- Only a **`Fill`-sized child** fills the container's cross size.
 - **The default is *hug*, not stretch.** A child with no cross-axis size is NOT
   stretched to fill the cross axis. This deliberately matches **SwiftUI**
   (children report their ideal size; a `VStack`/`HStack` aligns them) and

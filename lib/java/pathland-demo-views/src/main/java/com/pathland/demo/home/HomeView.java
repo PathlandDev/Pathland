@@ -13,8 +13,8 @@ public final class HomeView implements View {
 
     @Override
     public View body() {
-        return VStack.of(Alignment.LEADING, 24,
-                VStack.of(Alignment.LEADING, 2,
+        return VStack.of(HorizontalAlignment.LEADING, 24,
+                VStack.of(HorizontalAlignment.LEADING, 2,
                     // The destination title is a heading → `<h2>`.
                     Text.of("Home").with(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD))
                             .with(AccessibilityRole.of(Roles.HEADER)),

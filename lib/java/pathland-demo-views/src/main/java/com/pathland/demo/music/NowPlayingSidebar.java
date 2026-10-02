@@ -23,7 +23,7 @@ public final class NowPlayingSidebar implements View {
 
     @Override
     public View body() {
-        return VStack.of(Alignment.LEADING, 14,
+        return VStack.of(HorizontalAlignment.LEADING, 14,
                 Text.of("Now Playing").with(FontSize.of(18), FontWeightMod.of(FontWeight.BOLD))
                         .with(AccessibilityRole.of(Roles.HEADER)),
                 Image.of(computed(() -> MusicPlayerView.at(trackIndex.get()).cover()))

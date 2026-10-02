@@ -132,6 +132,7 @@ fn scenarios() -> Vec<Scenario> {
         layout(),
         gridrow(),
         gridtracks(),
+        zstack2d(),
         tokens(),
         semantics(),
         media(),
@@ -152,6 +153,22 @@ fn gridtracks() -> Scenario {
     b.set_string(1, property_id::GRID_TRACKS, "flex,fixed:80,adaptive:50");
     Scenario {
         name: "gridtracks",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn zstack2d() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::ZSTACK);
+    b.create(2, component_type::TEXT);
+    b.insert(1, 2);
+    b.set_text(2, "Layered");
+    // topTrailing = 7 → horizontal end × vertical start (2D alignment).
+    b.set_prop(1, value_type::F32, property_id::ALIGNMENT, 7f32.to_bits());
+    Scenario {
+        name: "zstack2d",
         opcodes: b.opcodes,
         strings: b.strings,
         root: 1,

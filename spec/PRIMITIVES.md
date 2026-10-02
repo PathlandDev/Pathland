@@ -393,12 +393,15 @@ model):
 leftover empty at the end. Every other child is packed from the start.
 
 **Cross-axis allocation.** A child keeps its own size on the cross axis and is
-**positioned** by `ALIGNMENT` — position-only, it never resizes. The default is
-**Leading/Start**; `Fill`(3) means default (hug) positioning, not stretch
-(Compose `Column` defaults `Alignment.Start`, `Row` defaults `Alignment.Top`;
-SwiftUI's stack default is `.center` — a per-framework difference, all three are
-expressible with an explicit `ALIGNMENT`). Only a **`Fill`-sized child**
-stretches to the stack's cross size.
+**positioned** by `ALIGNMENT` — position-only, it never resizes. A stack reads a
+**single axis** of the 2D position code (see the [ZStack alignment
+table](#zstack--zstack-0x12)): a `VStack` reads the horizontal component
+(`0/1/2` = leading/center/trailing), an `HStack` the vertical (`0/1/2` =
+top/center/bottom). The default is the start position (Compose `Column` defaults
+`Alignment.Start`, `Row` defaults `Alignment.Top`; SwiftUI's stack default is
+`.center` — a per-framework difference, all three are expressible with an
+explicit `ALIGNMENT`). Only a **`Fill`-sized child** stretches to the stack's
+cross size.
 
 **Fill propagation.** A Hug-sized stack that contains a **`Fill`-sized child or
 `Spacer` on an axis is itself `Fill`-sized on that axis** — the child's
@@ -484,15 +487,28 @@ children occupy the same box by design; there is no gap between them.
   axis, see the stack layout model above) — expands to the parent's proposal.
   `ZStack { Color.red }` fills (Color is layout-greedy); `ZStack { Text("hi") }`
   hugs the text.
-- **Alignment**: `ALIGNMENT` positions each child on **both** axes. The
-  single-axis enum is applied to both axes: `Leading`(0) = top-leading
-  (Start × Start), `Center`(1) = centered, `Trailing`(2) = bottom-trailing
-  (End × End), `Fill`(3) / absent = default hug positioning (Leading).
-  Position-only: it never resizes a child. SwiftUI's `ZStack(alignment:)`
-  defaults to `.center`; Compose `Box(contentAlignment:)` defaults to
-  `Alignment.TopStart`; the protocol default is **Leading** (Start × Start,
-  Compose parity). A mixed-axis alignment (e.g. top-trailing) is a future
-  extension — today `ALIGNMENT` is a single code applied to both axes.
+- **Alignment**: `ALIGNMENT` positions each child on **both** axes with a
+  **2D position code** (SwiftUI `Alignment` / Compose `Alignment` parity) — the
+  code's horizontal and vertical components place the child within the stack's
+  box. Position-only: it never resizes a child.
+
+  | code | horizontal | vertical | meaning |
+  |------|------------|----------|---------|
+  | `0` | start | start | top-leading |
+  | `1` | center | center | centered |
+  | `2` | end | end | bottom-trailing |
+  | `3` | center | start | top-center |
+  | `4` | center | end | bottom-center |
+  | `5` | start | center | center-leading |
+  | `6` | end | center | center-trailing |
+  | `7` | end | start | top-trailing |
+  | `8` | start | end | bottom-leading |
+
+  `0`/absent is the default (top-leading, Compose `TopStart` parity; SwiftUI
+  `ZStack` defaults to `.center`). A **stack** (`VStack`/`HStack`) reads a
+  **single axis** of the same code — the `VStack` cross-axis is horizontal
+  (`0/1/2` = leading/center/trailing), the `HStack` cross-axis vertical
+  (`0/1/2` = top/center/bottom).
 - **Overflow**: a Fixed box constrains layout but does not clip — content that
   exceeds it is drawn outside the box unless `CLIPS_TO_BOUNDS` clips it
   (SwiftUI `.clipped()` parity).
@@ -505,11 +521,12 @@ children occupy the same box by design; there is no gap between them.
 
 Static 2D matrix grid, eagerly rendered with aligned rows & columns. Children
 are cells, **row-major in insertion order** — child *i* occupies the cell at
-`(row = i / columns, column = i % columns)`. **Properties**: `ALIGNMENT` (a
-single-axis enum applied to both axes, like `ZStack`), `SPACING` (uniform row +
-column gap), `GRID_COLUMNS` (column count), `GRID_ROWS` (row count), plus layout
-modifiers (`WIDTH`/`HEIGHT` frames — the grid's box, never a count —
-`PADDING`/`CONTENT_MARGINS` as an inset).
+`(row = i / columns, column = i % columns)`. **Properties**: `ALIGNMENT` (a 2D
+position code applied per-cell, like `ZStack` — the [ZStack alignment
+table](#zstack--zstack-0x12)), `SPACING`
+(uniform row + column gap), `GRID_COLUMNS` (column count), `GRID_ROWS` (row
+count), plus layout modifiers (`WIDTH`/`HEIGHT` frames — the grid's box, never a
+count — `PADDING`/`CONTENT_MARGINS` as an inset).
 
 #### The grid layout model
 
@@ -556,8 +573,8 @@ CSS `gap`), clamped to ≥ 0, never before the first or after the last track.
 
 **Per-cell allocation.** Each cell keeps its own size on both axes (a Fixed box,
 or Hug content) and is **positioned** within its track by the grid's `ALIGNMENT`
-on **both axes** — `Leading`(0) = top-leading, `Center`(1) = centered,
-`Trailing`(2) = bottom-trailing, `Fill`(3)/absent = default Leading position.
+(a **2D position code**, like `ZStack` — the [table
+above](#zstack--zstack-0x12)) — e.g. `0`/absent = top-leading, `3` = top-center.
 Position-only: it never resizes a cell. Only a **`Fill`-sized cell** (or a
 greedy filler like `COLOR`) stretches to fill its track.
 

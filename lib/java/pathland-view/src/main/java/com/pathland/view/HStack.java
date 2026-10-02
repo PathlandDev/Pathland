@@ -11,7 +11,7 @@ import java.util.List;
 public final class HStack implements View {
 
     private final List<View> children;
-    private final Alignment alignment;
+    private final VerticalAlignment alignment;
     private final Float spacing;
 
     private HStack(View... children) {
@@ -22,11 +22,11 @@ public final class HStack implements View {
         this(null, null, children);
     }
 
-    private HStack(Alignment alignment, float spacing, View... children) {
+    private HStack(VerticalAlignment alignment, float spacing, View... children) {
         this(alignment, spacing, List.of(children));
     }
 
-    private HStack(Alignment alignment, Float spacing, List<View> children) {
+    private HStack(VerticalAlignment alignment, Float spacing, List<View> children) {
         this.children = List.copyOf(children);
         this.alignment = alignment;
         this.spacing = spacing;
@@ -43,12 +43,12 @@ public final class HStack implements View {
     }
 
     /** A horizontal stack with constructor layout properties. */
-    public static HStack of(Alignment alignment, float spacing, View... children) {
+    public static HStack of(VerticalAlignment alignment, float spacing, View... children) {
         return new HStack(alignment, spacing, children);
     }
 
     /** A horizontal stack with constructor layout properties. */
-    public static HStack of(Alignment alignment, Float spacing, List<View> children) {
+    public static HStack of(VerticalAlignment alignment, Float spacing, List<View> children) {
         return new HStack(alignment, spacing, children);
     }
 
