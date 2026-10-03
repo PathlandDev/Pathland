@@ -1,0 +1,46 @@
+/\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.5.16)
+
+2026-10-03T07:13:03.749Z  INFO 2719 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Starting MultiSessionWebSocketTest using Java 25.0.4.1 with PID 2719 (started by runner in /home/runner/work/Pathland/Pathland/lib/java/pathland-spring-boot-starter)
+2026-10-03T07:13:03.750Z  INFO 2719 --- [           main] c.p.spring.MultiSessionWebSocketTest     : No active profile set, falling back to 1 default profile: "default"
+2026-10-03T07:13:04.024Z  INFO 2719 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-10-03T07:13:04.037Z  INFO 2719 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-03T07:13:04.038Z  INFO 2719 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.55]
+2026-10-03T07:13:04.067Z  INFO 2719 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-03T07:13:04.068Z  INFO 2719 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 314 ms
+[pathland] state store: in-memory (Redis unavailable: Unable to connect to localhost/<unresolved>:6379)
+2026-10-03T07:13:05.502Z  INFO 2719 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 39629 (http) with context path '/'
+2026-10-03T07:13:05.507Z  INFO 2719 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Started MultiSessionWebSocketTest in 1.786 seconds (process running for 6.246)
+2026-10-03T07:13:05.683Z  INFO 2719 --- [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-03T07:13:05.684Z  INFO 2719 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-03T07:13:05.685Z  INFO 2719 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 3.059 s <<< FAILURE! -- in com.pathland.spring.MultiSessionWebSocketTest
+[ERROR] com.pathland.spring.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected -- Time elapsed: 1.258 s <<< FAILURE!
+java.lang.AssertionError: session 19 reached n=10: [n=0]
+	at com.pathland.server.test.MultiSessionProbe.check(MultiSessionProbe.java:113)
+	at com.pathland.server.test.MultiSessionProbe.run(MultiSessionProbe.java:93)
+	at com.pathland.spring.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected(MultiSessionWebSocketTest.java:45)
+
+[ERROR] Failures: 
+[ERROR]   MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected:45 session 19 reached n=10: [n=0]
+[ERROR] Tests run: 4, Failures: 1, Errors: 0, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project pathland-spring-boot-starter: There are test failures.
+[ERROR] 
+[ERROR] Please refer to /home/runner/work/Pathland/Pathland/lib/java/pathland-spring-boot-starter/target/surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :pathland-spring-boot-starter
+Error: Process completed with exit code 1.
