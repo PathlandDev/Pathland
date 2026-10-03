@@ -3,7 +3,7 @@
   "checkpoint_id": "01M409BY3V27DGSQAD0AHPXN6D",
   "strategy": "manual-commit",
   "branch": "fix/ws-stability",
-  "checkpoints_count": 5,
+  "checkpoints_count": 6,
   "files_touched": [
     "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandSocket.java",
     "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/SpringConnection.java"
@@ -43,13 +43,20 @@
       "compact_transcript": "/4/transcript.jsonl",
       "content_hash": "/4/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/5/metadata.json",
+      "transcript": "/5/full.jsonl",
+      "compact_transcript": "/5/transcript.jsonl",
+      "content_hash": "/5/content_hash.txt",
+      "prompt": "/5/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
+    "input_tokens": 26646883,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "cache_read_tokens": 750193920,
+    "output_tokens": 1335226,
+    "api_call_count": 1840
   }
 }
