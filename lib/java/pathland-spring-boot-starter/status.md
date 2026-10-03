@@ -1,6 +1,6 @@
 # pathland-spring-boot-starter — implementation status
 
-**Last updated:** September 27, 2026
+**Last updated:** October 3, 2026
 
 Spring Boot auto-configuration for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding the starter dependency + a
@@ -39,6 +39,12 @@ subpaths (the BFF layout).
 - **Heartbeat** — the socket replies to a client `META::PING` with a `META::PONG`
   **at the transport layer** (through its `SpringConnection`, no actor/session
   dependency; spec/OPCODE.md §Transport heartbeat).
+- **Observability (issue #62)** — `spring-boot-starter-actuator` supplies the
+  `MeterRegistry`; auto-config builds a `MicrometerTelemetry` over it (decorated with
+  `TracingTelemetry` when an `OpenTelemetry` bean is present — add
+  `micrometer-tracing-bridge-otel` to opt in) and a `HealthIndicator` reporting the host
+  UP with `activeSessions`/`mounts` at `/actuator/health`. The `pathland.*` meters are
+  exposed at `/actuator/prometheus` (add `micrometer-registry-prometheus`).
 
 ## App DX
 
@@ -58,6 +64,9 @@ mounts at `/` and SSR renders the root. `MultiSessionWebSocketTest`
 (`@SpringBootTest(RANDOM_PORT)`) opens **100 concurrent real WS sessions** against
 `/_pathland/ws` (via the shared `pathland-server-core` test-jar probe) and asserts each
 connects, re-syncs, gets transport-level PONGs, stays isolated, and is never closed by
-the peer. Manual: the `pathland-spring-boot-demo` renders `/`, `/kitchen`, `/settings`
+the peer. `PathlandObservabilityTest` (`@SpringBootTest` + `MockMvc`) asserts
+`/actuator/health` reports the `pathland` component UP and the auto-configured
+`PathlandTelemetry` is a `MicrometerTelemetry` registering `pathland.*` meters.
+Manual: the `pathland-spring-boot-demo` renders `/`, `/kitchen`, `/settings`
 and the 404 fallback **and a second app at `/app2`**; a WebSocket handshake to
 `/_pathland/ws` and `/app2/_pathland/ws` returns 101.

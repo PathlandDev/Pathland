@@ -33,6 +33,18 @@
             <artifactId>pathland-demo-views</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Observability (issue #62): a Prometheus scrape endpoint at /q/metrics; health
+             at /q/health comes from the starter. OpenTelemetry spans are OPT-IN — add
+             io.quarkus:quarkus-opentelemetry to enable them (see the application.properties
+             note); the starter wires the tracing decorator when the extension is present. -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-logging-json</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>

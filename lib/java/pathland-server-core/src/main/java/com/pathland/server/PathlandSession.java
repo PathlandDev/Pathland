@@ -15,6 +15,8 @@ import com.pathland.view.state.StateStore;
 import com.pathland.view.transport.EnvironmentData;
 import com.pathland.view.transport.Event;
 import com.pathland.view.transport.FrameCodec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * One Pathland application instance per session (1:1 with a client). Owns the session's
@@ -33,6 +35,8 @@ import com.pathland.view.transport.FrameCodec;
  */
 public final class PathlandSession {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PathlandSession.class);
+
     /** The reserved framework path prefix (spec): host system endpoints (the
      *  WebSocket, the DOM client bundle, the asset mount) live under
      *  {@code /_pathland/**}, never colliding with app routes. */
@@ -48,6 +52,8 @@ public final class PathlandSession {
     private final InputDispatcher inputDispatcher;
     private final int rootId;
     private final boolean debugHtml;
+    private final PathlandTelemetry telemetry;
+    private final String mount;
 
     private float viewportWidth = -1f;
     private float viewportHeight = -1f;
@@ -75,8 +81,23 @@ public final class PathlandSession {
             boolean debugHtml,
             String base,
             String stateScope) {
+        this(sessionId, store, app, env, debugHtml, base, stateScope, PathlandTelemetry.NOOP, "/");
+    }
+
+    public PathlandSession(
+            String sessionId,
+            StateStore store,
+            PathlandApp app,
+            EnvironmentData env,
+            boolean debugHtml,
+            String base,
+            String stateScope,
+            PathlandTelemetry telemetry,
+            String mount) {
         this.debugHtml = debugHtml;
         this.base = base;
+        this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
+        this.mount = mount == null ? "/" : mount;
         this.state = new PersistentState(store, stateScope);
         // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the
         // app reads it, and a bound Router re-routes guard-aware on external changes.
@@ -100,7 +121,7 @@ public final class PathlandSession {
                 }
             }
         };
-        this.batcher = new DeltaBatcher(this::sendBatch);
+        this.batcher = new DeltaBatcher(this::sendBatch, this.telemetry, this.mount);
         this.emitter = new Emitter(sink, app.theme());
 
         // Mount wires State fields, then renders and emits the structural frame. The
@@ -152,6 +173,7 @@ public final class PathlandSession {
             conn.send(bytes);
         } catch (Exception e) {
             connection = null;
+            telemetry.connectionFailed(mount, e.getMessage());
             closeConnection(conn);
         }
     }
@@ -177,7 +199,7 @@ public final class PathlandSession {
         try {
             inputDispatcher.dispatch(events);
         } catch (RuntimeException e) {
-            log("dropping event batch: " + e.getMessage());
+            LOG.warn("dropping event batch: {}", e.getMessage());
         }
     }
 
@@ -207,9 +229,5 @@ public final class PathlandSession {
         emitter.destroy();
         batcher.close();
         connection = null;
-    }
-
-    private static void log(String message) {
-        System.out.println("[pathland] " + message);
     }
 }

@@ -3,6 +3,8 @@ package com.pathland.quarkus;
 import com.pathland.server.PathlandConnection;
 import io.quarkus.websockets.next.WebSocketConnection;
 import io.vertx.core.buffer.Buffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -45,6 +47,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * connection on a single momentary failure.
  */
 final class QuarkusConnection implements PathlandConnection, AutoCloseable {
+
+    private static final Logger LOG = LoggerFactory.getLogger(QuarkusConnection.class);
 
     /** A send that has not completed (or failed) in this window is a dead connection. */
     static final long SEND_TIMEOUT_MILLIS = 10_000;
@@ -127,7 +131,7 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
             if (!connection.isOpen()) {
                 fail("send failed on closed connection: " + failure.getMessage());
             } else {
-                log("ws send failed (transient, connection open): " + failure.getMessage());
+                LOG.warn("ws send failed (transient, connection open): {}", failure.getMessage());
             }
             return;
         }
@@ -160,7 +164,7 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
                     if (!connection.isOpen()) {
                         fail("ping failed on closed connection: " + failure.getMessage());
                     } else {
-                        log("ws ping failed (transient, connection open): " + failure.getMessage());
+                        LOG.warn("ws ping failed (transient, connection open): {}", failure.getMessage());
                     }
                 });
     }
@@ -171,7 +175,7 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
         if (!failed.compareAndSet(false, true)) {
             return;
         }
-        log("ws connection failed: " + reason);
+        LOG.warn("ws connection failed: {}", reason);
         connection.close().subscribe().with(ignored -> { }, ignored -> { });
     }
 
@@ -182,9 +186,5 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
         // a normal client disconnect is not a failure).
         scheduler.shutdownNow();
         failed.set(true);
-    }
-
-    private static void log(String message) {
-        System.out.println("[pathland] " + message);
     }
 }

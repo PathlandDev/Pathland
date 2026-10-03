@@ -138,7 +138,11 @@ lib/java/
   pathland-server-core/ # com.pathland.server — transport-agnostic server runtime:
                         #   PathlandApp (root-view factory), PathlandConnection (send seam),
                         #   PathlandSession (per-session SSR + live deltas + environment),
-                        #   PathlandRegistry (1:1 session lifecycle, actor thread), StateStores
+                        #   PathlandRegistry (1:1 session lifecycle, actor thread), StateStores,
+                        #   PathlandTelemetry (observability seam; NOOP default)
+  pathland-observability/ # com.pathland.observability — the Micrometer PathlandTelemetry
+                        #   (pathland.* counters/timers + sessions gauge) + an opt-in OTel
+                        #   TracingTelemetry decorator; the starters auto-wire it
   pathland-spring-boot-starter/ # com.pathland.spring — Spring Boot auto-config: add the dep +
                         #   a PathlandApp bean → SSR at any path + /ws deltas + state
   pathland-quarkus-starter/ # com.pathland.quarkus — Quarkus CDI integration: add the dep +

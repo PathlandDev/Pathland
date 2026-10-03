@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.pathland</groupId>
+        <artifactId>pathland-parent</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>pathland-observability</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Pathland Observability</name>
+    <description>
+        Observability adapters for the framework-agnostic Pathland server runtime: a
+        Micrometer PathlandTelemetry (pathland.* counters/timers + a sessions gauge) and an
+        opt-in OpenTelemetry TracingTelemetry decorator (spans per frame send / event
+        batch / SSR render). The starters auto-wire these when a MeterRegistry/Tracer bean
+        is present; without them the core stays on PathlandTelemetry.NOOP.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.pathland</groupId>
+            <artifactId>pathland-server-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+        <!-- The OTel API is optional: only needed when the host enables tracing. The
+             starters add the OTel bridge/exporters that bring it in. -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- A real OTel SDK (test scope) to assert the tracing decorator emits spans. -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

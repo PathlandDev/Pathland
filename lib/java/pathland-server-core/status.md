@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** September 27, 2026
+**Last updated:** October 3, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -61,6 +61,14 @@ dependency — framework glue lives in the starters.
   blocking sender not holding the lock.
 - **`PathlandConnection`** — the transport seam (`send(byte[])`/`isOpen()`); each starter
   adapts its WebSocket type to it.
+- **Observability seam** — `PathlandTelemetry` (default `NOOP`): the runtime emits
+  session open/close, inbound event batches, flushed batches (frames/opcodes/bytes +
+  merge-encode time), SSR render latency, resync requests, and send failures; the host
+  binds a pull-based active-sessions gauge. `PathlandHost`/`PathlandRegistry`/
+  `PathlandSession`/`DeltaBatcher` thread it through (a host with no telemetry pays
+  nothing). `pathland-observability` provides the Micrometer + OpenTelemetry adapters;
+  the starters auto-wire them. Logging is **SLF4J** (both frameworks bind it) — the old
+  ad-hoc `System.out` is gone. See issue #62.
 - **Concurrency stress** — `RegistryConcurrencyTest`: 100 sessions driven through the
   registry concurrently (clicks on each session's button) while SSR-style requests
   construct throwaway sessions on request threads — the shared-actor / global-`Scheduler`
@@ -98,3 +106,7 @@ reaches the other).
 `PathlandHostTest`: longest-prefix dispatch + route stripping, mount-boundary
 respect, no-root-mount 404, per-app base + state scope, duplicate-mount rejection,
 normalization, SSR emits the mounted app's base.
+`PathlandTelemetryTest`: a recording telemetry double asserts the registry emits
+session/event/resync/flush/SSR/close events, the host binds the active-sessions
+gauge, a failed send reports `connectionFailed`, and `DeltaBatcher` reports the
+flushed batch.

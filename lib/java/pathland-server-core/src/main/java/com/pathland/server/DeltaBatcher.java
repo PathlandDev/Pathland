@@ -43,6 +43,8 @@ public final class DeltaBatcher {
     private final long flushIntervalMillis;
     private final int maxBatchBytes;
     private final Consumer<byte[]> sender;
+    private final PathlandTelemetry telemetry;
+    private final String mount;
     private final ScheduledExecutorService scheduler;
 
     private final List<Opcode> opcodes = new ArrayList<>();
@@ -51,15 +53,33 @@ public final class DeltaBatcher {
     private int approxBytes;
     /** Per-session monotonic message sequence, stamped on each flushed batch. */
     private int nextSequence = 1;
+    /** Emit-pass frames coalesced into the pending batch (metrics only). */
+    private int frames;
 
     public DeltaBatcher(Consumer<byte[]> sender) {
         this(DEFAULT_FLUSH_INTERVAL_MILLIS, DEFAULT_MAX_BATCH_BYTES, sender);
     }
 
     public DeltaBatcher(long flushIntervalMillis, int maxBatchBytes, Consumer<byte[]> sender) {
+        this(flushIntervalMillis, maxBatchBytes, sender, PathlandTelemetry.NOOP, "/");
+    }
+
+    public DeltaBatcher(
+            Consumer<byte[]> sender, PathlandTelemetry telemetry, String mount) {
+        this(DEFAULT_FLUSH_INTERVAL_MILLIS, DEFAULT_MAX_BATCH_BYTES, sender, telemetry, mount);
+    }
+
+    public DeltaBatcher(
+            long flushIntervalMillis,
+            int maxBatchBytes,
+            Consumer<byte[]> sender,
+            PathlandTelemetry telemetry,
+            String mount) {
         this.flushIntervalMillis = flushIntervalMillis;
         this.maxBatchBytes = maxBatchBytes;
         this.sender = sender;
+        this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
+        this.mount = mount == null ? "/" : mount;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "pathland-delta-batcher");
             t.setDaemon(true);
@@ -72,6 +92,7 @@ public final class DeltaBatcher {
         if (frame.isEmpty()) {
             return;
         }
+        frames++;
         int base = strings.size();
         for (Opcode op : frame.opcodes()) {
             opcodes.add(rebase(op, base));
@@ -91,20 +112,29 @@ public final class DeltaBatcher {
      *  can never stall the actor thread's {@link #append} or the flush scheduler. */
     public void flush() {
         byte[] encoded;
+        int flushedFrames;
+        int flushedOpcodes;
+        long nanos;
         synchronized (this) {
             flushScheduled.set(false);
             if (opcodes.isEmpty()) {
                 return;
             }
+            long start = System.nanoTime();
             Frame merged = new Frame(List.copyOf(opcodes), strings.toByteArray());
+            flushedFrames = frames;
+            flushedOpcodes = opcodes.size();
             opcodes.clear();
             strings.reset();
             approxBytes = 0;
+            frames = 0;
             // Stamp the batch's per-stream sequence so the client can detect a
             // lost batch (a gap) and recover with META::RESYNC (spec/OPCODE.md
             // §Sequence gap detection). Only non-empty batches consume a number.
             encoded = FrameCodec.encodeFrame(merged, nextSequence++);
+            nanos = System.nanoTime() - start;
         }
+        telemetry.batchFlushed(mount, flushedFrames, flushedOpcodes, encoded.length, nanos);
         sender.accept(encoded);
     }
 

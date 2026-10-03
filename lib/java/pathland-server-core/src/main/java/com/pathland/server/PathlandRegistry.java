@@ -5,6 +5,8 @@ import com.pathland.view.state.StateStore;
 import com.pathland.view.transport.EnvironmentData;
 import com.pathland.view.transport.Event;
 import com.pathland.view.transport.FrameCodec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -38,12 +40,15 @@ import java.util.concurrent.Executors;
  */
 public final class PathlandRegistry {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PathlandRegistry.class);
+
     private static final int MAX_EVENT_BATCH = 1 << 16;
 
     private final String mountPath;
     private final PathlandApp app;
     private final StateStore store;
     private final boolean debugHtml;
+    private final PathlandTelemetry telemetry;
 
     private final ExecutorService actor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "pathland-actor");
@@ -63,10 +68,16 @@ public final class PathlandRegistry {
     }
 
     public PathlandRegistry(String mountPath, PathlandApp app, StateStore store, boolean debugHtml) {
+        this(mountPath, app, store, debugHtml, PathlandTelemetry.NOOP);
+    }
+
+    public PathlandRegistry(
+            String mountPath, PathlandApp app, StateStore store, boolean debugHtml, PathlandTelemetry telemetry) {
         this.mountPath = mountPath == null || mountPath.isBlank() ? "/" : mountPath;
         this.app = app;
         this.store = store;
         this.debugHtml = debugHtml;
+        this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
     }
 
     /** Whether SSR HTML is rendered with per-node debug comments. */
@@ -128,12 +139,14 @@ public final class PathlandRegistry {
                 ? stateScope(UUID.randomUUID().toString())
                 : stateScope(windowId);
         String sessionId = UUID.randomUUID().toString();
+        long start = System.nanoTime();
         PathlandSession session = new PathlandSession(
                 sessionId, store, app, EnvironmentData.of(stripRoute(route)),
-                debugHtml, base(), scope);
+                debugHtml, base(), scope, telemetry, mountPath);
         try {
             return session.renderHtml();
         } finally {
+            telemetry.ssrRendered(mountPath, System.nanoTime() - start);
             session.close();
         }
     }
@@ -168,15 +181,28 @@ public final class PathlandRegistry {
     /** Route an inbound event batch to the owning session (NAVIGATE urls are mount-stripped first). */
     public void dispatch(String sessionId, byte[] message) {
         if (message.length > MAX_EVENT_BATCH) {
+            LOG.warn("dropping oversized event batch ({} bytes)", message.length);
             return;
         }
-        actor.execute(() -> session(sessionId, EnvironmentData.of("/"))
-                .dispatch(stripNavigateUrls(FrameCodec.decodeEvents(message))));
+        actor.execute(() -> {
+            List<Event> events;
+            try {
+                events = stripNavigateUrls(FrameCodec.decodeEvents(message));
+            } catch (RuntimeException e) {
+                LOG.warn("dropping malformed event batch: {}", e.getMessage());
+                return;
+            }
+            telemetry.eventBatchReceived(mountPath, events.size());
+            session(sessionId, EnvironmentData.of("/")).dispatch(events);
+        });
     }
 
     /** Handle a META::RESYNC request: re-send the session's current tree as a snapshot. */
     public void resync(String sessionId) {
-        actor.execute(() -> session(sessionId, EnvironmentData.of("/")).resync());
+        actor.execute(() -> {
+            telemetry.resyncRequested(mountPath);
+            session(sessionId, EnvironmentData.of("/")).resync();
+        });
     }
 
     /** Close and remove a session (and drop any pending connection). */
@@ -186,6 +212,7 @@ public final class PathlandRegistry {
             PathlandSession session = sessions.remove(sessionId);
             if (session != null) {
                 session.close();
+                telemetry.sessionClosed(mountPath);
             }
         });
     }
@@ -194,10 +221,16 @@ public final class PathlandRegistry {
     public void shutdown() {
         for (PathlandSession session : sessions.values()) {
             session.close();
+            telemetry.sessionClosed(mountPath);
         }
         sessions.clear();
         pending.clear();
         actor.shutdown();
+    }
+
+    /** The number of live sessions for this mount (a health/metrics gauge). */
+    public int activeSessions() {
+        return sessions.size();
     }
 
     /** Create the session on first contact, wired to its pending connection. */
@@ -207,11 +240,12 @@ public final class PathlandRegistry {
             PendingSession pending = this.pending.remove(uiId);
             session = new PathlandSession(
                     uiId, store, app, env, debugHtml, base(),
-                    pending != null ? pending.stateScope() : stateScope(uiId));
+                    pending != null ? pending.stateScope() : stateScope(uiId), telemetry, mountPath);
             if (pending != null) {
                 session.connect(pending.connection());
             }
             sessions.put(uiId, session);
+            telemetry.sessionOpened(mountPath);
         }
         return session;
     }

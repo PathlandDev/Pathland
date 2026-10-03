@@ -1,11 +1,15 @@
 package com.pathland.spring;
 
 import com.pathland.server.PathlandConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 /** Adapts a Spring {@link WebSocketSession} to the transport-agnostic {@link PathlandConnection}. */
 final class SpringConnection implements PathlandConnection, AutoCloseable {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SpringConnection.class);
 
     private final WebSocketSession session;
     /** Serializes all sends for this connection: the batcher scheduler thread, the actor
@@ -42,7 +46,7 @@ final class SpringConnection implements PathlandConnection, AutoCloseable {
                 // treats transient failures this way). Only a session that is confirmed
                 // closed is surfaced (so sendBatch drops it).
                 if (session.isOpen()) {
-                    System.out.println("[pathland] ws send failed (transient, session open): " + e.getMessage());
+                    LOG.warn("ws send failed (transient, session open): {}", e.getMessage());
                 } else {
                     throw new RuntimeException(e);
                 }

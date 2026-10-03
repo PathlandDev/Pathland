@@ -24,6 +24,7 @@
         <module>pathland-render-html</module>
         <module>pathland-state-redis</module>
         <module>pathland-server-core</module>
+        <module>pathland-observability</module>
         <module>pathland-test-kit</module>
         <module>pathland-spring-boot-starter</module>
         <module>pathland-quarkus-starter</module>
