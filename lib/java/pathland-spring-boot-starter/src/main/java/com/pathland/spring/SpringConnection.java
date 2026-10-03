@@ -8,6 +8,11 @@ import org.springframework.web.socket.WebSocketSession;
 final class SpringConnection implements PathlandConnection, AutoCloseable {
 
     private final WebSocketSession session;
+    /** Serializes all sends for this connection: the batcher scheduler thread, the actor
+     *  thread (resync) and the WS-handler thread (transport PONG) all write here, and
+     *  Tomcat's remote endpoint is not safe for concurrent {@code sendMessage} calls
+     *  (a colliding write fails and fires a transport error that closes the session). */
+    private final Object sendLock = new Object();
 
     SpringConnection(WebSocketSession session) {
         this.session = session;
@@ -23,10 +28,15 @@ final class SpringConnection implements PathlandConnection, AutoCloseable {
         if (!session.isOpen()) {
             return;
         }
-        try {
-            session.sendMessage(new BinaryMessage(bytes));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        synchronized (sendLock) {
+            if (!session.isOpen()) {
+                return; // closed between the check and the lock
+            }
+            try {
+                session.sendMessage(new BinaryMessage(bytes));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
