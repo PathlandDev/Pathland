@@ -46,9 +46,8 @@
         </dependency>
         <dependency>
             <groupId>org.pathland</groupId>
-            <artifactId>pathland-server-core</artifactId>
+            <artifactId>pathland-test-kit</artifactId>
             <version>${project.version}</version>
-            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
     </dependencies>

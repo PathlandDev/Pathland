@@ -42,26 +42,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <!-- Publish the shared WS test harness (com.pathland.server.test) as a
-                 test-jar so both starters' multi-session tests reuse it. Bound to
-                 process-test-classes so a downstream module's `mvn test` in the same
-                 reactor can resolve it before the package phase. -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>test-jar</id>
-                        <phase>process-test-classes</phase>
-                        <goals>
-                            <goal>test-jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>
