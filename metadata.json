@@ -3,7 +3,7 @@
   "checkpoint_id": "01M40C5Z372SJ99966JQWQFYSJ",
   "strategy": "manual-commit",
   "branch": "fix/ws-stability",
-  "checkpoints_count": 2,
+  "checkpoints_count": 5,
   "files_touched": [
     "lib/java/pathland-quarkus-starter/pom.xml",
     "lib/java/pathland-server-core/pom.xml",
@@ -31,13 +31,20 @@
       "compact_transcript": "/1/transcript.jsonl",
       "content_hash": "/1/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/2/metadata.json",
+      "transcript": "/2/full.jsonl",
+      "compact_transcript": "/2/transcript.jsonl",
+      "content_hash": "/2/content_hash.txt",
+      "prompt": "/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
+    "input_tokens": 60759,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "cache_read_tokens": 11519488,
+    "output_tokens": 14465,
+    "api_call_count": 18
   }
 }
