@@ -136,11 +136,6 @@ public final class PathlandSession {
         batcher.flush();
     }
 
-    /** Reply to a `META::PING` heartbeat probe with `META::PONG` (network transport liveness). */
-    public void pong() {
-        sendBatch(FrameCodec.encodePong());
-    }
-
     /**
      * Send an encoded batch to the connection. On any send failure (or a closed
      * connection) the connection is dropped and best-effort closed, so the DOM

@@ -104,42 +104,6 @@ class PathlandSessionTest {
     }
 
     @Test
-    void pongRepliesWithAMetaPongBatch() {
-        PathlandApp app = () -> Button.of("Tap", () -> {});
-        PathlandSession session = new PathlandSession("s3", STORE, app, EnvironmentData.of("/"));
-        RecordingConnection conn = new RecordingConnection();
-        session.connect(conn);
-
-        session.pong();
-        assertEquals(1, conn.sent, "a PING reply is one direct (non-batched) batch");
-        Frame frame = FrameCodec.decodeFrame(conn.frames().get(0));
-        assertEquals(1, frame.opcodes().size());
-        Opcode op = frame.opcodes().get(0);
-        assertEquals(Categories.META, op.category());
-        assertEquals(Commands.Meta.PONG, op.command());
-
-        session.close();
-    }
-
-    @Test
-    void registryPongRoutesThroughTheConnectedSession() {
-        PathlandRegistry registry = new PathlandRegistry(() -> Button.of("Tap", () -> {}), STORE);
-        RecordingConnection conn = new RecordingConnection();
-        registry.open("ui", "win", conn);
-        registry.environment("ui", EnvironmentData.of("/")); // creates the session, wires the connection
-        registry.pong("ui");
-
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
-        while (conn.sent == 0 && System.nanoTime() < deadline) {
-            sleep(10);
-        }
-        registry.shutdown();
-        assertTrue(conn.sent > 0, "the registry routes a PING to the session's PONG reply");
-        Frame frame = FrameCodec.decodeFrame(conn.frames().get(0));
-        assertEquals(Commands.Meta.PONG, frame.opcodes().get(0).command());
-    }
-
-    @Test
     void renderHtmlWithWindowIdRendersThatWindowsPersistedState() {
         // A reload's SSR carries the wid (the client reflects it into the URL), so the
         // throwaway session renders THIS window's persisted state — the HTML is already

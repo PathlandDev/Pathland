@@ -64,6 +64,38 @@ class QuarkusConnectionTest {
     }
 
     @Test
+    void transientSendFailureOnAnOpenConnectionDoesNotCloseIt() throws Exception {
+        // A write failure while the channel still reports open is a transient hiccup:
+        // log + continue, never close a healthy-but-flaky connection on one failure.
+        FakeWebSocketConnection fake = new FakeWebSocketConnection();
+        fake.binaryResult = Uni.createFrom().failure(new RuntimeException("transient write hiccup"));
+        CountDownLatch attempted = new CountDownLatch(1);
+        fake.sendsUntil = attempted;
+
+        QuarkusConnection conn = new QuarkusConnection(fake, 60_000, 60_000);
+        conn.send(new byte[] {1});
+        assertTrue(attempted.await(2, TimeUnit.SECONDS), "the send was attempted");
+        Thread.sleep(100); // the failure callback runs
+
+        assertFalse(fake.closed, "a transient send failure on an open connection does not close it");
+        assertTrue(conn.isOpen(), "the connection stays open");
+        conn.close();
+    }
+
+    @Test
+    void transientPingFailureOnAnOpenConnectionDoesNotCloseIt() throws Exception {
+        FakeWebSocketConnection fake = new FakeWebSocketConnection();
+        fake.pingResult = Uni.createFrom().failure(new RuntimeException("transient write hiccup"));
+
+        QuarkusConnection conn = new QuarkusConnection(fake, 60_000, /*pingInterval*/ 30);
+        Thread.sleep(150); // several ping cadences elapse, each failing transiently
+
+        assertFalse(fake.closed, "a transient ping failure on an open connection does not close it");
+        assertTrue(conn.isOpen(), "the connection stays open");
+        conn.close();
+    }
+
+    @Test
     void keepAlivePingIsSentPeriodicallyAndStopsOnClose() throws Exception {
         FakeWebSocketConnection fake = new FakeWebSocketConnection();
         QuarkusConnection conn = new QuarkusConnection(fake, 60_000, /*pingInterval*/ 40);
@@ -80,24 +112,11 @@ class QuarkusConnectionTest {
         assertEquals(pings, fake.pingCount.get(), "no pings after close");
     }
 
-    @Test
-    void pingSkipsWhileASendIsInFlight() throws Exception {
-        // A ping must never race an in-flight sendBinary (quarkus-websockets-next
-        // allows one message at a time): while a send is hanging, no ping is sent.
-        FakeWebSocketConnection fake = new FakeWebSocketConnection();
-        fake.binaryResult = Uni.createFrom().nothing(); // in-flight forever
-        QuarkusConnection conn = new QuarkusConnection(fake, 60_000, /*pingInterval*/ 30);
-        conn.send(new byte[] {1}); // starts the in-flight send
-
-        Thread.sleep(200); // several ping cadences elapse
-        assertEquals(0, fake.pingCount.get(), "a ping is skipped while a send is in flight");
-        conn.close();
-    }
-
     /** A minimal {@link WebSocketConnection} that records sends/pings/closes. */
     private static final class FakeWebSocketConnection implements WebSocketConnection {
         volatile boolean closed;
         volatile Uni<Void> binaryResult = Uni.createFrom().item((Void) null);
+        volatile Uni<Void> pingResult = Uni.createFrom().item((Void) null);
         final AtomicInteger sendBinaryCount = new AtomicInteger();
         final AtomicInteger pingCount = new AtomicInteger();
         volatile CountDownLatch sendsUntil;
@@ -115,7 +134,7 @@ class QuarkusConnectionTest {
         @Override
         public Uni<Void> sendPing(Buffer data) {
             pingCount.incrementAndGet();
-            return Uni.createFrom().item((Void) null);
+            return pingResult;
         }
 
         @Override

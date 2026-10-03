@@ -154,6 +154,31 @@ class SignalsTest {
     // --- untracked ---
 
     @Test
+    void effectRetriesAfterThrowingInsteadOfDying() {
+        // A transient error must not permanently sever the effect from its signal:
+        // producers are restored on the failed run, so the next change re-runs it.
+        WritableSignal<Integer> a = Signals.signal(0);
+        AtomicInteger runs = new AtomicInteger();
+        AtomicInteger errors = new AtomicInteger();
+        EffectRef effect = Signals.effect(() -> {
+            runs.incrementAndGet();
+            if (a.get() == 1) {
+                errors.incrementAndGet();
+                throw new IllegalStateException("transient");
+            }
+        });
+        assertEquals(1, runs.get(), "initial run succeeds (a=0)");
+
+        assertThrows(EffectException.class, () -> a.set(1), "the effect throws on a=1");
+        assertEquals(2, runs.get());
+        assertEquals(1, errors.get());
+
+        a.set(2); // producers were restored: the effect must retry
+        assertEquals(3, runs.get(), "a throwing effect is not permanently unsubscribed");
+        effect.destroy();
+    }
+
+    @Test
     void untrackedReadsRegisterNoDependency() {
         WritableSignal<Integer> a = Signals.signal(0);
         AtomicInteger effectRuns = new AtomicInteger();

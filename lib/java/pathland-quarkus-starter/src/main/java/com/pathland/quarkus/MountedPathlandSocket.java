@@ -75,8 +75,12 @@ public class MountedPathlandSocket {
         if (FrameCodec.isResync(message)) {
             r.resync(uiId());
         } else if (FrameCodec.isPing(message)) {
-            // A transport-liveness heartbeat probe (guest → host): reply PONG.
-            r.pong(uiId());
+            // A transport-liveness heartbeat probe (guest → host): reply PONG at the
+            // transport layer — no actor/session dependency (spec/OPCODE.md §Transport heartbeat).
+            QuarkusConnection t = transport;
+            if (t != null) {
+                t.send(FrameCodec.encodePong());
+            }
         } else if (FrameCodec.isEnvironment(message)) {
             // The DOM client's FIRST message: seeds the session (created lazily) from the
             // ROUTE field; later messages enrich the environment (viewport, …).

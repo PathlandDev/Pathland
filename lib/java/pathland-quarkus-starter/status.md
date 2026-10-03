@@ -36,9 +36,18 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
   sends a WS-protocol ping every 15 s (browsers auto-pong) to keep the connection warm
   through middleboxes and detect a dead client; `close()` stops the keep-alive
   scheduler (the sockets' `@OnClose` calls it).
-- **Heartbeat** — both sockets route a client `META::PING` to `registry.pong`
-  (spec/OPCODE.md §Transport heartbeat): the server answers with a `META::PONG` batch,
-  giving the DOM client its liveness signal.
+- **Heartbeat** — both sockets reply to a client `META::PING` with a `META::PONG`
+  **at the transport layer** (through their `QuarkusConnection`, no actor/session
+  dependency, and a PING never creates or wakes a session); spec/OPCODE.md
+  §Transport heartbeat.
+- **Failure handling** — `fail()` logs the reason; `close()` (socket `@OnClose`)
+  no longer calls `close()` on the already-closed connection (no spurious
+  "Connection already closed" noise). A **transient write failure on a connection
+  that still reports open is logged, not closed** — only a confirmed-dead channel
+  (or a send hung past the timeout) warrants closing. The send-timeout task is
+  **cancelled when the send completes**, so a completed-but-late callback can't
+  false-time-out and kill a healthy connection. Keep-alive pings are sent directly
+  (Vert.x serializes writes — no sync with `sendBinary` needed).
 - `META-INF/beans.xml` so Quarkus discovers the starter.
 
 ## App DX

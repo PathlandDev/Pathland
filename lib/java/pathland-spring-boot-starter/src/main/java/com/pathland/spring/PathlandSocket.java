@@ -29,6 +29,7 @@ public class PathlandSocket extends AbstractWebSocketHandler {
     private final PathlandRegistry registry;
     private final String path;
     private final Map<WebSocketSession, ConnectionIds> ids = new ConcurrentHashMap<>();
+    private final Map<WebSocketSession, SpringConnection> connections = new ConcurrentHashMap<>();
 
     public PathlandSocket(PathlandRegistry registry) {
         this.registry = registry;
@@ -44,7 +45,9 @@ public class PathlandSocket extends AbstractWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) {
         ConnectionIds connectionIds = resolveIds(session);
         ids.put(session, connectionIds);
-        registry.open(connectionIds.uiId(), connectionIds.windowId(), new SpringConnection(session));
+        SpringConnection conn = new SpringConnection(session);
+        connections.put(session, conn);
+        registry.open(connectionIds.uiId(), connectionIds.windowId(), conn);
     }
 
     @Override
@@ -54,8 +57,12 @@ public class PathlandSocket extends AbstractWebSocketHandler {
             if (FrameCodec.isResync(bytes)) {
                 registry.resync(uiId(session));
             } else if (FrameCodec.isPing(bytes)) {
-                // A transport-liveness heartbeat probe (guest → host): reply PONG.
-                registry.pong(uiId(session));
+                // A transport-liveness heartbeat probe (guest → host): reply PONG at the
+                // transport layer — no actor/session dependency (spec/OPCODE.md §Transport heartbeat).
+                SpringConnection conn = connections.get(session);
+                if (conn != null) {
+                    conn.send(FrameCodec.encodePong());
+                }
             } else if (FrameCodec.isEnvironment(bytes)) {
                 // The DOM client's FIRST message: seeds the session (created lazily) from
                 // the ROUTE field; later messages enrich the environment (viewport, …).
@@ -77,6 +84,7 @@ public class PathlandSocket extends AbstractWebSocketHandler {
     }
 
     private void close(WebSocketSession session) {
+        connections.remove(session);
         ConnectionIds connectionIds = ids.remove(session);
         if (connectionIds != null) {
             registry.close(connectionIds.uiId());

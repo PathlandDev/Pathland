@@ -4,9 +4,11 @@ import com.pathland.server.PathlandConnection;
 import io.quarkus.websockets.next.WebSocketConnection;
 import io.vertx.core.buffer.Buffer;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,6 +37,12 @@ import java.util.concurrent.atomic.AtomicLong;
  *       a dead client. These are WS-protocol pings, not the app-level
  *       {@code META::PING} the client sends (spec/OPCODE.md §Transport heartbeat).</li>
  * </ul>
+ *
+ * <p>Failure handling is deliberately conservative: a transient write hiccup on a
+ * connection that still reports open is logged (not a close) — only a confirmed-dead
+ * channel (write failure / ping failure / a hung send past the timeout while the
+ * channel is closed) warrants closing. This avoids killing a healthy-but-flaky
+ * connection on a single momentary failure.
  */
 final class QuarkusConnection implements PathlandConnection, AutoCloseable {
 
@@ -55,6 +63,9 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
     });
     /** A token per send attempt: a late completion after a timeout must not resume draining. */
     private final AtomicLong sendToken = new AtomicLong();
+    /** Per-attempt timeout tasks, cancelled when the send completes (a completed send
+     *  whose callback is delayed must never be false-timed-out and closed). */
+    private final ConcurrentHashMap<Long, ScheduledFuture<?>> sendTimeouts = new ConcurrentHashMap<>();
 
     QuarkusConnection(WebSocketConnection connection) {
         this(connection, SEND_TIMEOUT_MILLIS, PING_INTERVAL_MILLIS);
@@ -83,7 +94,7 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
     }
 
     private void drain() {
-        if (!sending.compareAndSet(false, true)) {
+        if (failed.get() || !sending.compareAndSet(false, true)) {
             return;
         }
         byte[] next = pending.poll();
@@ -99,12 +110,25 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
     }
 
     private void onSendComplete(long token, Throwable failure) {
+        ScheduledFuture<?> timeout = sendTimeouts.remove(token);
+        if (timeout != null) {
+            timeout.cancel(false); // the send completed: never let its timeout fire
+        }
         if (token != sendToken.get()) {
             return; // a timed-out (abandoned) attempt completing late — ignore
         }
         sending.set(false);
+        if (failed.get()) {
+            return;
+        }
         if (failure != null) {
-            fail("send failed: " + failure.getMessage());
+            // A write failure while the channel still reports open is a transient
+            // hiccup — log and let the next send retry, don't kill the connection.
+            if (!connection.isOpen()) {
+                fail("send failed on closed connection: " + failure.getMessage());
+            } else {
+                log("ws send failed (transient, connection open): " + failure.getMessage());
+            }
             return;
         }
         drain();
@@ -112,35 +136,33 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
 
     /** A send that is still in flight after the timeout window is a dead connection. */
     private void scheduleSendTimeout(long token) {
-        scheduler.schedule(() -> {
+        ScheduledFuture<?> task = scheduler.schedule(() -> {
+            sendTimeouts.remove(token);
             if (token == sendToken.get() && sending.get()) {
                 fail("send timed out after " + sendTimeoutMillis + " ms");
             }
         }, sendTimeoutMillis, TimeUnit.MILLISECONDS);
+        sendTimeouts.put(token, task);
     }
 
     /** WS-protocol ping (browsers auto-pong): keep-alive + detect a dead client.
-     *  Serialized with {@code sendBinary} through the same {@code sending} flag —
-     *  quarkus-websockets-next allows ONE message in flight per connection, so an
-     *  unsynchronized ping would be rejected while a delta send is in flight (and
-     *  that rejection would close a healthy connection). When a send is in flight
-     *  or data is queued, this cadence is skipped; the next one retries. */
+     *  Vert.x serializes writes on the event loop, so the ping needs no sync with
+     *  {@code sendBinary}. A ping failure is only fatal when the channel is actually
+     *  closed; a transient write hiccup on an open connection is logged and retried
+     *  on the next cadence (this is the keep-alive probe, not a liveness verdict). */
     private void sendProtocolPing() {
         if (failed.get() || !connection.isOpen()) {
             return;
         }
-        if (!sending.compareAndSet(false, true)) {
-            return; // a sendBinary is in flight — skip (avoids the concurrent-send rejection)
-        }
-        if (!pending.isEmpty()) {
-            sending.set(false);
-            return; // queued data will drain — let drain own the wire; skip the ping
-        }
-        long token = sendToken.incrementAndGet();
-        scheduleSendTimeout(token);
         connection.sendPing(Buffer.buffer(8)).subscribe().with(
-                ignored -> onSendComplete(token, null),
-                failure -> onSendComplete(token, failure));
+                ignored -> { },
+                failure -> {
+                    if (!connection.isOpen()) {
+                        fail("ping failed on closed connection: " + failure.getMessage());
+                    } else {
+                        log("ws ping failed (transient, connection open): " + failure.getMessage());
+                    }
+                });
     }
 
     /** Surface a failure: mark failed and close so the session drops us and the
@@ -149,12 +171,20 @@ final class QuarkusConnection implements PathlandConnection, AutoCloseable {
         if (!failed.compareAndSet(false, true)) {
             return;
         }
+        log("ws connection failed: " + reason);
         connection.close().subscribe().with(ignored -> { }, ignored -> { });
     }
 
     @Override
     public void close() {
+        // The socket's @OnClose already closed the underlying connection: just stop
+        // the keep-alive scheduler and refuse further sends (no close()/log here —
+        // a normal client disconnect is not a failure).
         scheduler.shutdownNow();
-        fail("connection closed");
+        failed.set(true);
+    }
+
+    private static void log(String message) {
+        System.out.println("[pathland] " + message);
     }
 }

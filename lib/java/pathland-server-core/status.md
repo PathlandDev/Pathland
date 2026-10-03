@@ -43,7 +43,7 @@ dependency — framework glue lives in the starters.
   (`DeltaBatcher` coalesces per-signal frames into one batch — flush ~20 ms or 16 KB,
   string offsets rebased — so a continuous input burst can't overflow a remote WebSocket
   send queue), `applyEnvironment` (re-route guard-aware via the bound router),
-  `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `pong`, `renderHtml`, `close`.
+  `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `renderHtml`, `close`.
   `sendBatch` drops the connection on any send failure (a client reconnect then
   re-syncs via `META::RESYNC` instead of silently stalling on an "open" socket);
   `closeConnection` best-effort closes an `AutoCloseable` adapter (the starters now

@@ -36,8 +36,9 @@ subpaths (the BFF layout).
   `AutoCloseable`: a failed send surfaces as a close (the session's
   `closeConnection` closes the underlying session) so the DOM client reconnects +
   `META::RESYNC` instead of silently stalling on an open socket.
-- **Heartbeat** — the socket routes a client `META::PING` to `registry.pong`
-  (spec/OPCODE.md §Transport heartbeat): the server answers with a `META::PONG` batch.
+- **Heartbeat** — the socket replies to a client `META::PING` with a `META::PONG`
+  **at the transport layer** (through its `SpringConnection`, no actor/session
+  dependency; spec/OPCODE.md §Transport heartbeat).
 
 ## App DX
 
