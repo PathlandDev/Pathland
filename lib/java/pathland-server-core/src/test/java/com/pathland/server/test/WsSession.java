@@ -13,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -28,10 +29,12 @@ import java.util.function.Predicate;
  */
 public final class WsSession implements AutoCloseable {
 
-    /** A JDK WebSocket listener collecting decoded frames + close/error state. */
+    /** A JDK WebSocket listener collecting decoded frames + close/error state.
+     *  Frames arrive on the listener thread while the test thread polls/iterates, so
+     *  both collections are {@link CopyOnWriteArrayList} (thread-safe for add+iterate). */
     private static final class Listener implements WebSocket.Listener {
-        final List<Frame> frames = new ArrayList<>();
-        final List<Integer> peerCloseCodes = new ArrayList<>();
+        final List<Frame> frames = new CopyOnWriteArrayList<>();
+        final List<Integer> peerCloseCodes = new CopyOnWriteArrayList<>();
         volatile boolean open;
 
         @Override
