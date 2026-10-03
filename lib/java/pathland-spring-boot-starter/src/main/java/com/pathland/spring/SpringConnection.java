@@ -8,6 +8,11 @@ import org.springframework.web.socket.WebSocketSession;
 final class SpringConnection implements PathlandConnection, AutoCloseable {
 
     private final WebSocketSession session;
+    /** Serializes all sends for this connection: the batcher scheduler thread, the actor
+     *  thread (resync) and the WS-handler thread (transport PONG) all write here, and
+     *  Tomcat's remote endpoint is not safe for concurrent {@code sendMessage} calls
+     *  (a colliding write fails and fires a transport error that closes the session). */
+    private final Object sendLock = new Object();
 
     SpringConnection(WebSocketSession session) {
         this.session = session;
@@ -15,10 +20,33 @@ final class SpringConnection implements PathlandConnection, AutoCloseable {
 
     @Override
     public void send(byte[] bytes) {
-        try {
-            session.sendMessage(new BinaryMessage(bytes));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        // A send on a closed/closing session is expected during teardown (the client
+        // disconnected, or a concurrent transport error closed the session). Skipping it
+        // keeps a PONG or a delta from throwing out of a message handler, which Spring's
+        // ExceptionWebSocketHandlerDecorator would treat as a handler failure and close
+        // the session (killing every subsequent delta for that client).
+        if (!session.isOpen()) {
+            return;
+        }
+        synchronized (sendLock) {
+            if (!session.isOpen()) {
+                return; // closed between the check and the lock
+            }
+            try {
+                session.sendMessage(new BinaryMessage(bytes));
+            } catch (Exception e) {
+                // A transient write failure on a STILL-OPEN session is logged, not
+                // thrown: PathlandSession.sendBatch would otherwise drop the connection
+                // and close the WebSocket, permanently severing a healthy session's
+                // delta stream over one momentary hiccup (the Quarkus adapter already
+                // treats transient failures this way). Only a session that is confirmed
+                // closed is surfaced (so sendBatch drops it).
+                if (session.isOpen()) {
+                    System.out.println("[pathland] ws send failed (transient, session open): " + e.getMessage());
+                } else {
+                    throw new RuntimeException(e);
+                }
+            }
         }
     }
 

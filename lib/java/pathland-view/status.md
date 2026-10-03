@@ -105,7 +105,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 - **Resync**: `Commands.Meta.RESYNC`, `FrameCodec.encodeResync`/`isResync`
   (host → guest `META::RESYNC` request), and `Emitter.renderFull()` (re-emit the
   complete retained tree as one snapshot frame — no re-mount).
-- **Heartbeat**: `Commands.Meta.PING`/`PONG` + `FrameCodec.isPing`/`encodePong`
+- **Heartbeat**: `Commands.Meta.PING`/`PONG` + `FrameCodec.isPing`/`encodePing`/`encodePong`/`encodeEnvironment`
   (spec/OPCODE.md §Transport heartbeat — **network batch transport only**, never
   routed into the app): the server answers a client `META::PING` with a
   `META::PONG` batch so the DOM client can detect a silently-stalled connection.
@@ -152,7 +152,12 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   spec's numeric 100–900 scale.
 - **Signals** (`com.pathland.view.signal`): `signal`/`computed`/`effect`/
   `untracked` — glitch-free synchronous flush, equality suppression,
-  circular-dependency detection.
+  circular-dependency detection. The `Scheduler`'s global effect queue is
+  **thread-safe** (all entry points synchronized) so a request/SSR-thread flush can
+  never race the actor's mid-flush mutation of another session's pending effects.
+  An effect that **throws during a flush is not permanently unsubscribed**: its
+  pre-run producer edges are restored, so it retries on the next dependency change
+  (a transient error can't silently kill a node's binding).
 - **Emitter** (`emit`): mounts once, stable ids, node-level binding effects
   (a signal change re-emits only that node), `FrameOpcodeSink` /
   `RingOpcodeSink`. **`Signals.constant` / `ConstantSignal`**: a view or

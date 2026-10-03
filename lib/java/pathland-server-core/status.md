@@ -43,7 +43,7 @@ dependency — framework glue lives in the starters.
   (`DeltaBatcher` coalesces per-signal frames into one batch — flush ~20 ms or 16 KB,
   string offsets rebased — so a continuous input burst can't overflow a remote WebSocket
   send queue), `applyEnvironment` (re-route guard-aware via the bound router),
-  `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `pong`, `renderHtml`, `close`.
+  `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `renderHtml`, `close`.
   `sendBatch` drops the connection on any send failure (a client reconnect then
   re-syncs via `META::RESYNC` instead of silently stalling on an "open" socket);
   `closeConnection` best-effort closes an `AutoCloseable` adapter (the starters now
@@ -57,6 +57,15 @@ dependency — framework glue lives in the starters.
   one send, and a blocking sender not holding the lock.
 - **`PathlandConnection`** — the transport seam (`send(byte[])`/`isOpen()`); each starter
   adapts its WebSocket type to it.
+- **Concurrency stress** — `RegistryConcurrencyTest`: 100 sessions driven through the
+  registry concurrently (clicks on each session's button) while SSR-style requests
+  construct throwaway sessions on request threads — the shared-actor / global-`Scheduler`
+  cross-session corruption guard. Each session must reach exactly its own click count
+  (no lost effects, no cross-session values).
+- **Shared WS test harness** (`test` scope, published as a **test-jar** for the starters):
+  `com.pathland.server.test.{WsSession,MultiSessionProbe}` — a JDK-WebSocket client
+  speaking the PLPL protocol (env/resync/click/ping) that the starters' 100-session
+  stress tests reuse.
 - **`StateStores`** — default state store: Redis when reachable, else the supplied
   fallback.
 - **SSR debug comments (property-gated)**: `PathlandSession`/`PathlandRegistry` take a
