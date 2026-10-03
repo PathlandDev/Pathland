@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M419E8BGTFVN3TMT01QPQAHF",
+  "strategy": "manual-commit",
+  "branch": "feat/observability",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-observability/pom.xml",
+    "lib/java/pathland-observability/src/main/java/com/pathland/observability/MicrometerTelemetry.java",
+    "lib/java/pathland-observability/src/main/java/com/pathland/observability/TracingTelemetry.java",
+    "lib/java/pathland-observability/src/test/java/com/pathland/observability/MicrometerTelemetryTest.java",
+    "lib/java/pathland-observability/src/test/java/com/pathland/observability/TracingTelemetryTest.java",
+    "lib/java/pathland-observability/status.md",
+    "lib/java/pathland-quarkus-demo/pom.xml",
+    "lib/java/pathland-quarkus-demo/src/main/resources/application.properties",
+    "lib/java/pathland-quarkus-starter/pom.xml",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/IndexResource.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/MountedPathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandHealthCheck.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandRegistryProducer.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/PathlandObservabilityTest.java",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-server-core/pom.xml",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/DeltaBatcher.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandHost.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandTelemetry.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/StateStores.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandTelemetryTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-demo/pom.xml",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/application.properties",
+    "lib/java/pathland-spring-boot-starter/pom.xml",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandAutoConfiguration.java",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/SpringConnection.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/PathlandObservabilityTest.java",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/java/pom.xml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 701708,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 57878016,
+    "output_tokens": 46189,
+    "api_call_count": 169
+  }
+}
