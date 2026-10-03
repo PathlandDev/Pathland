@@ -6,32 +6,88 @@
 
  :: Spring Boot ::               (v3.5.16)
 
-2026-10-03T07:13:03.749Z  INFO 2719 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Starting MultiSessionWebSocketTest using Java 25.0.4.1 with PID 2719 (started by runner in /home/runner/work/Pathland/Pathland/lib/java/pathland-spring-boot-starter)
-2026-10-03T07:13:03.750Z  INFO 2719 --- [           main] c.p.spring.MultiSessionWebSocketTest     : No active profile set, falling back to 1 default profile: "default"
-2026-10-03T07:13:04.024Z  INFO 2719 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
-2026-10-03T07:13:04.037Z  INFO 2719 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-10-03T07:13:04.038Z  INFO 2719 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.55]
-2026-10-03T07:13:04.067Z  INFO 2719 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2026-10-03T07:13:04.068Z  INFO 2719 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 314 ms
+2026-10-03T07:19:37.519Z  INFO 2663 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Starting MultiSessionWebSocketTest using Java 21.0.12.1 with PID 2663 (started by runner in /home/runner/work/Pathland/Pathland/lib/java/pathland-spring-boot-starter)
+2026-10-03T07:19:37.519Z  INFO 2663 --- [           main] c.p.spring.MultiSessionWebSocketTest     : No active profile set, falling back to 1 default profile: "default"
+2026-10-03T07:19:37.815Z  INFO 2663 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-10-03T07:19:37.842Z  INFO 2663 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-03T07:19:37.842Z  INFO 2663 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.55]
+2026-10-03T07:19:37.883Z  INFO 2663 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-03T07:19:37.884Z  INFO 2663 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 363 ms
 [pathland] state store: in-memory (Redis unavailable: Unable to connect to localhost/<unresolved>:6379)
-2026-10-03T07:13:05.502Z  INFO 2719 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 39629 (http) with context path '/'
-2026-10-03T07:13:05.507Z  INFO 2719 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Started MultiSessionWebSocketTest in 1.786 seconds (process running for 6.246)
-2026-10-03T07:13:05.683Z  INFO 2719 --- [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-10-03T07:13:05.684Z  INFO 2719 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-10-03T07:13:05.685Z  INFO 2719 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
-[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 3.059 s <<< FAILURE! -- in com.pathland.spring.MultiSessionWebSocketTest
-[ERROR] com.pathland.spring.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected -- Time elapsed: 1.258 s <<< FAILURE!
-java.lang.AssertionError: session 19 reached n=10: [n=0]
+2026-10-03T07:19:38.665Z  INFO 2663 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 38271 (http) with context path '/'
+2026-10-03T07:19:38.669Z  INFO 2663 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Started MultiSessionWebSocketTest in 1.18 seconds (process running for 5.214)
+2026-10-03T07:19:38.788Z  INFO 2663 --- [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-03T07:19:38.789Z  INFO 2663 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-03T07:19:38.790Z  INFO 2663 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+Oct 03, 2026 7:19:48 AM io.quarkus.bootstrap.runner.Timing printStartupTime
+INFO: pathland-quarkus-starter 0.1.0 on JVM (powered by Quarkus 3.39.1) started in 3.585s. Listening on: http://localhost:8081
+Oct 03, 2026 7:19:48 AM io.quarkus.bootstrap.runner.Timing printStartupTime
+INFO: Profile test activated. 
+Oct 03, 2026 7:19:48 AM io.quarkus.bootstrap.runner.Timing printStartupTime
+INFO: Installed features: [cdi, rest, smallrye-context-propagation, vertx, websockets-next]
+[pathland] state store: in-memory (Redis unavailable: Unable to connect to localhost/<unresolved>:6379)
+Oct 03, 2026 7:19:48 AM org.jboss.logmanager.JBossLoggerFinder getLogger
+ERROR: The LogManager accessed before the "java.util.logging.manager" system property was set to "org.jboss.logmanager.LogManager". Results may be unexpected.
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=831a52df-0245-45f6-bd0c-af2a56568a2a]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 2.118 s <<< FAILURE! -- in com.pathland.quarkus.MultiSessionWebSocketTest
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=3a32a011-b630-4cb1-86c3-dbf6c8e84c65]
+[ERROR] com.pathland.quarkus.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected -- Time elapsed: 0.972 s <<< FAILURE!
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+java.lang.AssertionError: session 6 got a transport-level PONG
 	at com.pathland.server.test.MultiSessionProbe.check(MultiSessionProbe.java:113)
-	at com.pathland.server.test.MultiSessionProbe.run(MultiSessionProbe.java:93)
-	at com.pathland.spring.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected(MultiSessionWebSocketTest.java:45)
+	at com.pathland.server.test.MultiSessionProbe.run(MultiSessionProbe.java:101)
+	at com.pathland.quarkus.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected(MultiSessionWebSocketTest.java:40)
 
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=f02e2444-3b9a-4621-a368-301880538cd6]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=0f150da5-0fd9-4844-b162-50114ddd812e]
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=640c3891-ecc4-416a-aef4-9c9b28c17069]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=975644af-8ed4-47f0-a6af-0df9c4ef550c]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=165d541c-65e6-4ad7-b0c1-1158e87f83cf]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=09e06151-162e-4afe-a7d9-842e4af7038b]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=c9a6f3b6-e1f0-4aa2-b725-72a13afbb086]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=881fe21e-0d51-4703-82d3-c5d16f0e0220]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=6d25ba2b-2cdd-4854-a7cb-c78bf0bc7dab]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=f3dc0bd9-699c-460e-9254-841c84dd6b48]
+Oct 03, 2026 7:19:49 AM io.quarkus.websockets.next.runtime.WebSocketConnectionBase close
+WARN: Connection already closed: WebSocket connection [endpointId=com.pathland.quarkus.PathlandSocket, path=/_pathland/ws, id=7495c859-d5d8-4381-9d6c-1dfb10e96f35]
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send failed on closed connection: WebSocket is closed
+[pathland] ws connection failed: send timed out after 200 ms
+[pathland] ws ping failed (transient, connection open): transient write hiccup
+[pathland] ws ping failed (transient, connection open): transient write hiccup
+[pathland] ws ping failed (transient, connection open): transient write hiccup
+[pathland] ws ping failed (transient, connection open): transient write hiccup
+[pathland] ws send failed (transient, connection open): transient write hiccup
+Oct 03, 2026 7:19:50 AM io.quarkus.bootstrap.runner.Timing printStopTime
+INFO: pathland-quarkus-starter stopped in 0.020s
 [ERROR] Failures: 
-[ERROR]   MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected:45 session 19 reached n=10: [n=0]
-[ERROR] Tests run: 4, Failures: 1, Errors: 0, Skipped: 0
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project pathland-spring-boot-starter: There are test failures.
+[ERROR]   MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected:40 session 6 got a transport-level PONG
+[ERROR] Tests run: 6, Failures: 1, Errors: 0, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project pathland-quarkus-starter: There are test failures.
 [ERROR] 
-[ERROR] Please refer to /home/runner/work/Pathland/Pathland/lib/java/pathland-spring-boot-starter/target/surefire-reports for the individual test results.
+[ERROR] Please refer to /home/runner/work/Pathland/Pathland/lib/java/pathland-quarkus-starter/target/surefire-reports for the individual test results.
 [ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
 [ERROR] -> [Help 1]
 [ERROR] 
@@ -42,5 +98,5 @@ java.lang.AssertionError: session 19 reached n=10: [n=0]
 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 [ERROR] 
 [ERROR] After correcting the problems, you can resume the build with the command
-[ERROR]   mvn <args> -rf :pathland-spring-boot-starter
+[ERROR]   mvn <args> -rf :pathland-quarkus-starter
 Error: Process completed with exit code 1.
