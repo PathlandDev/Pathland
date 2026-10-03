@@ -3,7 +3,7 @@
   "checkpoint_id": "01M409BY3V27DGSQAD0AHPXN6D",
   "strategy": "manual-commit",
   "branch": "fix/ws-stability",
-  "checkpoints_count": 3,
+  "checkpoints_count": 4,
   "files_touched": [
     "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandSocket.java",
     "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/SpringConnection.java"
@@ -28,6 +28,13 @@
       "transcript": "/2/full.jsonl",
       "compact_transcript": "/2/transcript.jsonl",
       "content_hash": "/2/content_hash.txt",
+      "prompt": ""
+    },
+    {
+      "metadata": "/3/metadata.json",
+      "transcript": "/3/full.jsonl",
+      "compact_transcript": "/3/transcript.jsonl",
+      "content_hash": "/3/content_hash.txt",
       "prompt": ""
     }
   ],
