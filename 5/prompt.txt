@@ -1,0 +1,86 @@
+It fail when running the workflow file in github: /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.5.16)
+
+2026-10-03T06:57:50.167Z  INFO 2673 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Starting MultiSessionWebSocketTest using Java 21.0.12.1 with PID 2673 (started by runner in /home/runner/work/Pathland/Pathland/lib/java/pathland-spring-boot-starter)
+2026-10-03T06:57:50.167Z  INFO 2673 --- [           main] c.p.spring.MultiSessionWebSocketTest     : No active profile set, falling back to 1 default profile: "default"
+2026-10-03T06:57:50.478Z  INFO 2673 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-10-03T06:57:50.502Z  INFO 2673 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-03T06:57:50.503Z  INFO 2673 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.55]
+2026-10-03T06:57:50.559Z  INFO 2673 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-03T06:57:50.560Z  INFO 2673 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 390 ms
+[pathland] state store: in-memory (Redis unavailable: Unable to connect to localhost/<unresolved>:6379)
+2026-10-03T06:57:50.899Z  INFO 2673 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 34321 (http) with context path '/'
+2026-10-03T06:57:50.902Z  INFO 2673 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Started MultiSessionWebSocketTest in 0.768 seconds (process running for 4.739)
+2026-10-03T06:57:51.013Z  INFO 2673 --- [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-03T06:57:51.014Z  INFO 2673 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-03T06:57:51.015Z  INFO 2673 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
+2026-10-03T06:57:51.666Z ERROR 2673 --- [-auto-1-exec-13] w.s.h.ExceptionWebSocketHandlerDecorator : Closing session due to exception for StandardWebSocketSession[id=048a8909-9724-4f04-b5e8-9de841e0bf54, uri=ws://localhost:34321/_pathland/ws?wid=w-34]
+
+java.lang.RuntimeException: java.lang.IllegalStateException: Message will not be sent because the WebSocket session has been closed
+	at com.pathland.spring.SpringConnection.send(SpringConnection.java:21) ~[classes/:na]
+	at com.pathland.spring.PathlandSocket.handleMessage(PathlandSocket.java:64) ~[classes/:na]
+	at org.springframework.web.socket.handler.WebSocketHandlerDecorator.handleMessage(WebSocketHandlerDecorator.java:75) ~[spring-websocket-6.2.19.jar:6.2.19]
+	at org.springframework.web.socket.handler.LoggingWebSocketHandlerDecorator.handleMessage(LoggingWebSocketHandlerDecorator.java:56) ~[spring-websocket-6.2.19.jar:6.2.19]
+	at org.springframework.web.socket.handler.ExceptionWebSocketHandlerDecorator.handleMessage(ExceptionWebSocketHandlerDecorator.java:58) ~[spring-websocket-6.2.19.jar:6.2.19]
+	at org.springframework.web.socket.adapter.standard.StandardWebSocketHandlerAdapter.handleBinaryMessage(StandardWebSocketHandlerAdapter.java:123) ~[spring-websocket-6.2.19.jar:6.2.19]
+	at org.springframework.web.socket.adapter.standard.StandardWebSocketHandlerAdapter$4.onMessage(StandardWebSocketHandlerAdapter.java:90) ~[spring-websocket-6.2.19.jar:6.2.19]
+	at org.springframework.web.socket.adapter.standard.StandardWebSocketHandlerAdapter$4.onMessage(StandardWebSocketHandlerAdapter.java:87) ~[spring-websocket-6.2.19.jar:6.2.19]
+	at org.apache.tomcat.websocket.WsFrameBase.sendMessageBinary(WsFrameBase.java:568) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.server.WsFrameServer.sendMessageBinary(WsFrameServer.java:143) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.WsFrameBase.processDataBinary(WsFrameBase.java:530) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.WsFrameBase.processData(WsFrameBase.java:292) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.WsFrameBase.processInputBuffer(WsFrameBase.java:129) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.server.WsFrameServer.onDataAvailable(WsFrameServer.java:85) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.server.WsFrameServer.doOnDataAvailable(WsFrameServer.java:184) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.server.WsFrameServer.notifyDataAvailable(WsFrameServer.java:164) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.server.WsHttpUpgradeHandler.upgradeDispatch(WsHttpUpgradeHandler.java:152) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.coyote.http11.upgrade.UpgradeProcessorInternal.dispatch(UpgradeProcessorInternal.java:60) ~[tomcat-embed-core-10.1.55.jar:10.1.55]
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:57) ~[tomcat-embed-core-10.1.55.jar:10.1.55]
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:1272) ~[tomcat-embed-core-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1797) ~[tomcat-embed-core-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:973) ~[tomcat-embed-core-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:491) ~[tomcat-embed-core-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63) ~[tomcat-embed-core-10.1.55.jar:10.1.55]
+	at java.base/java.lang.Thread.run(Thread.java:1583) ~[na:na]
+Caused by: java.lang.IllegalStateException: Message will not be sent because the WebSocket session has been closed
+	at org.apache.tomcat.websocket.WsRemoteEndpointImplBase.writeMessagePart(WsRemoteEndpointImplBase.java:455) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.WsRemoteEndpointImplBase.sendMessageBlockInternal(WsRemoteEndpointImplBase.java:313) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.WsRemoteEndpointImplBase.sendMessageBlock(WsRemoteEndpointImplBase.java:266) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.WsRemoteEndpointImplBase.sendMessageBlock(WsRemoteEndpointImplBase.java:257) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.WsRemoteEndpointImplBase.sendPartialBytes(WsRemoteEndpointImplBase.java:164) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.apache.tomcat.websocket.WsRemoteEndpointBasic.sendBinary(WsRemoteEndpointBasic.java:54) ~[tomcat-embed-websocket-10.1.55.jar:10.1.55]
+	at org.springframework.web.socket.adapter.standard.StandardWebSocketSession.sendBinaryMessage(StandardWebSocketSession.java:222) ~[spring-websocket-6.2.19.jar:6.2.19]
+	at org.springframework.web.socket.adapter.AbstractWebSocketSession.sendMessage(AbstractWebSocketSession.java:111) ~[spring-websocket-6.2.19.jar:6.2.19]
+	at com.pathland.spring.SpringConnection.send(SpringConnection.java:19) ~[classes/:na]
+	... 25 common frames omitted
+
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 1.620 s <<< FAILURE! -- in com.pathland.spring.MultiSessionWebSocketTest
+[ERROR] com.pathland.spring.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected -- Time elapsed: 0.836 s <<< FAILURE!
+java.lang.AssertionError: session 30 reached n=1: [n=0]
+	at com.pathland.server.test.MultiSessionProbe.check(MultiSessionProbe.java:113)
+	at com.pathland.server.test.MultiSessionProbe.run(MultiSessionProbe.java:93)
+	at com.pathland.spring.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected(MultiSessionWebSocketTest.java:45)
+
+[ERROR] Failures: 
+[ERROR]   MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected:45 session 30 reached n=1: [n=0]
+[ERROR] Tests run: 4, Failures: 1, Errors: 0, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project pathland-spring-boot-starter: There are test failures.
+[ERROR] 
+[ERROR] Please refer to /home/runner/work/Pathland/Pathland/lib/java/pathland-spring-boot-starter/target/surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :pathland-spring-boot-starter

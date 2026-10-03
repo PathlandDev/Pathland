@@ -3,7 +3,7 @@
   "checkpoint_id": "01M409KP7BJKXTQ1ECEADESZ5S",
   "strategy": "manual-commit",
   "branch": "fix/ws-stability",
-  "checkpoints_count": 5,
+  "checkpoints_count": 6,
   "files_touched": [
     "lib/java/pathland-server-core/src/test/java/com/pathland/server/test/WsSession.java"
   ],
@@ -42,13 +42,20 @@
       "compact_transcript": "/4/transcript.jsonl",
       "content_hash": "/4/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/5/metadata.json",
+      "transcript": "/5/full.jsonl",
+      "compact_transcript": "/5/transcript.jsonl",
+      "content_hash": "/5/content_hash.txt",
+      "prompt": "/5/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
+    "input_tokens": 16894,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "cache_read_tokens": 2290944,
+    "output_tokens": 1685,
+    "api_call_count": 5
   }
 }
