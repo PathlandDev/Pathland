@@ -1,0 +1,65 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M408EC6FSZE85Z827Q9NSYVK",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-03T06:50:40.911368Z",
+  "branch": "fix/ws-stability",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/com/pathland/view/transport/FrameCodec.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/transport/FrameCodecTest.java",
+    "lib/java/pathland-server-core/pom.xml",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/test/WsSession.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/RegistryConcurrencyTest.java",
+    "lib/java/pathland-quarkus-starter/pom.xml",
+    "lib/java/pathland-spring-boot-starter/pom.xml",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/test/MultiSessionProbe.java",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/MultiSessionWebSocketTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/MultiSessionWebSocketTest.java",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/CounterApp.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/MountedPathlandSocket.java",
+    "lib/java/pathland-view/status.md",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-spring-boot-starter/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "e29b8cae62d4",
+  "checkpoint_transcript_start": 1866,
+  "transcript_lines_at_start": 1866,
+  "compact_transcript_start": 1866,
+  "token_usage": {
+    "input_tokens": 162064,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 32734720,
+    "output_tokens": 80279,
+    "api_call_count": 65
+  },
+  "session_metrics": {
+    "turn_count": 108
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-03T06:50:39.315799Z",
+    "agent_lines": 739,
+    "agent_removed": 110,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 739,
+    "total_lines_changed": 849,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}

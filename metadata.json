@@ -1,0 +1,42 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M408EC6FSZE85Z827Q9NSYVK",
+  "strategy": "manual-commit",
+  "branch": "fix/ws-stability",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-quarkus-starter/pom.xml",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/MountedPathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/CounterApp.java",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/MultiSessionWebSocketTest.java",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-server-core/pom.xml",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/RegistryConcurrencyTest.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/test/MultiSessionProbe.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/test/WsSession.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-starter/pom.xml",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/MultiSessionWebSocketTest.java",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/transport/FrameCodec.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/transport/FrameCodecTest.java",
+    "lib/java/pathland-view/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 162064,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 32734720,
+    "output_tokens": 80279,
+    "api_call_count": 65
+  }
+}
