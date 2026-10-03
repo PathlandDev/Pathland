@@ -109,6 +109,11 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (spec/OPCODE.md §Transport heartbeat — **network batch transport only**, never
   routed into the app): the server answers a client `META::PING` with a
   `META::PONG` batch so the DOM client can detect a silently-stalled connection.
+- **Message sequence**: `FrameCodec.encodeFrame(frame, sequence)` stamps the
+  batch header's per-stream **message sequence** (`FrameCodec.sequence(bytes)`
+  reads it); `META::RESYNC`/`PING`/`PONG`/`ENVIRONMENT`/event batches carry `0`.
+  Consumers detect a lost batch by a sequence gap and recover with a snapshot
+  (spec/OPCODE.md §Sequence gap detection).
 - **Modifiers** (modifier values applied via `.with(...)`,
   chainable on any view): `Padding`, `ForegroundStyle(Color)` (no `.color()`),
   `Background(Color)`, `Tint`, `Opacity`, `FontSize`, `FontWeightMod`, `Border`

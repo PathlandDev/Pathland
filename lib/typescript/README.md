@@ -52,8 +52,11 @@ npm run copy-to-demos   # copy the bundle into both Java demos' static dirs
 as `/pathland-dom-renderer.js` (copied into each demo's static resources by
 `npm run copy-to-demos`).
 
-## Transport resilience (P3)
+## Transport resilience
 
-`src/transport.ts` already reconnects with exponential backoff. Session-resync
-and `frameCount` gap detection are the next step (the `onBatch` hook is the
-seam) — see the "Web client: reconnect/resync" milestone issue.
+`src/transport.ts` reconnects with exponential backoff, keeps the connection
+alive with a `META::PING`/`PONG` heartbeat + no-activity watchdog, and recovers
+from lost deltas: a **sequence gap** (a batch whose per-stream `sequence` breaks
+the chain) makes the client skip the gapped batch and request a full snapshot
+(`META::RESYNC`). See `spec/OPCODE.md` §Transport heartbeat and §Sequence gap
+detection.

@@ -15,9 +15,14 @@ import java.util.List;
  *
  * <p>Batch wire format (both directions share the header):
  * <pre>
- * magic "PLPL" (u32 LE) | version (u16) | flags (u16) | frameCount (u32)
+ * magic "PLPL" (u32 LE) | version (u16) | flags (u16) | sequence (u32)
  * | opcodeCount (u32) | opcodes (16 B × count) | stringsLen (u32) | string bytes
  * </pre>
+ *
+ * <p>The header's {@code sequence} is the per-stream monotonic message sequence
+ * (guest → host delta batches only; heartbeat/request batches carry {@code 0}).
+ * A consumer detects a lost batch by a sequence gap and recovers with
+ * {@code META::RESYNC} — see {@code spec/OPCODE.md} §Sequence gap detection.
  *
  * <p>Frames are self-contained (relative string offsets, no mirrored arena), so each
  * WebSocket message is independent. Events flow host → guest with the
@@ -34,10 +39,20 @@ public final class FrameCodec {
 
     private FrameCodec() {}
 
-    /** Encode a self-contained frame as a network batch. */
+    /** Encode a self-contained frame as a network batch (sequence 0 — not a delta batch). */
     public static byte[] encodeFrame(Frame frame) {
+        return encodeFrame(frame, 0);
+    }
+
+    /**
+     * Encode a self-contained frame as a guest → host network batch with the
+     * given per-stream message {@code sequence}. A producer increments the
+     * sequence by one for each delta batch it encodes so a consumer can detect
+     * a lost batch (spec/OPCODE.md §Sequence gap detection).
+     */
+    public static byte[] encodeFrame(Frame frame, int sequence) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        writeHeader(out, GUEST_TO_HOST, 0, frame.opcodes().size());
+        writeHeader(out, GUEST_TO_HOST, sequence, frame.opcodes().size());
         for (Opcode op : frame.opcodes()) {
             writeBytes(out, op.toBytes());
         }
@@ -50,6 +65,14 @@ public final class FrameCodec {
     public static Frame decodeFrame(byte[] bytes) {
         Parsed parsed = parse(bytes);
         return new Frame(parsed.opcodes(), parsed.strings());
+    }
+
+    /** The per-stream message sequence encoded in a batch header (offset 8). */
+    public static int sequence(byte[] bytes) {
+        if (bytes.length < HEADER) {
+            throw new IllegalArgumentException("batch truncated");
+        }
+        return readIntLE(bytes, 8);
     }
 
     /** Encode a `META::RESYNC` request batch (host → guest): ask the guest for a full snapshot. */
@@ -309,11 +332,11 @@ public final class FrameCodec {
         return new Parsed(opcodes, strings);
     }
 
-    private static void writeHeader(ByteArrayOutputStream out, int flags, int frameCount, int opcodeCount) {
+    private static void writeHeader(ByteArrayOutputStream out, int flags, int sequence, int opcodeCount) {
         writeIntLE(out, MAGIC);
         writeShortLE(out, VERSION);
         writeShortLE(out, flags);
-        writeIntLE(out, frameCount);
+        writeIntLE(out, sequence);
         writeIntLE(out, opcodeCount);
     }
 

@@ -650,7 +650,7 @@ network batch.
 ### Network batch format
 
 ```
-[u32 magic "PLPL"] [u16 version] [u16 flags] [u32 frameCount] [u32 opcodeCount]
+[u32 magic "PLPL"] [u16 version] [u16 flags] [u32 sequence] [u32 opcodeCount]
 [opcode × opcodeCount (16 B each)]
 [u32 arenaDeltaLen] [arena delta bytes]
 ```
@@ -660,8 +660,13 @@ network batch.
 - **flags**: direction. `0x0000` = guest → host (tree/style). Bit `0x0001` =
   host → guest (raw-input events); host → guest batches carry their string
   payloads in the batch's string section.
-- **frameCount**: the guest frame counter of the batch's first frame (opcodes
-  from multiple frames may coalesce into one batch; they remain in order).
+- **sequence**: a **per-stream monotonic message sequence** — the producer
+  increments it by exactly one for each batch it encodes (guest → host delta
+  batches only; heartbeat/request batches carry `0`). It is the network
+  transport's loss detector; see [Sequence gap detection](#sequence-gap-detection).
+  It is **not** the ring header's `frameCount` (a per-frame publish watermark
+  for shared memory): opcodes from several emit-pass frames may coalesce into
+  one batch, so a batch is the network unit, not a frame.
 - **arena delta**: the bytes appended to the bump arena since the previous
   batch. The consumer keeps a **mirrored arena** and appends each delta, so
   absolute `arenaRef` offsets stay valid — identical to shared memory.
@@ -678,6 +683,36 @@ reached (first trigger wins):
 
 Both thresholds are configurable; a producer MAY flush eagerly (e.g. on the
 first frame after connection).
+
+### Sequence gap detection
+
+The network backend is reliable and ordered **within a connection**, but a
+middlebox can drop a batch while the socket stays "open", and a producer's send
+path can wedge — either way the consumer silently misses deltas. The batch
+`sequence` makes that loss detectable:
+
+- **Producer**: maintain one monotonic `sequence` per stream, incremented by
+  exactly one for **each encoded batch**. Only guest → host delta batches
+  consume a sequence number; heartbeat (`META::PING`/`PONG`) and request
+  batches (`META::RESYNC`, `META::ENVIRONMENT`, events) carry `0` and never
+  advance it.
+- **Consumer**: the first guest → host batch establishes a baseline
+  (`expected = sequence + 1`). Every later guest → host batch MUST satisfy
+  `sequence == expected`; then `expected = sequence + 1`. A batch whose
+  sequence does not match means one or more batches were lost.
+- **Recovery**: on a gap the consumer MUST NOT apply the gapped batch (its
+  deltas assume the lost state) and MUST request a full snapshot
+  (`META::RESYNC`), then re-baseline on the next guest → host batch. The
+  consumer also re-baselines on every (re)connect.
+- **Heartbeat batches are exempt**: a `META::PONG` (host → guest) is not part of
+  the guest → host stream; consumers track only guest → host batches.
+
+The recovery is **always a full snapshot**, never retransmission: the renderer
+is stateless and the application owns the retained tree, so a `META::RESYNC`
+reconverges the consumer regardless of what was lost. **Acknowledgements and a
+retransmit queue are deliberately not part of the protocol** — they would add a
+per-session send buffer and an ack exchange to a design whose recovery is
+already a stateless snapshot.
 
 ### Transport heartbeat
 

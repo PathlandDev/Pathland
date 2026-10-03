@@ -6,7 +6,7 @@
 //! path where producer and consumer do **not** share memory.
 //!
 //! The wire format is unchanged from `crate::batch` (magic/version/flags/
-//! frameCount/opcodeCount/opcodes/arenaDeltaLen/arena).
+//! sequence/opcodeCount/opcodes/arenaDeltaLen/arena).
 
 use alloc::vec::Vec;
 
@@ -36,10 +36,10 @@ impl NetBatchEncoder {
     }
 
     /// Serialize the pending opcodes with a provided used-arena slice, clearing
-    /// the buffer. `frame_count` is the covering frame counter.
-    pub fn encode_with_arena(&mut self, frame_count: u32, arena_used: &[u8]) -> Vec<u8> {
+    /// the buffer. `sequence` is the per-stream message sequence to stamp.
+    pub fn encode_with_arena(&mut self, sequence: u32, arena_used: &[u8]) -> Vec<u8> {
         let bytes = encode_batch(
-            frame_count,
+            sequence,
             crate::direction::GUEST_TO_HOST,
             &self.opcodes,
             arena_used,

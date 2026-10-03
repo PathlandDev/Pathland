@@ -62,6 +62,17 @@ class FrameCodecTest {
     }
 
     @Test
+    void encodeFrameStampsAndReadsTheMessageSequence() {
+        Frame frame = new Frame(
+                java.util.List.of(new Opcode(Categories.TREE, Commands.Tree.CREATE_NODE, 0, 1, 0x10, 0)),
+                new byte[0]);
+        byte[] delta = FrameCodec.encodeFrame(frame, 7);
+        assertEquals(7, FrameCodec.sequence(delta), "a delta batch carries its sequence");
+        // The 1-arg overload is for non-delta batches (heartbeat/requests): sequence 0.
+        assertEquals(0, FrameCodec.sequence(FrameCodec.encodeFrame(frame)));
+    }
+
+    @Test
     void isPingDetectsAMetaPingBatch() {
         // A META::PING heartbeat probe (guest → host), the exact vector-16a bytes.
         byte[] ping = new byte[16 + 16 + 4];

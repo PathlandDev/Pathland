@@ -27,10 +27,15 @@
 //! ## Batch wire format (both codecs share the header)
 //!
 //! ```text
-//! magic "PLPL" (u32 LE) | version (u16) | flags (u16) | frameCount (u32)
+//! magic "PLPL" (u32 LE) | version (u16) | flags (u16) | sequence (u32)
 //! | opcodeCount (u32) | opcodes (16 B × opcodeCount) | stringsLen (u32)
 //! | string bytes (length-prefixed entries: [u32 len][bytes])
 //! ```
+//!
+//! `sequence` is the per-stream monotonic message sequence (incremented once
+//! per encoded guest → host batch; `0` for heartbeat/request batches). A
+//! consumer detects lost batches by a sequence gap and recovers with a full
+//! snapshot — see `spec/OPCODE.md` §Sequence gap detection.
 //!
 //! For a self-contained frame the trailing section is that frame's own string
 //! table; for an arena-delta batch it is the arena bytes appended since the

@@ -51,10 +51,14 @@ dependency — framework glue lives in the starters.
   Now takes the app's `base` and `stateScope` explicitly (the registry supplies them).
 - **`DeltaBatcher`** — merges session delta frames (opcodes + a single rebased string
   section) and flushes as one network batch on a timer/byte threshold; the Java analogue
-  of the Rust transport's `Batcher`. The **sender runs OUTSIDE the monitor** — a
-  blocking/queueing send can never stall the actor thread's `append` or the flush
-  scheduler. Coalescing tests cover merging + rebasing, a 100-frame burst collapsing to
-  one send, and a blocking sender not holding the lock.
+  of the Rust transport's `Batcher`. It owns the per-session **message sequence**
+  (stamped on each flushed batch via `FrameCodec.encodeFrame(frame, sequence)`) so the
+  DOM client can detect a lost batch and recover with `META::RESYNC`
+  (spec/OPCODE.md §Sequence gap detection); an empty flush consumes no sequence. The
+  **sender runs OUTSIDE the monitor** — a blocking/queueing send can never stall the
+  actor thread's `append` or the flush scheduler. Coalescing tests cover merging +
+  rebasing, a 100-frame burst collapsing to one send, incrementing sequences, and a
+  blocking sender not holding the lock.
 - **`PathlandConnection`** — the transport seam (`send(byte[])`/`isOpen()`); each starter
   adapts its WebSocket type to it.
 - **Concurrency stress** — `RegistryConcurrencyTest`: 100 sessions driven through the

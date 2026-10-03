@@ -5,6 +5,7 @@ import {
   CAT_PARAMETER,
   CMD_PING,
   CMD_PONG,
+  CMD_RESYNC,
   CMD_SET_TEXT,
   HEADER_SIZE,
   MAGIC,
@@ -65,6 +66,26 @@ function pongBatch(): Uint8Array {
   view.setUint32(12, 1, true);
   view.setUint8(HEADER_SIZE, CAT_META);
   view.setUint8(HEADER_SIZE + 1, CMD_PONG);
+  return out;
+}
+
+/** A valid guest → host delta batch (one SET_TEXT "x" on node 1) with `sequence`. */
+function deltaBatch(sequence: number): Uint8Array {
+  const strings = new Uint8Array([1, 0, 0, 0, 0x78]); // "x"
+  const out = new Uint8Array(HEADER_SIZE + OPCODE_SIZE + 4 + strings.length);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, MAGIC, true);
+  view.setUint16(4, VERSION, true);
+  view.setUint16(6, 0, true); // GUEST_TO_HOST
+  view.setUint32(8, sequence, true);
+  view.setUint32(12, 1, true);
+  const pos = HEADER_SIZE;
+  view.setUint8(pos, CAT_PARAMETER);
+  view.setUint8(pos + 1, CMD_SET_TEXT);
+  view.setUint32(pos + 4, 1, true); // a = node id 1
+  view.setUint32(pos + 8, 0, true); // b = string offset 0
+  view.setUint32(HEADER_SIZE + OPCODE_SIZE, strings.length, true);
+  out.set(strings, HEADER_SIZE + OPCODE_SIZE + 4);
   return out;
 }
 
@@ -157,6 +178,71 @@ describe("Transport", () => {
     transport.send(new Uint8Array([1, 2, 3]));
     expect(FakeSocket.instances[0]!.sent).toHaveLength(1);
     transport.stop();
+  });
+
+  describe("sequence gap detection", () => {
+    function openTransport(renderer: DomRenderer): Transport {
+      const transport = new Transport({ url: "ws://host/ws", renderer, createSocket: fakeFactory });
+      transport.start();
+      FakeSocket.instances[0]!.emitOpen();
+      return transport;
+    }
+
+    function rendererWithNode1(): { renderer: DomRenderer; span: HTMLSpanElement } {
+      const renderer: DomRenderer = { byId: new Map() };
+      const span = document.createElement("span");
+      renderer.byId.set(1, span);
+      return { renderer, span };
+    }
+
+    it("does not resync while sequences are contiguous", () => {
+      const { renderer } = rendererWithNode1();
+      const transport = openTransport(renderer);
+      const socket = FakeSocket.instances[0]!;
+      socket.emitMessage(deltaBatch(1).buffer);
+      socket.emitMessage(deltaBatch(2).buffer);
+      socket.emitMessage(deltaBatch(3).buffer);
+      expect(socket.sent).toHaveLength(0); // no RESYNC
+      transport.stop();
+    });
+
+    it("requests a resync on a sequence gap and skips the gapped batch", () => {
+      const { renderer, span } = rendererWithNode1();
+      const transport = openTransport(renderer);
+      const socket = FakeSocket.instances[0]!;
+      socket.emitMessage(deltaBatch(1).buffer);
+      expect(span.textContent).toBe("x");
+      socket.emitMessage(deltaBatch(3).buffer); // gap: expected 2
+      expect(socket.sent).toHaveLength(1);
+      const op = parseBatch(socket.sent[0]!).opcodes[0]!;
+      expect(op.category).toBe(CAT_META);
+      expect(op.command).toBe(CMD_RESYNC);
+      expect(span.textContent).toBe("x"); // the gapped batch was not applied
+      transport.stop();
+    });
+
+    it("ignores host → guest (PONG) batches for sequence tracking", () => {
+      const { renderer } = rendererWithNode1();
+      const transport = openTransport(renderer);
+      const socket = FakeSocket.instances[0]!;
+      socket.emitMessage(deltaBatch(1).buffer);
+      socket.emitMessage(pongBatch().buffer);
+      socket.emitMessage(deltaBatch(2).buffer);
+      expect(socket.sent).toHaveLength(0);
+      transport.stop();
+    });
+
+    it("re-baselines after a gap so a later contiguous run does not resync again", () => {
+      const { renderer } = rendererWithNode1();
+      const transport = openTransport(renderer);
+      const socket = FakeSocket.instances[0]!;
+      socket.emitMessage(deltaBatch(1).buffer);
+      socket.emitMessage(deltaBatch(5).buffer); // gap → one RESYNC
+      socket.emitMessage(deltaBatch(5).buffer); // re-baseline + apply
+      socket.emitMessage(deltaBatch(6).buffer); // contiguous
+      expect(socket.sent).toHaveLength(1);
+      transport.stop();
+    });
   });
 
   describe("heartbeat watchdog", () => {

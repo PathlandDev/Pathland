@@ -10,7 +10,7 @@ export function buildBatch(opcodes: number[][], strings?: Uint8Array): Uint8Arra
   view.setUint32(0, MAGIC, true);
   view.setUint16(4, VERSION, true);
   view.setUint16(6, 0, true);
-  view.setUint32(8, 3, true); // frameCount
+  view.setUint32(8, 3, true); // sequence
   view.setUint32(12, opcodes.length, true);
   opcodes.forEach((op, i) => {
     const pos = HEADER_SIZE + i * OPCODE_SIZE;
@@ -40,7 +40,7 @@ describe("parseBatch", () => {
     const batch = parseBatch(buildBatch([[2, 3, 0, 7, 0, 0]], stringEntry("hi")));
     expect(batch.version).toBe(VERSION);
     expect(batch.flags).toBe(0);
-    expect(batch.frameCount).toBe(3);
+    expect(batch.sequence).toBe(3);
     expect(batch.opcodes).toHaveLength(1);
     expect(batch.opcodes[0]).toEqual({ category: 2, command: 3, flags: 0, a: 7, b: 0, c: 0 });
     expect(readString(batch.strings, 0)).toBe("hi");

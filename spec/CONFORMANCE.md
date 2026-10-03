@@ -267,9 +267,12 @@ convention as `PARAMETER::SET_TEXT`. See OPCODE.md's
 
 A network batch serializes opcodes + an arena delta (see
 [OPCODE.md](./OPCODE.md#transport)). A conforming batch encoder/decoder MUST
-reproduce the following bytes exactly.
+reproduce the following bytes exactly. The header's `sequence` field is the
+per-stream monotonic message sequence (see
+[Sequence gap detection](./OPCODE.md#sequence-gap-detection)); the vectors below
+use representative values.
 
-### 14. NETWORK:BATCH (frameCount=1, one CREATE_NODE, arena delta = "Hi")
+### 14. NETWORK:BATCH (sequence=1, one CREATE_NODE, arena delta = "Hi")
 
 The single opcode is `TREE:CREATE_NODE (id=1, VSTACK)` from vector 1. The arena
 delta is the self-describing entry for `"Hi"`: `[02 00 00 00][48 69]`.
@@ -283,13 +286,13 @@ delta is the self-describing entry for `"Hi"`: `[02 00 00 00][48 69]`.
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `00 00` = flags (guest → host)
-- `01 00 00 00` = frameCount = 1
+- `01 00 00 00` = sequence = 1
 - `01 00 00 00` = opcodeCount = 1
 - `01 01 00 00 01 00 00 00 10 00 00 00 00 00 00 00` = the CREATE_NODE opcode (16 bytes)
 - `06 00 00 00` = arenaDeltaLen = 6
 - `02 00 00 00 48 69` = arena entry `[len=2]["Hi"]`
 
-### 15. NETWORK:BATCH (frameCount=2, empty opcode list, empty arena delta)
+### 15. NETWORK:BATCH (sequence=2, empty opcode list, empty arena delta)
 
 ```
 4C 50 4C 50 01 00 00 00 02 00 00 00 00 00 00 00
@@ -299,7 +302,7 @@ delta is the self-describing entry for `"Hi"`: `[02 00 00 00][48 69]`.
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `00 00` = flags
-- `02 00 00 00` = frameCount = 2
+- `02 00 00 00` = sequence = 2
 - `00 00 00 00` = opcodeCount = 0
 - `00 00 00 00` = arenaDeltaLen = 0
 
@@ -317,7 +320,7 @@ The single opcode is `META:RESYNC` (vector 13). The batch carries the
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `01 00` = flags = `HOST_TO_GUEST` (0x0001)
-- `00 00 00 00` = frameCount = 0
+- `00 00 00 00` = sequence = 0 (heartbeat/request batches carry no sequence)
 - `01 00 00 00` = opcodeCount = 1
 - `04 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00` = the META:RESYNC opcode (16 bytes)
 - `00 00 00 00` = arenaDeltaLen = 0
@@ -337,7 +340,7 @@ sends exactly this to probe host liveness.
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `00 00` = flags = `GUEST_TO_HOST` (0x0000)
-- `00 00 00 00` = frameCount = 0
+- `00 00 00 00` = sequence = 0 (heartbeat/request batches carry no sequence)
 - `01 00 00 00` = opcodeCount = 1
 - `04 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00` = the META:PING opcode (16 bytes)
 - `00 00 00 00` = arenaDeltaLen = 0
@@ -374,7 +377,7 @@ tables and the current scheme.
   - high byte `08` = valueType = 0x08 (DESIGN_TOKEN)
 - `00 00 00 00` C = arenaRef = 0 (`"color.primary"`)
 
-### 19. NETWORK:BATCH (frameCount=3, one DESIGN_TOKEN-referencing SET_PROPERTY, arena delta = "color.primary")
+### 19. NETWORK:BATCH (sequence=3, one DESIGN_TOKEN-referencing SET_PROPERTY, arena delta = "color.primary")
 
 The single opcode is vector 18. The arena delta is the self-describing entry for
 `"color.primary"`: `[0D 00 00 00][63 6F 6C 6F 72 2E 70 72 69 6D 61 72 79]`.
@@ -388,7 +391,7 @@ The single opcode is vector 18. The arena delta is the self-describing entry for
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `00 00` = flags (guest → host)
-- `03 00 00 00` = frameCount = 3
+- `03 00 00 00` = sequence = 3
 - `01 00 00 00` = opcodeCount = 1
 - `02 01 00 00 01 00 00 00 0A 10 08 00 00 00 00 00` = the SET_PROPERTY opcode (16 bytes)
 - `11 00 00 00` = arenaDeltaLen = 17
