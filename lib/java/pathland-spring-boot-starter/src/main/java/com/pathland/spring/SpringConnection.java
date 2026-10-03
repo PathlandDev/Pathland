@@ -35,7 +35,17 @@ final class SpringConnection implements PathlandConnection, AutoCloseable {
             try {
                 session.sendMessage(new BinaryMessage(bytes));
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                // A transient write failure on a STILL-OPEN session is logged, not
+                // thrown: PathlandSession.sendBatch would otherwise drop the connection
+                // and close the WebSocket, permanently severing a healthy session's
+                // delta stream over one momentary hiccup (the Quarkus adapter already
+                // treats transient failures this way). Only a session that is confirmed
+                // closed is surfaced (so sendBatch drops it).
+                if (session.isOpen()) {
+                    System.out.println("[pathland] ws send failed (transient, session open): " + e.getMessage());
+                } else {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }

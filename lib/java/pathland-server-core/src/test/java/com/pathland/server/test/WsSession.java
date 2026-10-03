@@ -64,12 +64,14 @@ public final class WsSession implements AutoCloseable {
         public java.util.concurrent.CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             peerCloseCodes.add(statusCode);
             open = false;
+            System.err.println("[ws-session] peer closed status=" + statusCode + " reason=" + reason);
             return null;
         }
 
         @Override
         public void onError(WebSocket webSocket, Throwable error) {
             open = false;
+            System.err.println("[ws-session] error " + error);
         }
     }
 

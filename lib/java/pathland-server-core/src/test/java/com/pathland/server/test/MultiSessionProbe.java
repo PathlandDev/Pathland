@@ -27,11 +27,26 @@ import java.util.concurrent.TimeUnit;
  */
 public final class MultiSessionProbe {
 
-    public static final int SESSIONS = 100;
+    /** Session count: overridable via {@code PATHLAND_TEST_SESSIONS} (env — inherited by the
+     *  forked surefire JVM) or {@code -Dpathland.test.sessions} when surefire is configured
+     *  to forward it. */
+    public static final int SESSIONS = sessionsCount();
     private static final int VIEWPORT_WIDTH = 1280;
     private static final int VIEWPORT_HEIGHT = 800;
 
     private MultiSessionProbe() {}
+
+    private static int sessionsCount() {
+        String v = System.getenv("PATHLAND_TEST_SESSIONS");
+        if (v == null || v.isBlank()) {
+            v = System.getProperty("pathland.test.sessions", "100");
+        }
+        try {
+            return Integer.parseInt(v);
+        } catch (NumberFormatException e) {
+            return 100;
+        }
+    }
 
     /** Run the probe against a Pathland WS base URL (e.g. {@code ws://host:port/_pathland/ws}). */
     public static void run(String wsBaseUrl) throws Exception {
@@ -97,6 +112,14 @@ public final class MultiSessionProbe {
                     check(v >= last && v <= clicksPerSession[i],
                             "session " + i + " label sequence monotonic + bounded: " + texts);
                     last = v;
+                }
+                // A PONG is sent in reply to a ping, which the probe sends AFTER the
+                // clicks — so it arrives AFTER the click deltas. Poll for it (don't check
+                // once, the instant the click target lands) or the assertion races the
+                // PONG's delivery.
+                long pongDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                while (!ws.sawPong() && System.nanoTime() < pongDeadline && ws.isOpen()) {
+                    Thread.sleep(10);
                 }
                 check(ws.sawPong(), "session " + i + " got a transport-level PONG");
                 check(!ws.wasClosedByPeer(), "session " + i + " was not closed by the peer");
