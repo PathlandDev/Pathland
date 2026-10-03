@@ -54,8 +54,10 @@ public class MountedPathlandSocket {
         WebSocketConnection resolved =
                 ClientProxy.unwrap(Arc.container().instance(WebSocketConnection.class).get());
         QuarkusConnection transport = new QuarkusConnection(resolved);
-        transports.put(resolved.id(), transport);
-        r.open(resolved.id(), resolveWindowId(resolved), transport);
+        // Key by the injected proxy's id — the SAME id onBinary/close use.
+        String id = connection.id();
+        transports.put(id, transport);
+        r.open(id, resolveWindowId(resolved), transport);
     }
 
     @OnClose
@@ -84,7 +86,9 @@ public class MountedPathlandSocket {
             // A transport-liveness heartbeat probe (guest → host): reply PONG at the
             // transport layer — no actor/session dependency (spec/OPCODE.md §Transport heartbeat).
             QuarkusConnection t = transports.get(id);
-            if (t != null) {
+            if (t == null) {
+                System.out.println("[pathland] ws ping: no transport for connection " + id);
+            } else {
                 t.send(FrameCodec.encodePong());
             }
         } else if (FrameCodec.isEnvironment(message)) {

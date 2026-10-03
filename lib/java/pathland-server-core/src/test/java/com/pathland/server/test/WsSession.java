@@ -29,6 +29,10 @@ import java.util.function.Predicate;
  */
 public final class WsSession implements AutoCloseable {
 
+    /** One shared HTTP client for all test connections (100 clients under CI load was
+     *  wasteful and added selector/executor pressure that could drop connections). */
+    private static final HttpClient HTTP = HttpClient.newHttpClient();
+
     /** A JDK WebSocket listener collecting decoded frames + close/error state.
      *  Frames arrive on the listener thread while the test thread polls/iterates, so
      *  both collections are {@link CopyOnWriteArrayList} (thread-safe for add+iterate). */
@@ -81,7 +85,7 @@ public final class WsSession implements AutoCloseable {
     /** Connect a Pathland session to {@code wsUrl}/_pathland/ws?wid=… (blocking up to 10 s). */
     public static WsSession connect(String wsBaseUrl, String wid) throws Exception {
         Listener listener = new Listener();
-        WebSocket socket = HttpClient.newHttpClient().newWebSocketBuilder()
+        WebSocket socket = HTTP.newWebSocketBuilder()
                 .buildAsync(URI.create(wsBaseUrl + "?wid=" + wid), listener)
                 .get(10, TimeUnit.SECONDS);
         return new WsSession(socket, listener);

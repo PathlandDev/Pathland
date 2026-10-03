@@ -57,8 +57,11 @@ public class PathlandSocket {
         WebSocketConnection resolved =
                 ClientProxy.unwrap(Arc.container().instance(WebSocketConnection.class).get());
         QuarkusConnection transport = new QuarkusConnection(resolved);
-        transports.put(resolved.id(), transport);
-        registry.open(resolved.id(), resolveWindowId(resolved), transport);
+        // Key by the injected proxy's id — the SAME id onBinary/close use — so the
+        // transport is always found for the current connection.
+        String id = connection.id();
+        transports.put(id, transport);
+        registry.open(id, resolveWindowId(resolved), transport);
     }
 
     @OnClose
@@ -88,7 +91,9 @@ public class PathlandSocket {
             // transport layer — no actor/session dependency, and a PING never creates
             // or wakes a session (spec/OPCODE.md §Transport heartbeat).
             QuarkusConnection t = transports.get(id);
-            if (t != null) {
+            if (t == null) {
+                System.out.println("[pathland] ws ping: no transport for connection " + id);
+            } else {
                 t.send(FrameCodec.encodePong());
             }
         } else if (FrameCodec.isEnvironment(message)) {
