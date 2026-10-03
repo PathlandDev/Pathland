@@ -14,13 +14,14 @@ Character counts are the form's field limits; drafts below are within them.
 
 ## Project website(s) / repositories
 ```
-https://github.com/michaelkrog/Pathland
+https://github.com/PathlandDev/Pathland
 https://apaq.dk
 ```
 
 ## Summary (max 1000 chars)
 
-> After years of building web frontends, I kept hitting the same wall: HTML/CSS/JavaScript is a hack next to SwiftUI or Compose — it breaks easily, stutters, bloats bundles, and fights the DOM. I built a SwiftUI-shaped design system for Angular (Lumen, used internally at SOS International): it made teams more productive, but it still carried every weakness of rich clients. The insight came from a worker-thread experiment: separate a declarative UI model from the renderer behind an open binary protocol, so any language can drive any renderer on any device. Pathland is that protocol — fixed 16-byte opcodes in a ring buffer, signal-driven diff emission, renderers as pure functions mapping onto native elements. This project turns the working proof-of-concept (four renderers, two DSLs) into an implementable open standard: a spec registry, a cross-language validator, fuzzing and hardening, benchmarks, WCAG compliance, and a hosted demo.
+> After years of building web frontends, I kept hitting the same wall: HTML/CSS/JavaScript feels a hack next when it comes to UI Development — it breaks easily, stutters, bloats bundles, and fights the DOM. I once built a declarative design system for Angular (Lumen, used internally at SOS International): it made teams more productive, but it still carried many weaknesses of any purely Javascript-based UI. But then an idea evolved in my mind.
+It grew from a worker-thread experiment: separate a declarative UI model from the renderer behind an open binary protocol, so any language can drive any renderer on any device. Pathland is that protocol — fixed 16-byte opcodes, signal-driven diff emission, renderers as pure mapping onto native elements. This project turns the working proof-of-concept into an implementable open standard: a spec, fuzzing and hardening, benchmarks and WCAG compliance.
 
 ## Proposed effort — amount
 `11700 EUR`
@@ -43,23 +44,23 @@ https://apaq.dk
 
 > Flutter, React Native, and Compose Multiplatform couple the UI model to a single runtime. Per-vendor SDUI (Airbnb, Lyft, Spotify) is proprietary JSON, not an open standard. htmx re-renders markup server-side. Generic JSON/Protobuf is data transport, not a UI instruction stream, and re-sends full trees. None provides an open, language- and platform-agnostic binary protocol for retained-mode UI.
 >
-> The structural difference: popular UI frameworks never re-invent themselves and stay locked to running everything on the main thread. Pathland separates a declarative UI model from the renderer with a binary protocol and does signal-based change detection inside the model — outperforming existing web frameworks while allowing any language to drive any renderer on any device. Renderers are pure functions of a 16-byte opcode stream; an unchanged tree emits zero bytes.
+> The structural difference: popular javascript UI frameworks never re-invent themselves and stay locked to running everything on the main thread. Pathland separates a declarative UI model from the renderer with a binary protocol and does signal-based change detection inside the model — outperforming existing web frameworks while allowing any language to drive any renderer on any device. Renderers are pure functions of a 16-byte opcode stream; an unchanged tree emits zero bytes.
 >
-> This also changes enterprise architecture: instead of a BFF, a separate frontend app, client-side tokens, and two languages, a Java backend owns the UI and streams only deltas. The protocol enables a composition proxy that combines several backend applications toward one renderer — a better answer to microfrontends than today's approaches.
+> This also changes enterprise architecture: instead of a BFF with a separate frontend app, the backend can completely own the UI and stream only deltas - leveraging smooth 60fps. The protocol also enables a composition proxy that combines several backend applications toward one renderer — a better answer to microfrontends than today's approaches.
 >
-> I built Lumen, a SwiftUI-shaped design system for Angular used internally at SOS International; Pathland is the generalisation of that experience into an open protocol. I have looked at adjacent efforts (Open UI, UI-specification groups); they focus on design-token/component vocabulary, not a transport-level retained-mode protocol.
+> I built Lumen, a declaritive design system for Angular used internally at SOS International; Pathland is the generalisation of that experience into an open protocol. I have looked at adjacent efforts (Open UI, UI-specification groups); they focus on design-token/component vocabulary, not a transport-level retained-mode protocol.
 
 ## Technical challenges (max 4000 chars)
 
 > The hardest problem is the benchmark: building genuinely heavy, high-performance SSR applications across multiple frameworks (Pathland vs htmx vs a BFF/JSON SPA) so the measurements are fair — comparable trees, identical fidelity, honest methodology. I will seek a methodology review as outside help.
 >
-> The second-hard problem is security validation of the protocol and the core framework code: proving the three binary decoders (Rust, Java, TypeScript) reject malformed input, and that the unsafe C ABI surface is sound. I plan coverage-guided fuzzing and a Miri pass, and will request the independent security audit Restack offers as practical support, treating the hardening work as its baseline.
+> The second-hard problem is security validation of the protocol and the core framework code: proving the binary decoders reject malformed input, and that the unsafe C ABI surface is sound. I plan coverage-guided fuzzing and a Miri pass, and will request the independent security audit Restack offers as practical support, treating the hardening work as its baseline.
 >
 > WCAG compliance on the SSR HTML renderer is also non-trivial (ARIA mapping, keyboard and focus management, form semantics) and will use an accessibility scan. Cross-language drift is a constant risk; the WP2 validator exists to make it a CI failure instead of a surprise.
 
 ## Ecosystem (max 2000 chars)
 
-> Primary users are enterprise Java backend developers: teams that want professional, performant UIs without a separate frontend team, a separate frontend application, or an extra BFF layer. Secondary audiences are tooling authors — the DSL is defined by the specification, so new DSLs can be produced from it — and later, embedded developers.
+> Primary users are enterprise backend developers: teams that want professional, performant UIs without a separate frontend team, a separate frontend application, or an extra BFF layer. Secondary audiences are tooling authors — the DSL is defined by the specification, so new DSLs can be produced from it — and later, embedded developers.
 >
 > Dependencies are deliberately modest. The protocol core is a `no_std` + `alloc` Rust crate with no runtime dependencies. The Java DSL runs on every LTS from Java 17 and plugs into Spring Boot/Quarkus as host frameworks (not dependencies). The native desktop renderer uses GTK4 + libadwaita; cross-language interop uses JNA. Nothing is proprietary or single-vendor.
 >
@@ -67,7 +68,7 @@ https://apaq.dk
 
 ## Background (max 2000 chars) — *applicant to personalise*
 
-> I have 25 years of experience building software, mostly in financial, insurance, and planning domains. I built Previsto, a route-planning product for the service industry using metaheuristic optimisation for driving routes, from the ground up. At SOS International I designed and shipped Lumen, a SwiftUI-shaped design system for Angular, now in production and being expanded across the frontend teams as I move into the domain architect role.
+> I have 25 years of experience building software, mostly in financial, insurance, and planning domains. I built Previsto, a route-planning product for the service industry using metaheuristic optimisation for driving routes, from the ground up. At SOS International I designed and shipped Lumen, a declaritive design system for Angular, now in production and being expanded across the frontend teams as I move into the domain architect role.
 >
 > For Pathland, the design is mine: the fixed-size ring buffer and 16-byte opcode slot (chosen for zero-copy, cache-line-friendly transport across x86/ARM/RISC-V/ESP32), the "declarative, not positioned" model, renderer statelessness, signal-based diff emission, the single opcode format for both directions, the specification, and the choice of Java and Rust as the first DSLs. I write and steer the specification, which locks in every design decision. I am the sole maintainer and accountable for the correctness and reproducibility of the project.
 >
@@ -85,7 +86,7 @@ https://apaq.dk
 >
 > **How it was used:** drafting and editing this proposal and much of the code. Design decisions were mine; all AI output was reviewed, steered, and validated by me, and the specification locks in the decisions I accepted. I remain accountable for correctness, clarity, and reproducibility.
 >
-> **Prompt provenance log:** attached / available on request — opencode session exports (JSON) for the code and grant-drafting sessions, plus a best-effort summary of the Gemini design discussions (see `GENAI.md` in the repository for the project-level transparency statement).
+> **Prompt provenance log:** available on request — opencode session exports (JSON) for the code and grant-drafting sessions, plus a best-effort summary of the Gemini design discussions (see `GENAI.md` in the repository for the project-level transparency statement).
 
 ## Contact information — *placeholders*
 ```
