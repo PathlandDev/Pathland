@@ -11,6 +11,8 @@ import io.quarkus.websockets.next.OnOpen;
 import io.quarkus.websockets.next.WebSocket;
 import io.quarkus.websockets.next.WebSocketConnection;
 import jakarta.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,6 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @WebSocket(path = "/{app}/_pathland/ws")
 public class MountedPathlandSocket {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MountedPathlandSocket.class);
 
     @Inject
     WebSocketConnection connection;
@@ -87,7 +91,7 @@ public class MountedPathlandSocket {
             // transport layer — no actor/session dependency (spec/OPCODE.md §Transport heartbeat).
             QuarkusConnection t = transports.get(id);
             if (t == null) {
-                System.out.println("[pathland] ws ping: no transport for connection " + id);
+                LOG.debug("ws ping: no transport for connection {}", id);
             } else {
                 t.send(FrameCodec.encodePong());
             }

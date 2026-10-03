@@ -33,6 +33,17 @@
             <artifactId>pathland-demo-views</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Observability (issue #62): Prometheus scrape at /actuator/prometheus; health at
+             /actuator/health (actuator comes from the starter). OpenTelemetry spans are
+             opt-in via micrometer-tracing-bridge-otel (see the application.properties flag). -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

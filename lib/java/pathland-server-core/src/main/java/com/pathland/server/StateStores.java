@@ -2,6 +2,8 @@ package com.pathland.server;
 
 import com.pathland.state.redis.RedisStateStore;
 import com.pathland.view.state.StateStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default {@link StateStore} selection: Redis when reachable, otherwise the supplied
@@ -10,6 +12,8 @@ import com.pathland.view.state.StateStore;
  */
 public final class StateStores {
 
+    private static final Logger LOG = LoggerFactory.getLogger(StateStores.class);
+
     private StateStores() {}
 
     /** A Redis store when reachable, else {@code fallback}. */
@@ -17,15 +21,11 @@ public final class StateStores {
         try {
             StateStore redis = new RedisStateStore.Provider().store();
             redis.load("probe", Object.class); // probe connectivity
-            log("state store: redis");
+            LOG.info("state store: redis");
             return redis;
         } catch (RuntimeException e) {
-            log("state store: in-memory (Redis unavailable: " + e.getMessage() + ")");
+            LOG.info("state store: in-memory (Redis unavailable: {})", e.getMessage());
             return fallback;
         }
-    }
-
-    private static void log(String message) {
-        System.out.println("[pathland] " + message);
     }
 }

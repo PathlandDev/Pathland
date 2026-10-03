@@ -1,6 +1,6 @@
 # pathland-quarkus-starter — implementation status
 
-**Last updated:** September 27, 2026
+**Last updated:** October 3, 2026
 
 Quarkus integration for Pathland: SSR at any path, live deltas over each app's reserved
 `/{base}/ws`, per-session state. Adding the starter dependency + a `PathlandApp` CDI
@@ -21,8 +21,9 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
 - **`MountedPathlandSocket`** — `@WebSocket("/{app}/_pathland/ws")` for mounted apps:
   the `{app}` path param resolves the app's registry. Mount paths are single-segment.
   Same stateless rule as the root socket.
-- **`IndexResource`** — JAX-RS SSR catch-all (`/` + deep links, `/_pathland/**` excluded
-  via negative lookahead) dispatching to the longest-mount app (prefix stripped);
+- **`IndexResource`** — JAX-RS SSR catch-all (`/` + deep links; `/_pathland/**` and the
+  Quarkus non-application root `/q/**` — health/metrics — excluded via negative lookahead)
+  dispatching to the longest-mount app (prefix stripped);
   SSR renders defaults (no session cookie — per-window state arrives over the WS);
   per-app framework files (`/{app}/_pathland/...`, e.g. the mounted app's bundle) are
   served from the shared `/_pathland/**` classpath mount. Quarkus serves the global
@@ -31,6 +32,13 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
   `MountedApp` bean plus the lone `PathlandApp` bean (mounted at `/`); `@Disposes` shuts
   it down. Reads the `pathland.debug-html` config property (default `false`) to enable
   per-node HTML comments in SSR output.
+- **Observability (issue #62)** — `quarkus-micrometer` (a `MeterRegistry` bean) +
+  `quarkus-smallrye-health`: the producer builds a `MicrometerTelemetry` over the
+  registry and decorates it with `TracingTelemetry` when a `Tracer` bean is present and
+  `quarkus.otel.enabled` (default `true`; the starter never touches the OTel API when
+  the extension is absent/disabled). `PathlandHealthCheck` (`@Readiness`) reports the
+  host UP with `activeSessions`/`mounts` at `/q/health`; the `pathland.*` meters appear
+  at `/q/metrics`.
 - **`QuarkusConnection`** — adapts `WebSocketConnection` to `PathlandConnection`.
   Sends are **serialized** (one `sendBinary` subscription in flight, the rest queued),
   and a **send failure closes the connection** so the session drops it and the DOM
@@ -75,3 +83,5 @@ tests. `MultiSessionWebSocketTest` (`@QuarkusTest`) opens **100 concurrent real 
 sessions** against `/_pathland/ws` (via the shared `pathland-server-core` test-jar
 probe) and asserts each connects, re-syncs, gets transport-level PONGs, stays isolated,
 and is never closed by the peer.
+`PathlandObservabilityTest` (`@QuarkusTest`) asserts `/q/health` reports the Pathland
+check UP and `/q/metrics` exposes the `pathland.*` namespace.

@@ -25,8 +25,15 @@ public final class PathlandHost {
 
     private final List<PathlandRegistry> registries;
     private final Map<String, PathlandRegistry> byMount;
+    private final PathlandTelemetry telemetry;
+    private volatile boolean running = true;
 
     public PathlandHost(List<MountedApp> mounts, StateStore store, boolean debugHtml) {
+        this(mounts, store, debugHtml, PathlandTelemetry.NOOP);
+    }
+
+    public PathlandHost(List<MountedApp> mounts, StateStore store, boolean debugHtml, PathlandTelemetry telemetry) {
+        this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         List<MountedApp> normalized = new ArrayList<>(mounts == null ? List.of() : mounts);
         this.registries = new ArrayList<>(normalized.size());
         this.byMount = new LinkedHashMap<>();
@@ -35,11 +42,13 @@ public final class PathlandHost {
             if (byMount.putIfAbsent(path, null) != null) {
                 throw new IllegalArgumentException("duplicate mount path: " + path);
             }
-            PathlandRegistry registry = new PathlandRegistry(path, mount.app(), store, debugHtml);
+            PathlandRegistry registry = new PathlandRegistry(path, mount.app(), store, debugHtml, this.telemetry);
             byMount.put(path, registry);
             registries.add(registry);
         }
         registries.sort(Comparator.comparingInt((PathlandRegistry r) -> r.mountPath().length()).reversed());
+        // Bind the active-session gauge (a pull-based Micrometer gauge, if any).
+        this.telemetry.bindActiveSessions(this::activeSessions);
     }
 
     public static PathlandHost of(StateStore store, boolean debugHtml, MountedApp... mounts) {
@@ -76,8 +85,23 @@ public final class PathlandHost {
         return best == null ? null : new MountMatch(best, strip(best.mountPath(), uri));
     }
 
+    /** The number of live sessions across every mount (a health/metrics gauge). */
+    public int activeSessions() {
+        int total = 0;
+        for (PathlandRegistry registry : registries) {
+            total += registry.activeSessions();
+        }
+        return total;
+    }
+
+    /** Whether the host is accepting work (false after {@link #shutdown()}). */
+    public boolean isRunning() {
+        return running;
+    }
+
     /** Close every registry (every session, every actor). */
     public void shutdown() {
+        running = false;
         for (PathlandRegistry registry : registries) {
             registry.shutdown();
         }

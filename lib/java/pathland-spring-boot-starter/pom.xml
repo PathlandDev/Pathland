@@ -27,12 +27,27 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.pathland</groupId>
+            <artifactId>pathland-observability</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- The OTel API is referenced only to build the optional tracing decorator; an
+             OpenTelemetry bean exists only when the app adds micrometer-tracing-bridge-otel. -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

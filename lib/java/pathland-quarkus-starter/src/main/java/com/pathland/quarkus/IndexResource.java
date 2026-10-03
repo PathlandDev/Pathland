@@ -45,12 +45,13 @@ public class IndexResource {
      * Any other path (deep links) — a multi-segment catch-all. The negative lookahead
      * excludes a path that <em>starts</em> with the reserved {@code _pathland} prefix (the
      * global WebSocket + DOM client bundle, served by Quarkus static resources from
-     * {@code META-INF/resources} before JAX-RS). Per-app framework paths
-     * ({@code /<app>/_pathland/...}, e.g. a mounted app's bundle) are intercepted here and
-     * served from the shared {@code /_pathland/**} classpath mount.
+     * {@code META-INF/resources} before JAX-RS) and the Quarkus **non-application root**
+     * ({@code /q/**} — health, metrics, …), which the framework serves. Per-app framework
+     * paths ({@code /<app>/_pathland/...}, e.g. a mounted app's bundle) are intercepted
+     * here and served from the shared {@code /_pathland/**} classpath mount.
      */
     @GET
-    @Path("{path:(?!_pathland).*}")
+    @Path("{path:(?!_pathland)(?!q/).*}")
     @Produces(MediaType.TEXT_HTML)
     public Response deep(@PathParam("path") String path, @QueryParam("wid") String wid) throws IOException {
         int framework = path.indexOf("/_pathland/");

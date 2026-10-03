@@ -1,13 +1,20 @@
 package com.pathland.spring;
 
+import com.pathland.observability.MicrometerTelemetry;
+import com.pathland.observability.TracingTelemetry;
 import com.pathland.server.MountedApp;
 import com.pathland.server.PathlandApp;
 import com.pathland.server.PathlandHost;
+import com.pathland.server.PathlandTelemetry;
 import com.pathland.server.StateStores;
 import com.pathland.view.state.InMemoryStateStore;
 import com.pathland.view.state.StateStore;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.OpenTelemetry;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.health.Health;
+import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -54,6 +61,36 @@ public class PathlandAutoConfiguration {
     }
 
     /**
+     * The observability seam: a Micrometer adapter over the actuator {@link MeterRegistry},
+     * decorated with OpenTelemetry spans when an {@link OpenTelemetry} bean is present
+     * (the app adds {@code micrometer-tracing-bridge-otel} to opt in).
+     */
+    @Bean
+    @ConditionalOnMissingBean(PathlandTelemetry.class)
+    public PathlandTelemetry pathlandTelemetry(
+            MeterRegistry registry, ObjectProvider<OpenTelemetry> openTelemetry) {
+        PathlandTelemetry telemetry = new MicrometerTelemetry(registry);
+        OpenTelemetry otel = openTelemetry.getIfAvailable();
+        if (otel != null) {
+            telemetry = new TracingTelemetry(telemetry, otel.getTracer("pathland"));
+        }
+        return telemetry;
+    }
+
+    /** Readiness for the Pathland host (exposed at {@code /actuator/health}). */
+    @Bean
+    @ConditionalOnMissingBean(name = "pathlandHealthIndicator")
+    public HealthIndicator pathlandHealthIndicator(PathlandHost host) {
+        return () -> {
+            Health.Builder builder = host.isRunning() ? Health.up() : Health.down();
+            return builder
+                    .withDetail("activeSessions", host.activeSessions())
+                    .withDetail("mounts", host.registries().size())
+                    .build();
+        };
+    }
+
+    /**
      * The multi-app host (shut down with the application context): every {@link MountedApp}
      * bean plus the lone {@link PathlandApp} bean (mounted at {@code "/"}, unless an
      * explicit {@code MountedApp} claims the root).
@@ -64,6 +101,7 @@ public class PathlandAutoConfiguration {
             ObjectProvider<PathlandApp> apps,
             ObjectProvider<MountedApp> mounts,
             StateStore store,
+            PathlandTelemetry telemetry,
             @Value("${pathland.debug-html:false}") boolean debugHtml) {
         List<MountedApp> list = new ArrayList<>();
         mounts.orderedStream().forEach(list::add);
@@ -71,7 +109,7 @@ public class PathlandAutoConfiguration {
         if (lone != null && list.stream().noneMatch(m -> "/".equals(m.path()))) {
             list.add(0, MountedApp.of("/", lone));
         }
-        return new PathlandHost(list, store, debugHtml);
+        return new PathlandHost(list, store, debugHtml, telemetry);
     }
 
     /**

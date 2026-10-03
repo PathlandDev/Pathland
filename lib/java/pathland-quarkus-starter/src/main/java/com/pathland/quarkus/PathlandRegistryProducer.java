@@ -1,10 +1,15 @@
 package com.pathland.quarkus;
 
+import com.pathland.observability.MicrometerTelemetry;
+import com.pathland.observability.TracingTelemetry;
 import com.pathland.server.MountedApp;
 import com.pathland.server.PathlandApp;
 import com.pathland.server.PathlandHost;
+import com.pathland.server.PathlandTelemetry;
 import com.pathland.server.StateStores;
 import com.pathland.view.state.InMemoryStateStore;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
@@ -51,19 +56,46 @@ public class PathlandRegistryProducer {
     Instance<MountedApp> mounts;
 
     @Inject
+    MeterRegistry meterRegistry;
+
+    /** Present only when the app adds {@code quarkus-opentelemetry} (opt-in tracing). */
+    @Inject
+    Instance<Tracer> tracer;
+
+    /** Tracing is opt-in: never touch the OTel API when the extension is disabled. */
+    @Inject
+    @ConfigProperty(name = "quarkus.otel.enabled", defaultValue = "true")
+    boolean otelEnabled;
+
+    @Inject
     @ConfigProperty(name = "pathland.debug-html", defaultValue = "false")
     boolean debugHtml;
 
+    /**
+     * The observability seam: a Micrometer adapter over the app's {@link MeterRegistry}
+     * (always present via {@code quarkus-micrometer}), decorated with OpenTelemetry spans
+     * when a {@link Tracer} is available and tracing is enabled.
+     */
     @Produces
     @Singleton
-    PathlandHost host() {
+    PathlandTelemetry telemetry() {
+        PathlandTelemetry telemetry = new MicrometerTelemetry(meterRegistry);
+        if (otelEnabled && tracer.isResolvable()) {
+            telemetry = new TracingTelemetry(telemetry, tracer.get());
+        }
+        return telemetry;
+    }
+
+    @Produces
+    @Singleton
+    PathlandHost host(PathlandTelemetry telemetry) {
         List<MountedApp> list = new ArrayList<>();
         mounts.forEach(list::add);
         PathlandApp lone = apps.stream().findFirst().orElse(null);
         if (lone != null && list.stream().noneMatch(m -> "/".equals(m.path()))) {
             list.add(0, MountedApp.of("/", lone));
         }
-        return new PathlandHost(list, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml);
+        return new PathlandHost(list, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml, telemetry);
     }
 
     void shutdown(@Disposes PathlandHost host) {
