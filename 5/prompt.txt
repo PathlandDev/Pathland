@@ -1,0 +1,77 @@
+/\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.5.16)
+
+2026-10-03T07:08:53.565Z  INFO 2463 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Starting MultiSessionWebSocketTest using Java 25.0.4.1 with PID 2463 (started by runner in /home/runner/work/Pathland/Pathland/lib/java/pathland-spring-boot-starter)
+2026-10-03T07:08:53.565Z  INFO 2463 --- [           main] c.p.spring.MultiSessionWebSocketTest     : No active profile set, falling back to 1 default profile: "default"
+2026-10-03T07:08:53.797Z  INFO 2463 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-10-03T07:08:53.810Z  INFO 2463 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-10-03T07:08:53.810Z  INFO 2463 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.55]
+2026-10-03T07:08:53.839Z  INFO 2463 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-10-03T07:08:53.839Z  INFO 2463 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 273 ms
+[pathland] state store: in-memory (Redis unavailable: Unable to connect to localhost/<unresolved>:6379)
+2026-10-03T07:08:54.570Z  INFO 2463 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 40247 (http) with context path '/'
+2026-10-03T07:08:54.573Z  INFO 2463 --- [           main] c.p.spring.MultiSessionWebSocketTest     : Started MultiSessionWebSocketTest in 1.027 seconds (process running for 4.242)
+2026-10-03T07:08:54.649Z  INFO 2463 --- [o-auto-1-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-10-03T07:08:54.649Z  INFO 2463 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-10-03T07:08:54.650Z  INFO 2463 --- [o-auto-1-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+Oct 03, 2026 7:09:00 AM io.quarkus.deployment.jvm.JvmModulesReconfigurer create
+WARN: Could not get access to jdk.internal.module API: this is required for Quarkus to adjust Java Modules configuration to match the various requirements of each extension. Please ensure this JVM is launched with --add-opens=java.base/java.lang.invoke=ALL-UNNAMED.
+Oct 03, 2026 7:09:00 AM org.jboss.logmanager.JBossLoggerFinder getLogger
+ERROR: The LogManager accessed before the "java.util.logging.manager" system property was set to "org.jboss.logmanager.LogManager". Results may be unexpected.
+WARNING: A Java agent has been loaded dynamically (/home/runner/.m2/repository/net/bytebuddy/byte-buddy-agent/1.18.8/byte-buddy-agent-1.18.8.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+Oct 03, 2026 7:09:01 AM io.quarkus.bootstrap.runner.Timing printStartupTime
+INFO: pathland-quarkus-starter 0.1.0 on JVM (powered by Quarkus 3.39.1) started in 3.062s. Listening on: http://localhost:8081
+Oct 03, 2026 7:09:01 AM io.quarkus.bootstrap.runner.Timing printStartupTime
+INFO: Profile test activated. 
+Oct 03, 2026 7:09:01 AM io.quarkus.bootstrap.runner.Timing printStartupTime
+INFO: Installed features: [cdi, rest, smallrye-context-propagation, vertx, websockets-next]
+[pathland] state store: in-memory (Redis unavailable: Unable to connect to localhost/<unresolved>:6379)
+[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 1.646 s <<< FAILURE! -- in com.pathland.quarkus.MultiSessionWebSocketTest
+[ERROR] com.pathland.quarkus.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected -- Time elapsed: 0.767 s <<< ERROR!
+java.util.ConcurrentModificationException
+	at java.base/java.util.ArrayList$ArrayListSpliterator.tryAdvance(ArrayList.java:1695)
+	at java.base/java.util.stream.ReferencePipeline.forEachWithCancel(ReferencePipeline.java:147)
+	at java.base/java.util.stream.AbstractPipeline.copyIntoWithCancel(AbstractPipeline.java:588)
+	at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:574)
+	at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:560)
+	at java.base/java.util.stream.MatchOps$MatchOp.evaluateSequential(MatchOps.java:230)
+	at java.base/java.util.stream.MatchOps$MatchOp.evaluateSequential(MatchOps.java:196)
+	at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:265)
+	at java.base/java.util.stream.ReferencePipeline.anyMatch(ReferencePipeline.java:668)
+	at com.pathland.server.test.WsSession.sawPong(WsSession.java:129)
+	at com.pathland.server.test.MultiSessionProbe.run(MultiSessionProbe.java:101)
+	at com.pathland.quarkus.MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected(MultiSessionWebSocketTest.java:40)
+
+[pathland] ws connection failed: send timed out after 200 ms
+[pathland] ws ping failed (transient, connection open): transient write hiccup
+[pathland] ws ping failed (transient, connection open): transient write hiccup
+[pathland] ws ping failed (transient, connection open): transient write hiccup
+[pathland] ws ping failed (transient, connection open): transient write hiccup
+[pathland] ws send failed (transient, connection open): transient write hiccup
+Oct 03, 2026 7:09:03 AM io.quarkus.bootstrap.runner.Timing printStopTime
+INFO: pathland-quarkus-starter stopped in 0.016s
+[ERROR] Errors: 
+[ERROR]   MultiSessionWebSocketTest.hundredSessionsBehaveAsExpected:40 » ConcurrentModification
+[ERROR] Tests run: 6, Failures: 0, Errors: 1, Skipped: 0
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project pathland-quarkus-starter: 
+[ERROR] 
+[ERROR] Please refer to /home/runner/work/Pathland/Pathland/lib/java/pathland-quarkus-starter/target/surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :pathland-quarkus-starter
