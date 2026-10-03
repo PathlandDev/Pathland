@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4171VSM957EA2AC9X2D674W",
+  "strategy": "manual-commit",
+  "branch": "feat/network-sequence-gap",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/DeltaBatcher.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/DeltaBatcherTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/transport/FrameCodec.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/transport/FrameCodecTest.java",
+    "lib/java/pathland-view/status.md",
+    "lib/rust/crates/pathland-core-transport/src/batch.rs",
+    "lib/rust/crates/pathland-core-transport/src/batching.rs",
+    "lib/rust/crates/pathland-core-transport/src/lib.rs",
+    "lib/rust/crates/pathland-core-transport/src/net.rs",
+    "lib/rust/crates/pathland-core-transport/status.md",
+    "lib/typescript/README.md",
+    "lib/typescript/src/describe.ts",
+    "lib/typescript/src/plpl.ts",
+    "lib/typescript/src/transport.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/plpl.test.ts",
+    "lib/typescript/test/transport.test.ts",
+    "spec/CONFORMANCE.md",
+    "spec/OPCODE.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 328369,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 30166272,
+    "output_tokens": 34503,
+    "api_call_count": 153
+  }
+}
