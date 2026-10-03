@@ -105,7 +105,10 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   durations matching the real files. Catalog (`Track` record, 6 albums)
   with album art + audio served from
   `/_pathland/assets/albumart/*.jpg` and `/_pathland/assets/audio/*.mp3` in both
-  SSR demos. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as
+  SSR demos. The covers are downscaled to **440×440** JPEG (2× the largest
+  rendered 220×220 CSS box, `NowPlayingSidebar`; ~190 KB total vs the original
+  1024×1024 ~960 KB) — JPEG (not WebP) because gdk-pixbuf has no WebP loader, so
+  the GTK desktop host decodes them unchanged. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as
   `newRoot()` and by the **GTK desktop host** (`GtkHost` mounts it directly,
   unchanged); `SplitNavDemo` remains the nav showcase for the Qt host.
 
