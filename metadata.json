@@ -1,0 +1,40 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M407EDKXHNRV68Y5EVH07K88",
+  "strategy": "manual-commit",
+  "branch": "fix/ws-stability",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/MountedPathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/PathlandSocket.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/QuarkusConnection.java",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/QuarkusConnectionTest.java",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandSessionTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandSocket.java",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/signal/Effect.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/signal/Scheduler.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/signal/SignalsTest.java",
+    "lib/java/pathland-view/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1180444,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 22679296,
+    "output_tokens": 86579,
+    "api_call_count": 58
+  }
+}
