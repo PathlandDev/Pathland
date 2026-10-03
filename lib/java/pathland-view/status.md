@@ -105,7 +105,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 - **Resync**: `Commands.Meta.RESYNC`, `FrameCodec.encodeResync`/`isResync`
   (host → guest `META::RESYNC` request), and `Emitter.renderFull()` (re-emit the
   complete retained tree as one snapshot frame — no re-mount).
-- **Heartbeat**: `Commands.Meta.PING`/`PONG` + `FrameCodec.isPing`/`encodePong`
+- **Heartbeat**: `Commands.Meta.PING`/`PONG` + `FrameCodec.isPing`/`encodePing`/`encodePong`/`encodeEnvironment`
   (spec/OPCODE.md §Transport heartbeat — **network batch transport only**, never
   routed into the app): the server answers a client `META::PING` with a
   `META::PONG` batch so the DOM client can detect a silently-stalled connection.

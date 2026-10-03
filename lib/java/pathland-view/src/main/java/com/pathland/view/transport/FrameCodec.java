@@ -70,6 +70,41 @@ public final class FrameCodec {
         return out.toByteArray();
     }
 
+    /** Encode a `META::PING` heartbeat probe batch (guest → host), the vector-16a bytes. */
+    public static byte[] encodePing() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, GUEST_TO_HOST, 0, 1);
+        writeBytes(out, new Opcode(Categories.META, Commands.Meta.PING, 0, 0, 0, 0).toBytes());
+        writeIntLE(out, 0); // empty string section
+        return out.toByteArray();
+    }
+
+    /** Encode a `META::ENVIRONMENT` field batch (viewport + route), as the DOM client sends it. */
+    public static byte[] encodeEnvironment(EnvironmentData env) {
+        byte[] route = env.route().getBytes(StandardCharsets.UTF_8);
+        List<Opcode> ops = new ArrayList<>(3);
+        if (env.viewportWidth() > 0) {
+            ops.add(new Opcode(Categories.META, Commands.Meta.ENVIRONMENT, 0,
+                    Commands.Environment.VIEWPORT_WIDTH, Float.floatToIntBits(env.viewportWidth()), 0));
+        }
+        if (env.viewportHeight() > 0) {
+            ops.add(new Opcode(Categories.META, Commands.Meta.ENVIRONMENT, 0,
+                    Commands.Environment.VIEWPORT_HEIGHT, Float.floatToIntBits(env.viewportHeight()), 0));
+        }
+        // The route string rides the batch's string section at relative offset 0.
+        ops.add(new Opcode(Categories.META, Commands.Meta.ENVIRONMENT, 0,
+                Commands.Environment.ROUTE, 0, 0));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, HOST_TO_GUEST, 0, ops.size());
+        for (Opcode op : ops) {
+            writeBytes(out, op.toBytes());
+        }
+        writeIntLE(out, 4 + route.length);
+        writeIntLE(out, route.length);
+        out.writeBytes(route);
+        return out.toByteArray();
+    }
+
     /** True when the batch is a `META::RESYNC` request (host → guest). */
     public static boolean isResync(byte[] bytes) {
         Parsed parsed = parse(bytes);

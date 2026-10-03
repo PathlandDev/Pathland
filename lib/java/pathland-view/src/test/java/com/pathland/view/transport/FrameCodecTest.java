@@ -34,6 +34,34 @@ class FrameCodecTest {
     }
 
     @Test
+    void encodePingProducesASingleMetaPingBatch() {
+        byte[] bytes = FrameCodec.encodePing();
+        assertTrue(FrameCodec.isPing(bytes), "encodePing is detected as a PING");
+        Frame frame = FrameCodec.decodeFrame(bytes);
+        Opcode op = frame.opcodes().get(0);
+        assertEquals(Categories.META, op.category());
+        assertEquals(Commands.Meta.PING, op.command());
+    }
+
+    @Test
+    void encodeEnvironmentRoundTripsViewportAndRoute() {
+        byte[] bytes = FrameCodec.encodeEnvironment(new EnvironmentData("/kitchen", 1280f, 800f));
+        assertTrue(FrameCodec.isEnvironment(bytes), "encodeEnvironment is detected as an environment batch");
+        EnvironmentData env = FrameCodec.decodeEnvironment(bytes);
+        assertEquals("/kitchen", env.route());
+        assertEquals(1280f, env.viewportWidth());
+        assertEquals(800f, env.viewportHeight());
+    }
+
+    @Test
+    void encodeEnvironmentWithUnknownViewportEmitsOnlyTheRouteField() {
+        byte[] bytes = FrameCodec.encodeEnvironment(EnvironmentData.of("/"));
+        Frame frame = FrameCodec.decodeFrame(bytes);
+        assertEquals(1, frame.opcodes().size(), "no viewport fields when the viewport is unknown");
+        assertEquals(Commands.Environment.ROUTE, frame.opcodes().get(0).a() & 0xFFFF);
+    }
+
+    @Test
     void isPingDetectsAMetaPingBatch() {
         // A META::PING heartbeat probe (guest → host), the exact vector-16a bytes.
         byte[] ping = new byte[16 + 16 + 4];

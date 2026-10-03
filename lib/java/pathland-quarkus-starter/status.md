@@ -12,9 +12,15 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
 - **`PathlandSocket`** — `@WebSocket("/_pathland/ws")` for the root app: 1:1 sessions
   per connection (a fresh `uiId` per connection + the client's `wid` state scope from
   the `?wid=` query param), binary events routed into the root registry of the
-  `PathlandHost`.
+  `PathlandHost`. **Stateless (critical)**: quarkus-websockets-next endpoints default
+  to `@Singleton` — one shared instance for all connections — so the per-connection
+  ids come from `connection.id()` + the handshake and the `QuarkusConnection` adapters
+  live in a map keyed by connection id. Memoizing `uiId`/`wid`/`transport` on the
+  shared instance collapsed every connection onto ONE session (multiple browsers shared
+  one UI model — a probe or second tab drove the first tab's session).
 - **`MountedPathlandSocket`** — `@WebSocket("/{app}/_pathland/ws")` for mounted apps:
   the `{app}` path param resolves the app's registry. Mount paths are single-segment.
+  Same stateless rule as the root socket.
 - **`IndexResource`** — JAX-RS SSR catch-all (`/` + deep links, `/_pathland/**` excluded
   via negative lookahead) dispatching to the longest-mount app (prefix stripped);
   SSR renders defaults (no session cookie — per-window state arrives over the WS);
@@ -65,4 +71,7 @@ public class MyApp {
 Manual: the `pathland-quarkus-demo` renders `/`, `/kitchen`, `/settings` and the 404
 fallback **and a second app at `/app2`**; a WebSocket handshake to `/_pathland/ws` and
 `/app2/_pathland/ws` returns 101. Core behavior is covered by `pathland-server-core`
-tests.
+tests. `MultiSessionWebSocketTest` (`@QuarkusTest`) opens **100 concurrent real WS
+sessions** against `/_pathland/ws` (via the shared `pathland-server-core` test-jar
+probe) and asserts each connects, re-syncs, gets transport-level PONGs, stays isolated,
+and is never closed by the peer.

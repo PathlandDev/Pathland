@@ -54,6 +54,10 @@ public class MyApp {
 ## Verified by
 
 `mvn test` — `PathlandAutoConfigurationTest` (`@SpringBootTest`): a `PathlandApp` bean
-mounts at `/` and SSR renders the root. Manual: the `pathland-spring-boot-demo` renders
-`/`, `/kitchen`, `/settings` and the 404 fallback **and a second app at `/app2`**; a
-WebSocket handshake to `/_pathland/ws` and `/app2/_pathland/ws` returns 101.
+mounts at `/` and SSR renders the root. `MultiSessionWebSocketTest`
+(`@SpringBootTest(RANDOM_PORT)`) opens **100 concurrent real WS sessions** against
+`/_pathland/ws` (via the shared `pathland-server-core` test-jar probe) and asserts each
+connects, re-syncs, gets transport-level PONGs, stays isolated, and is never closed by
+the peer. Manual: the `pathland-spring-boot-demo` renders `/`, `/kitchen`, `/settings`
+and the 404 fallback **and a second app at `/app2`**; a WebSocket handshake to
+`/_pathland/ws` and `/app2/_pathland/ws` returns 101.
