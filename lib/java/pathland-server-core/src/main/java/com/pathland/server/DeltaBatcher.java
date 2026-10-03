@@ -49,6 +49,8 @@ public final class DeltaBatcher {
     private final ByteArrayOutputStream strings = new ByteArrayOutputStream();
     private final AtomicBoolean flushScheduled = new AtomicBoolean(false);
     private int approxBytes;
+    /** Per-session monotonic message sequence, stamped on each flushed batch. */
+    private int nextSequence = 1;
 
     public DeltaBatcher(Consumer<byte[]> sender) {
         this(DEFAULT_FLUSH_INTERVAL_MILLIS, DEFAULT_MAX_BATCH_BYTES, sender);
@@ -98,7 +100,10 @@ public final class DeltaBatcher {
             opcodes.clear();
             strings.reset();
             approxBytes = 0;
-            encoded = FrameCodec.encodeFrame(merged);
+            // Stamp the batch's per-stream sequence so the client can detect a
+            // lost batch (a gap) and recover with META::RESYNC (spec/OPCODE.md
+            // §Sequence gap detection). Only non-empty batches consume a number.
+            encoded = FrameCodec.encodeFrame(merged, nextSequence++);
         }
         sender.accept(encoded);
     }

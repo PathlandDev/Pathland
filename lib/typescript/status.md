@@ -201,6 +201,13 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   for. The PING also counts as inbound WS traffic (keeps Render-free instances from
   spinning down). Tests cover the ping cadence, the no-activity reconnect, and a
   `PONG` resetting the watchdog.
+- **Sequence gap detection** (`transport.ts`, spec/OPCODE.md §Sequence gap
+  detection): the batch header's per-stream monotonic `sequence` lets the client
+  detect a lost batch (a sequence gap without a disconnect), skip the gapped
+  batch, and request `META::RESYNC`; the baseline re-establishes on the next
+  batch and resets on every (re)connect. Host → guest (`PONG`) batches are
+  excluded. Tests cover contiguous runs, a gap (resync + skip), `PONG`
+  exclusion, and re-baselining.
 - **Transport** (`src/transport.ts`): WebSocket connect, protocol-version
   negotiation (mismatch → reload), exponential-backoff reconnect, defensive
   per-batch try/catch, `META::PING`/`META::PONG` heartbeat (above).
@@ -225,9 +232,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   accumulators that need concrete numbers (e.g. `BORDER_WIDTH`'s px suffix,
   shadow radius/x/y) remain literal-only.
 
-- **`frameCount` gap detection** (P3): the client now resyncs on EVERY reconnect via
-  `META::RESYNC`; P3's `frameCount` sequencing lets it resync only when a gap is
-  actually detected.
+- **Sequence gap detection** (`transport.ts`, spec/OPCODE.md §Sequence gap
+  detection): each guest → host batch carries a per-stream monotonic `sequence`.
+  The client baselines on the first batch and, when a batch's sequence breaks the
+  chain (a batch was lost while the socket stayed open), **skips the gapped
+  batch** and requests a full snapshot (`META::RESYNC`), then re-baselines.
+  Host → guest heartbeat (`PONG`) batches are excluded; the baseline resets on
+  every (re)connect. Tests cover contiguous runs (no resync), a gap (resync +
+  skip), `PONG` exclusion, and re-baselining after a gap.
 - **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
   mirrors the Rust SSR — `grid-template-columns`/`grid-template-rows` from the
   `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/

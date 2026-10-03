@@ -17,6 +17,12 @@ codec (both directions). Protocol contract: `spec/OPCODE.md` (Transport).
   batch string section, `Navigate` URLs in the string section, plus all typed
   draft events — focus/edit/submit/scroll/wheel/date-changed). Both directions
   are fully wired at the codec level.
+- **Message sequence** (`sequence`, header offset 8): the batch header carries a
+  per-stream monotonic **message sequence** (the network transport's loss
+  detector; `Batch::sequence()`). The `Batcher` owns the counter and increments
+  it once per flushed batch; heartbeat/request batches carry `0`. Consumers
+  detect a gap and recover with a full snapshot (spec/OPCODE.md §Sequence gap
+  detection).
 - **Batching policy** (`batching.rs`): time/size flush thresholds with arena
   delta tracking.
 - **Conformance vectors 13/14/19** (`conformance.rs`): golden network-batch

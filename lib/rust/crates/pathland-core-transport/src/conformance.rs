@@ -14,7 +14,7 @@ mod tests {
         0x4C, 0x50, 0x4C, 0x50, // magic PLPL (LE)
         0x01, 0x00, // version 1
         0x00, 0x00, // flags guest->host
-        0x01, 0x00, 0x00, 0x00, // frameCount = 1
+        0x01, 0x00, 0x00, 0x00, // sequence = 1
         0x01, 0x00, 0x00, 0x00, // opcodeCount = 1
         0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, // CREATE_NODE (id=1, VSTACK)
@@ -27,19 +27,19 @@ mod tests {
         0x4C, 0x50, 0x4C, 0x50, // magic PLPL (LE)
         0x01, 0x00, // version 1
         0x00, 0x00, // flags
-        0x02, 0x00, 0x00, 0x00, // frameCount = 2
+        0x02, 0x00, 0x00, 0x00, // sequence = 2
         0x00, 0x00, 0x00, 0x00, // opcodeCount = 0
         0x00, 0x00, 0x00, 0x00, // arenaDeltaLen = 0
     ];
 
     /// The canonical bytes for `NETWORK:BATCH` vector 19 (see CONFORMANCE.md):
-    /// frameCount = 3, one DESIGN_TOKEN-referencing SET_PROPERTY, arena delta
+    /// sequence = 3, one DESIGN_TOKEN-referencing SET_PROPERTY, arena delta
     /// = `[len=13]["color.primary"]`.
     const VECTOR_19: &[u8] = &[
         0x4C, 0x50, 0x4C, 0x50, // magic PLPL (LE)
         0x01, 0x00, // version 1
         0x00, 0x00, // flags guest->host
-        0x03, 0x00, 0x00, 0x00, // frameCount = 3
+        0x03, 0x00, 0x00, 0x00, // sequence = 3
         0x01, 0x00, 0x00, 0x00, // opcodeCount = 1
         // PARAMETER:SET_PROPERTY (id=1, COLOR=0x100A, valueType=DESIGN_TOKEN=0x08, arenaRef=0)
         0x02, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0A, 0x10, 0x08, 0x00, 0x00, 0x00, 0x00,
@@ -83,7 +83,7 @@ mod tests {
                 let opcodes: Vec<Opcode> = batch.opcodes().collect();
                 // The decoder has already mirrored the arena delta; re-encoding
                 // with an empty delta produces a valid follow-up batch.
-                encode_batch(batch.frame_count(), batch.flags(), &opcodes, &[])
+                encode_batch(batch.sequence(), batch.flags(), &opcodes, &[])
             };
             // Decoding again (empty delta appended to mirror) must stay valid.
             let _ = decoder.decode(&reencoded).unwrap();

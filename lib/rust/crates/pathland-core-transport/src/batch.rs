@@ -5,7 +5,7 @@ use pathland_core::{Event, Frame, Opcode, category, event, meta};
 
 use crate::{BATCH_MAGIC, BATCH_VERSION};
 
-/// Fixed header byte length: magic(4) + version(2) + flags(2) + frameCount(4) + opcodeCount(4).
+/// Fixed header byte length: magic(4) + version(2) + flags(2) + sequence(4) + opcodeCount(4).
 pub const BATCH_HEADER: usize = 16;
 
 /// Errors produced while decoding a network batch.
@@ -28,14 +28,14 @@ pub enum BatchError {
 /// exactly as with shared-memory frames.
 pub struct Batch<'a> {
     frame: Frame<'a>,
-    frame_count: u32,
+    sequence: u32,
     flags: u16,
 }
 
 impl<'a> core::fmt::Debug for Batch<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Batch")
-            .field("frame_count", &self.frame_count)
+            .field("sequence", &self.sequence)
             .field("flags", &self.flags)
             .field("len", &self.len())
             .finish()
@@ -57,9 +57,9 @@ impl<'a> Batch<'a> {
         self.frame.is_empty()
     }
 
-    /// The guest frame count the batch spans.
-    pub fn frame_count(&self) -> u32 {
-        self.frame_count
+    /// The per-stream monotonic message sequence of this batch.
+    pub fn sequence(&self) -> u32 {
+        self.sequence
     }
 
     /// Direction flags (see [`crate::direction`]).
@@ -84,9 +84,11 @@ impl<'a> Batch<'a> {
 }
 
 /// Serialize one batch from opcodes + an arena delta (bytes appended since the
-/// previous batch). Stateless; see [`BatchEncoder`] for cursor tracking.
+/// previous batch). `sequence` is the per-stream monotonic message sequence
+/// (increment by one per encoded guest → host batch; `0` for heartbeat/request
+/// batches). Stateless; see [`BatchEncoder`] for cursor tracking.
 pub fn encode_batch(
-    frame_count: u32,
+    sequence: u32,
     flags: u16,
     opcodes: &[Opcode],
     arena_delta: &[u8],
@@ -95,7 +97,7 @@ pub fn encode_batch(
     out.extend_from_slice(&BATCH_MAGIC.to_le_bytes());
     out.extend_from_slice(&BATCH_VERSION.to_le_bytes());
     out.extend_from_slice(&flags.to_le_bytes());
-    out.extend_from_slice(&frame_count.to_le_bytes());
+    out.extend_from_slice(&sequence.to_le_bytes());
     out.extend_from_slice(&(opcodes.len() as u32).to_le_bytes());
     for op in opcodes {
         out.extend_from_slice(&op.to_bytes());
@@ -108,12 +110,12 @@ pub fn encode_batch(
 /// Fields parsed from a batch header + payload regions.
 struct ParsedBatch<'a> {
     flags: u16,
-    frame_count: u32,
+    sequence: u32,
     opcodes: &'a [u8],
     arena_delta: &'a [u8],
 }
 
-/// Parse a batch header, returning flags, frame count, opcode bytes and arena delta.
+/// Parse a batch header, returning flags, sequence, opcode bytes and arena delta.
 fn parse(bytes: &[u8]) -> Result<ParsedBatch<'_>, BatchError> {
     if bytes.len() < BATCH_HEADER {
         return Err(BatchError::Truncated);
@@ -127,7 +129,7 @@ fn parse(bytes: &[u8]) -> Result<ParsedBatch<'_>, BatchError> {
         return Err(BatchError::BadVersion);
     }
     let flags = u16::from_le_bytes(bytes[6..8].try_into().unwrap());
-    let frame_count = u32::from_le_bytes(bytes[8..12].try_into().unwrap());
+    let sequence = u32::from_le_bytes(bytes[8..12].try_into().unwrap());
     let opcode_count = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
 
     let opcodes_bytes = opcode_count
@@ -156,7 +158,7 @@ fn parse(bytes: &[u8]) -> Result<ParsedBatch<'_>, BatchError> {
 
     Ok(ParsedBatch {
         flags,
-        frame_count,
+        sequence,
         opcodes: &bytes[opcodes_start..opcodes_end],
         arena_delta: &bytes[arena_start..arena_end],
     })
@@ -184,7 +186,7 @@ impl BatchEncoder {
     ///
     /// If the frame contains `META::RESET`, arena tracking restarts (the arena
     /// cursor returns to 0) and the full used arena is sent.
-    pub fn encode(&mut self, frame_count: u32, opcodes: &[Opcode], arena_used: &[u8]) -> Vec<u8> {
+    pub fn encode(&mut self, sequence: u32, opcodes: &[Opcode], arena_used: &[u8]) -> Vec<u8> {
         let reset = opcodes.iter().any(|op| {
             op.category() == pathland_core::category::META
                 && op.command() == pathland_core::meta::RESET
@@ -198,7 +200,7 @@ impl BatchEncoder {
             // Arena shrank unexpectedly: send the full used arena again.
             arena_used
         };
-        let bytes = encode_batch(frame_count, crate::direction::GUEST_TO_HOST, opcodes, delta);
+        let bytes = encode_batch(sequence, crate::direction::GUEST_TO_HOST, opcodes, delta);
         self.last_arena_len = arena_used.len();
         bytes
     }
@@ -248,7 +250,7 @@ impl BatchDecoder {
         let frame = Frame::from_parts(parsed.opcodes, &self.arena, 0, parsed.opcodes.len());
         Ok(Batch {
             frame,
-            frame_count: parsed.frame_count,
+            sequence: parsed.sequence,
             flags: parsed.flags,
         })
     }
@@ -265,8 +267,9 @@ impl BatchDecoder {
 /// the `HOST_TO_GUEST` direction flag. `TextChanged` events carry their text in
 /// the batch's string section (a length-prefixed entry referenced by the
 /// opcode's `B` offset), as do `Navigate` URLs; the string section is only
-/// empty when there are no such events.
-pub fn encode_events(frame_count: u32, events: &[Event]) -> Vec<u8> {
+/// empty when there are no such events. Host → guest batches do not participate
+/// in the guest → host sequence, so `sequence` is normally `0`.
+pub fn encode_events(sequence: u32, events: &[Event]) -> Vec<u8> {
     let mut opcodes = Vec::new();
     let mut strings = Vec::new();
     for ev in events {
@@ -300,10 +303,10 @@ pub fn encode_events(frame_count: u32, events: &[Event]) -> Vec<u8> {
             other => opcodes.push(other.encode()),
         }
     }
-    encode_batch(frame_count, crate::direction::HOST_TO_GUEST, &opcodes, &strings)
+    encode_batch(sequence, crate::direction::HOST_TO_GUEST, &opcodes, &strings)
 }
 
-/// Decode a host → guest event batch, returning `(frame_count, events)`.
+/// Decode a host → guest event batch, returning `(sequence, events)`.
 ///
 /// Unknown or malformed event opcodes are skipped. `TextChanged` opcodes and
 /// `Navigate` URL opcodes resolve their strings from the batch's string section.
@@ -337,7 +340,7 @@ pub fn decode_events(bytes: &[u8]) -> Result<(u32, Vec<Event>), BatchError> {
             }
         })
         .collect();
-    Ok((batch.frame_count(), events))
+    Ok((batch.sequence(), events))
 }
 
 /// Build a self-contained `Frame` view over in-memory opcodes + a string
@@ -447,7 +450,6 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
         assign_ids(&mut root, &mut 1);
 
         let mut engine = Engine::new();
-        let frame_count;
         let opcodes;
         let arena_used;
         {
@@ -455,7 +457,6 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
             guest.begin_frame();
             engine.emit(&root, &mut guest).unwrap();
             guest.end_frame();
-            frame_count = guest.frame_count();
 
             let mut host = pathland_core::Host::new(&mut mem, &layout);
             let frame = &host.frames()[0];
@@ -468,7 +469,7 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
         }
 
         let mut enc = BatchEncoder::new();
-        let batch_bytes = enc.encode(frame_count, &opcodes, &arena_used);
+        let batch_bytes = enc.encode(7, &opcodes, &arena_used);
 
         let mut decoder = BatchDecoder::new();
         let mut tree = RenderTree::default();
@@ -492,7 +493,7 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
         let mut decoder = BatchDecoder::new();
         {
             let batch = decoder.decode(&bytes).unwrap();
-            assert_eq!(batch.frame_count(), 7);
+            assert_eq!(batch.sequence(), 7);
             assert_eq!(batch.len(), opcodes.len());
             assert_eq!(batch.arena_str(0).unwrap(), "hello");
             let decoded: Vec<Opcode> = batch.opcodes().collect();
@@ -586,8 +587,8 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
             },
         ];
         let bytes = encode_events(7, &events);
-        let (frame_count, decoded) = decode_events(&bytes).unwrap();
-        assert_eq!(frame_count, 7);
+        let (sequence, decoded) = decode_events(&bytes).unwrap();
+        assert_eq!(sequence, 7);
         assert_eq!(decoded, events);
     }
 
@@ -606,8 +607,8 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
             },
         ];
         let bytes = encode_events(3, &events);
-        let (frame_count, decoded) = decode_events(&bytes).unwrap();
-        assert_eq!(frame_count, 3);
+        let (sequence, decoded) = decode_events(&bytes).unwrap();
+        assert_eq!(sequence, 3);
         assert_eq!(decoded, events);
     }
 
@@ -620,8 +621,8 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
             Event::Navigate { url: None },
         ];
         let bytes = encode_events(5, &events);
-        let (frame_count, decoded) = decode_events(&bytes).unwrap();
-        assert_eq!(frame_count, 5);
+        let (sequence, decoded) = decode_events(&bytes).unwrap();
+        assert_eq!(sequence, 5);
         assert_eq!(decoded, events);
     }
 
@@ -636,8 +637,8 @@ pub fn decode_frame(bytes: &[u8]) -> Result<(Vec<Opcode>, Vec<u8>), BatchError> 
             Event::DateChanged { target: 6, days: 19_723, millis: 0 },
         ];
         let bytes = encode_events(4, &events);
-        let (frame_count, decoded) = decode_events(&bytes).unwrap();
-        assert_eq!(frame_count, 4);
+        let (sequence, decoded) = decode_events(&bytes).unwrap();
+        assert_eq!(sequence, 4);
         assert_eq!(decoded, events);
     }
 

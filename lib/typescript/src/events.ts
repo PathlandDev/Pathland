@@ -43,7 +43,7 @@ function eventBatch(command: number, a: number, b: number, c: number, opcodeFlag
   view.setUint32(0, MAGIC, true);
   view.setUint16(4, VERSION, true);
   view.setUint16(6, 0, true); // batch flags = guest -> host
-  view.setUint32(8, 0, true); // frameCount
+  view.setUint32(8, 0, true); // sequence (0: not a delta batch)
   view.setUint32(12, 1, true); // opcodeCount
   const pos = HEADER_SIZE;
   view.setUint8(pos, CAT_EVENT);
@@ -62,7 +62,7 @@ export function encodeResync(): Uint8Array {
   view.setUint32(0, MAGIC, true);
   view.setUint16(4, VERSION, true);
   view.setUint16(6, 0x0001, true); // batch flags = HOST_TO_GUEST
-  view.setUint32(8, 0, true); // frameCount
+  view.setUint32(8, 0, true); // sequence (0: not a delta batch)
   view.setUint32(12, 1, true); // opcodeCount
   const pos = HEADER_SIZE;
   view.setUint8(pos, CAT_META);
@@ -80,7 +80,7 @@ export function encodePing(): Uint8Array {
   view.setUint32(0, MAGIC, true);
   view.setUint16(4, VERSION, true);
   view.setUint16(6, 0x0000, true); // batch flags = guest -> host
-  view.setUint32(8, 0, true); // frameCount
+  view.setUint32(8, 0, true); // sequence (0: not a delta batch)
   view.setUint32(12, 1, true); // opcodeCount
   const pos = HEADER_SIZE;
   view.setUint8(pos, CAT_META);

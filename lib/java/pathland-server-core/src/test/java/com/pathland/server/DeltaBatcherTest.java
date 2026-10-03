@@ -81,6 +81,25 @@ class DeltaBatcherTest {
     }
 
     @Test
+    void stampsIncrementingSequencesAndSkipsEmptyFlushes() {
+        List<byte[]> sent = new ArrayList<>();
+        DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, sent::add);
+
+        batcher.flush(); // nothing pending: must not consume a sequence number
+        batcher.append(new Frame(List.of(new Opcode(
+                Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, 0, 0)), new byte[0]));
+        batcher.flush();
+        batcher.append(new Frame(List.of(new Opcode(
+                Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 2, 0, 0)), new byte[0]));
+        batcher.flush();
+        batcher.close();
+
+        assertEquals(2, sent.size());
+        assertEquals(1, FrameCodec.sequence(sent.get(0)), "first batch sequence");
+        assertEquals(2, FrameCodec.sequence(sent.get(1)), "second batch sequence");
+    }
+
+    @Test
     void blockingSenderDoesNotHoldTheBatcherLock() throws Exception {
         // The sender runs OUTSIDE the monitor, so a blocking send (a slow/half-dead
         // client) can never stall the actor thread's append.

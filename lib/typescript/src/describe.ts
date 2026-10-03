@@ -303,10 +303,10 @@ function describeOpcode(batch: Batch, op: Opcode): string {
 export function describeBatch(batch: Batch): string {
   const first = batch.opcodes[0];
   const head = first ? describeOpcode(batch, first) : "(no opcodes)";
-  return `frame=${batch.frameCount} (${batch.opcodes.length} op${batch.opcodes.length === 1 ? "" : "s"}): ${head}`;
+  return `seq=${batch.sequence} (${batch.opcodes.length} op${batch.opcodes.length === 1 ? "" : "s"}): ${head}`;
 }
 
 /** Full per-opcode listing (for `debug`). */
 export function describeBatchDetail(batch: Batch): string {
-  return `frame=${batch.frameCount} [${batch.opcodes.map((op) => describeOpcode(batch, op)).join("; ")}]`;
+  return `seq=${batch.sequence} [${batch.opcodes.map((op) => describeOpcode(batch, op)).join("; ")}]`;
 }

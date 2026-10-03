@@ -1,14 +1,14 @@
 // WebSocket transport: connects to the server's reserved `/_pathland/ws`,
 // applies each received PLPL batch to the DOM renderer, negotiates the protocol
-// version, and reports raw-input events back. Reconnect/backoff live here;
-// session-resync and frameCount gap handling are P3 (the module seam is the
-// `onBatch` hook).
+// version, and reports raw-input events back. Reconnect/backoff, heartbeat, and
+// sequence-gap recovery (lost batches without a disconnect → META::RESYNC) live
+// here.
 
 import type { Batch } from "./plpl";
 import { ProtocolError, parseBatch } from "./plpl";
 import { applyBatch, type DomRenderer } from "./apply";
 import { encodePing, encodeResync } from "./events";
-import { VERSION } from "./constants";
+import { FLAG_HOST_TO_GUEST, VERSION } from "./constants";
 import { log } from "./log";
 import { describeBatch, describeBatchDetail } from "./describe";
 
@@ -19,7 +19,7 @@ export interface TransportOptions {
   url: string;
   /** The retained-node registry deltas are applied to. */
   renderer: DomRenderer;
-  /** Invoked after a batch is successfully applied (P3: resync/frameCount hooks). */
+  /** Invoked after a batch is successfully applied. */
   onBatch?: (batch: Batch) => void;
   onStatus?: (status: TransportStatus) => void;
   /**
@@ -58,6 +58,12 @@ export class Transport {
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private watchdogTimer: ReturnType<typeof setInterval> | null = null;
   private lastActivityAt = 0;
+  /**
+   * The sequence the next guest → host delta batch must carry, or `null` before
+   * the first batch / after a gap or reconnect (re-baseline on the next batch).
+   * See spec/OPCODE.md §Sequence gap detection.
+   */
+  private expectedSequence: number | null = null;
 
   constructor(options: TransportOptions) {
     this.options = options;
@@ -146,6 +152,9 @@ export class Transport {
       // already has the whole UI from the SSR HTML. On EVERY open (before any
       // resync) the client sends its environment (viewport + route).
       this.lastActivityAt = Date.now();
+      // Re-baseline the sequence on the next guest → host batch (a fresh
+      // connection's stream restarts; see §Sequence gap detection).
+      this.expectedSequence = null;
       const reconnected = this.attempt > 0;
       this.attempt = 0;
       log.info("ws", reconnected ? "connected (reconnect)" : "connected");
@@ -212,6 +221,21 @@ export class Transport {
       location.reload();
       return;
     }
+    // Sequence gap detection (spec/OPCODE.md §Sequence gap detection): a
+    // guest → host delta batch whose sequence breaks the chain means one or more
+    // batches were lost while the socket stayed open. Do not apply the gapped
+    // batch (its deltas assume the lost state); request a full snapshot and
+    // re-baseline on the next batch.
+    if (this.isSequenceGap(batch)) {
+      log.warn(
+        "ws",
+        `sequence gap: expected ${this.expectedSequence}, got ${batch.sequence} — requesting RESYNC`,
+      );
+      this.expectedSequence = null;
+      this.send(encodeResync());
+      return;
+    }
+    this.trackSequence(batch);
     try {
       applyBatch(batch, this.options.renderer);
     } catch (err) {
@@ -222,5 +246,25 @@ export class Transport {
       throw err;
     }
     this.options.onBatch?.(batch);
+  }
+
+  /**
+   * True when a guest → host delta batch breaks the expected sequence chain.
+   * Host → guest batches (heartbeat `PONG`, request echoes) carry sequence 0 and
+   * are not part of the guest → host stream, so they are ignored here.
+   */
+  private isSequenceGap(batch: Batch): boolean {
+    if ((batch.flags & FLAG_HOST_TO_GUEST) !== 0) {
+      return false;
+    }
+    return this.expectedSequence !== null && batch.sequence !== this.expectedSequence;
+  }
+
+  /** Advance the expected sequence from a guest → host delta batch (baseline or next). */
+  private trackSequence(batch: Batch): void {
+    if ((batch.flags & FLAG_HOST_TO_GUEST) !== 0) {
+      return;
+    }
+    this.expectedSequence = batch.sequence + 1;
   }
 }
