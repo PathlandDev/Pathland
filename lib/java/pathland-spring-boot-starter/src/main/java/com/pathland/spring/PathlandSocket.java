@@ -58,10 +58,16 @@ public class PathlandSocket extends AbstractWebSocketHandler {
                 registry.resync(uiId(session));
             } else if (FrameCodec.isPing(bytes)) {
                 // A transport-liveness heartbeat probe (guest → host): reply PONG at the
-                // transport layer — no actor/session dependency (spec/OPCODE.md §Transport heartbeat).
+                // transport layer — no actor/session dependency (spec/OPCODE.md §Transport
+                // heartbeat). Best-effort: a send on a concurrently-closing session must
+                // not throw out of handleMessage (Spring would close the connection).
                 SpringConnection conn = connections.get(session);
                 if (conn != null) {
-                    conn.send(FrameCodec.encodePong());
+                    try {
+                        conn.send(FrameCodec.encodePong());
+                    } catch (RuntimeException ignored) {
+                        // the client is gone — the session's own send path will drop it
+                    }
                 }
             } else if (FrameCodec.isEnvironment(bytes)) {
                 // The DOM client's FIRST message: seeds the session (created lazily) from

@@ -15,6 +15,14 @@ final class SpringConnection implements PathlandConnection, AutoCloseable {
 
     @Override
     public void send(byte[] bytes) {
+        // A send on a closed/closing session is expected during teardown (the client
+        // disconnected, or a concurrent transport error closed the session). Skipping it
+        // keeps a PONG or a delta from throwing out of a message handler, which Spring's
+        // ExceptionWebSocketHandlerDecorator would treat as a handler failure and close
+        // the session (killing every subsequent delta for that client).
+        if (!session.isOpen()) {
+            return;
+        }
         try {
             session.sendMessage(new BinaryMessage(bytes));
         } catch (Exception e) {
