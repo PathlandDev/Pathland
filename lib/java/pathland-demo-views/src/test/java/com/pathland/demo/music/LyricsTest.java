@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -38,6 +39,25 @@ class LyricsTest {
         assertFalse(a.isEmpty());
         assertFalse(b.isEmpty());
         assertNotEquals(a, b, "a cue boundary rolls the karaoke block forward");
+    }
+
+    @Test
+    void theCurrentLineAdvancesThroughTheBlock() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        Lyrics.Cue cue = cues.stream().filter(c -> c.lines().size() > 1)
+                .findFirst().orElse(null);
+        assertNotNull(cue, "the song has a multi-line cue");
+        assertEquals(0, Lyrics.currentIndex("Pathland Crossing", cue.start() + 0.001f),
+                "the first line is current at the cue start");
+        int last = Lyrics.blockFor("Pathland Crossing", cue.start() + 0.001f).size() - 1;
+        assertEquals(last, Lyrics.currentIndex("Pathland Crossing", cue.end() - 0.001f),
+                "the last line is current at the cue end");
+    }
+
+    @Test
+    void currentIndexIsMinusOneOutOfRangeOrWithoutLyrics() {
+        assertEquals(-1, Lyrics.currentIndex("Building on Solid Ground", 999999f));
+        assertEquals(-1, Lyrics.currentIndex("No Such Track", 0f));
     }
 
     @Test

@@ -77,11 +77,14 @@ public final class MusicPlayerView implements View {
 
     @Override
     public View body() {
-        // The synced karaoke lyric block for the current track + play position,
-        // shown only while playing.
+        // The synced karaoke lyric block + the current (being-sung) line index
+        // for the current track + play position, shown only while playing.
         var block = computed(() -> playing.get()
                 ? Lyrics.blockFor(at(trackIndex.get()).title(), position.get())
                 : List.<String>of());
+        var current = computed(() -> playing.get()
+                ? Lyrics.currentIndex(at(trackIndex.get()).title(), position.get())
+                : -1);
         return ZStack.of(Alignment.BOTTOM_CENTER,
                 HStack.of(
                         new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
@@ -92,17 +95,17 @@ public final class MusicPlayerView implements View {
                         seekRequest.signal(), volumeRequest.signal())
                         .with(Border.of(Color.rgb(200,200,200), 1, 16))
                 ).with(Padding.of(16)),
-                subtitlePill(block)
+                subtitlePill(block, current)
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
     }
 
     /** The karaoke lyric pill just above the floating player bar: the current
-     *  cue's block in italic — the newest (last) line bright white, the earlier
-     *  chorus lines dimmed — on a translucent black pill; invisible (clear)
-     *  when there is no block. Taps pass through to the content beneath. */
-    private static View subtitlePill(Signal<List<String>> block) {
+     *  cue's block in italic, with the line currently being sung bright white
+     *  and the other chorus lines dimmed, on a translucent black pill;
+     *  invisible (clear) when there is no block. Taps pass through. */
+    private static View subtitlePill(Signal<List<String>> block, Signal<Integer> current) {
         List<View> rows = new ArrayList<>();
         for (int i = 0; i < MAX_LYRICS_LINES; i++) {
             int index = i;
@@ -110,7 +113,7 @@ public final class MusicPlayerView implements View {
                     .with(FontSize.of(13))
                     .with(FontStyleMod.of(FontStyle.ITALIC))
                     .with(ForegroundStyle.of(computed(() ->
-                            index == block.get().size() - 1
+                            index == current.get()
                                     ? Color.WHITE
                                     : Color.argb(170, 255, 255, 255)))));
         }

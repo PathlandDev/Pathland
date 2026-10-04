@@ -60,6 +60,31 @@ public final class Lyrics {
         return List.of();
     }
 
+    /**
+     * The index of the line **currently being sung** within the covering cue's
+     * cleaned block: the block's lines are sung in order across the cue's
+     * {@code [start, end)} window, so the current index is the proportional
+     * sub-position ({@code 0} at the start, {@code n-1} at the end). {@code -1}
+     * when out of range / no lyrics / a blank block.
+     */
+    public static int currentIndex(String title, float seconds) {
+        for (Cue cue : cuesFor(title)) {
+            if (seconds >= cue.start() && seconds < cue.end()) {
+                int n = (int) cue.lines().stream()
+                        .map(Lyrics::clean)
+                        .filter(l -> !l.isEmpty())
+                        .count();
+                if (n == 0) {
+                    return -1;
+                }
+                float window = cue.end() - cue.start();
+                float t = window > 0 ? (seconds - cue.start()) / window : 0f;
+                return Math.min(n - 1, (int) (t * n));
+            }
+        }
+        return -1;
+    }
+
     /** The parsed cues for a title (cached); empty when no lyrics file. */
     public static List<Cue> cuesFor(String title) {
         return CACHE.computeIfAbsent(title, Lyrics::load);
