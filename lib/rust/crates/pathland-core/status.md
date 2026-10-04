@@ -96,6 +96,19 @@ tracks what this crate implements.
 - **Shared linear memory**: 80-byte header, guest→host ring, host→guest event
   ring, guest arena, host→guest **event arena** (two-way string section — a
   host `send_event(TextChanged)` round-trips text over the shared ring).
+- **Wrap-safe ring reads (both directions)**: the masked write cursor can lap
+  the read cursor numerically (the producer wraps through 0), and the naive
+  `write < read` guard in `read_events` / `Host::frames` **permanently
+  deadlocked the ring** at the wrap boundary — the reader never advanced again,
+  the writer sat "full", and every subsequent drain returned empty (the GTK
+  demo's "UI freezes some time into a song, audio keeps playing": events were
+  written but `drain_events` returned 0 forever). Both readers now count the
+  pending run modulo the ring size and drain across the wrap in ring order
+  (`Host::frames` drains the wrapped head in one call and the tail in the next,
+  preserving opcode order). Event drains also take a `max` bound
+  (`drain_event_opcodes_max`) so a fixed-size C buffer never drops events it
+  could not copy. Regression tests: `ring::tests::read_events_drains_a_wrapped_producer`
+  + `tests::host_frames_survives_a_wrapped_write_cursor`.
 - **Conformance vectors** (`conformance.rs`): TREE/PARAMETER/META/EVENT golden
   bytes **incl. vectors 17–18, 20–27** (`SET_DESIGN_TOKEN` (COLOR +
   STRING-valued), `DESIGN_TOKEN`-typed `SET_PROPERTY`, `NAVIGATE`±URL,

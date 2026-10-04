@@ -367,7 +367,7 @@ impl<'a> Guest<'a> {
     /// The guest (app/engine) polls this to receive renderer-reported inputs.
     pub fn drain_events(&mut self) -> Vec<Event> {
         let mask = self.mask();
-        let ops = ring_fn::read_events(&self.event_slots, self.header, mask);
+        let ops = ring_fn::read_events(&self.event_slots, self.header, mask, usize::MAX);
         ops.into_iter()
             .filter_map(|op| crate::events::decode_event(&op, self.event_arena))
             .collect()
@@ -378,7 +378,15 @@ impl<'a> Guest<'a> {
     /// the raw bytes.
     pub fn drain_event_opcodes(&mut self) -> Vec<Opcode> {
         let mask = self.mask();
-        ring_fn::read_events(&self.event_slots, self.header, mask)
+        ring_fn::read_events(&self.event_slots, self.header, mask, usize::MAX)
+    }
+
+    /// Drain at most `max` raw `EVENT`-category opcodes, leaving the rest
+    /// pending for a later call (so a caller with a fixed-size buffer never
+    /// drops events it couldn't copy).
+    pub fn drain_event_opcodes_max(&mut self, max: usize) -> Vec<Opcode> {
+        let mask = self.mask();
+        ring_fn::read_events(&self.event_slots, self.header, mask, max)
     }
 
     /// The host → guest event arena bump cursor (diagnostics/tests).
@@ -538,35 +546,43 @@ impl<'a> Host<'a> {
         let start = ring_fn::cursor(self.header, OFF_READ_CURSOR, mask);
         let end = ring_fn::cursor(self.header, OFF_WRITE_CURSOR, mask);
 
-        // The POC producer flushes before the ring fills, so `end >= start`
-        // always holds. Guard against a wrapped ring by draining nothing; a
-        // wrapped producer must flush first (see OPCODE.md backpressure).
-        if end < start {
+        // The masked write cursor can wrap past the read cursor (the producer
+        // laps the reader numerically). The pending run is counted modulo the
+        // ring size; a plain `end < start` guard would permanently deadlock the
+        // ring at the wrap boundary (the reader never advances again). A
+        // wrapped run is drained in two calls — first the [start..slots) head,
+        // then the [0..end) tail — advancing `readCursor` between them, so the
+        // opcodes still reach the consumer in ring order.
+        let count = end.wrapping_sub(start) & mask;
+        if count == 0 {
             return Vec::new();
         }
-
-        // No new opcodes since the last drain (readCursor == writeCursor). This
-        // also covers a freshly-created host view whose `consumed` counter
-        // starts at 0 but whose cursors have already been drained by an earlier
-        // view — without this, `next_frame` would return empty frames forever.
-        if start == end {
-            return Vec::new();
-        }
+        let run_end = (start + count) & mask; // exclusive slot index of the full run
+        let (drain_to_slot, frame_byte_end) = if run_end > start {
+            (run_end, run_end * Opcode::SIZE)
+        } else {
+            (0, self.slots.len()) // wrapped: drain the head now, the tail next call
+        };
 
         let frames = vec![Frame {
             slots: self.slots,
             arena: self.arena,
             start: start * Opcode::SIZE,
-            end: end * Opcode::SIZE,
+            end: frame_byte_end,
         }];
 
-        header::set_u32(self.header, OFF_READ_CURSOR, end as u32);
+        header::set_u32(self.header, OFF_READ_CURSOR, drain_to_slot as u32);
         self.consumed = frame_count;
 
         // A `META::RESET` invalidates prior state: reset the host → guest event
         // arena cursor so the host starts bump-allocating fresh (matching the
         // guest arena's reset-on-RESET semantics).
-        let reset_seen = self.slots[start * Opcode::SIZE..end * Opcode::SIZE]
+        let drained_end_byte = if drain_to_slot > start {
+            drain_to_slot * Opcode::SIZE
+        } else {
+            self.slots.len() // wrapped head: drained [start .. ring end)
+        };
+        let reset_seen = self.slots[start * Opcode::SIZE..drained_end_byte]
             .chunks_exact(Opcode::SIZE)
             .any(|slot| {
                 let bytes: [u8; 16] = slot.try_into().unwrap();
@@ -801,7 +817,7 @@ mod tests {
     }
 
     #[test]
-    fn host_frames_guards_against_wrapped_cursors() {
+    fn host_frames_survives_a_wrapped_write_cursor() {
         let layout = MemoryLayout {
             slot_count: 4,
             arena_bytes: MemoryLayout::default().arena_bytes,
@@ -810,23 +826,47 @@ mod tests {
         let mut mem = vec![0u8; layout.total_bytes()];
         init_memory(&mut mem, &layout);
 
+        // Guest writes three opcodes (slots 0,1,2; capacity is slot_count-1).
         {
-            // Produce one opcode, then advance readCursor past writeCursor by
-            // manipulating the header (simulating a wrapped producer whose data
-            // the consumer must not misread).
             let mut guest = Guest::new(&mut mem, &layout);
             guest.begin_frame();
             guest.create_node(1, component_type::VSTACK).unwrap();
+            guest.create_node(2, component_type::HSTACK).unwrap();
+            guest.create_node(3, component_type::TEXT).unwrap();
             guest.end_frame();
-
-            let (header, _) = mem.split_at_mut(memory::HEADER_SIZE);
-            // writeCursor = 1; push readCursor to 3 so masked read(3) >
-            // masked write(1).
-            memory::header::set_u32(header, memory::OFF_READ_CURSOR, 3);
+        }
+        // Host drains everything -> readCursor = 3.
+        {
+            let mut host = Host::new(&mut mem, &layout);
+            assert_eq!(host.frames().len(), 1);
+        }
+        // Guest writes one more opcode -> slot 3, writeCursor wraps 3 -> 0.
+        // Now masked write(0) < masked read(3) — the wrap that used to
+        // permanently deadlock the frame ring.
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            guest.create_node(4, component_type::TEXT).unwrap();
+            guest.end_frame();
         }
 
+        // The wrapped run is the head [3..4) + a (here empty) tail [0..0): the
+        // first read drains the head in ring order...
         let mut host = Host::new(&mut mem, &layout);
-        // The wrapped-ring guard drains nothing rather than emitting garbage.
+        let frames = host.frames();
+        assert_eq!(frames.len(), 1);
+        assert_eq!(frames[0].opcodes().count(), 1);
+        assert_eq!(frames[0].opcodes().next().unwrap().a(), 4);
+        // ...and readCursor advanced to 0, so nothing is left pending.
         assert!(host.frames().is_empty());
+        // And the producer can wrap again without ever deadlocking.
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            guest.create_node(5, component_type::TEXT).unwrap();
+            guest.end_frame();
+        }
+        let mut host = Host::new(&mut mem, &layout);
+        assert_eq!(host.frames()[0].opcodes().next().unwrap().a(), 5);
     }
 }

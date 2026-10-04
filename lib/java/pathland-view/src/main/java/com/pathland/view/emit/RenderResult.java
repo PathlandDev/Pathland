@@ -18,6 +18,7 @@ import java.util.function.Consumer;
  * @param tapActions      node id → pointer-up action
  * @param textInputs      node id → text-input sink (TEXT_CHANGED)
  * @param valueInputs     node id → value-input sink (VALUE_CHANGED)
+ * @param editingInputs   node id → editing-changed sink (EDITING_CHANGED)
  * @param dateInputs      node id → date-input sink (DATE_CHANGED)
  * @param mediaInputs     node id → media-event sink (MEDIA_*; bound AUDIO/VIDEO)
  * @param navigateActions node id → declarative route-change action (a {@code .navigate/
@@ -31,6 +32,7 @@ public record RenderResult(
         Map<Integer, Runnable> tapActions,
         Map<Integer, Consumer<String>> textInputs,
         Map<Integer, Consumer<Float>> valueInputs,
+        Map<Integer, Consumer<Boolean>> editingInputs,
         Map<Integer, DateInput> dateInputs,
         Map<Integer, MediaInput> mediaInputs,
         Map<Integer, Runnable> navigateActions,

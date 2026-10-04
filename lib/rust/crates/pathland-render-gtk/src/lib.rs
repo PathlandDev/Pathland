@@ -30,7 +30,7 @@ pub use host::{describe, render_tree_from_frame, HostNode, RenderTree};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use std::sync::Mutex;
+use std::sync::{mpsc, Mutex};
 use std::time::{Duration, Instant};
 
 use libadwaita::prelude::*;
@@ -572,19 +572,57 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
                 gesture.connect_released(move |_, _, _, _| {
                     gs.borrow_mut().remove(&id);
                 });
-                if want_editing {
-                    if let Some(sink) = sink.clone() {
-                        let s = sink.clone();
-                        gesture.connect_pressed(move |_, _, _, _| {
-                            s.borrow_mut()(Event::EditingChanged { target: id, editing: true });
-                        });
-                        let s = sink.clone();
-                        gesture.connect_released(move |_, _, _, _| {
-                            s.borrow_mut()(Event::EditingChanged { target: id, editing: false });
-                        });
+if want_editing {
+            if let Some(sink) = sink.clone() {
+                let s = sink.clone();
+                gesture.connect_pressed(move |_, _, _, _| {
+                    s.borrow_mut()(Event::EditingChanged { target: id, editing: true });
+                });
+                let s = sink.clone();
+                gesture.connect_released(move |_, _, _, _| {
+                    s.borrow_mut()(Event::EditingChanged { target: id, editing: false });
+                });
+            }
+            // Settle-based drag-end fallback: a `GtkScale`'s own drag gesture can
+            // consume the button release, so `GestureClick::released` may not fire
+            // and the session would never end (the app's seek-on-release would never
+            // commit). Each user value-change during the session (programmatic VALUE
+            // is suppressed in-flight) re-arms a ~DRAG_SETTLE_MS timer; when the drag
+            // settles the timer ends the session and reports EDITING_CHANGED(false).
+            if let Ok(scale) = widget.clone().downcast::<gtk::Scale>() {
+                let settle = Rc::new(RefCell::new(None::<glib::SourceId>));
+                let sdrag = drag_state.clone();
+                let ssink = sink.clone();
+                scale.connect_value_changed(move |_| {
+                    if sdrag.borrow().contains(&id) {
+                        if let Some(src) = settle.borrow_mut().take() {
+                            src.remove();
+                        }
+                        let s2 = settle.clone();
+                        let d2 = sdrag.clone();
+                        let k2 = ssink.clone();
+                        let src = glib::timeout_add_local(
+                            Duration::from_millis(DRAG_SETTLE_MS),
+                            move || {
+                                if d2.borrow().contains(&id) {
+                                    d2.borrow_mut().remove(&id);
+                                    if let Some(k) = k2.clone() {
+                                        k.borrow_mut()(Event::EditingChanged {
+                                            target: id,
+                                            editing: false,
+                                        });
+                                    }
+                                }
+                                *s2.borrow_mut() = None;
+                                glib::ControlFlow::Break
+                            },
+                        );
+                        *settle.borrow_mut() = Some(src);
                     }
-                }
-                widget.add_controller(gesture);
+                });
+            }
+        }
+        widget.add_controller(gesture);
             }
             _ => {}
         }
@@ -637,114 +675,112 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
 
         // Playback state: the node's current value (a source change re-emits only
         // AUDIO_SOURCE, so the retained PLAYBACK_STATE is authoritative — a skip
-        // while playing therefore resumes automatically).
+        // while playing therefore resumes automatically). Sent to the worker,
+        // which applies the state change off the GTK main thread.
         let playing = node.u32_property(property_id::PLAYBACK_STATE, 0) != 0;
-        player.requested_playing.set(playing);
-        let state = if playing {
-            gst::State::Playing
-        } else {
-            gst::State::Paused
-        };
-        let _ = player.pipeline.set_state(state);
+        let _ = player.ctrl.send(MediaControl::Play(playing));
 
-        // Seek — only when meaningful: the app echoes every MEDIA_TIME_UPDATED
-        // back as MEDIA_POSITION, so a write matching the position we last
-        // reported must NOT seek (it would fight the network-delayed echo and
-        // cause per-second jitter). A real seek (user drag / prev / next) to a
-        // different position still fires.
+        // Seek — only on a CHANGE (mirrors the web client, which acts on
+        // `MEDIA_POSITION` deltas): the app's command signal stays fixed during
+        // playback, so re-reading the retained value on every reconcile must not
+        // re-seek to the stale target as the stream advances (the skip-back bug).
+        // A changed target is DEBOUNCED: it is coalesced by a short main-context
+        // timer and handed to the worker as a single seek, so a drag flooding
+        // `MEDIA_POSITION` (or any continuous-seek app) never blocks the UI in
+        // GStreamer's FLUSH seek — that seek runs on the worker thread — and the
+        // last target wins. The echo guard (should_seek against the last
+        // REPORTED position) still suppresses a write matching the renderer's own
+        // report (per-second jitter).
         let target = f64::from(node.f32_property(property_id::MEDIA_POSITION, 0.0));
-        if should_seek(player.last_reported.get() as f64, target) {
-            let _ = player.playbin.seek_simple(
-                gst::SeekFlags::FLUSH,
-                gst::ClockTime::from_seconds_f64(target),
-            );
-            player.suppress_until.set(monotonic_ms() + 250);
+        if seek_target_changed(player.last_seek.get(), target) {
+            player.last_seek.set(Some(target as f32));
+            if should_seek(player.last_reported.get() as f64, target) {
+                player.pending_seek.replace(Some(target as f32));
+                player.arm_seek();
+            }
         }
 
         let volume = node.f32_property(property_id::MEDIA_VOLUME, 1.0);
-        player.playbin.set_property("volume", f64::from(volume.clamp(0.0, 1.0)));
+        let _ = player
+            .ctrl
+            .send(MediaControl::Volume(volume.clamp(0.0, 1.0)));
     }
 
     /// Create a media player for a node: a GStreamer `playbin` pipeline driven by
-/// the node's control properties, with a periodic reporter that both polls the
-/// stream position (`MEDIA_TIME_UPDATED`) and drains the pipeline bus for
-/// `EOS` (`MEDIA_ENDED`) / errors (play-state false). The bus is polled on the
-/// main thread (not via `connect_message`, which requires a `Send` closure the
-/// renderer's `Rc`-based sink cannot provide). Returns `None` when GStreamer
-/// is unavailable.
+/// the node's control properties. All GStreamer work — state changes, seeks,
+/// position queries, and the bus drain for `EOS` (`MEDIA_ENDED`) / errors —
+/// runs on a dedicated worker thread, so the GTK main thread never makes a
+/// blocking GStreamer call (the "UI freezes some time into a song" class of
+/// bug). The worker reports raw stream positions and lifecycle events over a
+/// channel; a main-thread timer applies the echo-guard/suppress logic and
+/// delivers `MEDIA_TIME_UPDATED` / `MEDIA_ENDED` / play-state events. Returns
+/// `None` when GStreamer is unavailable.
 fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlayer> {
     let (pipeline, playbin) = build_playbin(&resolved)?;
     let suppress_until = Rc::new(Cell::new(0u64));
     let last_reported = Rc::new(Cell::new(0f32));
-    let requested_playing = Rc::new(Cell::new(false));
-    let Some(sink) = self.event_sink.clone() else {
-        return Some(MediaPlayer {
-            pipeline,
-            playbin,
-            source: resolved,
-            requested_playing,
-            suppress_until,
-            last_reported,
-            timer: None,
-        });
+    let last_seek = Rc::new(Cell::new(None));
+    let pending_seek = Rc::new(RefCell::new(None));
+    let seek_timer = Rc::new(RefCell::new(None));
+
+    let (ctrl_tx, ctrl_rx) = mpsc::channel::<MediaControl>();
+    let (report_tx, report_rx) = mpsc::channel::<MediaReport>();
+    let worker = std::thread::Builder::new()
+        .name(format!("pathland-media-{id}"))
+        .spawn(move || media_worker_loop(pipeline, playbin, ctrl_rx, report_tx))
+        .ok()?;
+
+    // Periodic report router (~4 Hz): drains the worker's reports and applies
+    // the echo-guard/suppress logic (pure math over the main-thread cells)
+    // before the app sees anything. Suppressed briefly after a seek.
+    let result_timer = match self.event_sink.clone() {
+        Some(sink) => {
+            let suppress = suppress_until.clone();
+            let last = last_reported.clone();
+            let timer = glib::timeout_add_local(Duration::from_millis(250), move || {
+                while let Ok(report) = report_rx.try_recv() {
+                    match report {
+                        MediaReport::Position(seconds) => {
+                            if monotonic_ms() >= suppress.get()
+                                && should_report_time(last.get(), seconds)
+                            {
+                                last.set(seconds);
+                                sink.borrow_mut()(Event::MediaTimeUpdated {
+                                    target: id,
+                                    seconds,
+                                });
+                            }
+                        }
+                        MediaReport::SeekApplied => {
+                            suppress.set(monotonic_ms() + 250);
+                        }
+                        MediaReport::Ended => {
+                            sink.borrow_mut()(Event::MediaEnded { target: id });
+                        }
+                        MediaReport::Error => {
+                            sink.borrow_mut()(Event::MediaPlayStateChanged {
+                                target: id,
+                                playing: false,
+                            });
+                        }
+                    }
+                }
+                glib::ControlFlow::Continue
+            });
+            Some(timer)
+        }
+        None => None,
     };
 
-    // Periodic position reporter (~4 Hz while playing, mirroring the web
-    // client's `timeupdate` cadence). Suppressed briefly after a seek. Also
-    // drains the pipeline bus: EOS → MEDIA_ENDED, an error → play-state false
-    // (so the app's play button isn't left stuck on a failed stream).
-    let timer_pipeline = pipeline.clone();
-    let timer_playbin = playbin.clone();
-    let timer_sink = sink;
-    let timer_suppress = suppress_until.clone();
-    let timer_last = last_reported.clone();
-    let timer_playing = requested_playing.clone();
-    let timer = glib::timeout_add_local(Duration::from_millis(250), move || {
-        if let Some(bus) = timer_pipeline.bus() {
-            while let Some(msg) = bus.pop() {
-                match msg.view() {
-                    gst::MessageView::Eos(_) => {
-                        timer_sink.borrow_mut()(Event::MediaEnded { target: id });
-                        timer_playing.set(false);
-                    }
-                    gst::MessageView::Error(err) => {
-                        eprintln!(
-                            "pathland-gtk media error: {}",
-                            err.error().message()
-                        );
-                        timer_playing.set(false);
-                        timer_sink.borrow_mut()(Event::MediaPlayStateChanged {
-                            target: id,
-                            playing: false,
-                        });
-                    }
-                    _ => {}
-                }
-            }
-        }
-        if timer_playing.get() && monotonic_ms() >= timer_suppress.get() {
-            let seconds = timer_playbin
-                .query_position::<gst::ClockTime>()
-                .map(|t| t.nseconds() as f32 / 1_000_000_000.0)
-                .unwrap_or(0.0);
-            if should_report_time(timer_last.get(), seconds) {
-                timer_last.set(seconds);
-                timer_sink.borrow_mut()(Event::MediaTimeUpdated {
-                    target: id,
-                    seconds,
-                });
-            }
-        }
-        glib::ControlFlow::Continue
-    });
     Some(MediaPlayer {
-        pipeline,
-        playbin,
         source: resolved,
-        requested_playing,
-        suppress_until,
         last_reported,
-        timer: Some(timer),
+        last_seek,
+        pending_seek,
+        seek_timer,
+        ctrl: ctrl_tx,
+        result_timer,
+        thread: Some(worker),
     })
 }
 
@@ -1337,6 +1373,16 @@ fn monotonic_ms() -> u64 {
     START.get_or_init(Instant::now).elapsed().as_millis() as u64
 }
 
+/// Debounce for coalescing `MEDIA_POSITION` seeks: a drag floods writes, and a
+/// GStreamer FLUSH seek can block the caller — one seek per interval, applied
+/// off the input signal path (the last target wins).
+const SEEK_DEBOUNCE_MS: u64 = 80;
+
+/// A slider drag session is considered ended when no value-change arrives for
+/// this long (the settle fallback for `GtkScale` drags, whose release can be
+/// consumed by the scale's own gesture and never reach `GestureClick::released`).
+const DRAG_SETTLE_MS: u64 = 150;
+
 /// Whether a `MEDIA_POSITION` write is a real seek (a user drag) rather than
 /// the app's echo of its own `MEDIA_TIME_UPDATED` — within 0.25s of the
 /// current position it is an echo and must not interrupt playback.
@@ -1349,6 +1395,17 @@ fn should_seek(last_reported_seconds: f64, target_seconds: f64) -> bool {
     (last_reported_seconds - target_seconds).abs() > 0.25
 }
 
+/// Whether a `MEDIA_POSITION` target is a CHANGE worth evaluating (vs the same
+/// retained value re-read on every reconcile): the seek runs only on deltas,
+/// mirroring the web client (which applies `MEDIA_POSITION` when the emitter
+/// re-sends it). The very first read is always a change.
+fn seek_target_changed(previous: Option<f32>, target_seconds: f64) -> bool {
+    match previous {
+        None => true,
+        Some(prev) => (f64::from(prev) - target_seconds).abs() > 0.01,
+    }
+}
+
 /// Whether a `MEDIA_TIME_UPDATED` should be reported: the playback position
 /// advanced ~1 second since the last report (the cadence the web client uses,
 /// so both renderers tick the seek bar once per second).
@@ -1356,41 +1413,201 @@ fn should_report_time(last_seconds: f32, current_seconds: f32) -> bool {
     (current_seconds - last_seconds).abs() >= 1.0
 }
 
-/// A renderer-owned media player: the native `GtkMediaFile` (GStreamer-backed,
-/// shipped inside GTK4) that plays a node's `AUDIO_SOURCE`/`VIDEO_SOURCE`, plus
-/// the state the event wiring shares with the stream's signals and the periodic
-/// time reporter. The app owns all playback state; this is only the rendered
-/// output (the desktop analog of the web client's hidden `<audio>`).
+/// A control message from the GTK main thread to a media player's worker
+/// thread (which owns the pipeline). Sends are non-blocking and unbounded; the
+/// worker applies the operation off the main thread.
+enum MediaControl {
+    /// Apply the app's requested playback state (a no-op if unchanged).
+    Play(bool),
+    /// Seek to a position in seconds (a GStreamer FLUSH seek).
+    Seek(f32),
+    /// Set the volume (0..1).
+    Volume(f32),
+    /// Release the pipeline and end the worker thread.
+    Stop,
+}
+
+/// A report from the media worker thread back to the GTK main thread, where the
+/// echo-guard/suppress logic runs before the app sees the event.
+enum MediaReport {
+    /// The raw stream position in seconds.
+    Position(f32),
+    /// A seek was just applied (start the post-seek echo-suppression window).
+    SeekApplied,
+    /// The stream reached end-of-stream.
+    Ended,
+    /// The stream failed.
+    Error,
+}
+
+/// A renderer-owned media player: a worker thread owns the GStreamer `playbin`
+/// pipeline (state, seeks, position, bus) so the GTK main thread never makes a
+/// blocking GStreamer call; the main thread holds only the seek debounce and
+/// echo-guard cells and the channels to/from the worker. The app owns all
+/// playback state; this is only the rendered output (the desktop analog of the
+/// web client's hidden `<audio>`).
 struct MediaPlayer {
-    /// The GStreamer pipeline hosting the `playbin` (owns the bus).
-    pipeline: gst::Pipeline,
-    /// The `playbin` element (source URI, volume, position, seeks).
-    playbin: gst::Element,
     /// The resolved source it was created for (to detect a source change).
     source: String,
-    /// The app's last requested play state (drives the time reporter and
-    /// resume-on-source-change).
-    requested_playing: Rc<Cell<bool>>,
-    /// Monotonic ms until which time updates are suppressed (a just-applied
-    /// seek must not echo back as a new position).
-    suppress_until: Rc<Cell<u64>>,
     /// The position of the last `MEDIA_TIME_UPDATED` this renderer reported —
     /// the echo guard for `MEDIA_POSITION` writes (spec/EVENTS.md Media: a
     /// write matching the last reported position is the app echoing the report
     /// back, not a seek, and must not seek regardless of network latency).
     last_reported: Rc<Cell<f32>>,
-    /// The periodic time-update/bus-poll source (removed on teardown so a dead
-    /// node's pipeline is released).
-    timer: Option<glib::SourceId>,
+    /// The last `MEDIA_POSITION` value this renderer processed — the seek is
+    /// evaluated only when the target CHANGES (mirrors the web client, which
+    /// acts on `MEDIA_POSITION` deltas). The app's command signal stays fixed
+    /// during playback, so re-reading it on every reconcile must not re-seek
+    /// to the stale target as the stream advances.
+    last_seek: Rc<Cell<Option<f32>>>,
+    /// The latest coalesced seek target awaiting the debounce timer (a drag
+    /// floods `MEDIA_POSITION`; only the last target wins).
+    pending_seek: Rc<RefCell<Option<f32>>>,
+    /// The debounced seek source: sends the LATEST `pending_seek` to the worker
+    /// on the main context AFTER the input signal handler returns, coalescing a
+    /// drag's many `MEDIA_POSITION` writes into at most one seek per interval.
+    /// The GStreamer FLUSH seek itself runs on the worker thread.
+    seek_timer: Rc<RefCell<Option<glib::SourceId>>>,
+    /// The control channel to the worker thread (non-blocking sends).
+    ctrl: mpsc::Sender<MediaControl>,
+    /// The main-thread source that drains the worker's reports into the sink.
+    /// Removed on teardown so a dead node's pipeline is released.
+    result_timer: Option<glib::SourceId>,
+    /// The worker thread (joined on teardown).
+    thread: Option<std::thread::JoinHandle<()>>,
 }
 
 impl MediaPlayer {
-    /// Cancel the periodic reporter and release the pipeline.
-    fn teardown(self) {
-        if let Some(timer) = self.timer {
+    /// Cancel the report router and the debounced seek, release the pipeline
+    /// (via the worker) and join the worker thread.
+    fn teardown(mut self) {
+        if let Some(timer) = self.result_timer.take() {
             timer.remove();
         }
-        let _ = self.pipeline.set_state(gst::State::Null);
+        if let Some(seek) = self.seek_timer.borrow_mut().take() {
+            seek.remove();
+        }
+        let _ = self.ctrl.send(MediaControl::Stop);
+        if let Some(worker) = self.thread.take() {
+            let _ = worker.join();
+        }
+    }
+
+    /// Arm (or keep) the debounced seek: a one-shot main-context timeout that
+    /// hands the LATEST `pending_seek` to the worker — coalescing a drag's many
+    /// `MEDIA_POSITION` writes into at most one seek per interval, OFF the input
+    /// signal path. The FLUSH seek runs on the worker thread, so a
+    /// continuous-seek app can never block the UI in GStreamer's seek.
+    fn arm_seek(&self) {
+        if self.seek_timer.borrow().is_some() {
+            return; // a debounce is already pending; it will apply the latest target
+        }
+        let ctrl = self.ctrl.clone();
+        let pending = self.pending_seek.clone();
+        let timer = self.seek_timer.clone();
+        let id = glib::timeout_add_local(Duration::from_millis(SEEK_DEBOUNCE_MS), move || {
+            if let Some(target) = pending.borrow_mut().take() {
+                let _ = ctrl.send(MediaControl::Seek(target));
+            }
+            *timer.borrow_mut() = None;
+            glib::ControlFlow::Break
+        });
+        *self.seek_timer.borrow_mut() = Some(id);
+    }
+}
+
+/// The media worker loop: owns the `playbin` pipeline and performs every
+/// GStreamer operation — state changes, seeks, the position query, and the bus
+/// drain — off the GTK main thread, so no GStreamer call can freeze the UI
+/// (audio keeps playing on its own streaming threads, but a blocking query or
+/// seek on the main loop is exactly the "UI stops responding some time into a
+/// song" class of bug). Raw positions and lifecycle events are reported back
+/// over `report_tx`; the main thread applies the echo-guard/suppress logic.
+fn media_worker_loop(
+    pipeline: gst::Pipeline,
+    playbin: gst::Element,
+    ctrl_rx: mpsc::Receiver<MediaControl>,
+    report_tx: mpsc::Sender<MediaReport>,
+) {
+    let mut playing = false;
+    let mut last_state_playing: Option<bool> = None;
+    let mut last_volume: Option<f32> = None;
+    let mut reporting = true;
+    loop {
+        // Block up to the poll interval for a control message, then fall
+        // through to the periodic bus drain + position poll.
+        match ctrl_rx.recv_timeout(Duration::from_millis(250)) {
+            Ok(MediaControl::Play(p)) => {
+                if last_state_playing != Some(p) {
+                    last_state_playing = Some(p);
+                    playing = p;
+                    let _ = pipeline.set_state(if p {
+                        gst::State::Playing
+                    } else {
+                        gst::State::Paused
+                    });
+                }
+            }
+            Ok(MediaControl::Seek(target)) => {
+                let _ = playbin.seek_simple(
+                    gst::SeekFlags::FLUSH,
+                    gst::ClockTime::from_seconds_f64(f64::from(target)),
+                );
+                let _ = report_tx.send(MediaReport::SeekApplied);
+            }
+            Ok(MediaControl::Volume(volume)) => {
+                if last_volume != Some(volume) {
+                    last_volume = Some(volume);
+                    let _ = playbin.set_property("volume", f64::from(volume));
+                }
+            }
+            Ok(MediaControl::Stop) => {
+                let _ = pipeline.set_state(gst::State::Null);
+                break;
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+
+        // Drain the pipeline bus (a blocking wait is safe off the main thread):
+        // EOS → MEDIA_ENDED, an error → play-state false (so the app's play
+        // button isn't left stuck on a failed stream).
+        if let Some(bus) = pipeline.bus() {
+            loop {
+                match bus.timed_pop(gst::ClockTime::ZERO) {
+                    Some(msg) => match msg.view() {
+                        gst::MessageView::Eos(_) => {
+                            playing = false;
+                            let _ = report_tx.send(MediaReport::Ended);
+                        }
+                        gst::MessageView::Error(err) => {
+                            eprintln!(
+                                "pathland-gtk media error: {}",
+                                err.error().message()
+                            );
+                            playing = false;
+                            let _ = report_tx.send(MediaReport::Error);
+                        }
+                        _ => {}
+                    },
+                    None => break,
+                }
+            }
+        }
+
+        // Report the stream position while playing (~4 Hz, mirroring the web
+        // client's `timeupdate` cadence; the main thread decides whether to
+        // forward it). Stop polling once the report channel is gone.
+        if playing && reporting {
+            if let Some(seconds) = playbin
+                .query_position::<gst::ClockTime>()
+                .map(|t| t.nseconds() as f32 / 1_000_000_000.0)
+            {
+                if report_tx.send(MediaReport::Position(seconds)).is_err() {
+                    reporting = false;
+                }
+            }
+        }
     }
 }
 
@@ -2620,6 +2837,17 @@ mod tests {
         assert!(!should_seek(120.0, 120.1));
         assert!(!should_seek(120.1, 120.0));
         assert!(!should_seek(30.0, 30.0));
+    }
+
+    #[test]
+    fn media_seek_is_change_gated() {
+        // The seek runs only when MEDIA_POSITION CHANGES (delta semantics, the
+        // web client's behavior): re-reading the retained value on every
+        // reconcile must not re-seek to the stale target as playback advances.
+        assert!(seek_target_changed(None, 0.0), "the first read is a change");
+        assert!(seek_target_changed(Some(0.0), 30.0), "a real seek changes the target");
+        assert!(!seek_target_changed(Some(30.0), 30.0), "the retained target re-read is a no-op");
+        assert!(!seek_target_changed(Some(30.0), 30.004), "tiny jitter is not a change");
     }
 
     #[test]

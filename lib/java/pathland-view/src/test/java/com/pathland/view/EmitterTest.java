@@ -3,6 +3,7 @@ package com.pathland.view;
 import com.pathland.view.emit.Emitter;
 import com.pathland.view.emit.Frame;
 import com.pathland.view.emit.FrameOpcodeSink;
+import com.pathland.view.emit.InputDispatcher;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.emit.RenderResult;
@@ -316,6 +317,23 @@ class EmitterTest {
         assertEquals(1, result.valueInputs().size(), "the value control exposes one input sink");
         result.valueInputs().values().iterator().next().accept(0.75f);
         assertEquals(0.75f, value.get(), "VALUE_CHANGED writes straight into the bound signal");
+    }
+
+    @Test
+    void sliderEditingBoundariesRouteIntoTheCallback() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        List<Boolean> edits = new java.util.ArrayList<>();
+        View slider = Slider.of(Signals.signal(0f), 0f, 1f, edits::add);
+        RenderResult result = emitter.mount(slider, Environment.DEFAULT);
+
+        assertEquals(1, result.editingInputs().size(),
+                "an onEditingChanged slider exposes an editing sink");
+        InputDispatcher dispatcher = new InputDispatcher(result, Signals.signal(""));
+        dispatcher.dispatch(Event.editingChanged(result.rootId(), true));
+        dispatcher.dispatch(Event.editingChanged(result.rootId(), false));
+        assertEquals(List.of(true, false), edits,
+                "EDITING_CHANGED routes the drag boundaries into the callback");
     }
 
     @Test

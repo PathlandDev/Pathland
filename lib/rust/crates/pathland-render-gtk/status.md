@@ -75,7 +75,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   session boundaries are reported as **`EDITING_CHANGED`** (press/release) and
   **`FOCUS_CHANGED`** (`EventControllerFocus` enter/leave) when the node
   declares the `LISTEN_EDITING`/`LISTEN_FOCUS` bits — the app-side escape
-  hatch to suppress echoes of any derived state during a session.
+  hatch to suppress echoes of any derived state during a session. Because a
+  `GtkScale`'s own drag gesture can consume the button release, sliders also
+  end the session via a **settle fallback**: each user `value-changed` during
+  a drag re-arms a ~150 ms timer that, when the drag settles, clears the
+  session and reports `EDITING_CHANGED(false)` — so an app's seek-on-release
+  commits even when `GestureClick::released` never fires.
 - **Platform back / `NAVIGATE`**: a window-level `EventControllerKey`
   (capture phase, attached once in `run_with_pump`) maps Escape — and
   BackSpace when no text entry has focus — to `Event::Navigate { url: None }`
@@ -130,18 +135,34 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `PLAYBACK_STATE` → pipeline `Playing`/`Paused`, `MEDIA_POSITION` → seek
   (**echo-guarded**: a write matching the position the renderer last REPORTED
   — the app's `MEDIA_TIME_UPDATED` echo — does not seek, even at network
-  latency; spec/EVENTS.md Media), `MEDIA_VOLUME` → playbin volume. Media events report back
-  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (a 250 ms reporter
-  polls `query_position` while the app requested playing and reports only when
-  the position advanced ~1 second — the same cadence as the web client — 
-  suppressed briefly after a seek), `MEDIA_ENDED` and error → play-state-false
-  from polling the pipeline bus (`EOS`/`Error` messages, on the main thread).
-  Playback is
+  latency; spec/EVENTS.md Media), `MEDIA_VOLUME` → playbin volume. The seek is
+  also **change-gated** (only a `MEDIA_POSITION` that changed since the last
+  read is evaluated — the web client's delta semantics) so the retained command
+  value, which stays fixed during playback, is never re-applied as a seek as the
+  stream advances (which caused the position to skip back periodically). A changed
+  target is also **debounced** (a one-shot ~80 ms main-context timer hands the
+  LATEST target to the worker) so a drag flooding `MEDIA_POSITION` — or any
+  continuous-seek app — never blocks the UI in GStreamer's FLUSH seek (coalesced
+  to ~12/s, last position wins). Media events report back
+  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (the worker's 250 ms
+  poll of `query_position` while playing reports only when the position advanced
+  ~1 second — the same cadence as the web client — suppressed briefly after a
+  seek), `MEDIA_ENDED` and error → play-state-false from the worker polling the
+  pipeline bus (`EOS`/`Error` messages). Playback is
   **GStreamer-direct** because GTK4's own media backend (`GtkMediaFile`) is
   compiled out of some builds (Homebrew's `gtk4` ships with
   `-Dmedia-gstreamer=disabled`); the app owns all playback state, the pipeline is
   the renderer's rendered output (the desktop analog of the web client's hidden
   `<audio>`).
+  - **Media runs on a dedicated worker thread**: each media player owns a
+    `pathland-media-<id>` thread that performs *every* GStreamer operation —
+    state changes, FLUSH seeks, `query_position`, and the bus drain — so the GTK
+    main thread never makes a blocking GStreamer call (the "UI stops responding
+    some time into a song, audio keeps playing" class of bug). The main thread
+    sends non-blocking control messages (`Play`/`Seek`/`Volume`/`Stop`) and a
+    250 ms timer drains the worker's reports, applying the echo-guard/suppress
+    logic (`should_report_time`, the post-seek suppression window set when the
+    worker reports `SeekApplied`) before the sink sees them.
 - **Asset root**: `pathland_gtk_set_asset_root(const char*)` sets a directory
   that web-style `/_pathland/...` media/image source paths resolve against
   (`/_pathland/assets/x` → `<root>/assets/x`), so desktop apps reference the same

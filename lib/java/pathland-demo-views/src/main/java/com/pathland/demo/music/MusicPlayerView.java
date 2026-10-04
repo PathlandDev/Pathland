@@ -30,7 +30,7 @@ public final class MusicPlayerView implements View {
     static final Color ACTIVE_ROW_FG = Color.rgb(0x1A, 0x3A, 0x8C);
     static final Color SIDEBAR_BG = Color.rgb(0xF6, 0xF7, 0xFA);
     static final Color BAR_BORDER = Color.rgb(0xE2, 0xE8, 0xF0);
-    static final Color BAR_BG = Color.rgb(0xFB, 0xFB, 0xFD);
+    static final Color BAR_BG = Color.argb(0xBF, 0xFB, 0xFB, 0xFD);
 
     /** The demo library: six Pathland concept tracks, one album each. */
     static final List<Track> TRACKS = List.of(
@@ -87,7 +87,7 @@ public final class MusicPlayerView implements View {
                 : "");
         return ZStack.of(Alignment.BOTTOM_CENTER,
                 HStack.of(
-                        new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
+                        new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
                         new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
                 ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL)),
                 HStack.of(

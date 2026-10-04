@@ -74,6 +74,10 @@ public final class PathlandNode {
     /** Writable value-input sink (sliders/switches); the emitter routes VALUE_CHANGED into it. */
     public Consumer<Float> valueInput;
 
+    /** Editing-changed sink (sliders/text fields); the emitter routes EDITING_CHANGED
+     *  (drag/commit boundaries) into it when the node declared the EDITING listener bit. */
+    public Consumer<Boolean> editingInput;
+
     /** Writable date-input sink (date pickers); the emitter routes DATE_CHANGED into it. */
     public DateInput dateInput;
 
