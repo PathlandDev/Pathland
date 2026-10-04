@@ -1,0 +1,49 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M42T7S6AHYMAH96SDZPTKHYF",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-04T06:40:10.952977Z",
+  "branch": "fix/zstack-grid-minmax",
+  "checkpoints_count": 12,
+  "save_step_count": 1,
+  "files_touched": [],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "b224d82085be",
+  "checkpoint_transcript_start": 2416,
+  "transcript_lines_at_start": 2416,
+  "compact_transcript_start": 2416,
+  "token_usage": {
+    "input_tokens": 1115993,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 17302144,
+    "output_tokens": 68539,
+    "api_call_count": 133
+  },
+  "session_metrics": {
+    "turn_count": 149
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 2,
+      "user_lines_removed": 2,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/MusicPlayerView.java": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/MusicPlayerView.java": 2
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2,
+      "agent_lines_removed": 2
+    }
+  ]
+}
