@@ -16,24 +16,28 @@ public final class LibraryView implements View {
     private final WritableSignal<Integer> trackIndex;
     private final WritableSignal<Float> position;
     private final WritableSignal<Boolean> playing;
+    private final WritableSignal<Float> seekRequest;
 
     /**
      * @param trackIndex the current track index
      * @param position   the play position (seconds), reset on selection
      * @param playing    whether a track is playing
+     * @param seekRequest the seek command signal (seconds), reset on selection so
+     *                    the newly-selected track starts from the beginning
      */
     public LibraryView(WritableSignal<Integer> trackIndex, WritableSignal<Float> position,
-                       WritableSignal<Boolean> playing) {
+                       WritableSignal<Boolean> playing, WritableSignal<Float> seekRequest) {
         this.trackIndex = trackIndex;
         this.position = position;
         this.playing = playing;
+        this.seekRequest = seekRequest;
     }
 
     @Override
     public View body() {
         List<View> rows = new ArrayList<>();
         for (int i = 0; i < MusicPlayerView.TRACKS.size(); i++) {
-            rows.add(new TrackRowView(MusicPlayerView.TRACKS.get(i), i, trackIndex, position, playing));
+            rows.add(new TrackRowView(MusicPlayerView.TRACKS.get(i), i, trackIndex, position, playing, seekRequest));
         }
         // A trailing spacer absorbs the leftover vertical space.
         rows.add(Spacer.of());

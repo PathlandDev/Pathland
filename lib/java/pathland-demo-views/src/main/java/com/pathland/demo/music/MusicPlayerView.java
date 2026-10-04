@@ -87,7 +87,7 @@ public final class MusicPlayerView implements View {
                 : "");
         return ZStack.of(Alignment.BOTTOM_CENTER,
                 HStack.of(
-                        new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
+                        new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
                         new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
                 ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL)),
                 HStack.of(

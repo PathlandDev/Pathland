@@ -17,21 +17,26 @@ public final class TrackRowView implements View {
     private final WritableSignal<Integer> trackIndex;
     private final WritableSignal<Float> position;
     private final WritableSignal<Boolean> playing;
+    private final WritableSignal<Float> seekRequest;
 
     /**
-     * @param track      the track this row represents
-     * @param index      the track's index in the library
-     * @param trackIndex the current track index (drives the highlight)
-     * @param position   the play position (seconds), reset on selection
-     * @param playing    set to true when the row is selected
+     * @param track       the track this row represents
+     * @param index       the track's index in the library
+     * @param trackIndex  the current track index (drives the highlight)
+     * @param position    the play position (seconds), reset on selection
+     * @param playing     set to true when the row is selected
+     * @param seekRequest the seek command signal (seconds), reset on selection so
+     *                    the newly-selected track starts from the beginning
      */
     public TrackRowView(Track track, int index, WritableSignal<Integer> trackIndex,
-                        WritableSignal<Float> position, WritableSignal<Boolean> playing) {
+                        WritableSignal<Float> position, WritableSignal<Boolean> playing,
+                        WritableSignal<Float> seekRequest) {
         this.track = track;
         this.index = index;
         this.trackIndex = trackIndex;
         this.position = position;
         this.playing = playing;
+        this.seekRequest = seekRequest;
     }
 
     @Override
@@ -55,6 +60,7 @@ public final class TrackRowView implements View {
                 () -> {
                     trackIndex.set(index);
                     position.set(0f);
+                    seekRequest.set(0f);
                     playing.set(true);
                 })
                 .with(Background.of(bg), ForegroundStyle.of(fg))
