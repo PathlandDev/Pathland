@@ -73,7 +73,7 @@ public final class PlayerControlsStyle implements AudioStyle {
                 groups,
                 Slider.of(new PercentSeek(seek,
                                 () -> MusicPlayerView.at(trackIndex.get()).duration()),
-                        0f, 100f)
+                        0f, 100f, seek::onEditingChanged)
                         .with(FrameMod.of(Float.POSITIVE_INFINITY), Padding.of(0, 16, 0, 16))
         );
     }

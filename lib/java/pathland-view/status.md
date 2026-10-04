@@ -97,7 +97,11 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   emitter's value-input registry; `TextEditor` mirrors `TextField`.
   `DatePicker` emits `PARAMETER::SET_DATE` (and re-emits it on signal change via a
   node-level date binding) and routes `DATE_CHANGED` through a dedicated
-  date-input registry (`RenderResult.dateInputs`).
+  date-input registry (`RenderResult.dateInputs`). `Slider.of(binding, min, max,
+  onEditingChanged)` sets the **`EDITING`** listener bit and routes
+  **`EDITING_CHANGED`** drag boundaries into the callback through a dedicated
+  editing-input registry (`RenderResult.editingInputs`, `InputDispatcher`) — the
+  spec/EVENTS.md `onEditingChanged` hook for seek-on-release etc.
 - **Events**: the full catalog round-trips — pointer, `KEY_*`, `VALUE_CHANGED`,
   `TEXT_CHANGED`, `FOCUS_CHANGED`, `EDITING_CHANGED`, `SUBMIT`, `SCROLL`,
   `WHEEL`, `DATE_CHANGED`; listener bits `0..9` declared

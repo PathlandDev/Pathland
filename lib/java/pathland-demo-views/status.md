@@ -97,7 +97,10 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   bound to `MEDIA_POSITION`/`MEDIA_VOLUME` written only on a user drag) so a
   `MEDIA_TIME_UPDATED`/`MEDIA_VOLUME_CHANGED` report never echoes back as a
   seek/volume command (spec/EVENTS.md Media — the per-second echo caused seek
-  jitter). The 8
+  jitter). The seek bar is **seek-on-release**: it declares `Slider.onEditingChanged`
+  (the `EDITING` listener bit) and `SeekControl` buffers the drag and commits the
+  seek command once when the drag ends — one `MEDIA_POSITION` per drag, identical
+  on web and GTK (both renderers send the `EDITING_CHANGED` boundaries). The 8
   tracks are **Pathland concept songs** — one per album, genre-matched invented
   artists (The Foundation, The Crossings, Rena Render, Ember Frame, Rowan
   Frame, Neon Protocol, Open Land, The Byte Ensemble) — sourced from bundled

@@ -235,6 +235,15 @@ function boot(): void {
   // In-flight interaction (spec EVENTS.md): while a range slider is being
   // dragged, inbound VALUE deltas are suppressed (the thumb is
   // user-authoritative until release), so a server echo can't cause flicker.
+  // Sliders that declared the EDITING listener bit also get EDITING_CHANGED
+  // boundaries (drag start/end) — e.g. a seek bar that commits on release.
+  let activeEditingNode: HTMLElement | null = null;
+  const endSliderEditing = () => {
+    if (activeEditingNode) {
+      transport.send(encodeEditingChanged(Number(activeEditingNode.getAttribute("data-pathland-id")), false));
+      activeEditingNode = null;
+    }
+  };
   document.addEventListener(
     "pointerdown",
     (event) => {
@@ -242,13 +251,27 @@ function boot(): void {
       const range = target?.closest<HTMLInputElement>("input[type=range]");
       if (range) {
         markRangeInFlight(range);
+        const node = range.closest<HTMLElement>("[data-pathland-id]");
+        if (node && listens(node, LISTEN_EDITING)) {
+          activeEditingNode = node;
+          transport.send(encodeEditingChanged(Number(node.getAttribute("data-pathland-id")), true));
+        }
       }
     },
     true,
   );
-  document.addEventListener("pointerup", () => clearInFlightRange());
-  document.addEventListener("pointercancel", () => clearInFlightRange());
-  document.addEventListener("blur", () => clearInFlightRange(), true);
+  document.addEventListener("pointerup", () => {
+    endSliderEditing();
+    clearInFlightRange();
+  });
+  document.addEventListener("pointercancel", () => {
+    endSliderEditing();
+    clearInFlightRange();
+  });
+  document.addEventListener("blur", () => {
+    endSliderEditing();
+    clearInFlightRange();
+  }, true);
 
   document.addEventListener("pointermove", (event) => {
     const target = event.target as Element;

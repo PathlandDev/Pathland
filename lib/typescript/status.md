@@ -127,7 +127,11 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   tracked via `src/inFlight.ts` (marked on `pointerdown`, cleared on
   `pointerup`/`pointercancel`/`blur`); while in-flight, inbound `VALUE` deltas
   are **suppressed** (`apply.ts` `PROP_VALUE`), so a server echo can't fight
-  the pointer and flicker the thumb.
+  the pointer and flicker the thumb. A slider that declared the **`EDITING`**
+  listener bit also gets **`EDITING_CHANGED`** boundaries — `encodeEditingChanged
+  (id, true)` on drag start and `(id, false)` on release/`pointercancel`/`blur`
+  (`index.ts`, gated on `data-event-listeners` bit 0x40) — e.g. a seek bar that
+  commits on release.
 - **Platform environment** (spec/OPCODE.md §Environment fields): the client sends
   `encodeEnvironment` as its **first** WS message (`transport.ts` `onOpen`, before
   any resync) so the server session seeds its router from the `ROUTE` field, and

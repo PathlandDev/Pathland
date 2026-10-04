@@ -651,19 +651,18 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
         // `MEDIA_POSITION` deltas): the app's command signal stays fixed during
         // playback, so re-reading the retained value on every reconcile must not
         // re-seek to the stale target as the stream advances (the skip-back bug).
-        // When the target does change, a write matching the position we last
-        // reported (the app echoing `MEDIA_TIME_UPDATED` back) must not seek
-        // either (per-second jitter otherwise); a real seek (user drag /
-        // prev / next) still fires.
+        // A changed target is DEBOUNCED: it is coalesced and applied by a short
+        // main-context timer OFF the input signal path, so a drag flooding
+        // `MEDIA_POSITION` (or any continuous-seek app) never blocks the UI in
+        // GStreamer's FLUSH seek, and the last target wins. The echo guard
+        // (should_seek against the last REPORTED position) still suppresses a
+        // write matching the renderer's own report (per-second jitter).
         let target = f64::from(node.f32_property(property_id::MEDIA_POSITION, 0.0));
         if seek_target_changed(player.last_seek.get(), target) {
             player.last_seek.set(Some(target as f32));
             if should_seek(player.last_reported.get() as f64, target) {
-                let _ = player.playbin.seek_simple(
-                    gst::SeekFlags::FLUSH,
-                    gst::ClockTime::from_seconds_f64(target),
-                );
-                player.suppress_until.set(monotonic_ms() + 250);
+                player.pending_seek.replace(Some(target as f32));
+                player.arm_seek();
             }
         }
 
@@ -683,6 +682,8 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
     let suppress_until = Rc::new(Cell::new(0u64));
     let last_reported = Rc::new(Cell::new(0f32));
     let last_seek = Rc::new(Cell::new(None));
+    let pending_seek = Rc::new(RefCell::new(None));
+    let seek_timer = Rc::new(RefCell::new(None));
     let requested_playing = Rc::new(Cell::new(false));
     let Some(sink) = self.event_sink.clone() else {
         return Some(MediaPlayer {
@@ -693,6 +694,8 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             suppress_until,
             last_reported,
             last_seek,
+            pending_seek,
+            seek_timer,
             timer: None,
         });
     };
@@ -753,6 +756,8 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         suppress_until,
         last_reported,
         last_seek,
+        pending_seek,
+        seek_timer,
         timer: Some(timer),
     })
 }
@@ -1346,6 +1351,11 @@ fn monotonic_ms() -> u64 {
     START.get_or_init(Instant::now).elapsed().as_millis() as u64
 }
 
+/// Debounce for coalescing `MEDIA_POSITION` seeks: a drag floods writes, and a
+/// GStreamer FLUSH seek can block the caller — one seek per interval, applied
+/// off the input signal path (the last target wins).
+const SEEK_DEBOUNCE_MS: u64 = 80;
+
 /// Whether a `MEDIA_POSITION` write is a real seek (a user drag) rather than
 /// the app's echo of its own `MEDIA_TIME_UPDATED` — within 0.25s of the
 /// current position it is an echo and must not interrupt playback.
@@ -1405,18 +1415,55 @@ struct MediaPlayer {
     /// during playback, so re-reading it on every reconcile must not re-seek
     /// to the stale target as the stream advances.
     last_seek: Rc<Cell<Option<f32>>>,
+    /// The latest coalesced seek target awaiting the debounce timer (a drag
+    /// floods `MEDIA_POSITION`; only the last target wins).
+    pending_seek: Rc<RefCell<Option<f32>>>,
+    /// The debounced seek source: applies the latest `pending_seek` on the main
+    /// context AFTER the input signal handler returns, so a GStreamer FLUSH seek
+    /// never blocks the drag path (a continuous-seek app can't freeze the UI).
+    seek_timer: Rc<RefCell<Option<glib::SourceId>>>,
     /// The periodic time-update/bus-poll source (removed on teardown so a dead
     /// node's pipeline is released).
     timer: Option<glib::SourceId>,
 }
 
 impl MediaPlayer {
-    /// Cancel the periodic reporter and release the pipeline.
+    /// Cancel the periodic reporter and the debounced seek, and release the pipeline.
     fn teardown(self) {
         if let Some(timer) = self.timer {
             timer.remove();
         }
+        if let Some(seek) = self.seek_timer.borrow_mut().take() {
+            seek.remove();
+        }
         let _ = self.pipeline.set_state(gst::State::Null);
+    }
+
+    /// Arm (or keep) the debounced seek: a one-shot main-context timeout that
+    /// applies the LATEST `pending_seek` — coalescing a drag's many
+    /// `MEDIA_POSITION` writes into at most one seek per interval, OFF the input
+    /// signal path (a GStreamer FLUSH seek on a playing pipeline can block, so a
+    /// continuous-seek app must never seek inside a drag handler).
+    fn arm_seek(&self) {
+        if self.seek_timer.borrow().is_some() {
+            return; // a debounce is already pending; it will apply the latest target
+        }
+        let playbin = self.playbin.clone();
+        let pending = self.pending_seek.clone();
+        let timer = self.seek_timer.clone();
+        let suppress = self.suppress_until.clone();
+        let id = glib::timeout_add_local(Duration::from_millis(SEEK_DEBOUNCE_MS), move || {
+            if let Some(target) = pending.borrow_mut().take() {
+                let _ = playbin.seek_simple(
+                    gst::SeekFlags::FLUSH,
+                    gst::ClockTime::from_seconds_f64(f64::from(target)),
+                );
+                suppress.set(monotonic_ms() + 250);
+            }
+            *timer.borrow_mut() = None;
+            glib::ControlFlow::Break
+        });
+        *self.seek_timer.borrow_mut() = Some(id);
     }
 }
 

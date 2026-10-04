@@ -21,6 +21,7 @@ public final class InputDispatcher {
     private final Map<Integer, Runnable> navigateActions;
     private final Map<Integer, Consumer<String>> textInputs;
     private final Map<Integer, Consumer<Float>> valueInputs;
+    private final Map<Integer, Consumer<Boolean>> editingInputs;
     private final Map<Integer, DateInput> dateInputs;
     private final Map<Integer, MediaInput> mediaInputs;
     private final Consumer<Event> navigateHandler;
@@ -31,6 +32,7 @@ public final class InputDispatcher {
         this.navigateActions = result.navigateActions();
         this.textInputs = result.textInputs();
         this.valueInputs = result.valueInputs();
+        this.editingInputs = result.editingInputs();
         this.dateInputs = result.dateInputs();
         this.mediaInputs = result.mediaInputs();
         this.navigateHandler = result.navigateHandler();
@@ -67,6 +69,11 @@ public final class InputDispatcher {
             Consumer<Float> sink = valueInputs.get(event.target());
             if (sink != null) {
                 sink.accept(event.value());
+            }
+        } else if (event.isEditingChanged()) {
+            Consumer<Boolean> sink = editingInputs.get(event.target());
+            if (sink != null) {
+                sink.accept(event.b() != 0);
             }
         } else if (event.isDateChanged()) {
             DateInput sink = dateInputs.get(event.target());

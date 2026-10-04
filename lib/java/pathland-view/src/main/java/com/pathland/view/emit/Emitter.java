@@ -46,6 +46,7 @@ public final class Emitter {
     private final Map<Integer, Runnable> tapActions = new LinkedHashMap<>();
     private final Map<Integer, Consumer<String>> textInputs = new LinkedHashMap<>();
     private final Map<Integer, Consumer<Float>> valueInputs = new LinkedHashMap<>();
+    private final Map<Integer, Consumer<Boolean>> editingInputs = new LinkedHashMap<>();
     private final Map<Integer, DateInput> dateInputs = new LinkedHashMap<>();
     private final Map<Integer, MediaInput> mediaInputs = new LinkedHashMap<>();
     private final Map<Integer, Runnable> navigateActions = new LinkedHashMap<>();
@@ -90,6 +91,7 @@ public final class Emitter {
         tapActions.clear();
         textInputs.clear();
         valueInputs.clear();
+        editingInputs.clear();
         dateInputs.clear();
         mediaInputs.clear();
         navigateActions.clear();
@@ -110,6 +112,7 @@ public final class Emitter {
                 Collections.unmodifiableMap(tapActions),
                 Collections.unmodifiableMap(textInputs),
                 Collections.unmodifiableMap(valueInputs),
+                Collections.unmodifiableMap(editingInputs),
                 Collections.unmodifiableMap(dateInputs),
                 Collections.unmodifiableMap(mediaInputs),
                 Collections.unmodifiableMap(navigateActions),
@@ -179,6 +182,9 @@ public final class Emitter {
         if (node.valueInput != null) {
             valueInputs.put(node.id, node.valueInput);
         }
+        if (node.editingInput != null) {
+            editingInputs.put(node.id, node.editingInput);
+        }
         if (node.dateInput != null) {
             dateInputs.put(node.id, node.dateInput);
         }
@@ -212,6 +218,7 @@ public final class Emitter {
         tapActions.remove(node.id);
         textInputs.remove(node.id);
         valueInputs.remove(node.id);
+        editingInputs.remove(node.id);
         dateInputs.remove(node.id);
         mediaInputs.remove(node.id);
         navigateActions.remove(node.id);
