@@ -109,9 +109,9 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   SSR demos. **Synced karaoke subtitles**: a `Lyrics` model parses each track's
   embedded `lyrics/{Title_With_Underscores}.srt` (rolling-window cues) and a
   computed signal resolves the **current karaoke block** at the play position; the
-  pill (italic rows, the newest line bright white with the earlier chorus lines
-  dimmed, on ~50% translucent black, just above the floating player bar) shows
-  only while playing (`MusicPlayerView`). The covers are downscaled to **440×440** JPEG (2× the largest
+  pill is **always two italic lines** — the previous chorus line dimmed above the
+  current (being-sung) line in bright white, on ~50% translucent black, just above
+  the floating player bar — shown only while playing (`MusicPlayerView`). The covers are downscaled to **440×440** JPEG (2× the largest
   rendered 220×220 CSS box, `NowPlayingSidebar`; ~190 KB total vs the original
   1024×1024 ~960 KB) — JPEG (not WebP) because gdk-pixbuf has no WebP loader, so
   the GTK desktop host decodes them unchanged. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as

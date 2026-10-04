@@ -6,7 +6,6 @@ import com.pathland.view.state.State;
 
 import static com.pathland.view.signal.Signals.computed;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,8 +24,6 @@ public final class MusicPlayerView implements View {
 
     static final int SIDEBAR_WIDTH = 280;
     static final int BAR_HEIGHT = 76;
-    /** The lyric pill's row count (the SRTs' largest karaoke block). */
-    static final int MAX_LYRICS_LINES = 3;
 
     static final Color SECONDARY_FG = Color.rgb(0x6B, 0x72, 0x80);
     static final Color ACTIVE_ROW_BG = Color.rgb(0xE8, 0xEF, 0xFF);
@@ -101,35 +98,37 @@ public final class MusicPlayerView implements View {
         .with(AccessibilityRole.of(Roles.MAIN));
     }
 
-    /** The karaoke lyric pill just above the floating player bar: the current
-     *  cue's block in italic, with the line currently being sung bright white
-     *  and the other chorus lines dimmed, on a translucent black pill;
+    /** The karaoke lyric pill just above the floating player bar: always two
+     *  italic lines — the previous chorus line dimmed above the current
+     *  (being-sung) line in bright white — on a translucent black pill;
      *  invisible (clear) when there is no block. Taps pass through. */
     private static View subtitlePill(Signal<List<String>> block, Signal<Integer> current) {
-        List<View> rows = new ArrayList<>();
-        for (int i = 0; i < MAX_LYRICS_LINES; i++) {
-            int index = i;
-            rows.add(Text.of(computed(() -> lineAt(block.get(), index)))
-                    .with(FontSize.of(13))
-                    .with(FontStyleMod.of(FontStyle.ITALIC))
-                    .with(ForegroundStyle.of(computed(() ->
-                            index == current.get()
-                                    ? Color.WHITE
-                                    : Color.argb(170, 255, 255, 255)))));
-        }
-        return VStack.of(HorizontalAlignment.CENTER, 2, rows.toArray(View[]::new))
+        View previous = Text.of(computed(() -> prevLine(block.get(), current.get())))
+                .with(FontSize.of(13))
+                .with(FontStyleMod.of(FontStyle.ITALIC))
+                .with(ForegroundStyle.of(Color.argb(170, 255, 255, 255)));
+        View currentLine = Text.of(computed(() -> lineAt(block.get(), current.get())))
+                .with(FontSize.of(13))
+                .with(FontStyleMod.of(FontStyle.ITALIC))
+                .with(ForegroundStyle.of(Color.WHITE));
+        return VStack.of(HorizontalAlignment.CENTER, 2, previous, currentLine)
                 .with(Padding.of(6, 12, 6, 12))
                 .with(CornerRadius.of(8))
                 .with(Offset.of(0, -(BAR_HEIGHT + 24)))
                 .with(AllowsHitTesting.of(false))
-                .with(Background.of(computed(() -> block.get().isEmpty()
+                .with(Background.of(computed(() -> block.get().isEmpty() || current.get() < 0
                         ? Color.CLEAR
                         : Color.argb(128, 0, 0, 0))));
     }
 
     /** The row text for a block index (empty beyond the block). */
     private static String lineAt(List<String> block, int index) {
-        return index < block.size() ? block.get(index) : "";
+        return index >= 0 && index < block.size() ? block.get(index) : "";
+    }
+
+    /** The line before the current one (dimmed context); empty at a phrase start. */
+    private static String prevLine(List<String> block, int current) {
+        return current > 0 ? lineAt(block, current - 1) : "";
     }
 
     /** The track at an index (wraps around; safe for any signed index). */
