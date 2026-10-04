@@ -1494,7 +1494,7 @@ if indeterminate {
                             None
                         } else {
                             Some(format!(
-                                "<div style=\"grid-area:1/1;width:max-content;height:max-content;justify-self:{};align-self:{};\">{child_html}</div>",
+                                "<div style=\"grid-area:1/1;justify-self:{};align-self:{};\">{child_html}</div>",
                                 pos_h(fills_axis(nodes, child, true, false)),
                                 pos_v(fills_axis(nodes, child, false, false)),
                             ))

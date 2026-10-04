@@ -688,15 +688,17 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     const first = r.byId.get(2) as HTMLElement;
     const second = r.byId.get(3) as HTMLElement;
     // Mirrors the Rust SSR renderer's per-child
-    // `<div style="grid-area:1/1;width:max-content;height:max-content;...">` shell
-    // (overlap in the ZSTACK grid's single cell).
+    // `<div style="grid-area:1/1;justify-self:...;align-self:...">` shell
+    // (overlap in the ZSTACK grid's single cell). The shell has no explicit
+    // width/height: a FILL child stretches to the track (align-self:stretch),
+    // a Hug child keeps its content size and is positioned per ALIGNMENT.
     const wrappers = Array.from(zstack.children).filter((el) => el instanceof HTMLElement);
     expect(wrappers).toHaveLength(2);
     for (const wrapper of wrappers) {
       const el = wrapper as HTMLElement;
       expect(el.style.gridArea).toBe("1/1");
-      expect(el.style.width).toBe("max-content");
-      expect(el.style.height).toBe("max-content");
+      expect(el.style.width).toBe("");
+      expect(el.style.height).toBe("");
       expect(el.tagName).toBe("DIV");
     }
     expect(zstack.contains(first)).toBe(true);

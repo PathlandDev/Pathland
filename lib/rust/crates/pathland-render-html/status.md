@@ -85,7 +85,12 @@ Statelessness). Protocol contract: `spec/`.
   can shrink below its content min-height on a short viewport — an `end`-aligned
   child (e.g. a player bar) stays pinned instead of being pushed out of view and
   the inner `ScrollView` scrolls. A `GRID_TRACKS` per-track spec is emitted
-  verbatim (app-authored).
+  verbatim (app-authored). **Child shells carry no explicit
+  `width/height`** — `justify-self/align-self:stretch` only applies when a grid
+  item's size is `auto`, so pinning `max-content` silently degraded `stretch` to
+  `start` and a FILL child's `100%` resolved circularly (content height),
+  overflowing the viewport. With `auto` sizes a FILL child genuinely stretches
+  to its (shrinkable) track and a Hug child keeps content size + alignment.
 - **ARIA ROLE/STATE maps match the DOM client**: the full `ROLE` set (button…
   menu, incl. `text`/`img`/`radio`/`spinbutton`/`tablist`/`list`/`grid`/
   `region`/`menu`) and the `STATE` semantics (one true `aria-*` per state) are

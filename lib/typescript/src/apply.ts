@@ -369,8 +369,6 @@ function placedChild(parent: Node, child: Node): Node {
     if (parentComp === COMPONENT_ZSTACK) {
       const wrapper = document.createElement("div");
       wrapper.style.gridArea = "1/1";
-      wrapper.style.width = "max-content";
-      wrapper.style.height = "max-content";
       wrapper.appendChild(child);
       return wrapper;
     }
