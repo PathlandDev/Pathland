@@ -140,23 +140,29 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   read is evaluated — the web client's delta semantics) so the retained command
   value, which stays fixed during playback, is never re-applied as a seek as the
   stream advances (which caused the position to skip back periodically). A changed
-  target is also **debounced** (a one-shot ~80 ms main-context timer applies the
-  LATEST target) so a drag flooding `MEDIA_POSITION` — or any continuous-seek app
-  — never blocks the UI in GStreamer's FLUSH seek (the seek runs off the input
-  signal path; coalesced to ~12/s, last position wins). Media events report back
-  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (a 250 ms reporter
-  polls `query_position` while the app requested playing and reports only when
-  the position advanced ~1 second — the same cadence as the web client — 
-  suppressed briefly after a seek), `MEDIA_ENDED` and error → play-state-false
-  from polling the pipeline bus (`EOS`/`Error` messages, on the main thread,
-  drained **non-blocking** via `Bus::iter`/`timed_pop(0)` — the blocking
-  `Bus::pop` would freeze the main thread the moment the bus is empty).
-  Playback is
+  target is also **debounced** (a one-shot ~80 ms main-context timer hands the
+  LATEST target to the worker) so a drag flooding `MEDIA_POSITION` — or any
+  continuous-seek app — never blocks the UI in GStreamer's FLUSH seek (coalesced
+  to ~12/s, last position wins). Media events report back
+  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (the worker's 250 ms
+  poll of `query_position` while playing reports only when the position advanced
+  ~1 second — the same cadence as the web client — suppressed briefly after a
+  seek), `MEDIA_ENDED` and error → play-state-false from the worker polling the
+  pipeline bus (`EOS`/`Error` messages). Playback is
   **GStreamer-direct** because GTK4's own media backend (`GtkMediaFile`) is
   compiled out of some builds (Homebrew's `gtk4` ships with
   `-Dmedia-gstreamer=disabled`); the app owns all playback state, the pipeline is
   the renderer's rendered output (the desktop analog of the web client's hidden
   `<audio>`).
+  - **Media runs on a dedicated worker thread**: each media player owns a
+    `pathland-media-<id>` thread that performs *every* GStreamer operation —
+    state changes, FLUSH seeks, `query_position`, and the bus drain — so the GTK
+    main thread never makes a blocking GStreamer call (the "UI stops responding
+    some time into a song, audio keeps playing" class of bug). The main thread
+    sends non-blocking control messages (`Play`/`Seek`/`Volume`/`Stop`) and a
+    250 ms timer drains the worker's reports, applying the echo-guard/suppress
+    logic (`should_report_time`, the post-seek suppression window set when the
+    worker reports `SeekApplied`) before the sink sees them.
 - **Asset root**: `pathland_gtk_set_asset_root(const char*)` sets a directory
   that web-style `/_pathland/...` media/image source paths resolve against
   (`/_pathland/assets/x` → `<root>/assets/x`), so desktop apps reference the same
