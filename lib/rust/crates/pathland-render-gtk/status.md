@@ -130,7 +130,11 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `PLAYBACK_STATE` → pipeline `Playing`/`Paused`, `MEDIA_POSITION` → seek
   (**echo-guarded**: a write matching the position the renderer last REPORTED
   — the app's `MEDIA_TIME_UPDATED` echo — does not seek, even at network
-  latency; spec/EVENTS.md Media), `MEDIA_VOLUME` → playbin volume. Media events report back
+  latency; spec/EVENTS.md Media), `MEDIA_VOLUME` → playbin volume. The seek is
+  also **change-gated** (only a `MEDIA_POSITION` that changed since the last
+  read is evaluated — the web client's delta semantics) so the retained command
+  value, which stays fixed during playback, is never re-applied as a seek as the
+  stream advances (which caused the position to skip back periodically). Media events report back
   through the shared event sink/ring: `MEDIA_TIME_UPDATED` (a 250 ms reporter
   polls `query_position` while the app requested playing and reports only when
   the position advanced ~1 second — the same cadence as the web client — 

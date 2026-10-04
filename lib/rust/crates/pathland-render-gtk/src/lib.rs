@@ -647,18 +647,24 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
         };
         let _ = player.pipeline.set_state(state);
 
-        // Seek — only when meaningful: the app echoes every MEDIA_TIME_UPDATED
-        // back as MEDIA_POSITION, so a write matching the position we last
-        // reported must NOT seek (it would fight the network-delayed echo and
-        // cause per-second jitter). A real seek (user drag / prev / next) to a
-        // different position still fires.
+        // Seek — only on a CHANGE (mirrors the web client, which acts on
+        // `MEDIA_POSITION` deltas): the app's command signal stays fixed during
+        // playback, so re-reading the retained value on every reconcile must not
+        // re-seek to the stale target as the stream advances (the skip-back bug).
+        // When the target does change, a write matching the position we last
+        // reported (the app echoing `MEDIA_TIME_UPDATED` back) must not seek
+        // either (per-second jitter otherwise); a real seek (user drag /
+        // prev / next) still fires.
         let target = f64::from(node.f32_property(property_id::MEDIA_POSITION, 0.0));
-        if should_seek(player.last_reported.get() as f64, target) {
-            let _ = player.playbin.seek_simple(
-                gst::SeekFlags::FLUSH,
-                gst::ClockTime::from_seconds_f64(target),
-            );
-            player.suppress_until.set(monotonic_ms() + 250);
+        if seek_target_changed(player.last_seek.get(), target) {
+            player.last_seek.set(Some(target as f32));
+            if should_seek(player.last_reported.get() as f64, target) {
+                let _ = player.playbin.seek_simple(
+                    gst::SeekFlags::FLUSH,
+                    gst::ClockTime::from_seconds_f64(target),
+                );
+                player.suppress_until.set(monotonic_ms() + 250);
+            }
         }
 
         let volume = node.f32_property(property_id::MEDIA_VOLUME, 1.0);
@@ -676,6 +682,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
     let (pipeline, playbin) = build_playbin(&resolved)?;
     let suppress_until = Rc::new(Cell::new(0u64));
     let last_reported = Rc::new(Cell::new(0f32));
+    let last_seek = Rc::new(Cell::new(None));
     let requested_playing = Rc::new(Cell::new(false));
     let Some(sink) = self.event_sink.clone() else {
         return Some(MediaPlayer {
@@ -685,6 +692,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             requested_playing,
             suppress_until,
             last_reported,
+            last_seek,
             timer: None,
         });
     };
@@ -744,6 +752,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         requested_playing,
         suppress_until,
         last_reported,
+        last_seek,
         timer: Some(timer),
     })
 }
@@ -1349,6 +1358,17 @@ fn should_seek(last_reported_seconds: f64, target_seconds: f64) -> bool {
     (last_reported_seconds - target_seconds).abs() > 0.25
 }
 
+/// Whether a `MEDIA_POSITION` target is a CHANGE worth evaluating (vs the same
+/// retained value re-read on every reconcile): the seek runs only on deltas,
+/// mirroring the web client (which applies `MEDIA_POSITION` when the emitter
+/// re-sends it). The very first read is always a change.
+fn seek_target_changed(previous: Option<f32>, target_seconds: f64) -> bool {
+    match previous {
+        None => true,
+        Some(prev) => (f64::from(prev) - target_seconds).abs() > 0.01,
+    }
+}
+
 /// Whether a `MEDIA_TIME_UPDATED` should be reported: the playback position
 /// advanced ~1 second since the last report (the cadence the web client uses,
 /// so both renderers tick the seek bar once per second).
@@ -1379,6 +1399,12 @@ struct MediaPlayer {
     /// write matching the last reported position is the app echoing the report
     /// back, not a seek, and must not seek regardless of network latency).
     last_reported: Rc<Cell<f32>>,
+    /// The last `MEDIA_POSITION` value this renderer processed — the seek is
+    /// evaluated only when the target CHANGES (mirrors the web client, which
+    /// acts on `MEDIA_POSITION` deltas). The app's command signal stays fixed
+    /// during playback, so re-reading it on every reconcile must not re-seek
+    /// to the stale target as the stream advances.
+    last_seek: Rc<Cell<Option<f32>>>,
     /// The periodic time-update/bus-poll source (removed on teardown so a dead
     /// node's pipeline is released).
     timer: Option<glib::SourceId>,
@@ -2620,6 +2646,17 @@ mod tests {
         assert!(!should_seek(120.0, 120.1));
         assert!(!should_seek(120.1, 120.0));
         assert!(!should_seek(30.0, 30.0));
+    }
+
+    #[test]
+    fn media_seek_is_change_gated() {
+        // The seek runs only when MEDIA_POSITION CHANGES (delta semantics, the
+        // web client's behavior): re-reading the retained value on every
+        // reconcile must not re-seek to the stale target as playback advances.
+        assert!(seek_target_changed(None, 0.0), "the first read is a change");
+        assert!(seek_target_changed(Some(0.0), 30.0), "a real seek changes the target");
+        assert!(!seek_target_changed(Some(30.0), 30.0), "the retained target re-read is a no-op");
+        assert!(!seek_target_changed(Some(30.0), 30.004), "tiny jitter is not a change");
     }
 
     #[test]
