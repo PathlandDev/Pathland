@@ -1,1 +1,5 @@
-Checkout main and fetch
+go
+
+---
+
+commit it on a new branch
