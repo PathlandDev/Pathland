@@ -117,6 +117,15 @@ describe("Option A style appliers", () => {
     expect(el.style.zIndex).toBe("5");
   });
 
+  it("z-index decodes F32 (the DSL wire type) to an integer, incl. negatives", () => {
+    const el = document.createElement("div");
+    applyProperty(el, PROP_Z_INDEX, VAL_F32, bitsFromF32(5));
+    expect(el.style.zIndex).toBe("5");
+    const neg = document.createElement("div");
+    applyProperty(neg, PROP_Z_INDEX, VAL_F32, bitsFromF32(-1));
+    expect(neg.style.zIndex).toBe("-1");
+  });
+
   it("border width + color + edges -> per-side borders", () => {
     const el = document.createElement("div");
     applyProperty(el, PROP_BORDER_WIDTH, VAL_F32, bitsFromF32(2));

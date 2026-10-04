@@ -66,6 +66,15 @@ Statelessness). Protocol contract: `spec/`.
   `TEXT_CASE`, `FONT_STYLE`, `FONT_DESIGN`, `UNDERLINE`/`STRIKETHROUGH`,
   `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `COLOR_INVERT`. `WIDTH`/`HEIGHT`
   `HUG_CONTENT` (-2) is **omitted** (intrinsic size); `FILL` (-1) → `100%`.
+- **`Z_INDEX` (draw-order override)**: a `ZSTACK` child's `Z_INDEX` is emitted on
+  its **shell** (the grid item that participates in stacking — the child's own
+  `z-index` is inert inside the shell), so a higher value draws above lower
+  siblings regardless of child index (spec/PRIMITIVES.md §ZStack). **Every shell
+  carries an explicit `z-index`** (the child's `Z_INDEX`, else `0`) and the ZStack
+  container sets `isolation:isolate`, so overlapping grid items paint
+  deterministically in every browser (WebKit paints a non-fill grid item below a
+  full-area sibling when both are `z-index:auto`). Mirrored by the DOM client's
+  `applyLayout`.
 - **Layout contract (spec/LAYOUT.md)**: cross-axis default is **hug**
   (`flex-start`), not CSS stretch; `ALIGNMENT` positions only (`Fill`=3 → hug
   default). `DIVIDER` is greedy on the cross axis (`width:100%`); `SCROLLVIEW`
@@ -80,6 +89,17 @@ Statelessness). Protocol contract: `spec/`.
   (`grid-area:1/1` cells); the container hugs to its largest child (`max-content`)
   unless Fixed/FILL (or fill propagation → `100%`); each child keeps its own
   size and is positioned by `ALIGNMENT` on both axes (SSR + TS DOM client).
+  **Grid tracks are `minmax(0,1fr)`** (ZStack + count-generated grid tracks,
+  `repeat(n,minmax(0,1fr))`, and lazy-hgrid auto columns), so a FILL ZStack/grid
+  can shrink below its content min-height on a short viewport — an `end`-aligned
+  child (e.g. a player bar) stays pinned instead of being pushed out of view and
+  the inner `ScrollView` scrolls. A `GRID_TRACKS` per-track spec is emitted
+  verbatim (app-authored). **Child shells carry no explicit
+  `width/height`** — `justify-self/align-self:stretch` only applies when a grid
+  item's size is `auto`, so pinning `max-content` silently degraded `stretch` to
+  `start` and a FILL child's `100%` resolved circularly (content height),
+  overflowing the viewport. With `auto` sizes a FILL child genuinely stretches
+  to its (shrinkable) track and a Hug child keeps content size + alignment.
 - **ARIA ROLE/STATE maps match the DOM client**: the full `ROLE` set (button…
   menu, incl. `text`/`img`/`radio`/`spinbutton`/`tablist`/`list`/`grid`/
   `region`/`menu`) and the `STATE` semantics (one true `aria-*` per state) are

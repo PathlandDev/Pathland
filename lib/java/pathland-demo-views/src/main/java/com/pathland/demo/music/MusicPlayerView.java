@@ -65,13 +65,16 @@ public final class MusicPlayerView implements View {
 
     @Override
     public View body() {
-        return VStack.of(
+        return ZStack.of(Alignment.BOTTOM_CENTER,
                 HStack.of(
                         new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
-                        new NowPlayingSidebar(trackIndex.signal())
+                        new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
                 ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL)),
-                new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
+                HStack.of(
+                    new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
                         seekRequest.signal(), volumeRequest.signal())
+                        .with(Border.of(Color.rgb(200,200,200), 1, 16))
+                ).with(Padding.of(16))
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));

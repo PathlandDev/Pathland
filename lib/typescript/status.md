@@ -181,6 +181,27 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `PICKER` → `<select>` + `<option>`, `DATE_PICKER` → date/time inputs,
   `COLOR_PICKER` → `<input type="color">`, `MENU` → `.pathland-menu`,
   `AUDIO`/`VIDEO` → `<audio>`/`<video controls>`.
+- **ZStack/grid tracks shrink below content (`minmax(0,1fr)`)**: the ZStack's
+  single-cell grid and the count-generated grid tracks
+  (`repeat(n,minmax(0,1fr))`, lazy-hgrid auto columns) use `minmax(0,1fr)` — a
+  bare `1fr` track's implicit `auto` minimum equals the largest child's
+  min-content size, which overflows a short viewport and pushes an `end`-aligned
+  child (a player bar) out of view. `minmax(0,1fr)` lets the track shrink so the
+  inner `ScrollView` scrolls and the bar stays pinned (mirrors the Rust SSR;
+  asserted in `apply.test.ts` + the golden fixtures). **ZStack child shells carry
+  no explicit `width/height`** (`placedChild`): a shell pinning `max-content`
+  made `align-self:stretch` a no-op (stretch needs `auto`), so a FILL child's
+  `100%` resolved circularly and the content overflowed the viewport — with
+  `auto` sizes a FILL child stretches to its track and a Hug child keeps content
+  size + alignment.
+- **`Z_INDEX` draws via the shell (draw-order override)**: `applyLayout` gives
+  every `ZSTACK` child's wrapper shell an explicit `z-index` — the child's
+  `Z_INDEX` (decoded as **F32**, the DSL wire type, and rounded — the old raw-bits
+  read broke negatives) else `0` — and sets `isolation:isolate` on the ZStack
+  container, so overlapping grid items paint deterministically in every browser
+  (WebKit paints a non-fill grid item below a full-area sibling when both are
+  `z-index:auto`). A higher value draws above lower siblings regardless of child
+  index (spec/PRIMITIVES.md §ZStack; mirrors the Rust SSR).
 - **Cross-renderer SSR conformance** (`test/ssr-conformance.test.ts`): the golden
   fixtures emitted by `pathland-html-golden` (`test/fixtures/ssr/`) drive BOTH a
   fresh-DOM render (apply each `{name}.plpl` with `createElement` + `applyBatch`

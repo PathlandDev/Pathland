@@ -93,7 +93,7 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 | `.position(x:y:)` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 | F32 | two |
 | `.fixedSize()` / `.fixedSize(horizontal:vertical:)` | `FIXED_SIZE_HORIZONTAL` 0x0018, `FIXED_SIZE_VERTICAL` 0x0019 | U8 (0/1) | two (or one when axis-limited) |
 | `.layoutPriority(_:)` | `LAYOUT_PRIORITY` 0x001A | F32 | one |
-| `.zIndex(_:)` | `Z_INDEX` 0x100F | F32 | one |
+| `.zIndex(_:)` | `Z_INDEX` 0x100F | F32 | one | Draw-order override in an overlapping container (`ZStack`/grid): higher = on top, equal → child index (spec/PRIMITIVES.md §ZStack) |
 | `.aspectRatio(_:contentMode:)` | `ASPECT_RATIO` 0x001B, `CONTENT_MODE` 0x001C | F32, ENUM | two |
 | `.scaledToFit()` | `CONTENT_MODE` 0x001C | ENUM (`Fit`=0) | one |
 | `.scaledToFill()` | `CONTENT_MODE` 0x001C | ENUM (`Fill`=1) | one |

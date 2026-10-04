@@ -388,7 +388,7 @@ const HANDLERS: Record<number, Handler> = {
   },
 
   // Styling
-  [P.PROP_Z_INDEX]: (el, _vt, c) => (el.style.zIndex = String(u32(c))),
+  [P.PROP_Z_INDEX]: (el, vt, c) => (el.style.zIndex = String(Math.round(f32(vt, c)))),
   [P.PROP_CLIPS_TO_BOUNDS]: (el, vt, c) => (el.style.overflow = isOn(vt, c) ? "hidden" : "visible"),
   [P.PROP_TINT]: (el, _vt, c) => (el.style.accentColor = argbToRgba(c)),
   [P.PROP_BORDER_WIDTH]: (el, vt, c) => {

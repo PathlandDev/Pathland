@@ -1393,8 +1393,16 @@ if indeterminate {
                     } else {
                         String::new()
                     };
+                    // The cell's Z_INDEX orders its shell (the grid item) among
+                    // overlapping siblings; see the ZSTACK wrapper note.
+                    let z = nodes
+                        .get(&cell)
+                        .map(|cn| cn.f32_property(property_id::Z_INDEX, 0.0))
+                        .filter(|z| *z != 0.0)
+                        .map(|z| format!("z-index:{};", z as i32))
+                        .unwrap_or_default();
                     format!(
-                        "<div style=\"{placement}justify-self:{};align-self:{};\">{cell_html}</div>",
+                        "<div style=\"{placement}{z}justify-self:{};align-self:{};\">{cell_html}</div>",
                         pos_h(fills_axis(nodes, cell, true, false)),
                         pos_v(fills_axis(nodes, cell, false, false)),
                     )
@@ -1493,8 +1501,19 @@ if indeterminate {
                         if child_html.is_empty() {
                             None
                         } else {
+                            // The child's Z_INDEX orders its shell (the grid item)
+                            // among the overlapping siblings — z-index on the child
+                            // itself is inert (it is not a grid/flex item). EVERY
+                            // shell carries an explicit z-index (the child's Z_INDEX,
+                            // else 0) so overlapping grid items paint deterministically
+                            // in every browser (WebKit paints a non-fill grid item
+                            // below a full-area sibling when both are z-index:auto).
+                            let z = nodes
+                                .get(&child)
+                                .map(|cn| cn.f32_property(property_id::Z_INDEX, 0.0) as i32)
+                                .unwrap_or(0);
                             Some(format!(
-                                "<div style=\"grid-area:1/1;width:max-content;height:max-content;justify-self:{};align-self:{};\">{child_html}</div>",
+                                "<div style=\"grid-area:1/1;z-index:{z};justify-self:{};align-self:{};\">{child_html}</div>",
                                 pos_h(fills_axis(nodes, child, true, false)),
                                 pos_v(fills_axis(nodes, child, false, false)),
                             ))
@@ -1504,7 +1523,7 @@ if indeterminate {
                 // Container sizing: Hug → max-content, or `100%` on an axis a
                 // FILL child propagates; Fixed/FILL frames come from `css`.
                 let mut zcss = format!(
-                    "display:grid;grid-template-columns:1fr;grid-template-rows:1fr;justify-items:{};align-items:{};",
+                    "display:grid;isolation:isolate;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);justify-items:{};align-items:{};",
                     align_h(align),
                     align_v(align)
                 );
@@ -1678,25 +1697,25 @@ fn grid_style(node: &Node, columns: Option<u32>) -> String {
             if let Some(t) = &tracks_css {
                 css.push_str(&format!("grid-template-columns:{t};"));
             } else if let Some(n) = columns {
-                css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
+                css.push_str(&format!("grid-template-columns:repeat({n},minmax(0,1fr));"));
             }
             if let Some(n) = grid_rows(node) {
-                css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
+                css.push_str(&format!("grid-template-rows:repeat({n},minmax(0,1fr));"));
             }
         }
         component_type::LAZY_HGRID => {
             if let Some(t) = &tracks_css {
                 css.push_str(&format!("grid-template-rows:{t};"));
             } else if let Some(n) = grid_rows(node) {
-                css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
+                css.push_str(&format!("grid-template-rows:repeat({n},minmax(0,1fr));"));
             }
-            css.push_str("grid-auto-flow:column;grid-auto-columns:1fr;");
+            css.push_str("grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);");
         }
         _ => {
             if let Some(t) = &tracks_css {
                 css.push_str(&format!("grid-template-columns:{t};"));
             } else if let Some(n) = columns {
-                css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
+                css.push_str(&format!("grid-template-columns:repeat({n},minmax(0,1fr));"));
             }
         }
     }
@@ -2300,7 +2319,7 @@ mod tests {
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
-        assert!(html.contains("grid-template-columns:repeat(2,1fr)"), "grid inline");
+        assert!(html.contains("grid-template-columns:repeat(2,minmax(0,1fr))"), "grid inline");
         assert!(!html.contains("width:2px"), "GRID_COLUMNS is a count, never a pixel box: {html}");
         assert!(html.contains("justify-items:start;align-items:start"), "default cell alignment");
         assert!(html.contains("justify-self:start;align-self:start;"), "cell wrapper positions per ALIGNMENT");
@@ -2328,15 +2347,15 @@ mod tests {
 
         // GRID with both counts: columns from GRID_COLUMNS, rows from GRID_ROWS.
         let g = build(component_type::GRID, 2.0, 3.0);
-        assert!(g.contains("grid-template-columns:repeat(2,1fr)"), "grid columns: {g}");
-        assert!(g.contains("grid-template-rows:repeat(3,1fr)"), "grid rows: {g}");
+        assert!(g.contains("grid-template-columns:repeat(2,minmax(0,1fr))"), "grid columns: {g}");
+        assert!(g.contains("grid-template-rows:repeat(3,minmax(0,1fr))"), "grid rows: {g}");
         assert!(!g.contains("width:2px") && !g.contains("height:3px"), "counts never pixels: {g}");
 
         // LAZY_HGRID: the fixed track is GRID_ROWS; columns auto-flow; GRID_COLUMNS is ignored.
         let h = build(component_type::LAZY_HGRID, 2.0, 3.0);
-        assert!(h.contains("grid-template-rows:repeat(3,1fr)"), "hgrid rows: {h}");
-        assert!(h.contains("grid-auto-flow:column;grid-auto-columns:1fr"), "hgrid auto columns: {h}");
-        assert!(!h.contains("grid-template-columns:repeat(2,1fr)"), "hgrid ignores GRID_COLUMNS: {h}");
+        assert!(h.contains("grid-template-rows:repeat(3,minmax(0,1fr))"), "hgrid rows: {h}");
+        assert!(h.contains("grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)"), "hgrid auto columns: {h}");
+        assert!(!h.contains("grid-template-columns:repeat(2,minmax(0,1fr))"), "hgrid ignores GRID_COLUMNS: {h}");
 
         // FILL count = auto-fit (no template); a FILL WIDTH frame still expands (100%).
         let mut opcodes = Vec::new();
@@ -2374,7 +2393,7 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         // The widest row (2 cells) defines the equal-1fr columns.
-        assert!(html.contains("grid-template-columns:repeat(2,1fr)"), "widest row defines columns: {html}");
+        assert!(html.contains("grid-template-columns:repeat(2,minmax(0,1fr))"), "widest row defines columns: {html}");
         // Explicit placements: row 0 = [A,B], row 1 = [C], row 2 = [D].
         assert!(html.contains("grid-row:1;grid-column:1;"), "cell at (0,0): {html}");
         assert!(html.contains("grid-row:1;grid-column:2;"), "cell at (0,1): {html}");
@@ -2476,9 +2495,34 @@ mod tests {
         assert!(scroll.contains("<span data-pathland-id=\"2\"></span>"));
         let zstack = renderer.render_document(&opcodes, &[], 3);
         assert!(zstack.contains("display:grid"), "zstack grid inline");
+        assert!(zstack.contains("isolation:isolate"), "zstack scopes shell z-indexes: {zstack}");
         assert!(zstack.contains("width:max-content"), "zstack hugs to its largest child");
-        assert!(zstack.contains("grid-area:1/1"), "zstack child overlaps in one cell");
+        assert!(zstack.contains("grid-area:1/1;z-index:0;"), "shell carries an explicit default z-index: {zstack}");
         assert!(zstack.contains("justify-self:start"), "zstack child positioned per ALIGNMENT");
+        assert!(zstack.contains("grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);"),
+            "zstack tracks shrink below content min-height (minmax(0,1fr)): {zstack}");
+    }
+
+    #[test]
+    fn zstack_child_z_index_lands_on_the_shell() {
+        use pathland_core::value_type;
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::ZSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::TEXT as u32, 0));
+        // The FIRST child has z-index 5: its shell must carry it so it draws
+        // above the later sibling (draw-order override, spec/PRIMITIVES.md §ZStack).
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 2,
+            ((value_type::F32 as u32) << 16) | property_id::Z_INDEX as u32, 5.0f32.to_bits()));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("grid-area:1/1;z-index:5;"), "z-index on the child shell: {html}");
+        assert!(html.contains("z-index:5"), "the child keeps its own z-index: {html}");
+        // A sibling without Z_INDEX still carries an explicit default z-index.
+        assert!(html.contains("grid-area:1/1;z-index:0;"), "sibling shell defaults to 0: {html}");
     }
 
     #[test]

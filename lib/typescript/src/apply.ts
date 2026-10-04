@@ -189,6 +189,16 @@ function applyLayout(r: DomRenderer): void {
         }
         w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : hToken;
         w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : vToken;
+        // The child's Z_INDEX orders its shell (the grid item) among the
+        // overlapping siblings — the shell is what participates in stacking,
+        // not the child (a plain block inside it). EVERY shell gets an explicit
+        // z-index (the child's, else 0) so overlapping grid items paint
+        // deterministically in every browser (WebKit paints a non-fill grid
+        // item below a full-area sibling when both are z-index:auto). Mirrors
+        // the Rust SSR.
+        const inner = w.firstElementChild;
+        const innerZ = inner instanceof HTMLElement ? inner.style.zIndex : "";
+        w.style.zIndex = innerZ || "0";
       }
     } else if (isGridComponent(comp)) {
       // Position each cell shell per the grid ALIGNMENT (2D code) on both axes
@@ -216,6 +226,9 @@ function applyLayout(r: DomRenderer): void {
         }
         shell.style.justifySelf = fillsAxis(shell, true, false) ? "stretch" : hToken;
         shell.style.alignSelf = fillsAxis(shell, false, false) ? "stretch" : vToken;
+        // The cell's Z_INDEX orders its shell (the grid item); see the ZSTACK note.
+        const inner = shell.firstElementChild;
+        shell.style.zIndex = inner instanceof HTMLElement ? inner.style.zIndex : "";
       };
       if (!explicitRows) {
         for (const w of children) {
@@ -236,7 +249,7 @@ function applyLayout(r: DomRenderer): void {
         }
         width = Math.max(width, 1);
         if (cols === null) {
-          el.style.gridTemplateColumns = `repeat(${width},1fr)`;
+          el.style.gridTemplateColumns = `repeat(${width},minmax(0,1fr))`;
           cols = width;
         }
         const columns = cols ?? width;
@@ -369,8 +382,6 @@ function placedChild(parent: Node, child: Node): Node {
     if (parentComp === COMPONENT_ZSTACK) {
       const wrapper = document.createElement("div");
       wrapper.style.gridArea = "1/1";
-      wrapper.style.width = "max-content";
-      wrapper.style.height = "max-content";
       wrapper.appendChild(child);
       return wrapper;
     }
@@ -1023,7 +1034,7 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       const comp = componentByNode.get(el);
       const n = f32FromBits(bits);
       if (comp !== COMPONENT_LAZY_HGRID && isGridComponent(comp)) {
-        el.style.gridTemplateColumns = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
+        el.style.gridTemplateColumns = n > 0 ? `repeat(${Math.round(n)},minmax(0,1fr))` : "";
       }
       break;
     }
@@ -1033,7 +1044,7 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       const comp = componentByNode.get(el);
       const n = f32FromBits(bits);
       if ((comp === COMPONENT_GRID || comp === COMPONENT_LAZY_HGRID) && isGridComponent(comp)) {
-        el.style.gridTemplateRows = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
+        el.style.gridTemplateRows = n > 0 ? `repeat(${Math.round(n)},minmax(0,1fr))` : "";
       }
       break;
     }
