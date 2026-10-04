@@ -80,6 +80,12 @@ Statelessness). Protocol contract: `spec/`.
   (`grid-area:1/1` cells); the container hugs to its largest child (`max-content`)
   unless Fixed/FILL (or fill propagation → `100%`); each child keeps its own
   size and is positioned by `ALIGNMENT` on both axes (SSR + TS DOM client).
+  **Grid tracks are `minmax(0,1fr)`** (ZStack + count-generated grid tracks,
+  `repeat(n,minmax(0,1fr))`, and lazy-hgrid auto columns), so a FILL ZStack/grid
+  can shrink below its content min-height on a short viewport — an `end`-aligned
+  child (e.g. a player bar) stays pinned instead of being pushed out of view and
+  the inner `ScrollView` scrolls. A `GRID_TRACKS` per-track spec is emitted
+  verbatim (app-authored).
 - **ARIA ROLE/STATE maps match the DOM client**: the full `ROLE` set (button…
   menu, incl. `text`/`img`/`radio`/`spinbutton`/`tablist`/`list`/`grid`/
   `region`/`menu`) and the `STATE` semantics (one true `aria-*` per state) are

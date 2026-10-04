@@ -52,8 +52,8 @@ export function createElement(component: number): Node {
       // child / Fixed / FILL / fill-propagation) is resolved by the layout pass.
       const el = document.createElement("div");
       el.style.display = "grid";
-      el.style.gridTemplateColumns = "1fr";
-      el.style.gridTemplateRows = "1fr";
+      el.style.gridTemplateColumns = "minmax(0,1fr)";
+      el.style.gridTemplateRows = "minmax(0,1fr)";
       // Position children on both axes per the ZSTACK ALIGNMENT (default start).
       el.style.justifyItems = "start";
       el.style.alignItems = "start";
@@ -72,7 +72,7 @@ export function createElement(component: number): Node {
       // renderer's `grid-auto-flow:column;grid-auto-columns:1fr`).
       if (component === COMPONENT_LAZY_HGRID) {
         el.style.gridAutoFlow = "column";
-        el.style.gridAutoColumns = "1fr";
+        el.style.gridAutoColumns = "minmax(0,1fr)";
       }
       return el;
     }

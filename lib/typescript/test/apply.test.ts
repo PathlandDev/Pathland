@@ -702,6 +702,11 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     expect(zstack.contains(first)).toBe(true);
     expect(zstack.contains(second)).toBe(true);
     expect(first.parentElement).not.toBe(zstack);
+    // Tracks are minmax(0,1fr): a bare 1fr track's auto minimum is the largest
+    // child's min-content size, which would overflow a short viewport and push
+    // an end-aligned child (a player bar) out of view.
+    expect(zstack.style.gridTemplateColumns).toBe("minmax(0,1fr)");
+    expect(zstack.style.gridTemplateRows).toBe("minmax(0,1fr)");
   });
 
   it("splits a ZStack 2D ALIGNMENT into justify-self/align-self (topTrailing)", () => {
@@ -736,8 +741,8 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     );
     applyBatch(batch, r);
     const grid = r.byId.get(1) as HTMLElement;
-    expect(grid.style.gridTemplateColumns).toBe("repeat(2,1fr)");
-    expect(grid.style.gridTemplateRows).toBe("repeat(3,1fr)");
+    expect(grid.style.gridTemplateColumns).toBe("repeat(2,minmax(0,1fr))");
+    expect(grid.style.gridTemplateRows).toBe("repeat(3,minmax(0,1fr))");
     expect(grid.style.width).not.toBe("2px"); // a count, never a pixel box
     expect(grid.style.height).not.toBe("3px");
     expect(grid.style.justifyItems).toBe("start");
@@ -761,9 +766,10 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     );
     applyBatch(batch, r);
     const grid = r.byId.get(1) as HTMLElement;
-    expect(grid.style.gridTemplateRows).toBe("repeat(3,1fr)");
+    expect(grid.style.gridTemplateRows).toBe("repeat(3,minmax(0,1fr))");
     expect(grid.style.gridTemplateColumns).toBe("");
     expect(grid.style.gridAutoFlow).toBe("column");
+    expect(grid.style.gridAutoColumns).toBe("minmax(0,1fr)");
   });
 
   it("morphs a ProgressView between spinner and determinate progress", () => {

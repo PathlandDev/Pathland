@@ -236,7 +236,7 @@ function applyLayout(r: DomRenderer): void {
         }
         width = Math.max(width, 1);
         if (cols === null) {
-          el.style.gridTemplateColumns = `repeat(${width},1fr)`;
+          el.style.gridTemplateColumns = `repeat(${width},minmax(0,1fr))`;
           cols = width;
         }
         const columns = cols ?? width;
@@ -1023,7 +1023,7 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       const comp = componentByNode.get(el);
       const n = f32FromBits(bits);
       if (comp !== COMPONENT_LAZY_HGRID && isGridComponent(comp)) {
-        el.style.gridTemplateColumns = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
+        el.style.gridTemplateColumns = n > 0 ? `repeat(${Math.round(n)},minmax(0,1fr))` : "";
       }
       break;
     }
@@ -1033,7 +1033,7 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       const comp = componentByNode.get(el);
       const n = f32FromBits(bits);
       if ((comp === COMPONENT_GRID || comp === COMPONENT_LAZY_HGRID) && isGridComponent(comp)) {
-        el.style.gridTemplateRows = n > 0 ? `repeat(${Math.round(n)},1fr)` : "";
+        el.style.gridTemplateRows = n > 0 ? `repeat(${Math.round(n)},minmax(0,1fr))` : "";
       }
       break;
     }

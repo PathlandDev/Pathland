@@ -1504,7 +1504,7 @@ if indeterminate {
                 // Container sizing: Hug → max-content, or `100%` on an axis a
                 // FILL child propagates; Fixed/FILL frames come from `css`.
                 let mut zcss = format!(
-                    "display:grid;grid-template-columns:1fr;grid-template-rows:1fr;justify-items:{};align-items:{};",
+                    "display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);justify-items:{};align-items:{};",
                     align_h(align),
                     align_v(align)
                 );
@@ -1678,25 +1678,25 @@ fn grid_style(node: &Node, columns: Option<u32>) -> String {
             if let Some(t) = &tracks_css {
                 css.push_str(&format!("grid-template-columns:{t};"));
             } else if let Some(n) = columns {
-                css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
+                css.push_str(&format!("grid-template-columns:repeat({n},minmax(0,1fr));"));
             }
             if let Some(n) = grid_rows(node) {
-                css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
+                css.push_str(&format!("grid-template-rows:repeat({n},minmax(0,1fr));"));
             }
         }
         component_type::LAZY_HGRID => {
             if let Some(t) = &tracks_css {
                 css.push_str(&format!("grid-template-rows:{t};"));
             } else if let Some(n) = grid_rows(node) {
-                css.push_str(&format!("grid-template-rows:repeat({n},1fr);"));
+                css.push_str(&format!("grid-template-rows:repeat({n},minmax(0,1fr));"));
             }
-            css.push_str("grid-auto-flow:column;grid-auto-columns:1fr;");
+            css.push_str("grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);");
         }
         _ => {
             if let Some(t) = &tracks_css {
                 css.push_str(&format!("grid-template-columns:{t};"));
             } else if let Some(n) = columns {
-                css.push_str(&format!("grid-template-columns:repeat({n},1fr);"));
+                css.push_str(&format!("grid-template-columns:repeat({n},minmax(0,1fr));"));
             }
         }
     }
@@ -2300,7 +2300,7 @@ mod tests {
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
-        assert!(html.contains("grid-template-columns:repeat(2,1fr)"), "grid inline");
+        assert!(html.contains("grid-template-columns:repeat(2,minmax(0,1fr))"), "grid inline");
         assert!(!html.contains("width:2px"), "GRID_COLUMNS is a count, never a pixel box: {html}");
         assert!(html.contains("justify-items:start;align-items:start"), "default cell alignment");
         assert!(html.contains("justify-self:start;align-self:start;"), "cell wrapper positions per ALIGNMENT");
@@ -2328,15 +2328,15 @@ mod tests {
 
         // GRID with both counts: columns from GRID_COLUMNS, rows from GRID_ROWS.
         let g = build(component_type::GRID, 2.0, 3.0);
-        assert!(g.contains("grid-template-columns:repeat(2,1fr)"), "grid columns: {g}");
-        assert!(g.contains("grid-template-rows:repeat(3,1fr)"), "grid rows: {g}");
+        assert!(g.contains("grid-template-columns:repeat(2,minmax(0,1fr))"), "grid columns: {g}");
+        assert!(g.contains("grid-template-rows:repeat(3,minmax(0,1fr))"), "grid rows: {g}");
         assert!(!g.contains("width:2px") && !g.contains("height:3px"), "counts never pixels: {g}");
 
         // LAZY_HGRID: the fixed track is GRID_ROWS; columns auto-flow; GRID_COLUMNS is ignored.
         let h = build(component_type::LAZY_HGRID, 2.0, 3.0);
-        assert!(h.contains("grid-template-rows:repeat(3,1fr)"), "hgrid rows: {h}");
-        assert!(h.contains("grid-auto-flow:column;grid-auto-columns:1fr"), "hgrid auto columns: {h}");
-        assert!(!h.contains("grid-template-columns:repeat(2,1fr)"), "hgrid ignores GRID_COLUMNS: {h}");
+        assert!(h.contains("grid-template-rows:repeat(3,minmax(0,1fr))"), "hgrid rows: {h}");
+        assert!(h.contains("grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)"), "hgrid auto columns: {h}");
+        assert!(!h.contains("grid-template-columns:repeat(2,minmax(0,1fr))"), "hgrid ignores GRID_COLUMNS: {h}");
 
         // FILL count = auto-fit (no template); a FILL WIDTH frame still expands (100%).
         let mut opcodes = Vec::new();
@@ -2374,7 +2374,7 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         // The widest row (2 cells) defines the equal-1fr columns.
-        assert!(html.contains("grid-template-columns:repeat(2,1fr)"), "widest row defines columns: {html}");
+        assert!(html.contains("grid-template-columns:repeat(2,minmax(0,1fr))"), "widest row defines columns: {html}");
         // Explicit placements: row 0 = [A,B], row 1 = [C], row 2 = [D].
         assert!(html.contains("grid-row:1;grid-column:1;"), "cell at (0,0): {html}");
         assert!(html.contains("grid-row:1;grid-column:2;"), "cell at (0,1): {html}");
@@ -2479,6 +2479,8 @@ mod tests {
         assert!(zstack.contains("width:max-content"), "zstack hugs to its largest child");
         assert!(zstack.contains("grid-area:1/1"), "zstack child overlaps in one cell");
         assert!(zstack.contains("justify-self:start"), "zstack child positioned per ALIGNMENT");
+        assert!(zstack.contains("grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);"),
+            "zstack tracks shrink below content min-height (minmax(0,1fr)): {zstack}");
     }
 
     #[test]

@@ -181,6 +181,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `PICKER` → `<select>` + `<option>`, `DATE_PICKER` → date/time inputs,
   `COLOR_PICKER` → `<input type="color">`, `MENU` → `.pathland-menu`,
   `AUDIO`/`VIDEO` → `<audio>`/`<video controls>`.
+- **ZStack/grid tracks shrink below content (`minmax(0,1fr)`)**: the ZStack's
+  single-cell grid and the count-generated grid tracks
+  (`repeat(n,minmax(0,1fr))`, lazy-hgrid auto columns) use `minmax(0,1fr)` — a
+  bare `1fr` track's implicit `auto` minimum equals the largest child's
+  min-content size, which overflows a short viewport and pushes an `end`-aligned
+  child (a player bar) out of view. `minmax(0,1fr)` lets the track shrink so the
+  inner `ScrollView` scrolls and the bar stays pinned (mirrors the Rust SSR;
+  asserted in `apply.test.ts` + the golden fixtures).
 - **Cross-renderer SSR conformance** (`test/ssr-conformance.test.ts`): the golden
   fixtures emitted by `pathland-html-golden` (`test/fixtures/ssr/`) drive BOTH a
   fresh-DOM render (apply each `{name}.plpl` with `createElement` + `applyBatch`
