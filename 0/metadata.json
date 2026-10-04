@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M443YPTH1HS7W2BGE34PB2CN",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-04T18:49:15.863707Z",
+  "branch": "fix/gtk-media-seek-echo",
+  "checkpoints_count": 1,
+  "save_step_count": 2,
+  "files_touched": [],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "f46ca0dbfb7c",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 39378643,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1169546368,
+    "output_tokens": 2041546,
+    "api_call_count": 2940
+  },
+  "session_metrics": {
+    "turn_count": 189
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1,
+      "agent_lines_removed": 1
+    }
+  ]
+}
