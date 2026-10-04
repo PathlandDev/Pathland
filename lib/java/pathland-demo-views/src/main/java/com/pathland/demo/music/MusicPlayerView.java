@@ -102,20 +102,26 @@ public final class MusicPlayerView implements View {
     }
 
     /** The karaoke lyric pill just above the floating player bar: always two
-     *  italic lines — the line sung just before (dimmed) above the current
-     *  (being-sung) line in bright white — on a translucent black pill;
-     *  invisible (clear) when there is no block. Taps pass through. */
+     *  italic lines — the line being sung (the one before the cue's new line)
+     *  in bright white on top, the next line dimmed below it — on a translucent
+     *  black pill; invisible (clear) when there is no block. Taps pass through. */
     private static View subtitlePill(Signal<List<String>> block, Signal<String> previous,
                                      Signal<Integer> current) {
-        View previousLine = Text.of(previous)
-                .with(FontSize.of(13))
-                .with(FontStyleMod.of(FontStyle.ITALIC))
-                .with(ForegroundStyle.of(Color.argb(170, 255, 255, 255)));
-        View currentLine = Text.of(computed(() -> lineAt(block.get(), current.get())))
+        View currentLine = Text.of(computed(() -> {
+            String p = previous.get();
+            return p.isEmpty() ? lineAt(block.get(), current.get()) : p;
+        }))
                 .with(FontSize.of(13))
                 .with(FontStyleMod.of(FontStyle.ITALIC))
                 .with(ForegroundStyle.of(Color.WHITE));
-        return VStack.of(HorizontalAlignment.CENTER, 2, previousLine, currentLine)
+        View nextLine = Text.of(computed(() -> {
+            String p = previous.get();
+            return p.isEmpty() ? "" : lineAt(block.get(), current.get());
+        }))
+                .with(FontSize.of(13))
+                .with(FontStyleMod.of(FontStyle.ITALIC))
+                .with(ForegroundStyle.of(Color.argb(170, 255, 255, 255)));
+        return VStack.of(HorizontalAlignment.CENTER, 2, currentLine, nextLine)
                 .with(Padding.of(6, 12, 6, 12))
                 .with(CornerRadius.of(8))
                 .with(Offset.of(0, -(BAR_HEIGHT + 24)))
