@@ -168,7 +168,7 @@ pub unsafe extern "C" fn pathland_core_drain_events(
         return 0;
     }
     let mut guest = as_host(handle).ring.producer();
-    let events = guest.drain_event_opcodes();
+    let events = guest.drain_event_opcodes_max(max as usize);
     let n = events.len().min(max as usize);
     for (i, op) in events.into_iter().take(n).enumerate() {
         let bytes = op.to_bytes();
