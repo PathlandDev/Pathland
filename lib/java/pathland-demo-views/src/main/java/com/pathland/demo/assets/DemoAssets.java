@@ -34,13 +34,16 @@ public final class DemoAssets {
     public static final List<String> ASSETS = List.of(
             "audio/track1.mp3", "audio/track2.mp3", "audio/track3.mp3",
             "audio/track4.mp3", "audio/track5.mp3", "audio/track6.mp3",
+            "audio/track7.mp3", "audio/track8.mp3",
             "albumart/cover1.jpg", "albumart/cover2.jpg", "albumart/cover3.jpg",
             "albumart/cover4.jpg", "albumart/cover5.jpg", "albumart/cover6.jpg",
+            "albumart/cover7.jpg", "albumart/cover8.jpg",
             "icons/home.svg", "icons/kitchen.svg", "icons/settings.svg",
             "icons/save.svg", "icons/cloud.svg", "icons/status.svg",
             "lyrics/Building_on_Solid_Ground.srt", "lyrics/Pathland_Crossing.srt",
             "lyrics/Rendered_Free.srt", "lyrics/Rendered_In_Your_Arms.srt",
-            "lyrics/Sixty_Frames_Per_Second.srt", "lyrics/The_Pathland_Dream.srt");
+            "lyrics/Sixty_Frames_Per_Second.srt", "lyrics/The_Pathland_Dream.srt",
+            "lyrics/Across_the_Open_Land.srt", "lyrics/Sixteen_Bytes.srt");
 
     private DemoAssets() {
     }

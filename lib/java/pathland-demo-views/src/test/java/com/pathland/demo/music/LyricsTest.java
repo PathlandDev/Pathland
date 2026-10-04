@@ -1,0 +1,138 @@
+package com.pathland.demo.music;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * The music player's lyric model: the embedded SRT cues are parsed and the
+ * current karaoke block resolves per play position (a rolling window of cleaned
+ * lines — the last line is the one being sung, the {@code ♪} glyphs stripped).
+ */
+class LyricsTest {
+
+    @Test
+    void parsesEmbeddedSrtAndResolvesTheCurrentBlock() {
+        var cues = Lyrics.cuesFor("Building on Solid Ground");
+        assertFalse(cues.isEmpty(), "the demo ships lyrics for the first track");
+        Lyrics.Cue first = cues.get(0);
+        assertEquals(0f, first.start());
+        assertTrue(first.end() > 0f);
+        var block = Lyrics.blockFor("Building on Solid Ground", first.start() + 0.001f);
+        assertFalse(block.isEmpty());
+        for (String line : block) {
+            assertFalse(line.isBlank());
+            assertFalse(line.contains("♪"), "music-note glyphs are stripped");
+        }
+    }
+
+    @Test
+    void theBlockRollsForwardAtCueBoundaries() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        assertTrue(cues.size() >= 2, "the song has multiple cues");
+        var a = Lyrics.blockFor("Pathland Crossing", cues.get(0).start() + 0.001f);
+        var b = Lyrics.blockFor("Pathland Crossing", cues.get(1).start() + 0.001f);
+        assertFalse(a.isEmpty());
+        assertFalse(b.isEmpty());
+        assertNotEquals(a, b, "a cue boundary rolls the karaoke block forward");
+    }
+
+    @Test
+    void theCurrentLineAdvancesThroughTheFirstCuesNewLines() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        assertTrue(cues.get(0).lines().size() > 1, "the first cue adds multiple new lines");
+        assertEquals(0, Lyrics.currentIndex("Pathland Crossing", cues.get(0).start() + 0.001f),
+                "the first line is current at the cue start");
+        int last = Lyrics.blockFor("Pathland Crossing", cues.get(0).start() + 0.001f).size() - 1;
+        assertEquals(last, Lyrics.currentIndex("Pathland Crossing", cues.get(0).end() - 0.001f),
+                "the last line is current at the cue end");
+    }
+
+    @Test
+    void aRollingCueHoldsItsNewLineForTheWholeWindow() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        assertTrue(cues.size() >= 2, "the song has multiple cues");
+        Lyrics.Cue cue = cues.get(1);
+        int last = Lyrics.blockFor("Pathland Crossing", cue.start() + 0.001f).size() - 1;
+        float mid = cue.start() + (cue.end() - cue.start()) / 2f;
+        assertEquals(last, Lyrics.currentIndex("Pathland Crossing", cue.start() + 0.001f),
+                "the rolling cue's new (last) line is current at its start");
+        assertEquals(last, Lyrics.currentIndex("Pathland Crossing", mid),
+                "the new line stays current for the whole window");
+    }
+
+    @Test
+    void currentIndexIsMinusOneOutOfRangeOrWithoutLyrics() {
+        assertEquals(-1, Lyrics.currentIndex("Building on Solid Ground", 999999f));
+        assertEquals(-1, Lyrics.currentIndex("No Such Track", 0f));
+    }
+
+    @Test
+    void previousLineWithinACueIsTheLineBefore() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        Lyrics.Cue cue = cues.stream().filter(c -> c.lines().size() > 1)
+                .findFirst().orElse(null);
+        assertNotNull(cue, "the song has a multi-line cue");
+        float half = cue.start() + (cue.end() - cue.start()) / 2f;
+        int current = Lyrics.currentIndex("Pathland Crossing", half);
+        assertTrue(current > 0, "mid-cue the current line is past the first");
+        String prev = Lyrics.previousLine("Pathland Crossing", half);
+        assertEquals(Lyrics.blockFor("Pathland Crossing", half).get(current - 1), prev);
+    }
+
+    @Test
+    void previousLineSpansCueBoundaries() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        assertTrue(cues.size() >= 2, "the song has multiple cues");
+        // At the second cue's start (current index 0), the line just sung was the
+        // first cue's last line — so the two-line pill never empties mid-song.
+        String prev = Lyrics.previousLine("Pathland Crossing", cues.get(1).start() + 0.001f);
+        var firstBlock = Lyrics.blockFor("Pathland Crossing", cues.get(0).start() + 0.001f);
+        assertFalse(prev.isBlank());
+        assertEquals(firstBlock.get(firstBlock.size() - 1), prev);
+    }
+
+    @Test
+    void previousLineIsStableAcrossARollingCueWindow() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        assertTrue(cues.size() >= 2, "the song has multiple cues");
+        Lyrics.Cue cue = cues.get(1); // a rolling cue (adds one new line)
+        float start = cue.start() + 0.001f;
+        float mid = cue.start() + (cue.end() - cue.start()) / 2f;
+        String atStart = Lyrics.previousLine("Pathland Crossing", start);
+        String atMid = Lyrics.previousLine("Pathland Crossing", mid);
+        assertFalse(atStart.isBlank());
+        assertEquals(atStart, atMid,
+                "the previous line must not oscillate within a rolling cue");
+    }
+
+    @Test
+    void previousLineEmptyOnlyAtTheVeryFirstLine() {
+        var cues = Lyrics.cuesFor("Building on Solid Ground");
+        assertEquals("", Lyrics.previousLine("Building on Solid Ground", cues.get(0).start() + 0.001f),
+                "nothing was sung before the very first line");
+        assertEquals("", Lyrics.previousLine("Building on Solid Ground", 999999f));
+        assertEquals("", Lyrics.previousLine("No Such Track", 0f));
+    }
+
+    @Test
+    void returnsEmptyOutOfRangeOrWithoutLyrics() {
+        assertTrue(Lyrics.blockFor("Building on Solid Ground", 999999f).isEmpty(),
+                "no cue covers the position");
+        assertTrue(Lyrics.blockFor("No Such Track", 0f).isEmpty(),
+                "a track without a lyrics file has no cues");
+        assertTrue(Lyrics.cuesFor("No Such Track").isEmpty());
+    }
+
+    @Test
+    void newTracksShipLyricsExtractedFromTheMp4s() {
+        assertFalse(Lyrics.blockFor("Across the Open Land", 5f).isEmpty(),
+                "Across the Open Land lyrics were extracted from its mp4");
+        assertFalse(Lyrics.blockFor("Sixteen Bytes", 5f).isEmpty(),
+                "Sixteen Bytes lyrics were extracted from its mp4");
+    }
+}

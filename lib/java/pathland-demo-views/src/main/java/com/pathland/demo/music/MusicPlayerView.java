@@ -1,7 +1,10 @@
 package com.pathland.demo.music;
 
 import com.pathland.view.*;
+import com.pathland.view.signal.Signal;
 import com.pathland.view.state.State;
+
+import static com.pathland.view.signal.Signals.computed;
 
 import java.util.List;
 
@@ -48,7 +51,13 @@ public final class MusicPlayerView implements View {
                     "/_pathland/assets/audio/track5.mp3"),
             new Track("The Pathland Dream", "Neon Protocol", "Velvet Horizons", 170f,
                     "/_pathland/assets/albumart/cover6.jpg",
-                    "/_pathland/assets/audio/track6.mp3"));
+                    "/_pathland/assets/audio/track6.mp3"),
+            new Track("Across the Open Land", "Open Land", "The Weight of Open Air", 156f,
+                    "/_pathland/assets/albumart/cover7.jpg",
+                    "/_pathland/assets/audio/track7.mp3"),
+            new Track("Sixteen Bytes", "The Byte Ensemble", "The Ring Buffer Sessions", 182f,
+                    "/_pathland/assets/albumart/cover8.jpg",
+                    "/_pathland/assets/audio/track8.mp3"));
 
     // App-owned, persisted per-session (the annotation processor wires State fields
     // by type; explicit keys keep the player's state scope stable).
@@ -65,6 +74,17 @@ public final class MusicPlayerView implements View {
 
     @Override
     public View body() {
+        // The synced karaoke lyric block + the current (being-sung) line index
+        // for the current track + play position, shown only while playing.
+        var block = computed(() -> playing.get()
+                ? Lyrics.blockFor(at(trackIndex.get()).title(), position.get())
+                : List.<String>of());
+        var current = computed(() -> playing.get()
+                ? Lyrics.currentIndex(at(trackIndex.get()).title(), position.get())
+                : -1);
+        var previous = computed(() -> playing.get()
+                ? Lyrics.previousLine(at(trackIndex.get()).title(), position.get())
+                : "");
         return ZStack.of(Alignment.BOTTOM_CENTER,
                 HStack.of(
                         new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
@@ -74,10 +94,46 @@ public final class MusicPlayerView implements View {
                     new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
                         seekRequest.signal(), volumeRequest.signal())
                         .with(Border.of(Color.rgb(200,200,200), 1, 16))
-                ).with(Padding.of(16))
+                ).with(Padding.of(16)),
+                subtitlePill(block, previous, current)
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
+    }
+
+    /** The karaoke lyric pill just above the floating player bar: always two
+     *  italic lines — the line being sung (the one before the cue's new line)
+     *  in bright white on top, the next line dimmed below it — on a translucent
+     *  black pill; invisible (clear) when there is no block. Taps pass through. */
+    private static View subtitlePill(Signal<List<String>> block, Signal<String> previous,
+                                     Signal<Integer> current) {
+        View currentLine = Text.of(computed(() -> {
+            String p = previous.get();
+            return p.isEmpty() ? lineAt(block.get(), current.get()) : p;
+        }))
+                .with(FontSize.of(13))
+                .with(FontStyleMod.of(FontStyle.ITALIC))
+                .with(ForegroundStyle.of(Color.WHITE));
+        View nextLine = Text.of(computed(() -> {
+            String p = previous.get();
+            return p.isEmpty() ? "" : lineAt(block.get(), current.get());
+        }))
+                .with(FontSize.of(13))
+                .with(FontStyleMod.of(FontStyle.ITALIC))
+                .with(ForegroundStyle.of(Color.argb(170, 255, 255, 255)));
+        return VStack.of(HorizontalAlignment.CENTER, 2, currentLine, nextLine)
+                .with(Padding.of(6, 12, 6, 12))
+                .with(CornerRadius.of(8))
+                .with(Offset.of(0, -(BAR_HEIGHT + 24)))
+                .with(AllowsHitTesting.of(false))
+                .with(Background.of(computed(() -> block.get().isEmpty() || current.get() < 0
+                        ? Color.CLEAR
+                        : Color.argb(128, 0, 0, 0))));
+    }
+
+    /** The row text for a block index (empty beyond the block). */
+    private static String lineAt(List<String> block, int index) {
+        return index >= 0 && index < block.size() ? block.get(index) : "";
     }
 
     /** The track at an index (wraps around; safe for any signed index). */

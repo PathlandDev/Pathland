@@ -97,15 +97,22 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   bound to `MEDIA_POSITION`/`MEDIA_VOLUME` written only on a user drag) so a
   `MEDIA_TIME_UPDATED`/`MEDIA_VOLUME_CHANGED` report never echoes back as a
   seek/volume command (spec/EVENTS.md Media — the per-second echo caused seek
-  jitter). The 6
+  jitter). The 8
   tracks are **Pathland concept songs** — one per album, genre-matched invented
   artists (The Foundation, The Crossings, Rena Render, Ember Frame, Rowan
-  Frame, Neon Protocol) — sourced from bundled `.mp4` covers (the extracted
+  Frame, Neon Protocol, Open Land, The Byte Ensemble) — sourced from bundled
+  `.mp4` covers (the extracted
   frame at ~1s is `coverN.jpg`) and re-encoded **mono-64k** `trackN.mp3` with
-  durations matching the real files. Catalog (`Track` record, 6 albums)
+  durations matching the real files. Catalog (`Track` record, 8 albums)
   with album art + audio served from
   `/_pathland/assets/albumart/*.jpg` and `/_pathland/assets/audio/*.mp3` in both
-  SSR demos. The covers are downscaled to **440×440** JPEG (2× the largest
+  SSR demos. **Synced karaoke subtitles**: a `Lyrics` model parses each track's
+  embedded `lyrics/{Title_With_Underscores}.srt` (rolling-window cues) and a
+  computed signal resolves the **current karaoke block** at the play position; the
+  pill is **always two italic lines** — the line being sung (the one before the
+  cue's new line) in bright white on top, the next line dimmed below, on ~50%
+  translucent black, just above the floating player bar — shown only while
+  playing (`MusicPlayerView`). The covers are downscaled to **440×440** JPEG (2× the largest
   rendered 220×220 CSS box, `NowPlayingSidebar`; ~190 KB total vs the original
   1024×1024 ~960 KB) — JPEG (not WebP) because gdk-pixbuf has no WebP loader, so
   the GTK desktop host decodes them unchanged. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as
