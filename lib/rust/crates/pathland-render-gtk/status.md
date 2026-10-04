@@ -75,7 +75,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   session boundaries are reported as **`EDITING_CHANGED`** (press/release) and
   **`FOCUS_CHANGED`** (`EventControllerFocus` enter/leave) when the node
   declares the `LISTEN_EDITING`/`LISTEN_FOCUS` bits — the app-side escape
-  hatch to suppress echoes of any derived state during a session.
+  hatch to suppress echoes of any derived state during a session. Because a
+  `GtkScale`'s own drag gesture can consume the button release, sliders also
+  end the session via a **settle fallback**: each user `value-changed` during
+  a drag re-arms a ~150 ms timer that, when the drag settles, clears the
+  session and reports `EDITING_CHANGED(false)` — so an app's seek-on-release
+  commits even when `GestureClick::released` never fires.
 - **Platform back / `NAVIGATE`**: a window-level `EventControllerKey`
   (capture phase, attached once in `run_with_pump`) maps Escape — and
   BackSpace when no text entry has focus — to `Event::Navigate { url: None }`

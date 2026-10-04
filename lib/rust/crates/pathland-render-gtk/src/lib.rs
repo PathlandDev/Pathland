@@ -572,19 +572,57 @@ entry.set_placeholder_text(Some(node.string_property(property_id::PROMPT).unwrap
                 gesture.connect_released(move |_, _, _, _| {
                     gs.borrow_mut().remove(&id);
                 });
-                if want_editing {
-                    if let Some(sink) = sink.clone() {
-                        let s = sink.clone();
-                        gesture.connect_pressed(move |_, _, _, _| {
-                            s.borrow_mut()(Event::EditingChanged { target: id, editing: true });
-                        });
-                        let s = sink.clone();
-                        gesture.connect_released(move |_, _, _, _| {
-                            s.borrow_mut()(Event::EditingChanged { target: id, editing: false });
-                        });
+if want_editing {
+            if let Some(sink) = sink.clone() {
+                let s = sink.clone();
+                gesture.connect_pressed(move |_, _, _, _| {
+                    s.borrow_mut()(Event::EditingChanged { target: id, editing: true });
+                });
+                let s = sink.clone();
+                gesture.connect_released(move |_, _, _, _| {
+                    s.borrow_mut()(Event::EditingChanged { target: id, editing: false });
+                });
+            }
+            // Settle-based drag-end fallback: a `GtkScale`'s own drag gesture can
+            // consume the button release, so `GestureClick::released` may not fire
+            // and the session would never end (the app's seek-on-release would never
+            // commit). Each user value-change during the session (programmatic VALUE
+            // is suppressed in-flight) re-arms a ~DRAG_SETTLE_MS timer; when the drag
+            // settles the timer ends the session and reports EDITING_CHANGED(false).
+            if let Ok(scale) = widget.clone().downcast::<gtk::Scale>() {
+                let settle = Rc::new(RefCell::new(None::<glib::SourceId>));
+                let sdrag = drag_state.clone();
+                let ssink = sink.clone();
+                scale.connect_value_changed(move |_| {
+                    if sdrag.borrow().contains(&id) {
+                        if let Some(src) = settle.borrow_mut().take() {
+                            src.remove();
+                        }
+                        let s2 = settle.clone();
+                        let d2 = sdrag.clone();
+                        let k2 = ssink.clone();
+                        let src = glib::timeout_add_local(
+                            Duration::from_millis(DRAG_SETTLE_MS),
+                            move || {
+                                if d2.borrow().contains(&id) {
+                                    d2.borrow_mut().remove(&id);
+                                    if let Some(k) = k2.clone() {
+                                        k.borrow_mut()(Event::EditingChanged {
+                                            target: id,
+                                            editing: false,
+                                        });
+                                    }
+                                }
+                                *s2.borrow_mut() = None;
+                                glib::ControlFlow::Break
+                            },
+                        );
+                        *settle.borrow_mut() = Some(src);
                     }
-                }
-                widget.add_controller(gesture);
+                });
+            }
+        }
+        widget.add_controller(gesture);
             }
             _ => {}
         }
@@ -1355,6 +1393,11 @@ fn monotonic_ms() -> u64 {
 /// GStreamer FLUSH seek can block the caller — one seek per interval, applied
 /// off the input signal path (the last target wins).
 const SEEK_DEBOUNCE_MS: u64 = 80;
+
+/// A slider drag session is considered ended when no value-change arrives for
+/// this long (the settle fallback for `GtkScale` drags, whose release can be
+/// consumed by the scale's own gesture and never reach `GestureClick::released`).
+const DRAG_SETTLE_MS: u64 = 150;
 
 /// Whether a `MEDIA_POSITION` write is a real seek (a user drag) rather than
 /// the app's echo of its own `MEDIA_TIME_UPDATED` — within 0.25s of the
