@@ -1,1 +1,1 @@
-It is still not stable while a line is sung. prevoious line switches up and down
+Still having issues. the previous line switches between the prevoius and the one before that
