@@ -26,7 +26,10 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **Property application parity**: `setNodeText` only writes `textContent` on leaf nodes
   — re-applying a composite's `LABEL`/`TEXT` property never wipes its children (SSR
   renders no label on composites). `LINE_LIMIT` (positive) clamps via the webkit box
-  model (`display:-webkit-box` + `-webkit-line-clamp`), matching the Rust SSR.
+  model (`display:-webkit-box` + `-webkit-line-clamp` **+ `overflow:hidden`** — the
+  clamp draws the ellipsis but does not clip on its own, so Safari would paint the
+  overflowed text below the box; a removed limit restores unbounded text), matching
+  the Rust SSR.
 - **Mounted-app URL mirroring**: the server emits app-relative `ROUTE`s; the client
   derives the app's mount prefix from `data-pathland-base` (`/<mount>/_pathland`) and
   pushes the app's <b>real</b> address (`/app2` app navigating to `/home` →
