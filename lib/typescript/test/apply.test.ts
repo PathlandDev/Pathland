@@ -747,13 +747,14 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     );
     applyBatch(batch, r);
     const zstack = r.byId.get(1) as HTMLElement;
+    expect(zstack.style.isolation).toBe("isolate"); // scopes shell z-indexes
     const child = r.byId.get(2) as HTMLElement;
     const shell = child.parentElement as HTMLElement;
     expect(shell.parentElement).toBe(zstack); // it is the ZSTACK's grid shell
     expect(shell.style.zIndex).toBe("5");
     expect(child.style.zIndex).toBe("5");
     const sibling = r.byId.get(3) as HTMLElement;
-    expect((sibling.parentElement as HTMLElement).style.zIndex).toBe("");
+    expect((sibling.parentElement as HTMLElement).style.zIndex).toBe("0");
   });
 
   it("mirrors GRID_COLUMNS/GRID_ROWS into track templates (never pixel sizes) and wraps cells", () => {

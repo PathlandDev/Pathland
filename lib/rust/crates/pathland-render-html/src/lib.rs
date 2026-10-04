@@ -1503,16 +1503,17 @@ if indeterminate {
                         } else {
                             // The child's Z_INDEX orders its shell (the grid item)
                             // among the overlapping siblings — z-index on the child
-                            // itself is inert (it is not a grid/flex item). The child
-                            // keeps its own property too (the DOM client reads it).
+                            // itself is inert (it is not a grid/flex item). EVERY
+                            // shell carries an explicit z-index (the child's Z_INDEX,
+                            // else 0) so overlapping grid items paint deterministically
+                            // in every browser (WebKit paints a non-fill grid item
+                            // below a full-area sibling when both are z-index:auto).
                             let z = nodes
                                 .get(&child)
-                                .map(|cn| cn.f32_property(property_id::Z_INDEX, 0.0))
-                                .filter(|z| *z != 0.0)
-                                .map(|z| format!("z-index:{};", z as i32))
-                                .unwrap_or_default();
+                                .map(|cn| cn.f32_property(property_id::Z_INDEX, 0.0) as i32)
+                                .unwrap_or(0);
                             Some(format!(
-                                "<div style=\"grid-area:1/1;{z}justify-self:{};align-self:{};\">{child_html}</div>",
+                                "<div style=\"grid-area:1/1;z-index:{z};justify-self:{};align-self:{};\">{child_html}</div>",
                                 pos_h(fills_axis(nodes, child, true, false)),
                                 pos_v(fills_axis(nodes, child, false, false)),
                             ))
@@ -1522,7 +1523,7 @@ if indeterminate {
                 // Container sizing: Hug → max-content, or `100%` on an axis a
                 // FILL child propagates; Fixed/FILL frames come from `css`.
                 let mut zcss = format!(
-                    "display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);justify-items:{};align-items:{};",
+                    "display:grid;isolation:isolate;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);justify-items:{};align-items:{};",
                     align_h(align),
                     align_v(align)
                 );
@@ -2494,8 +2495,9 @@ mod tests {
         assert!(scroll.contains("<span data-pathland-id=\"2\"></span>"));
         let zstack = renderer.render_document(&opcodes, &[], 3);
         assert!(zstack.contains("display:grid"), "zstack grid inline");
+        assert!(zstack.contains("isolation:isolate"), "zstack scopes shell z-indexes: {zstack}");
         assert!(zstack.contains("width:max-content"), "zstack hugs to its largest child");
-        assert!(zstack.contains("grid-area:1/1"), "zstack child overlaps in one cell");
+        assert!(zstack.contains("grid-area:1/1;z-index:0;"), "shell carries an explicit default z-index: {zstack}");
         assert!(zstack.contains("justify-self:start"), "zstack child positioned per ALIGNMENT");
         assert!(zstack.contains("grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);"),
             "zstack tracks shrink below content min-height (minmax(0,1fr)): {zstack}");
@@ -2519,6 +2521,8 @@ mod tests {
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("grid-area:1/1;z-index:5;"), "z-index on the child shell: {html}");
         assert!(html.contains("z-index:5"), "the child keeps its own z-index: {html}");
+        // A sibling without Z_INDEX still carries an explicit default z-index.
+        assert!(html.contains("grid-area:1/1;z-index:0;"), "sibling shell defaults to 0: {html}");
     }
 
     #[test]

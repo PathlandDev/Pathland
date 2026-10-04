@@ -52,6 +52,7 @@ export function createElement(component: number): Node {
       // child / Fixed / FILL / fill-propagation) is resolved by the layout pass.
       const el = document.createElement("div");
       el.style.display = "grid";
+      el.style.isolation = "isolate";
       el.style.gridTemplateColumns = "minmax(0,1fr)";
       el.style.gridTemplateRows = "minmax(0,1fr)";
       // Position children on both axes per the ZSTACK ALIGNMENT (default start).

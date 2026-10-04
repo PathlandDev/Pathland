@@ -194,13 +194,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `100%` resolved circularly and the content overflowed the viewport — with
   `auto` sizes a FILL child stretches to its track and a Hug child keeps content
   size + alignment.
-- **`Z_INDEX` draws via the shell (draw-order override)**: `applyLayout` copies a
-  `ZSTACK` child's / `GRID` cell's `z-index` onto its wrapper shell (the grid
-  item that participates in stacking — the child's own `z-index` is inert inside
-  the shell), so a higher value draws above lower siblings regardless of child
-  index (spec/PRIMITIVES.md §ZStack; mirrors the Rust SSR). The client decodes
-  `Z_INDEX` as **F32** (the DSL wire type) and rounds — not the raw bits — so
-  negative z-indices work and values stay small (`classes.ts`).
+- **`Z_INDEX` draws via the shell (draw-order override)**: `applyLayout` gives
+  every `ZSTACK` child's wrapper shell an explicit `z-index` — the child's
+  `Z_INDEX` (decoded as **F32**, the DSL wire type, and rounded — the old raw-bits
+  read broke negatives) else `0` — and sets `isolation:isolate` on the ZStack
+  container, so overlapping grid items paint deterministically in every browser
+  (WebKit paints a non-fill grid item below a full-area sibling when both are
+  `z-index:auto`). A higher value draws above lower siblings regardless of child
+  index (spec/PRIMITIVES.md §ZStack; mirrors the Rust SSR).
 - **Cross-renderer SSR conformance** (`test/ssr-conformance.test.ts`): the golden
   fixtures emitted by `pathland-html-golden` (`test/fixtures/ssr/`) drive BOTH a
   fresh-DOM render (apply each `{name}.plpl` with `createElement` + `applyBatch`
