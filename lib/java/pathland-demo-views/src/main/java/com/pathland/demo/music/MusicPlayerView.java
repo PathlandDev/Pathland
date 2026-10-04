@@ -1,7 +1,10 @@
 package com.pathland.demo.music;
 
 import com.pathland.view.*;
+import com.pathland.view.signal.Signal;
 import com.pathland.view.state.State;
+
+import static com.pathland.view.signal.Signals.computed;
 
 import java.util.List;
 
@@ -71,6 +74,11 @@ public final class MusicPlayerView implements View {
 
     @Override
     public View body() {
+        // The synced lyric subtitle: the newest line of the track's SRT cue at
+        // the current play position, shown only while playing.
+        var subtitle = computed(() -> playing.get()
+                ? Lyrics.lineAt(at(trackIndex.get()).title(), position.get())
+                : "");
         return ZStack.of(Alignment.BOTTOM_CENTER,
                 HStack.of(
                         new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
@@ -80,10 +88,28 @@ public final class MusicPlayerView implements View {
                     new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
                         seekRequest.signal(), volumeRequest.signal())
                         .with(Border.of(Color.rgb(200,200,200), 1, 16))
-                ).with(Padding.of(16))
+                ).with(Padding.of(16)),
+                subtitlePill(subtitle)
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
+    }
+
+    /** The lyric pill just above the floating player bar: white text on a
+     *  translucent black pill; invisible (clear) when there is no line. Taps
+     *  pass through to the content beneath. */
+    private static View subtitlePill(Signal<String> subtitle) {
+        return Text.of(subtitle)
+                .with(FontSize.of(13))
+                .with(ForegroundStyle.of(Color.WHITE))
+                .with(Padding.of(6, 12, 6, 12))
+                .with(CornerRadius.of(8))
+                .with(LineLimit.of(2))
+                .with(Offset.of(0, -(BAR_HEIGHT + 24)))
+                .with(AllowsHitTesting.of(false))
+                .with(Background.of(computed(() -> subtitle.get().isBlank()
+                        ? Color.CLEAR
+                        : Color.argb(128, 0, 0, 0))));
     }
 
     /** The track at an index (wraps around; safe for any signed index). */

@@ -42,7 +42,8 @@ public final class DemoAssets {
             "icons/save.svg", "icons/cloud.svg", "icons/status.svg",
             "lyrics/Building_on_Solid_Ground.srt", "lyrics/Pathland_Crossing.srt",
             "lyrics/Rendered_Free.srt", "lyrics/Rendered_In_Your_Arms.srt",
-            "lyrics/Sixty_Frames_Per_Second.srt", "lyrics/The_Pathland_Dream.srt");
+            "lyrics/Sixty_Frames_Per_Second.srt", "lyrics/The_Pathland_Dream.srt",
+            "lyrics/Across_the_Open_Land.srt", "lyrics/Sixteen_Bytes.srt");
 
     private DemoAssets() {
     }

@@ -1,0 +1,338 @@
+1
+00:00:00,000 --> 00:00:02,825
+♪ (Aw, here we go again. Out on that digital highway...)
+Well, I left that heavy city, left that bloated town. ♪
+
+2
+00:00:02,825 --> 00:00:05,650
+♪ (Aw, here we go again. Out on that digital highway...)
+Well, I left that heavy city, left that bloated town.
+Had too many dependencies dragging me down. ♪
+
+3
+00:00:05,650 --> 00:00:08,475
+♪ Well, I left that heavy city, left that bloated town.
+Had too many dependencies dragging me down.
+They call it progress, but it felt like chains. ♪
+
+4
+00:00:08,475 --> 00:00:11,300
+♪ Had too many dependencies dragging me down.
+They call it progress, but it felt like chains.
+I was drowning in a sea of JavaScript and build tools. ♪
+
+5
+00:00:11,300 --> 00:00:14,125
+♪ They call it progress, but it felt like chains.
+I was drowning in a sea of JavaScript and build tools.
+Followed every single pattern like they taught us in the schools. ♪
+
+6
+00:00:14,125 --> 00:00:16,950
+♪ I was drowning in a sea of JavaScript and build tools.
+Followed every single pattern like they taught us in the schools.
+Spent my days in the terminal, just waiting for the compile. ♪
+
+7
+00:00:16,950 --> 00:00:19,775
+♪ Followed every single pattern like they taught us in the schools.
+Spent my days in the terminal, just waiting for the compile.
+Chasing every new framework and burning through the style. ♪
+
+8
+00:00:19,775 --> 00:00:22,600
+♪ Spent my days in the terminal, just waiting for the compile.
+Chasing every new framework and burning through the style.
+But you can't build a future on a shifting pile of sand. ♪
+
+9
+00:00:22,600 --> 00:00:25,425
+♪ Chasing every new framework and burning through the style.
+But you can't build a future on a shifting pile of sand.
+I needed something solid I could hold within my hand. ♪
+
+10
+00:00:25,425 --> 00:00:28,250
+♪ But you can't build a future on a shifting pile of sand.
+I needed something solid I could hold within my hand.
+Packaged up my grievances, and I threw away the key. ♪
+
+11
+00:00:28,250 --> 00:00:31,075
+♪ I needed something solid I could hold within my hand.
+Packaged up my grievances, and I threw away the key.
+Leaving all that heavy baggage, setting my spirit free. ♪
+
+12
+00:00:31,075 --> 00:00:33,900
+♪ Packaged up my grievances, and I threw away the key.
+Leaving all that heavy baggage, setting my spirit free.
+Then I saw a beacon shining in that dark and digital night. ♪
+
+13
+00:00:33,900 --> 00:00:36,725
+♪ Leaving all that heavy baggage, setting my spirit free.
+Then I saw a beacon shining in that dark and digital night.
+A protocol of pure salvation, stepping into the light. ♪
+
+14
+00:00:36,725 --> 00:00:39,550
+♪ Then I saw a beacon shining in that dark and digital night.
+A protocol of pure salvation, stepping into the light.
+No more heavy bundle sizes, no more endless BFFs. ♪
+
+15
+00:00:39,550 --> 00:00:42,375
+♪ A protocol of pure salvation, stepping into the light.
+No more heavy bundle sizes, no more endless BFFs.
+Just a clean cut to the future, leaving all that stress. ♪
+
+16
+00:00:42,375 --> 00:00:45,200
+♪ No more heavy bundle sizes, no more endless BFFs.
+Just a clean cut to the future, leaving all that stress.
+Pathland! Take me down that open road! ♪
+
+17
+00:00:45,200 --> 00:00:48,025
+♪ Just a clean cut to the future, leaving all that stress.
+Pathland! Take me down that open road!
+Sixteen bytes of pure perfection, lightening my load! ♪
+
+18
+00:00:48,025 --> 00:00:50,850
+♪ Pathland! Take me down that open road!
+Sixteen bytes of pure perfection, lightening my load!
+We don't need no npm, we don't need no build! ♪
+
+19
+00:00:50,850 --> 00:00:53,675
+♪ Sixteen bytes of pure perfection, lightening my load!
+We don't need no npm, we don't need no build!
+Just that raw and native power, leaving us all thrilled! ♪
+
+20
+00:00:53,675 --> 00:00:56,500
+♪ We don't need no npm, we don't need no build!
+Just that raw and native power, leaving us all thrilled!
+Zero bytes for nothing changing, standing fast and tall! ♪
+
+21
+00:00:56,500 --> 00:00:59,325
+♪ Just that raw and native power, leaving us all thrilled!
+Zero bytes for nothing changing, standing fast and tall!
+On that binary horizon, answering the call! ♪
+
+22
+00:00:59,325 --> 00:01:02,150
+♪ Zero bytes for nothing changing, standing fast and tall!
+On that binary horizon, answering the call!
+Yes, Pathland is the answer, set my spirit free! ♪
+
+23
+00:01:02,150 --> 00:01:04,975
+♪ On that binary horizon, answering the call!
+Yes, Pathland is the answer, set my spirit free!
+Bringing back the power to the heart of you and me! ♪
+
+24
+00:01:04,975 --> 00:01:07,800
+♪ Yes, Pathland is the answer, set my spirit free!
+Bringing back the power to the heart of you and me!
+Now I'm writing all my views in the backend, where they belong. ♪
+
+25
+00:01:07,800 --> 00:01:10,625
+♪ Bringing back the power to the heart of you and me!
+Now I'm writing all my views in the backend, where they belong.
+Just some simple Java code, singing its own sweet song. ♪
+
+26
+00:01:10,625 --> 00:01:13,450
+♪ Now I'm writing all my views in the backend, where they belong.
+Just some simple Java code, singing its own sweet song.
+I got my Spring Boot running, and my Quarkus standing by. ♪
+
+27
+00:01:13,450 --> 00:01:16,275
+♪ Just some simple Java code, singing its own sweet song.
+I got my Spring Boot running, and my Quarkus standing by.
+Watching that first page render, brings a tear to my eye. ♪
+
+28
+00:01:16,275 --> 00:01:19,100
+♪ I got my Spring Boot running, and my Quarkus standing by.
+Watching that first page render, brings a tear to my eye.
+A VStack and some Text, and a Button for the win. ♪
+
+29
+00:01:19,100 --> 00:01:21,925
+♪ Watching that first page render, brings a tear to my eye.
+A VStack and some Text, and a Button for the win.
+This is where the real redemption starts to settle in. ♪
+
+30
+00:01:21,925 --> 00:01:24,750
+♪ A VStack and some Text, and a Button for the win.
+This is where the real redemption starts to settle in.
+It sends a little signal, just a tiny bit of grace. ♪
+
+31
+00:01:24,750 --> 00:01:27,575
+♪ This is where the real redemption starts to settle in.
+It sends a little signal, just a tiny bit of grace.
+And that native GTK widget puts a smile on my face. ♪
+
+32
+00:01:27,575 --> 00:01:30,400
+♪ It sends a little signal, just a tiny bit of grace.
+And that native GTK widget puts a smile on my face.
+Pathland! Take me down that open road! ♪
+
+33
+00:01:30,400 --> 00:01:52,900
+♪
+
+34
+00:01:52,900 --> 00:01:55,725
+♪ And that native GTK widget puts a smile on my face.
+Pathland! Take me down that open road!
+Sixteen bytes of pure perfection, lightening my load! ♪
+
+35
+00:01:55,725 --> 00:01:58,550
+♪ Pathland! Take me down that open road!
+Sixteen bytes of pure perfection, lightening my load!
+We don't need no npm, we don't need no build! ♪
+
+36
+00:01:58,550 --> 00:02:01,375
+♪ Sixteen bytes of pure perfection, lightening my load!
+We don't need no npm, we don't need no build!
+Just that raw and native power, leaving us all thrilled! ♪
+
+37
+00:02:01,375 --> 00:02:04,200
+♪ We don't need no npm, we don't need no build!
+Just that raw and native power, leaving us all thrilled!
+Zero bytes for nothing changing, standing fast and tall! ♪
+
+38
+00:02:04,200 --> 00:02:07,025
+♪ Just that raw and native power, leaving us all thrilled!
+Zero bytes for nothing changing, standing fast and tall!
+On that binary horizon, answering the call! ♪
+
+39
+00:02:07,025 --> 00:02:09,850
+♪ Zero bytes for nothing changing, standing fast and tall!
+On that binary horizon, answering the call!
+Yes, Pathland is the answer, set my spirit free! ♪
+
+40
+00:02:09,850 --> 00:02:12,675
+♪ On that binary horizon, answering the call!
+Yes, Pathland is the answer, set my spirit free!
+Bringing back the power to the heart of you and me! ♪
+
+41
+00:02:12,675 --> 00:02:15,500
+♪ Yes, Pathland is the answer, set my spirit free!
+Bringing back the power to the heart of you and me!
+Oh, she runs on any surface, any platform, any screen! ♪
+
+42
+00:02:15,500 --> 00:02:18,325
+♪ Bringing back the power to the heart of you and me!
+Oh, she runs on any surface, any platform, any screen!
+The smoothest little protocol that this world has ever seen! ♪
+
+43
+00:02:18,325 --> 00:02:21,150
+♪ Oh, she runs on any surface, any platform, any screen!
+The smoothest little protocol that this world has ever seen!
+No more framework fatigue, and no more endless JavaScript pain! ♪
+
+44
+00:02:21,150 --> 00:02:23,975
+♪ The smoothest little protocol that this world has ever seen!
+No more framework fatigue, and no more endless JavaScript pain!
+Just a clear and open highway, washing away all that strain! ♪
+
+45
+00:02:23,975 --> 00:02:26,800
+♪ No more framework fatigue, and no more endless JavaScript pain!
+Just a clear and open highway, washing away all that strain!
+We're bound for a brighter future, where the backend owns the show! ♪
+
+46
+00:02:26,800 --> 00:02:29,625
+♪ Just a clear and open highway, washing away all that strain!
+We're bound for a brighter future, where the backend owns the show!
+And with Pathland as our compass, there's no limit where we'll go! ♪
+
+47
+00:02:29,625 --> 00:02:32,450
+♪ We're bound for a brighter future, where the backend owns the show!
+And with Pathland as our compass, there's no limit where we'll go!
+So raise your glasses high, let the joyful chorus ring! ♪
+
+48
+00:02:32,450 --> 00:02:35,275
+♪ And with Pathland as our compass, there's no limit where we'll go!
+So raise your glasses high, let the joyful chorus ring!
+For this open UI protocol is a truly beautiful thing! ♪
+
+49
+00:02:35,275 --> 00:02:38,100
+♪ So raise your glasses high, let the joyful chorus ring!
+For this open UI protocol is a truly beautiful thing!
+(Mm-mm, yeah. Leaving all that bloat behind.) ♪
+
+50
+00:02:38,100 --> 00:02:40,838
+♪ For this open UI protocol is a truly beautiful thing!
+(Mm-mm, yeah. Leaving all that bloat behind.)
+Just me and my sixteen bytes, out here on the wire. ♪
+
+51
+00:02:40,838 --> 00:02:43,575
+♪ (Mm-mm, yeah. Leaving all that bloat behind.)
+Just me and my sixteen bytes, out here on the wire.
+Server rendering my dreams, and fueling my fire. ♪
+
+52
+00:02:43,575 --> 00:02:46,312
+♪ Just me and my sixteen bytes, out here on the wire.
+Server rendering my dreams, and fueling my fire.
+Tests are green, the future's bright, we're ready for the ride. ♪
+
+53
+00:02:46,312 --> 00:02:49,050
+♪ Server rendering my dreams, and fueling my fire.
+Tests are green, the future's bright, we're ready for the ride.
+Got that raw and native power standing by my side. ♪
+
+54
+00:02:49,050 --> 00:02:51,787
+♪ Tests are green, the future's bright, we're ready for the ride.
+Got that raw and native power standing by my side.
+So long, bloated frameworks. So long, endless build. ♪
+
+55
+00:02:51,787 --> 00:02:54,525
+♪ Got that raw and native power standing by my side.
+So long, bloated frameworks. So long, endless build.
+My backend team is running fast, and my spirit is finally filled. ♪
+
+56
+00:02:54,525 --> 00:02:57,262
+♪ So long, bloated frameworks. So long, endless build.
+My backend team is running fast, and my spirit is finally filled.
+(Pathland... we're coming home...) ♪
+
+57
+00:02:57,262 --> 00:03:00,000
+♪ My backend team is running fast, and my spirit is finally filled.
+(Pathland... we're coming home...) ♪
+
