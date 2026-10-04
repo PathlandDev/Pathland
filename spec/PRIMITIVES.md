@@ -469,8 +469,10 @@ Horizontal flex stack. Same properties as `VStack`, mirrored:
 ### ZStack — `ZSTACK` 0x12
 
 Depth-overlapping layer stack: children are drawn in depth order — **child index =
-draw order**, later = on top. **Properties**: `ALIGNMENT` (enum: `Leading`=0,
-`Center`=1, `Trailing`=2, `Fill`=3), plus layout modifiers (Fixed/Fill
+draw order**, later = on top. An explicit `Z_INDEX` overrides that order: a
+higher value draws **on top of** lower values, and equal values tie-break by
+child index (SwiftUI `.zIndex(_:)` parity). **Properties**: `ALIGNMENT` (enum:
+`Leading`=0, `Center`=1, `Trailing`=2, `Fill`=3), plus layout modifiers (Fixed/Fill
 `WIDTH`/`HEIGHT`, `PADDING`, `CONTENT_MARGINS` as an inset). **No `SPACING`** —
 children occupy the same box by design; there is no gap between them.
 
@@ -514,7 +516,8 @@ children occupy the same box by design; there is no gap between them.
   (SwiftUI `.clipped()` parity).
 - **Edge cases**: the first child is **not** a special "background" — it follows
   the same size model (a Fixed first child keeps its exact box; a `Fill` one
-  stretches); draw order is always child index; a `Fill` child in a Hug ZStack
+  stretches); draw order is child index, with an explicit `Z_INDEX` overriding it
+  (higher = on top, equal → child index); a `Fill` child in a Hug ZStack
   propagates (fills the parent's proposal).
 
 ### Grid — `GRID` 0x13

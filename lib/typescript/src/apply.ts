@@ -189,6 +189,11 @@ function applyLayout(r: DomRenderer): void {
         }
         w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : hToken;
         w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : vToken;
+        // The child's Z_INDEX orders its shell (the grid item) among the
+        // overlapping siblings — the shell is what participates in stacking,
+        // not the child (a plain block inside it). Mirrors the Rust SSR.
+        const inner = w.firstElementChild;
+        w.style.zIndex = inner instanceof HTMLElement ? inner.style.zIndex : "";
       }
     } else if (isGridComponent(comp)) {
       // Position each cell shell per the grid ALIGNMENT (2D code) on both axes
@@ -216,6 +221,9 @@ function applyLayout(r: DomRenderer): void {
         }
         shell.style.justifySelf = fillsAxis(shell, true, false) ? "stretch" : hToken;
         shell.style.alignSelf = fillsAxis(shell, false, false) ? "stretch" : vToken;
+        // The cell's Z_INDEX orders its shell (the grid item); see the ZSTACK note.
+        const inner = shell.firstElementChild;
+        shell.style.zIndex = inner instanceof HTMLElement ? inner.style.zIndex : "";
       };
       if (!explicitRows) {
         for (const w of children) {

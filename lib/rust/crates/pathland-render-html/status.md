@@ -66,6 +66,12 @@ Statelessness). Protocol contract: `spec/`.
   `TEXT_CASE`, `FONT_STYLE`, `FONT_DESIGN`, `UNDERLINE`/`STRIKETHROUGH`,
   `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `COLOR_INVERT`. `WIDTH`/`HEIGHT`
   `HUG_CONTENT` (-2) is **omitted** (intrinsic size); `FILL` (-1) → `100%`.
+- **`Z_INDEX` (draw-order override)**: a `Z_INDEX != 0` on a `ZSTACK` child or
+  `GRID` cell is emitted on its **shell** (the grid item that participates in
+  stacking — the child's own `z-index` is inert inside the shell), so a higher
+  value draws above lower siblings regardless of child index
+  (spec/PRIMITIVES.md §ZStack). The child keeps its own property too (the DOM
+  client reads it). Mirrored by the DOM client's `applyLayout`.
 - **Layout contract (spec/LAYOUT.md)**: cross-axis default is **hug**
   (`flex-start`), not CSS stretch; `ALIGNMENT` positions only (`Fill`=3 → hug
   default). `DIVIDER` is greedy on the cross axis (`width:100%`); `SCROLLVIEW`

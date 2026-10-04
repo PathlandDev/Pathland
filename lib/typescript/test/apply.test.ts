@@ -44,6 +44,7 @@ import {
   PROP_ROLE,
   PROP_TEXT_STYLE,
   PROP_VALUE,
+  PROP_Z_INDEX,
   ROLE_BANNER,
   ROLE_HEADER,
   TEXT_STYLE_LARGE_TITLE,
@@ -728,6 +729,31 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     const shell = zstack.children[0] as HTMLElement;
     expect(shell.style.justifySelf).toBe("end");
     expect(shell.style.alignSelf).toBe("start");
+  });
+
+  it("applies a ZStack child's Z_INDEX to its wrapper shell (draw-order override)", () => {
+    const r = renderer();
+    const batch = parseBatch(
+      buildBatch([
+        [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_ZSTACK],
+        [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
+        [CAT_TREE, CMD_CREATE_NODE, 0, 3, COMPONENT_TEXT],
+        // The FIRST child has z-index 5 (F32 — the DSL wire type): its shell
+        // must carry it so it draws above the later sibling.
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 2, (VAL_F32 << 16) | PROP_Z_INDEX, f32bits(5)],
+        [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
+        [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 3],
+      ]),
+    );
+    applyBatch(batch, r);
+    const zstack = r.byId.get(1) as HTMLElement;
+    const child = r.byId.get(2) as HTMLElement;
+    const shell = child.parentElement as HTMLElement;
+    expect(shell.parentElement).toBe(zstack); // it is the ZSTACK's grid shell
+    expect(shell.style.zIndex).toBe("5");
+    expect(child.style.zIndex).toBe("5");
+    const sibling = r.byId.get(3) as HTMLElement;
+    expect((sibling.parentElement as HTMLElement).style.zIndex).toBe("");
   });
 
   it("mirrors GRID_COLUMNS/GRID_ROWS into track templates (never pixel sizes) and wraps cells", () => {

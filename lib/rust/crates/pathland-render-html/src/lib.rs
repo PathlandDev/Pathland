@@ -1393,8 +1393,16 @@ if indeterminate {
                     } else {
                         String::new()
                     };
+                    // The cell's Z_INDEX orders its shell (the grid item) among
+                    // overlapping siblings; see the ZSTACK wrapper note.
+                    let z = nodes
+                        .get(&cell)
+                        .map(|cn| cn.f32_property(property_id::Z_INDEX, 0.0))
+                        .filter(|z| *z != 0.0)
+                        .map(|z| format!("z-index:{};", z as i32))
+                        .unwrap_or_default();
                     format!(
-                        "<div style=\"{placement}justify-self:{};align-self:{};\">{cell_html}</div>",
+                        "<div style=\"{placement}{z}justify-self:{};align-self:{};\">{cell_html}</div>",
                         pos_h(fills_axis(nodes, cell, true, false)),
                         pos_v(fills_axis(nodes, cell, false, false)),
                     )
@@ -1493,8 +1501,18 @@ if indeterminate {
                         if child_html.is_empty() {
                             None
                         } else {
+                            // The child's Z_INDEX orders its shell (the grid item)
+                            // among the overlapping siblings — z-index on the child
+                            // itself is inert (it is not a grid/flex item). The child
+                            // keeps its own property too (the DOM client reads it).
+                            let z = nodes
+                                .get(&child)
+                                .map(|cn| cn.f32_property(property_id::Z_INDEX, 0.0))
+                                .filter(|z| *z != 0.0)
+                                .map(|z| format!("z-index:{};", z as i32))
+                                .unwrap_or_default();
                             Some(format!(
-                                "<div style=\"grid-area:1/1;justify-self:{};align-self:{};\">{child_html}</div>",
+                                "<div style=\"grid-area:1/1;{z}justify-self:{};align-self:{};\">{child_html}</div>",
                                 pos_h(fills_axis(nodes, child, true, false)),
                                 pos_v(fills_axis(nodes, child, false, false)),
                             ))
@@ -2481,6 +2499,26 @@ mod tests {
         assert!(zstack.contains("justify-self:start"), "zstack child positioned per ALIGNMENT");
         assert!(zstack.contains("grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);"),
             "zstack tracks shrink below content min-height (minmax(0,1fr)): {zstack}");
+    }
+
+    #[test]
+    fn zstack_child_z_index_lands_on_the_shell() {
+        use pathland_core::value_type;
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::ZSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::TEXT as u32, 0));
+        // The FIRST child has z-index 5: its shell must carry it so it draws
+        // above the later sibling (draw-order override, spec/PRIMITIVES.md §ZStack).
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 2,
+            ((value_type::F32 as u32) << 16) | property_id::Z_INDEX as u32, 5.0f32.to_bits()));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, u32::MAX));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, u32::MAX));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("grid-area:1/1;z-index:5;"), "z-index on the child shell: {html}");
+        assert!(html.contains("z-index:5"), "the child keeps its own z-index: {html}");
     }
 
     #[test]
