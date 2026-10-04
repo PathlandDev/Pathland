@@ -312,6 +312,17 @@ const HANDLERS: Record<number, Handler> = {
       el.style.display = "-webkit-box";
       el.style.webkitLineClamp = String(n);
       (el.style as unknown as Record<string, string>).boxOrient = "vertical";
+      // overflow:hidden is REQUIRED: -webkit-line-clamp draws the ellipsis but
+      // does not clip the overflow on its own (Safari paints it below the box).
+      el.style.overflow = "hidden";
+    } else {
+      // A removed/zeroed limit restores normal, unbounded text.
+      el.style.webkitLineClamp = "";
+      (el.style as unknown as Record<string, string>).boxOrient = "";
+      el.style.overflow = "";
+      if (el.style.display === "-webkit-box") {
+        el.style.display = "";
+      }
     }
   },
   [P.PROP_TRUNCATION_MODE]: () => {

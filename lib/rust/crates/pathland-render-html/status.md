@@ -60,7 +60,9 @@ Statelessness). Protocol contract: `spec/`.
   `WIDTH`/`HEIGHT` (`FILL` → `width:100%`/`height:100%` expansion, `HUG` →
   intrinsic), `PADDING` + per-edge, `COLOR`,
   `BACKGROUND_COLOR`, `FONT_SIZE`/`WEIGHT`/`FAMILY`, `OPACITY`, `VISIBLE`,
-  `Z_INDEX`, `LINE_LIMIT` (positive → `-webkit-box`/`-webkit-line-clamp`, matching
+  `Z_INDEX`, `LINE_LIMIT` (positive → `-webkit-box`/`-webkit-line-clamp` **with
+  `overflow:hidden`** — the clamp draws the ellipsis but does not clip on its own,
+  so Safari would otherwise paint the overflowed text below the box, matching
   the DOM client), `TEXT_ALIGNMENT`, `TRUNCATION_MODE`, `BORDER_*`,
   `SELECTED`, `TOGGLE_STYLE`, `ENABLED`, `ROLE`/`STATE` (ARIA), plus
   `TEXT_CASE`, `FONT_STYLE`, `FONT_DESIGN`, `UNDERLINE`/`STRIKETHROUGH`,

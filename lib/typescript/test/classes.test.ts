@@ -79,10 +79,15 @@ describe("Option A style appliers", () => {
     expect(el.style.textTransform).toBe("uppercase");
   });
 
-  it("line-limit -> webkitLineClamp", () => {
+  it("line-limit -> webkitLineClamp + overflow:hidden (clamp clips)", () => {
     const el = document.createElement("div");
     applyProperty(el, PROP_LINE_LIMIT, VAL_U32, 2);
     expect(el.style.webkitLineClamp).toBe("2");
+    expect(el.style.overflow).toBe("hidden");
+    // A removed limit restores normal, unbounded text.
+    applyProperty(el, PROP_LINE_LIMIT, VAL_U32, 0);
+    expect(el.style.webkitLineClamp).toBe("");
+    expect(el.style.overflow).toBe("");
   });
 
   it("color -> rgba", () => {

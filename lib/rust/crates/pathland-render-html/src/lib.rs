@@ -1082,10 +1082,14 @@ impl HtmlRenderer {
         }
         // LINE_LIMIT truncation: a positive line limit clamps the text to N lines
         // (mirrors the DOM client's PROP_LINE_LIMIT application, classes.ts).
+        // `overflow:hidden` is REQUIRED: -webkit-line-clamp sizes the box to N
+        // lines and draws the ellipsis, but does not clip the overflow on its
+        // own — without it Safari/WebKit paint the overflowed text below the
+        // clamped box (the ellipsis AND the extra line both show).
         let line_limit = node.u32_property(property_id::LINE_LIMIT, 0);
         if line_limit > 0 {
             css.push_str(&format!(
-                "display:-webkit-box;-webkit-line-clamp:{line_limit};-webkit-box-orient:vertical;"
+                "display:-webkit-box;overflow:hidden;-webkit-line-clamp:{line_limit};-webkit-box-orient:vertical;"
             ));
         }
         let style = style_attr(&format!("{css}{derived}"));
@@ -2660,7 +2664,7 @@ mod tests {
 
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
         assert!(
-            html.contains("style=\"display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;\""),
+            html.contains("style=\"display:-webkit-box;overflow:hidden;-webkit-line-clamp:1;-webkit-box-orient:vertical;\""),
             "a positive LINE_LIMIT clamps the text to N lines: {html}"
         );
         // 0 = unlimited: no clamp style (the unset case above is unchanged).
