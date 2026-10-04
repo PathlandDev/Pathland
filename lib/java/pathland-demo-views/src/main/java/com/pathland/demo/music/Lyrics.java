@@ -12,9 +12,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The music player's subtitle/lyric model: parses a track's embedded SRT
- * (karaoke-accumulated cues — each cue repeats the earlier lines and appends the
- * newest) and resolves the current lyric line for a play position.
+ * The music player's subtitle/lyric model: parses a track's embedded SRT and
+ * resolves the current karaoke block for a play position. The cues are a
+ * rolling window — each shows the repeated chorus lines and appends the newest
+ * (last) line, which is the one being sung — so the display advances
+ * monotonically as the block rolls forward at each cue boundary.
  *
  * <p>The SRTs ship as shared demo assets ({@code DemoAssets}) named by the track
  * title with underscores ({@code Building on Solid Ground} →
@@ -40,30 +42,22 @@ public final class Lyrics {
     }
 
     /**
-     * The **current** lyric line at {@code seconds}: the cue's lines are
-     * distributed evenly across its {@code [start, end)} window and the line at
-     * the current proportional position is returned (the karaoke cues
-     * accumulate, so the line advances as the cue plays), with the {@code ♪}
-     * glyphs stripped — or {@code ""} when out of range / the track has no
-     * lyrics file.
+     * The **current karaoke block** at {@code seconds}: the covering cue's
+     * lines (cleaned, {@code ♪} stripped, non-empty) in display order — the last
+     * line is the one being sung, the earlier lines are the chorus context. An
+     * empty list when out of range / the track has no lyrics file / the cue is
+     * blank.
      */
-    public static String lineAt(String title, float seconds) {
+    public static List<String> blockFor(String title, float seconds) {
         for (Cue cue : cuesFor(title)) {
             if (seconds >= cue.start() && seconds < cue.end()) {
-                List<String> lines = cue.lines().stream()
+                return cue.lines().stream()
                         .map(Lyrics::clean)
                         .filter(l -> !l.isEmpty())
                         .toList();
-                int n = lines.size();
-                if (n == 0) {
-                    return "";
-                }
-                float window = cue.end() - cue.start();
-                float t = window > 0 ? (seconds - cue.start()) / window : 0f;
-                return lines.get(Math.min(n - 1, (int) (t * n)));
             }
         }
-        return "";
+        return List.of();
     }
 
     /** The parsed cues for a title (cached); empty when no lyrics file. */

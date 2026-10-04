@@ -106,12 +106,12 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   durations matching the real files. Catalog (`Track` record, 8 albums)
   with album art + audio served from
   `/_pathland/assets/albumart/*.jpg` and `/_pathland/assets/audio/*.mp3` in both
-  SSR demos. **Synced lyric subtitles**: a `Lyrics` model parses each track's
-  embedded `lyrics/{Title_With_Underscores}.srt` (karaoke-accumulated cues) and
-  a computed signal resolves the **current line** at the play position (the cue's
-  lines are distributed proportionally across the cue window, so the line advances
-  with the music); the pill (white **italic** text on ~50% translucent black, just
-  above the floating player bar) shows only while playing (`MusicPlayerView`). The covers are downscaled to **440×440** JPEG (2× the largest
+  SSR demos. **Synced karaoke subtitles**: a `Lyrics` model parses each track's
+  embedded `lyrics/{Title_With_Underscores}.srt` (rolling-window cues) and a
+  computed signal resolves the **current karaoke block** at the play position; the
+  pill (italic rows, the newest line bright white with the earlier chorus lines
+  dimmed, on ~50% translucent black, just above the floating player bar) shows
+  only while playing (`MusicPlayerView`). The covers are downscaled to **440×440** JPEG (2× the largest
   rendered 220×220 CSS box, `NowPlayingSidebar`; ~190 KB total vs the original
   1024×1024 ~960 KB) — JPEG (not WebP) because gdk-pixbuf has no WebP loader, so
   the GTK desktop host decodes them unchanged. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as

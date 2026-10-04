@@ -6,6 +6,7 @@ import com.pathland.view.state.State;
 
 import static com.pathland.view.signal.Signals.computed;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,6 +25,8 @@ public final class MusicPlayerView implements View {
 
     static final int SIDEBAR_WIDTH = 280;
     static final int BAR_HEIGHT = 76;
+    /** The lyric pill's row count (the SRTs' largest karaoke block). */
+    static final int MAX_LYRICS_LINES = 3;
 
     static final Color SECONDARY_FG = Color.rgb(0x6B, 0x72, 0x80);
     static final Color ACTIVE_ROW_BG = Color.rgb(0xE8, 0xEF, 0xFF);
@@ -74,11 +77,11 @@ public final class MusicPlayerView implements View {
 
     @Override
     public View body() {
-        // The synced lyric subtitle: the newest line of the track's SRT cue at
-        // the current play position, shown only while playing.
-        var subtitle = computed(() -> playing.get()
-                ? Lyrics.lineAt(at(trackIndex.get()).title(), position.get())
-                : "");
+        // The synced karaoke lyric block for the current track + play position,
+        // shown only while playing.
+        var block = computed(() -> playing.get()
+                ? Lyrics.blockFor(at(trackIndex.get()).title(), position.get())
+                : List.<String>of());
         return ZStack.of(Alignment.BOTTOM_CENTER,
                 HStack.of(
                         new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
@@ -89,28 +92,41 @@ public final class MusicPlayerView implements View {
                         seekRequest.signal(), volumeRequest.signal())
                         .with(Border.of(Color.rgb(200,200,200), 1, 16))
                 ).with(Padding.of(16)),
-                subtitlePill(subtitle)
+                subtitlePill(block)
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
     }
 
-    /** The lyric pill just above the floating player bar: white text on a
-     *  translucent black pill; invisible (clear) when there is no line. Taps
-     *  pass through to the content beneath. */
-    private static View subtitlePill(Signal<String> subtitle) {
-        return Text.of(subtitle)
-                .with(FontSize.of(13))
-                .with(FontStyleMod.of(FontStyle.ITALIC))
-                .with(ForegroundStyle.of(Color.WHITE))
+    /** The karaoke lyric pill just above the floating player bar: the current
+     *  cue's block in italic — the newest (last) line bright white, the earlier
+     *  chorus lines dimmed — on a translucent black pill; invisible (clear)
+     *  when there is no block. Taps pass through to the content beneath. */
+    private static View subtitlePill(Signal<List<String>> block) {
+        List<View> rows = new ArrayList<>();
+        for (int i = 0; i < MAX_LYRICS_LINES; i++) {
+            int index = i;
+            rows.add(Text.of(computed(() -> lineAt(block.get(), index)))
+                    .with(FontSize.of(13))
+                    .with(FontStyleMod.of(FontStyle.ITALIC))
+                    .with(ForegroundStyle.of(computed(() ->
+                            index == block.get().size() - 1
+                                    ? Color.WHITE
+                                    : Color.argb(170, 255, 255, 255)))));
+        }
+        return VStack.of(HorizontalAlignment.CENTER, 2, rows.toArray(View[]::new))
                 .with(Padding.of(6, 12, 6, 12))
                 .with(CornerRadius.of(8))
-                .with(LineLimit.of(2))
                 .with(Offset.of(0, -(BAR_HEIGHT + 24)))
                 .with(AllowsHitTesting.of(false))
-                .with(Background.of(computed(() -> subtitle.get().isBlank()
+                .with(Background.of(computed(() -> block.get().isEmpty()
                         ? Color.CLEAR
                         : Color.argb(128, 0, 0, 0))));
+    }
+
+    /** The row text for a block index (empty beyond the block). */
+    private static String lineAt(List<String> block, int index) {
+        return index < block.size() ? block.get(index) : "";
     }
 
     /** The track at an index (wraps around; safe for any signed index). */
