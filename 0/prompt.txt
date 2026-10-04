@@ -1,1 +1,1 @@
-Now it switches between 1 and 2 lines while a line is sung
+It is still not stable while a line is sung. prevoious line switches up and down
