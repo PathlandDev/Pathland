@@ -1,1 +1,1 @@
-Now when showing 2 lines, highlight the first one. It seems to be the current line being sung.
+go
