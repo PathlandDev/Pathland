@@ -148,7 +148,9 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   polls `query_position` while the app requested playing and reports only when
   the position advanced ~1 second — the same cadence as the web client — 
   suppressed briefly after a seek), `MEDIA_ENDED` and error → play-state-false
-  from polling the pipeline bus (`EOS`/`Error` messages, on the main thread).
+  from polling the pipeline bus (`EOS`/`Error` messages, on the main thread,
+  drained **non-blocking** via `Bus::iter`/`timed_pop(0)` — the blocking
+  `Bus::pop` would freeze the main thread the moment the bus is empty).
   Playback is
   **GStreamer-direct** because GTK4's own media backend (`GtkMediaFile`) is
   compiled out of some builds (Homebrew's `gtk4` ships with

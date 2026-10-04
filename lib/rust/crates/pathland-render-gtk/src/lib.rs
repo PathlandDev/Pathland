@@ -750,7 +750,11 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
     let timer_playing = requested_playing.clone();
     let timer = glib::timeout_add_local(Duration::from_millis(250), move || {
         if let Some(bus) = timer_pipeline.bus() {
-            while let Some(msg) = bus.pop() {
+            // Drain the bus NON-blocking: `Bus::pop` wraps the blocking
+            // `gst_bus_pop` (it waits for a message), which would freeze the main
+            // thread the moment the bus is empty — `Bus::iter` uses
+            // `timed_pop(0)` and yields only what is already pending.
+            for msg in bus.iter() {
                 match msg.view() {
                     gst::MessageView::Eos(_) => {
                         timer_sink.borrow_mut()(Event::MediaEnded { target: id });
