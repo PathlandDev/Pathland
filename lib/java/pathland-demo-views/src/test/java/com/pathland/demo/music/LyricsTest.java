@@ -97,6 +97,20 @@ class LyricsTest {
     }
 
     @Test
+    void previousLineIsStableAcrossARollingCueWindow() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        assertTrue(cues.size() >= 2, "the song has multiple cues");
+        Lyrics.Cue cue = cues.get(1); // a rolling cue (adds one new line)
+        float start = cue.start() + 0.001f;
+        float mid = cue.start() + (cue.end() - cue.start()) / 2f;
+        String atStart = Lyrics.previousLine("Pathland Crossing", start);
+        String atMid = Lyrics.previousLine("Pathland Crossing", mid);
+        assertFalse(atStart.isBlank());
+        assertEquals(atStart, atMid,
+                "the previous line must not oscillate within a rolling cue");
+    }
+
+    @Test
     void previousLineEmptyOnlyAtTheVeryFirstLine() {
         var cues = Lyrics.cuesFor("Building on Solid Ground");
         assertEquals("", Lyrics.previousLine("Building on Solid Ground", cues.get(0).start() + 0.001f),

@@ -66,7 +66,13 @@ public final class Lyrics {
      * when out of range / no lyrics / a blank block.
      */
     public static int currentIndex(String title, float seconds) {
-        List<Cue> cues = cuesFor(title);
+        return currentIndexIn(cuesFor(title), seconds);
+    }
+
+    /** The covering cue's current (being-sung) block index — shared by
+     *  {@link #currentIndex} and {@link #previousLine} so the two-line pill is
+     *  always consistent. {@code -1} when out of range / no lyrics / blank. */
+    private static int currentIndexIn(List<Cue> cues, float seconds) {
         for (int ci = 0; ci < cues.size(); ci++) {
             Cue cue = cues.get(ci);
             if (seconds >= cue.start() && seconds < cue.end()) {
@@ -131,13 +137,10 @@ public final class Lyrics {
             Cue cue = cues.get(ci);
             if (seconds >= cue.start() && seconds < cue.end()) {
                 List<String> lines = cleanedLines(cue);
-                int n = lines.size();
-                if (n == 0) {
+                if (lines.isEmpty()) {
                     return "";
                 }
-                float window = cue.end() - cue.start();
-                float t = window > 0 ? (seconds - cue.start()) / window : 0f;
-                int current = Math.min(n - 1, (int) (t * n));
+                int current = currentIndexIn(cues, seconds);
                 if (current > 0) {
                     return lines.get(current - 1);
                 }
