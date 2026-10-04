@@ -42,16 +42,27 @@ class LyricsTest {
     }
 
     @Test
-    void theCurrentLineAdvancesThroughTheBlock() {
+    void theCurrentLineAdvancesThroughTheFirstCuesNewLines() {
         var cues = Lyrics.cuesFor("Pathland Crossing");
-        Lyrics.Cue cue = cues.stream().filter(c -> c.lines().size() > 1)
-                .findFirst().orElse(null);
-        assertNotNull(cue, "the song has a multi-line cue");
-        assertEquals(0, Lyrics.currentIndex("Pathland Crossing", cue.start() + 0.001f),
+        assertTrue(cues.get(0).lines().size() > 1, "the first cue adds multiple new lines");
+        assertEquals(0, Lyrics.currentIndex("Pathland Crossing", cues.get(0).start() + 0.001f),
                 "the first line is current at the cue start");
-        int last = Lyrics.blockFor("Pathland Crossing", cue.start() + 0.001f).size() - 1;
-        assertEquals(last, Lyrics.currentIndex("Pathland Crossing", cue.end() - 0.001f),
+        int last = Lyrics.blockFor("Pathland Crossing", cues.get(0).start() + 0.001f).size() - 1;
+        assertEquals(last, Lyrics.currentIndex("Pathland Crossing", cues.get(0).end() - 0.001f),
                 "the last line is current at the cue end");
+    }
+
+    @Test
+    void aRollingCueHoldsItsNewLineForTheWholeWindow() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        assertTrue(cues.size() >= 2, "the song has multiple cues");
+        Lyrics.Cue cue = cues.get(1);
+        int last = Lyrics.blockFor("Pathland Crossing", cue.start() + 0.001f).size() - 1;
+        float mid = cue.start() + (cue.end() - cue.start()) / 2f;
+        assertEquals(last, Lyrics.currentIndex("Pathland Crossing", cue.start() + 0.001f),
+                "the rolling cue's new (last) line is current at its start");
+        assertEquals(last, Lyrics.currentIndex("Pathland Crossing", mid),
+                "the new line stays current for the whole window");
     }
 
     @Test

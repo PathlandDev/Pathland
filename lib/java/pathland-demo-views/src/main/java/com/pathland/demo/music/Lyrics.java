@@ -59,24 +59,63 @@ public final class Lyrics {
 
     /**
      * The index of the line **currently being sung** within the covering cue's
-     * cleaned block: the block's lines are sung in order across the cue's
-     * {@code [start, end)} window, so the current index is the proportional
-     * sub-position ({@code 0} at the start, {@code n-1} at the end). {@code -1}
+     * cleaned block. Only the lines this cue ADDS over the previous cue are sung
+     * during its window (the earlier block lines are the repeated chorus
+     * context), so the current index advances proportionally across those new
+     * lines — for a rolling cue that is its (constant) last line. {@code -1}
      * when out of range / no lyrics / a blank block.
      */
     public static int currentIndex(String title, float seconds) {
-        for (Cue cue : cuesFor(title)) {
+        List<Cue> cues = cuesFor(title);
+        for (int ci = 0; ci < cues.size(); ci++) {
+            Cue cue = cues.get(ci);
             if (seconds >= cue.start() && seconds < cue.end()) {
-                int n = cleanedLines(cue).size();
+                List<String> lines = cleanedLines(cue);
+                int n = lines.size();
                 if (n == 0) {
                     return -1;
                 }
+                int newCount = newLineCount(cues, ci);
+                if (newCount <= 0) {
+                    return n - 1; // a hold cue: the newest line stays current
+                }
                 float window = cue.end() - cue.start();
                 float t = window > 0 ? (seconds - cue.start()) / window : 0f;
-                return Math.min(n - 1, (int) (t * n));
+                int newIndex = Math.min(newCount - 1, (int) (t * newCount));
+                return n - newCount + newIndex;
             }
         }
         return -1;
+    }
+
+    /**
+     * The number of lines this cue ADDS over the previous one — the lines
+     * actually sung during its window. The blocks roll (each cue drops the
+     * oldest and appends the newest), so the overlap is the longest suffix of
+     * the previous block that matches a prefix of this one; the first cue's
+     * whole block is new.
+     */
+    private static int newLineCount(List<Cue> cues, int ci) {
+        List<String> cur = cleanedLines(cues.get(ci));
+        if (ci == 0) {
+            return cur.size();
+        }
+        List<String> prev = cleanedLines(cues.get(ci - 1));
+        int max = Math.min(prev.size(), cur.size());
+        int overlap = 0;
+        for (int l = 1; l <= max; l++) {
+            boolean match = true;
+            for (int j = 0; j < l; j++) {
+                if (!cur.get(j).equals(prev.get(prev.size() - l + j))) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                overlap = l;
+            }
+        }
+        return cur.size() - overlap;
     }
 
     /**
