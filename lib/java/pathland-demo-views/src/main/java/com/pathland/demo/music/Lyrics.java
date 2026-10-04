@@ -40,20 +40,27 @@ public final class Lyrics {
     }
 
     /**
-     * The **newest** (last non-empty) lyric line of the cue containing
-     * {@code seconds}, with the {@code ♪} glyphs stripped, or {@code ""} when
-     * out of range / the track has no lyrics file. The karaoke cues accumulate
-     * earlier lines, so the last line is the line just sung.
+     * The **current** lyric line at {@code seconds}: the cue's lines are
+     * distributed evenly across its {@code [start, end)} window and the line at
+     * the current proportional position is returned (the karaoke cues
+     * accumulate, so the line advances as the cue plays), with the {@code ♪}
+     * glyphs stripped — or {@code ""} when out of range / the track has no
+     * lyrics file.
      */
     public static String lineAt(String title, float seconds) {
         for (Cue cue : cuesFor(title)) {
             if (seconds >= cue.start() && seconds < cue.end()) {
-                for (int i = cue.lines().size() - 1; i >= 0; i--) {
-                    String clean = clean(cue.lines().get(i));
-                    if (!clean.isEmpty()) {
-                        return clean;
-                    }
+                List<String> lines = cue.lines().stream()
+                        .map(Lyrics::clean)
+                        .filter(l -> !l.isEmpty())
+                        .toList();
+                int n = lines.size();
+                if (n == 0) {
+                    return "";
                 }
+                float window = cue.end() - cue.start();
+                float t = window > 0 ? (seconds - cue.start()) / window : 0f;
+                return lines.get(Math.min(n - 1, (int) (t * n)));
             }
         }
         return "";

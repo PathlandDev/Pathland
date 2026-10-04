@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -15,26 +16,33 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LyricsTest {
 
     @Test
-    void parsesEmbeddedSrtAndResolvesTheNewestLine() {
+    void parsesEmbeddedSrtAndResolvesTheCurrentLine() {
         var cues = Lyrics.cuesFor("Building on Solid Ground");
         assertFalse(cues.isEmpty(), "the demo ships lyrics for the first track");
         Lyrics.Cue first = cues.get(0);
         assertEquals(0f, first.start());
         assertTrue(first.end() > 0f);
-        String line = Lyrics.lineAt("Building on Solid Ground", first.start() + 0.001f);
-        assertFalse(line.isBlank());
-        assertFalse(line.contains("♪"), "music-note glyphs are stripped");
+        // At the start of a multi-line cue the FIRST line shows; the line
+        // advances through the cue (proportional sub-timing) toward the last.
+        String atStart = Lyrics.lineAt("Building on Solid Ground", first.start() + 0.001f);
+        String atEnd = Lyrics.lineAt("Building on Solid Ground", first.end() - 0.001f);
+        assertFalse(atStart.isBlank());
+        assertFalse(atEnd.isBlank());
+        assertFalse(atStart.contains("♪"), "music-note glyphs are stripped");
+        if (first.lines().size() > 1) {
+            assertNotEquals(atStart, atEnd, "the current line advances within the cue");
+        }
     }
 
     @Test
-    void cueBoundariesAdvanceTheLyricLine() {
+    void theCurrentLineAdvancesWithinACue() {
         var cues = Lyrics.cuesFor("Pathland Crossing");
-        assertTrue(cues.size() >= 2, "the song has multiple cues");
-        String a = Lyrics.lineAt("Pathland Crossing", cues.get(0).start() + 0.001f);
-        String b = Lyrics.lineAt("Pathland Crossing", cues.get(1).start() + 0.001f);
-        assertFalse(a.isBlank());
-        assertFalse(b.isBlank());
-        assertNotEquals(a, b, "a cue boundary changes the displayed line");
+        Lyrics.Cue cue = cues.stream().filter(c -> c.lines().size() > 1)
+                .findFirst().orElse(null);
+        assertNotNull(cue, "the song has a multi-line cue");
+        String atStart = Lyrics.lineAt("Pathland Crossing", cue.start() + 0.001f);
+        String atEnd = Lyrics.lineAt("Pathland Crossing", cue.end() - 0.001f);
+        assertNotEquals(atStart, atEnd, "the current line advances within the cue");
     }
 
     @Test

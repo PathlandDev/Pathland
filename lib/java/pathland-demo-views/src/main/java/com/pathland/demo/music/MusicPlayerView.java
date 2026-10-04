@@ -101,6 +101,7 @@ public final class MusicPlayerView implements View {
     private static View subtitlePill(Signal<String> subtitle) {
         return Text.of(subtitle)
                 .with(FontSize.of(13))
+                .with(FontStyleMod.of(FontStyle.ITALIC))
                 .with(ForegroundStyle.of(Color.WHITE))
                 .with(Padding.of(6, 12, 6, 12))
                 .with(CornerRadius.of(8))
