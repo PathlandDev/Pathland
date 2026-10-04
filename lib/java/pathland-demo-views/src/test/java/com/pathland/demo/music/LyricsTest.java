@@ -61,6 +61,40 @@ class LyricsTest {
     }
 
     @Test
+    void previousLineWithinACueIsTheLineBefore() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        Lyrics.Cue cue = cues.stream().filter(c -> c.lines().size() > 1)
+                .findFirst().orElse(null);
+        assertNotNull(cue, "the song has a multi-line cue");
+        float half = cue.start() + (cue.end() - cue.start()) / 2f;
+        int current = Lyrics.currentIndex("Pathland Crossing", half);
+        assertTrue(current > 0, "mid-cue the current line is past the first");
+        String prev = Lyrics.previousLine("Pathland Crossing", half);
+        assertEquals(Lyrics.blockFor("Pathland Crossing", half).get(current - 1), prev);
+    }
+
+    @Test
+    void previousLineSpansCueBoundaries() {
+        var cues = Lyrics.cuesFor("Pathland Crossing");
+        assertTrue(cues.size() >= 2, "the song has multiple cues");
+        // At the second cue's start (current index 0), the line just sung was the
+        // first cue's last line — so the two-line pill never empties mid-song.
+        String prev = Lyrics.previousLine("Pathland Crossing", cues.get(1).start() + 0.001f);
+        var firstBlock = Lyrics.blockFor("Pathland Crossing", cues.get(0).start() + 0.001f);
+        assertFalse(prev.isBlank());
+        assertEquals(firstBlock.get(firstBlock.size() - 1), prev);
+    }
+
+    @Test
+    void previousLineEmptyOnlyAtTheVeryFirstLine() {
+        var cues = Lyrics.cuesFor("Building on Solid Ground");
+        assertEquals("", Lyrics.previousLine("Building on Solid Ground", cues.get(0).start() + 0.001f),
+                "nothing was sung before the very first line");
+        assertEquals("", Lyrics.previousLine("Building on Solid Ground", 999999f));
+        assertEquals("", Lyrics.previousLine("No Such Track", 0f));
+    }
+
+    @Test
     void returnsEmptyOutOfRangeOrWithoutLyrics() {
         assertTrue(Lyrics.blockFor("Building on Solid Ground", 999999f).isEmpty(),
                 "no cue covers the position");

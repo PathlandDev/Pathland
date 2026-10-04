@@ -82,6 +82,9 @@ public final class MusicPlayerView implements View {
         var current = computed(() -> playing.get()
                 ? Lyrics.currentIndex(at(trackIndex.get()).title(), position.get())
                 : -1);
+        var previous = computed(() -> playing.get()
+                ? Lyrics.previousLine(at(trackIndex.get()).title(), position.get())
+                : "");
         return ZStack.of(Alignment.BOTTOM_CENTER,
                 HStack.of(
                         new LibraryView(trackIndex.signal(), position.signal(), playing.signal()),
@@ -92,18 +95,19 @@ public final class MusicPlayerView implements View {
                         seekRequest.signal(), volumeRequest.signal())
                         .with(Border.of(Color.rgb(200,200,200), 1, 16))
                 ).with(Padding.of(16)),
-                subtitlePill(block, current)
+                subtitlePill(block, previous, current)
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
     }
 
     /** The karaoke lyric pill just above the floating player bar: always two
-     *  italic lines — the previous chorus line dimmed above the current
+     *  italic lines — the line sung just before (dimmed) above the current
      *  (being-sung) line in bright white — on a translucent black pill;
      *  invisible (clear) when there is no block. Taps pass through. */
-    private static View subtitlePill(Signal<List<String>> block, Signal<Integer> current) {
-        View previous = Text.of(computed(() -> prevLine(block.get(), current.get())))
+    private static View subtitlePill(Signal<List<String>> block, Signal<String> previous,
+                                     Signal<Integer> current) {
+        View previousLine = Text.of(previous)
                 .with(FontSize.of(13))
                 .with(FontStyleMod.of(FontStyle.ITALIC))
                 .with(ForegroundStyle.of(Color.argb(170, 255, 255, 255)));
@@ -111,7 +115,7 @@ public final class MusicPlayerView implements View {
                 .with(FontSize.of(13))
                 .with(FontStyleMod.of(FontStyle.ITALIC))
                 .with(ForegroundStyle.of(Color.WHITE));
-        return VStack.of(HorizontalAlignment.CENTER, 2, previous, currentLine)
+        return VStack.of(HorizontalAlignment.CENTER, 2, previousLine, currentLine)
                 .with(Padding.of(6, 12, 6, 12))
                 .with(CornerRadius.of(8))
                 .with(Offset.of(0, -(BAR_HEIGHT + 24)))
@@ -124,11 +128,6 @@ public final class MusicPlayerView implements View {
     /** The row text for a block index (empty beyond the block). */
     private static String lineAt(List<String> block, int index) {
         return index >= 0 && index < block.size() ? block.get(index) : "";
-    }
-
-    /** The line before the current one (dimmed context); empty at a phrase start. */
-    private static String prevLine(List<String> block, int current) {
-        return current > 0 ? lineAt(block, current - 1) : "";
     }
 
     /** The track at an index (wraps around; safe for any signed index). */

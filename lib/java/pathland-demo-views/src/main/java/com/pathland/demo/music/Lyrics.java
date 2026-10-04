@@ -51,10 +51,7 @@ public final class Lyrics {
     public static List<String> blockFor(String title, float seconds) {
         for (Cue cue : cuesFor(title)) {
             if (seconds >= cue.start() && seconds < cue.end()) {
-                return cue.lines().stream()
-                        .map(Lyrics::clean)
-                        .filter(l -> !l.isEmpty())
-                        .toList();
+                return cleanedLines(cue);
             }
         }
         return List.of();
@@ -70,10 +67,7 @@ public final class Lyrics {
     public static int currentIndex(String title, float seconds) {
         for (Cue cue : cuesFor(title)) {
             if (seconds >= cue.start() && seconds < cue.end()) {
-                int n = (int) cue.lines().stream()
-                        .map(Lyrics::clean)
-                        .filter(l -> !l.isEmpty())
-                        .count();
+                int n = cleanedLines(cue).size();
                 if (n == 0) {
                     return -1;
                 }
@@ -83,6 +77,47 @@ public final class Lyrics {
             }
         }
         return -1;
+    }
+
+    /**
+     * The line sung immediately before the current one — the dimmed context row
+     * of the two-line pill. Within a cue it is the line before the current one;
+     * at the first line of a block it is the previous cue's last line (the block
+     * rolls), so the pill stays two lines across cue boundaries. {@code ""} only
+     * for the very first line of the track / out of range / no lyrics.
+     */
+    public static String previousLine(String title, float seconds) {
+        List<Cue> cues = cuesFor(title);
+        for (int ci = 0; ci < cues.size(); ci++) {
+            Cue cue = cues.get(ci);
+            if (seconds >= cue.start() && seconds < cue.end()) {
+                List<String> lines = cleanedLines(cue);
+                int n = lines.size();
+                if (n == 0) {
+                    return "";
+                }
+                float window = cue.end() - cue.start();
+                float t = window > 0 ? (seconds - cue.start()) / window : 0f;
+                int current = Math.min(n - 1, (int) (t * n));
+                if (current > 0) {
+                    return lines.get(current - 1);
+                }
+                if (ci > 0) {
+                    List<String> previous = cleanedLines(cues.get(ci - 1));
+                    return previous.isEmpty() ? "" : previous.get(previous.size() - 1);
+                }
+                return "";
+            }
+        }
+        return "";
+    }
+
+    /** A cue's display lines (clean, non-empty, {@code ♪} stripped). */
+    private static List<String> cleanedLines(Cue cue) {
+        return cue.lines().stream()
+                .map(Lyrics::clean)
+                .filter(l -> !l.isEmpty())
+                .toList();
     }
 
     /** The parsed cues for a title (cached); empty when no lyrics file. */
