@@ -59,7 +59,9 @@ Statelessness). Protocol contract: `spec/`.
   `FILL`-sized children stretch via their `100%` size), `CONTENT_MARGINS`,
   `WIDTH`/`HEIGHT` (`FILL` → `width:100%`/`height:100%` expansion, `HUG` →
   intrinsic), `PADDING` + per-edge, `COLOR`,
-  `BACKGROUND_COLOR`, `FONT_SIZE`/`WEIGHT`/`FAMILY`, `OPACITY`, `VISIBLE`,
+  `BACKGROUND_COLOR`, `FONT_SIZE`/`WEIGHT`/`FAMILY`, `TEXT_STYLE` (the
+  renderer-owned default size/weight; explicit `FONT_SIZE`/`WEIGHT` override),
+  `OPACITY`, `VISIBLE`,
   `Z_INDEX`, `LINE_LIMIT` (positive → `-webkit-box`/`-webkit-line-clamp` **with
   `overflow:hidden`** — the clamp draws the ellipsis but does not clip on its own,
   so Safari would otherwise paint the overflowed text below the box, matching
