@@ -159,11 +159,12 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 - **`Font` + `FontMod` + `View.font(_:)`** — the `Font` spec: a
   predefined typography (`Font.title2()` → `TEXT_STYLE`, heading styles imply a
   heading element), a custom family + size (`Font.custom(name, size)` →
-  `FONT_FAMILY` + `FONT_SIZE`), or a system size/weight/design
-  (`Font.system(size, weight, design)`). `TextStyle` is the design-system
-  typography enum (`TEXT_STYLE` codes). The individual font modifiers
-  (`FontSize`, `FontWeightMod`, `FontFamily`, `FontDesignMod`, `FontStyleMod`,
-  `FontWidth`, `Italic`) remain available for one-off overrides.
+  `FONT_FAMILY` + `FONT_SIZE`), a fully-custom typography
+  (`Font.custom(name, size, weight, design)` → all four axes), or a system
+  size/weight/design (`Font.system(size, weight, design)`). `TextStyle` is the
+  design-system typography enum (`TEXT_STYLE` codes). The individual font
+  modifiers (`FontSize`, `FontWeightMod`, `FontFamily`, `FontDesignMod`,
+  `FontStyleMod`, `FontWidth`, `Italic`) remain available for one-off overrides.
 - **Value types**: `ValueTypes.forProperty` mirrors `value_type_for` —
   `COLOR` family → `COLOR`; `VISIBLE`/`ENABLED`/`CLIPS_TO_BOUNDS`/`UNDERLINE`/
   `STRIKETHROUGH`/`COLOR_INVERT`/`ALLOWS_HIT_TESTING`/`IS_SECURE`/
