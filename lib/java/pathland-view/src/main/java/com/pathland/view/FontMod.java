@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The {@code font} modifier (SwiftUI {@code .font(_:)}): applies a {@link Font}
+ * The {@code font} modifier ({@code .font(_:)}): applies a {@link Font}
  * — a predefined typography ({@code Font.headline()}, … → {@code TEXT_STYLE}), a
  * custom family + size (→ {@code FONT_FAMILY} + {@code FONT_SIZE}), or a system
  * size/weight/design (→ {@code FONT_SIZE} + {@code FONT_WEIGHT} +

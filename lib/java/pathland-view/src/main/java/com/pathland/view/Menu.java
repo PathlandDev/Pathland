@@ -6,7 +6,7 @@ import com.pathland.view.signal.WritableSignal;
 import java.util.List;
 
 /**
- * A contextual action trigger and popover container (SwiftUI {@code Menu}). The first
+ * A contextual action trigger and popover container ({@code Menu}). The first
  * child is the custom trigger; the rest are action items ({@code Button}/{@code Toggle}/
  * nested {@code Menu}). When a {@code selection} binding is provided, choosing an item
  * reports its index as {@code VALUE_CHANGED}.

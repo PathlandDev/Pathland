@@ -102,12 +102,16 @@ public final class Audio implements View {
 
     @Override
     public PathlandNode render(Environment env) {
-        // The active style contributes the node's body AND its component: the
-        // default style returns a bare AUDIO shell (native controls); a custom
-        // style returns its container (e.g. a VStack) whose layout is preserved.
+        // The control owns the native AUDIO node; the active style supplies its
+        // content as the node's child (control-owned interaction, spec DSL.md §5.7).
+        // The default NativeAudioStyle supplies no content, so the node stays a leaf
+        // and the renderer shows native media controls.
+        PathlandNode node = new PathlandNode(Components.AUDIO);
         AudioStyle style = env.audioStyle();
-        PathlandNode node = style.makeBody(new AudioStyle.Configuration(playing, position, volume, duration))
-                .render(env);
+        View content = style.makeBody(new AudioStyle.Configuration(playing, position, volume, duration));
+        if (content != null && content != EmptyContent.INSTANCE) {
+            node.children.add(content.render(env));
+        }
 
         if (sourceSignal != null) {
             node.properties.put(Properties.AUDIO_SOURCE, sourceSignal.get());

@@ -2,7 +2,8 @@ package com.pathland.view;
 
 /**
  * A bordered, tinted button style: the label padded onto a colored background with a
- * rounded border, wired to the action on tap.
+ * rounded border. The {@link Button} control wires the action on the native button
+ * node, so this style only decorates the content.
  */
 public final class BorderedButtonStyle implements ButtonStyle {
 
@@ -41,7 +42,6 @@ public final class BorderedButtonStyle implements ButtonStyle {
                         ForegroundStyle.of(Color.WHITE),
                         Padding.of(padding),
                         Background.of(background),
-                        Border.of(borderColor, 1f, radius))
-                .with(TapGesture.of(config.action()));
+                        Border.of(borderColor, 1f, radius));
     }
 }

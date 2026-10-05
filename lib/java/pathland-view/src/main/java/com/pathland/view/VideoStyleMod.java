@@ -2,7 +2,7 @@ package com.pathland.view;
 
 /**
  * A {@link ViewModifier} that scopes a {@link VideoStyle} down the wrapped
- * subtree (SwiftUI {@code .videoStyle}). The scope rides the generic environment
+ * subtree ({@code .videoStyle}). The scope rides the generic environment
  * ({@link Environment#VIDEO_STYLE}).
  */
 public final class VideoStyleMod implements ViewModifier {

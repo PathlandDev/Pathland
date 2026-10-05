@@ -1,8 +1,8 @@
 package com.pathland.view;
 
 /**
- * Scopes an {@link EnvironmentKey} → value binding down a subtree (SwiftUI
- * {@code .environment(...)}): the value is active only while the wrapped subtree
+ * Scopes an {@link EnvironmentKey} → value binding down a subtree
+ * ({@code .environment(...)}): the value is active only while the wrapped subtree
  * renders, and an outer binding is restored afterward. Applied via
  * {@code View#environment(EnvironmentKey, Object)}.
  */

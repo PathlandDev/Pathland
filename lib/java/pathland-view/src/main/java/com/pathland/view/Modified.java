@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * A view wrapped by one or more property modifiers (innermost-first) or a custom
  * {@link ViewModifier}. Property modifiers apply to the innermost built node and are
- * overwritten by outer modifiers (SwiftUI "outermost wins"); reactive modifiers record
+ * overwritten by outer modifiers ("outermost wins"); reactive modifiers record
  * a node-level binding so a signal change re-emits only that property.
  */
 final class Modified implements View {

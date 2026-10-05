@@ -5,7 +5,7 @@ import com.pathland.view.signal.WritableSignal;
 import java.util.function.UnaryOperator;
 
 /**
- * A field-holder for a persisted signal (the Java realization of a SwiftUI-style
+ * A field-holder for a persisted signal (the Java realization of a
  * {@code @State} field, wired by the {@code pathland-view-processor} annotation
  * processor). Declared as a field in a view and populated by the generated binder before
  * the first render. The processor detects {@code State} fields by type, so no annotation

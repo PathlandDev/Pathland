@@ -5,7 +5,7 @@ package com.pathland.view;
  * {@code Navigation.ROUTER} (the router *instance*, only present when navigation is
  * declared), the active platform path is provided by the host for **every** app —
  * with or without navigation — so any app can observe the current path (a web URL, a
- * native deep link / open event, the initial route) like SwiftUI's {@code onOpenURL},
+ * native deep link / open event, the initial route) like {@code onOpenURL},
  * generalized across platforms.
  *
  * <pre>{@code

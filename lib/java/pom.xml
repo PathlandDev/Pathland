@@ -11,7 +11,7 @@
 
     <name>Pathland Java</name>
     <description>
-        Framework-agnostic Java libraries for the Pathland UI protocol: a SwiftUI-like
+        Framework-agnostic Java libraries for the Pathland UI protocol: a declarative
         view DSL with Angular-style signals/computed/effects, a fine-grained opcode
         emitter, the wire codec, JNA ring interop, a reusable HTML renderer, and
         cross-platform state stores. Usable from Spring Boot, Quarkus, or desktop apps.

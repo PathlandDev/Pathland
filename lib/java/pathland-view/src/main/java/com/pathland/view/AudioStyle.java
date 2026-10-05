@@ -3,19 +3,20 @@ package com.pathland.view;
 import com.pathland.view.signal.WritableSignal;
 
 /**
- * An audio style (SwiftUI {@code AudioStyle}). A style turns an {@link Audio}
+ * An audio style ({@code AudioStyle}). A style turns an {@link Audio}
  * node's media configuration (its playback signals) into a body view. Styles are
  * injected down the tree via {@code View.audioStyle(AudioStyle)}.
  *
- * <p>The default {@link NativeAudioStyle} contributes no control children — the
- * renderer shows native controls. A custom style returns the app-defined control
- * UI (transport buttons, seek/volume sliders) bound to the configuration's
- * signals; those children become the {@code AUDIO} node's children, so the
- * renderer emits a hidden media element + the custom controls.
+ * <p>The default {@link NativeAudioStyle} contributes no content (the
+ * {@link EmptyContent} sentinel) — the renderer shows native controls. A custom
+ * style returns the app-defined control UI (transport buttons, seek/volume
+ * sliders) bound to the configuration's signals; the {@link Audio} control
+ * attaches it as the {@code AUDIO} node's child, so the renderer emits a hidden
+ * media element + the custom controls (spec DSL.md §5.7).
  */
-public interface AudioStyle {
+public interface AudioStyle extends Style {
 
-    /** Build the styled body for {@code config}. */
+    /** Build the styled content for {@code config}. */
     View makeBody(Configuration config);
 
     /**

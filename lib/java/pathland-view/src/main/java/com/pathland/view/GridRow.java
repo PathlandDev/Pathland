@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 
 import java.util.List;
 
-/** An explicit row grouping for a {@code Grid} (SwiftUI {@code GridRow}): the
+/** An explicit row grouping for a {@code Grid} ({@code GridRow}): the
  *  children are the cells of one row, placed left-to-right starting at column 0
  *  (spec/PRIMITIVES.md §GridRow). Structural only — renders nothing outside a
  *  {@code Grid}. */

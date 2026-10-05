@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.signal.WritableSignal;
 
 /**
- * A discrete increment/decrement control (SwiftUI {@code Stepper}). The value binds to
+ * A discrete increment/decrement control ({@code Stepper}). The value binds to
  * a {@link WritableSignal<Float>}; presses flow back as {@code VALUE_CHANGED}.
  */
 public final class Stepper implements View {

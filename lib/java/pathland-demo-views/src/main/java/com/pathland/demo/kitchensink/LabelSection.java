@@ -1,10 +1,12 @@
 package com.pathland.demo.kitchensink;
 
 import com.pathland.view.Button;
+import com.pathland.view.DefaultLabelStyle;
+import com.pathland.view.IconOnlyLabelStyle;
 import com.pathland.view.Label;
-import com.pathland.view.LabelStyle;
 import com.pathland.view.LabelStyleMod;
 import com.pathland.view.Padding;
+import com.pathland.view.TitleOnlyLabelStyle;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
 import com.pathland.view.state.State;
@@ -25,10 +27,10 @@ public final class LabelSection implements View {
                 VStack.of(
                         Label.of("Settings", "/_pathland/assets/icons/settings.svg"),
                         Label.of("Save changes", "/_pathland/assets/icons/save.svg")
-                                .with(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
-                        Label.of("Wi-Fi").with(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
+                                .with(LabelStyleMod.of(TitleOnlyLabelStyle.INSTANCE)),
+                        Label.of("Wi-Fi").with(LabelStyleMod.of(IconOnlyLabelStyle.INSTANCE)),
                         Label.of("Cloud", "/_pathland/assets/icons/cloud.svg")
-                                .with(LabelStyleMod.of(LabelStyle.TITLE_AND_ICON)),
+                                .with(LabelStyleMod.of(DefaultLabelStyle.INSTANCE)),
                         Label.of(status.signal(), "/_pathland/assets/icons/status.svg"),
                         Button.of("Toggle status",
                                 () -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready"))

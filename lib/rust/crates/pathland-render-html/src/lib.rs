@@ -2304,6 +2304,51 @@ mod tests {
         assert!(debug.contains("<!-- #1 VStack:"), "debug comment names the VStack: {debug}");
     }
 
+    /// Wrapper model (spec DSL.md §5.7): an `AUDIO` node whose custom style body is
+    /// its child keeps the `AUDIO` component and renders a `.pathland-media` wrapper
+    /// holding the hidden, control-less media element + the style's control children.
+    #[test]
+    fn wrapper_media_node_keeps_audio_component_with_custom_children() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::AUDIO as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::HSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::BUTTON as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 3, 0));
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&(29u32).to_le_bytes());
+        strings.extend_from_slice(b"https://example.com/track.mp3");
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
+            0,
+        ));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_fragment(&opcodes, &strings, 1);
+        assert!(
+            html.contains("data-pathland-id=\"1\" data-pathland-media"),
+            "the AUDIO shell carries the app-driven media marker: {html}"
+        );
+        assert!(
+            html.contains("class=\"pathland-media\""),
+            "the AUDIO node renders the media wrapper, not a bare <audio>: {html}"
+        );
+        assert!(
+            html.contains("<audio src=\"https://example.com/track.mp3\" data-pathland-media></audio>"),
+            "a hidden, control-less audio is injected first: {html}"
+        );
+        assert!(
+            html.contains("data-pathland-id=\"2\""),
+            "the style body (control children) renders inside the wrapper: {html}"
+        );
+    }
+
     #[test]
     fn renders_grid_with_columns() {
         use pathland_core::value_type;

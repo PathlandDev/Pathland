@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.signal.WritableSignal;
 
 /**
- * A multi-line text editing area (SwiftUI {@code TextEditor}). Edits flow back as
+ * A multi-line text editing area ({@code TextEditor}). Edits flow back as
  * {@code TEXT_CHANGED} and are written into the binding.
  */
 public final class TextEditor implements View {

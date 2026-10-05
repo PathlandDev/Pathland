@@ -5,7 +5,7 @@ import com.pathland.view.emit.PathlandNode;
 import java.util.List;
 
 /**
- * A transparent container that composites its children (SwiftUI {@code Group}). Today
+ * A transparent container that composites its children ({@code Group}). Today
  * it materializes as a {@code VSTACK} container node with no spacing/alignment — the
  * grouping itself carries no layout. A future protocol component may let it splice
  * children directly into the parent.

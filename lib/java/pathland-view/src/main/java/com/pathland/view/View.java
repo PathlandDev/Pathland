@@ -5,7 +5,7 @@ import com.pathland.view.router.NavigationMod;
 import com.pathland.view.signal.Signal;
 
 /**
- * A composable view (SwiftUI ergonomics). Composite views declare their subtree with
+ * A composable view. Composite views declare their subtree with
  * {@link #body()}; the library's primitives (leaves, stacks, controls) instead override
  * {@link #render(Environment)} to materialize a {@link PathlandNode}. The interface is
  * open: the library ships the leaf primitives and modifier wrappers, and application
@@ -24,7 +24,7 @@ import com.pathland.view.signal.Signal;
 public interface View {
 
     /**
-     * SwiftUI-style composition: a composite view returns its subtree here. Primitives
+     * Declarative composition: a composite view returns its subtree here. Primitives
      * return {@code this} (the identity body) and instead override
      * {@link #render(Environment)}.
      */
@@ -51,7 +51,7 @@ public interface View {
     }
 
     /**
-     * Wrap this view in one or more modifiers (SwiftUI {@code .modifier}), applied
+     * Wrap this view in one or more modifiers ({@code .modifier}), applied
      * innermost-first: {@code with(A, B, C)} ≡ {@code with(A).with(B).with(C)}. A
      * single modifier is the common case; an empty call returns {@code this}.
      */
@@ -64,7 +64,7 @@ public interface View {
     }
 
     /**
-     * Apply a {@link Font} (SwiftUI {@code .font(_:)}): a predefined typography
+     * Apply a {@link Font} ({@code .font(_:)}): a predefined typography
      * ({@code Font.headline()}, … → a heading element for the heading styles), a
      * custom family + size, or a system size/weight/design.
      */
@@ -93,7 +93,7 @@ public interface View {
     }
 
     /**
-     * Scope an environment value down this subtree (SwiftUI {@code .environment}):
+     * Scope an environment value down this subtree ({@code .environment}):
      * the binding is active only while this subtree renders — nearest wins, so an
      * inner binding overrides an outer one for its subtree. Read it with
      * {@code Environment.value(key)}, which always returns a signal (a plain value
@@ -113,7 +113,7 @@ public interface View {
     }
 
     /**
-     * Register a listener for the active platform path (spec DSL.md §4.5 — SwiftUI
+     * Register a listener for the active platform path (spec DSL.md §4.5 —
      * {@code onOpenURL}, generalized): fires whenever {@code Platform.ACTIVE_PATH}
      * changes (including its initial value). Works with or without navigation.
      */

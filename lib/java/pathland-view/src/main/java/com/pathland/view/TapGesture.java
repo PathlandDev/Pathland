@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /**
- * attaches a tap gesture (SwiftUI {@code onTapGesture}).
+ * attaches a tap gesture ({@code onTapGesture}).
  */
 public final class TapGesture implements ViewModifier {
 

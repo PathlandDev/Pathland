@@ -2,7 +2,7 @@ package com.pathland.view;
 
 /**
  * A {@link ViewModifier} that scopes an {@link AudioStyle} down the wrapped
- * subtree (SwiftUI {@code .audioStyle}). Applied via
+ * subtree ({@code .audioStyle}). Applied via
  * {@code view.with(AudioStyleMod.of(style))}; the scope rides the generic
  * environment ({@link Environment#AUDIO_STYLE}).
  */

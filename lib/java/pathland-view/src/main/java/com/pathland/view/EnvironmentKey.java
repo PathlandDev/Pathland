@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /**
- * A typed key for a scoped environment value (SwiftUI {@code EnvironmentValues}
+ * A typed key for a scoped environment value ({@code EnvironmentValues}
  * key style). Identity-based: two keys are equal only if they are the same instance,
  * so a {@code static final EnvironmentKey<T>} per value is the idiom.
  *

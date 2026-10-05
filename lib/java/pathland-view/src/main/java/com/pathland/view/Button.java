@@ -3,10 +3,11 @@ package com.pathland.view;
 import com.pathland.view.emit.PathlandNode;
 
 /**
- * An interactive button (SwiftUI {@code Button}). Accepts an arbitrary child view as
- * the label. The button renders through the {@link ButtonStyle} active in the
- * environment, which decorates the label and attaches the tap gesture wired to
- * {@code action}.
+ * An interactive button ({@code Button}). Accepts an arbitrary child view as
+ * the label. The control owns the native {@code BUTTON} node and wires the action on
+ * it (whole button tappable, including its padding); the active {@link ButtonStyle}
+ * (spec DSL.md §5.7) supplies the button's content — the label, decorated — as the
+ * button node's child, so a composite label keeps its own layout.
  */
 public final class Button implements View {
 
@@ -34,13 +35,21 @@ public final class Button implements View {
 
     @Override
     public PathlandNode render(Environment env) {
+        // The control owns the native BUTTON shell + the action; the style supplies
+        // the content (the decorated label) as the shell's child. The label keeps its
+        // own component(s) and layout (Composite Override Mode, PRIMITIVES.md §2).
+        PathlandNode node = new PathlandNode(Components.BUTTON);
         ButtonStyle style = env.buttonStyle();
-        View body = style.makeBody(new ButtonStyle.Configuration(label, action));
-        PathlandNode node = body.render(env);
-        // The styled body (decorated label + tap gesture) becomes a native BUTTON
-        // component: it keeps the label text, the style's property decorations, and
-        // the tap listeners/action wired by the style.
-        node.component = Components.BUTTON;
+        View content = style.makeBody(new ButtonStyle.Configuration(label));
+        if (content != null && content != EmptyContent.INSTANCE) {
+            node.children.add(content.render(env));
+        }
+        Object existing = node.properties.get(Properties.EVENT_LISTENERS);
+        int mask = existing instanceof Integer i ? i : 0;
+        node.properties.put(
+                Properties.EVENT_LISTENERS,
+                mask | Commands.Listeners.POINTER_DOWN | Commands.Listeners.POINTER_UP);
+        node.tapActions.add(action);
         return node;
     }
 }

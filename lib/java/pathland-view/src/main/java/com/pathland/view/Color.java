@@ -7,7 +7,7 @@ import com.pathland.view.emit.PathlandNode;
  * D65 white point), or a **design-token reference**. Renderers resolve the exact
  * visual appearance.
  *
- * <p>{@code Color} mirrors SwiftUI's dual identity: it is both a <b>View</b> (a
+ * <p>{@code Color} has a dual identity: it is both a <b>View</b> (a
  * layout-greedy solid-color fill — a {@code COLOR} node) and a <b>Data Type</b> passed
  * into style modifiers ({@code foregroundStyle}, {@code background}, {@code border},
  * {@code tint}). It is never a modifier itself.

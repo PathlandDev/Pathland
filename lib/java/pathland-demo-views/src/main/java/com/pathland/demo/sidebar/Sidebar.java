@@ -55,8 +55,13 @@ public class Sidebar implements View {
         var bg = computed(() -> active.get() ? ACTIVE_BG : Color.CLEAR);
         var fg = computed(() -> active.get() ? ACTIVE_FG : Color.BLACK);
 
+        // The label is FILL-width so the native button's centered content box is
+        // neutralized and the label's own leading alignment positions the row
+        // (spec DSL.md §5.7: main-axis alignment is the content's own layout).
         return Button.of(
-                Label.of(label, icon).with(Background.of(bg), ForegroundStyle.of(fg)),
+                Label.of(label, icon)
+                        .with(Background.of(bg), ForegroundStyle.of(fg))
+                        .with(FrameMod.of(Commands.Size.FILL)),
                 () -> router.navigate(path)
         );
         //return Button.of(label, () -> router.navigate(path))

@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.signal.WritableSignal;
 
 /**
- * A boolean switch, checkbox, or toggle button (SwiftUI {@code Toggle}). The visual
+ * A boolean switch, checkbox, or toggle button ({@code Toggle}). The visual
  * variant is the {@code TOGGLE_STYLE} token ({@code Switch}/{@code Checkbox}/{@code Button}).
  * The checked state binds to a {@link WritableSignal<Boolean>} (its current value is the
  * initial state); user changes flow back as {@code VALUE_CHANGED} (0/1) and are written
@@ -32,7 +32,7 @@ public final class Toggle implements View {
         return new Toggle(ToggleStyle.SWITCH, binding, null);
     }
 
-    /** A {@code Switch}-style toggle with a label (SwiftUI {@code Toggle("label", isOn:)}). */
+    /** A {@code Switch}-style toggle with a label ({@code Toggle("label", isOn:)}). */
     public static Toggle of(String label, WritableSignal<Boolean> binding) {
         return new Toggle(ToggleStyle.SWITCH, binding, label);
     }

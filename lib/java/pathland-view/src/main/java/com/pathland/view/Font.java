@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /**
- * A font specification (SwiftUI {@code Font}): a predefined typography from the
+ * A font specification ({@code Font}): a predefined typography from the
  * design system, a custom font family + size, or a system font with an exact
  * size/weight/design. Applied with {@link FontMod} / {@link View#font(Font)}.
  *
@@ -42,7 +42,7 @@ public final class Font {
     public static Font caption() { return new Font(TextStyle.CAPTION, null, null, null, null); }
     public static Font caption2() { return new Font(TextStyle.CAPTION2, null, null, null, null); }
 
-    /** A custom font family + size (SwiftUI {@code .font(.custom("…", size:))}). */
+    /** A custom font family + size ({@code .font(.custom("…", size:))}). */
     public static Font custom(String family, float size) {
         return new Font(null, family, size, null, null);
     }
@@ -58,7 +58,7 @@ public final class Font {
     }
 
     /** A system font with an exact size + weight + design
-     *  (SwiftUI {@code .font(.system(size:weight:design:))}). */
+     *  ({@code .font(.system(size:weight:design:))}). */
     public static Font system(float size, FontWeight weight, FontDesign design) {
         return new Font(null, null, size, weight, design);
     }

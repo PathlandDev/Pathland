@@ -129,27 +129,28 @@ class LabelTest {
     void titleOnlyStyleDropsTheIcon() {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(
-                Label.of("Save", "save.svg").with(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
+                Label.of("Save", "save.svg").with(LabelStyleMod.of(TitleOnlyLabelStyle.INSTANCE)),
                 Environment.DEFAULT);
         Frame frame = sink.frame();
 
         assertTrue(hasComponent(frame, Components.TEXT), "the title renders");
         assertFalse(hasComponent(frame, Components.IMAGE), "the icon is dropped");
-        assertEquals("Save", stringProp(frame, nodeId(frame, Components.HSTACK), Properties.LABEL));
+        assertEquals("Save", stringProp(frame, nodeId(frame, Components.TEXT), Properties.LABEL),
+                "the title-only style yields the text root carrying the accessibility label");
     }
 
     @Test
     void iconOnlyStyleKeepsTheTitleAsA11yLabel() {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(
-                Label.of("Save", "save.svg").with(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
+                Label.of("Save", "save.svg").with(LabelStyleMod.of(IconOnlyLabelStyle.INSTANCE)),
                 Environment.DEFAULT);
         Frame frame = sink.frame();
 
         assertTrue(hasComponent(frame, Components.IMAGE), "the icon renders");
         assertFalse(hasComponent(frame, Components.TEXT), "the title text is dropped");
-        assertEquals("Save", stringProp(frame, nodeId(frame, Components.HSTACK), Properties.LABEL),
-                "the title still drives the accessibility label");
+        assertEquals("Save", stringProp(frame, nodeId(frame, Components.IMAGE), Properties.LABEL),
+                "the title still drives the accessibility label on the icon root");
     }
 
     @Test
@@ -183,9 +184,9 @@ class LabelTest {
         };
 
         new Emitter(sink()).mount(
-                probe.with(LabelStyleMod.of(LabelStyle.ICON_ONLY)),
+                probe.with(LabelStyleMod.of(IconOnlyLabelStyle.INSTANCE)),
                 Environment.DEFAULT);
-        assertEquals(LabelStyle.ICON_ONLY, seen.get(0), "the scoped style is readable via Environment.value");
+        assertEquals(IconOnlyLabelStyle.INSTANCE, seen.get(0), "the scoped style is readable via Environment.value");
 
         seen.clear();
         new Emitter(sink()).mount(probe, Environment.DEFAULT);
@@ -234,12 +235,12 @@ class LabelTest {
                 .route("/two", p -> probeStyle(seen))
                 .build();
         new Emitter(sink()).mount(
-                NavigationContainer.of(router).with(LabelStyleMod.of(LabelStyle.TITLE_ONLY)),
+                NavigationContainer.of(router).with(LabelStyleMod.of(TitleOnlyLabelStyle.INSTANCE)),
                 Environment.DEFAULT);
 
         seen.clear();
         router.navigate("/two"); // structural swap re-renders the destination via reconcileSlot
-        assertEquals(List.of(LabelStyle.TITLE_ONLY), seen,
+        assertEquals(List.of(TitleOnlyLabelStyle.INSTANCE), seen,
                 "a destination re-rendered via the slot keeps the scoped label style");
     }
 

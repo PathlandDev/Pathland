@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.signal.WritableSignal;
 
 /**
- * A native system color picker (SwiftUI {@code ColorPicker}). The selected color binds
+ * A native system color picker ({@code ColorPicker}). The selected color binds
  * to a {@link WritableSignal<Color>}; changes flow back as {@code VALUE_CHANGED} carrying
  * the packed {@code 0xAARRGGBB} color reinterpreted as an f32 bit pattern.
  */

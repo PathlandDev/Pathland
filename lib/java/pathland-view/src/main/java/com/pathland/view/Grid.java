@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 
 import java.util.List;
 
-/** A static 2D matrix grid (SwiftUI {@code Grid}); children are cells, row-major. */
+/** A static 2D matrix grid ({@code Grid}); children are cells, row-major. */
 public final class Grid implements View {
 
     private final List<View> children;
@@ -90,7 +90,7 @@ public final class Grid implements View {
         return new Grid(alignment, spacing, null, null, null, children);
     }
 
-    /** A static 2D matrix grid with per-track sizes (SwiftUI {@code GridItem}). */
+    /** A static 2D matrix grid with per-track sizes ({@code GridItem}). */
     public static Grid of(List<GridItem> tracks, View... children) {
         return new Grid(tracks, children);
     }

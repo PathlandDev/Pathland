@@ -24,7 +24,7 @@ public final class FrameMod implements ViewModifier {
      * height). Alignment is left untouched, so a stack's own cross-axis alignment
      * (constructor {@code Alignment}) is not overwritten.
      * <p>
-     * Pass {@link Float#POSITIVE_INFINITY} (SwiftUI {@code maxWidth: .infinity})
+     * Pass {@link Float#POSITIVE_INFINITY} ({@code maxWidth: .infinity})
      * to expand to the available width; it is normalized to {@code Commands.Size.FILL}.
      */
     public static FrameMod of(float width) {
@@ -103,7 +103,7 @@ public final class FrameMod implements ViewModifier {
     }
 
     /**
-     * Normalize an infinite size hint (SwiftUI {@code maxWidth: .infinity}) to the
+     * Normalize an infinite size hint ({@code maxWidth: .infinity}) to the
      * {@code Commands.Size.FILL} sentinel; finite values pass through unchanged.
      */
     private static float fillOr(float value) {

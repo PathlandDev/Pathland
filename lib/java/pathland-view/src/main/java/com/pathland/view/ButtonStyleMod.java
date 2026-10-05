@@ -2,7 +2,7 @@ package com.pathland.view;
 
 /**
  * A {@link ViewModifier} that scopes a {@link ButtonStyle} down the wrapped subtree
- * (SwiftUI {@code .buttonStyle}). Applied via {@code view.with(ButtonStyleMod.of(style))};
+ * ({@code .buttonStyle}). Applied via {@code view.with(ButtonStyleMod.of(style))};
  * the scope rides the generic environment ({@link Environment#BUTTON_STYLE}).
  */
 public final class ButtonStyleMod implements ViewModifier {

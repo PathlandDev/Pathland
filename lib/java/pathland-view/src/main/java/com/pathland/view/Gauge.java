@@ -2,7 +2,7 @@ package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
 
-/** A read-only value shown against a scale (SwiftUI {@code Gauge}). */
+/** A read-only value shown against a scale ({@code Gauge}). */
 public final class Gauge implements View {
 
     private final float value;

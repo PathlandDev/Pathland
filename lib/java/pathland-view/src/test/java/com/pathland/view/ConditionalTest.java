@@ -46,11 +46,12 @@ class ConditionalTest {
         Frame delta = sink.frame();
 
         // The slot's single child changed component type (TEXT -> BUTTON): remove + delete the
-        // old, create + insert the new. Spec/CONFORMANCE.md vector 25 shape.
+        // old, create + insert the new. Under the wrapper model the button is a BUTTON shell
+        // with its label as a child, so the new subtree is two nodes (BUTTON + TEXT).
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.REMOVE_CHILD), "old child removed");
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.DELETE_NODE), "old node deleted");
-        assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.CREATE_NODE), "new node created");
-        assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.INSERT_CHILD), "new child inserted");
+        assertEquals(2, countOps(delta, Categories.TREE, Commands.Tree.CREATE_NODE), "button shell + label node");
+        assertEquals(2, countOps(delta, Categories.TREE, Commands.Tree.INSERT_CHILD), "button inserted + label child");
         assertEquals(1, countOps(delta, Categories.PARAMETER, Commands.Parameter.SET_TEXT), "new button label");
         assertTrue(countOps(delta, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 1,
                 "button declares EVENT_LISTENERS");

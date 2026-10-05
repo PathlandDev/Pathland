@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 
 import java.util.List;
 
-/** A scrollable content container (SwiftUI {@code ScrollView}). */
+/** A scrollable content container ({@code ScrollView}). */
 public final class ScrollView implements View {
 
     private final List<View> children;
