@@ -15,11 +15,18 @@ trees. Protocol contract: `spec/`.
   `Picker`, `Menu`, `ColorPicker` (+ the `vstack!`/`hstack!` macros and
   `text`/`spacer`/`button` free functions).
 - **Modifiers** (chainable, decoupled): `spacing`, `padding`, `font_size`,
-  `font_weight`, `foreground_style(Color)` (no `.color()`), `background(Color)`,
+  `font_weight`, `font(Font)`, `font_family(&str)`, `font_design(FontDesign)`,
+  `foreground_style(Color)` (no `.color()`), `background(Color)`,
   `border(Color, width)`, `tint(Color)`, `frame(width/height/alignment)`,
   `opacity`, `hidden`, `corner_radius`, `line_limit`, `text_alignment`,
   `truncation_mode`, `offset`, `position`, `z_index`, `pointer_events`,
   `on_tap_gesture`.
+- **Typography** (`Font` + `TextStyle`): `Font::large_title()`…`caption2()` emit
+  the predefined `TEXT_STYLE` (renderer-owned size/weight); `Font::custom(name,
+  size)`, `Font::system(size)`, `Font::system_weight(size, weight)`, and
+  `Font::custom_full(name, size, weight, design)` emit the raw
+  `FONT_FAMILY`/`FONT_SIZE`/`FONT_WEIGHT`/`FONT_DESIGN` axes. `FontFamily` is a
+  `STRING` property via `Node::string_properties`.
 - **`frame` infinity sugar**: infinite `width`/`height` hints (`f32::INFINITY`,
   SwiftUI `maxWidth/maxHeight: .infinity`) normalize to the `size::FILL`
   sentinel on emission.
@@ -40,9 +47,9 @@ trees. Protocol contract: `spec/`.
 
 ## Not implemented / gaps
 
-- No `strings` plumbing for STRING-valued properties — `TextField`'s
-  `PROMPT` and `Color`/`Image` sources are stored as placeholder values only;
-  `FONT_FAMILY`/`LABEL`/`IMAGE_SOURCE` need an engine `Node` strings map.
+- `TextField`'s `PROMPT` and `Color`/`Image` sources are stored as placeholder
+  values only (STRING props are supported via `Node::string_properties`, but
+  these builders don't set them yet).
 - No `ACTION_ID`/`BINDING_ID` helpers, no `TOGGLE_STYLE`-typed API (raw u8).
 
 ## Verified by
