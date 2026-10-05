@@ -9,7 +9,13 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
 ## Implemented
 
 - **Retained tree** (`node.rs`): `Node` (id, component, children, properties,
-  `token_properties`, text/property signal bindings, app-side gestures).
+  `string_properties`, `token_properties`, text/property signal bindings,
+  app-side gestures).
+- **String-valued properties**: `Node::string_properties` (property → value,
+  e.g. `FONT_FAMILY`, `LABEL`, `IMAGE_SOURCE`) emit as `SET_PROPERTY` with the
+  `STRING` value type (arena-allocated); unchanged strings reuse their arena
+  offset — steady-state emission stays zero-alloc with string props present
+  (proven by test).
 - **Components** (`Component` enum): the full spec set — `VStack`, `HStack`,
   `ZStack`, `Text`, `Button`, `Spacer`, `Image`, `Color`, `Shape`, `Divider`,
   `ProgressView`, `Gauge`, `Grid`, `ScrollView`, `LazyVGrid`, `LazyHGrid`,
@@ -39,8 +45,6 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
 ## Not implemented / gaps
 
 - Only `Tap` gesture; no computed-signal effects in the engine (Java has them).
-- No `strings` map on `Node` for STRING-valued properties (`LABEL`/`PROMPT`/
-  `FONT_FAMILY`/`IMAGE_SOURCE`) — the DSL cannot yet emit them.
 - Signal-bound properties cannot carry token refs (a token ref is a static path).
 
 ## Verified by

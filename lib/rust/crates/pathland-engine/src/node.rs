@@ -25,6 +25,10 @@ pub struct Node {
     /// Constraint/style properties (propertyId to value) emitted as
     /// `PARAMETER:SET_PROPERTY`.
     pub properties: BTreeMap<u16, u32>,
+    /// String-valued properties (`propertyId → value`, e.g. `FONT_FAMILY`,
+    /// `IMAGE_SOURCE`, `LABEL`), emitted as `PARAMETER:SET_PROPERTY` with the
+    /// `STRING` value type (the string is arena-allocated at emit time).
+    pub string_properties: BTreeMap<u16, String>,
     /// Token-referenced properties (`propertyId → token path`), emitted as
     /// `PARAMETER:SET_PROPERTY` with the `DESIGN_TOKEN` value type. A token ref
     /// overrides the literal `properties` entry for the same id (spec/TOKENS.md).
@@ -47,6 +51,7 @@ impl core::fmt::Debug for Node {
             .field("component", &self.component)
             .field("children", &self.children)
             .field("properties", &self.properties)
+            .field("string_properties", &self.string_properties)
             .field("token_properties", &self.token_properties)
             .field("text_binding", &self.text_binding)
             .field("property_bindings", &self.property_bindings)
@@ -63,6 +68,7 @@ impl Node {
             component: component.clone(),
             children: Vec::new(),
             properties: BTreeMap::new(),
+            string_properties: BTreeMap::new(),
             token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),

@@ -36,6 +36,10 @@ struct SnapshotNode {
     index: usize,
     text: Option<String>,
     properties: BTreeMap<u16, u32>,
+    /// Last-emitted `STRING` properties: property → (value, arena offset). The
+    /// arena offset is reused across passes so an unchanged string never
+    /// re-allocates into the bump arena.
+    string_properties: BTreeMap<u16, (String, u32)>,
     /// Last-emitted `DESIGN_TOKEN` refs: property → (token path, arena offset).
     /// The arena offset is reused across passes so an unchanged ref never
     /// re-allocates into the bump arena.
@@ -325,6 +329,7 @@ impl Engine {
         };
         let props: &BTreeMap<u16, u32> = merged_props.as_ref().unwrap_or(&node.properties);
         let token_refs = &node.token_properties;
+        let strings = &node.string_properties;
 
         let prev = self.slot_mut(node.id).take();
         let token_changed = match &prev {
@@ -334,9 +339,18 @@ impl Engine {
                     .any(|(prop, (old, _))| token_refs.get(prop) != Some(old)),
             None => !token_refs.is_empty(),
         };
+        let strings_changed = match &prev {
+            Some(p) => {
+                p.string_properties.len() != strings.len()
+                    || p.string_properties
+                        .iter()
+                        .any(|(prop, (old, _))| strings.get(prop) != Some(old))
+            }
+            None => !strings.is_empty(),
+        };
         let props_changed = match &prev {
-            Some(p) => &p.properties != props || token_changed,
-            None => !props.is_empty() || !token_refs.is_empty(),
+            Some(p) => &p.properties != props || token_changed || strings_changed,
+            None => !props.is_empty() || !token_refs.is_empty() || !strings.is_empty(),
         };
         let text_changed = match &prev {
             Some(p) => p.text.as_deref() != text_borrowed,
@@ -347,6 +361,9 @@ impl Engine {
         // steady-state pass performs no heap allocations (the unchanged refs'
         // arena offsets are reused from the previous snapshot below).
         let mut token_emit: Option<BTreeMap<u16, (String, u32)>> = None;
+        // String-property emission, built only on mount / when a value changed
+        // (arena offsets reused from the previous snapshot otherwise).
+        let mut string_emit: Option<BTreeMap<u16, (String, u32)>> = None;
 
         // Properties in two passes — literals (skipping token-ref'd ids) then
         // token refs — so the steady-state emit performs no heap allocations.
@@ -376,6 +393,18 @@ impl Engine {
                         m.insert(*prop, (path.clone(), arena));
                     }
                     token_emit = Some(m);
+                }
+                if !strings.is_empty() {
+                    let mut m = BTreeMap::new();
+                    for (prop, value) in strings {
+                        let arena = guest
+                            .alloc_str(value)
+                            .map_err(|_| pathland_core::RingError::Full)?;
+                        guest.set_property(node.id, *prop, value_type::STRING, arena)?;
+                        *out += 1;
+                        m.insert(*prop, (value.clone(), arena));
+                    }
+                    string_emit = Some(m);
                 }
                 if let Some(t) = text_borrowed {
                     guest.set_text(node.id, t)?;
@@ -437,12 +466,35 @@ impl Engine {
                     }
                     token_emit = Some(m);
                 }
+                if strings_changed {
+                    let mut m = BTreeMap::new();
+                    for (prop, value) in strings {
+                        let (arena, changed) = match p.string_properties.get(prop) {
+                            Some((old_value, old_offset)) if old_value == value => {
+                                (*old_offset, false)
+                            }
+                            _ => {
+                                let offset = guest
+                                    .alloc_str(value)
+                                    .map_err(|_| pathland_core::RingError::Full)?;
+                                (offset, true)
+                            }
+                        };
+                        m.insert(*prop, (value.clone(), arena));
+                        if changed {
+                            guest.set_property(node.id, *prop, value_type::STRING, arena)?;
+                            *out += 1;
+                        }
+                    }
+                    string_emit = Some(m);
+                }
             }
         }
 
         let mut prev_props = None;
         let mut prev_text = None;
         let mut prev_token_refs = None;
+        let mut prev_strings = None;
         if let Some(p) = prev {
             if !props_changed {
                 prev_props = Some(p.properties);
@@ -452,6 +504,9 @@ impl Engine {
             }
             if !token_changed {
                 prev_token_refs = Some(p.token_refs);
+            }
+            if !strings_changed {
+                prev_strings = Some(p.string_properties);
             }
             let _ = p;
         }
@@ -467,12 +522,17 @@ impl Engine {
             Some(m) => m,
             None => prev_token_refs.unwrap_or_default(),
         };
+        let string_properties = match string_emit {
+            Some(m) => m,
+            None => prev_strings.unwrap_or_default(),
+        };
         *self.slot_mut(node.id) = Some(SnapshotNode {
             component_type,
             parent,
             index,
             text,
             properties,
+            string_properties,
             token_refs: token_refs_snapshot,
             gen: self.gen,
         });

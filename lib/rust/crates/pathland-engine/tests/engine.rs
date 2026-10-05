@@ -42,6 +42,7 @@ fn text_node(text: &str) -> Node {
         component: Component::Text { text: text.into() },
         children: Vec::new(),
         properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
@@ -55,6 +56,7 @@ fn vstack(children: Vec<Node>) -> Node {
         component: Component::VStack,
         children,
         properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
@@ -68,6 +70,7 @@ fn hstack(children: Vec<Node>) -> Node {
         component: Component::HStack,
         children,
         properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
@@ -355,6 +358,10 @@ fn emit_is_zero_alloc_in_steady_state() {
     root.children[0]
         .token_properties
         .insert(property_id::COLOR, "color.primary".into());
+    // String-valued properties must also be steady-state zero-alloc.
+    root.children[1]
+        .string_properties
+        .insert(property_id::FONT_FAMILY, "Inter".into());
     assign_ids(&mut root, &mut 1);
 
     let mut engine = Engine::new();
@@ -371,4 +378,63 @@ fn emit_is_zero_alloc_in_steady_state() {
     COUNT.with(|c| {
         assert_eq!(c.get(), 0, "steady-state emit must not allocate");
     });
+}
+
+fn emit_and_collect_with_arena(engine: &mut Engine, root: &Node) -> (Vec<Opcode>, Vec<String>) {
+    let (mut mem, layout) = with_guest();
+    {
+        let mut guest = Guest::new(&mut mem, &layout);
+        guest.begin_frame();
+        engine.emit(root, &mut guest).unwrap();
+        guest.end_frame();
+    }
+    let mut host = Host::new(&mut mem, &layout);
+    let frames = host.frames();
+    let frame = match frames.first() {
+        Some(f) => f,
+        None => return (Vec::new(), Vec::new()),
+    };
+    let ops: Vec<Opcode> = frame.opcodes().collect();
+    let strings: Vec<String> = ops
+        .iter()
+        .map(|o| {
+            frame
+                .arena_str(o.c())
+                .map(|s| s.to_string())
+                .unwrap_or_default()
+        })
+        .collect();
+    (ops, strings)
+}
+
+#[test]
+fn string_property_emits_with_string_value_type_and_diffs() {
+    let mut engine = Engine::new();
+    let mut root = text_node("x");
+    root.string_properties
+        .insert(property_id::FONT_FAMILY, "Georgia".into());
+    assign_ids(&mut root, &mut 1);
+
+    let (ops, strings) = emit_and_collect_with_arena(&mut engine, &root);
+    let prop = ops
+        .iter()
+        .position(|o| {
+            o.category() == category::PARAMETER
+                && o.command() == parameter::SET_PROPERTY
+                && o.b() as u16 == property_id::FONT_FAMILY
+        })
+        .expect("FONT_FAMILY SET_PROPERTY emitted");
+    assert_eq!((ops[prop].b() >> 16) & 0xff, value_type::STRING as u32);
+    assert_eq!(strings[prop], "Georgia");
+
+    // An unchanged string property must not re-emit.
+    let (ops2, _) = emit_and_collect_with_arena(&mut engine, &root);
+    assert_eq!(ops2.len(), 0, "unchanged string property must not re-emit");
+
+    // A changed family re-emits one SET_PROPERTY with the new arena string.
+    root.string_properties
+        .insert(property_id::FONT_FAMILY, "Inter".into());
+    let (ops3, strings3) = emit_and_collect_with_arena(&mut engine, &root);
+    assert_eq!(ops3.len(), 1);
+    assert_eq!(strings3[0], "Inter");
 }
