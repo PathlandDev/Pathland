@@ -1,6 +1,6 @@
 package com.pathland.view;
 
-/** A `VStack`'s cross-axis alignment (SwiftUI {@code HorizontalAlignment}): the
+/** A `VStack`'s cross-axis alignment ({@code HorizontalAlignment}): the
  *  horizontal position of children within the stack. Position-only — a child's
  *  {@code FILL} size kind stretches, never an alignment. */
 public enum HorizontalAlignment {

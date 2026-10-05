@@ -6,7 +6,7 @@ import com.pathland.view.signal.WritableSignal;
 import java.util.function.Consumer;
 
 /**
- * A continuous or stepped numeric range control (SwiftUI {@code Slider}). The value
+ * A continuous or stepped numeric range control ({@code Slider}). The value
  * binds to a {@link WritableSignal<Float>}; user drags flow back as {@code VALUE_CHANGED},
  * and an optional {@code onEditingChanged} receives {@code EDITING_CHANGED} boundaries
  * (spec/EVENTS.md in-flight interaction) — e.g. a seek bar that commits on release.
@@ -26,7 +26,7 @@ public final class Slider implements View {
         this.onEditingChanged = onEditingChanged;
     }
 
-    /** A continuous numeric range control bound to {@code binding} (SwiftUI {@code Slider(value:in:)}). */
+    /** A continuous numeric range control bound to {@code binding} ({@code Slider(value:in:)}). */
     public static Slider of(WritableSignal<Float> binding, float min, float max) {
         return of(binding, min, max, null);
     }

@@ -15,7 +15,7 @@ public final class Border implements ViewModifier {
         this.radius = radius;
     }
 
-    /** A border of {@code color} and {@code width} (SwiftUI {@code .border(_:width:)}). */
+    /** A border of {@code color} and {@code width} ({@code .border(_:width:)}). */
     public static Border of(Color color, float width) {
         return new Border(color, width, null);
     }

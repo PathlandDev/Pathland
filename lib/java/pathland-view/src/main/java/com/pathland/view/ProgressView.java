@@ -3,7 +3,7 @@ package com.pathland.view;
 import com.pathland.view.emit.PathlandNode;
 
 /**
- * Determinate progress or an activity indicator (SwiftUI {@code ProgressView}).
+ * Determinate progress or an activity indicator ({@code ProgressView}).
  * {@code progress} is {@code 0..1}; {@link #indeterminate()} builds the animated
  * spinner variant ({@code IS_INDETERMINATE}).
  */

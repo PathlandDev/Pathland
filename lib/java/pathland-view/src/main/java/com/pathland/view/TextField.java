@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.signal.WritableSignal;
 
 /**
- * A single-line text input (SwiftUI {@code TextField}). The current value is bound to
+ * A single-line text input ({@code TextField}). The current value is bound to
  * a {@link WritableSignal<String>}; edits flow back through the host as
  * {@code TEXT_CHANGED} events and are written into the binding. The placeholder maps
  * to the {@code PROMPT} property.

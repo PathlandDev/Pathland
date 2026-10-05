@@ -1,6 +1,6 @@
 package com.pathland.view;
 
-/** A single grid track spec (SwiftUI {@code GridItem} / Compose {@code GridCells}
+/** A single grid track spec ({@code GridItem} / Compose {@code GridCells}
  *  parity). Serializes to a `GRID_TRACKS` token — `flex`, `fixed:<points>`, or
  *  `adaptive:<points>` (spec/PRIMITIVES.md §grid model). */
 public final class GridItem {

@@ -2,7 +2,7 @@ package com.pathland.view;
 
 /**
  * A {@link ViewModifier} that scopes a {@link LabelStyle} down the wrapped subtree
- * (SwiftUI {@code .labelStyle}). Applied via {@code view.with(LabelStyleMod.of(style))};
+ * ({@code .labelStyle}). Applied via {@code view.with(LabelStyleMod.of(style))};
  * the scope rides the generic environment ({@link Environment#LABEL_STYLE}).
  */
 public final class LabelStyleMod implements ViewModifier {

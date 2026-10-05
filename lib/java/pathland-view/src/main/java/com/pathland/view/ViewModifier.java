@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /**
- * A reusable view modifier (SwiftUI {@code ViewModifier}). External developers wrap
+ * A reusable view modifier ({@code ViewModifier}). External developers wrap
  * any view with custom styling logic:
  *
  * <pre>{@code

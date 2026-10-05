@@ -1,39 +1,40 @@
 package com.pathland.view;
 
 /**
- * The presentation of a {@link Label} (SwiftUI {@code LabelStyle}: the three
- * canonical modes). A {@code LabelStyle} decides which of the label's two parts —
- * title, icon — are rendered (spec DSL.md §5.5).
+ * The presentation of a {@link Label} ({@code LabelStyle}). A style turns a
+ * label's {@link Configuration} (its title and icon parts) into the label's content
+ * view — it decides which parts render and how they are arranged.
  *
- * <p>DSL-only control flow: the style picks which children the label emits; it is
- * <em>never</em> a wire property (the emitted child tree <em>is</em> the wire
- * surface). Scoped down a subtree with {@code LabelStyleMod} via the generic
- * environment ({@link Environment#LABEL_STYLE}), nearest-wins.
+ * <p>DSL-only control flow: the style shapes the emitted child tree, which <em>is</em>
+ * the wire surface; there is never a style property. Scoped down a subtree with
+ * {@link LabelStyleMod} via the generic environment ({@link Environment#LABEL_STYLE}),
+ * nearest-wins (spec DSL.md §5.7). Built-ins: {@link DefaultLabelStyle} (title + icon),
+ * {@link TitleOnlyLabelStyle}, {@link IconOnlyLabelStyle}.
  */
-public enum LabelStyle {
+public interface LabelStyle extends Style {
 
-    /** Both the title and the icon are shown (the default). */
-    TITLE_AND_ICON(true, true),
-    /** Only the title is shown; the icon is omitted. */
-    TITLE_ONLY(true, false),
-    /** Only the icon is shown; the title still drives the accessibility label. */
-    ICON_ONLY(false, true);
+    /** Build the styled label content for {@code config}. */
+    View makeBody(Configuration config);
 
-    private final boolean showTitle;
-    private final boolean showIcon;
+    /**
+     * The parts of the label being styled. A part is {@code null} when it is absent
+     * (no title text / no icon) — the built-in styles omit an absent part, and a custom
+     * style should check {@link #hasTitle()}/{@link #hasIcon()} before styling it.
+     *
+     * <p>Delta: the {@code LabelStyleConfiguration.title}/{@code .icon}
+     * are always-present views (empty when the part is absent); Pathland passes
+     * {@code null} instead, so an absent part is easy to omit.
+     */
+    record Configuration(View title, View icon) {
 
-    LabelStyle(boolean showTitle, boolean showIcon) {
-        this.showTitle = showTitle;
-        this.showIcon = showIcon;
-    }
+        /** Whether the label has a title part. */
+        public boolean hasTitle() {
+            return title != null;
+        }
 
-    /** Whether this style renders the title. */
-    public boolean showsTitle() {
-        return showTitle;
-    }
-
-    /** Whether this style renders the icon. */
-    public boolean showsIcon() {
-        return showIcon;
+        /** Whether the label has an icon part. */
+        public boolean hasIcon() {
+            return icon != null;
+        }
     }
 }

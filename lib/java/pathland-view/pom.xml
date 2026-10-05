@@ -15,7 +15,7 @@
 
     <name>Pathland View</name>
     <description>
-        Framework-agnostic Pathland UI toolkit: SwiftUI-like view DSL (com.pathland.view),
+        Framework-agnostic Pathland UI toolkit: declarative view DSL (com.pathland.view),
         Angular-style signals/computed/effects (com.pathland.view.signal), a fine-grained
         opcode emitter (com.pathland.view.emit), the wire codec (com.pathland.view.transport),
         lazy JNA ring interop (com.pathland.view.ffm), and cross-platform state

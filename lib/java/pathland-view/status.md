@@ -3,7 +3,7 @@
 **Last updated:** September 14, 2026
 
 The hand-written, framework-agnostic Java 17+ DSL (`com.pathland.view`):
-SwiftUI-style views, Angular-style signals, fine-grained emitter, `PLPL` wire
+declarative views, Angular-style signals, fine-grained emitter, `PLPL` wire
 codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 `spec/`. Runs on every LTS from Java 17.
 
@@ -15,14 +15,14 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `DatePicker.of(mode, days)`, …); constructors are private and the former
   `View.*` static-factory surface is **removed**. `Slider`/`Stepper` are
   binding-first (initial value read from the signal); `Toggle` also offers the
-  SwiftUI-closer `of(label, isOn)` overload; `Color.of(int)` alias. Grids take
+  label-first `of(label, isOn)` overload; `Color.of(int)` alias. Grids take
   their track counts as constructor args: `Grid.of(int columns[, int rows], …)`,
   `LazyVGrid.of(int columns, …)`, `LazyHGrid.of(int rows, …)` — absent = auto-fit
   (spec/PRIMITIVES.md §grid model); the counts emit `GRID_COLUMNS`/`GRID_ROWS`,
   never a pixel `WIDTH`/`HEIGHT`. **Per-track sizes** via a `List<GridItem>`
   overload (`GridItem.flexible()` / `.fixed(pts)` / `.adaptive(min)`) emit the
   `GRID_TRACKS` STRING spec (takes precedence over the counts); CSS-grid-native —
-- **Alignment is three typed enums (SwiftUI parity), all position-only**:
+- **Alignment is three typed enums, all position-only**:
   `HorizontalAlignment` (leading/center/trailing) for `VStack`s,
   `VerticalAlignment` (top/center/bottom) for `HStack`s, and a 2D `Alignment`
   (topLeading…bottomTrailing) for `ZStack`s, grids, and `FrameMod`'s content
@@ -36,16 +36,28 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `.with(...)` (one or several, innermost-first);
   `FrameMod.of(w)` / `of(w, h)` leave `ALIGNMENT` unset (alignment optional, so a
   stack's own cross-axis alignment is preserved); `FrameMod.of(...)` width/height
-  overloads accept `Float.POSITIVE_INFINITY` (SwiftUI `maxWidth/maxHeight:
-  .infinity`) normalized to `Commands.Size.FILL`, and an infinite min/ideal/max
+  overloads accept `Float.POSITIVE_INFINITY` (maxWidth/maxHeight:
+  .infinity) normalized to `Commands.Size.FILL`, and an infinite min/ideal/max
   bound is omitted;
   the `View` interface has no per-modifier factory methods. Built-in and
   application-authored modifiers share the exact same surface (spec `DSL.md`
   §5.6); `buttonStyle` is the `ButtonStyleMod` value (an **environment**
   binding — it scopes `Environment.BUTTON_STYLE`, an `EnvironmentKey<ButtonStyle>`,
   down the subtree). `labelStyle` is the `LabelStyleMod` value (it scopes
-  `Environment.LABEL_STYLE`, an `EnvironmentKey<LabelStyle>` — `TITLE_AND_ICON`/
-  `TITLE_ONLY`/`ICON_ONLY`; DSL-only control flow, never a wire property).
+  `Environment.LABEL_STYLE`, an `EnvironmentKey<LabelStyle>`; `LabelStyle` is an
+  **interface** with `DefaultLabelStyle`/`TitleOnlyLabelStyle`/
+  `IconOnlyLabelStyle`; the style shapes the emitted child tree, never a wire
+  property).
+- **One styleable-control contract (spec `DSL.md` §5.7)**: a `Style` supplies a
+  control's **content** via `makeBody(Configuration)`; the control owns its native
+  component + interaction and attaches the content as its child (Composite Override
+  Mode). `Button` renders a `BUTTON` node and wires the action/`EVENT_LISTENERS` on
+  it (whole button tappable); `ButtonStyle.Configuration` carries only the label, so
+  a style decorates content and never installs the tap. `PlainButtonStyle` returns
+  the label, `BorderedButtonStyle` decorates it. `Audio`/`Video` render an
+  `AUDIO`/`VIDEO` node and attach the active style's control UI as its child (the
+  `EmptyContent` sentinel = native controls, no child). Label parts are passed to
+  `LabelStyle` (nullable; `hasTitle()`/`hasIcon()`).
   Reactive overloads
   (`ForegroundStyle.of(Signal)`, `Background.of(Signal)`, `FontSize.of(Signal)`)
   re-emit only the bound node. Enum-collision modifier names use the `Mod`
@@ -69,10 +81,11 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   hierarchical `EnvironmentKey`/`EnvironmentValues` scope over the synchronous
   render pass; no modifier scopes values by any other route).
 - **App-driven media** (`AudioStyle`/`VideoStyle` + `NativeAudioStyle`/
-  `NativeVideoStyle`): `Audio`/`Video` render through the environment's active
-  style — the default adds no control children (renderer-native `<audio
-  controls>`); a custom style adds the app's control UI as the media node's
-  children (hidden media element + controls). `.playing/.position/.volume/
+  `NativeVideoStyle`): `Audio`/`Video` render an `AUDIO`/`VIDEO` node and attach
+  the environment's active style content as its child — the default
+  (`EmptyContent`) adds no child, so the node is a leaf and the renderer shows
+  native media controls; a custom style adds the app's control UI as the child
+  (hidden media element + controls; spec `DSL.md` §5.7). `.playing/.position/.volume/
   .duration/.onEnded` bind the media control properties (`PLAYBACK_STATE`/
   `MEDIA_POSITION`/`MEDIA_VOLUME`, `Properties` 0x1035–0x1037); the node
   registers a **`MediaInput`** and `RenderResult.mediaInputs` routes the
@@ -143,7 +156,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `SEARCH`. Interactive/control roles are NOT roles — they are intrinsic to the
   control components, so `AccessibilityRole.of(int)` **throws** for codes
   outside the semantic catalog (a custom button uses `Button` + `ButtonStyle`).
-- **`Font` + `FontMod` + `View.font(_:)`** — the SwiftUI-style `Font` spec: a
+- **`Font` + `FontMod` + `View.font(_:)`** — the `Font` spec: a
   predefined typography (`Font.title2()` → `TEXT_STYLE`, heading styles imply a
   heading element), a custom family + size (`Font.custom(name, size)` →
   `FONT_FAMILY` + `FONT_SIZE`), or a system size/weight/design
@@ -200,7 +213,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   its own navigation is mirrored back, the initial value is guard-processed), and
   **generic scoped environment values**
   (`EnvironmentKey`/`EnvironmentValues` + `View.environment(key, value)` +
-  `Environment.value(key)` — SwiftUI `.environment` style, hierarchical nearest-
+  `Environment.value(key)` — the `.environment` style, hierarchical nearest-
   wins; a `NavigationContainer` scopes `Navigation.ROUTER` to its destination
   subtree and structural slots re-apply the incoming scope on re-render via
   `PathlandNode.environmentForChildren`/`Emitter.reconcileSlot`; **reads always
@@ -208,7 +221,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   a `Signal` comes back as the same instance (bindable for reactive updates) and a
   plain value is wrapped in a constant signal; a read made before the key is bound
   returns a **lazy signal** that captures the binding on the first `.get()` during
-  render, enabling the SwiftUI `@Environment` **field style**
+  render, enabling the `@Environment` **field style**
   (`private final Signal<Router> router = Environment.value(Navigation.ROUTER);`);
   inject reactive values with `view.environment(key, signal)`), plus the
   **universal active platform path** (`Platform.ACTIVE_PATH` =

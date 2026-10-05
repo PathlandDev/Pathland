@@ -1,18 +1,21 @@
 package com.pathland.view;
 
 /**
- * A button style (SwiftUI {@code ButtonStyle}). A style turns a button's
- * {@link Configuration} (its label + action) into a decorated body view. Styles are
- * injected down the tree via {@link View#buttonStyle(ButtonStyle)}.
+ * A button style ({@code ButtonStyle}). A style turns a button's
+ * {@link ButtonStyle.Configuration} (its label) into the button's <em>content</em>
+ * view. The {@link Button} control owns the native {@code BUTTON} node and wires the
+ * action, so a style only decorates the label (spec DSL.md §5.7). Styles are injected
+ * down the tree via {@link View#buttonStyle(ButtonStyle)}.
  */
-public interface ButtonStyle {
+public interface ButtonStyle extends Style {
 
-    /** Build the styled button body for {@code config}. */
+    /** Build the styled button content for {@code config}. */
     View makeBody(Configuration config);
 
     /**
-     * The configuration of the button being styled: its label and its action. The
-     * returned body is expected to attach the tap gesture wired to {@code action}.
+     * The configuration of the button being styled: its label. The {@link Button}
+     * control attaches the returned content as the button node's child, and wires the
+     * action on the button node. A style therefore never attaches the tap gesture.
      */
-    record Configuration(View label, Runnable action) {}
+    record Configuration(View label) {}
 }

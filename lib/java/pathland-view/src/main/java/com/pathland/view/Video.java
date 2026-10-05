@@ -74,11 +74,16 @@ public final class Video implements View {
 
     @Override
     public PathlandNode render(Environment env) {
-        // The active style contributes the node's body AND its component (a bare
-        // VIDEO shell for native controls, or the custom style's container).
+        // The control owns the native VIDEO node; the active style supplies its
+        // content as the node's child (control-owned interaction, spec DSL.md §5.7).
+        // The default NativeVideoStyle supplies no content, so the node stays a leaf
+        // and the renderer shows native media controls.
+        PathlandNode node = new PathlandNode(Components.VIDEO);
         VideoStyle style = env.videoStyle();
-        PathlandNode node = style.makeBody(new VideoStyle.Configuration(playing, position, volume, duration))
-                .render(env);
+        View content = style.makeBody(new VideoStyle.Configuration(playing, position, volume, duration));
+        if (content != null && content != EmptyContent.INSTANCE) {
+            node.children.add(content.render(env));
+        }
 
         if (sourceSignal != null) {
             node.properties.put(Properties.VIDEO_SOURCE, sourceSignal.get());

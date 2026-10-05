@@ -35,7 +35,10 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   pushes the app's <b>real</b> address (`/app2` app navigating to `/home` →
   `pushState("/app2/home…")`). The root app (base `/_pathland`) is unchanged.
 - **Media**: `IMAGE`/`VIDEO`/`AUDIO` shells (`<img>`, `<video controls>`,
-  `<audio controls>`); `IMAGE_SOURCE`/`VIDEO_SOURCE`/`AUDIO_SOURCE` apply the
+  `<audio controls>`); a wrapper-model `AUDIO`/`VIDEO` node whose custom style
+  body is its child (spec DSL.md §5.7) morphs its media element into a
+  `.pathland-media` wrapper holding the hidden media + the app controls;
+  `IMAGE_SOURCE`/`VIDEO_SOURCE`/`AUDIO_SOURCE` apply the
   asset ref; the `LABEL` accessibility text is set as `alt` on media elements;
   `CONTENT_MODE` maps `Fit`→`contain`, `Fill`→**`cover`** (matching the Rust SSR).
   App-driven media reports `MEDIA_TIME_UPDATED` when the playback position

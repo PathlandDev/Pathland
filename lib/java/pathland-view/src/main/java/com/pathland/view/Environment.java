@@ -5,7 +5,7 @@ import com.pathland.view.signal.Signal;
 /**
  * The rendering environment — the single inheritance/scoping mechanism in the DSL.
  * Carries a hierarchical scope of {@link EnvironmentValues} keyed by
- * {@link EnvironmentKey} (SwiftUI {@code EnvironmentValues} style): a parent injects
+ * {@link EnvironmentKey} ({@code EnvironmentValues} style): a parent injects
  * a value down the entire child tree via {@code .environment(key, value)}, and any
  * descendant reads it with {@link #value(EnvironmentKey)}.
  *
@@ -29,33 +29,33 @@ import com.pathland.view.signal.Signal;
 public final class Environment {
 
     /**
-     * The environment key for the active {@link ButtonStyle} (SwiftUI
-     * {@code .buttonStyle}). {@code ButtonStyleMod} binds it down the wrapped subtree
-     * via the generic environment; {@link Button} reads it with {@link #buttonStyle()}
+     * The environment key for the active {@link ButtonStyle} ({@code .buttonStyle}).
+     * {@code ButtonStyleMod} binds it down the wrapped subtree via the generic
+     * environment; {@link Button} reads it with {@link #buttonStyle()}
      * (defaulting to {@link PlainButtonStyle}).
      */
     public static final EnvironmentKey<ButtonStyle> BUTTON_STYLE = EnvironmentKey.of("buttonStyle");
 
     /**
-     * The environment key for the active {@link LabelStyle} (SwiftUI
-     * {@code .labelStyle}). {@code LabelStyleMod} binds it down the wrapped subtree
-     * via the generic environment; {@link Label} reads it with {@link #labelStyle()}
-     * (defaulting to {@link LabelStyle#TITLE_AND_ICON}).
+     * The environment key for the active {@link LabelStyle} ({@code .labelStyle}).
+     * {@code LabelStyleMod} binds it down the wrapped subtree via the generic
+     * environment; {@link Label} reads it with {@link #labelStyle()}
+     * (defaulting to {@link DefaultLabelStyle}).
      */
     public static final EnvironmentKey<LabelStyle> LABEL_STYLE = EnvironmentKey.of("labelStyle");
 
     /**
-     * The environment key for the active {@link AudioStyle} (SwiftUI
-     * {@code .audioStyle}). {@code AudioStyleMod} binds it down the wrapped subtree;
-     * {@link Audio} reads it with {@link #audioStyle()} (defaulting to
+     * The environment key for the active {@link AudioStyle} ({@code .audioStyle}).
+     * {@code AudioStyleMod} binds it down the wrapped subtree; {@link Audio} reads
+     * it with {@link #audioStyle()} (defaulting to
      * {@link NativeAudioStyle}).
      */
     public static final EnvironmentKey<AudioStyle> AUDIO_STYLE = EnvironmentKey.of("audioStyle");
 
     /**
-     * The environment key for the active {@link VideoStyle} (SwiftUI
-     * {@code .videoStyle}). {@code VideoStyleMod} binds it down the wrapped subtree;
-     * {@link Video} reads it with {@link #videoStyle()} (defaulting to
+     * The environment key for the active {@link VideoStyle} ({@code .videoStyle}).
+     * {@code VideoStyleMod} binds it down the wrapped subtree; {@link Video} reads
+     * it with {@link #videoStyle()} (defaulting to
      * {@link NativeVideoStyle}).
      */
     public static final EnvironmentKey<VideoStyle> VIDEO_STYLE = EnvironmentKey.of("videoStyle");
@@ -87,12 +87,12 @@ public final class Environment {
 
     /**
      * The label style active for the current render — the scoped environment value
-     * {@link #LABEL_STYLE}, defaulting to {@link LabelStyle#TITLE_AND_ICON} when no
-     * scope binds it.
+     * {@link #LABEL_STYLE}, defaulting to {@link DefaultLabelStyle} when no scope
+     * binds it.
      */
     public LabelStyle labelStyle() {
         LabelStyle style = Environment.value(LABEL_STYLE).get();
-        return style != null ? style : LabelStyle.TITLE_AND_ICON;
+        return style != null ? style : DefaultLabelStyle.INSTANCE;
     }
 
     /**
@@ -121,7 +121,7 @@ public final class Environment {
     }
 
     /**
-     * The scoped value for {@code key} as a signal (SwiftUI {@code @Environment},
+     * The scoped value for {@code key} as a signal ({@code @Environment},
      * reactive) — the single way to read an environment value.
      *
      * <p>When {@code key} is bound in the current scope, the concrete binding is

@@ -1,6 +1,6 @@
 package com.pathland.view;
 
-/** A 2D alignment (SwiftUI {@code Alignment} / Compose {@code Alignment}) for
+/** A 2D alignment ({@code Alignment} / Compose {@code Alignment}) for
  *  `ZStack` children, grid cells, and the {@code frame} modifier's content
  *  placement. The wire code packs a horizontal and vertical position (spec
  *  PRIMITIVES.md §ZStack); `0`/absent is the default top-leading. Position-only

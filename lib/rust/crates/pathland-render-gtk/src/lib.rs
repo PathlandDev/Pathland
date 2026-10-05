@@ -861,6 +861,13 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             WidgetKind::Grid => self.sync_grid_children(parent_id, children, node),
             WidgetKind::ScrollView => self.sync_scroll_children(parent_id, children),
             WidgetKind::Overlay => self.sync_overlay_children(parent_id, children, node),
+            // A media node's custom style body (its control children) reconciles
+            // into the media container box; a leaf media node has none.
+            WidgetKind::Media => {
+                if let Some(parent) = self.widgets.get(&parent_id).cloned() {
+                    self.reconcile_box_children(&parent, children);
+                }
+            }
             _ => {}
         }
     }
@@ -1307,6 +1314,10 @@ fn is_container(component_type: u16) -> bool {
             | component_type::LAZY_HGRID
             | component_type::SCROLLVIEW
             | component_type::ZSTACK
+            // A wrapper-model Audio/Video node hosts its custom style's controls as
+            // children (spec DSL.md §5.7); the native stream is not a widget.
+            | component_type::AUDIO
+            | component_type::VIDEO
     )
 }
 
@@ -2226,6 +2237,26 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
 /// widget name (set in [`apply_style`]).
 fn style_css(node: &HostNode) -> String {
     let mut css = String::new();
+    // Text color / size are emitted as CSS so they CASCADE to a control's content
+    // (e.g. `.foregroundStyle`/`.fontSize` on a composite Button/container reaches
+    // its child labels — SwiftUI environment semantics, spec DSL.md §5.7). On a
+    // TEXT node the Pango attributes from `apply_text_style` take precedence.
+    if let Some(bits) = node.properties.get(&property_id::COLOR) {
+        let (r, g, b, a) = unpack_color(*bits);
+        css.push_str(&format!(
+            "color:rgba({:.0},{:.0},{:.0},{:.3});",
+            r * 255.0,
+            g * 255.0,
+            b * 255.0,
+            a
+        ));
+    }
+    if let Some(bits) = node.properties.get(&property_id::FONT_SIZE) {
+        let v = f32::from_bits(*bits);
+        if v > 0.0 {
+            css.push_str(&format!("font-size:{v}px;"));
+        }
+    }
     if let Some(bits) = node.properties.get(&property_id::BACKGROUND_COLOR) {
         let (r, g, b, a) = unpack_color(*bits);
         css.push_str(&format!(
@@ -2866,7 +2897,7 @@ mod tests {
     #[test]
     fn container_kinds_are_recognized() {
         use component_type::*;
-        for ct in [VSTACK, HSTACK, GRID, SCROLLVIEW, ZSTACK] {
+        for ct in [VSTACK, HSTACK, GRID, SCROLLVIEW, ZSTACK, AUDIO, VIDEO] {
             assert!(is_container(ct), "{ct:#x} should be a container");
         }
         for ct in [TEXT, BUTTON, SPACER, IMAGE, TOGGLE, SLIDER] {

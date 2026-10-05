@@ -3,26 +3,20 @@ package com.pathland.view;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * A text title with an optional icon (SwiftUI {@code Label}), composed from the
- * existing primitives — an {@link HStack} of an {@link Image} and a {@link Text} —
- * so it is reusable anywhere a view is (buttons, menus, pickers, sidebar rows).
+ * A text title with an optional icon ({@code Label}). The label's parts are
+ * handed to the active {@link LabelStyle}, which decides which render and how they are
+ * arranged (spec DSL.md §5.7) — the default {@link DefaultLabelStyle} shows an
+ * {@link HStack} of an optional {@link Image} and an optional {@link Text}. The title
+ * is <em>always</em> the label's accessibility label, even when only the icon is shown
+ * (so an icon-only label stays announced by screen readers). A blank title or icon is
+ * suppressed (the part is passed as {@code null}).
  *
- * <p>The {@link LabelStyle} scoped in the environment decides which parts render
- * (spec DSL.md §5.5): the default {@code TITLE_AND_ICON} shows both,
- * {@code TITLE_ONLY} drops the icon, {@code ICON_ONLY} drops the title. The title
- * is <em>always</em> the label's accessibility label, even when only the icon is
- * shown — so an icon-only label stays announced by screen readers. A blank title
- * or icon is suppressed.
- *
- * <p>The title/icon are each a single {@link Signal<String>} — bound parts
- * re-emit only that node's delta when the signal changes; static parts are sugar
- * for constant signals. Whether a part is <em>present</em> is decided at mount
- * (label style is a mount-time scope); issue #88 tracks re-shaping a subtree
- * when a signal read during render changes.
+ * <p>The title/icon are each a single {@link Signal<String>} — bound parts re-emit only
+ * that node's delta when the signal changes; static parts are sugar for constant
+ * signals. Whether a part is <em>present</em> is decided at mount (label style is a
+ * mount-time scope); issue #88 tracks re-shaping a subtree when a signal read during
+ * render changes.
  */
 public final class Label implements View {
 
@@ -68,25 +62,22 @@ public final class Label implements View {
     public View body() {
         LabelStyle style = Environment.value(Environment.LABEL_STYLE).get();
         if (style == null) {
-            style = LabelStyle.TITLE_AND_ICON;
+            style = DefaultLabelStyle.INSTANCE;
         }
         String title = titleSignal != null ? titleSignal.get() : null;
         String icon = iconSignal != null ? iconSignal.get() : null;
 
-        List<View> children = new ArrayList<>(2);
-        if (nonBlank(icon) && style.showsIcon()) {
-            children.add(Image.of(iconSignal));
-        }
-        if (nonBlank(title) && style.showsTitle()) {
-            View text = Text.of(titleSignal).with(LineLimit.of(1));
-            children.add(text);
-        }
+        View titleView = nonBlank(title) ? Text.of(titleSignal).with(LineLimit.of(1)) : null;
+        View iconView = nonBlank(icon) ? Image.of(iconSignal) : null;
 
-        View stack = HStack.of(VerticalAlignment.CENTER, 2f, children);
-        if (nonBlank(title)) {
-            stack = stack.with(AccessibilityLabel.of(titleSignal));
+        View content = style.makeBody(new LabelStyle.Configuration(titleView, iconView));
+        if (content == null) {
+            content = Group.of();
         }
-        return stack;
+        if (nonBlank(title)) {
+            content = content.with(AccessibilityLabel.of(titleSignal));
+        }
+        return content;
     }
 
     private static boolean nonBlank(String value) {

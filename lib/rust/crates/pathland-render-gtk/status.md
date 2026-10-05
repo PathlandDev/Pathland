@@ -40,7 +40,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `Center`, mirroring HTML's `inline-flex`) unless the node is explicitly
   `FILL`-sized — otherwise the enclosing box's default `Fill` alignment stretches
   it (e.g. a library row button absorbs the viewport height, inflating
-  fixed-size images).
+  fixed-size images). An **`AUDIO`/`VIDEO` node** with children (a custom
+  `AudioStyle`/`VideoStyle` body, spec DSL.md §5.7) is a container too: its
+  control children reconcile into the media container box; a leaf media node
+  shows native controls. Control-level `COLOR`/`FONT_SIZE` are emitted as CSS
+  (`color`, `font-size`) so they **cascade** to the content's child labels
+  (e.g. `.foregroundStyle`/`.fontSize` on a composite Button).
 - **Style properties**: `VISIBLE`, `OPACITY`, `WIDTH`/`HEIGHT`,
   `CONTENT_MARGINS`, `PADDING` + per-edge, `BACKGROUND_COLOR`, `BORDER_WIDTH`/
   `COLOR`/`RADIUS`, `FONT_FAMILY`/`FONT_WEIGHT` (CSS provider), `COLOR`,

@@ -75,7 +75,10 @@ class HtmlRendererTest {
         assertTrue(html.contains("<span data-pathland-id=\"2\">Hello Pathland</span>"));
         assertTrue(html.contains("<button data-pathland-id=\"3\""), "button keeps its node id");
         assertTrue(html.contains("class=\"pathland-button\""), "button uses the design-system class");
-        assertTrue(html.contains(">Increment</button>"));
+        // Wrapper model: the label is the button's child (a node of its own).
+        assertTrue(html.contains("<span data-pathland-id=\"4\">Increment</span>"),
+                "the styled label renders as the button's child");
+        assertTrue(html.contains("</button>"));
     }
 
     @Test
@@ -196,8 +199,11 @@ class HtmlRendererTest {
         String debug = renderer().renderFragmentDebug(frame, 1);
         assertTrue(debug.contains("<!-- #1 VStack -->"), "stack comment: " + debug);
         assertTrue(debug.contains("<!-- #2 Text \"Hello\""), "text comment: " + debug);
-        assertTrue(debug.contains("<!-- #3 Button \"Go\": eventListeners=0x00000005"),
+        // Wrapper model: the button shell has no text of its own (the label is its
+        // child node), so the comment names the shell and its modifiers only.
+        assertTrue(debug.contains("<!-- #3 Button: eventListeners=0x00000005"),
                 "button comment decodes its modifiers: " + debug);
+        assertTrue(debug.contains("<!-- #4 Text \"Go\""), "label child comment: " + debug);
     }
 
     @Test

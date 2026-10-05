@@ -4,7 +4,7 @@ import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.signal.WritableSignal;
 
 /**
- * A date & time selection control (SwiftUI {@code DatePicker}). The value is carried by
+ * A date & time selection control ({@code DatePicker}). The value is carried by
  * the {@code PARAMETER::SET_DATE} command ({@code B}=days since epoch, {@code C}=millis of
  * day); the bound signal holds days since epoch. Renders with the
  * {@code DATE_PICKER_MODE} token.

@@ -3,13 +3,13 @@ package com.pathland.view;
 import com.pathland.view.signal.WritableSignal;
 
 /**
- * A video style (SwiftUI {@code VideoStyle}). A style turns a {@link Video}
+ * A video style ({@code VideoStyle}). A style turns a {@link Video}
  * node's media configuration into a body view, mirroring {@link AudioStyle}.
  * Injected down the tree via {@code View.videoStyle(VideoStyle)}.
  */
-public interface VideoStyle {
+public interface VideoStyle extends Style {
 
-    /** Build the styled body for {@code config}. */
+    /** Build the styled content for {@code config}. */
     View makeBody(Configuration config);
 
     /**

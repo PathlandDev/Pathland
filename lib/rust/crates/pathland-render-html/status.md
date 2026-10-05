@@ -45,12 +45,12 @@ Statelessness). Protocol contract: `spec/`.
   the `alt`; empty = decorative) and honors `CONTENT_MODE`/`ASPECT_RATIO`
   inline (`Fit`→`object-fit:contain`, `Fill`→`object-fit:cover`); `VIDEO` →
   `<video src controls>` and `AUDIO` → `<audio src controls>` (playback
-  interaction is renderer-native by default). **App-driven media**: a custom
-  `AudioStyle`/`VideoStyle` body keeps its own component/layout (e.g. a `VStack`
-  flex column) and, when it carries `AUDIO_SOURCE`/`VIDEO_SOURCE` with children,
-  the renderer injects a hidden control-less media element as its first child
-  and marks the container `data-pathland-media` (the DOM client wires playback
-  events, spec/EVENTS.md Media). Asset refs are absolute (`/_pathland/assets/…`);
+  interaction is renderer-native by default). **App-driven media**: an
+  `AUDIO`/`VIDEO` node whose custom `AudioStyle`/`VideoStyle` body is its child
+  (spec DSL.md §5.7) — or any node carrying `AUDIO_SOURCE`/`VIDEO_SOURCE` with
+  children — renders a `.pathland-media` wrapper holding a hidden control-less
+  media element as its first child (the DOM client wires playback events,
+  spec/EVENTS.md Media). Asset refs are absolute (`/_pathland/assets/…`);
   bytes never ride the opcode stream.
 - **Composite override mode**: `BUTTON`/`TOGGLE`/`SLIDER` with children render
   the custom body wrapped in the native element.

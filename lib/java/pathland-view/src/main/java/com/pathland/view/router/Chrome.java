@@ -6,7 +6,7 @@ package com.pathland.view.router;
  *
  * <p>{@link #PLATFORM_DEFAULT} is the default: the <b>renderer</b> supplies the
  * navigation chrome — the platform's native navigation container where one exists
- * (GTK {@code AdwNavigationView}, SwiftUI {@code NavigationStack}, Compose
+ * (GTK {@code AdwNavigationView}, {@code NavigationStack}, Compose
  * {@code NavHost}) and a renderer-drawn back affordance where none exists (the
  * DOM renderer shows a back button once {@code NAV_DEPTH &gt; 1}).
  *

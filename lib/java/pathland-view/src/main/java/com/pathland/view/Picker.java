@@ -6,7 +6,7 @@ import com.pathland.view.signal.WritableSignal;
 import java.util.List;
 
 /**
- * A selection control (SwiftUI {@code Picker}). The options are the child nodes, in
+ * A selection control ({@code Picker}). The options are the child nodes, in
  * display order; {@code SELECTION} is the selected child index. Changes flow back as
  * {@code VALUE_CHANGED} (the new index) into the binding.
  */

@@ -70,7 +70,7 @@ public final class LazyHGrid implements View {
         return new LazyHGrid(alignment, spacing, null, null, children);
     }
 
-    /** A virtualized horizontal grid with per-track sizes (SwiftUI {@code GridItem}). */
+    /** A virtualized horizontal grid with per-track sizes ({@code GridItem}). */
     public static LazyHGrid of(List<GridItem> tracks, View... children) {
         return new LazyHGrid(tracks, children);
     }
