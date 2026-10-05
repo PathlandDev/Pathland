@@ -1198,6 +1198,8 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 | `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(100, 24))` | `.frame(Some(100.0), Some(24.0), None)` |
 | `.padding(16)` | `.padding(16)` | `.with(Padding.of(16))` | `.padding(16.0)` |
 | `.font(.system(size: 28))` | `.font(size: 28)` | `.with(FontSize.of(28))` | `.font_size(28.0)` |
+| `.font(.largeTitle)` | `.font(Font.largeTitle())` | `.font(Font.largeTitle())` | `.font(Font::large_title())` |
+| `.font(.custom("Georgia", size: 20))` | `.font(Font.custom("Georgia", 20))` | `.font(Font.custom("Georgia", 20f))` | `.font(Font::custom("Georgia", 20.0))` |
 | `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.with(FontWeightMod.of(FontWeight.BOLD))` | `.font_weight(700.0)` |
 | `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.with(Shadow.of(Color, float, float, float))` | (not yet) |
 | `.onTapGesture { go() }` | `.onTapGesture(action)` | `.with(TapGesture.of(() -> go()))` | `.on_tap_gesture(|| go())` |

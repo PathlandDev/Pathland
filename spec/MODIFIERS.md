@@ -315,12 +315,40 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
   typography (`Font.headline()` → `TEXT_STYLE`), a custom family + size
   (`Font.custom(name, size)` → `FONT_FAMILY` + `FONT_SIZE`), or a system
   size/weight/design (`Font.system(size, weight, design)` → `FONT_SIZE` +
-  `FONT_WEIGHT` + `FONT_DESIGN`). A heading typography (LargeTitle…Headline)
-  implies a heading element on a `TEXT`; a custom/system font
-  never implies a heading — it only styles the text. Individual raw modifiers
-  (`FontSize`, `FontWeightMod`, …) layer on top.
+  `FONT_WEIGHT` + `FONT_DESIGN`). A fully-custom typography may set every axis
+  at once (`Font.custom(name, size, weight, design)` → all four). A heading
+  typography (LargeTitle…Headline) implies a heading element on a `TEXT`; a
+  custom/system font never implies a heading — it only styles the text.
+  Individual raw modifiers (`FontSize`, `FontWeightMod`, …) layer on top.
 - **`LABEL`** is a `STRING` property (the accessibility label), distinct from a
   `TEXT_FIELD`'s caption label.
+
+### Renderer default typography scale
+
+A `TEXT_STYLE` selects a whole typography; the **renderer owns the concrete
+values** so the same application looks native on every platform. The reference
+scale below is **baked per renderer** (each renderer MAY tune it to its
+platform's HIG). Size is points on native renderers / CSS px on the web.
+
+| Code | Style | Size | Weight |
+|------|-------|------|--------|
+| 0 | `LargeTitle` | 34 | 700 |
+| 1 | `Title` | 28 | 700 |
+| 2 | `Title2` | 22 | 700 |
+| 3 | `Title3` | 20 | 600 |
+| 4 | `Headline` | 17 | 600 |
+| 5 | `Subheadline` | 15 | 400 |
+| 6 | `Body` | 15 | 400 |
+| 7 | `Callout` | 14 | 400 |
+| 8 | `Footnote` | 13 | 400 |
+| 9 | `Caption` | 12 | 400 |
+| 10 | `Caption2` | 11 | 400 |
+
+A predefined `TEXT_STYLE` supplies the default size and weight; an explicit
+`FONT_SIZE`/`FONT_WEIGHT` (a raw `.fontSize`/`.fontWeight`, or a
+`Font.system(size:weight:)`) **overrides** that axis and wins **regardless of
+emit order**. Likewise `FONT_FAMILY` overrides a family derived from
+`FONT_DESIGN`. An unknown `TEXT_STYLE` code is ignored (forward compatible).
 
 ---
 
