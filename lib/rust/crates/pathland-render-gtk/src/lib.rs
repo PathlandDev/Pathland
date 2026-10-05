@@ -2233,6 +2233,53 @@ fn apply_style(widget: &gtk::Widget, node: &HostNode) {
     }
 }
 
+/// The renderer-owned default typography scale for a `TEXT_STYLE` code
+/// (spec/MODIFIERS.md §2): `(size_pt, weight_100_900)`. The renderer owns these
+/// values; explicit `FONT_SIZE`/`FONT_WEIGHT` override them. `None` for an
+/// unknown code (forward compatibility).
+fn text_style_scale(code: u8) -> Option<(f32, f32)> {
+    Some(match code {
+        0 => (34.0, 700.0),  // LargeTitle
+        1 => (28.0, 700.0),  // Title
+        2 => (22.0, 700.0),  // Title2
+        3 => (20.0, 600.0),  // Title3
+        4 => (17.0, 600.0),  // Headline
+        5 => (15.0, 400.0),  // Subheadline
+        6 => (15.0, 400.0),  // Body
+        7 => (14.0, 400.0),  // Callout
+        8 => (13.0, 400.0),  // Footnote
+        9 => (12.0, 400.0),  // Caption
+        10 => (11.0, 400.0), // Caption2
+        _ => return None,
+    })
+}
+
+/// A generic UI family for a `FONT_DESIGN` code (Default → the platform UI
+/// font, i.e. no override).
+fn font_design_family(code: u8) -> Option<&'static str> {
+    match code {
+        1 => Some("serif"),
+        2 => Some("sans-serif"),
+        3 => Some("monospace"),
+        _ => None,
+    }
+}
+
+/// Map a numeric `FONT_WEIGHT` (100–900) onto the nearest Pango weight.
+fn pango_weight(weight: f32) -> pango::Weight {
+    match weight as i32 {
+        ..=150 => pango::Weight::Thin,
+        151..=250 => pango::Weight::Ultralight,
+        251..=350 => pango::Weight::Light,
+        351..=450 => pango::Weight::Normal,
+        451..=550 => pango::Weight::Medium,
+        551..=650 => pango::Weight::Semibold,
+        651..=750 => pango::Weight::Bold,
+        751..=850 => pango::Weight::Ultrabold,
+        _ => pango::Weight::Heavy,
+    }
+}
+
 /// CSS decoration (background, border, font family) for a node, keyed by its
 /// widget name (set in [`apply_style`]).
 fn style_css(node: &HostNode) -> String {
@@ -2250,6 +2297,13 @@ fn style_css(node: &HostNode) -> String {
             b * 255.0,
             a
         ));
+    }
+    if let Some(bits) = node.properties.get(&property_id::TEXT_STYLE) {
+        if let Some((size, weight)) = text_style_scale(f32::from_bits(*bits) as u8) {
+            // Predefined typography first; explicit FONT_SIZE/FONT_WEIGHT below
+            // override (raw modifiers layer on top).
+            css.push_str(&format!("font-size:{size}px;font-weight:{weight};"));
+        }
     }
     if let Some(bits) = node.properties.get(&property_id::FONT_SIZE) {
         let v = f32::from_bits(*bits);
@@ -2284,6 +2338,11 @@ fn style_css(node: &HostNode) -> String {
             css.push_str(&format!("border-radius:{r}px;"));
         }
     }
+    if let Some(bits) = node.properties.get(&property_id::FONT_DESIGN) {
+        if let Some(family) = font_design_family(f32::from_bits(*bits) as u8) {
+            css.push_str(&format!("font-family:{family};"));
+        }
+    }
     if let Some(family) = node.string_property(property_id::FONT_FAMILY) {
         css.push_str(&format!("font-family:'{}';", family.replace('\'', "\\'")));
     }
@@ -2296,13 +2355,48 @@ fn style_css(node: &HostNode) -> String {
     css
 }
 
-/// Apply color/font-size/font-weight text style from properties via Pango
-/// attributes.
+/// Apply color/font-size/font-weight/design text style from properties via
+/// Pango attributes. A predefined `TEXT_STYLE` supplies the default size/weight;
+/// explicit `FONT_SIZE`/`FONT_WEIGHT` override it (raw modifiers layer on top).
 fn apply_text_style(label: &Label, node: &HostNode) {
     let attrs = pango::AttrList::new();
-    if let Some(fs) = node.properties.get(&property_id::FONT_SIZE) {
-        let pts = (f32::from_bits(*fs).max(0.0) as i32) * 1000;
-        attrs.insert(pango::AttrSize::new(pts));
+    let style = node
+        .properties
+        .get(&property_id::TEXT_STYLE)
+        .map(|b| f32::from_bits(*b) as u8);
+    let style_scale = style.and_then(text_style_scale);
+    let size = node
+        .properties
+        .get(&property_id::FONT_SIZE)
+        .map(|b| f32::from_bits(*b))
+        .filter(|v| *v > 0.0)
+        .or_else(|| style_scale.map(|(s, _)| s));
+    let weight = node
+        .properties
+        .get(&property_id::FONT_WEIGHT)
+        .map(|b| f32::from_bits(*b))
+        .filter(|v| *v > 0.0)
+        .or_else(|| style_scale.map(|(_, w)| w));
+    let design_family = node
+        .properties
+        .get(&property_id::FONT_DESIGN)
+        .map(|b| f32::from_bits(*b) as u8)
+        .and_then(font_design_family);
+    let family = node
+        .string_property(property_id::FONT_FAMILY)
+        .or(design_family);
+    if size.is_some() || weight.is_some() || family.is_some() {
+        let mut desc = pango::FontDescription::new();
+        if let Some(size) = size {
+            desc.set_size((size.max(0.0) as i32) * pango::SCALE);
+        }
+        if let Some(weight) = weight {
+            desc.set_weight(pango_weight(weight));
+        }
+        if let Some(family) = family {
+            desc.set_family(family);
+        }
+        attrs.insert(pango::AttrFontDesc::new(&desc));
     }
     if let Some(color) = node.properties.get(&property_id::COLOR) {
         let c = *color;
@@ -3032,6 +3126,27 @@ mod tests {
         let l = crate::layout::stack_layout(&root).unwrap();
         assert_eq!(l.spacing, 12);
         assert_eq!(l.child_align, Align::End);
+    }
+
+    #[test]
+    fn text_style_scale_maps_known_codes() {
+        assert_eq!(text_style_scale(0), Some((34.0, 700.0)));
+        assert_eq!(text_style_scale(6), Some((15.0, 400.0)));
+        assert_eq!(text_style_scale(11), None);
+    }
+
+    #[test]
+    fn font_design_family_maps_known_codes() {
+        assert_eq!(font_design_family(0), None);
+        assert_eq!(font_design_family(1), Some("serif"));
+        assert_eq!(font_design_family(3), Some("monospace"));
+    }
+
+    #[test]
+    fn pango_weight_picks_nearest() {
+        assert_eq!(pango_weight(400.0), pango::Weight::Normal);
+        assert_eq!(pango_weight(600.0), pango::Weight::Semibold);
+        assert_eq!(pango_weight(700.0), pango::Weight::Bold);
     }
 
     /// A minimal `HostNode` for headless widget/kind tests.
