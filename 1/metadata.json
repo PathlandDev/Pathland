@@ -1,0 +1,240 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M49EM2M1A720EX968K2BBTGR",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-06T20:32:03.391888Z",
+  "branch": "feat/icons",
+  "checkpoints_count": 15,
+  "save_step_count": 14,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Components.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Properties.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ValueTypes.java",
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/rust/crates/pathland-core/src/lib.rs",
+    "lib/rust/crates/pathland-core/status.md",
+    "lib/rust/crates/pathland-engine/src/node.rs",
+    "lib/rust/crates/pathland-engine/status.md",
+    "spec/DSL.md",
+    "spec/ICONS.md",
+    "spec/MODIFIERS.md",
+    "spec/OPCODE.md",
+    "spec/PRIMITIVES.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "d326ff1ca36f",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 51101797,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1427781248,
+    "output_tokens": 2548201,
+    "api_call_count": 3744
+  },
+  "session_metrics": {
+    "turn_count": 226
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-06T20:32:01.145803Z",
+    "agent_lines": 224,
+    "agent_removed": 14,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 224,
+    "total_lines_changed": 238,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1116,
+      "agent_lines_removed": 7
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 1,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1385,
+      "agent_lines_removed": 57,
+      "user_added_per_file": {
+        "lib/typescript/src/generated/icons.ts": 1
+      }
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1386,
+      "agent_lines_removed": 57
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 142,
+      "user_lines_removed": 306,
+      "agent_lines_added": 1391,
+      "agent_lines_removed": 57,
+      "user_added_per_file": {
+        "lib/rust/crates/pathland-icons/src/lib.rs": 88,
+        "lib/typescript/src/generated/icons.ts": 53,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/rust/crates/pathland-icons/src/lib.rs": 252,
+        "lib/typescript/src/generated/icons.ts": 53,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 142,
+      "user_lines_removed": 306,
+      "agent_lines_added": 1391,
+      "agent_lines_removed": 57,
+      "user_added_per_file": {
+        "lib/rust/crates/pathland-icons/src/lib.rs": 88,
+        "lib/typescript/src/generated/icons.ts": 53,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/rust/crates/pathland-icons/src/lib.rs": 252,
+        "lib/typescript/src/generated/icons.ts": 53,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 56,
+      "user_lines_removed": 55,
+      "agent_lines_added": 1255,
+      "agent_lines_removed": 56,
+      "user_added_per_file": {
+        "lib/typescript/src/generated/icons.ts": 55,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/typescript/src/generated/icons.ts": 54,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 56,
+      "user_lines_removed": 55,
+      "agent_lines_added": 1255,
+      "agent_lines_removed": 56,
+      "user_added_per_file": {
+        "lib/typescript/src/generated/icons.ts": 55,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/typescript/src/generated/icons.ts": 54,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    },
+    {
+      "checkpoint_number": 11,
+      "user_lines_added": 57,
+      "user_lines_removed": 56,
+      "agent_lines_added": 1255,
+      "agent_lines_removed": 56,
+      "user_added_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 55,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 54,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    },
+    {
+      "checkpoint_number": 12,
+      "user_lines_added": 57,
+      "user_lines_removed": 56,
+      "agent_lines_added": 1255,
+      "agent_lines_removed": 56,
+      "user_added_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 55,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 54,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    },
+    {
+      "checkpoint_number": 13,
+      "user_lines_added": 57,
+      "user_lines_removed": 56,
+      "agent_lines_added": 1255,
+      "agent_lines_removed": 56,
+      "user_added_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 55,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 54,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    },
+    {
+      "checkpoint_number": 14,
+      "user_lines_added": 57,
+      "user_lines_removed": 56,
+      "agent_lines_added": 1243,
+      "agent_lines_removed": 56,
+      "user_added_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 55,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 54,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    },
+    {
+      "checkpoint_number": 15,
+      "user_lines_added": 57,
+      "user_lines_removed": 56,
+      "agent_lines_added": 1243,
+      "agent_lines_removed": 56,
+      "user_added_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 55,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-view/src/main/java/com/pathland/view/Icon.java": 1,
+        "lib/typescript/src/generated/icons.ts": 54,
+        "lib/typescript/test/fixtures/ssr/icons.html": 1
+      }
+    }
+  ]
+}
