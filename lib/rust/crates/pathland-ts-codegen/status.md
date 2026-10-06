@@ -24,7 +24,14 @@ Rust sources, so the TS side cannot drift silently.
   `ShellKind`, and the `semanticTag`/`textTag`/`ariaRole`/`headingLevel`
   resolvers — so semantic-tag / ARIA / heading decisions cannot drift between
   the Rust SSR renderer and the DOM client. `constants.ts` also carries the
-  media surface (`COMPONENT_AUDIO`/`VIDEO`, `PROP_AUDIO_SOURCE`/`VIDEO_SOURCE`).
+  media surface (`COMPONENT_AUDIO`/`VIDEO`, `PROP_AUDIO_SOURCE`/`VIDEO_SOURCE`)
+  and the icon surface (`COMPONENT_ICON`, `PROP_ICON_NAME`).
+- **`generated/icons.ts`** (`lib/typescript/src/generated/icons.ts`): the
+  canonical icon catalog mirrored from `pathland-render-html::icons` — `ICONS` (canonical
+  `ICON_NAME` → Remix **filled** inner SVG markup) plus the SVG shell +
+  fallback strings —
+  so the DOM client renders exactly what the Rust SSR renderer emits and the two
+  cannot drift.
 - **`npm run regen`** (`lib/typescript/scripts/regen.mjs`) runs both generators
   (and the golden-fixture emitter); CI's `rust` job runs them and fails on
   `git diff --exit-code` drift.

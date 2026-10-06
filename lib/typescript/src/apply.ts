@@ -50,6 +50,7 @@ import {
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
+  PROP_ICON_NAME,
   PROP_MEDIA_POSITION,
   PROP_MEDIA_VOLUME,
   PROP_NAV_CHROME,
@@ -89,6 +90,7 @@ import {
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 import { isRangeInFlight } from "./inFlight";
 import { applyTextStyle, copyTypography, textStyleByNode } from "./typography";
+import { FALLBACK_SVG, ICONS } from "./generated/icons";
 
 /** Component type per retained node, so PARAMETER/TREE application can special-case
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
@@ -853,15 +855,37 @@ export function setNodeText(el: HTMLElement, text: string): void {
   }
 }
 
+/** Set an icon's accessibility: a `LABEL` makes it presentable
+ *  (`role="img"` + `aria-label`); without one it is decorative (`aria-hidden`). */
+function syncIconAria(el: Element, label?: string): void {
+  if (label) {
+    el.setAttribute("role", "img");
+    el.setAttribute("aria-label", label);
+    el.removeAttribute("aria-hidden");
+    el.removeAttribute("focusable");
+  } else {
+    el.removeAttribute("role");
+    el.removeAttribute("aria-label");
+    el.setAttribute("aria-hidden", "true");
+    el.setAttribute("focusable", "false");
+  }
+}
+
 function applyStringProperty(el: HTMLElement, propId: number, text: string): void {
   switch (propId) {
     case PROP_TEXT:
     case PROP_LABEL: {
       // On a media element the accessibility label is the `alt` text (mirrors
-      // the Rust SSR renderer); elsewhere it's the caption/label span.
+      // the Rust SSR renderer); on a semantic icon it makes the svg presentable;
+      // elsewhere it's the caption/label span.
+      const icon = el.matches("svg.pathland-icon")
+        ? el
+        : el.querySelector("svg.pathland-icon");
       const media = el.matches("img,audio,video") ? el : null;
       if (media) {
         media.setAttribute("alt", text);
+      } else if (icon) {
+        syncIconAria(icon, text);
       } else {
         const span = el.querySelector(".pathland-label");
         if (span) {
@@ -869,6 +893,17 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
         } else {
           setNodeText(el, text);
         }
+      }
+      break;
+    }
+    case PROP_ICON_NAME: {
+      // A semantic icon: swap the Remix **filled** inner markup for the canonical name
+      // (the ICON_NAME → generated/inner map). Unknown → decoratiive fallback.
+      const svg = el.matches("svg.pathland-icon")
+        ? el
+        : el.querySelector("svg.pathland-icon");
+      if (svg) {
+        svg.innerHTML = ICONS[text] ?? FALLBACK_SVG;
       }
       break;
     }

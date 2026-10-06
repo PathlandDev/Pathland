@@ -119,6 +119,7 @@ export const PROP_GRID_ROWS = 0x001f;
 export const PROP_GRID_TRACKS = 0x0020;
 export const PROP_BACKGROUND_COLOR = 0x1001;
 export const PROP_IMAGE_SOURCE = 0x1002;
+export const PROP_ICON_NAME = 0x1038;
 export const PROP_AUDIO_SOURCE = 0x1033;
 export const PROP_VIDEO_SOURCE = 0x1034;
 export const PROP_PLAYBACK_STATE = 0x1035;
@@ -313,6 +314,7 @@ export const TEXT_STYLE_CAPTION2 = 10;
 // Components (spec/PRIMITIVES.md)
 export const COMPONENT_TEXT = 0x0001;
 export const COMPONENT_IMAGE = 0x0002;
+export const COMPONENT_ICON = 0x000b;
 export const COMPONENT_AUDIO = 0x0009;
 export const COMPONENT_VIDEO = 0x000a;
 export const COMPONENT_COLOR = 0x0003;

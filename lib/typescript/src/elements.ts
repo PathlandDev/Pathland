@@ -14,6 +14,7 @@ import {
   COMPONENT_GRID,
   COMPONENT_GRID_ROW,
   COMPONENT_HSTACK,
+  COMPONENT_ICON,
   COMPONENT_IMAGE,
   COMPONENT_LAZY_HGRID,
   COMPONENT_LAZY_HSTACK,
@@ -105,6 +106,19 @@ export function createElement(component: number): Node {
     case COMPONENT_IMAGE: {
       const el = document.createElement("img");
       el.alt = "";
+      return el;
+    }
+    case COMPONENT_ICON: {
+      // A semantic icon: a **filled** Remix-style inline SVG shell (mirrors the
+      // Rust SSR's `WEB_SVG_OPEN`). The inner markup + aria come from the
+      // ICON_NAME / LABEL deltas.
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      el.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      el.setAttribute("class", "pathland-icon");
+      el.setAttribute("viewBox", "0 0 24 24");
+      el.setAttribute("fill", "currentColor");
+      el.setAttribute("aria-hidden", "true");
+      el.setAttribute("focusable", "false");
       return el;
     }
     case COMPONENT_AUDIO: {

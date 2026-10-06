@@ -154,6 +154,20 @@ body  {
 .pathland-button:hover { background-color: var(--pl-button-background-hover); }
 .pathland-button:focus-visible { outline: 2px solid var(--pl-control-accent); outline-offset: 2px; }
 .pathland-button:disabled { opacity: 0.5; pointer-events: none; }
+/* Semantic icons (ICON): the inline SVG is sized like text — `1em` follows the
+   resolved font-size (FONT_SIZE on the node, else the inherited/default size)
+   and `currentColor` follows COLOR. */
+.pathland-icon {
+  display: inline-block;
+  width: 1em; height: 1em;
+  min-width: 1em; min-height: 1em;
+  vertical-align: -0.125em;
+  flex: none;
+}
+.pathland-icon path, .pathland-icon circle, .pathland-icon rect, .pathland-icon line,
+.pathland-icon polyline, .pathland-icon polygon {
+  shape-rendering: geometricPrecision;
+}
 @media (prefers-color-scheme: dark) {
   :root {
     --pl-color-background: #0f172a;
