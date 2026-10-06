@@ -869,4 +869,28 @@ mod tests {
         let mut host = Host::new(&mut mem, &layout);
         assert_eq!(host.frames()[0].opcodes().next().unwrap().a(), 5);
     }
+
+    #[test]
+    fn icon_vocabulary_names_are_canonical_and_unique() {
+        use crate::constants::icon;
+        use alloc::collections::BTreeSet;
+
+        let mut seen = BTreeSet::new();
+        for name in icon::NAMES {
+            assert!(icon::is_canonical(name), "{} not canonical", name);
+            assert!(seen.insert(name), "duplicate canonical icon {}", name);
+        }
+        // Every documented constant is in the canonical list.
+        for name in [
+            icon::HOME,
+            icon::SETTINGS,
+            icon::PLAY,
+            icon::SKIP_FORWARD,
+            icon::VOLUME_MUTE,
+            icon::FILTER,
+        ] {
+            assert!(icon::is_canonical(name));
+        }
+        assert!(!icon::is_canonical("definitely-not-an-icon"));
+    }
 }

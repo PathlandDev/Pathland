@@ -163,7 +163,10 @@ with SwiftUI's view categories and are the **single authoritative allocation**.
 | `0x06` | `SPACER` | Flexible expanding layout filler |
 | `0x07` | `PROGRESS_VIEW` | Activity indicator / determinate progress |
 | `0x08` | `GAUGE` | Range meter against a scale |
-| `0x09`–`0x0F` | — | Future drawing/visual nodes |
+| `0x09` | `AUDIO` | Audio playback node (`AUDIO_SOURCE`) |
+| `0x0A` | `VIDEO` | Video playback node (`VIDEO_SOURCE`) |
+| `0x0B` | `ICON` | Renderer-native symbol for a canonical name (`ICON_NAME`, spec/ICONS.md) |
+| `0x0C`–`0x0F` | — | Future drawing/visual nodes |
 
 ### B. Layout & Container Primitives (`0x10`–`0x1F`)
 
@@ -216,7 +219,7 @@ from the primitives in this file, so no component IDs are allocated:
 | `List` | `ScrollView` + `VStack` of rows; row selection via `SELECTED` per row |
 | `NavigationStack` | app-held navigation state emitting the current destination into a stable `Group` slot (a structural container, [DSL.md §3.4](./DSL.md#34-structural-reactivity-conditional-rendering)); the slot's child swaps on route change, producing `TREE` deltas |
 | `NavigationSplitView` | `HStack` (sidebar + detail) |
-| `Label` | `HStack` + `IMAGE` + `TEXT` |
+| `Label` | `HStack` + `IMAGE` (or `ICON`) + `TEXT` |
 
 ---
 
@@ -253,6 +256,21 @@ A static image or icon asset. Asset loading is client-owned.
   primitive** — it is `IMAGE` with `IMAGE_SOURCE` set to an absolute URL; the
   renderer loads asynchronously and re-issues `SET_PROPERTY(IMAGE_SOURCE)` if
   the source changes.
+
+### Icon — `ICON` 0x0B
+
+A **renderer-native symbol** for a canonical semantic name — unlike `IMAGE`,
+which loads an asset, an icon is a *word* the renderer maps onto its native
+icon set (spec/ICONS.md).
+
+- **Protocol**: a leaf node; the symbol via `ICON_NAME` (0x1038, STRING: the
+  canonical name). The application owns the intent; the renderer owns the glyph.
+- **Properties**: `ICON_NAME`, `COLOR`/`foregroundStyle` (tint), `FONT_SIZE`
+  (size — after SwiftUI's font-based symbol sizing), size modifiers,
+  `OPACITY`, `LABEL` (accessibility).
+- **Events**: none by default.
+- **Fallback**: an unknown canonical name (a name the vocabulary has not
+  allocated) resolves to a renderer-owned placeholder (spec/ICONS.md).
 
 ### Audio — `AUDIO` 0x09
 

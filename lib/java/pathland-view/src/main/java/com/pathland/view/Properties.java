@@ -48,6 +48,8 @@ public final class Properties {
     public static final int MEDIA_POSITION = 0x1036;
     /** Media volume on an `AUDIO`/`VIDEO` node (0..1). */
     public static final int MEDIA_VOLUME = 0x1037;
+    /** Semantic icon name (STRING, canonical; spec/ICONS.md) on an `ICON` node. */
+    public static final int ICON_NAME = 0x1038;
     public static final int BORDER_WIDTH = 0x1003;
     public static final int BORDER_COLOR = 0x1004;
     public static final int BORDER_RADIUS = 0x1005;

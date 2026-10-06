@@ -300,6 +300,10 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
   visibility emits a single `SET_PROPERTY`.
 - **`ENABLED`** is the inverse of SwiftUI `.disabled()`: 1 = interactive, 0 =
   disabled. Disabled controls do not emit events.
+- **Icons** ([`ICON`](./PRIMITIVES.md#icon--icon-0x0b), spec/ICONS.md): the
+  `ICON_NAME` string selects a renderer-native symbol; it is **not** an asset
+  reference (`IMAGE_SOURCE`). `COLOR`/`FONT_SIZE`
+  size and tint it like text; `LABEL` makes it presentable.
 - **`.focusable`** has no property: the app requests focus events via the
   `FOCUS` listener bit (`EVENT_LISTENERS`, bit 5) and observes
   `EVENT::FOCUS_CHANGED` — see [EVENTS.md](./EVENTS.md).
@@ -408,7 +412,8 @@ are never chainable modifiers.
 | `0x1031` | `TRANSITION` (ENUM; navigation swap hint) | — |
 | `0x1032` | `TEXT_STYLE` (ENUM; predefined typography) | — |
 | `0x1033`–`0x1037` | Media — `AUDIO_SOURCE`, `VIDEO_SOURCE` (STRING asset references), `PLAYBACK_STATE` (U32), `MEDIA_POSITION` (F32), `MEDIA_VOLUME` (F32), see PRIMITIVES.md |
-| `0x1038`–`0x10FF` | Future styling properties (unallocated) |
+| `0x1038` | `ICON_NAME` (STRING; the canonical icon name — spec/ICONS.md) on an `ICON` node |
+| `0x1039`–`0x10FF` | Future styling properties (unallocated) |
 | `0x2001`–`0x200B` | Semantic (ROLE, STATE, ENABLED, SELECTED, EVENT_LISTENERS, VALUE, MIN_VALUE, MAX_VALUE, LABEL, PROMPT) |
 | `0x2009`, `0x200C`–`0x2014` | Control properties (allocated: STEP_VALUE, CONTROL_SIZE, IS_SECURE, PROGRESS, IS_INDETERMINATE, SELECTION, COLOR_VALUE, DATE_PICKER_MODE, PICKER_STYLE) — defined in PRIMITIVES.md controls. Note: a `DATE_PICKER`'s date is set via the `PARAMETER::SET_DATE` command (0x04), not a property; **`0x2011` is unallocated/reserved** (its former `DATE_VALUE` draft was dropped) |
 | `0x2016`–`0x2018` | Binding/action properties (allocated: `ACTION_ID`, `BINDING_ID`, `TOGGLE_STYLE`) — defined in PRIMITIVES.md semantic controls |
@@ -437,8 +442,8 @@ The canonical value type per property (the protocol's authoritative mapping):
 - `SELECTED`, `VISIBLE`, `ENABLED`, `UNDERLINE`, `STRIKETHROUGH`,
   `COLOR_INVERT`, `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `IS_SECURE`,
   `IS_INDETERMINATE`, `FIXED_SIZE_*` → `U8`
-- `LABEL`, `PROMPT`, `FONT_FAMILY`, `IMAGE_SOURCE`, `AUDIO_SOURCE`,
-  `VIDEO_SOURCE`, `ROUTE` → `STRING`
+- `LABEL`, `PROMPT`, `FONT_FAMILY`, `IMAGE_SOURCE`,
+  `AUDIO_SOURCE`, `VIDEO_SOURCE`, `ICON_NAME`, `ROUTE` → `STRING`
 - `LINE_LIMIT`, `SELECTION`, `ACTION_ID`, `BINDING_ID` → `U32`
 - `ALIGNMENT`, `TEXT_ALIGNMENT`, `TRUNCATION_MODE`, `TEXT_CASE`, `FONT_STYLE`,
   `FONT_DESIGN`, `CONTENT_MODE`, `CONTROL_SIZE`, `SHAPE_KIND`,

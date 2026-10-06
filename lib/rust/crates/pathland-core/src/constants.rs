@@ -243,7 +243,10 @@ pub mod component_type {
     /// **Draft.** Video playback node (`VIDEO_SOURCE` references the media;
     /// playback interaction is renderer-native).
     pub const VIDEO: u16 = 0x0A;
-    // 0x0B–0x0F reserved (future drawing nodes).
+    /// **Draft.** Semantic icon (`ICON_NAME` selects a renderer-native symbol —
+    /// Adwaita on GTK, Lucide on the web; spec/ICONS.md).
+    pub const ICON: u16 = 0x0B;
+    // 0x0C–0x0F reserved (future drawing nodes).
 
     // ── Layout & Container Primitives (0x10–0x1F) ───────────────────────────
     /// Vertical flex stack.
@@ -384,6 +387,10 @@ pub mod property_id {
     /// **Draft.** Media volume (F32 0..1) on an `AUDIO`/`VIDEO` node. When bound,
     /// the renderer reports `MEDIA_VOLUME_CHANGED`.
     pub const MEDIA_VOLUME: u16 = 0x1037;
+    /// **Draft.** Semantic icon name (STRING, canonical; spec/ICONS.md) on an
+    /// `ICON` node. The renderer maps it to its native icon set and falls back
+    /// to a renderer-default visual for unknown names.
+    pub const ICON_NAME: u16 = 0x1038;
     pub const BORDER_WIDTH: u16 = 0x1003;
     pub const BORDER_COLOR: u16 = 0x1004;
     pub const BORDER_RADIUS: u16 = 0x1005;
@@ -578,6 +585,7 @@ pub fn value_type_for(prop: u16) -> u8 {
         | property_id::IMAGE_SOURCE
         | property_id::AUDIO_SOURCE
         | property_id::VIDEO_SOURCE
+        | property_id::ICON_NAME
         | property_id::ROUTE => value_type::STRING,
         property_id::LINE_LIMIT
         | property_id::SELECTION
@@ -669,6 +677,80 @@ pub mod text_style {
     pub const CAPTION: u8 = 9;
     /// A second, smaller caption.
     pub const CAPTION2: u8 = 10;
+}
+
+/// Canonical icon names (`ICON_NAME` values; spec/ICONS.md).
+///
+/// The spec is the **vocabulary contract only**: these names are the protocol
+/// `ICON_NAME` surface every renderer understands. The canonical-name →
+/// native-glyph mapping is **renderer-owned** (Adwaita on GTK, Remix filled on
+/// the web, SF Symbols on Apple) and lives in each renderer — never here, never
+/// in the spec.
+pub mod icon {
+    pub const HOME: &str = "home";
+    pub const SETTINGS: &str = "settings";
+    pub const SEARCH: &str = "search";
+    pub const MENU: &str = "menu";
+    pub const CLOSE: &str = "close";
+    pub const CLOUD: &str = "cloud";
+    pub const CHEVRON_LEFT: &str = "chevron-left";
+    pub const CHEVRON_RIGHT: &str = "chevron-right";
+    pub const CHEVRON_UP: &str = "chevron-up";
+    pub const CHEVRON_DOWN: &str = "chevron-down";
+    pub const ARROW_LEFT: &str = "arrow-left";
+    pub const ARROW_RIGHT: &str = "arrow-right";
+    pub const ADD: &str = "add";
+    pub const REMOVE: &str = "remove";
+    pub const CHECK: &str = "check";
+    pub const EDIT: &str = "edit";
+    pub const DELETE: &str = "delete";
+    pub const SAVE: &str = "save";
+    pub const SHARE: &str = "share";
+    pub const DOWNLOAD: &str = "download";
+    pub const UPLOAD: &str = "upload";
+    pub const REFRESH: &str = "refresh";
+    pub const PLAY: &str = "play";
+    pub const PAUSE: &str = "pause";
+    pub const STOP: &str = "stop";
+    pub const SKIP_BACK: &str = "skip-back";
+    pub const SKIP_FORWARD: &str = "skip-forward";
+    pub const VOLUME: &str = "volume";
+    pub const VOLUME_MUTE: &str = "volume-mute";
+    pub const SHUFFLE: &str = "shuffle";
+    pub const REPEAT: &str = "repeat";
+    pub const INFO: &str = "info";
+    pub const WARNING: &str = "warning";
+    pub const ERROR: &str = "error";
+    pub const SUCCESS: &str = "success";
+    pub const HEART: &str = "heart";
+    pub const STAR: &str = "star";
+    pub const USER: &str = "user";
+    pub const USERS: &str = "users";
+    pub const LOCK: &str = "lock";
+    pub const LOGOUT: &str = "logout";
+    pub const BELL: &str = "bell";
+    pub const FOLDER: &str = "folder";
+    pub const FILE: &str = "file";
+    pub const IMAGE: &str = "image";
+    pub const MUSIC: &str = "music";
+    pub const GRID: &str = "grid";
+    pub const LIST: &str = "list";
+    pub const FILTER: &str = "filter";
+
+    /// Every canonical name, in deterministic (spec, spec/ICONS.md) order.
+    pub const NAMES: &[&str] = &[
+        HOME, SETTINGS, SEARCH, MENU, CLOSE, CLOUD, CHEVRON_LEFT, CHEVRON_RIGHT,
+        CHEVRON_UP, CHEVRON_DOWN, ARROW_LEFT, ARROW_RIGHT, ADD, REMOVE, CHECK,
+        EDIT, DELETE, SAVE, SHARE, DOWNLOAD, UPLOAD, REFRESH, PLAY, PAUSE, STOP,
+        SKIP_BACK, SKIP_FORWARD, VOLUME, VOLUME_MUTE, SHUFFLE, REPEAT, INFO,
+        WARNING, ERROR, SUCCESS, HEART, STAR, USER, USERS, LOCK, LOGOUT, BELL,
+        FOLDER, FILE, IMAGE, MUSIC, GRID, LIST, FILTER,
+    ];
+
+    /// Whether `name` is a canonical `ICON_NAME` in the spec vocabulary.
+    pub fn is_canonical(name: &str) -> bool {
+        NAMES.contains(&name)
+    }
 }
 
 /// Sentinel for append positions (`index = u32::MAX`).

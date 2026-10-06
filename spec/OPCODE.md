@@ -750,11 +750,12 @@ Golden byte vectors for this protocol are in [CONFORMANCE.md](./CONFORMANCE.md).
 
 ### Companion specifications
 
-The protocol's semantic surface is catalogued in four companion documents:
+The protocol's semantic surface is catalogued in five companion documents:
 [PRIMITIVES.md](./PRIMITIVES.md) (the primitive views), [MODIFIERS.md](./MODIFIERS.md)
 (the core modifiers, i.e. the `PARAMETER` properties), [EVENTS.md](./EVENTS.md)
-(the core events, i.e. the raw inputs), and [TOKENS.md](./TOKENS.md) (the design
-tokens / theming contract). IDs are allocated there spec-first;
+(the core events, i.e. the raw inputs), [TOKENS.md](./TOKENS.md) (the design
+tokens / theming contract), and [ICONS.md](./ICONS.md) (the canonical icon
+vocabulary for the `ICON` primitive). IDs are allocated there spec-first;
 this file remains the wire-format authority and must be updated when new IDs
 land.
 

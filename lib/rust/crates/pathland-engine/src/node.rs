@@ -122,6 +122,8 @@ pub enum Component {
     Spacer,
     /// Image leaf (`IMAGE_SOURCE` property).
     Image,
+    /// Semantic icon leaf (`ICON_NAME`; renderer maps to a native symbol).
+    Icon,
     /// Solid-color view (`COLOR` property).
     Color,
     /// Vector geometry (`SHAPE_KIND` property).
@@ -174,6 +176,7 @@ impl core::fmt::Debug for Component {
             Component::Button { label } => f.debug_tuple("Button").field(label).finish(),
             Component::Spacer => f.write_str("Spacer"),
             Component::Image => f.write_str("Image"),
+            Component::Icon => f.write_str("Icon"),
             Component::Color => f.write_str("Color"),
             Component::Shape => f.write_str("Shape"),
             Component::Divider => f.write_str("Divider"),
@@ -208,6 +211,7 @@ pub fn component_type_id(component: &Component) -> u16 {
         Component::Button { .. } => component_type::BUTTON,
         Component::Spacer => component_type::SPACER,
         Component::Image => component_type::IMAGE,
+        Component::Icon => component_type::ICON,
         Component::Color => component_type::COLOR,
         Component::Shape => component_type::SHAPE,
         Component::Divider => component_type::DIVIDER,
