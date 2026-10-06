@@ -57,7 +57,7 @@ class KitchenSinkViewTest {
                 Components.PROGRESS_VIEW, Components.GAUGE, Components.TEXT_EDITOR,
                 Components.PICKER, Components.MENU, Components.COLOR_PICKER,
                 Components.DATE_PICKER, Components.ZSTACK, Components.SHAPE, Components.COLOR,
-                Components.IMAGE}) {
+                Components.ICON}) {
             assertTrue(anyCreateNode(frame, component), "frame contains component 0x"
                     + Integer.toHexString(component));
         }

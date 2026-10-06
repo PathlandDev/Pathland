@@ -135,6 +135,7 @@ fn scenarios() -> Vec<Scenario> {
         zstack2d(),
         tokens(),
         semantics(),
+        icons(),
         media(),
     ]
 }
@@ -317,6 +318,29 @@ fn semantics() -> Scenario {
     b.set_text(16, "Go");
     Scenario {
         name: "semantics",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn icons() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::HSTACK);
+    b.create(2, component_type::ICON);
+    b.create(3, component_type::ICON);
+    b.create(4, component_type::BUTTON);
+    b.insert(1, 2);
+    b.insert(1, 3);
+    b.insert(1, 4);
+    // A decorative sized icon inside a button label, and a labeled one.
+    b.set_string(2, property_id::ICON_NAME, "play");
+    b.set_prop(2, value_type::F32, property_id::FONT_SIZE, 28f32.to_bits());
+    b.set_string(3, property_id::ICON_NAME, "music");
+    b.set_string(3, property_id::LABEL, "Playlist");
+    b.set_text(4, "Go");
+    Scenario {
+        name: "icons",
         opcodes: b.opcodes,
         strings: b.strings,
         root: 1,

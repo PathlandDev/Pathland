@@ -281,13 +281,14 @@ Component ids and wire behavior come from
 |------|---------------------------|--------------------|---------------|
 | `Text` | `Text("…")` / `Text(Signal<String>)` | `Text.of(String)` / `Text.of(Signal<String>)` | `TEXT` 0x01; content `SET_TEXT` |
 | `Image` | `Image("name")` / `Image(systemName:)` | `Image.of()` / `Image.of(String source)` | `IMAGE` 0x02; `IMAGE_SOURCE` 0x1002 |
+| `Icon` | — (semantic symbol; SwiftUI `Image(systemName:)`) | `Icon.of(IconName)` / `Icon.of(String name)` / `Icon.of(Signal<String>)` / `Icon.labeled(IconName, String)` | `ICON` 0x0B; `ICON_NAME` 0x1038 (spec/ICONS.md) |
 | `Color` | `Color(.sRGB, red:green:blue:)` (a View) | `Color.rgb(int,int,int)` (implements `View`) | `COLOR` 0x03; `COLOR` 0x100A |
 | `Shape` | `Rectangle()`, `Circle()`, `Capsule()`, `RoundedRectangle(cornerRadius:)` | `Rectangle.of()` | `SHAPE` 0x04; `SHAPE_KIND` 0x0006 |
 | `Divider` | `Divider()` | `Divider.of()` | `DIVIDER` 0x05 |
 | `Spacer` | `Spacer()` | `Spacer.of()` | `SPACER` 0x06 |
 | `ProgressView` | `ProgressView(value:)` / `ProgressView()` | `ProgressView.of(float)` / `ProgressView.of()` | `PROGRESS_VIEW` 0x07; `PROGRESS` 0x200E / `IS_INDETERMINATE` 0x200F |
 | `Gauge` | `Gauge(value:in:)` | `Gauge.of(float value, float min, float max)` | `GAUGE` 0x08; `VALUE`/`MIN_VALUE`/`MAX_VALUE` |
-| `Label` | `Label("title", systemImage:)` (composite) | `Label.of(String title)` / `Label.of(String title, String icon)` / `Label.of(Signal<String>…)` | a composite `HSTACK` + `IMAGE` + `TEXT` (PRIMITIVES.md "Composite views") — no component ID |
+| `Label` | `Label("title", systemImage:)` (composite) | `Label.of(String title)` / `Label.of(String title, String icon)` / `Label.of(String title, Icon)` / `Label.of(Signal<String>…)` | a composite `HSTACK` + `IMAGE` (or `ICON`) + `TEXT` (PRIMITIVES.md "Composite views") — no component ID |
 
 **Deltas (Java)**: primitives are constructed with `<ViewName>.of(...)`
 factories (`Text.of("…")`). Full `ShapeKind` coverage ships as named views

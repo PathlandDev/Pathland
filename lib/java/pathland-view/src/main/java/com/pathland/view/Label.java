@@ -22,10 +22,16 @@ public final class Label implements View {
 
     private final Signal<String> titleSignal;
     private final Signal<String> iconSignal;
+    private final View iconView;
 
     private Label(Signal<String> titleSignal, Signal<String> iconSignal) {
+        this(titleSignal, iconSignal, null);
+    }
+
+    private Label(Signal<String> titleSignal, Signal<String> iconSignal, View iconView) {
         this.titleSignal = titleSignal;
         this.iconSignal = iconSignal;
+        this.iconView = iconView;
     }
 
     /** A title-only label (no icon). */
@@ -36,6 +42,16 @@ public final class Label implements View {
     /** A label with a title and an icon. */
     public static Label of(String title, String icon) {
         return new Label(Signals.constant(title), Signals.constant(icon));
+    }
+
+    /** A label with a title and a semantic {@link Icon}. */
+    public static Label of(String title, Icon icon) {
+        return new Label(Signals.constant(title), null, icon);
+    }
+
+    /** A label whose title is bound to a signal, with a semantic {@link Icon}. */
+    public static Label of(Signal<String> title, Icon icon) {
+        return new Label(title, null, icon);
     }
 
     /** A title-only label whose title is bound to a reactive signal. */
@@ -68,9 +84,11 @@ public final class Label implements View {
         String icon = iconSignal != null ? iconSignal.get() : null;
 
         View titleView = nonBlank(title) ? Text.of(titleSignal).with(LineLimit.of(1)) : null;
-        View iconView = nonBlank(icon) ? Image.of(iconSignal) : null;
+        View iconPart = iconView != null
+                ? iconView
+                : (nonBlank(icon) ? Image.of(iconSignal) : null);
 
-        View content = style.makeBody(new LabelStyle.Configuration(titleView, iconView));
+        View content = style.makeBody(new LabelStyle.Configuration(titleView, iconPart));
         if (content == null) {
             content = Group.of();
         }

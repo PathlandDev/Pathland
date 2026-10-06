@@ -10,7 +10,7 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
 
 - **Retained tree** (`node.rs`): `Node` (id, component, children, properties,
   `string_properties`, `token_properties`, text/property signal bindings,
-  app-side gestures).
+  app-side gestures). Components include `Icon` (→ `component_type::ICON`).
 - **String-valued properties**: `Node::string_properties` (property → value,
   e.g. `FONT_FAMILY`, `LABEL`, `IMAGE_SOURCE`) emit as `SET_PROPERTY` with the
   `STRING` value type (arena-allocated); unchanged strings reuse their arena

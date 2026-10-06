@@ -22,6 +22,7 @@ import {
   COMPONENT_TEXT,
   COMPONENT_VSTACK,
   COMPONENT_ZSTACK,
+  COMPONENT_ICON,
   ALIGN_TOP_TRAILING,
   PROP_ALIGNMENT,
   PROP_AUDIO_SOURCE,
@@ -30,6 +31,7 @@ import {
   PROP_FONT_WEIGHT,
   PROP_GRID_COLUMNS,
   PROP_GRID_ROWS,
+  PROP_ICON_NAME,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
@@ -962,5 +964,51 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
     );
     const el = r.byId.get(1) as HTMLElement;
     expect(el.getAttribute("role")).toBe("menu");
+  });
+
+  it("a semantic icon renders a filled Remix svg from its canonical name", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_ICON],
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ICON_NAME, 0],
+          ],
+          stringEntry("play"),
+        ),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("svg");
+    expect(el.getAttribute("class")).toContain("pathland-icon");
+    expect(el.getAttribute("fill")).toBe("currentColor");
+    expect(el.getAttribute("aria-hidden")).toBe("true");
+    // The Remix play glyph is a single filled path (no stroke).
+    expect(el.innerHTML).toContain('d="M19.376 12.4161L8.77735 19.4818');
+    expect(el.innerHTML).not.toContain("stroke=");
+  });
+
+  it("an unknown icon name and a LABEL adjust the icon's aria", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_ICON],
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ICON_NAME, 0],
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_LABEL, 16],
+          ],
+          new Uint8Array([...stringEntry("no-such-icon"), ...stringEntry("Playlist")]),
+        ),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.innerHTML).toContain("circ"); // fallback glyph
+    expect(el.getAttribute("role")).toBe("img");
+    expect(el.getAttribute("aria-label")).toBe("Playlist");
+    expect(el.getAttribute("aria-hidden")).toBeNull();
   });
 });

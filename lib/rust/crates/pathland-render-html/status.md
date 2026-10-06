@@ -29,6 +29,11 @@ Statelessness). Protocol contract: `spec/`.
 - **Native elements** (the specs carry no renderer mappings — this is the
   concrete HTML map the removed spec hints lived in): `TEXT` → `<span>` (or
   `<p>`/`<h1>`–`<h5>` by `ROLE`/heading `TEXT_STYLE`), `IMAGE` → `<img>`,
+  `ICON` → inline **Remix (filled)** `<svg class="pathland-icon">` (the canonical
+  `ICON_NAME` resolves to its filled SVG markup via this renderer's own
+  `icons` module (`crate::icons`, the web owner of the mapping); `LABEL` →
+  `role="img"` + `aria-label`, none → `aria-hidden`; sized `1em` so `FONT_SIZE`
+  scales it, tinted via `fill="currentColor"`),
   `COLOR` → `<div>`, `SHAPE` → CSS shapes / inline SVG, `DIVIDER` → `<hr>`,
   `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
   `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex

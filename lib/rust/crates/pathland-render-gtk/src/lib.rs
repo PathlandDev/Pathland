@@ -399,6 +399,11 @@ impl GtkRenderer {
                     }
                 }
             }
+            WidgetKind::Icon => {
+                if let Ok(img) = widget.downcast::<gtk::Image>() {
+                    self.apply_icon(node, &img);
+                }
+            }
             WidgetKind::Media => {}
             WidgetKind::Toggle => {
                 let active = node.checked();
@@ -817,6 +822,24 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         }
     }
 
+    /// Apply a themed `ICON` to a `GtkImage`: the canonical `ICON_NAME` resolves
+    /// through this renderer's [`gtk_icon_name`] map to an Adwaita/freedesktop
+    /// symbolic icon (a name the theme does not have falls back to
+    /// `image-missing`). Size follows `FONT_SIZE` (px); tint follows `COLOR`,
+    /// which `style_css` emits as CSS `color` so the symbolic glyph recolors.
+    fn apply_icon(&self, node: &HostNode, img: &gtk::Image) {
+        const DEFAULT_SIZE: f32 = 16.0;
+        let name = node
+            .string_property(property_id::ICON_NAME)
+            .and_then(gtk_icon_name)
+            .unwrap_or_else(gtk_icon_fallback);
+        img.set_icon_name(Some(name));
+        let px = node.f32_property(property_id::FONT_SIZE, DEFAULT_SIZE).max(0.0) as i32;
+        if px > 0 {
+            img.set_pixel_size(px);
+        }
+    }
+
     /// Attach native input recognition for the listener bits not yet wired for
     /// `id`. Guarded by `attached_listeners` so delta frames don't double-attach.
     fn attach_listeners(&mut self, id: u32, widget: &gtk::Widget, mask: u32) {
@@ -1182,6 +1205,8 @@ pub enum WidgetKind {
     Spacer,
     /// `IMAGE` → `GtkPicture`.
     Image,
+    /// `ICON` → `GtkImage` (`ICON_NAME` → a native themed icon).
+    Icon,
     /// `TOGGLE` → `GtkSwitch`/`GtkCheckButton`/`GtkToggleButton` (`TOGGLE_STYLE`).
     Toggle,
     /// `SLIDER` → `GtkScale`.
@@ -1233,6 +1258,7 @@ pub fn widget_kind(component_type: u16) -> WidgetKind {
         component_type::ZSTACK => WidgetKind::Overlay,
         component_type::SPACER => WidgetKind::Spacer,
         component_type::IMAGE => WidgetKind::Image,
+        component_type::ICON => WidgetKind::Icon,
         component_type::AUDIO | component_type::VIDEO => WidgetKind::Media,
         component_type::TOGGLE => WidgetKind::Toggle,
         component_type::SLIDER => WidgetKind::Slider,
@@ -1716,6 +1742,7 @@ fn build_widget(node: &HostNode) -> gtk::Widget {
             bx.upcast()
         }
         WidgetKind::Image => gtk::Picture::new().upcast(),
+        WidgetKind::Icon => gtk::Image::new().upcast(),
         // Bare `AUDIO`/`VIDEO`: a hidden playback container (the stream itself is
         // not a widget). A custom media style renders its own body container.
         WidgetKind::Media => GtkBox::new(gtk::Orientation::Vertical, 0).upcast(),
@@ -2278,6 +2305,70 @@ fn pango_weight(weight: f32) -> pango::Weight {
         751..=850 => pango::Weight::Ultrabold,
         _ => pango::Weight::Heavy,
     }
+}
+
+/// This renderer's canonical `ICON_NAME` → Adwaita/freedesktop icon-theme map.
+/// The canonical vocabulary is the protocol (`pathland_core::icon`, spec/ICONS.md)
+/// but this mapping is **renderer-owned** — the GTK renderer decides which native
+/// glyph each name renders (`None` → [`gtk_icon_fallback`]).
+fn gtk_icon_name(name: &str) -> Option<&'static str> {
+    Some(match name {
+        pathland_core::icon::HOME => "go-home-symbolic",
+        pathland_core::icon::SETTINGS => "preferences-system-symbolic",
+        pathland_core::icon::SEARCH => "system-search-symbolic",
+        pathland_core::icon::MENU => "open-menu-symbolic",
+        pathland_core::icon::CLOSE => "window-close-symbolic",
+        pathland_core::icon::CLOUD => "weather-overcast-symbolic",
+        pathland_core::icon::CHEVRON_LEFT => "go-previous-symbolic",
+        pathland_core::icon::CHEVRON_RIGHT => "go-next-symbolic",
+        pathland_core::icon::CHEVRON_UP => "go-up-symbolic",
+        pathland_core::icon::CHEVRON_DOWN => "go-down-symbolic",
+        pathland_core::icon::ARROW_LEFT => "go-previous-symbolic",
+        pathland_core::icon::ARROW_RIGHT => "go-next-symbolic",
+        pathland_core::icon::ADD => "list-add-symbolic",
+        pathland_core::icon::REMOVE => "list-remove-symbolic",
+        pathland_core::icon::CHECK => "object-select-symbolic",
+        pathland_core::icon::EDIT => "document-edit-symbolic",
+        pathland_core::icon::DELETE => "edit-delete-symbolic",
+        pathland_core::icon::SAVE => "document-save-symbolic",
+        pathland_core::icon::SHARE => "emblem-shared-symbolic",
+        pathland_core::icon::DOWNLOAD => "folder-download-symbolic",
+        pathland_core::icon::UPLOAD => "folder-upload-symbolic",
+        pathland_core::icon::REFRESH => "view-refresh-symbolic",
+        pathland_core::icon::PLAY => "media-playback-start-symbolic",
+        pathland_core::icon::PAUSE => "media-playback-pause-symbolic",
+        pathland_core::icon::STOP => "media-playback-stop-symbolic",
+        pathland_core::icon::SKIP_BACK => "media-skip-backward-symbolic",
+        pathland_core::icon::SKIP_FORWARD => "media-skip-forward-symbolic",
+        pathland_core::icon::VOLUME => "audio-volume-high-symbolic",
+        pathland_core::icon::VOLUME_MUTE => "audio-volume-muted-symbolic",
+        pathland_core::icon::SHUFFLE => "media-playlist-shuffle-symbolic",
+        pathland_core::icon::REPEAT => "media-playlist-repeat-symbolic",
+        pathland_core::icon::INFO => "dialog-information-symbolic",
+        pathland_core::icon::WARNING => "dialog-warning-symbolic",
+        pathland_core::icon::ERROR => "dialog-error-symbolic",
+        pathland_core::icon::SUCCESS => "emblem-ok-symbolic",
+        pathland_core::icon::HEART => "emblem-favorite-symbolic",
+        pathland_core::icon::STAR => "non-starred-symbolic",
+        pathland_core::icon::USER => "avatar-default-symbolic",
+        pathland_core::icon::USERS => "system-users-symbolic",
+        pathland_core::icon::LOCK => "changes-prevent-symbolic",
+        pathland_core::icon::LOGOUT => "system-log-out-symbolic",
+        pathland_core::icon::BELL => "preferences-system-notifications-symbolic",
+        pathland_core::icon::FOLDER => "folder-symbolic",
+        pathland_core::icon::FILE => "text-x-generic-symbolic",
+        pathland_core::icon::IMAGE => "image-x-generic-symbolic",
+        pathland_core::icon::MUSIC => "audio-x-generic-symbolic",
+        pathland_core::icon::GRID => "view-grid-symbolic",
+        pathland_core::icon::LIST => "view-list-symbolic",
+        pathland_core::icon::FILTER => "view-filter-symbolic",
+        _ => return None,
+    })
+}
+
+/// The GTK icon-theme fallback for an unknown/extension icon name.
+fn gtk_icon_fallback() -> &'static str {
+    "image-missing"
 }
 
 /// CSS decoration (background, border, font family) for a node, keyed by its
@@ -2901,6 +2992,7 @@ mod tests {
         assert_eq!(widget_kind(ZSTACK), WidgetKind::Overlay);
         assert_eq!(widget_kind(SPACER), WidgetKind::Spacer);
         assert_eq!(widget_kind(IMAGE), WidgetKind::Image);
+        assert_eq!(widget_kind(ICON), WidgetKind::Icon);
         assert_eq!(widget_kind(TOGGLE), WidgetKind::Toggle);
         assert_eq!(widget_kind(SLIDER), WidgetKind::Slider);
         assert_eq!(widget_kind(TEXT_FIELD), WidgetKind::TextField);
@@ -3140,6 +3232,17 @@ mod tests {
         assert_eq!(font_design_family(0), None);
         assert_eq!(font_design_family(1), Some("serif"));
         assert_eq!(font_design_family(3), Some("monospace"));
+    }
+
+    #[test]
+    fn gtk_icon_map_covers_the_whole_canonical_vocabulary() {
+        for name in pathland_core::icon::NAMES {
+            let mapped = gtk_icon_name(name);
+            assert!(mapped.is_some(), "{} has no GTK glyph", name);
+            assert!(!mapped.unwrap().is_empty());
+        }
+        assert_eq!(gtk_icon_name("definitely-not-an-icon"), None);
+        assert_eq!(gtk_icon_fallback(), "image-missing");
     }
 
     #[test]

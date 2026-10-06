@@ -20,6 +20,7 @@ public final class Components {
     public static final int GAUGE = 0x08;
     public static final int AUDIO = 0x09;
     public static final int VIDEO = 0x0A;
+    public static final int ICON = 0x0B;
 
     // ── Layout & Container Primitives (0x10–0x1F) ──────────────────────────
     public static final int VSTACK = 0x10;

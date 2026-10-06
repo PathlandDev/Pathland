@@ -24,6 +24,7 @@ use pathland_core::{
 mod capi;
 mod css;
 mod debug;
+pub mod icons;
 pub mod role_spec;
 pub mod token_spec;
 
@@ -1165,6 +1166,27 @@ impl HtmlRenderer {
                 let text = escape(node.text.as_deref().unwrap_or_default());
                 format!("<{tag}{data_id}{event}{aria}{style}>{text}</{tag}>")
             }
+            component_type::ICON => {
+                // A semantic icon: the canonical `ICON_NAME` maps to a **filled**
+                // Remix glyph (inline SVG, single-sourced). An unknown name renders
+                // the fallback glyph. A `LABEL` makes it presentable
+                // (`role="img"`); without one it is decorative (`aria-hidden`).
+                let inner = node
+                    .strings
+                    .get(&property_id::ICON_NAME)
+                    .and_then(|n| icons::web_inner(n))
+                    .unwrap_or_else(icons::web_fallback_svg);
+                let icon_aria = match node.strings.get(&property_id::LABEL) {
+                    Some(label) if !label.is_empty() => {
+                        format!(" role=\"img\" aria-label=\"{}\"", escape(label))
+                    }
+                    _ => " aria-hidden=\"true\" focusable=\"false\"".to_string(),
+                };
+                // Open the svg tag, splice the node attrs before `>`, then the
+                // Remix inner markup (`WEB_SVG_OPEN` ends with `>`).
+                let open = icons::WEB_SVG_OPEN.trim_end_matches('>');
+                format!("{open}{data_id}{icon_aria}{event}{style}>{inner}</svg>")
+            }
             component_type::BUTTON => {
                 // Composite Override Mode: children present → custom body.
                 let body = if node.children.is_empty() {
@@ -2203,6 +2225,81 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
         assert!(html.contains("<img data-pathland-id=\"1\" src=\"assets/logo.png\" alt=\"\">"));
+    }
+
+    #[test]
+    fn renders_semantic_icon_with_filled_remix_markup() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        let mut strings = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::ICON as u32, 0));
+        strings.extend_from_slice(&(4u32).to_le_bytes());
+        strings.extend_from_slice(b"play");
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::STRING as u32) << 16) | property_id::ICON_NAME as u32,
+            0,
+        ));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &strings, 1);
+        assert!(html.contains("<svg class=\"pathland-icon\""), "icon svg shell: {}", html);
+        assert!(html.contains("fill=\"currentColor\""), "filled shell: {}", html);
+        assert!(!html.contains("stroke="), "no stroke on a filled icon: {}", html);
+        assert!(html.contains("data-pathland-id=\"1\""), "icon keeps its node id: {}", html);
+        assert!(html.contains("aria-hidden=\"true\""), "decorative by default: {}", html);
+        assert!(html.contains("d=\"M19.376 12.4161L8.77735 19.4818"), "play remix path: {}", html);
+        assert!(html.ends_with("</svg>") || html.contains("</svg>"), "svg closed: {}", html);
+    }
+
+    #[test]
+    fn labeled_icon_is_presentable_and_unknown_name_falls_back() {
+        use pathland_core::value_type;
+
+        // A labeled icon → role="img" + aria-label instead of aria-hidden.
+        let icon = |name: &str, label: Option<&str>| -> String {
+            let mut opcodes = Vec::new();
+            let mut strings = Vec::new();
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::ICON as u32, 0));
+            let mut name_offset = 0usize;
+            strings.extend_from_slice(&(name.len() as u32).to_le_bytes());
+            strings.extend_from_slice(name.as_bytes());
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::STRING as u32) << 16) | property_id::ICON_NAME as u32,
+                name_offset as u32,
+            ));
+            let label_offset = 4usize + name.len();
+            if let Some(label) = label {
+                strings.extend_from_slice(&(label.len() as u32).to_le_bytes());
+                strings.extend_from_slice(label.as_bytes());
+                opcodes.push(Opcode::new(
+                    category::PARAMETER,
+                    parameter::SET_PROPERTY,
+                    0,
+                    1,
+                    ((value_type::STRING as u32) << 16) | property_id::LABEL as u32,
+                    label_offset as u32,
+                ));
+            }
+            HtmlRenderer::new().render_document(&opcodes, &strings, 1)
+        };
+
+        let labeled = icon("music", Some("Playlist"));
+        assert!(labeled.contains("role=\"img\""), "labeled icon is an image: {}", labeled);
+        assert!(labeled.contains("aria-label=\"Playlist\""), "aria label: {}", labeled);
+        assert!(!labeled.contains("aria-hidden"), "no aria-hidden when labeled: {}", labeled);
+
+        let unknown = icon("definitely-not-an-icon", None);
+        assert!(unknown.contains("aria-hidden=\"true\""), "unlabeled stays decorative: {}", unknown);
+        assert!(unknown.contains("cx=\"12\" cy=\"12\" r=\"8\""), "fallback glyph: {}", unknown);
     }
 
     #[test]

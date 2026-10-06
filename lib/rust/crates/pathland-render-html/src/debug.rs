@@ -85,6 +85,7 @@ pub fn property_name(prop: u16) -> &'static str {
         property_id::MINIMUM_SCALE_FACTOR => "minimumScaleFactor",
         property_id::BACKGROUND_COLOR => "backgroundColor",
         property_id::IMAGE_SOURCE => "imageSource",
+        property_id::ICON_NAME => "iconName",
         property_id::BORDER_WIDTH => "borderWidth",
         property_id::BORDER_COLOR => "borderColor",
         property_id::BORDER_RADIUS => "borderRadius",

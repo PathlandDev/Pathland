@@ -9,7 +9,7 @@ trees. Protocol contract: `spec/`.
 
 - **Views**: `VStack`, `HStack`, `ZStack`, `Grid`, `ScrollView`, `LazyVGrid`,
   `LazyHGrid`, `LazyVStack`, `LazyHStack`, `Text`, `Button`, `Spacer`,
-  `Image`, `Color` (dual identity: a layout-greedy View *and* a value passed
+  `Icon` (semantic symbols via `IconName` + `icon(…)`), `Image`, `Color` (dual identity: a layout-greedy View *and* a value passed
   into style modifiers), `Shape`, `Divider`, `ProgressView`, `Gauge`,
   `Toggle`, `Slider`, `TextField`, `TextEditor`, `Stepper`, `DatePicker`,
   `Picker`, `Menu`, `ColorPicker` (+ the `vstack!`/`hstack!` macros and

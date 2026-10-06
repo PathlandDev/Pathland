@@ -79,6 +79,12 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   addition to the heading semantics above. Explicit `PROP_FONT_SIZE`/
   `PROP_FONT_WEIGHT` are tracked per element and win over the style regardless
   of delta order; the tracks survive an element retag (`copyTypography`).
+- **Semantic icons** (`src/generated/icons.ts` + `elements.ts`/`apply.ts`):
+  `COMPONENT_ICON` builds an `<svg class="pathland-icon">`; `PROP_ICON_NAME`
+  swaps in the Remix Icon **filled** inner markup (generated from the web
+  renderer's own `icons` module, `pathland-render-html::icons`), `LABEL`
+  makes it presentable (`role="img"`/`aria-label`, else `aria-hidden`) —
+  mirroring the Rust SSR markup (golden `icons` fixture).
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or

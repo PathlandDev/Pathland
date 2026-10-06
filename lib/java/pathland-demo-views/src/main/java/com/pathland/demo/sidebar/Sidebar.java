@@ -23,9 +23,9 @@ public class Sidebar implements View {
         return VStack.of(HorizontalAlignment.LEADING, 8,
                         Text.of("Pathland").with(
                                 FontSize.of(18), FontWeightMod.of(FontWeight.BOLD)),
-                        menuRow("/home", "Home", "/_pathland/assets/icons/home.svg"),
-                        menuRow("/kitchen", "Kitchen sink", "/_pathland/assets/icons/kitchen.svg"),
-                        menuRow("/settings", "Settings", "/_pathland/assets/icons/settings.svg"),
+                        menuRow("/home", "Home", IconName.HOME),
+                        menuRow("/kitchen", "Kitchen sink", IconName.GRID),
+                        menuRow("/settings", "Settings", IconName.SETTINGS),
                         Spacer.of()
                 ).with(Padding.of(16))
                 // Fixed-width sidebar with no height hint: as a flex child of the split
@@ -47,7 +47,7 @@ public class Sidebar implements View {
      *  the developer's own nav chrome), so it captures the router explicitly — the
      *  nearest-enclosing-router mechanism (spec DSL.md §4.5) resolves intents for
      *  components *inside* a container. */
-    private View menuRow(String path, String label, String icon) {
+    private View menuRow(String path, String label, IconName icon) {
         // Reactive active-item highlight via Navigation.isActive: a computed signal from
         // the route signal, so a selection re-emits only this row's background/color.
         var router = this.router.get();
@@ -59,12 +59,10 @@ public class Sidebar implements View {
         // neutralized and the label's own leading alignment positions the row
         // (spec DSL.md §5.7: main-axis alignment is the content's own layout).
         return Button.of(
-                Label.of(label, icon)
+                Label.of(label, Icon.of(icon))
                         .with(Background.of(bg), ForegroundStyle.of(fg))
                         .with(FrameMod.of(Commands.Size.FILL)),
                 () -> router.navigate(path)
         );
-        //return Button.of(label, () -> router.navigate(path))
-        //        .with(Background.of(bg), ForegroundStyle.of(fg));
     }
 }

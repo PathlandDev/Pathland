@@ -63,7 +63,7 @@ class SplitNavDemoTest {
         assertTrue(anySetText(frame, "Home"), "the home menu row is rendered");
         assertTrue(anySetText(frame, "Kitchen sink"), "the kitchen sink menu row is rendered");
         assertTrue(anySetText(frame, "Settings"), "the settings menu row is rendered");
-        assertTrue(anyCreateNode(frame, Components.IMAGE), "the menu rows render their Label icons");
+        assertTrue(anyCreateNode(frame, Components.ICON), "the menu rows render their Label icons");
         assertTrue(anySetPropertyString(frame, Properties.LABEL, "Home"),
                 "a menu row carries its title as the accessibility label");
         assertTrue(anySetText(frame,
