@@ -38,8 +38,6 @@ public final class DemoAssets {
             "albumart/cover1.jpg", "albumart/cover2.jpg", "albumart/cover3.jpg",
             "albumart/cover4.jpg", "albumart/cover5.jpg", "albumart/cover6.jpg",
             "albumart/cover7.jpg", "albumart/cover8.jpg",
-            "icons/home.svg", "icons/kitchen.svg", "icons/settings.svg",
-            "icons/save.svg", "icons/cloud.svg", "icons/status.svg",
             "lyrics/Building_on_Solid_Ground.srt", "lyrics/Pathland_Crossing.srt",
             "lyrics/Rendered_Free.srt", "lyrics/Rendered_In_Your_Arms.srt",
             "lyrics/Sixty_Frames_Per_Second.srt", "lyrics/The_Pathland_Dream.srt",
