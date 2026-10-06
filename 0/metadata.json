@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M49ESQWXJ1C4JG54RS7YYCPG",
+  "session_id": "ses_eee0e8a83ffe1EjPcmWGE6STlj",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-06T20:34:37.00452Z",
+  "branch": "feat/icons",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/assets/DemoAssets.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/LabelSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PlayerControlsStyle.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/sidebar/Sidebar.java",
+    "lib/java/pathland-demo-views/src/test/java/com/pathland/demo/SplitNavDemoTest.java",
+    "lib/java/pathland-demo-views/src/test/java/com/pathland/demo/kitchensink/KitchenSinkViewTest.java",
+    "lib/java/pathland-demo-views/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "0ec57674bc5c",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 17511,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 114688,
+    "output_tokens": 3082,
+    "api_call_count": 8
+  },
+  "session_metrics": {
+    "turn_count": 1
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-06T20:34:36.998076Z",
+    "agent_lines": 27,
+    "agent_removed": 25,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 27,
+    "total_lines_changed": 58,
+    "agent_percentage": 89.65517241379311,
+    "metric_version": 2
+  }
+}
