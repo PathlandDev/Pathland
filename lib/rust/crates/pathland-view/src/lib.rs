@@ -217,6 +217,24 @@ pub trait ViewExt: View + Sized {
         self.with(FontSize(value))
     }
 
+    /// Chain `.font(font)` — a predefined typography (`Font::headline()`), a
+    /// custom family + size (`Font::custom("Georgia", 20.0)`), or a system
+    /// size/weight/design (`Font::system_weight(20.0, 700.0)`). Raw
+    /// `font_size`/`font_weight`/`font_family`/`font_design` layer on top.
+    fn font(self, font: Font) -> Modified<Self, Font> {
+        self.with(font)
+    }
+
+    /// Chain `.font_family(name)` — override the font family (`FONT_FAMILY`).
+    fn font_family(self, family: &'static str) -> Modified<Self, FontFamily> {
+        self.with(FontFamily(family))
+    }
+
+    /// Chain `.font_design(design)` — override the font design (`FONT_DESIGN`).
+    fn font_design(self, design: FontDesign) -> Modified<Self, FontDesignMod> {
+        self.with(FontDesignMod(design))
+    }
+
     /// Chain `.foreground_style(color)` — the foreground color
     /// (a `COLOR` property). There is deliberately **no** `.color()` /
     /// `.foregroundColor()` modifier; foreground styling is
@@ -346,6 +364,166 @@ pub struct Padding(pub f32);
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FontSize(pub f32);
 
+/// Predefined typography from the design system (SwiftUI `Font.TextStyle`),
+/// carried by the `TEXT_STYLE` property. The renderer owns the concrete
+/// size/weight (spec/MODIFIERS.md §2). A heading style (`LargeTitle`…
+/// `Headline`) implies a heading element; the rest render as plain text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum TextStyle {
+    LargeTitle = 0,
+    Title = 1,
+    Title2 = 2,
+    Title3 = 3,
+    Headline = 4,
+    Subheadline = 5,
+    Body = 6,
+    Callout = 7,
+    Footnote = 8,
+    Caption = 9,
+    Caption2 = 10,
+}
+
+impl TextStyle {
+    /// The protocol enum code.
+    pub const fn code(self) -> u8 {
+        self as u8
+    }
+}
+
+/// A font design axis (SwiftUI `Font.Design`), carried by `FONT_DESIGN`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum FontDesign {
+    Default = 0,
+    Serif = 1,
+    Rounded = 2,
+    Monospaced = 3,
+}
+
+impl FontDesign {
+    /// The protocol enum code.
+    pub const fn code(self) -> u8 {
+        self as u8
+    }
+}
+
+/// A font specification (SwiftUI `Font`): a predefined typography, a custom
+/// family + size, or a system size/weight/design. Applied with
+/// [`ViewExt::font`]. Raw modifiers (`font_size`, `font_weight`,
+/// `font_family`, `font_design`) layer on top of a predefined typography.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Font {
+    style: Option<TextStyle>,
+    family: Option<&'static str>,
+    size: Option<f32>,
+    weight: Option<f32>,
+    design: Option<FontDesign>,
+}
+
+impl Font {
+    const fn styled(style: TextStyle) -> Self {
+        Self {
+            style: Some(style),
+            family: None,
+            size: None,
+            weight: None,
+            design: None,
+        }
+    }
+
+    pub const fn large_title() -> Self {
+        Self::styled(TextStyle::LargeTitle)
+    }
+    pub const fn title() -> Self {
+        Self::styled(TextStyle::Title)
+    }
+    pub const fn title2() -> Self {
+        Self::styled(TextStyle::Title2)
+    }
+    pub const fn title3() -> Self {
+        Self::styled(TextStyle::Title3)
+    }
+    pub const fn headline() -> Self {
+        Self::styled(TextStyle::Headline)
+    }
+    pub const fn subheadline() -> Self {
+        Self::styled(TextStyle::Subheadline)
+    }
+    pub const fn body() -> Self {
+        Self::styled(TextStyle::Body)
+    }
+    pub const fn callout() -> Self {
+        Self::styled(TextStyle::Callout)
+    }
+    pub const fn footnote() -> Self {
+        Self::styled(TextStyle::Footnote)
+    }
+    pub const fn caption() -> Self {
+        Self::styled(TextStyle::Caption)
+    }
+    pub const fn caption2() -> Self {
+        Self::styled(TextStyle::Caption2)
+    }
+
+    /// A custom font family + size (SwiftUI `.font(.custom(name:size:))`).
+    pub const fn custom(family: &'static str, size: f32) -> Self {
+        Self {
+            style: None,
+            family: Some(family),
+            size: Some(size),
+            weight: None,
+            design: None,
+        }
+    }
+
+    /// A system font with an exact size.
+    pub const fn system(size: f32) -> Self {
+        Self {
+            style: None,
+            family: None,
+            size: Some(size),
+            weight: None,
+            design: None,
+        }
+    }
+
+    /// A system font with an exact size + weight.
+    pub const fn system_weight(size: f32, weight: f32) -> Self {
+        Self {
+            style: None,
+            family: None,
+            size: Some(size),
+            weight: Some(weight),
+            design: None,
+        }
+    }
+
+    /// A fully-custom typography: family + size + weight + design.
+    pub const fn custom_full(
+        family: &'static str,
+        size: f32,
+        weight: f32,
+        design: FontDesign,
+    ) -> Self {
+        Self {
+            style: None,
+            family: Some(family),
+            size: Some(size),
+            weight: Some(weight),
+            design: Some(design),
+        }
+    }
+}
+
+/// A custom font family (`FONT_FAMILY`, a `STRING` property).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FontFamily(pub &'static str);
+
+/// A font design (`FONT_DESIGN`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FontDesignMod(pub FontDesign);
+
 /// An sRGB color or a **design-token reference**, with dual identity mirroring
 /// SwiftUI:
 ///
@@ -464,6 +642,44 @@ impl ViewModifier for FontSize {
     fn apply(&self, node: &mut Node) {
         node.properties
             .insert(property_id::FONT_SIZE, self.0.to_bits());
+    }
+}
+
+impl ViewModifier for Font {
+    fn apply(&self, node: &mut Node) {
+        if let Some(style) = self.style {
+            node.properties
+                .insert(property_id::TEXT_STYLE, (style.code() as f32).to_bits());
+        }
+        if let Some(family) = self.family {
+            node.string_properties
+                .insert(property_id::FONT_FAMILY, String::from(family));
+        }
+        if let Some(size) = self.size {
+            node.properties.insert(property_id::FONT_SIZE, size.to_bits());
+        }
+        if let Some(weight) = self.weight {
+            node.properties
+                .insert(property_id::FONT_WEIGHT, weight.to_bits());
+        }
+        if let Some(design) = self.design {
+            node.properties
+                .insert(property_id::FONT_DESIGN, (design.code() as f32).to_bits());
+        }
+    }
+}
+
+impl ViewModifier for FontFamily {
+    fn apply(&self, node: &mut Node) {
+        node.string_properties
+            .insert(property_id::FONT_FAMILY, String::from(self.0));
+    }
+}
+
+impl ViewModifier for FontDesignMod {
+    fn apply(&self, node: &mut Node) {
+        node.properties
+            .insert(property_id::FONT_DESIGN, (self.0.code() as f32).to_bits());
     }
 }
 
@@ -711,6 +927,7 @@ impl View for VStack {
             component: Component::VStack,
             children: self.children.iter().map(|c| c.build()).collect(),
             properties: BTreeMap::new(),
+            string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -756,6 +973,7 @@ impl View for HStack {
             component: Component::HStack,
             children: self.children.iter().map(|c| c.build()).collect(),
             properties: BTreeMap::new(),
+            string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -786,6 +1004,7 @@ impl View for Text {
             },
             children: Vec::new(),
             properties: BTreeMap::new(),
+            string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -818,6 +1037,7 @@ impl View for Spacer {
             component: Component::Spacer,
             children: Vec::new(),
             properties: BTreeMap::new(),
+            string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -848,6 +1068,7 @@ impl View for Button {
             },
             children: Vec::new(),
             properties: BTreeMap::new(),
+            string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -872,6 +1093,7 @@ fn plain_node(component: Component, children: Vec<Node>, properties: BTreeMap<u1
         component,
         children,
         properties,
+        string_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
@@ -1366,6 +1588,68 @@ mod tests {
         assert_eq!(
             stack.properties.get(&property_id::FONT_SIZE),
             Some(&24.0f32.to_bits())
+        );
+    }
+
+    #[test]
+    fn font_predefined_typography_emits_text_style() {
+        let node = text("T").font(Font::headline()).build();
+        assert_eq!(
+            node.properties.get(&property_id::TEXT_STYLE),
+            Some(&(TextStyle::Headline.code() as f32).to_bits())
+        );
+    }
+
+    #[test]
+    fn font_custom_emits_family_and_size() {
+        let node = text("T").font(Font::custom("Georgia", 20.0)).build();
+        assert_eq!(
+            node.string_properties.get(&property_id::FONT_FAMILY),
+            Some(&String::from("Georgia"))
+        );
+        assert_eq!(
+            node.properties.get(&property_id::FONT_SIZE),
+            Some(&20.0f32.to_bits())
+        );
+        assert!(!node.properties.contains_key(&property_id::TEXT_STYLE));
+    }
+
+    #[test]
+    fn font_custom_full_emits_every_axis() {
+        let node = text("T")
+            .font(Font::custom_full("Georgia", 20.0, 700.0, FontDesign::Serif))
+            .build();
+        assert_eq!(
+            node.string_properties.get(&property_id::FONT_FAMILY),
+            Some(&String::from("Georgia"))
+        );
+        assert_eq!(
+            node.properties.get(&property_id::FONT_SIZE),
+            Some(&20.0f32.to_bits())
+        );
+        assert_eq!(
+            node.properties.get(&property_id::FONT_WEIGHT),
+            Some(&700.0f32.to_bits())
+        );
+        assert_eq!(
+            node.properties.get(&property_id::FONT_DESIGN),
+            Some(&(FontDesign::Serif.code() as f32).to_bits())
+        );
+    }
+
+    #[test]
+    fn font_family_and_design_sugar() {
+        let node = text("T")
+            .font_family("Inter")
+            .font_design(FontDesign::Monospaced)
+            .build();
+        assert_eq!(
+            node.string_properties.get(&property_id::FONT_FAMILY),
+            Some(&String::from("Inter"))
+        );
+        assert_eq!(
+            node.properties.get(&property_id::FONT_DESIGN),
+            Some(&(FontDesign::Monospaced.code() as f32).to_bits())
         );
     }
 

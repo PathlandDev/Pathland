@@ -27,6 +27,37 @@ mod debug;
 pub mod role_spec;
 pub mod token_spec;
 
+/// The renderer-owned default typography scale for a `TEXT_STYLE` code
+/// (spec/MODIFIERS.md §2): `(size_px, weight_100_900)`. `None` for an unknown
+/// code. Explicit `FONT_SIZE`/`FONT_WEIGHT` override these.
+fn text_style_scale(code: u8) -> Option<(f32, f32)> {
+    Some(match code {
+        0 => (34.0, 700.0),  // LargeTitle
+        1 => (28.0, 700.0),  // Title
+        2 => (22.0, 700.0),  // Title2
+        3 => (20.0, 600.0),  // Title3
+        4 => (17.0, 600.0),  // Headline
+        5 => (15.0, 400.0),  // Subheadline
+        6 => (15.0, 400.0),  // Body
+        7 => (14.0, 400.0),  // Callout
+        8 => (13.0, 400.0),  // Footnote
+        9 => (12.0, 400.0),  // Caption
+        10 => (11.0, 400.0), // Caption2
+        _ => return None,
+    })
+}
+
+/// A generic CSS family for a `FONT_DESIGN` code (Default → the renderer's UI
+/// font, i.e. no override).
+fn font_design_family(code: u8) -> Option<&'static str> {
+    match code {
+        1 => Some("serif"),
+        2 => Some("sans-serif"),
+        3 => Some("ui-monospace, SFMono-Regular, Menlo, monospace"),
+        _ => None,
+    }
+}
+
 /// A decoded node in the retained description.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
@@ -135,6 +166,11 @@ impl Node {
         } else if let Some(bits) = self.properties.get(&property_id::BACKGROUND_COLOR) {
             css.push_str(&format!("background-color:{};", rgba(*bits)));
         }
+        if let Some(bits) = self.properties.get(&property_id::FONT_DESIGN) {
+            if let Some(family) = font_design_family(f32::from_bits(*bits) as u8) {
+                css.push_str(&format!("font-family:{family};"));
+            }
+        }
         if let Some(family) = self.strings.get(&property_id::FONT_FAMILY) {
             css.push_str(&format!("font-family:'{}';", family.replace('\'', "\\'")));
         }
@@ -210,7 +246,14 @@ impl Node {
             }
         }
 
-        // Typography (arbitrary size/weight inline).
+        // Typography (arbitrary size/weight inline). A predefined `TEXT_STYLE`
+        // supplies the default size/weight; explicit `FONT_SIZE`/`FONT_WEIGHT`
+        // below override it (raw modifiers layer on top).
+        if let Some(style) = self.text_style_code() {
+            if let Some((size, weight)) = text_style_scale(style) {
+                css.push_str(&format!("font-size:{size}px;font-weight:{weight};"));
+            }
+        }
         if let Some(v) = self.token_ref(property_id::FONT_SIZE) {
             css.push_str(&format!("font-size:{v};"));
         } else if let Some(v) = f32p(property_id::FONT_SIZE) {
@@ -3024,6 +3067,48 @@ mod tests {
         assert!(html.contains("color:rgba(17,34,51,1)"));
         assert!(html.contains("font-size:18px"), "font-size inline (dp): {}", html);
         assert!(html.contains("hidden"), "visible=0 -> hidden class");
+    }
+
+    #[test]
+    fn text_style_applies_default_typography_and_explicit_overrides_win() {
+        use pathland_core::text_style;
+        use pathland_core::value_type;
+
+        let render = |props: &[(u16, f32)]| {
+            let mut opcodes = Vec::new();
+            opcodes.push(Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                1,
+                component_type::TEXT as u32,
+                0,
+            ));
+            for (prop, value) in props {
+                opcodes.push(Opcode::new(
+                    category::PARAMETER,
+                    parameter::SET_PROPERTY,
+                    0,
+                    1,
+                    ((value_type::F32 as u32) << 16) | *prop as u32,
+                    value.to_bits(),
+                ));
+            }
+            HtmlRenderer::new().render_document(&opcodes, &[], 1)
+        };
+
+        // A predefined typography emits its renderer-owned size/weight.
+        let html = render(&[(property_id::TEXT_STYLE, text_style::TITLE2 as f32)]);
+        assert!(html.contains("<h3"), "TITLE2 is a heading: {}", html);
+        assert!(html.contains("font-size:22px"), "style size: {}", html);
+        assert!(html.contains("font-weight:700"), "style weight: {}", html);
+
+        // An explicit FONT_SIZE overrides the typography's size.
+        let html = render(&[
+            (property_id::TEXT_STYLE, text_style::TITLE2 as f32),
+            (property_id::FONT_SIZE, 11.0),
+        ]);
+        assert!(html.contains("font-size:11px"), "explicit size wins: {}", html);
     }
 
     #[test]

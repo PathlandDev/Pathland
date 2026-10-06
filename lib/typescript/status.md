@@ -74,6 +74,11 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   is derived from the component when known (fresh nodes) and from the element tag
   when hydrating (SSR nodes have no component). Interactive/control roles are not
   in the catalog — a reserved code is a graceful no-op.
+- **Predefined typography visual** (`src/typography.ts`): a `PROP_TEXT_STYLE`
+  delta applies the renderer-owned default size/weight (`applyTextStyle`) in
+  addition to the heading semantics above. Explicit `PROP_FONT_SIZE`/
+  `PROP_FONT_WEIGHT` are tracked per element and win over the style regardless
+  of delta order; the tracks survive an element retag (`copyTypography`).
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or

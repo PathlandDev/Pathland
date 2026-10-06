@@ -7,6 +7,7 @@
 import * as P from "./constants";
 import { argbToHex, argbToRgba, f32FromBits, fmtFloat } from "./format";
 import { resolveTokenCssRef } from "./tokens";
+import { markFontSizeExplicit, markFontWeightExplicit } from "./typography";
 
 type Handler = (el: HTMLElement, valueType: number, c: number) => void;
 
@@ -369,8 +370,14 @@ const HANDLERS: Record<number, Handler> = {
   },
 
   // Text
-  [P.PROP_FONT_SIZE]: (el, vt, c) => (el.style.fontSize = fmtFloat(f32(vt, c)) + "px"),
-  [P.PROP_FONT_WEIGHT]: (el, vt, c) => (el.style.fontWeight = fmtFloat(f32(vt, c))),
+  [P.PROP_FONT_SIZE]: (el, vt, c) => {
+    el.style.fontSize = fmtFloat(f32(vt, c)) + "px";
+    markFontSizeExplicit(el);
+  },
+  [P.PROP_FONT_WEIGHT]: (el, vt, c) => {
+    el.style.fontWeight = fmtFloat(f32(vt, c));
+    markFontWeightExplicit(el);
+  },
   [P.PROP_FONT_STYLE]: (el, vt, c) => (el.style.fontStyle = fontStyleCss(enumCode(vt, c))),
   [P.PROP_FONT_DESIGN]: (el, vt, c) => {
     const stack =

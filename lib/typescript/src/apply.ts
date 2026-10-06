@@ -74,8 +74,7 @@ import type { Batch, Opcode } from "./plpl";
 import { readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
 import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
-import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";
-import {
+import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
   encodeMediaEnded,
   encodeMediaPlayStateChanged,
   encodeMediaTimeUpdated,
@@ -89,6 +88,7 @@ import {
 } from "./generated/role-spec";
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 import { isRangeInFlight } from "./inFlight";
+import { applyTextStyle, copyTypography, textStyleByNode } from "./typography";
 
 /** Component type per retained node, so PARAMETER/TREE application can special-case
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
@@ -301,9 +301,6 @@ function applyLayout(r: DomRenderer): void {
 /** The last `ROLE` code applied per element (morphing needs both role and text
  *  style to resolve the effective tag). */
 const roleByNode = new WeakMap<HTMLElement, number>();
-
-/** The last `TEXT_STYLE` code applied per element, if any. */
-const textStyleByNode = new WeakMap<HTMLElement, number>();
 
 /** The retained `node id → DOM Node` registry the renderer works against. */
 export interface DomRenderer {
@@ -704,10 +701,7 @@ function morphRole(el: HTMLElement, tag: string, r: DomRenderer): HTMLElement {
   if (role !== undefined) {
     roleByNode.set(fresh, role);
   }
-  const style = textStyleByNode.get(el);
-  if (style !== undefined) {
-    textStyleByNode.set(fresh, style);
-  }
+  copyTypography(el, fresh);
   return fresh;
 }
 
@@ -798,8 +792,10 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
         // A heading `TEXT_STYLE` (LargeTitle…Headline) makes a TEXT a heading
         // (`<h1>`–`<h5>`) — always, even without `ROLE_HEADER`; raw font
         // modifiers never imply a heading. Absence is "no style" (the enum has
-        // no NONE — LARGE_TITLE is code 0, a real heading style).
-        textStyleByNode.set(el, Math.round(f32FromBits(op.c)) & 0xff);
+        // no NONE — LARGE_TITLE is code 0, a real heading style). The style also
+        // sets its default size/weight, unless an explicit FONT_SIZE/FONT_WEIGHT
+        // override was applied (raw modifiers layer on top).
+        applyTextStyle(el, Math.round(f32FromBits(op.c)) & 0xff);
         applySemantic(el, r);
       } else if (propId === PROP_NAV_DEPTH) {
         // Back-stack depth on a nav slot → the renderer's default back button.

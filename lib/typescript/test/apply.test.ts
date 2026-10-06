@@ -26,6 +26,8 @@ import {
   PROP_ALIGNMENT,
   PROP_AUDIO_SOURCE,
   PROP_COLOR,
+  PROP_FONT_SIZE,
+  PROP_FONT_WEIGHT,
   PROP_GRID_COLUMNS,
   PROP_GRID_ROWS,
   PROP_IMAGE_SOURCE,
@@ -889,6 +891,49 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
     );
     const el = r.byId.get(1) as HTMLElement;
     expect(el.tagName.toLowerCase()).toBe("h1");
+  });
+
+  it("a TEXT_STYLE applies the renderer's default size and weight", () => {
+    const r = renderer();
+    applyBatch(parseBatch(styleBatch(1, COMPONENT_TEXT, TEXT_STYLE_TITLE2)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.style.fontSize).toBe("22px");
+    expect(el.style.fontWeight).toBe("700");
+  });
+
+  it("an explicit FONT_SIZE wins over a TEXT_STYLE even when the style arrives last", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_TEXT],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_FONT_SIZE, f32bits(11)],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_TEXT_STYLE, f32bits(TEXT_STYLE_LARGE_TITLE)],
+        ]),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.style.fontSize).toBe("11px");
+    // The non-overridden axis still comes from the style (LARGE_TITLE is bold).
+    expect(el.style.fontWeight).toBe("700");
+  });
+
+  it("an explicit FONT_WEIGHT wins over a TEXT_STYLE", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_TEXT],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_FONT_WEIGHT, f32bits(400)],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_TEXT_STYLE, f32bits(TEXT_STYLE_LARGE_TITLE)],
+        ]),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.style.fontWeight).toBe("400");
+    expect(el.style.fontSize).toBe("34px");
   });
 
   it("a control component keeps its native element and no role attribute", () => {

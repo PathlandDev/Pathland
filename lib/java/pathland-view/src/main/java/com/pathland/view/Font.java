@@ -47,6 +47,11 @@ public final class Font {
         return new Font(null, family, size, null, null);
     }
 
+    /** A fully-custom typography: family + size + weight + design. */
+    public static Font custom(String family, float size, FontWeight weight, FontDesign design) {
+        return new Font(null, family, size, weight, design);
+    }
+
     /** A system font with an exact size. */
     public static Font system(float size) {
         return new Font(null, null, size, null, null);

@@ -11,7 +11,9 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 - **Components → widgets** (`widget_kind`/`build_widget`):
   - `VSTACK`/`HSTACK`/`LAZY_VSTACK`/`LAZY_HSTACK` → `GtkBox` (spacing/alignment/
     padding/content-margins),
-  - `TEXT` → `GtkLabel` (text, `FONT_SIZE`/`FONT_WEIGHT`/`COLOR` via Pango),
+  - `TEXT` → `GtkLabel` (text; `TEXT_STYLE`/`FONT_SIZE`/`FONT_WEIGHT`/
+    `FONT_FAMILY`/`FONT_DESIGN`/`COLOR` via a Pango `FontDescription`/
+    attributes),
   - `BUTTON` → `GtkButton` (label; composite body when it has children),
   - `GRID`/`LAZY_VGRID`/`LAZY_HGRID` → `GtkGrid` (row-major cells from child
     index + `WIDTH` column count),
@@ -43,13 +45,15 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   fixed-size images). An **`AUDIO`/`VIDEO` node** with children (a custom
   `AudioStyle`/`VideoStyle` body, spec DSL.md §5.7) is a container too: its
   control children reconcile into the media container box; a leaf media node
-  shows native controls. Control-level `COLOR`/`FONT_SIZE` are emitted as CSS
-  (`color`, `font-size`) so they **cascade** to the content's child labels
-  (e.g. `.foregroundStyle`/`.fontSize` on a composite Button).
+  shows native controls. Control-level `COLOR`/`FONT_SIZE`/`TEXT_STYLE` are
+  emitted as CSS (`color`, `font-size`, `font-weight`, `font-family`) so they
+  **cascade** to the content's child labels (e.g. `.foregroundStyle`/`.fontSize`
+  on a composite Button).
 - **Style properties**: `VISIBLE`, `OPACITY`, `WIDTH`/`HEIGHT`,
   `CONTENT_MARGINS`, `PADDING` + per-edge, `BACKGROUND_COLOR`, `BORDER_WIDTH`/
-  `COLOR`/`RADIUS`, `FONT_FAMILY`/`FONT_WEIGHT` (CSS provider), `COLOR`,
-  `FONT_SIZE`.
+  `COLOR`/`RADIUS`, `FONT_FAMILY`/`FONT_WEIGHT`/`FONT_DESIGN` (CSS provider),
+  `COLOR`, `FONT_SIZE`, `TEXT_STYLE` (renderer-owned default size/weight; an
+  explicit `FONT_SIZE`/`FONT_WEIGHT` overrides the corresponding axis).
 - **Fixed-size images scale to the points box**: a `WIDTH`×`HEIGHT` on an
   `IMAGE` is a **logical-points box** (spec/OPCODE.md §units), and `GtkPicture`'s
   natural size is its content's intrinsic pixels — so a finite box was only a

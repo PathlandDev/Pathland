@@ -127,6 +127,13 @@ Tier 2: `font.body.lineHeight`, `font.caption.size`,
 `font.heading.1.size`–`font.heading.6.size` (with matching `.weight`/`.family`
 paths), `font.mono.family`.
 
+The **predefined typographies** (`TEXT_STYLE`: `LargeTitle`…`Caption2`,
+spec/MODIFIERS.md §2) are the semantic counterparts of these token paths: the
+renderer owns their concrete size/weight (a baked per-renderer HIG scale). An
+application that wants full control can instead bind text to a `TEXT_STYLE` of
+its own via the `font.<style>.*` token paths above, or set an explicit
+`FONT_SIZE`/`FONT_WEIGHT`/`FONT_FAMILY` override on top.
+
 ### Spacing — Tier 1
 
 Spacing is a **generative family** (Tailwind-v4 style): one base unit
