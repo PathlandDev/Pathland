@@ -156,6 +156,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `SEARCH`. Interactive/control roles are NOT roles — they are intrinsic to the
   control components, so `AccessibilityRole.of(int)` **throws** for codes
   outside the semantic catalog (a custom button uses `Button` + `ButtonStyle`).
+- **`Icon` + `IconName`** (the `ICON` primitive, spec/ICONS.md): a canonical
+  `IconName` written once and mapped by each renderer to its native symbol
+  (Adwaita on GTK, Lucide on the web). `Icon.of(IconName)` /
+  `Icon.of(String)` / `Icon.of(Signal<String>)` / `Icon.labeled(…, label)`;
+  `Label.of(title, Icon)` (and the signal-title variant) composes the icon part;
+  a reactive name re-emits only `ICON_NAME`. Size/tint follow `FONT_SIZE` /
+  `COLOR`; `LABEL` makes the icon presentable.
 - **`Font` + `FontMod` + `View.font(_:)`** — the `Font` spec: a
   predefined typography (`Font.title2()` → `TEXT_STYLE`, heading styles imply a
   heading element), a custom family + size (`Font.custom(name, size)` →

@@ -1123,6 +1123,152 @@ impl View for Image {
     }
 }
 
+/// The canonical icon vocabulary for [`Icon`] (mirrors
+/// `pathland_core::constants::icon`, spec/ICONS.md). Each renderer maps a name
+/// to its native icon set — Adwaita on GTK, Remix (filled) on the web. The
+/// `canonical()` value is the `ICON_NAME` wire
+/// string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IconName {
+    Home,
+    Settings,
+    Search,
+    Menu,
+    Close,
+    Cloud,
+    ChevronLeft,
+    ChevronRight,
+    ChevronUp,
+    ChevronDown,
+    ArrowLeft,
+    ArrowRight,
+    Add,
+    Remove,
+    Check,
+    Edit,
+    Delete,
+    Save,
+    Share,
+    Download,
+    Upload,
+    Refresh,
+    Play,
+    Pause,
+    Stop,
+    SkipBack,
+    SkipForward,
+    Volume,
+    VolumeMute,
+    Shuffle,
+    Repeat,
+    Info,
+    Warning,
+    Error,
+    Success,
+    Heart,
+    Star,
+    User,
+    Users,
+    Lock,
+    Logout,
+    Bell,
+    Folder,
+    File,
+    Image,
+    Music,
+    Grid,
+    List,
+    Filter,
+}
+
+impl IconName {
+    /// The canonical `ICON_NAME` value.
+    pub const fn canonical(self) -> &'static str {
+        match self {
+            IconName::Home => pathland_core::icon::HOME,
+            IconName::Settings => pathland_core::icon::SETTINGS,
+            IconName::Search => pathland_core::icon::SEARCH,
+            IconName::Menu => pathland_core::icon::MENU,
+            IconName::Close => pathland_core::icon::CLOSE,
+            IconName::Cloud => pathland_core::icon::CLOUD,
+            IconName::ChevronLeft => pathland_core::icon::CHEVRON_LEFT,
+            IconName::ChevronRight => pathland_core::icon::CHEVRON_RIGHT,
+            IconName::ChevronUp => pathland_core::icon::CHEVRON_UP,
+            IconName::ChevronDown => pathland_core::icon::CHEVRON_DOWN,
+            IconName::ArrowLeft => pathland_core::icon::ARROW_LEFT,
+            IconName::ArrowRight => pathland_core::icon::ARROW_RIGHT,
+            IconName::Add => pathland_core::icon::ADD,
+            IconName::Remove => pathland_core::icon::REMOVE,
+            IconName::Check => pathland_core::icon::CHECK,
+            IconName::Edit => pathland_core::icon::EDIT,
+            IconName::Delete => pathland_core::icon::DELETE,
+            IconName::Save => pathland_core::icon::SAVE,
+            IconName::Share => pathland_core::icon::SHARE,
+            IconName::Download => pathland_core::icon::DOWNLOAD,
+            IconName::Upload => pathland_core::icon::UPLOAD,
+            IconName::Refresh => pathland_core::icon::REFRESH,
+            IconName::Play => pathland_core::icon::PLAY,
+            IconName::Pause => pathland_core::icon::PAUSE,
+            IconName::Stop => pathland_core::icon::STOP,
+            IconName::SkipBack => pathland_core::icon::SKIP_BACK,
+            IconName::SkipForward => pathland_core::icon::SKIP_FORWARD,
+            IconName::Volume => pathland_core::icon::VOLUME,
+            IconName::VolumeMute => pathland_core::icon::VOLUME_MUTE,
+            IconName::Shuffle => pathland_core::icon::SHUFFLE,
+            IconName::Repeat => pathland_core::icon::REPEAT,
+            IconName::Info => pathland_core::icon::INFO,
+            IconName::Warning => pathland_core::icon::WARNING,
+            IconName::Error => pathland_core::icon::ERROR,
+            IconName::Success => pathland_core::icon::SUCCESS,
+            IconName::Heart => pathland_core::icon::HEART,
+            IconName::Star => pathland_core::icon::STAR,
+            IconName::User => pathland_core::icon::USER,
+            IconName::Users => pathland_core::icon::USERS,
+            IconName::Lock => pathland_core::icon::LOCK,
+            IconName::Logout => pathland_core::icon::LOGOUT,
+            IconName::Bell => pathland_core::icon::BELL,
+            IconName::Folder => pathland_core::icon::FOLDER,
+            IconName::File => pathland_core::icon::FILE,
+            IconName::Image => pathland_core::icon::IMAGE,
+            IconName::Music => pathland_core::icon::MUSIC,
+            IconName::Grid => pathland_core::icon::GRID,
+            IconName::List => pathland_core::icon::LIST,
+            IconName::Filter => pathland_core::icon::FILTER,
+        }
+    }
+}
+
+/// A semantic icon (the `ICON` primitive): a canonical [`IconName`] mapped by
+/// each renderer to its native icon set (spec/ICONS.md). Size follows
+/// [`FontSize`] (text-style symbol sizing); tint follows [`ForegroundStyle`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct Icon {
+    name: &'static str,
+}
+
+impl Icon {
+    /// A semantic icon from the canonical catalog.
+    pub const fn new(name: IconName) -> Self {
+        Self {
+            name: name.canonical(),
+        }
+    }
+}
+
+impl View for Icon {
+    fn build(&self) -> Node {
+        let mut node = plain_node(Component::Icon, Vec::new(), BTreeMap::new());
+        node.string_properties
+            .insert(property_id::ICON_NAME, String::from(self.name));
+        node
+    }
+}
+
+/// A semantic icon (shorthand for [`Icon::new`]).
+pub const fn icon(name: IconName) -> Icon {
+    Icon::new(name)
+}
+
 /// A vector geometry (`SHAPE_KIND`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Shape(pub u8);
@@ -1579,6 +1725,36 @@ mod tests {
         assert!(empty.children.is_empty());
         let trailing = hstack![text("x"),].build();
         assert_eq!(trailing.children.len(), 1);
+    }
+
+    #[test]
+    fn icon_builds_icon_component_with_canonical_name() {
+        let node = icon(IconName::Play).build();
+        assert_eq!(node.component, Component::Icon);
+        assert_eq!(
+            node.string_properties.get(&property_id::ICON_NAME),
+            Some(&String::from("play"))
+        );
+    }
+
+    #[test]
+    fn icon_name_canonical_matches_catalog() {
+        assert_eq!(IconName::Home.canonical(), "home");
+        assert_eq!(IconName::SkipForward.canonical(), "skip-forward");
+        assert_eq!(IconName::VolumeMute.canonical(), "volume-mute");
+    }
+
+    #[test]
+    fn icon_size_and_tint_apply_like_text() {
+        let node = icon(IconName::Search).font_size(20.0).foreground_style(Color::argb(0xFF_00_00_00)).build();
+        assert_eq!(
+            node.properties.get(&property_id::FONT_SIZE),
+            Some(&20.0f32.to_bits())
+        );
+        assert_eq!(
+            node.properties.get(&property_id::COLOR),
+            Some(&0xFF_00_00_00u32)
+        );
     }
 
     #[test]
