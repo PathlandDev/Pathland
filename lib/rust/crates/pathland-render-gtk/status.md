@@ -15,6 +15,9 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
     `FONT_FAMILY`/`FONT_DESIGN`/`COLOR` via a Pango `FontDescription`/
     attributes),
   - `BUTTON` → `GtkButton` (label; composite body when it has children),
+  - `ICON` → `GtkImage` (the canonical `ICON_NAME` maps through this renderer's
+    own `gtk_icon_name` map to an Adwaita symbolic icon name; `FONT_SIZE` → pixel size,
+    `COLOR` → CSS tint; unmapped names fall back to `image-missing`),
   - `GRID`/`LAZY_VGRID`/`LAZY_HGRID` → `GtkGrid` (row-major cells from child
     index + `WIDTH` column count),
   - `SCROLLVIEW` → `GtkScrolledWindow` (single child),
