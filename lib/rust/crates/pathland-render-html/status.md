@@ -31,7 +31,9 @@ Statelessness). Protocol contract: `spec/`.
   `<p>`/`<h1>`–`<h5>` by `ROLE`/heading `TEXT_STYLE`), `IMAGE` → `<img>`,
   `ICON` → inline **Remix (filled)** `<svg class="pathland-icon">` (the canonical
   `ICON_NAME` resolves to its filled SVG markup via this renderer's own
-  `icons` module (`crate::icons`, the web owner of the mapping); `LABEL` →
+  `icons` module (`crate::icons`, the web owner of the mapping); the svg carries
+  `data-pathland-icon="<name>"` — the DOM client's lazy resolver reads it as an
+  embedded glyph for instant on-page swaps; `LABEL` →
   `role="img"` + `aria-label`, none → `aria-hidden`; sized `1em` so `FONT_SIZE`
   scales it, tinted via `fill="currentColor"`),
   `COLOR` → `<div>`, `SHAPE` → CSS shapes / inline SVG, `DIVIDER` → `<hr>`,
@@ -205,7 +207,12 @@ single `style` attribute — no external compiler, no class system, no safelist:
     `html` sets `color-scheme: light dark` + the `--pl-color-bg` background so
     native form controls and the page follow the theme.
 - **`pathland_html_*` cdylib** (`pathland_html_render` / `_render_fragment` /
-  `_free`) for cross-language hosts (Java JNA shim). The `_tailwind_compile`
+  `_free`, plus `pathland_html_icon_svg`) for cross-language hosts (Java JNA
+  shim). `pathland_html_icon_svg(name)` returns the icon glyph's full `<svg>`
+  (canonical name → glyph, unknown/extension → the renderer's fallback glyph) —
+  how any host serves `/_pathland/icons/<name>.svg` from ONE Rust source (the
+  DOM client's lazy icon fetch) instead of per-platform static files. The
+  `_tailwind_compile`
   entry point, `tw.rs`, `tailwind.rs`, `build.rs`, `scripts/fetch-tailwind.mjs`,
   `vendor/`, and the `tailwind-embed` feature are **deleted**.
 - **Debug comments** (`HtmlRenderer::with_debug_comments(true)`; C ABI

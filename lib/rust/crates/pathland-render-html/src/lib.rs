@@ -1171,6 +1171,11 @@ impl HtmlRenderer {
                 // Remix glyph (inline SVG, single-sourced). An unknown name renders
                 // the fallback glyph. A `LABEL` makes it presentable
                 // (`role="img"`); without one it is decorative (`aria-hidden`).
+                let icon_name = node
+                    .strings
+                    .get(&property_id::ICON_NAME)
+                    .map(|n| format!(" data-pathland-icon=\"{}\"", escape(n)))
+                    .unwrap_or_default();
                 let inner = node
                     .strings
                     .get(&property_id::ICON_NAME)
@@ -1183,9 +1188,11 @@ impl HtmlRenderer {
                     _ => " aria-hidden=\"true\" focusable=\"false\"".to_string(),
                 };
                 // Open the svg tag, splice the node attrs before `>`, then the
-                // Remix inner markup (`WEB_SVG_OPEN` ends with `>`).
+                // Remix inner markup (`WEB_SVG_OPEN` ends with `>`). The
+                // `data-pathland-icon` name is the hook the DOM client's lazy
+                // resolver uses to seed a glyph from an already-embedded svg.
                 let open = icons::WEB_SVG_OPEN.trim_end_matches('>');
-                format!("{open}{data_id}{icon_aria}{event}{style}>{inner}</svg>")
+                format!("{open}{data_id}{icon_name}{icon_aria}{event}{style}>{inner}</svg>")
             }
             component_type::BUTTON => {
                 // Composite Override Mode: children present → custom body.
@@ -2265,7 +2272,7 @@ mod tests {
             let mut opcodes = Vec::new();
             let mut strings = Vec::new();
             opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::ICON as u32, 0));
-            let mut name_offset = 0usize;
+            let name_offset = 0usize;
             strings.extend_from_slice(&(name.len() as u32).to_le_bytes());
             strings.extend_from_slice(name.as_bytes());
             opcodes.push(Opcode::new(

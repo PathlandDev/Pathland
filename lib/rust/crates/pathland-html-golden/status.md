@@ -9,8 +9,8 @@ Cross-renderer **golden conformance fixtures** for the HTML renderers.
 - A battery of self-contained `PLPL` scenario batches (counter, form,
   composite controls, layout, tokens, **semantics** — semantic roles mapping to
   native elements/ARIA, **icons** — the `ICON` primitive's inline filled (Remix)
-  SVG markup
-  (decorative + labeled, `FONT_SIZE` sizing), **media** — image alt/content-mode +
+  SVG markup carrying `data-pathland-icon` (decorative + labeled, `FONT_SIZE`
+  sizing), **media** — image alt/content-mode +
   video/audio native
   controls, and a base→delta pair whose change includes a `ROLE`
   change exercising the semantic-tag retag), each rendered by

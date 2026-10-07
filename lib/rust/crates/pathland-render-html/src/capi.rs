@@ -7,7 +7,7 @@
 //! Java binds this via JNA (`com.pathland.render.html` shim); Swift/.NET bind
 //! the same ABI.
 
-use std::ffi::{CString, c_char};
+use std::ffi::{CStr, CString, c_char};
 use std::os::raw::c_uchar;
 
 use pathland_core_transport::decode_frame;
@@ -99,6 +99,32 @@ pub unsafe extern "C" fn pathland_html_render_fragment_debug(
 pub unsafe extern "C" fn pathland_html_free(ptr: *const c_char) {
     if !ptr.is_null() {
         drop(CString::from_raw(ptr as *mut c_char));
+    }
+}
+
+/// The full `<svg>` for a canonical `ICON_NAME` — the renderer-owned glyph
+/// served at `/_pathland/icons/<name>.svg`. This is how every host language
+/// (Java via JNA, Swift/.NET/Node/Go via this same ABI) serves the web
+/// renderer's icon glyphs from ONE Rust source, instead of copying static
+/// files per platform. Returns a NUL-terminated C string owned by the caller
+/// (release with [`pathland_html_free`]); never NULL except when `name` is
+/// NULL — an unknown/extension name yields this renderer's fallback glyph (the
+/// same one SSR inlines), so a host can always answer with a glyph.
+///
+/// # Safety
+/// `name` must be a valid NUL-terminated C string (or NULL).
+#[no_mangle]
+pub unsafe extern "C" fn pathland_html_icon_svg(name: *const c_char) -> *const c_char {
+    if name.is_null() {
+        return std::ptr::null();
+    }
+    let name = unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned();
+    let open = crate::icons::WEB_SVG_OPEN;
+    let inner = crate::icons::web_inner(&name).unwrap_or_else(crate::icons::web_fallback_svg);
+    let svg = format!("{open}{inner}</svg>");
+    match CString::new(svg) {
+        Ok(cs) => cs.into_raw(),
+        Err(_) => std::ptr::null(),
     }
 }
 
@@ -218,5 +244,30 @@ mod tests {
     fn capi_rejects_a_truncated_batch() {
         let ptr = unsafe { pathland_html_render([0u8, 1, 2].as_ptr(), 3, 1) };
         assert!(ptr.is_null());
+    }
+
+    #[test]
+    fn capi_serves_icon_svgs_from_the_shared_renderer() {
+        // Canonical name → the full inline `<svg>`, matching what SSR inlines.
+        let cname = std::ffi::CString::new(pathland_core::icon::HOME).unwrap();
+        let ptr = unsafe { pathland_html_icon_svg(cname.as_ptr()) };
+        assert!(!ptr.is_null());
+        let svg = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+        assert!(svg.starts_with("<svg class=\"pathland-icon\""), "{svg}");
+        assert!(svg.ends_with("</svg>"), "{svg}");
+        assert!(svg.len() > 40, "a real glyph path is inlined: {svg}");
+        unsafe { pathland_html_free(ptr) };
+
+        // Unknown/extension name → this renderer's fallback glyph (never NULL):
+        // hosts can always answer with a glyph.
+        let unknown = std::ffi::CString::new("definitely-not-an-icon").unwrap();
+        let ptr = unsafe { pathland_html_icon_svg(unknown.as_ptr()) };
+        assert!(!ptr.is_null());
+        let svg = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+        assert!(svg.contains("<circle"), "{svg}");
+        unsafe { pathland_html_free(ptr) };
+
+        // NULL input → NULL.
+        assert!(unsafe { pathland_html_icon_svg(std::ptr::null()) }.is_null());
     }
 }
