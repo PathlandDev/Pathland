@@ -278,9 +278,10 @@ renderer-native media element with default controls reports nothing).
 | `MEDIA_VOLUME_CHANGED` | 0x12 | targetId | volume (f32, 0..1) | 0 | — | `AVPlayer.volume` |
 
 - **`MEDIA_TIME_UPDATED`**: the media's current playback position in seconds.
-  Reported **when the playback position advances ~1 second** (at most ~1/s)
-  while playing; a seek initiated by the app (`MEDIA_POSITION` change) is not
-  echoed back.
+  Reported **~30×/s while playing (≈ every 33 ms of playback progress)** —
+  both renderers sample their position source at ~30 Hz (best-effort: browser
+  background-tab and occluded-window timers throttle to worse cadences). A seek
+  initiated by the app (`MEDIA_POSITION` change) is not echoed back.
 - **Commands vs reports (MUST)**: `MEDIA_POSITION`/`MEDIA_VOLUME` are **seek /
   volume commands** the app writes to control playback; `MEDIA_TIME_UPDATED` /
   `MEDIA_VOLUME_CHANGED` are **position / volume reports** the renderer emits.

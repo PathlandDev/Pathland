@@ -156,11 +156,11 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   LATEST target to the worker) so a drag flooding `MEDIA_POSITION` — or any
   continuous-seek app — never blocks the UI in GStreamer's FLUSH seek (coalesced
   to ~12/s, last position wins). Media events report back
-  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (the worker's 250 ms
-  poll of `query_position` while playing reports only when the position advanced
-  ~1 second — the same cadence as the web client — suppressed briefly after a
-  seek), `MEDIA_ENDED` and error → play-state-false from the worker polling the
-  pipeline bus (`EOS`/`Error` messages). Playback is
+  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (the worker's ~30 Hz
+  poll of `query_position` while playing reports whenever the position advanced
+  at least ~33 ms — the ~30/s cadence the web client shares — suppressed briefly
+  after a seek), `MEDIA_ENDED` and error → play-state-false from the worker
+  polling the pipeline bus (`EOS`/`Error` messages). Playback is
   **GStreamer-direct** because GTK4's own media backend (`GtkMediaFile`) is
   compiled out of some builds (Homebrew's `gtk4` ships with
   `-Dmedia-gstreamer=disabled`); the app owns all playback state, the pipeline is

@@ -41,9 +41,10 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `IMAGE_SOURCE`/`VIDEO_SOURCE`/`AUDIO_SOURCE` apply the
   asset ref; the `LABEL` accessibility text is set as `alt` on media elements;
   `CONTENT_MODE` maps `Fit`→`contain`, `Fill`→**`cover`** (matching the Rust SSR).
-  App-driven media reports `MEDIA_TIME_UPDATED` when the playback position
-  advances **~1 second** (throttled, matching the GTK renderer's cadence) and
-  `MEDIA_ENDED` at track end; play/pause/volume are reported only for
+  App-driven media reports `MEDIA_TIME_UPDATED` at **~30/s** (a 33 ms position
+  sampler — the browser's `timeupdate` alone is only ~4 Hz; torn down when the
+  node is removed) and `MEDIA_ENDED` at track end; play/pause/volume are
+  reported only for
   native-controls media.
   **Media echo guards (spec/EVENTS.md Media)**: a `MEDIA_POSITION` write within
   `0.25 s` of the **last-reported** position (not `currentTime`) does not seek —

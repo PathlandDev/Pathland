@@ -735,14 +735,14 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         .spawn(move || media_worker_loop(pipeline, playbin, ctrl_rx, report_tx))
         .ok()?;
 
-    // Periodic report router (~4 Hz): drains the worker's reports and applies
+    // Periodic report router (~30 Hz): drains the worker's reports and applies
     // the echo-guard/suppress logic (pure math over the main-thread cells)
     // before the app sees anything. Suppressed briefly after a seek.
     let result_timer = match self.event_sink.clone() {
         Some(sink) => {
             let suppress = suppress_until.clone();
             let last = last_reported.clone();
-            let timer = glib::timeout_add_local(Duration::from_millis(250), move || {
+            let timer = glib::timeout_add_local(Duration::from_millis(33), move || {
                 while let Ok(report) = report_rx.try_recv() {
                     match report {
                         MediaReport::Position(seconds) => {
@@ -1443,11 +1443,18 @@ fn seek_target_changed(previous: Option<f32>, target_seconds: f64) -> bool {
     }
 }
 
+/// The `MEDIA_TIME_UPDATED` cadence — ~30/s (≈ every 33 ms of playback
+/// progress), the sampling interval both the worker's position poll and the
+/// main-thread report router run at (spec/EVENTS.md Media; parity with the
+/// web client's 33 ms sampler).
+const TIME_REPORT_MAX_INTERVAL_S: f32 = 1.0 / 30.0;
+
 /// Whether a `MEDIA_TIME_UPDATED` should be reported: the playback position
-/// advanced ~1 second since the last report (the cadence the web client uses,
-/// so both renderers tick the seek bar once per second).
+/// advanced at least one cadence step (`TIME_REPORT_MAX_INTERVAL_S` — ~30/s)
+/// since the last report, the cadence the web client shares so both renderers
+/// report ~30×/s while playing.
 fn should_report_time(last_seconds: f32, current_seconds: f32) -> bool {
-    (current_seconds - last_seconds).abs() >= 1.0
+    (current_seconds - last_seconds).abs() >= TIME_REPORT_MAX_INTERVAL_S
 }
 
 /// A control message from the GTK main thread to a media player's worker
@@ -1572,8 +1579,10 @@ fn media_worker_loop(
     let mut reporting = true;
     loop {
         // Block up to the poll interval for a control message, then fall
-        // through to the periodic bus drain + position poll.
-        match ctrl_rx.recv_timeout(Duration::from_millis(250)) {
+        // through to the periodic bus drain + position poll (~30 Hz — the
+        // native `MEDIA_TIME_UPDATED` source; the main thread gates it at
+        // TIME_REPORT_MAX_INTERVAL_S).
+        match ctrl_rx.recv_timeout(Duration::from_millis(33)) {
             Ok(MediaControl::Play(p)) => {
                 if last_state_playing != Some(p) {
                     last_state_playing = Some(p);
@@ -1632,9 +1641,10 @@ fn media_worker_loop(
             }
         }
 
-        // Report the stream position while playing (~4 Hz, mirroring the web
-        // client's `timeupdate` cadence; the main thread decides whether to
-        // forward it). Stop polling once the report channel is gone.
+        // Report the stream position while playing (the renderer's native
+        // cadence — this poll runs at ~30 Hz; the main thread decides whether to
+        // forward it, gated at TIME_REPORT_MAX_INTERVAL_S by should_report_time).
+        // Stop polling once the report channel is gone.
         if playing && reporting {
             if let Some(seconds) = playbin
                 .query_position::<gst::ClockTime>()
@@ -3068,13 +3078,16 @@ mod tests {
     }
 
     #[test]
-    fn media_time_reports_once_per_second() {
-        // A MEDIA_TIME_UPDATED is reported only when the position advanced ~1s
-        // since the last report (the web client's cadence — slider ticks 1/s).
-        assert!(!should_report_time(0.0, 0.9));
-        assert!(!should_report_time(10.0, 10.5));
+    fn media_time_reports_advance_at_thirty_per_second() {
+        // A MEDIA_TIME_UPDATED is reported when the position advanced at least
+        // one cadence step (≈ every 33 ms) since the last report — the cap the
+        // web client uses (slider ticks follow the native source, up to 30/s).
+        assert!(TIME_REPORT_MAX_INTERVAL_S < 0.05, "≈1/30 s cap");
+        assert!(!should_report_time(0.0, 0.02));
+        assert!(!should_report_time(10.0, 10.03), "below one cadence step");
+        assert!(should_report_time(0.0, TIME_REPORT_MAX_INTERVAL_S));
+        assert!(should_report_time(0.0, 0.1), "a real playback step > 33 ms");
         assert!(should_report_time(0.0, 1.0));
-        assert!(should_report_time(0.0, 1.1));
         assert!(should_report_time(10.0, 11.2));
         // Backward jumps (a seek the app applied) also report.
         assert!(should_report_time(30.0, 20.0));

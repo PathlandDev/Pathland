@@ -441,8 +441,20 @@ function applyTree(op: Opcode, r: DomRenderer): void {
     }
     case CMD_DELETE_NODE: {
       const el = r.byId.get(op.a);
-      if (el && el.parentNode) {
-        el.parentNode.removeChild(el);
+      if (el) {
+        const host = el as HTMLElement;
+        // Stop a removed media node's 30 Hz position sampler.
+        const media = mediaElementOf(host);
+        if (media) {
+          const mediaStateFor = mediaState.get(media);
+          if (mediaStateFor && mediaStateFor.reportTimer) {
+            window.clearInterval(mediaStateFor.reportTimer);
+          }
+          mediaState.delete(media);
+        }
+        if (host.parentNode) {
+          host.parentNode.removeChild(host);
+        }
       }
       r.byId.delete(op.a);
       break;
@@ -1154,6 +1166,7 @@ const mediaState = new WeakMap<HTMLMediaElement, {
   playing: boolean;
   lastReported: number;
   lastReportedVolume: number;
+  reportTimer: number;
 }>();
 
 /** The media element of a node: the element itself when it IS the media, else the
@@ -1179,6 +1192,15 @@ function ensureMediaElement(el: HTMLElement, propId: number): HTMLMediaElement |
   return media;
 }
 
+/** The cadence for `MEDIA_TIME_UPDATED` reports — ~30/s (≈ every 33 ms of
+ *  playback progress). The DOM client samples the element's position on this
+ *  interval (the browser's `timeupdate` is only ~4 Hz), reporting whenever it
+ *  advances; evens out to ~30 reports/s while playing (spec/EVENTS.md Media —
+ *  parity with the GTK renderer's 30 Hz gate). Background tabs throttle timers
+ *  to ≥1 s, so this is best-effort when not visible/focused. */
+const TIME_UPDATE_MAX_INTERVAL_S = 1 / 30;
+const TIME_UPDATE_SAMPLE_MS = 33;
+
 /** Attach a media node's element once: wire the app-driven media element to the
  *  host's media-event sink (play/pause/time/ended/volume, spec/EVENTS.md). */
 export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
@@ -1186,7 +1208,7 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
   if (!media || mediaState.has(media)) {
     return;
   }
-  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1 };
+  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1, reportTimer: 0 };
   mediaState.set(media, state);
   const id = Number(el.getAttribute("data-pathland-id"));
   const send = r.onMediaEvent;
@@ -1216,17 +1238,18 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
     });
   }
   // Time + ended are always reported: the app displays progress and advances on
-  // end. Time updates are throttled to ~1/second of playback progress (a
-  // `timeupdate` within a second of the last report is dropped), matching the
-  // GTK renderer's cadence.
-  media.addEventListener("timeupdate", () => {
+  // end. The DOM client SAMPLES the position every ~33 ms (the browser's native
+  // `timeupdate` is only ~4 Hz), reporting whenever it advances a cadence step
+  // (≈ 30 reports/s while playing; spec/EVENTS.md Media — parity with the GTK
+  // renderer's 30 Hz gate). The sampler stops when removed (CMD_DELETE_NODE).
+  state.reportTimer = window.setInterval(() => {
     if (!media.paused
         && performance.now() >= state.suppressTimeUntil
-        && Math.abs(media.currentTime - state.lastReported) >= 1) {
+        && Math.abs(media.currentTime - state.lastReported) >= TIME_UPDATE_MAX_INTERVAL_S) {
       state.lastReported = media.currentTime;
       send(encodeMediaTimeUpdated(id, media.currentTime));
     }
-  });
+  }, TIME_UPDATE_SAMPLE_MS);
   media.addEventListener("ended", () => {
     send(encodeMediaEnded(id));
   });

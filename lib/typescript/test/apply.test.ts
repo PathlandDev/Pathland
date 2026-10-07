@@ -7,6 +7,7 @@ import {
   CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
+  CMD_DELETE_NODE,
   CMD_INSERT_CHILD,
   CMD_MOVE_CHILD,
   CMD_RESET,
@@ -78,6 +79,7 @@ function noNetworkIcons() {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -143,7 +145,8 @@ describe("applyBatch · media", () => {
     expect(audio.paused).toBe(false);
   });
 
-  it("reports MEDIA_TIME_UPDATED only when the position advances ~1s", () => {
+  it("reports MEDIA_TIME_UPDATED at ~30/s (a 33 ms position sampler)", () => {
+    vi.useFakeTimers();
     const wrapper = document.createElement("div");
     wrapper.className = "pathland-media";
     wrapper.setAttribute("data-pathland-id", "1");
@@ -160,17 +163,44 @@ describe("applyBatch · media", () => {
     applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
       ((VAL_U32 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry(""))), r);
 
-    // Sub-second timeupdates are dropped (no MEDIA_TIME_UPDATED).
-    audio.currentTime = 0.4;
-    audio.dispatchEvent(new Event("timeupdate"));
-    audio.currentTime = 0.9;
-    audio.dispatchEvent(new Event("timeupdate"));
-    expect(sent).toHaveLength(0);
-
-    // A ~1s advance reports exactly once, with the current position.
-    audio.currentTime = 1.2;
-    audio.dispatchEvent(new Event("timeupdate"));
+    // The first sample establishes the baseline report (last 0 → 0.04 s).
+    audio.currentTime = 0.04;
+    vi.advanceTimersByTime(40);
     expect(sent).toHaveLength(1);
+
+    // A sub-step advance (< ~33 ms of progress) is dropped on the next tick.
+    audio.currentTime = 0.05;
+    vi.advanceTimersByTime(40);
+    expect(sent).toHaveLength(1);
+
+    // A real ~1/30 s step per tick reports again (~30 samples/s).
+    audio.currentTime = 0.10;
+    vi.advanceTimersByTime(40);
+    expect(sent).toHaveLength(2);
+  });
+
+  it("removing a media node clears its 30 Hz position sampler", () => {
+    vi.useFakeTimers();
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const sent: Uint8Array[] = [];
+    const r = renderer();
+    r.byId.set(1, wrapper);
+    r.onMediaEvent = (batch: Uint8Array) => sent.push(batch);
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_U32 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry(""))), r);
+
+    // Delete the node: the sampler must stop (no reports after deletion,
+    // even as the position advances and time passes).
+    applyBatch(parseBatch(buildBatch([[CAT_TREE, CMD_DELETE_NODE, 0, 1]])), r);
+    audio.currentTime = 5;
+    vi.advanceTimersByTime(120);
+    expect(sent).toHaveLength(0);
   });
 });
 
