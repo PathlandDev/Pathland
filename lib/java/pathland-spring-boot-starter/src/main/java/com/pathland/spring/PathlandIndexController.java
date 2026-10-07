@@ -100,6 +100,14 @@ public class PathlandIndexController {
             resource = diskAsset(file);
         }
         if (resource == null || !resource.exists()) {
+            // Renderer-owned icon glyphs have no static file — serve them from the
+            // shared Rust renderer (`pathland_html_icon_svg` over the C ABI, the same
+            // `icons` source SSR inlines from), so every host serves /_pathland/icons/
+            // from ONE library. A host can still override a glyph with a static file.
+            ResponseEntity<?> icon = iconGlyph(file);
+            if (icon != null) {
+                return icon;
+            }
             return ResponseEntity.notFound().build();
         }
         // Spring's built-in extension → MIME detection (js, svg, mp4, mp3, …).
@@ -115,6 +123,30 @@ public class PathlandIndexController {
                     .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().immutable())
                     .body(in.readAllBytes());
         }
+    }
+
+    /** Serve `/_pathland/icons/<name>.svg` from the shared Rust renderer; {@code null}
+     *  when the path is not an icon glyph or the renderer is unavailable. */
+    private ResponseEntity<?> iconGlyph(String file) {
+        if (!file.startsWith("icons/") || !file.endsWith(".svg")) {
+            return null;
+        }
+        String name = file.substring("icons/".length(), file.length() - ".svg".length());
+        if (name.isEmpty() || name.indexOf('/') >= 0) {
+            return null;
+        }
+        var renderer = com.pathland.render.html.HtmlRenderer.tryInstance();
+        if (renderer == null) {
+            return null;
+        }
+        String svg = renderer.iconSvg(name);
+        if (svg == null) {
+            return null;
+        }
+        return ResponseEntity.ok()
+                .contentType(new MediaType("image", "svg+xml"))
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic().immutable())
+                .body(svg.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     /** The DOM client bundle (+ any app-local assets) from {@code static/_pathland/**}. */

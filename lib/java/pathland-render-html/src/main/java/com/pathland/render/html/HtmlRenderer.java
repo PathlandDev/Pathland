@@ -26,6 +26,7 @@ import java.io.FileOutputStream;
  * const char* pathland_html_render_debug(const uint8_t* batch, uint32 len, uint32 root, uint8 debug);
  * const char* pathland_html_render_fragment_debug(const uint8_t* batch, uint32 len, uint32 root, uint8 debug);
  * void        pathland_html_free(const char* ptr);
+ * const char* pathland_html_icon_svg(const char* name);
  * </pre>
  */
 public final class HtmlRenderer {
@@ -44,6 +45,7 @@ public final class HtmlRenderer {
         Pointer pathland_html_render_debug(Pointer batch, int len, int root, byte debug);
         Pointer pathland_html_render_fragment_debug(Pointer batch, int len, int root, byte debug);
         void pathland_html_free(Pointer ptr);
+        Pointer pathland_html_icon_svg(String name);
     }
 
     private static final class Holder {
@@ -204,6 +206,30 @@ public final class HtmlRenderer {
      */
     public String renderFragmentDebug(Frame frame, int root) {
         return renderFrameDebug(frame, root, false);
+    }
+
+    /**
+     * The full inline `<svg>` for a canonical `ICON_NAME` — how a host serves
+     * `/_pathland/icons/<name>.svg` from the **shared Rust renderer**
+     * (`pathland_html_icon_svg` over the C ABI, the same `icons` source SSR
+     * inlines from), so every platform gets the web renderer's glyphs from ONE
+     * library instead of per-platform static files. Unknown/extension names
+     * return this renderer's fallback glyph, so a host can always answer with a
+     * glyph; only a {@code null} argument yields {@code null}.
+     */
+    public String iconSvg(String name) {
+        if (name == null) {
+            return null;
+        }
+        Pointer ptr = nativeRenderer.pathland_html_icon_svg(name);
+        if (ptr == null) {
+            return null;
+        }
+        try {
+            return ptr.getString(0);
+        } finally {
+            nativeRenderer.pathland_html_free(ptr);
+        }
     }
 
     private String renderFrame(Frame frame, int root, boolean fullDocument) {

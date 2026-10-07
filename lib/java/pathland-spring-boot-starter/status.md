@@ -23,6 +23,10 @@ subpaths (the BFF layout).
     the prefix stripped + a framework static controller serving the bundle + asset mount
     from `classpath:/static/_pathland/**` at both `/_pathland/**` and `/{app}/_pathland/**`;
     the more-specific mapping beats `/{*path}`, and the `!Upgrade` header excludes WS).
+    When no static file matches an `/_pathland/icons/{name}.svg` request, the controller
+    serves the renderer-owned glyph from the shared Rust renderer
+    (`HtmlRenderer.iconSvg` → `pathland_html_icon_svg`) with an `immutable` cache header —
+    no static icon files on any host, and a host can still override a glyph with a file.
     The framework controller honors byte-range requests (`206 Partial Content` +
     `Content-Range`, `416` for unsatisfiable ranges, `Accept-Ranges` on the full
     response) — an `<audio>`/`<video>` seeking beyond its buffer issues a `Range`

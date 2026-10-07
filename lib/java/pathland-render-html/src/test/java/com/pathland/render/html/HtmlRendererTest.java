@@ -218,6 +218,29 @@ class HtmlRendererTest {
         assertTrue(HtmlRenderer.tryInstance() != null, "tryInstance resolves the renderer");
     }
 
+    @Test
+    void servesIconGlyphsFromTheSharedRenderer() {
+        // The web renderer owns the canonical ICON_NAME → glyph map in Rust
+        // (pathland_html_icon_svg over the C ABI) — hosts serve it at
+        // /_pathland/icons/<name>.svg from this shim, so every platform gets the
+        // same glyphs from ONE library instead of per-platform static files.
+        HtmlRenderer renderer = renderer();
+
+        String home = renderer.iconSvg("home");
+        assertTrue(home != null && home.startsWith("<svg class=\"pathland-icon\""),
+                "canonical name → the full inline svg shell: " + home);
+        assertTrue(home.endsWith("</svg>"), "closed svg: " + home);
+        assertTrue(home.length() > 40, "a real glyph path is inlined: " + home);
+
+        // Unknown/extension names yield this renderer's fallback glyph (never null),
+        // so a host can always answer with a glyph.
+        String unknown = renderer.iconSvg("definitely-not-an-icon");
+        assertTrue(unknown != null && unknown.contains("<circle"), "fallback glyph: " + unknown);
+
+        // A null argument is the only null result.
+        assertTrue(renderer.iconSvg(null) == null);
+    }
+
     private static String platformExtension() {
         String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
         if (os.contains("mac")) {

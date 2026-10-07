@@ -25,6 +25,13 @@ Java renderer is removed. Protocol contract: `spec/`.
   `DATE_PICKER_MODE`, and literal colors inline. The renderer injects its own
   built-in `<style>` block (preflight reset + design tokens + `.pathland-*`
   component defaults) into every document — no external CSS, no `/tailwind.css`.
+- **Icon glyphs from the shared renderer**: `iconSvg(String name)` binds the
+  Rust `pathland_html_icon_svg` export over the C ABI — the full inline `<svg>`
+  for a canonical `ICON_NAME` (unknown/extension names → the renderer's
+  fallback glyph, never null). Hosts serve `/_pathland/icons/<name>.svg` from
+  it (Spring/Quarkus route a few lines in their starters), so the DOM client's
+  lazy icon fetch gets the same glyph data SSR inlines from — one Rust source,
+  no per-platform static icon files. `HtmlRendererTest` covers it.
 - **Demos use the shim**: `SessionApp` no longer calls `applyFrame`; SSR renders
   the mount frame through `HtmlRenderer.render(sink.frame(), rootId)`. The
   renderer is compiled once at startup.

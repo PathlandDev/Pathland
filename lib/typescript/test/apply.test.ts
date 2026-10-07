@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, __setMediaLastReported, type DomRenderer } from "../src/apply";
 import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
@@ -70,6 +70,24 @@ beforeEach(() => {
 
 function renderer(): DomRenderer {
   return { byId: new Map<number, Node>() };
+}
+
+/** The lazy icon resolver must not hit the network in these tests. */
+function noNetworkIcons() {
+  vi.stubGlobal("fetch", async () => ({ ok: false, text: async () => "" }));
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+/** Drop an SSR-style embedded glyph into the document (what a hydrated page carries). */
+function seedGlyph(name: string, inner: string): void {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "pathland-icon");
+  svg.setAttribute("data-pathland-icon", name);
+  svg.innerHTML = inner;
+  document.body.appendChild(svg);
 }
 
 describe("applyBatch · media", () => {
@@ -967,6 +985,11 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
   });
 
   it("a semantic icon renders a filled Remix svg from its canonical name", () => {
+    noNetworkIcons();
+    // The SSR page embeds the glyph (the DOM-seed the lazy resolver reads) —
+    // here "play" already appears in the document, so the swap is synchronous.
+    seedGlyph("play", '<path d="M19.376 12.4161L8.77735 19.4818"/>');
+
     const r = renderer();
     applyBatch(
       parseBatch(
@@ -985,12 +1008,14 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
     expect(el.getAttribute("class")).toContain("pathland-icon");
     expect(el.getAttribute("fill")).toBe("currentColor");
     expect(el.getAttribute("aria-hidden")).toBe("true");
-    // The Remix play glyph is a single filled path (no stroke).
+    expect(el.getAttribute("data-pathland-icon")).toBe("play");
+    // The Remix play glyph is a single filled path (no stroke), from the embedded copy.
     expect(el.innerHTML).toContain('d="M19.376 12.4161L8.77735 19.4818');
     expect(el.innerHTML).not.toContain("stroke=");
   });
 
   it("an unknown icon name and a LABEL adjust the icon's aria", () => {
+    noNetworkIcons();
     const r = renderer();
     applyBatch(
       parseBatch(
@@ -1006,7 +1031,7 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
       r,
     );
     const el = r.byId.get(1) as HTMLElement;
-    expect(el.innerHTML).toContain("circ"); // fallback glyph
+    expect(el.innerHTML).toContain("circ"); // fallback glyph (no embedded copy, no glyph served)
     expect(el.getAttribute("role")).toBe("img");
     expect(el.getAttribute("aria-label")).toBe("Playlist");
     expect(el.getAttribute("aria-hidden")).toBeNull();
