@@ -79,12 +79,20 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   addition to the heading semantics above. Explicit `PROP_FONT_SIZE`/
   `PROP_FONT_WEIGHT` are tracked per element and win over the style regardless
   of delta order; the tracks survive an element retag (`copyTypography`).
-- **Semantic icons** (`src/generated/icons.ts` + `elements.ts`/`apply.ts`):
-  `COMPONENT_ICON` builds an `<svg class="pathland-icon">`; `PROP_ICON_NAME`
-  swaps in the Remix Icon **filled** inner markup (generated from the web
-  renderer's own `icons` module, `pathland-render-html::icons`), `LABEL`
-  makes it presentable (`role="img"`/`aria-label`, else `aria-hidden`) —
-  mirroring the Rust SSR markup (golden `icons` fixture).
+- **Lazy semantic icons** (`src/icons.ts` + `elements.ts`/`apply.ts`): the
+  canonical icon catalog is **not** shipped in the bundle. `COMPONENT_ICON`
+  builds an `<svg class="pathland-icon">`; `PROP_ICON_NAME` resolves the glyph
+  via `setIcon`: (1) the session memo, (2) an already-embedded
+  `svg[data-pathland-icon=<name>]` in the page (the SSR inline glyph — instant,
+  zero network), else (3) the fallback glyph now + a **deduplicated lazy fetch**
+  of the renderer-owned `/{base}/icons/<name>.svg` (served by the host from the
+  shared Rust renderer, `pathland_html_icon_svg`), memoized thereafter. On a
+  miss the resolver **harvests every embedded glyph into the memo** (SSR seeds
+  are DOM-only), so a toggled-away glyph — e.g. the play icon under a paused
+  button — comes back **instantly on the return trip instead of refetching**.
+  `LABEL` makes it presentable (`role="img"`/`aria-label`, else `aria-hidden`);
+  the runtime mirrors the SSR svg's `data-pathland-icon` (golden `icons`
+  fixture / `ssr-conformance`).
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or

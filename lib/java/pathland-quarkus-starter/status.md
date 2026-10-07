@@ -28,6 +28,10 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
   per-app framework files (`/{app}/_pathland/...`, e.g. the mounted app's bundle) are
   served from the shared `/_pathland/**` classpath mount. Quarkus serves the global
   `/_pathland/**` bundle + asset mount from `META-INF/resources` before JAX-RS.
+  **`/_pathland/icons/{name}.svg`** (global base JAX-RS route + the mounted-base
+  `frameworkFile` path) serves the renderer-owned icon glyphs from the shared
+  Rust renderer (`HtmlRenderer.iconSvg` → `pathland_html_icon_svg`) with an
+  `immutable` cache header — no static icon files on any host.
 - **`PathlandRegistryProducer`** — CDI `@Produces @Singleton` `PathlandHost` from every
   `MountedApp` bean plus the lone `PathlandApp` bean (mounted at `/`); `@Disposes` shuts
   it down. Reads the `pathland.debug-html` config property (default `false`) to enable

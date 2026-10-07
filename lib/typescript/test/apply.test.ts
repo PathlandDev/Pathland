@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, __setMediaLastReported, type DomRenderer } from "../src/apply";
 import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
@@ -70,6 +70,24 @@ beforeEach(() => {
 
 function renderer(): DomRenderer {
   return { byId: new Map<number, Node>() };
+}
+
+/** The lazy icon resolver must not hit the network in these tests. */
+function noNetworkIcons() {
+  vi.stubGlobal("fetch", async () => ({ ok: false, text: async () => "" }));
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+/** Drop an SSR-style embedded glyph into the document (what a hydrated page carries). */
+function seedGlyph(name: string, inner: string): void {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "pathland-icon");
+  svg.setAttribute("data-pathland-icon", name);
+  svg.innerHTML = inner;
+  document.body.appendChild(svg);
 }
 
 describe("applyBatch · media", () => {
@@ -967,6 +985,11 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
   });
 
   it("a semantic icon renders a filled Remix svg from its canonical name", () => {
+    noNetworkIcons();
+    // The SSR page embeds the glyph (the DOM-seed the lazy resolver reads) —
+    // here "play" already appears in the document, so the swap is synchronous.
+    seedGlyph("play", '<path d="M19.376 12.4161L8.77735 19.4818"/>');
+
     const r = renderer();
     applyBatch(
       parseBatch(
@@ -985,12 +1008,14 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
     expect(el.getAttribute("class")).toContain("pathland-icon");
     expect(el.getAttribute("fill")).toBe("currentColor");
     expect(el.getAttribute("aria-hidden")).toBe("true");
-    // The Remix play glyph is a single filled path (no stroke).
+    expect(el.getAttribute("data-pathland-icon")).toBe("play");
+    // The Remix play glyph is a single filled path (no stroke), from the embedded copy.
     expect(el.innerHTML).toContain('d="M19.376 12.4161L8.77735 19.4818');
     expect(el.innerHTML).not.toContain("stroke=");
   });
 
   it("an unknown icon name and a LABEL adjust the icon's aria", () => {
+    noNetworkIcons();
     const r = renderer();
     applyBatch(
       parseBatch(
@@ -1006,9 +1031,47 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
       r,
     );
     const el = r.byId.get(1) as HTMLElement;
-    expect(el.innerHTML).toContain("circ"); // fallback glyph
+    expect(el.innerHTML).toContain("circ"); // fallback glyph (no embedded copy, no glyph served)
     expect(el.getAttribute("role")).toBe("img");
     expect(el.getAttribute("aria-label")).toBe("Playlist");
     expect(el.getAttribute("aria-hidden")).toBeNull();
+  });
+
+  it("an ICON_NAME delta swaps a hydrated play button to pause (lazy fetch)", async () => {
+    // The live play/pause toggle: the SSR svg advertises "play" with the play
+    // glyph inline, then a WS delta sets ICON_NAME=pause. The glyph must not be
+    // pasted from the element itself (the play<->pause self-match regression).
+    const PAUSE = '<path d="M6 5H8V19H6V5ZM16 5H18V19H16V5Z"/>';
+    vi.stubGlobal("fetch", async () => ({
+      ok: true,
+      text: async () => '<svg viewBox="0 0 24 24" fill="currentColor">' + PAUSE + "</svg>",
+    }));
+
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    el.setAttribute("data-pathland-id", "1");
+    el.setAttribute("class", "pathland-icon");
+    el.setAttribute("data-pathland-icon", "play");
+    el.innerHTML = '<path d="M19.376 12.4161L8.77735 19.4818"/>';
+    document.body.appendChild(el);
+    const r = renderer();
+    r.byId.set(1, el);
+
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ICON_NAME, 0],
+          ],
+          stringEntry("pause"),
+        ),
+      ),
+      r,
+    );
+
+    expect(el.getAttribute("data-pathland-icon")).toBe("pause");
+    // Did NOT paste the element's own play glyph back (it shows the fallback
+    // synchronously, then the fetched pause glyph).
+    expect(el.innerHTML).not.toContain('d="M19.376');
+    await vi.waitFor(() => expect(el.innerHTML).toContain('d="M6 5H8V19H6V5'), { timeout: 2000 });
   });
 });

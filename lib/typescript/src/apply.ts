@@ -90,7 +90,7 @@ import {
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 import { isRangeInFlight } from "./inFlight";
 import { applyTextStyle, copyTypography, textStyleByNode } from "./typography";
-import { FALLBACK_SVG, ICONS } from "./generated/icons";
+import { setIcon } from "./icons";
 
 /** Component type per retained node, so PARAMETER/TREE application can special-case
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
@@ -897,13 +897,14 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
       break;
     }
     case PROP_ICON_NAME: {
-      // A semantic icon: swap the Remix **filled** inner markup for the canonical name
-      // (the ICON_NAME → generated/inner map). Unknown → decoratiive fallback.
+      // A semantic icon: swap the filled inner markup for the canonical name.
+      // The glyph comes from an embedded sibling / the memo cache / a lazy
+      // fetch of the renderer-owned `/_pathland/icons/<name>.svg` (icons.ts).
       const svg = el.matches("svg.pathland-icon")
         ? el
         : el.querySelector("svg.pathland-icon");
       if (svg) {
-        svg.innerHTML = ICONS[text] ?? FALLBACK_SVG;
+        setIcon(svg, text);
       }
       break;
     }

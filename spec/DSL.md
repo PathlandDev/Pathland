@@ -457,12 +457,16 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
 
 **Reserved framework root** — the host reserves **`/_pathland/**`** for its own
 system endpoints, so app routes never collide with them: the WebSocket lives at
-`/_pathland/ws`, the DOM-client bundle at `/_pathland/dom-renderer.js`, and the
-host's asset mount at `/_pathland/assets/**`. App routes are everything else
-(served by the SSR catch-all). The DOM client reads the base from the SSR page's
-`data-pathland-base` attribute (default `/_pathland`), so a host can relocate it
-behind a proxy. Asset references in the UI model are **absolute**
-(`/_pathland/assets/icons/home.svg`) so deep-linked routes resolve correctly.
+`/_pathland/ws`, the DOM-client bundle at `/_pathland/dom-renderer.js`, the
+renderer-owned icon glyphs at `/_pathland/icons/<name>.svg` (served from the
+shared HTML-renderer library — `pathland_html_icon_svg` over the C ABI — which
+the DOM client lazily fetches when a delta references an `ICON_NAME` the page
+did not embed), and the host's asset mount at `/_pathland/assets/**`. App routes
+are everything else (served by the SSR catch-all). The DOM client reads the
+base from the SSR page's `data-pathland-base` attribute (default `/_pathland`),
+so a host can relocate it behind a proxy. Asset references in the UI model are
+**absolute** (`/_pathland/assets/icons/home.svg`) so deep-linked routes resolve
+correctly.
 
 **The `Navigation` facade** — the ergonomic entry point. `Navigation.navigator`
 collapses the route table + router + seeding into one readable flow, and

@@ -26,12 +26,14 @@ Rust sources, so the TS side cannot drift silently.
   the Rust SSR renderer and the DOM client. `constants.ts` also carries the
   media surface (`COMPONENT_AUDIO`/`VIDEO`, `PROP_AUDIO_SOURCE`/`VIDEO_SOURCE`)
   and the icon surface (`COMPONENT_ICON`, `PROP_ICON_NAME`).
-- **`generated/icons.ts`** (`lib/typescript/src/generated/icons.ts`): the
-  canonical icon catalog mirrored from `pathland-render-html::icons` — `ICONS` (canonical
-  `ICON_NAME` → Remix **filled** inner SVG markup) plus the SVG shell +
-  fallback strings —
-  so the DOM client renders exactly what the Rust SSR renderer emits and the two
-  cannot drift.
+- **Icon glyph map — intentionally NOT generated.** The full canonical icon
+  catalog (`generated/icons.ts`, ~13KB in the bundle) was **removed**: the DOM
+  client no longer carries glyph data. SSR inlines only the icons the page uses,
+  and a runtime swap to a name the page did not embed lazily fetches
+  `/_pathland/icons/<name>.svg` from the host — which serves it from the shared
+  Rust renderer (`pathland_html_icon_svg`, the same `pathland-render-html::icons`
+  source SSR inlines from), so glyph parity between SSR and the client is
+  guaranteed by the single Rust source, not by a mirrored TS map.
 - **`npm run regen`** (`lib/typescript/scripts/regen.mjs`) runs both generators
   (and the golden-fixture emitter); CI's `rust` job runs them and fails on
   `git diff --exit-code` drift.

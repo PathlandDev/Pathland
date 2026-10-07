@@ -170,9 +170,31 @@ function hydrate(fragment: string): DomRenderer {
   return { byId };
 }
 
+/**
+ * Seed the live document with the SSR fragment's *embedded* icon glyphs. The
+ * DOM client's lazy icon resolver reads a swap target from an already-embedded
+ * `svg[data-pathland-icon]` — exactly what a hydrated page carries — so a
+ * fresh-DOM replay must seed those glyphs or the runtime would show the
+ * fallback (the glyph data is deliberately not in the bundle anymore).
+ */
+function seedEmbeddedIcons(fragment: string): void {
+  const host = document.createElement("div");
+  host.innerHTML = fragment;
+  for (const svg of host.querySelectorAll<SVGElement>("svg.pathland-icon[data-pathland-icon]")) {
+    const name = svg.getAttribute("data-pathland-icon");
+    if (!name) continue;
+    const clone = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    clone.setAttribute("class", "pathland-icon");
+    clone.setAttribute("data-pathland-icon", name);
+    clone.innerHTML = svg.innerHTML;
+    document.body.appendChild(clone);
+  }
+}
+
 describe("SSR conformance (golden fixtures from pathland-html-golden)", () => {
   for (const name of FULL) {
     it(`${name}: fresh-DOM runtime render matches the Rust SSR fragment`, () => {
+      seedEmbeddedIcons(html(name));
       const batch: Batch = parseBatch(plpl(name));
       const root = renderFresh(plpl(name), 1);
       expect(canon(root), name).toBe(canon(html(name)));
