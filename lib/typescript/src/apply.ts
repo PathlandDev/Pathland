@@ -68,14 +68,16 @@ import {
   PROP_VIDEO_SOURCE,
   VAL_DESIGN_TOKEN,
   VAL_ENUM,
+  VAL_LIST,
   VAL_STRING,
   VAL_U8,
 } from "./constants";
 import type { Batch, Opcode } from "./plpl";
-import { readString } from "./plpl";
+import { readList, readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
 import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
+  encodeFittedChanged,
   encodeMediaEnded,
   encodeMediaPlayStateChanged,
   encodeMediaTimeUpdated,
@@ -327,6 +329,11 @@ export interface DomRenderer {
    * `AUDIO`/`VIDEO` node can report play/pause/time/ended/volume (host → guest).
    */
   onMediaEvent?: (batch: Uint8Array) => void;
+  /**
+   * Optional fit-event sink: the host wires it to `transport.send` so a
+   * `SIZE_THAT_FITS` slot can report its derived fit index (`FIT_CHANGED`).
+   */
+  onFitEvent?: (batch: Uint8Array) => void;
 }
 
 /** Apply every opcode in a batch to the DOM (TREE structure + PARAMETER/META deltas). */
@@ -452,6 +459,12 @@ function applyTree(op: Opcode, r: DomRenderer): void {
           }
           mediaState.delete(media);
         }
+        // Stop a removed fitted slot's ResizeObserver.
+        const fit = fitState.get(host);
+        if (fit?.observer) {
+          fit.observer.disconnect();
+        }
+        fitState.delete(host);
         if (host.parentNode) {
           host.parentNode.removeChild(host);
         }
@@ -793,6 +806,8 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
         }
       } else if (valueType === VAL_DESIGN_TOKEN) {
         applyTokenRefProperty(el, propId, readString(strings, op.c));
+      } else if (valueType === VAL_LIST) {
+        applyFitQuery(el, r, readList(strings, op.c));
       } else if (componentByNode.get(el) === COMPONENT_PROGRESS_VIEW
               && (propId === PROP_IS_INDETERMINATE || propId === PROP_PROGRESS)) {
         applyProgress(el, r, propId, valueType, op.c);
@@ -1262,6 +1277,82 @@ export function __setMediaLastReported(el: HTMLMediaElement, seconds: number): v
   if (state) {
     state.lastReported = seconds;
   }
+}
+
+// --- SizeThatFits (FIT_QUERY → local fit → FIT_CHANGED only on transitions) ---
+
+interface FitSlotState {
+  thresholds: number[];
+  lastIndex: number;
+  observer: ResizeObserver | null;
+}
+
+/** Per-`SIZE_THAT_FITS` slot state: the candidate thresholds + last reported index. */
+const fitState = new WeakMap<HTMLElement, FitSlotState>();
+
+/** The fit rule (spec/PRIMITIVES.md): max i with thresholds[i] <= width;
+ *  thresholds ascending, equal thresholds pick the lower index (stable). */
+function fitIndexFor(thresholds: number[], width: number): number {
+  let selected = 0;
+  for (const [i, t] of thresholds.entries()) {
+    if (t > width) break;
+    if (i === 0 || thresholds[i - 1] !== t) selected = i;
+  }
+  return selected;
+}
+
+/** Apply a LIST-typed property (a `FIT_QUERY` threshold table) to a fitted slot. */
+function applyFitQuery(el: HTMLElement, r: DomRenderer, thresholds: number[]): void {
+  el.setAttribute("data-pathland-fit", thresholds.join(","));
+  const state = ensureFitState(el, r);
+  state.thresholds = thresholds;
+  evaluateFit(el, r, state);
+}
+
+/** Hydrate a fitted slot from the SSR's `data-pathland-fit` attribute. */
+export function hydrateFitElement(el: HTMLElement, r: DomRenderer): void {
+  const raw = el.getAttribute("data-pathland-fit");
+  if (raw == null) return;
+  const thresholds = raw.split(",").map(Number).filter(Number.isFinite);
+  applyFitQuery(el, r, thresholds);
+}
+
+function ensureFitState(el: HTMLElement, r: DomRenderer): FitSlotState {
+  let state = fitState.get(el);
+  if (!state) {
+    state = { thresholds: [], lastIndex: -1, observer: null };
+    fitState.set(el, state);
+    if (typeof ResizeObserver !== "undefined") {
+      state.observer = new ResizeObserver(() => evaluateFit(el, r, state!));
+      state.observer.observe(el);
+    }
+  }
+  return state;
+}
+
+/** Re-derive a slot's fit from its measured width, reporting only on transitions
+ *  (the spec'd cadence — no size stream, only a `FIT_CHANGED` when the pick
+ *  actually changes; the first measure always reports once). */
+function evaluateFit(el: HTMLElement, r: DomRenderer, state: FitSlotState): void {
+  const send = r.onFitEvent;
+  if (!send) return;
+  const width = el.getBoundingClientRect().width;
+  const index = fitIndexFor(state.thresholds, width);
+  if (index === state.lastIndex) return;
+  state.lastIndex = index;
+  const id = Number(el.getAttribute("data-pathland-id"));
+  if (Number.isInteger(id) && id > 0) {
+    send(encodeFittedChanged(id, index));
+  }
+}
+
+/** Test-only: tear a fitted slot's observer down (mirrors CMD_DELETE_NODE). */
+export function destroyFitElement(el: HTMLElement): void {
+  const state = fitState.get(el);
+  if (state?.observer) {
+    state.observer.disconnect();
+  }
+  fitState.delete(el);
 }
 
 /** Apply a media control property: drive the media element, suppress the echo,

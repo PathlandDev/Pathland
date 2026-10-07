@@ -280,6 +280,8 @@ public final class FrameCodec {
                 case Commands.Event.MEDIA_ENDED -> events.add(Event.mediaEnded(op.a()));
                 case Commands.Event.MEDIA_VOLUME_CHANGED -> events.add(
                         Event.mediaVolumeChanged(op.a(), Float.intBitsToFloat(op.b())));
+                case Commands.Event.FIT_CHANGED -> events.add(
+                        Event.fitChanged(op.a(), Float.intBitsToFloat(op.b())));
                 case Commands.Event.POINTER_DOWN, Commands.Event.POINTER_MOVE, Commands.Event.POINTER_UP -> events.add(
                         new Event(command, op.a(), op.flags(), Float.intBitsToFloat(op.b()),
                                 Float.intBitsToFloat(op.c()), 0, null, 0, 0));

@@ -806,6 +806,35 @@ fn strings_str(strings: &[u8], offset: u32) -> Option<String> {
     std::str::from_utf8(&strings[start..start + len]).ok().map(str::to_owned)
 }
 
+/// Decode a `LIST` arena entry (`[u32 count][f32 × count]`) as a CSV string with
+/// trimmed thresholds (e.g. `"0,640"`) — the `FIT_QUERY` mirror the SSR shell
+/// emits in its `data-pathland-fit` attribute.
+fn list_csv(strings: &[u8], offset: u32) -> Option<String> {
+    let offset = offset as usize;
+    if offset + 4 > strings.len() {
+        return None;
+    }
+    let count = u32::from_le_bytes(strings[offset..offset + 4].try_into().ok()?) as usize;
+    let start = offset + 4;
+    if start + count * 4 > strings.len() {
+        return None;
+    }
+    let mut parts = Vec::with_capacity(count);
+    for i in 0..count {
+        let bits = u32::from_le_bytes(
+            strings[start + i * 4..start + i * 4 + 4].try_into().ok()?,
+        );
+        let value = f32::from_bits(bits);
+        // Trim: whole values render without a fraction ("0,640").
+        parts.push(if value.fract() == 0.0 {
+            format!("{:.0}", value)
+        } else {
+            format!("{:.1}", value)
+        });
+    }
+    Some(parts.join(","))
+}
+
 // --- Design tokens (spec/TOKENS.md) ---
 
 /// `SET_DESIGN_TOKEN` overrides collected from a snapshot batch. `base` holds
@@ -982,6 +1011,13 @@ fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings
                     if let Some(path) = strings_str(strings, op.c()) {
                         node.token_refs.insert(property, path);
                     }
+                } else if vt == value_type::LIST {
+                    // A length-prefixed f32 array — today a `FIT_QUERY` threshold
+                    // table; stored as its CSV form so the SSR shell can mirror it
+                    // in a `data-pathland-fit` attribute for the DOM client.
+                    if let Some(csv) = list_csv(strings, op.c()) {
+                        node.strings.insert(property, csv);
+                    }
                 } else {
                     node.properties.insert(property, op.c());
                 }
@@ -1156,6 +1192,22 @@ impl HtmlRenderer {
             }
             component_type::LAZY_HSTACK => {
                 wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
+            }
+            component_type::SIZE_THAT_FITS => {
+                // A fit slot (spec/PRIMITIVES.md §SizeThatFits): size-taking — it
+                // fills the parent's proposal, and that measured width is the unit
+                // of fitting. The single (selected) child is all that transmits;
+                // `data-pathland-fit` mirrors the FIT_QUERY threshold table so the
+                // DOM client can derive the fit locally (and only report FIT_CHANGED
+                // on transitions).
+                let fit_attr = node
+                    .strings
+                    .get(&property_id::FIT_QUERY)
+                    .map(|csv| format!(" data-pathland-fit=\"{}\"", escape(csv)))
+                    .unwrap_or_default();
+                format!(
+                    "<div{data_id} class=\"pathland-ftf\"{fit_attr}{event}{aria} style=\"flex:1 1 auto;align-self:stretch;{css}{derived}\">{children}</div>"
+                )
             }
             component_type::TEXT => {
                 // A TEXT's tag is resolved by typography + role: a heading

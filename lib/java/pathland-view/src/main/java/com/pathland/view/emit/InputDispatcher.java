@@ -24,6 +24,7 @@ public final class InputDispatcher {
     private final Map<Integer, Consumer<Boolean>> editingInputs;
     private final Map<Integer, DateInput> dateInputs;
     private final Map<Integer, MediaInput> mediaInputs;
+    private final Map<Integer, Consumer<Integer>> fitInputs;
     private final Consumer<Event> navigateHandler;
     private final WritableSignal<String> activePath;
 
@@ -35,6 +36,7 @@ public final class InputDispatcher {
         this.editingInputs = result.editingInputs();
         this.dateInputs = result.dateInputs();
         this.mediaInputs = result.mediaInputs();
+        this.fitInputs = result.fitInputs();
         this.navigateHandler = result.navigateHandler();
         this.activePath = activePath;
     }
@@ -99,6 +101,11 @@ public final class InputDispatcher {
             MediaInput sink = mediaInputs.get(event.target());
             if (sink != null) {
                 sink.onVolumeChanged(event.mediaValue());
+            }
+        } else if (event.isFitChanged()) {
+            Consumer<Integer> sink = fitInputs.get(event.target());
+            if (sink != null) {
+                sink.accept(event.fitIndex());
             }
         } else if (event.isNavigate()) {
             if (event.url() != null) {

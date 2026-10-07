@@ -101,6 +101,11 @@ public record Event(
         return new Event(Commands.Event.MEDIA_VOLUME_CHANGED, target, 0, 0, 0, volume, null, 0, 0);
     }
 
+    /** A `SIZE_THAT_FITS` slot's selected candidate changed (the fit index). */
+    public static Event fitChanged(int target, float index) {
+        return new Event(Commands.Event.FIT_CHANGED, target, 0, 0, 0, index, null, 0, 0);
+    }
+
     public boolean isPointerDown() {
         return command == Commands.Event.POINTER_DOWN;
     }
@@ -173,6 +178,10 @@ public record Event(
         return command == Commands.Event.MEDIA_VOLUME_CHANGED;
     }
 
+    public boolean isFitChanged() {
+        return command == Commands.Event.FIT_CHANGED;
+    }
+
     /** For {@code MEDIA_PLAY_STATE_CHANGED}: the playing bit (0/1). */
     public boolean mediaPlaying() {
         return b != 0;
@@ -181,6 +190,11 @@ public record Event(
     /** For {@code MEDIA_TIME_UPDATED}: seconds; for {@code MEDIA_VOLUME_CHANGED}: volume (0..1). */
     public float mediaValue() {
         return value;
+    }
+
+    /** For {@code FIT_CHANGED}: the derived fit index. */
+    public int fitIndex() {
+        return Math.round(value);
     }
 
     /** For `NAVIGATE` with the `NAVIGATE_URL` flag: the destination URL; null for a back request. */

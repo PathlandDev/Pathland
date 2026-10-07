@@ -4,7 +4,7 @@
 // SSR HTML carries a `data-event-listeners` mask). Bundle: dist/pathland-dom-renderer.js
 
 import type { DomRenderer } from "./apply";
-import { setupMediaElement, updateNavBackButtons } from "./apply";
+import { hydrateFitElement, setupMediaElement, updateNavBackButtons } from "./apply";
 import { Transport } from "./transport";
 import { log } from "./log";
 import { clearInFlightRange, markRangeInFlight } from "./inFlight";
@@ -172,10 +172,25 @@ function boot(): void {
       transport.send(batch);
     }
   };
+  // Fit changes from SIZE_THAT_FITS slots (spec/PRIMITIVES.md §SizeThatFits):
+  // the slotted candidate index reported only on transitions.
+  renderer.onFitEvent = (batch) => {
+    if (transport.open) {
+      transport.send(batch);
+    }
+  };
   // Wire app-driven media nodes hydrated from the SSR HTML (they carry the
   // `data-pathland-media` marker) so playback state reports to the app.
   for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
     setupMediaElement(el, renderer);
+  }
+
+  // Hydrate fitted slots from the SSR HTML (they carry `data-pathland-fit`): an
+  // initial measure reports the first derived index once; subsequent reports
+  // arrive only on band crossings. The slot's own ResizeObserver detects width
+  // changes locally (spec/PRIMITIVES.md).
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-fit]")) {
+    hydrateFitElement(el, renderer);
   }
 
   // Enrich the environment after connect: a window resize re-emits the viewport
