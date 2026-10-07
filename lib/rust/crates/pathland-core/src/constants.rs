@@ -490,7 +490,7 @@ pub mod property_id {
     /// **Draft.** A `SIZE_THAT_FITS` slot's candidate fit-query (LIST): the
     /// candidates' `minWidth` thresholds, ascending. The renderer measures its
     /// allocated width and reports the derived fit index (`FIT_CHANGED`).
-    pub const FIT_QUERY: u16 = 0x1032;
+    pub const FIT_QUERY: u16 = 0x1039;
     /// **Draft.** Predefined typography (ENUM code, see [`crate::text_style`]):
     /// `.font(.title2)` picks a whole design-system typography; the heading
     /// styles (LargeTitle…Headline) imply a heading element on a `TEXT`.

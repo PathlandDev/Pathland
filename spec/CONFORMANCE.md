@@ -556,21 +556,21 @@ A transition hint on the slot (enum code carried as an `F32` bit pattern):
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 40 40` C = 3.0 (f32 LE: 0x40400000) = `Slide`
 
-### 28a. PARAMETER:SET_PROPERTY (id=1, propertyId=FIT_QUERY=0x1032, valueType=LIST=0x09, arenaRef=0)
+### 28a. PARAMETER:SET_PROPERTY (id=1, propertyId=FIT_QUERY=0x1039, valueType=LIST=0x09, arenaRef=0)
 
 A `SIZE_THAT_FITS` slot's candidate threshold table. `C` is an arena offset; the
 arena entry is a length-prefixed f32 array `[u32 count][f32 × count]`.
 
 ```
-02 01 00 00 01 00 00 00 32 10 09 00 00 00 00 00
+02 01 00 00 01 00 00 00 39 10 09 00 00 00 00 00
 ```
 
 - `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
-- `32 10 09 00` B = `(valueType << 16) | propertyId` = `(0x09 << 16) | 0x1032`
-  - low two bytes `32 10` = propertyId = 0x1032 (FIT_QUERY)
+- `32 10 09 00` B = `(valueType << 16) | propertyId` = `(0x09 << 16) | 0x1039`
+  - low two bytes `39 10` = propertyId = 0x1039 (FIT_QUERY)
   - high byte `09` = valueType = 0x09 (LIST)
 - `00 00 00 00` C = arenaRef = 0
 

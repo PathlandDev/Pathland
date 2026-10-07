@@ -709,7 +709,7 @@ by swapping the slot's child (a `TREE` delta pair); a selection that maps to the
 already-shown view re-emits **zero** opcodes.
 
 Semantics:
-- **Properties**: `FIT_QUERY` (`0x1032`, LIST).
+- **Properties**: `FIT_QUERY` (`0x1039`, LIST).
 - **Events**: `FIT_CHANGED` (`0x13`, host → guest) — reported fit index.
 - **Children**: at most one (the current selection); candidate views live
   app-side.

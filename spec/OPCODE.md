@@ -227,7 +227,7 @@ per-edge variants map to native padding, alongside
 | `PADDING_BOTTOM` | `0x1014` | F32 | Bottom padding |
 | `PADDING_LEFT` | `0x1015` | F32 | Left padding |
 | `BORDER_EDGES` | `0x1016` | U32 | Which border edges to draw (bitmask, see [`border_edges`] flags) |
-| `FIT_QUERY` | `0x1032` | LIST | A `SizeThatFits` slot's candidate fit-query: ascending `minWidth` thresholds (F32 elements) — the renderer measures its own allocated width and reports the fit index (see [`SizeThatFits`](./PRIMITIVES.md#size-that-fits--size-that-fits-0x17)) |
+| `FIT_QUERY` | `0x1039` | LIST | A `SizeThatFits` slot's candidate fit-query: ascending `minWidth` thresholds (F32 elements) — the renderer measures its own allocated width and reports the fit index (see [`SizeThatFits`](./PRIMITIVES.md#size-that-fits--size-that-fits-0x17)) |
 | `TRANSITION` | `0x1031` | F32 (enum code) | Presentation hint for structural swaps (a `NavigationContainer` destination swap, a `Conditional.when` branch change): `None`=0, `PlatformDefault`=1, `Fade`=2, `Slide`=3, `Scale`=4 — the renderer **may** animate, never stores navigation state |
 
 `BORDER_EDGES` is a u32 bitmask (`SET_PROPERTY` with the `U32` value type)
