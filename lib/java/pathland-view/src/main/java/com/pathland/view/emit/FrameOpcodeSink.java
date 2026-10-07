@@ -92,6 +92,19 @@ public class FrameOpcodeSink implements OpcodeSink {
             int offset = strings.size();
             writeString(((Color) value).token());
             push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, offset);
+        } else if (valueType == ValueTypes.LIST) {
+            // C = arena offset of a length-prefixed array `[u32 count][f32 × count]`
+            // (spec/OPCODE.md §Value types — a `FIT_QUERY` threshold table).
+            int offset = strings.size();
+            float[] elements = (float[]) value;
+            writeIntLE(elements.length);
+            for (float element : elements) {
+                strings.write(Float.floatToIntBits(element) & 0xFF);
+                strings.write((Float.floatToIntBits(element) >>> 8) & 0xFF);
+                strings.write((Float.floatToIntBits(element) >>> 16) & 0xFF);
+                strings.write((Float.floatToIntBits(element) >>> 24) & 0xFF);
+            }
+            push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, offset);
         } else {
             push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, ValueEncoder.encodeBits(valueType, value));
         }

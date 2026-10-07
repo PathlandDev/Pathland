@@ -85,6 +85,10 @@ public final class PathlandNode {
      *  events (spec/EVENTS.md) into it — play state, time, ended, volume. */
     public MediaInput mediaInput;
 
+    /** Fit-index sink (`SIZE_THAT_FITS`): the host routes `FIT_CHANGED` into it —
+     *  a selected-candidate index the container converts into its slot selection. */
+    public Consumer<Integer> fitInput;
+
     /**
      * Structural slot: when non-null this node's single child subtree is selected by
      * a signal and **reconciled** by the emitter on selector change (spec DSL.md §3.4).
