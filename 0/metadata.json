@@ -1,0 +1,85 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4BHMTVN5DG30X2AYK99113K",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-07T16:03:25.297752Z",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "save_step_count": 4,
+  "files_touched": [
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.js",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "spec/EVENTS.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "0207ed5c0028",
+  "checkpoint_transcript_start": 4200,
+  "transcript_lines_at_start": 4200,
+  "compact_transcript_start": 4200,
+  "token_usage": {
+    "input_tokens": 2147846,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 25825792,
+    "output_tokens": 35082,
+    "api_call_count": 93
+  },
+  "session_metrics": {
+    "turn_count": 251
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-07T16:03:22.02072Z",
+    "agent_lines": 118,
+    "agent_removed": 50,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 118,
+    "total_lines_changed": 168,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 58,
+      "agent_lines_removed": 35
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 58,
+      "agent_lines_removed": 35
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 58,
+      "agent_lines_removed": 35
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 118,
+      "agent_lines_removed": 50
+    }
+  ]
+}

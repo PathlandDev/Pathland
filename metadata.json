@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4BHMTVN5DG30X2AYK99113K",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.js",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "spec/EVENTS.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2147846,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 25825792,
+    "output_tokens": 35082,
+    "api_call_count": 93
+  }
+}
