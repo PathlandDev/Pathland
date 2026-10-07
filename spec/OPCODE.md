@@ -142,6 +142,7 @@ B = (valueType << 16) | propertyId
 | `ENUM` | `0x06` | low byte of C |
 | `COLOR` | `0x07` | packed `0xAARRGGBB` |
 | `DESIGN_TOKEN` | `0x08` | arenaRef (token path) |
+| `LIST` | `0x09` | arenaRef (length-prefixed array, see below) |
 
 > **Enum-valued properties** (`ALIGNMENT`, `TEXT_ALIGNMENT`, `TRUNCATION_MODE`,
 > `ROLE`, `STATE`, and the draft `FONT_*`/`CONTENT_MODE`/`CONTROL_SIZE`/`SHAPE_KIND`
@@ -155,6 +156,14 @@ B = (valueType << 16) | propertyId
 > `STRING` / `ENUM` value MAY instead carry the `DESIGN_TOKEN` value type, with
 > `C` = arenaRef to a token path (see [Design Token System](#design-token-system)
 > and [TOKENS.md](./TOKENS.md)).
+>
+> **`LIST` arrays**: a `LIST` value (`C` = arenaRef) is a length-prefixed array in
+> the string arena: `[u32 count][element × count]`, each element a `u32` holding
+> the value-type's bit pattern — currently produced with each element a `F32`
+> (the `FIT_QUERY` threshold table), so `bytes = 4 + 4·count`. The count is the
+> first `u32` (little-endian); a zero count is an empty list. Decoders read the
+> element count, never infer it from the arena length, so a property can re-emit
+> a shorter list with the arena entry intact.
 
 #### Constraint properties for native layout
 
@@ -218,6 +227,7 @@ per-edge variants map to native padding, alongside
 | `PADDING_BOTTOM` | `0x1014` | F32 | Bottom padding |
 | `PADDING_LEFT` | `0x1015` | F32 | Left padding |
 | `BORDER_EDGES` | `0x1016` | U32 | Which border edges to draw (bitmask, see [`border_edges`] flags) |
+| `FIT_QUERY` | `0x1032` | LIST | A `SizeThatFits` slot's candidate fit-query: ascending `minWidth` thresholds (F32 elements) — the renderer measures its own allocated width and reports the fit index (see [`SizeThatFits`](./PRIMITIVES.md#size-that-fits--size-that-fits-0x17)) |
 | `TRANSITION` | `0x1031` | F32 (enum code) | Presentation hint for structural swaps (a `NavigationContainer` destination swap, a `Conditional.when` branch change): `None`=0, `PlatformDefault`=1, `Fade`=2, `Slide`=3, `Scale`=4 — the renderer **may** animate, never stores navigation state |
 
 `BORDER_EDGES` is a u32 bitmask (`SET_PROPERTY` with the `U32` value type)

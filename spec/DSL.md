@@ -314,6 +314,7 @@ always drives the accessibility label.
 | `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` / `LazyHGrid.of(int rows, View...)` / `LazyHGrid.of(List<GridItem>, View...)` / `LazyHGrid.of(int rows, Alignment, float, View...)` / `LazyHGrid.of(List<GridItem>, Alignment, float, View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
 | `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.of(View...)` | `LAZY_VSTACK` 0x1B |
 | `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.of(View...)` | `LAZY_HSTACK` 0x1C |
+| `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.of(Fit...)` / `SizeThatFits.of(View...)` (candidates `Fit.of(view, minWidth)` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1032 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
 
 Alignment is **position-only** (SwiftUI/Compose parity): `VStack` takes a
 `HorizontalAlignment` (leading/center/trailing), `HStack` a `VerticalAlignment`

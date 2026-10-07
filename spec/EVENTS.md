@@ -276,12 +276,21 @@ renderer-native media element with default controls reports nothing).
 | `MEDIA_TIME_UPDATED` | 0x10 | targetId | seconds (f32) | 0 | — | periodic time observer |
 | `MEDIA_ENDED` | 0x11 | targetId | 0 | 0 | — | `AVPlayerItemDidPlayToEndTime` |
 | `MEDIA_VOLUME_CHANGED` | 0x12 | targetId | volume (f32, 0..1) | 0 | — | `AVPlayer.volume` |
+| `FIT_CHANGED` | 0x13 | targetId | fit index (f32) | 0 | — | a `SizeThatFits` slot's selected candidate |
 
 - **`MEDIA_TIME_UPDATED`**: the media's current playback position in seconds.
   Reported **~30×/s while playing (≈ every 33 ms of playback progress)** —
   both renderers sample their position source at ~30 Hz (best-effort: browser
   background-tab and occluded-window timers throttle to worse cadences). A seek
   initiated by the app (`MEDIA_POSITION` change) is not echoed back.
+- **`FIT_CHANGED`**: a `SIZE_THAT_FITS` slot's **selected candidate index** —
+  the renderer measures its own allocated width against the slot's `FIT_QUERY`
+  thresholds and reports the derived index. Emitted **once after the first
+  measure, and then only when the derived index changes** (a band crossing) —
+  never a steady size stream. The app swaps the slot's child in response; a
+  `FIT_CHANGED` that maps to the already-shown candidate must re-emit **zero**
+  opcodes. Hosts route it into the slot's fit sink, never as a general size
+  event.
 - **Commands vs reports (MUST)**: `MEDIA_POSITION`/`MEDIA_VOLUME` are **seek /
   volume commands** the app writes to control playback; `MEDIA_TIME_UPDATED` /
   `MEDIA_VOLUME_CHANGED` are **position / volume reports** the renderer emits.

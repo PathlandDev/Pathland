@@ -506,6 +506,20 @@ The user changed the media volume (0..1, f32).
 - `00 00 00 3F` B = 0.5f (0x3F000000 LE)
 - `00 00 00 00` C = 0
 
+### 26a. EVENT:FIT_CHANGED (target=42, index=2)
+
+A `SIZE_THAT_FITS` slot reports its selected candidate index (f32).
+
+```
+03 13 00 00 2A 00 00 00 00 00 00 40 00 00 00 00
+```
+
+- `03` category = EVENT
+- `13` command = FIT_CHANGED
+- `2A 00 00 00` A = targetId = 42
+- `00 00 00 40` B = 2.0f (0x40000000 LE)
+- `00 00 00 00` C = 0
+
 ### 27. PARAMETER:SET_PROPERTY (id=1, propertyId=ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)
 
 The `NavigationContainer` emits the current path as a STRING property; the DOM
@@ -541,6 +555,35 @@ A transition hint on the slot (enum code carried as an `F32` bit pattern):
   - low two bytes `31 10` = propertyId = 0x1031 (TRANSITION)
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 40 40` C = 3.0 (f32 LE: 0x40400000) = `Slide`
+
+### 28a. PARAMETER:SET_PROPERTY (id=1, propertyId=FIT_QUERY=0x1032, valueType=LIST=0x09, arenaRef=0)
+
+A `SIZE_THAT_FITS` slot's candidate threshold table. `C` is an arena offset; the
+arena entry is a length-prefixed f32 array `[u32 count][f32 × count]`.
+
+```
+02 01 00 00 01 00 00 00 32 10 09 00 00 00 00 00
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `32 10 09 00` B = `(valueType << 16) | propertyId` = `(0x09 << 16) | 0x1032`
+  - low two bytes `32 10` = propertyId = 0x1032 (FIT_QUERY)
+  - high byte `09` = valueType = 0x09 (LIST)
+- `00 00 00 00` C = arenaRef = 0
+
+Arena (entry at offset 0) — thresholds `[720, 480, 0]`:
+
+```
+03 00 00 00 00 00 34 44 00 00 F0 43 00 00 00 00
+```
+
+- `03 00 00 00` = count = 3
+- `00 00 34 44` = 720.0f (0x44340000 LE)
+- `00 00 F0 43` = 480.0f (0x43F00000 LE)
+- `00 00 00 00` = 0.0f
 
 ### 29. Structural swap (slot 4: delete old destination 5, create new destination 6, insert)
 
