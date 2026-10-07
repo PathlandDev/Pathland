@@ -115,6 +115,10 @@ pub enum Event {
     /// A bound media node's volume changed (host → guest). Draft command 0x12;
     /// `volume` is in the range 0..1 (f32).
     MediaVolumeChanged { target: u32, volume: f32 },
+    /// A `SIZE_THAT_FITS` slot's selected candidate changed (host → guest).
+    /// Draft command 0x13; `index` is the derived fit index (f32), reported once
+    /// after the first measure and then only when it changes.
+    FitChanged { target: u32, index: f32 },
 }
 
 impl Event {
@@ -308,6 +312,14 @@ impl Event {
                 volume.to_bits(),
                 0,
             ),
+            Event::FitChanged { target, index } => Opcode::new(
+                category::EVENT,
+                crate::event::FIT_CHANGED,
+                0,
+                *target,
+                index.to_bits(),
+                0,
+            ),
         }
     }
 }
@@ -428,6 +440,10 @@ impl TryFrom<Opcode> for Event {
             crate::event::MEDIA_VOLUME_CHANGED => Ok(Event::MediaVolumeChanged {
                 target: op.a(),
                 volume: op.b_f32(),
+            }),
+            crate::event::FIT_CHANGED => Ok(Event::FitChanged {
+                target: op.a(),
+                index: op.b_f32(),
             }),
             _ => Err(EventError::UnknownCommand),
         }
@@ -566,10 +582,11 @@ mod tests {
             Event::MediaTimeUpdated { target: 7, seconds: 12.5 },
             Event::MediaEnded { target: 7 },
             Event::MediaVolumeChanged { target: 7, volume: 0.5 },
+            Event::FitChanged { target: 42, index: 2.0 },
         ] {
             assert_eq!(round_trip(e.clone()), e);
         }
-        // Conformance vector bytes (spec/CONFORMANCE.md vectors 23–26).
+        // Conformance vector bytes (spec/CONFORMANCE.md vectors 23–26, 26a).
         assert_eq!(
             Event::MediaPlayStateChanged { target: 7, playing: true }.encode().to_bytes(),
             [0x03, 0x0F, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
@@ -585,6 +602,10 @@ mod tests {
         assert_eq!(
             Event::MediaVolumeChanged { target: 7, volume: 0.5 }.encode().to_bytes(),
             [0x03, 0x12, 0, 0, 7, 0, 0, 0, 0, 0, 0x00, 0x3F, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::FitChanged { target: 42, index: 2.0 }.encode().to_bytes(),
+            [0x03, 0x13, 0, 0, 0x2A, 0, 0, 0, 0, 0, 0, 0x40, 0, 0, 0, 0]
         );
     }
 

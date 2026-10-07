@@ -574,16 +574,17 @@ arena entry is a length-prefixed f32 array `[u32 count][f32 × count]`.
   - high byte `09` = valueType = 0x09 (LIST)
 - `00 00 00 00` C = arenaRef = 0
 
-Arena (entry at offset 0) — thresholds `[720, 480, 0]`:
+Arena (entry at offset 0) — thresholds `[0, 480, 720]` (ascending, the `FIT_QUERY`
+ordering contract; the app's candidates map 0→fallback … 2→widest):
 
 ```
-03 00 00 00 00 00 34 44 00 00 F0 43 00 00 00 00
+03 00 00 00 00 00 00 00 00 00 F0 43 00 00 34 44
 ```
 
 - `03 00 00 00` = count = 3
-- `00 00 34 44` = 720.0f (0x44340000 LE)
+- `00 00 00 00` = 0.0f (the threshold-0 fallback)
 - `00 00 F0 43` = 480.0f (0x43F00000 LE)
-- `00 00 00 00` = 0.0f
+- `00 00 34 44` = 720.0f (0x44340000 LE)
 
 ### 29. Structural swap (slot 4: delete old destination 5, create new destination 6, insert)
 

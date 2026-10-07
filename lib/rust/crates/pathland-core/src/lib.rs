@@ -54,6 +54,7 @@ mod arena;
 mod conformance;
 mod constants;
 mod events;
+pub mod fit;
 mod memory;
 mod opcode;
 mod ring;
