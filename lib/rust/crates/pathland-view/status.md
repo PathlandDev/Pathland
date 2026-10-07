@@ -47,6 +47,10 @@ trees. Protocol contract: `spec/`.
 
 ## Not implemented / gaps
 
+- **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED) is not yet
+  authored** — the retained `Component` variant + LIST property emission + a static
+  `SizeThatFits`/`Fit` surface (fit index fixed) is the next step; the Java DSL
+  parity surface is implemented.
 - `TextField`'s `PROMPT` and `Color`/`Image` sources are stored as placeholder
   values only (STRING props are supported via `Node::string_properties`, but
   these builders don't set them yet).

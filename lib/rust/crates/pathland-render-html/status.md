@@ -36,6 +36,10 @@ Statelessness). Protocol contract: `spec/`.
   embedded glyph for instant on-page swaps; `LABEL` →
   `role="img"` + `aria-label`, none → `aria-hidden`; sized `1em` so `FONT_SIZE`
   scales it, tinted via `fill="currentColor"`),
+  `SIZE_THAT_FITS` → `<div class="pathland-ftf">` (the fit slot: fill-sized with
+  `data-pathland-fit` mirroring the `FIT_QUERY` LIST, decoded as `[count][f32×count]`
+  at decode time — the DOM client derives the fit locally and reports
+  `FIT_CHANGED` on transitions),
   `COLOR` → `<div>`, `SHAPE` → CSS shapes / inline SVG, `DIVIDER` → `<hr>`,
   `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
   `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex

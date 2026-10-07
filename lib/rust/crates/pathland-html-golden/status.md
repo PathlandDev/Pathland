@@ -10,7 +10,9 @@ Cross-renderer **golden conformance fixtures** for the HTML renderers.
   composite controls, layout, tokens, **semantics** — semantic roles mapping to
   native elements/ARIA, **icons** — the `ICON` primitive's inline filled (Remix)
   SVG markup carrying `data-pathland-icon` (decorative + labeled, `FONT_SIZE`
-  sizing), **media** — image alt/content-mode +
+  sizing), **sizethatfits** — the `SIZE_THAT_FITS` slot with its selected
+  child + `FIT_QUERY` LIST mirrored to `data-pathland-fit`, **media** —
+  image alt/content-mode +
   video/audio native
   controls, and a base→delta pair whose change includes a `ROLE`
   change exercising the semantic-tag retag), each rendered by

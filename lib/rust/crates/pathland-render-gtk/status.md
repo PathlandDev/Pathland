@@ -209,6 +209,9 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 
 ## Not implemented / gaps
 
+- **`SizeThatFits` fit slots (SIZE_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED) are
+  not yet rendered** — the allocator's width-compare → `set_visible` + `FIT_CHANGED`
+  reporting is the next step (the web + Java DSL sides are implemented).
 - **Layout contract (spec/LAYOUT.md)**: aligned — stacks apply the per-child
   rule on **both** axes (main axis: only `FILL`/greedy children stretch and
   leftover goes to them, everything else positioned at the start; cross axis:

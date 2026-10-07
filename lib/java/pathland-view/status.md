@@ -9,6 +9,14 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 
 ## Implemented
 
+- **`SizeThatFits` fit slot** (`SizeThatFits.of(Fit...)` + `Fit.of(view, minWidth)`):
+  a structural slot (`SIZE_THAT_FITS` 0x17) emitting `FIT_QUERY` (LIST, ascending
+  thresholds) + the single selected child — unselected candidates never transmit.
+  The host routes `FIT_CHANGED` into the slot's fit sink
+  (`RenderResult.fitInputs`, via `InputDispatcher`), which swaps the child through
+  the structural reconcile (an unchanged index re-emits zero opcodes). The LIST
+  value type is written by `FrameOpcodeSink`/`RingOpcodeSink`
+  (`[count][f32 × count]` arena entries).
 - **Construction is `.of()` only**: every concrete view/control exposes a
   static `<ViewName>.of(...)` factory (`Text.of`, `VStack.of`,
   `Button.of(label, action)`, `Slider.of(binding, min, max)`,

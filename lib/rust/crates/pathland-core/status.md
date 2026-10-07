@@ -83,8 +83,14 @@ tracks what this crate implements.
   "Design-Token Resolution Conformance" table (spec/CONFORMANCE.md) is tested
   here.
 - **`value_type_for`** matches `spec/MODIFIERS.md`'s canonical mapping
-  (COLOR / U32 / U8 / STRING / F32-enum-code); the `DESIGN_TOKEN` value type
-  (`0x08`) is available per-instance on `SET_PROPERTY`.
+  (COLOR / U32 / U8 / STRING / F32-enum-code / LIST); the `DESIGN_TOKEN` value
+  type (`0x08`) is available per-instance on `SET_PROPERTY`. **`LIST`** (`0x09`)
+  is the arena-backed array value type (a `FIT_QUERY` threshold table).
+- **`SizeThatFits`** (`SIZE_THAT_FITS` `0x17`, `FIT_QUERY` `0x1039` LIST,
+  `FIT_CHANGED` `0x13`): the fit slot shows its single selected child (only it
+  is transmitted); `fit::fit_index` implements the spec'd pick (largest
+  threshold the width meets, ascending + stable, index 0 fallback) shared by
+  every renderer.
 - **Listener bits**: 0–9 (`POINTER_*`, `KEY_*`, `FOCUS`, `EDITING`, `SUBMIT`,
   `SCROLL`, `WHEEL`).
 - **`constants::role`** — the canonical **`ROLE` semantic-structure catalog**

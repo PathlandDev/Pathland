@@ -94,6 +94,13 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `LABEL` makes it presentable (`role="img"`/`aria-label`, else `aria-hidden`);
   the runtime mirrors the SSR svg's `data-pathland-icon` (golden `icons`
   fixture / `ssr-conformance`).
+- **SizeThatFits fit slots** (`src/apply.ts` + `elements.ts` + `src/events.ts`):
+  a `SIZE_THAT_FITS` node is a fill-sized `div.pathland-ftf`;
+  `FIT_QUERY` (the `LIST` value type — `readList`) is mirrored to
+  `data-pathland-fit`; a per-slot `ResizeObserver` derives the fit index locally
+  (the spec'd rule) and reports `encodeFittedChanged` **only on transitions**
+  (plus the first measure), torn down on `CMD_DELETE_NODE`. Golden
+  `sizethatfits` fixture / `ssr-conformance`; `test/fit.test.ts`.
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or
