@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4BV16B0BH9NNZ23RAHCE4W5",
+  "strategy": "manual-commit",
+  "branch": "feat/size-that-fits",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Fit.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/SizeThatFits.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/Emitter.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/FrameOpcodeSink.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/PathlandNode.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/RenderResult.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ffm/RingOpcodeSink.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/SizeThatFitsTest.java"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 18548,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 16688384,
+    "output_tokens": 18192,
+    "api_call_count": 38
+  }
+}
