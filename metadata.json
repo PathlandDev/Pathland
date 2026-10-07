@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4BMZQY4C2F5HCMJFGW9326Q",
+  "strategy": "manual-commit",
+  "branch": "feat/size-that-fits",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/rust/crates/pathland-core/src/events.rs",
+    "lib/rust/crates/pathland-core/src/fit.rs",
+    "lib/rust/crates/pathland-core/src/lib.rs",
+    "spec/CONFORMANCE.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 15281,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 9273856,
+    "output_tokens": 9812,
+    "api_call_count": 24
+  }
+}
