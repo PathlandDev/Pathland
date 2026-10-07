@@ -3,8 +3,21 @@
   "checkpoint_id": "01M4AP18AGVHMWH2RQE0A651XZ",
   "strategy": "manual-commit",
   "branch": "feat/icons",
-  "checkpoints_count": 1,
-  "files_touched": null,
+  "checkpoints_count": 12,
+  "files_touched": [
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/IndexResource.java",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-render-html/src/main/java/com/pathland/render/html/HtmlRenderer.java",
+    "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java",
+    "lib/java/pathland-render-html/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandIndexController.java",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/ssr-conformance.test.ts",
+    "spec/DSL.md"
+  ],
   "sessions": [
     {
       "metadata": "/0/metadata.json",
@@ -12,13 +25,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 17511,
+    "input_tokens": 52911559,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 114688,
-    "output_tokens": 3082,
-    "api_call_count": 8
+    "cache_read_tokens": 1449971072,
+    "output_tokens": 2667778,
+    "api_call_count": 3901
   }
 }

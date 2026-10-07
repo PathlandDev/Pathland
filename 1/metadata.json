@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4AP18AGVHMWH2RQE0A651XZ",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-07T08:00:50.227071Z",
+  "branch": "feat/icons",
+  "checkpoints_count": 11,
+  "save_step_count": 1,
+  "files_touched": [
+    "lib/typescript/src/apply.ts",
+    "lib/java/pathland-render-html/src/main/java/com/pathland/render/html/HtmlRenderer.java",
+    "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java",
+    "lib/java/pathland-spring-boot-starter/src/main/java/com/pathland/spring/PathlandIndexController.java",
+    "lib/java/pathland-quarkus-starter/src/main/java/com/pathland/quarkus/IndexResource.java",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/ssr-conformance.test.ts",
+    "spec/DSL.md",
+    "lib/typescript/status.md",
+    "lib/java/pathland-render-html/status.md",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-spring-boot-starter/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "4597738ca2ef",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 52894048,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1449856384,
+    "output_tokens": 2664696,
+    "api_call_count": 3893
+  },
+  "session_metrics": {
+    "turn_count": 237
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-07T08:00:47.908815Z",
+    "agent_lines": 205,
+    "agent_removed": 22,
+    "human_added": 216,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 421,
+    "total_lines_changed": 447,
+    "agent_percentage": 50.78299776286354,
+    "metric_version": 2
+  }
+}
