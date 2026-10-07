@@ -33,6 +33,22 @@ function embeddedGlyph(name: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Memorize every glyph the page has embedded — the SSR inlines each rendered
+ * icon, so a name that was ever on screen is capturable without a fetch. The
+ * seeds are DOM-only, so without this the very element being swapped would be
+ * the only play glyph and flipping it to pause would make the return trip to
+ * play a (cached) fetch. Skips empty/shadowed contents (a mid-fill element).
+ */
+function harvestEmbedded(): void {
+  for (const svg of document.querySelectorAll("svg.pathland-icon[data-pathland-icon]")) {
+    const name = svg.getAttribute("data-pathland-icon");
+    if (!name || cache.has(name)) continue;
+    const glyph = svg.innerHTML.trim();
+    if (glyph) cache.set(name, glyph);
+  }
+}
+
 async function fetchGlyph(name: string): Promise<string> {
   try {
     const url = new URL(`${basePath()}/icons/${encodeURIComponent(name)}.svg`, document.baseURI);
@@ -64,10 +80,10 @@ export function preloadIcon(name: string): Promise<string> {
 }
 
 /**
- * Set/swap an icon node's glyph: memo cache → an embedded sibling svg → the
- * fallback now, then the fetched glyph when it arrives (only if the element
- * still shows `name`). All synchronous calls are instant; the only async path
- * is a name the page never embedded.
+ * Set/swap an icon node's glyph: memo cache → an embedded glyph (the element
+ * itself, or a sibling) → the fallback now, then the fetched glyph when it
+ * arrives (only if the element still shows `name`). All synchronous calls are
+ * instant; the only async path is a name the page never embedded.
  */
 export function setIcon(svg: Element, name: string): void {
   if (!svg) return;
@@ -77,19 +93,37 @@ export function setIcon(svg: Element, name: string): void {
     svg.innerHTML = FALLBACK_SVG;
     return;
   }
-  // Mirror the SSR svg's `data-pathland-icon` so the embedded-glyph seed can
-  // find this element (and the conformance canon stays in parity too).
-  svg.setAttribute("data-pathland-icon", name);
+  // Resolve BEFORE mutating the element: `embeddedGlyph` scans the document
+  // (which includes `svg` itself), so rewriting the element's
+  // `data-pathland-icon` first would make it match its own OLD inner markup
+  // (a hydrated play button would paste its play glyph back on a pause delta —
+  // the icon would never change). Resolved against the current DOM, the
+  // element still advertises the name it actually shows.
   const memo = cache.get(name);
   if (memo !== undefined) {
+    svg.setAttribute("data-pathland-icon", name);
     svg.innerHTML = memo;
     return;
   }
   const embedded = embeddedGlyph(name);
   if (embedded !== undefined) {
+    cache.set(name, embedded);
+    svg.setAttribute("data-pathland-icon", name);
     svg.innerHTML = embedded;
     return;
   }
+  // A miss: memorize every glyph the page has EMBEDDED (the SSR seeds are
+  // DOM-only — the moment this element flips away from "play" its play glyph
+  // would otherwise evaporate and the return trip would refetch it). One pass,
+  // then re-check; a name that is still absent genuinely needs the lazy fetch.
+  harvestEmbedded();
+  const harvested = cache.get(name);
+  if (harvested !== undefined) {
+    svg.setAttribute("data-pathland-icon", name);
+    svg.innerHTML = harvested;
+    return;
+  }
+  svg.setAttribute("data-pathland-icon", name);
   svg.innerHTML = FALLBACK_SVG;
   void preloadIcon(name).then((glyph) => {
     if (current.get(svg) === name) svg.innerHTML = glyph;

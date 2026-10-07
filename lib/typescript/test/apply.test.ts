@@ -1036,4 +1036,42 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
     expect(el.getAttribute("aria-label")).toBe("Playlist");
     expect(el.getAttribute("aria-hidden")).toBeNull();
   });
+
+  it("an ICON_NAME delta swaps a hydrated play button to pause (lazy fetch)", async () => {
+    // The live play/pause toggle: the SSR svg advertises "play" with the play
+    // glyph inline, then a WS delta sets ICON_NAME=pause. The glyph must not be
+    // pasted from the element itself (the play<->pause self-match regression).
+    const PAUSE = '<path d="M6 5H8V19H6V5ZM16 5H18V19H16V5Z"/>';
+    vi.stubGlobal("fetch", async () => ({
+      ok: true,
+      text: async () => '<svg viewBox="0 0 24 24" fill="currentColor">' + PAUSE + "</svg>",
+    }));
+
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    el.setAttribute("data-pathland-id", "1");
+    el.setAttribute("class", "pathland-icon");
+    el.setAttribute("data-pathland-icon", "play");
+    el.innerHTML = '<path d="M19.376 12.4161L8.77735 19.4818"/>';
+    document.body.appendChild(el);
+    const r = renderer();
+    r.byId.set(1, el);
+
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ICON_NAME, 0],
+          ],
+          stringEntry("pause"),
+        ),
+      ),
+      r,
+    );
+
+    expect(el.getAttribute("data-pathland-icon")).toBe("pause");
+    // Did NOT paste the element's own play glyph back (it shows the fallback
+    // synchronously, then the fetched pause glyph).
+    expect(el.innerHTML).not.toContain('d="M19.376');
+    await vi.waitFor(() => expect(el.innerHTML).toContain('d="M6 5H8V19H6V5'), { timeout: 2000 });
+  });
 });

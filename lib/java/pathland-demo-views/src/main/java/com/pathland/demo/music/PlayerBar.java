@@ -58,7 +58,6 @@ public final class PlayerBar implements View {
                 .onEnded(this::ended)
                 .with(AudioStyleMod.of(PlayerControlsStyle.of(trackIndex, position, seekRequest, volume, volumeRequest)))
                 .with(Background.of(MusicPlayerView.BAR_BG))
-                .with(Border.of(MusicPlayerView.BAR_BORDER, 1f, 0f))
                 .with(FrameMod.of(Commands.Size.FILL, MusicPlayerView.BAR_HEIGHT));
     }
 

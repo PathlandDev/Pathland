@@ -86,7 +86,10 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `svg[data-pathland-icon=<name>]` in the page (the SSR inline glyph — instant,
   zero network), else (3) the fallback glyph now + a **deduplicated lazy fetch**
   of the renderer-owned `/{base}/icons/<name>.svg` (served by the host from the
-  shared Rust renderer, `pathland_html_icon_svg`), memoized thereafter.
+  shared Rust renderer, `pathland_html_icon_svg`), memoized thereafter. On a
+  miss the resolver **harvests every embedded glyph into the memo** (SSR seeds
+  are DOM-only), so a toggled-away glyph — e.g. the play icon under a paused
+  button — comes back **instantly on the return trip instead of refetching**.
   `LABEL` makes it presentable (`role="img"`/`aria-label`, else `aria-hidden`);
   the runtime mirrors the SSR svg's `data-pathland-icon` (golden `icons`
   fixture / `ssr-conformance`).

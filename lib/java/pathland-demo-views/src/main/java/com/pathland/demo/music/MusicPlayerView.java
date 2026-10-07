@@ -29,8 +29,8 @@ public final class MusicPlayerView implements View {
     static final Color ACTIVE_ROW_BG = Color.rgb(0xE8, 0xEF, 0xFF);
     static final Color ACTIVE_ROW_FG = Color.rgb(0x1A, 0x3A, 0x8C);
     static final Color SIDEBAR_BG = Color.rgb(0xF6, 0xF7, 0xFA);
-    static final Color BAR_BORDER = Color.rgb(0xE2, 0xE8, 0xF0);
-    static final Color BAR_BG = Color.argb(0xBF, 0xFB, 0xFB, 0xFD);
+    static final Color BAR_BORDER = Color.rgb(0xFF, 0xFF, 0xFF);
+    static final Color BAR_BG = Color.argb(0xBF, 0xEB, 0xEB, 0xED);
 
     /** The demo library: six Pathland concept tracks, one album each. */
     static final List<Track> TRACKS = List.of(
@@ -93,7 +93,7 @@ public final class MusicPlayerView implements View {
                 HStack.of(
                     new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
                         seekRequest.signal(), volumeRequest.signal())
-                        .with(Border.of(Color.rgb(200,200,200), 1, 16))
+                        .with(Border.of(MusicPlayerView.BAR_BORDER, 1, 500))
                 ).with(Padding.of(16)),
                 subtitlePill(block, previous, current)
         )
