@@ -1,0 +1,34 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4BVQX33K77NDX7XR93PF1C7",
+  "strategy": "manual-commit",
+  "branch": "feat/size-that-fits",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/InputDispatcher.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/transport/Event.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/transport/FrameCodec.java",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/elements.ts",
+    "lib/typescript/src/events.ts",
+    "lib/typescript/src/index.ts",
+    "lib/typescript/src/plpl.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 24550,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 29093120,
+    "output_tokens": 19547,
+    "api_call_count": 61
+  }
+}
