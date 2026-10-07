@@ -85,17 +85,20 @@ public final class MusicPlayerView implements View {
         var previous = computed(() -> playing.get()
                 ? Lyrics.previousLine(at(trackIndex.get()).title(), position.get())
                 : "");
-        return ZStack.of(Alignment.BOTTOM_CENTER,
+        return
                 HStack.of(
-                        new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
+                        ZStack.of(Alignment.BOTTOM_CENTER,
+                            new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
+                            HStack.of(
+                                new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
+                                    seekRequest.signal(), volumeRequest.signal())
+                                    .with(Border.of(MusicPlayerView.BAR_BORDER, 1, 500))
+                                    .with(Shadow.of(10))
+                            ).with(Padding.of(16)),
+                            subtitlePill(block, previous, current)),
                         new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
-                ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL)),
-                HStack.of(
-                    new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
-                        seekRequest.signal(), volumeRequest.signal())
-                        .with(Border.of(MusicPlayerView.BAR_BORDER, 1, 500))
-                ).with(Padding.of(16)),
-                subtitlePill(block, previous, current)
+                ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL)
+
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
