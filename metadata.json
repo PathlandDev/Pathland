@@ -3,7 +3,7 @@
   "checkpoint_id": "01M4E6X9F4HJ114KJNTNCA53GY",
   "strategy": "manual-commit",
   "branch": "feat/dsl-frame",
-  "checkpoints_count": 3,
+  "checkpoints_count": 6,
   "files_touched": [
     "AGENTS.md",
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/SplitNavDemo.java",
@@ -52,13 +52,20 @@
       "compact_transcript": "/2/transcript.jsonl",
       "content_hash": "/2/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/3/metadata.json",
+      "transcript": "/3/full.jsonl",
+      "compact_transcript": "/3/transcript.jsonl",
+      "content_hash": "/3/content_hash.txt",
+      "prompt": "/3/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 188918,
+    "input_tokens": 97929485,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 2552832,
-    "output_tokens": 25185,
-    "api_call_count": 41
+    "cache_read_tokens": 1916254080,
+    "output_tokens": 3412163,
+    "api_call_count": 5123
   }
 }
