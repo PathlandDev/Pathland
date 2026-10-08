@@ -493,8 +493,12 @@ function applyTree(op: Opcode, r: DomRenderer): void {
       }
       const container = childrenContainer(parent);
       // Hydration/idempotent-replay guard: skip when the child is already there
-      // (the SSR DOM already holds the initial tree; a resync replays it).
-      if (container && !container.contains(child)) {
+      // (the SSR DOM already holds the initial tree; a resync replays it), or
+      // when a duplicate of the node already exists by id (drift protection —
+      // never render a second copy the app did not emit).
+      if (container && !container.contains(child)
+          && !(child instanceof Element && container instanceof Element
+            && container.querySelector(`[data-pathland-id="${op.b}"]`))) {
         let placed = placedChild(parent, child);
         if (comp === COMPONENT_PICKER && child instanceof HTMLElement) {
           // Picker children are option labels → materialize native `<option>`s.
@@ -563,9 +567,14 @@ function insertAt(container: Node, child: Node, index: number): void {
   if (child === container || container.contains(child)) {
     return;
   }
+  // The protocol's INSERT/MOVE index counts ELEMENT children. Debug-comment
+  // nodes (`<!-- #id … -->`, `pathland.debug-html=true`) are sibling children
+  // in the SSR-hydrated DOM, so counting them in `visible` shifts every index
+  // and e.g. would insert a trailing sidebar BEFORE the main area. Count
+  // elements only; the injected nav-back button is excluded by class.
   const visible = Array.from(container.childNodes).filter(
     (n) =>
-      (n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.COMMENT_NODE) &&
+      n.nodeType === Node.ELEMENT_NODE &&
       !(n instanceof HTMLElement && n.classList.contains(NAV_BACK_CLASS)),
   );
   const target = visible[index];

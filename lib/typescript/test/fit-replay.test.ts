@@ -79,4 +79,25 @@ describe("SizeThatFits swap replay (real MusicPlayerView frames)", () => {
     expect(lib).toBeGreaterThanOrEqual(0);
     expect(np).toBeGreaterThan(lib), `sidebar stays trailing: ${JSON.stringify(texts)}`;
   });
+
+  it("debug-comment siblings do not move the sidebar to the LEFT", () => {
+    // pathland.debug-html=true (Spring demo) prefixes every element with its
+    // `<!-- #N … -->` comment as a sibling CHILD of the container. The INSERT
+    // index counts ELEMENT children, so `insertAt` must ignore the comment
+    // nodes — otherwise a trailing insert lands BEFORE the main area.
+    const r: DomRenderer = { byId: new Map() };
+    const root = attachCompact(r);
+    const row = rowOf(root);
+    const main = row.children[0] as HTMLElement;
+    row.insertBefore(document.createComment("#3 ZStack: alignment=4"), main);
+
+    expect(() => applyBatch(parseBatch(WIDE), r)).not.toThrow();
+
+    const texts = directChildTexts(row);
+    const libraryIdx = texts.findIndex((t) => t.includes("Library"));
+    const nowPlayingIdx = texts.findIndex((t) => t.includes("Now Playing"));
+    expect(libraryIdx).toBeGreaterThanOrEqual(0);
+    expect(nowPlayingIdx).toBeGreaterThan(libraryIdx),
+      `sidebar must still be trailing despite the debug comment; row order: ${JSON.stringify(texts.map((t) => t.slice(0, 24)))}`;
+  });
 });
