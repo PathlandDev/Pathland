@@ -61,6 +61,34 @@ class DeltaBatcherTest {
     }
 
     @Test
+    void rebasesListTypedOffsets() {
+        // The LIST value type (e.g. a SIZE_THAT_FITS FIT_QUERY) references the
+        // string section by a relative offset — it must rebase past earlier
+        // frames' strings just like STRING (a regression: it wasn't, so a merged
+        // batch's FIT_QUERY pointed at garbage → "list length out of bounds").
+        List<byte[]> sent = new ArrayList<>();
+        DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, sent::add);
+
+        // Frame 1: a 10-byte string "prefix" (4 length + 6 bytes).
+        batcher.append(new Frame(List.of(
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, 0, 0)),
+                stringSection("prefix")));
+        // Frame 2: a LIST FIT_QUERY at its own relative offset 0.
+        batcher.append(new Frame(List.of(
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, 2,
+                        (ValueTypes.LIST << 16) | 0x1039, 0)),
+                listSection(0f, 640f)));
+
+        batcher.flush();
+        batcher.close();
+
+        Frame merged = FrameCodec.decodeFrame(sent.get(0));
+        assertTrue(merged.opcodes().stream().anyMatch(o ->
+                        (o.b() & 0xFFFF) == 0x1039 && o.c() == 10),
+                "the LIST FIT_QUERY offset rebases past the merged prefix");
+    }
+
+    @Test
     void collapseABurstIntoASingleSend() {
         List<byte[]> sent = new ArrayList<>();
         DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, sent::add);
@@ -146,5 +174,15 @@ class DeltaBatcherTest {
         out.write((value >>> 8) & 0xFF);
         out.write((value >>> 16) & 0xFF);
         out.write((value >>> 24) & 0xFF);
+    }
+
+    /** A `[u32 count][f32 × count]` LIST string-section entry. */
+    private static byte[] listSection(float... values) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeIntLE(out, values.length);
+        for (float v : values) {
+            writeIntLE(out, Float.floatToIntBits(v));
+        }
+        return out.toByteArray();
     }
 }

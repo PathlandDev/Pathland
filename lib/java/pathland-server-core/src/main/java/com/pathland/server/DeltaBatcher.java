@@ -159,7 +159,10 @@ public final class DeltaBatcher {
                 b += base;
             } else if (command == Commands.Parameter.SET_PROPERTY) {
                 int valueType = b >>> 16;
-                if (valueType == ValueTypes.STRING || valueType == ValueTypes.DESIGN_TOKEN) {
+                // The LIST value type (e.g. a SIZE_THAT_FITS FIT_QUERY threshold
+                // table) also references the string section by a relative offset.
+                if (valueType == ValueTypes.STRING || valueType == ValueTypes.DESIGN_TOKEN
+                        || valueType == ValueTypes.LIST) {
                     c += base;
                 }
             } else if (command == Commands.Parameter.SET_DESIGN_TOKEN) {
