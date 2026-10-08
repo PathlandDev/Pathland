@@ -87,9 +87,12 @@ dependency — framework glue lives in the starters.
   `pathland.debug-html` property (default `false`).
 - **Reserved framework root**: `PathlandSession.PATHLAND_BASE` (`/_pathland`) — the
   SSR page carries the app's base as `data-pathland-base` and the DOM-client bundle is
-  injected at `{base}/dom-renderer.js`, so the client's WebSocket and asset refs resolve
-  from the same reserved prefix (spec DSL.md). Multi-app hosts give each mount its own
-  base.
+  injected at `{base}/dom-renderer-<sha256>.js` (`PathlandAssets` reads the current
+  name from the `_pathland/dom-renderer.current` manifest on the classpath, falling
+  back to the literal `dom-renderer.js` when absent) so the client's WebSocket and
+  asset refs resolve from the same reserved prefix (spec DSL.md). The content-hashed
+  name busts the immutable asset cache with a fresh URL per build. Multi-app hosts
+  give each mount its own base.
 
 ## Not implemented / gaps
 

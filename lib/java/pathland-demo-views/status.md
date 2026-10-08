@@ -134,7 +134,8 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
 
 - The browser experience depends on the `@pathland/dom-renderer` client
   (`lib/typescript`, built to `dist/pathland-dom-renderer.js` and copied into
-  each demo's `src/main/resources`).
+  each demo's `src/main/resources` under a content-hashed name plus the
+  `dom-renderer.current` pointer manifest).
 
 ## Verified by
 

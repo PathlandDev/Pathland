@@ -48,9 +48,11 @@ npm run copy-to-demos   # copy the bundle into both Java demos' static dirs
 
 ## The bundle
 
-`dist/pathland-dom-renderer.js` is served by the Spring Boot and Quarkus demos
-as `/pathland-dom-renderer.js` (copied into each demo's static resources by
-`npm run copy-to-demos`).
+`dist/pathland-dom-renderer.js` is served by the Spring Boot and Quarkus demos under a
+content-hashed name — `dom-renderer-<sha256>.js` (copied into each demo's static
+resources by `npm run copy-to-demos`, which also prunes stale copies and writes the
+`dom-renderer.current` pointer manifest the SSR layer reads to emit the `<script src>`).
+The fresh URL per build busts the immutable asset cache.
 
 ## Transport resilience
 
