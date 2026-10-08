@@ -1,0 +1,14 @@
+Investigate how `dom-renderer.js` (the @pathland/dom-renderer bundle) is built, referenced, and served in the Pathland repo at /Users/michael/Development/michaelkrog/Pathland. I need a thorough picture to plan adding a content-hash to the bundle filename so new versions bust caches.
+
+Report on:
+1. The TypeScript build config: `lib/typescript/package.json` (name, version), the build script(s) (rollup/esbuild/tsc?), the output filename(s) written to `lib/typescript/dist/`. Give the exact output filename(s).
+2. Every place the bundle is copied after build ("copied into both demos" per AGENTS.md) — the `npm run build:all` script in `lib/typescript/package.json` and any copy steps. Exact destination paths.
+3. Every place the demos reference the bundle in HTML/SSR output AND map it to a URL route/static-file path:
+   - Rust HTML renderer / render-html crates: search for `dom-renderer`, `<script`, `script src`, static asset routes. Especially the Spring/Quarkus demos' HTML template(s).
+   - Java html render (com.pathland.render.html) asset handling.
+   - The Spring Boot and Quarkus demos: controllers/static resource config that map `/_pathland/assets/...` or `/assets/...` to files; any cache-control / immutable header setting. Search for `CacheControl`, `immutable`, `max-age`, `WebJars`, static resource handlers.
+   - Any reference in lib/typescript/src or test fixtures.
+4. How the demos' HTML pulls the current bundle version (hardcoded filename? version suffix? Query param?). Give exact strings/line numbers.
+5. Whether the CDN/generated HTML embeds a fixed `0.1.0` version or reads from a constant.
+
+Give file paths + line numbers + exact relevant snippets. Do NOT modify anything — read only.
