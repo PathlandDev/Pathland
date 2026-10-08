@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.view.Alignment;
 import com.pathland.view.Color;
 import com.pathland.view.Divider;
@@ -40,9 +41,9 @@ public final class LayoutSection implements View {
                                 Text.of("Left"),
                                 Spacer.of(),
                                 Text.of("Right"))
-                                .frame(260, Alignment.CENTER),
+                                .with(Frame.of(260, Alignment.CENTER)),
                         ZStack.of(
-                                Rectangle.of().frame(180, 80, Alignment.CENTER).with(
+                                Rectangle.of().with(Frame.of(180, 80, Alignment.CENTER)).with(
                                         Background.of(Color.rgb(0xE3, 0xF2, 0xFD)),
                                         CornerRadius.of(8)),
                                 Text.of("badge").with(

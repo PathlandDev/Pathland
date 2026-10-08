@@ -2,13 +2,13 @@ package com.pathland.view;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
- * The SwiftUI-like {@code frame} sizing modifier. Unlike the old API, you apply
- * it with the {@link View} convenience surface — {@code .frame(width, height)},
- * {@code .frameWidth(w)} / {@code .frameHeight(h)}, and the lambda configurator
- * {@code .frame(c -> c.minWidth(..).alignment(..))} — never by constructing this
- * class directly.
+ * The SwiftUI-like {@code frame} sizing modifier — a {@link ViewModifier} value
+ * applied with {@code .with(...)}: {@code .with(Frame.of(w, h))},
+ * {@code .with(Frame.ofWidth(w))} / {@code .with(Frame.ofHeight(h))}, and the
+ * lambda configurator {@code .with(Frame.of(c -> c.minWidth(..).alignment(..)))}.
  *
  * <p>The modifier compiles to the same discipline as the legacy {@code FrameMod}
  * (the wire is unchanged): a fixed {@code WIDTH}/{@code HEIGHT} ({@code ±∞}
@@ -25,13 +25,65 @@ public final class Frame implements ViewModifier {
     private final Float alignment;
     private final float[] bounds;
 
-    // Package-private: construction flows through the View surface and the
-    // Builder, never directly.
+    // Package-private: construction flows through the static factories, never directly.
     Frame(Float width, Float height, Float alignment, float[] bounds) {
         this.width = width;
         this.height = height;
         this.alignment = alignment;
         this.bounds = bounds;
+    }
+
+    /**
+     * A frame of a fixed {@code width} with no height hint: the view keeps its
+     * natural height and, as a flex child, stretches to its container's cross axis.
+     */
+    public static Frame of(float width) {
+        return new Frame(width, null, null, null);
+    }
+
+    /**
+     * A frame of {@code width} x {@code height} with no content alignment. Infinite
+     * axes ({@link Float#POSITIVE_INFINITY}) expand to the available space
+     * ({@code Commands.Size.FILL}); a {@code NaN} axis is omitted.
+     */
+    public static Frame of(float width, float height) {
+        return new Frame(width, height, null, null);
+    }
+
+    /**
+     * A frame of a fixed {@code width} at {@code alignment} with no height hint.
+     */
+    public static Frame of(float width, Alignment alignment) {
+        return new Frame(width, null, (float) alignment.wire(), null);
+    }
+
+    /** A frame of {@code width} x {@code height} at {@code alignment}. */
+    public static Frame of(float width, float height, Alignment alignment) {
+        return new Frame(width, height, (float) alignment.wire(), null);
+    }
+
+    /** A frame of a fixed {@code width} (SwiftUI's {@code frame(width:)}). */
+    public static Frame ofWidth(float width) {
+        return new Frame(width, null, null, null);
+    }
+
+    /** A frame of a fixed {@code height} (SwiftUI's {@code frame(height:)}). */
+    public static Frame ofHeight(float height) {
+        return new Frame(null, height, null, null);
+    }
+
+    /**
+     * Configure a frame with {@code .with(Frame.of(c -> …))}: a fluent
+     * {@link Builder} for complex layout constraints — min/ideal/max width and
+     * height bounds, an optional fixed {@code width}/{@code height}, and
+     * {@code alignment}. Any combination is valid; unset bounds are omitted.
+     * {@code ±∞} on a fixed axis means {@code FILL}; {@code NaN}/{@code ∞} on a
+     * bound means "no limit".
+     */
+    public static Frame of(Consumer<Builder> config) {
+        Builder builder = new Builder();
+        config.accept(builder);
+        return builder.build();
     }
 
     @Override
@@ -58,7 +110,7 @@ public final class Frame implements ViewModifier {
     }
 
     private static void addBound(List<Modified.Prop> props, int property, float value) {
-        // NaN = unset; an infinite max/min bound means "no limit" — both are omitted.
+        // NaN = unset; an infinite min/max bound means "no limit" — both are omitted.
         if (!Float.isNaN(value) && !Float.isInfinite(value)) {
             props.add(Modified.prop(property, value));
         }
@@ -73,7 +125,7 @@ public final class Frame implements ViewModifier {
     }
 
     /**
-     * The {@code .frame(c -> …)} configurator: fluent, accumulates any mix of a
+     * The {@code Frame.of(c -> …)} configurator: fluent, accumulates any mix of a
      * fixed {@code width}/{@code height}, the six min/ideal/max bounds, and an
      * {@code alignment}. Fixed axes and bounds are independent wire properties,
      * so they combine freely (a fixed box with hard min/max limits, say).

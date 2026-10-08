@@ -469,7 +469,7 @@ Vertical flex stack. **Properties**: `SPACING`, `ALIGNMENT` (enum: `Leading`=0,
 - **Edge cases**: negative `SPACING` → 0; no Fill child + leftover → empty at
   the end; a Fixed-width child narrower than the stack keeps its exact box and
   is aligned; a `Fill` child in a Hug stack propagates (fills the parent's
-  proposal); root stacks are typically `Fill` (`.frame(FILL, FILL)`).
+  proposal); root stacks are typically `Fill` (`.with(Frame.of(FILL, FILL))`).
 
 ### HStack — `HSTACK` 0x11
 

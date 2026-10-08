@@ -102,14 +102,14 @@ public final class MusicPlayerView implements View {
         View wideRow = HStack.of(
                 mainArea,
                 new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
-        ).frame(Commands.Size.FILL, Commands.Size.FILL);
+        ).with(Frame.of(Commands.Size.FILL, Commands.Size.FILL));
         View compactRow = HStack.of(mainArea)
-                .frame(Commands.Size.FILL, Commands.Size.FILL);
+                .with(Frame.of(Commands.Size.FILL, Commands.Size.FILL));
         return SizeThatFits.of(
                 Fit.of(wideRow, 1024f),
                 Fit.of(compactRow)
         )
-        .frame(Commands.Size.FILL, Commands.Size.FILL)
+        .with(Frame.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
     }
 

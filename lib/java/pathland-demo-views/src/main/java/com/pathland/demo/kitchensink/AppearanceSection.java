@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.view.Alignment;
 import com.pathland.view.Color;
 import com.pathland.view.HStack;
@@ -46,10 +47,10 @@ public final class AppearanceSection implements View {
                                 .with(Background.of(GREEN_50), CornerRadius.of(6)),
                         Text.of("This text is hidden").with(Hidden.of()),
                         HStack.of(
-                                Rectangle.of().frame(90, 60, Alignment.CENTER).with(
+                                Rectangle.of().with(Frame.of(90, 60, Alignment.CENTER)).with(
                                         Background.of(Color.RED),
                                         ClipShape.of(ShapeKind.CIRCLE)),
-                                Rectangle.of().frame(90, 60, Alignment.CENTER).with(
+                                Rectangle.of().with(Frame.of(90, 60, Alignment.CENTER)).with(
                                         Background.of(Color.BLUE),
                                         CornerRadius.of(12))
                         ).with(Padding.of(4)),

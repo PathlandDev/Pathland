@@ -4,7 +4,7 @@ import com.pathland.render.html.HtmlRenderer;
 import com.pathland.view.Environment;
 import com.pathland.view.Platform;
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.InputDispatcher;
 import com.pathland.view.emit.RenderResult;
@@ -115,7 +115,7 @@ public final class PathlandSession {
                 if (conn == null || !conn.isOpen()) {
                     return;
                 }
-                Frame frame = frame();
+                ProtocolFrame frame = frame();
                 if (!frame.opcodes().isEmpty()) {
                     batcher.append(frame);
                 }

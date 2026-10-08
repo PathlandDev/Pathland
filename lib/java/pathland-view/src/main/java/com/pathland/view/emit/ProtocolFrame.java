@@ -9,9 +9,9 @@ import java.util.List;
  * by a *relative* offset into this section, so a frame decodes with no prior state.
  * This is the transport seam used by the HTML renderer and the WebSocket codec.
  */
-public record Frame(List<Opcode> opcodes, byte[] strings) {
+public record ProtocolFrame(List<Opcode> opcodes, byte[] strings) {
 
-    public static final Frame EMPTY = new Frame(List.of(), new byte[0]);
+    public static final ProtocolFrame EMPTY = new ProtocolFrame(List.of(), new byte[0]);
 
     public boolean isEmpty() {
         return opcodes.isEmpty();

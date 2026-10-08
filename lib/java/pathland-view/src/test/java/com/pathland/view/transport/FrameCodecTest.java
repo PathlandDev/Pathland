@@ -2,7 +2,7 @@ package com.pathland.view.transport;
 
 import com.pathland.view.Categories;
 import com.pathland.view.Commands;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.Opcode;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +23,7 @@ class FrameCodecTest {
     @Test
     void encodePongProducesASingleMetaPongBatch() {
         byte[] bytes = FrameCodec.encodePong();
-        Frame frame = FrameCodec.decodeFrame(bytes);
+        ProtocolFrame frame = FrameCodec.decodeFrame(bytes);
         assertEquals(1, frame.opcodes().size());
         Opcode op = frame.opcodes().get(0);
         assertEquals(Categories.META, op.category());
@@ -37,7 +37,7 @@ class FrameCodecTest {
     void encodePingProducesASingleMetaPingBatch() {
         byte[] bytes = FrameCodec.encodePing();
         assertTrue(FrameCodec.isPing(bytes), "encodePing is detected as a PING");
-        Frame frame = FrameCodec.decodeFrame(bytes);
+        ProtocolFrame frame = FrameCodec.decodeFrame(bytes);
         Opcode op = frame.opcodes().get(0);
         assertEquals(Categories.META, op.category());
         assertEquals(Commands.Meta.PING, op.command());
@@ -56,14 +56,14 @@ class FrameCodecTest {
     @Test
     void encodeEnvironmentWithUnknownViewportEmitsOnlyTheRouteField() {
         byte[] bytes = FrameCodec.encodeEnvironment(EnvironmentData.of("/"));
-        Frame frame = FrameCodec.decodeFrame(bytes);
+        ProtocolFrame frame = FrameCodec.decodeFrame(bytes);
         assertEquals(1, frame.opcodes().size(), "no viewport fields when the viewport is unknown");
         assertEquals(Commands.Environment.ROUTE, frame.opcodes().get(0).a() & 0xFFFF);
     }
 
     @Test
     void encodeFrameStampsAndReadsTheMessageSequence() {
-        Frame frame = new Frame(
+        ProtocolFrame frame = new ProtocolFrame(
                 java.util.List.of(new Opcode(Categories.TREE, Commands.Tree.CREATE_NODE, 0, 1, 0x10, 0)),
                 new byte[0]);
         byte[] delta = FrameCodec.encodeFrame(frame, 7);

@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.OpcodeSink;
@@ -37,7 +37,7 @@ class LabelTest {
     }
 
     /** The id of the first created node of a component type, or -1. */
-    private static int nodeId(Frame frame, int component) {
+    private static int nodeId(ProtocolFrame frame, int component) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.TREE
                         && o.command() == Commands.Tree.CREATE_NODE
@@ -47,12 +47,12 @@ class LabelTest {
                 .orElse(-1);
     }
 
-    private static boolean hasComponent(Frame frame, int component) {
+    private static boolean hasComponent(ProtocolFrame frame, int component) {
         return nodeId(frame, component) != -1;
     }
 
     /** The SET_PROPERTY ops on a node for a property. */
-    private static List<Opcode> props(Frame frame, int nodeId, int property) {
+    private static List<Opcode> props(ProtocolFrame frame, int nodeId, int property) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER
                         && o.command() == Commands.Parameter.SET_PROPERTY
@@ -62,7 +62,7 @@ class LabelTest {
     }
 
     /** The F32 value of a node property (last one wins), or null. */
-    private static Float floatProp(Frame frame, int nodeId, int property) {
+    private static Float floatProp(ProtocolFrame frame, int nodeId, int property) {
         return props(frame, nodeId, property).stream()
                 .reduce((a, b) -> b)
                 .map(o -> Float.intBitsToFloat(o.c()))
@@ -70,7 +70,7 @@ class LabelTest {
     }
 
     /** The U32 value of a node property (last one wins), or null. */
-    private static Integer uintProp(Frame frame, int nodeId, int property) {
+    private static Integer uintProp(ProtocolFrame frame, int nodeId, int property) {
         return props(frame, nodeId, property).stream()
                 .reduce((a, b) -> b)
                 .map(Opcode::c)
@@ -78,7 +78,7 @@ class LabelTest {
     }
 
     /** The STRING value of a node property (last one wins), or null. */
-    private static String stringProp(Frame frame, int nodeId, int property) {
+    private static String stringProp(ProtocolFrame frame, int nodeId, int property) {
         return props(frame, nodeId, property).stream()
                 .reduce((a, b) -> b)
                 .map(o -> frame.stringAt(o.c()))
@@ -86,7 +86,7 @@ class LabelTest {
     }
 
     /** The text last SET_TEXT on a node, or null. */
-    private static String textOf(Frame frame, int nodeId) {
+    private static String textOf(ProtocolFrame frame, int nodeId) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER
                         && o.command() == Commands.Parameter.SET_TEXT
@@ -97,12 +97,12 @@ class LabelTest {
     }
 
     /** Whether any frame SET_TEXTs {@code text} on {@code nodeId}. */
-    private static boolean anyText(List<Frame> frames, int nodeId, String text) {
+    private static boolean anyText(List<ProtocolFrame> frames, int nodeId, String text) {
         return frames.stream().anyMatch(f -> text.equals(textOf(f, nodeId)));
     }
 
     /** Whether any frame sets a STRING property to {@code value} on {@code nodeId}. */
-    private static boolean anyStringProp(List<Frame> frames, int nodeId, int property, String value) {
+    private static boolean anyStringProp(List<ProtocolFrame> frames, int nodeId, int property, String value) {
         return frames.stream().anyMatch(f -> value.equals(stringProp(f, nodeId, property)));
     }
 
@@ -110,7 +110,7 @@ class LabelTest {
     void defaultLabelRendersTitleAndIcon() {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(Label.of("Save", "save.svg"), Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         int stack = nodeId(frame, Components.HSTACK);
         assertTrue(stack != -1, "the label is an HStack of image + text");
@@ -131,7 +131,7 @@ class LabelTest {
         new Emitter(sink).mount(
                 Label.of("Save", "save.svg").with(LabelStyleMod.of(TitleOnlyLabelStyle.INSTANCE)),
                 Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         assertTrue(hasComponent(frame, Components.TEXT), "the title renders");
         assertFalse(hasComponent(frame, Components.IMAGE), "the icon is dropped");
@@ -145,7 +145,7 @@ class LabelTest {
         new Emitter(sink).mount(
                 Label.of("Save", "save.svg").with(LabelStyleMod.of(IconOnlyLabelStyle.INSTANCE)),
                 Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         assertTrue(hasComponent(frame, Components.IMAGE), "the icon renders");
         assertFalse(hasComponent(frame, Components.TEXT), "the title text is dropped");
@@ -157,7 +157,7 @@ class LabelTest {
     void blankTitleOrIconIsSuppressed() {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(Label.of("", ""), Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         assertFalse(hasComponent(frame, Components.TEXT), "a blank title renders no text");
         assertFalse(hasComponent(frame, Components.IMAGE), "a blank icon renders no image");
@@ -166,7 +166,7 @@ class LabelTest {
 
         FrameOpcodeSink sink2 = sink();
         new Emitter(sink2).mount(Label.of("", "save.svg"), Environment.DEFAULT);
-        Frame frame2 = sink2.frame();
+        ProtocolFrame frame2 = sink2.frame();
         assertFalse(hasComponent(frame2, Components.TEXT));
         assertTrue(hasComponent(frame2, Components.IMAGE), "a blank title still renders the icon");
         assertNull(stringProp(frame2, nodeId(frame2, Components.HSTACK), Properties.LABEL));
@@ -199,13 +199,13 @@ class LabelTest {
         AccumulatingSink sink = new AccumulatingSink();
         new Emitter(sink).mount(Label.of(title, "save.svg"), Environment.DEFAULT);
 
-        Frame first = sink.frames().get(0);
+        ProtocolFrame first = sink.frames().get(0);
         int text = nodeId(first, Components.TEXT);
         int stack = nodeId(first, Components.HSTACK);
         assertEquals("Save", textOf(first, text));
 
         title.set("Open");
-        List<Frame> deltas = sink.frames().subList(1, sink.frames().size());
+        List<ProtocolFrame> deltas = sink.frames().subList(1, sink.frames().size());
         assertTrue(anyText(deltas, text, "Open"), "the text node re-emits SET_TEXT");
         assertTrue(anyStringProp(deltas, stack, Properties.LABEL, "Open"),
                 "the a11y label follows the title (a LABEL delta is emitted)");
@@ -217,7 +217,7 @@ class LabelTest {
         AccumulatingSink sink = new AccumulatingSink();
         new Emitter(sink).mount(Label.of("Save", icon), Environment.DEFAULT);
 
-        Frame first = sink.frames().get(0);
+        ProtocolFrame first = sink.frames().get(0);
         int image = nodeId(first, Components.IMAGE);
         assertEquals("save.svg", stringProp(first, image, Properties.IMAGE_SOURCE));
 
@@ -262,11 +262,11 @@ class LabelTest {
      */
     private static final class AccumulatingSink implements OpcodeSink {
 
-        private final List<Frame> frames = new ArrayList<>();
+        private final List<ProtocolFrame> frames = new ArrayList<>();
         private final List<Opcode> ops = new ArrayList<>();
         private final ByteArrayOutputStream strings = new ByteArrayOutputStream();
 
-        List<Frame> frames() {
+        List<ProtocolFrame> frames() {
             return frames;
         }
 
@@ -278,7 +278,7 @@ class LabelTest {
 
         @Override
         public void endFrame() {
-            frames.add(new Frame(List.copyOf(ops), strings.toByteArray()));
+            frames.add(new ProtocolFrame(List.copyOf(ops), strings.toByteArray()));
         }
 
         private void push(int category, int command, int flags, int a, int b, int c) {

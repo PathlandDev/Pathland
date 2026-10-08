@@ -6,7 +6,7 @@ import com.pathland.view.Commands;
 import com.pathland.view.Components;
 import com.pathland.view.Environment;
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.RenderResult;
@@ -42,7 +42,7 @@ class KitchenSinkViewTest {
 
         emitter.mount(new KitchenSinkView(), new Environment(state));
 
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         assertTrue(anySetText(frame, "Count: 5"), "counter section reflects the persisted count");
         assertTrue(anySetText(frame, "Hello, Ada!"), "text section reflects the persisted name");
         assertTrue(anySetText(frame, "Value: 75.0"), "value controls reflect the persisted value");
@@ -96,7 +96,7 @@ class KitchenSinkViewTest {
         Emitter emitter = new Emitter(sink, DemoTheme.adaptive());
 
         emitter.mount(new KitchenSinkView(), new Environment(state));
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         long overrides = frame.opcodes().stream()
                 .filter(op -> op.category() == Categories.PARAMETER
@@ -115,7 +115,7 @@ class KitchenSinkViewTest {
         emitter.destroy();
     }
 
-    private static boolean anyDesignToken(Frame frame, String path) {
+    private static boolean anyDesignToken(ProtocolFrame frame, String path) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_DESIGN_TOKEN
                     && path.equals(frame.stringAt(op.a()))) {
@@ -125,7 +125,7 @@ class KitchenSinkViewTest {
         return false;
     }
 
-    private static boolean anyDesignTokenRef(Frame frame, String path) {
+    private static boolean anyDesignTokenRef(ProtocolFrame frame, String path) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && ((op.b() >>> 16) & 0xFF) == com.pathland.view.ValueTypes.DESIGN_TOKEN
@@ -136,7 +136,7 @@ class KitchenSinkViewTest {
         return false;
     }
 
-    private static String allSetText(Frame frame) {
+    private static String allSetText(ProtocolFrame frame) {
         StringBuilder sb = new StringBuilder();
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
@@ -146,7 +146,7 @@ class KitchenSinkViewTest {
         return sb.toString();
     }
 
-    private static boolean anySetText(Frame frame, String text) {
+    private static boolean anySetText(ProtocolFrame frame, String text) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
                 if (text.equals(frame.stringAt(op.b()))) {
@@ -157,7 +157,7 @@ class KitchenSinkViewTest {
         return false;
     }
 
-    private static boolean anyCreateNode(Frame frame, int component) {
+    private static boolean anyCreateNode(ProtocolFrame frame, int component) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE) {
                 if (op.b() == component) {

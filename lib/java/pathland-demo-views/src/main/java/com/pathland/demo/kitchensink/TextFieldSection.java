@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.view.Alignment;
 import com.pathland.view.Text;
 import com.pathland.view.TextEditor;
@@ -27,7 +28,7 @@ public final class TextFieldSection implements View {
         return new SectionCard("Text · TextField + TextEditor",
                 VStack.of(
                         TextField.of("Your name", name.signal()),
-                        TextEditor.of(name.signal()).frame(240, 64, Alignment.CENTER),
+                        TextEditor.of(name.signal()).with(Frame.of(240, 64, Alignment.CENTER)),
                         Text.of(greeting).with(Padding.of(4))
                 ).with(Padding.of(4))
         );

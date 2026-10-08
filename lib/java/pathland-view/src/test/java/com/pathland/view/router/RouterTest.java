@@ -13,7 +13,7 @@ import com.pathland.view.Text;
 import com.pathland.view.ValueTypes;
 import com.pathland.view.View;
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.RenderResult;
@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class RouterTest {
 
-    private static String lastText(Frame frame) {
+    private static String lastText(ProtocolFrame frame) {
         Opcode text = frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_TEXT)
                 .reduce((a, b) -> b)
@@ -45,14 +45,14 @@ class RouterTest {
         return frame.stringAt(text.b());
     }
 
-    private static long countOps(Frame frame, int category, int command) {
+    private static long countOps(ProtocolFrame frame, int category, int command) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == category && o.command() == command)
                 .count();
     }
 
     /** The last NAV_DEPTH SET_PROPERTY value in a frame (the current back-stack depth). */
-    private static int lastNavDepth(Frame frame) {
+    private static int lastNavDepth(ProtocolFrame frame) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER
                         && o.command() == Commands.Parameter.SET_PROPERTY
@@ -62,7 +62,7 @@ class RouterTest {
     }
 
     /** The NAV_CHROME enum code in a frame (F32 bits; PlatformDefault=0, Custom=1). */
-    private static float lastNavChrome(Frame frame) {
+    private static float lastNavChrome(ProtocolFrame frame) {
         return Float.intBitsToFloat(frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER
                         && o.command() == Commands.Parameter.SET_PROPERTY
@@ -112,7 +112,7 @@ class RouterTest {
         FrameOpcodeSink sink = sink();
         RenderResult result = new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
 
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         Opcode route = frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER
                         && o.command() == Commands.Parameter.SET_PROPERTY
@@ -130,7 +130,7 @@ class RouterTest {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(NavigationContainer.of(seeded("/users")), Environment.DEFAULT);
 
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         assertEquals("Users", lastText(frame), "the host-seeded initial route rendered");
         Opcode route = frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER
@@ -148,7 +148,7 @@ class RouterTest {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(NavigationContainer.of(seeded("/admin")), Environment.DEFAULT);
 
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         assertEquals("Home", lastText(frame), "a failing guard on the initial URL redirects");
         Opcode route = frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER
@@ -165,7 +165,7 @@ class RouterTest {
         new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
 
         router.navigate("/users");
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
 
         // Structural swap (VSTACK home -> VSTACK users; the text child differs) plus ROUTE.
         assertTrue(countOps(delta, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 1);
@@ -193,7 +193,7 @@ class RouterTest {
         new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
 
         router.navigate("/plain"); // VSTACK destination -> TEXT destination
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.REMOVE_CHILD));
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.DELETE_NODE));
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.CREATE_NODE));
@@ -263,7 +263,7 @@ class RouterTest {
         new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
 
         router.navigate("/users/42");
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         boolean sawUser = false;
         for (Opcode op : delta.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT
@@ -290,7 +290,7 @@ class RouterTest {
         new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
 
         router.navigate("/no-such-path");
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         boolean sawNotFound = false;
         for (Opcode op : delta.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT

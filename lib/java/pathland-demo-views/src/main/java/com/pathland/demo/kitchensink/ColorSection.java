@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.view.Alignment;
 import com.pathland.view.Color;
 import com.pathland.view.ColorPicker;
@@ -33,8 +34,8 @@ public final class ColorSection implements View {
                 VStack.of(
                         ColorPicker.of(accent.signal()),
                         HStack.of(
-                                accent.get().frame(120, 60, Alignment.CENTER),
-                                Rectangle.of().frame(120, 60, Alignment.CENTER).with(
+                                accent.get().with(Frame.of(120, 60, Alignment.CENTER)),
+                                Rectangle.of().with(Frame.of(120, 60, Alignment.CENTER)).with(
                                         Background.of(accent.signal()))
                         ).with(Padding.of(4)),
                         Text.of(accentLabel).with(Padding.of(4))

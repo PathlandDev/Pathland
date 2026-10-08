@@ -3,7 +3,7 @@ package com.pathland.server;
 import com.pathland.view.Button;
 import com.pathland.view.Text;
 import com.pathland.view.View;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
@@ -105,7 +105,7 @@ class PathlandTelemetryTest {
         List<byte[]> sent = new java.util.ArrayList<>();
         DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, sent::add, telemetry, "/app");
 
-        batcher.append(new Frame(List.of(new Opcode(2, 3, 0, 1, 0, 0)), new byte[0]));
+        batcher.append(new ProtocolFrame(List.of(new Opcode(2, 3, 0, 1, 0, 0)), new byte[0]));
         batcher.flush();
         batcher.close();
 

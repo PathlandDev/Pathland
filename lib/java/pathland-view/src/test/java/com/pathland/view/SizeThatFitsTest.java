@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.PathlandNode;
@@ -32,7 +32,7 @@ class SizeThatFitsTest {
             | ((bytes[offset + 3] & 0xFF) << 24);
     }
 
-    private static Opcode queryOpcode(Frame frame) {
+    private static Opcode queryOpcode(ProtocolFrame frame) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_PROPERTY)
                 .filter(o -> (o.b() & 0xFFFF) == Properties.FIT_QUERY)
@@ -46,7 +46,7 @@ class SizeThatFitsTest {
         View root = VStack.of(SizeThatFits.of(Fit.of(Text.of("wide"), 640f), Fit.of(Text.of("compact"))));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
 
-        Frame initial = sink.frame();
+        ProtocolFrame initial = sink.frame();
 
         // The slot is a SIZE_THAT_FITS node; its child is the SELECTED (fallback) only.
         assertTrue(initial.opcodes().stream().anyMatch(o ->
@@ -85,7 +85,7 @@ class SizeThatFitsTest {
         // A fit change to index 1 (wide) swaps the slot child: remove/delete the old
         // TEXT, create/insert the BUTTON subtree (shell + label child).
         fit.accept(1);
-        Frame swap = sink.frame();
+        ProtocolFrame swap = sink.frame();
         assertTrue(countOps(swap, Categories.TREE, Commands.Tree.REMOVE_CHILD) >= 1, "old child removed");
         assertTrue(countOps(swap, Categories.TREE, Commands.Tree.DELETE_NODE) >= 1, "old node deleted");
         assertTrue(countOps(swap, Categories.TREE, Commands.Tree.CREATE_NODE) >= 1, "new subtree created");
@@ -128,7 +128,7 @@ class SizeThatFitsTest {
 
         int nestedId = slotByThreshold(result, sink.frame(), 600f);
         result.fitInputs().get(nestedId).accept(1);
-        Frame swap = sink.frame();
+        ProtocolFrame swap = sink.frame();
         assertTrue(containsText(swap, "wide"), "the nested slot swapped to its wide candidate");
         assertFalse(containsText(swap, "fallback"), "the outer slot's candidate is untouched");
     }
@@ -151,7 +151,7 @@ class SizeThatFitsTest {
                 Fit.of(rebuiltNested("more"), 1024f),
                 Fit.of(rebuiltNested("less")));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
-        Frame mountFrame = sink.frame();
+        ProtocolFrame mountFrame = sink.frame();
         int nestedId = slotByThreshold(result, mountFrame, 600f);
         int rootId = slotByThreshold(result, mountFrame, 1024f);
 
@@ -162,7 +162,7 @@ class SizeThatFitsTest {
         // 2. The root row switches to the OTHER candidate (now-playing sidebar) —
         //    the whole subtree re-renders, rebuilding the nested slot.
         result.fitInputs().get(rootId).accept(1);
-        Frame swap = sink.frame();
+        ProtocolFrame swap = sink.frame();
         // The regression: without carrying the selection across the reconcile, the
         // rebuilt nested slot resets to compact and re-emits its fallback text.
         assertFalse(containsText(swap, "compact"), "nested fit keeps its wide selection across the outer swap");
@@ -185,7 +185,7 @@ class SizeThatFitsTest {
         };
     }
 
-    private static int slotByThreshold(RenderResult result, Frame frame, float threshold) {
+    private static int slotByThreshold(RenderResult result, ProtocolFrame frame, float threshold) {
         for (int id : result.fitInputs().keySet()) {
             Opcode query = frame.opcodes().stream()
                     .filter(o -> o.category() == Categories.PARAMETER
@@ -208,19 +208,19 @@ class SizeThatFitsTest {
         return result.fitInputs().keySet().iterator().next();
     }
 
-    private static long count(Frame frame, int command) {
+    private static long count(ProtocolFrame frame, int command) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER && o.command() == command)
                 .count();
     }
 
-    private static long countOps(Frame frame, int category, int command) {
+    private static long countOps(ProtocolFrame frame, int category, int command) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == category && o.command() == command)
                 .count();
     }
 
-    private static boolean containsText(Frame frame, String text) {
+    private static boolean containsText(ProtocolFrame frame, String text) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_TEXT)
                 .anyMatch(o -> frame.stringAt(o.b()).contains(text));

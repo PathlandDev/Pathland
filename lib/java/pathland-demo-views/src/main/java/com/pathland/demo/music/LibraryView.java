@@ -53,6 +53,6 @@ public final class LibraryView implements View {
                 )
         )
         .with(Padding.of(24))
-        .frame(Commands.Size.FILL, Commands.Size.FILL);
+        .with(Frame.of(Commands.Size.FILL, Commands.Size.FILL));
     }
 }

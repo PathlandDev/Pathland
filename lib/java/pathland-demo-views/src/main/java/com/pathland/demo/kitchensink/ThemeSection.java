@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.demo.DemoTheme;
 import com.pathland.view.Alignment;
 import com.pathland.view.Color;
@@ -32,10 +33,10 @@ public final class ThemeSection implements View {
                                 .with(ForegroundStyle.of(Color.token("control.accent"))),
                         HStack.of(
                                 Rectangle.of()
-                                        .frame(120, 60, Alignment.CENTER)
+                                        .with(Frame.of(120, 60, Alignment.CENTER))
                                         .with(Background.of(Color.token("color.surface"))),
                                 Rectangle.of()
-                                        .frame(120, 60, Alignment.CENTER)
+                                        .with(Frame.of(120, 60, Alignment.CENTER))
                                         .with(Background.of(Color.token("dark.color.surface")))
                         ).with(Padding.of(4)),
                         Text.of("control.background — a token-referenced control fill")

@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.view.Alignment;
 import com.pathland.view.FontDesign;
 import com.pathland.view.FontWeight;
@@ -48,10 +49,10 @@ public final class TextStylesSection implements View {
                                 .with(
                                         LineLimit.of(1),
                                         TruncationMod.of(Truncation.TAIL))
-                                .frame(280, Alignment.CENTER),
+                                .with(Frame.of(280, Alignment.CENTER)),
                         Text.of("Centered").with(
                                 TextAlignmentMod.of(TextAlignment.CENTER))
-                                .frame(180, Alignment.CENTER)
+                                .with(Frame.of(180, Alignment.CENTER))
                 ).with(Padding.of(4))
         );
     }

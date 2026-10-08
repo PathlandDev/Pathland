@@ -3,7 +3,7 @@ package com.pathland.server;
 import com.pathland.view.Categories;
 import com.pathland.view.Commands;
 import com.pathland.view.ValueTypes;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.transport.FrameCodec;
 
@@ -88,7 +88,7 @@ public final class DeltaBatcher {
     }
 
     /** Merge a produced frame into the pending batch (no-op for empty frames). */
-    public synchronized void append(Frame frame) {
+    public synchronized void append(ProtocolFrame frame) {
         if (frame.isEmpty()) {
             return;
         }
@@ -121,7 +121,7 @@ public final class DeltaBatcher {
                 return;
             }
             long start = System.nanoTime();
-            Frame merged = new Frame(List.copyOf(opcodes), strings.toByteArray());
+            ProtocolFrame merged = new ProtocolFrame(List.copyOf(opcodes), strings.toByteArray());
             flushedFrames = frames;
             flushedOpcodes = opcodes.size();
             opcodes.clear();

@@ -7,7 +7,7 @@ import com.pathland.view.Environment;
 import com.pathland.view.Platform;
 import com.pathland.view.Properties;
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.RenderResult;
@@ -59,7 +59,7 @@ class SplitNavDemoTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         mount(sink, "/home");
 
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         assertTrue(anySetText(frame, "Home"), "the home menu row is rendered");
         assertTrue(anySetText(frame, "Kitchen sink"), "the kitchen sink menu row is rendered");
         assertTrue(anySetText(frame, "Settings"), "the settings menu row is rendered");
@@ -77,7 +77,7 @@ class SplitNavDemoTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         mount(sink, "/kitchen");
 
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         assertTrue(anySetText(frame, "Pathland Kitchensink"),
                 "the /kitchen content area is the full KitchenSinkView");
         assertEquals("/kitchen", routeOf(frame));
@@ -118,7 +118,7 @@ class SplitNavDemoTest {
             }
         }
         assertTrue(reachedKitchen, "clicking the Kitchen sink menu row navigates the content area");
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertTrue(anySetText(delta, "Pathland Kitchensink"),
                 "the kitchen sink content swap is emitted as deltas");
         assertEquals("/kitchen", routeOf(delta));
@@ -147,7 +147,7 @@ class SplitNavDemoTest {
 
     /** A sink that records every completed frame (a flush can emit several). */
     private static final class RecordingSink extends FrameOpcodeSink {
-        final List<Frame> frames = new ArrayList<>();
+        final List<ProtocolFrame> frames = new ArrayList<>();
 
         @Override
         public void endFrame() {
@@ -156,11 +156,11 @@ class SplitNavDemoTest {
         }
     }
 
-    private static boolean anyFrame(RecordingSink sink, java.util.function.Predicate<Frame> test) {
+    private static boolean anyFrame(RecordingSink sink, java.util.function.Predicate<ProtocolFrame> test) {
         return sink.frames.stream().anyMatch(test);
     }
 
-    private static String routeOf(Frame frame) {
+    private static String routeOf(ProtocolFrame frame) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == Properties.ROUTE) {
@@ -171,7 +171,7 @@ class SplitNavDemoTest {
     }
 
     /** The ROUTE path in a frame, or null when the frame carries no ROUTE. */
-    private static String routeOfOrNull(Frame frame) {
+    private static String routeOfOrNull(ProtocolFrame frame) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == Properties.ROUTE) {
@@ -181,7 +181,7 @@ class SplitNavDemoTest {
         return null;
     }
 
-    private static boolean anySetText(Frame frame, String text) {
+    private static boolean anySetText(ProtocolFrame frame, String text) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT
                     && text.equals(frame.stringAt(op.b()))) {
@@ -191,7 +191,7 @@ class SplitNavDemoTest {
         return false;
     }
 
-    private static boolean anyCreateNode(Frame frame, int component) {
+    private static boolean anyCreateNode(ProtocolFrame frame, int component) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE
                     && op.b() == component) {
@@ -201,7 +201,7 @@ class SplitNavDemoTest {
         return false;
     }
 
-    private static boolean anySetPropertyString(Frame frame, int property, String value) {
+    private static boolean anySetPropertyString(ProtocolFrame frame, int property, String value) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property
@@ -212,7 +212,7 @@ class SplitNavDemoTest {
         return false;
     }
 
-    private static boolean anySetPropertyBits(Frame frame, int property, int bits) {
+    private static boolean anySetPropertyBits(ProtocolFrame frame, int property, int bits) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && (int) op.c() == bits) {
