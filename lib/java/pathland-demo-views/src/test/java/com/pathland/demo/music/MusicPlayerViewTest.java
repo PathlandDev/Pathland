@@ -62,11 +62,30 @@ class MusicPlayerViewTest {
         assertTrue(anySetText(frame, "Rendered Free"), "a later track title renders");
         assertTrue(anySetText(frame, "The Pathland Dream"), "last track title renders");
         assertTrue(anySetText(frame, "The Foundation"), "an artist renders");
-        assertTrue(anySetText(frame, "Now Playing"), "the now-playing sidebar header renders");
+        assertFalse(anySetText(frame, "Now Playing"),
+                "the now-playing sidebar starts hidden (the fit slot defaults to the compact row)");
         assertTrue(anySetText(frame, "Library"), "the library header renders");
         assertTrue(countCreate(frame, Components.IMAGE) >= 3, "album art images render");
         assertTrue(anySetPropertyString(frame, Properties.IMAGE_SOURCE, COVER),
                 "the track rows reference the album cover asset");
+        assertTrue(countCreate(frame, Components.SIZE_THAT_FITS) == 1,
+                "the root row is a SizeThatFits fit slot");
+    }
+
+    @Test
+    void fitShowsTheSidebarWhenTheParentIsWideEnough() {
+        Mounted m = mount();
+        // The parent row is ≥ 600pt wide: the renderer reports FIT_CHANGED(index 1)
+        // and the fit sink swaps the compact row for the row with the sidebar —
+        // exactly how the server routes the DOM client's fit report (spec PRIMITIVES.md).
+        int slotId = m.result.fitInputs().keySet().iterator().next();
+        assertFalse(anySetText(m.sink.frame(), "Now Playing"), "compact before the fit change");
+
+        m.result.fitInputs().get(slotId).accept(1);
+        Frame wide = m.sink.frame();
+
+        assertTrue(anySetText(wide, "Now Playing"), "the now-playing sidebar renders after the fit change");
+        assertTrue(anySetText(wide, "Up Next"), "the up-next pane renders");
     }
 
     @Test

@@ -85,20 +85,27 @@ public final class MusicPlayerView implements View {
         var previous = computed(() -> playing.get()
                 ? Lyrics.previousLine(at(trackIndex.get()).title(), position.get())
                 : "");
-        return
+        // The main play area (library + floating player bar + lyric pill) is
+        // shared by both fit candidates, so a row swap only inserts/removes the
+        // now-playing sidebar (the reconcile reuses these nodes).
+        View mainArea = ZStack.of(Alignment.BOTTOM_CENTER,
+                new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
                 HStack.of(
-                        ZStack.of(Alignment.BOTTOM_CENTER,
-                            new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
-                            HStack.of(
-                                new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
-                                    seekRequest.signal(), volumeRequest.signal())
-                                    .with(Border.of(MusicPlayerView.BAR_BORDER, 1, 500))
-                                    .with(Shadow.of(10))
-                            ).with(Padding.of(16)),
-                            subtitlePill(block, previous, current)),
-                        new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
-                ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL)
-
+                    new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
+                        seekRequest.signal(), volumeRequest.signal())
+                        .with(Border.of(MusicPlayerView.BAR_BORDER, 1, 500))
+                        .with(Shadow.of(10))
+                ).with(Padding.of(16)),
+                subtitlePill(block, previous, current));
+        View rowWithSidebar = HStack.of(
+                mainArea,
+                new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
+        ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL));
+        // The now-playing sidebar shows only when its parent row is ≥ 600pt
+        // wide; below that only the compact `mainArea` is transmitted.
+        return SizeThatFits.of(
+                Fit.of(rowWithSidebar, 600f),
+                Fit.of(mainArea)
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
