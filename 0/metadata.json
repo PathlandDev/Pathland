@@ -1,0 +1,68 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4E6X9F4HJ114KJNTNCA53GY",
+  "session_id": "ses_ee3b8f443ffe3QqpZq5kAMN30N",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-08T16:52:57.980842Z",
+  "branch": "feat/dsl-frame",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/SplitNavDemo.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/AppearanceSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/ColorSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/LayoutSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/MediaSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/SectionCard.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/TextFieldSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/TextStylesSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/ThemeSection.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/LibraryView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/MusicPlayerView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/NowPlayingSidebar.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PlayerBar.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PlayerControlsStyle.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/TrackRowView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/sidebar/Sidebar.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Frame.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/FrameMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/View.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/FrameModTest.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/FrameTest.java",
+    "lib/java/pathland-view/status.md",
+    "spec/DSL.md",
+    "spec/PRIMITIVES.md"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "436e889f7646",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 99368,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1552000,
+    "output_tokens": 15004,
+    "api_call_count": 24
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-08T16:52:57.942805Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 181,
+    "human_modified": 258,
+    "human_removed": 0,
+    "total_committed": 181,
+    "total_lines_changed": 439,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}

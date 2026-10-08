@@ -1,0 +1,19 @@
+In the Pathland repo at /Users/michael/Development/michaelkrog/Pathland, map the PROTOCOL + RUST side of width/height/frame so we can plan a new single `SET_FRAME` binary instruction that packs min/ideal/max width+height (+ alignment). Read-only.
+
+Report with exact file paths + line numbers + snippets:
+
+1. spec/MODIFIERS.md and spec/OPCODE.md: quote any section on frame, width, height, size constraints. Is there an existing FRAME property id (vs the separate WIDTH=0x100B / HEIGHT=0x100C)? Is there any `SET_FRAME` command mentioned anywhere in spec/? Also check spec/PRIMITIVES.md and spec/LAYOUT.md (layout/allocation contract) for frame/size semantics.
+
+2. spec/CONFORMANCE.md: any golden vectors mentioning WIDTH/HEIGHT/FRAME/frame? Quote them.
+
+3. lib/rust/crates/pathland-core/src/constants.rs: the property ids around 0x100B/0x100C — is there a FRAME property? (search 'FRAME', 'WIDTH', 'HEIGHT'). Show the surrounding ranges & value-type encodings (e.g. how LIST/FILL/HUG). Also any `frame` in the command/parameter modules.
+
+4. How pathland-core encodes variable-length/complex values: e.g. CONTENT_MARGINS, PADDING vs PADDING_TOP/RIGHT/BOTTOM/LEFT, FIT_QUERY (LIST in arena), SET_DESIGN_TOKEN (arena string). Show the arena value-type encoding (value type byte, [u32 len][bytes]) and the helper to write a LIST of f32 — I need to know how a 6-float frame descriptor (+alignment) could be packed as one property value (in arena) and how the engine would diff it (float-array equality per the emitter's `propertyValuesEqual`).
+
+5. lib/rust/crates/pathland-engine (emitter): how WIDTH/HEIGHT / frame-ish properties are emitted/diffed in Rust (Node/property emission). Does it support a FRAME property today? Show `set_property`/param emission paths for sizes.
+
+6. pathland-core status.md, pathland-engine status.md: any mention of frame/width/height status.
+
+7. Check whether the GTK/HTML Rust renderers already handle an `0x100D`-style FRAME or only WIDTH/HEIGHT: search lib/rust/crates/pathland-render-gtk and pathland-render-html for WIDTH/HEIGHT handling of fixed sizes (how a fixed px size or FILL/HUG becomes a GTK widget size / CSS width/height). Show the relevant match arms/property ids.
+
+Do NOT modify anything. Be thorough.
