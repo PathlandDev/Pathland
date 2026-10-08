@@ -167,7 +167,10 @@ lib/java/
   decode an empty tree (a valid but blank page). If running from IntelliJ:
   **Reload All Maven Projects → Build**, and only one instance at a time (an
   `immutable`-cached `dom-renderer.js` also needs a hard refresh after client
-  changes).
+  changes). After any Rust/TS change, refresh the two layers the IDE cannot
+  rebuild itself with `mvn -P refresh-ide validate` (root `pom.xml`: `cargo build
+  -p pathland-render-html`, `npm run build:all`, and the render-html embedded
+  dylib re-copy), then Reload/Build → Run → hard-refresh.
 
 ### Native C-ABI shim (`pathland-view-native` + `pathland-core-capi`)
 
