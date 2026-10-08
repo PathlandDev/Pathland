@@ -113,12 +113,6 @@ public class PathlandIndexController {
         // Spring's built-in extension → MIME detection (js, svg, mp4, mp3, …).
         MediaType type = MediaTypeFactory.getMediaType(file)
                 .orElse(MediaType.APPLICATION_OCTET_STREAM);
-        // The framework bundle revalidates on every load (dev iterations would
-        // otherwise be invisible for days under an immutable cache); media/other
-        // framework assets keep the long immutable lifetime.
-        CacheControl cacheControl = file.equals("dom-renderer.js") || file.endsWith(".js")
-                ? CacheControl.noCache().mustRevalidate()
-                : CacheControl.maxAge(Duration.ofDays(7)).cachePublic().immutable();
         String rangeHeader = request.getHeader(HttpHeaders.RANGE);
         if (rangeHeader != null && !rangeHeader.isEmpty()) {
             return rangeResponse(resource, type, rangeHeader);
@@ -126,7 +120,7 @@ public class PathlandIndexController {
         try (InputStream in = resource.getInputStream()) {
             return ResponseEntity.ok().contentType(type)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
-                    .cacheControl(cacheControl)
+                    .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().immutable())
                     .body(in.readAllBytes());
         }
     }
