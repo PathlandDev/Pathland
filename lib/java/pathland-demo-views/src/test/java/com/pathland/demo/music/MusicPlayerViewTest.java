@@ -269,6 +269,7 @@ class MusicPlayerViewTest {
         return false;
     }
 
+
     private static boolean anySetPropertyString(Frame frame, int property, String value) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
