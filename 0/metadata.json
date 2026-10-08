@@ -1,0 +1,76 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4DA90Y51408GMYGAQC9FKBK",
+  "session_id": "ses_f0a15d765ffeBL0H0TkLnPtm4s",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-08T08:33:09.185124Z",
+  "branch": "feat/size-that-fits",
+  "checkpoints_count": 4,
+  "save_step_count": 5,
+  "files_touched": [
+    "lib/java/pom.xml"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "8b39d94020e0",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 92517360,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1855285376,
+    "output_tokens": 3147023,
+    "api_call_count": 4722
+  },
+  "session_metrics": {
+    "turn_count": 293
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-08T08:33:06.492112Z",
+    "agent_lines": 63,
+    "agent_removed": 0,
+    "human_added": 7,
+    "human_modified": 3,
+    "human_removed": 0,
+    "total_committed": 73,
+    "total_lines_changed": 74,
+    "agent_percentage": 85.13513513513513,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 30,
+      "agent_lines_removed": 8
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 30,
+      "agent_lines_removed": 8
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 30,
+      "agent_lines_removed": 8
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 96,
+      "agent_lines_removed": 8
+    }
+  ]
+}
