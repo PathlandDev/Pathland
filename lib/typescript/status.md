@@ -95,7 +95,13 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   the runtime mirrors the SSR svg's `data-pathland-icon` (golden `icons`
   fixture / `ssr-conformance`).
 - **SizeThatFits fit slots** (`src/apply.ts` + `elements.ts` + `src/events.ts`):
-  a `SIZE_THAT_FITS` node is a fill-sized `div.pathland-ftf`;
+  a `SIZE_THAT_FITS` node is a fill-sized `div.pathland-ftf` that is
+  **layout-transparent**: it forwards the parent flex container's
+  `flex-direction`/`align-items`/`justify-content` (`inherit`) into its own box
+  (mirrors the Rust SSR slot styles), so a slot-wrapped candidate keeps the
+  parent's alignment — e.g. a `VStack(CENTER)` still centers the player bar's
+  `HSTACK` behind a fit slot — while staying size-taking
+  (`flex:1 1 auto;align-self:stretch;min-width/height:0`);
   `FIT_QUERY` (the `LIST` value type — `readList`) is mirrored to
   `data-pathland-fit`; a per-slot `ResizeObserver` derives the fit index locally
   (the spec'd rule) and reports `encodeFittedChanged` **only on transitions**

@@ -1200,13 +1200,26 @@ impl HtmlRenderer {
                 // `data-pathland-fit` mirrors the FIT_QUERY threshold table so the
                 // DOM client can derive the fit locally (and only report FIT_CHANGED
                 // on transitions).
+                //
+                // The slot is a LAYOUT-TRANSPARENT container: it forwards the
+                // parent flex container's flex-direction/align-items/justify-content
+                // (`inherit`) to its own box, so its sole child is laid out exactly
+                // as if it sat directly in the parent — e.g. a `VStack(CENTER)` keeps
+                // centering a candidate the slot wraps, instead of the slot's
+                // `align-self:stretch` box pinning the child to the start (a
+                // regression when the player bar moved its centered groups behind a
+                // fit slot). Under a non-flex parent `inherit` degrades to the CSS
+                // initial values (`row`/`normal`), which matches the plain-box
+                // behavior the slot had before. `align-self:stretch` + `flex:1 1
+                // auto` stay so the slot still fills/measures the proposal, and
+                // `min-width/height:0` lets flexbox shrink below content.
                 let fit_attr = node
                     .strings
                     .get(&property_id::FIT_QUERY)
                     .map(|csv| format!(" data-pathland-fit=\"{}\"", escape(csv)))
                     .unwrap_or_default();
                 format!(
-                    "<div{data_id} class=\"pathland-ftf\"{fit_attr}{event}{aria} style=\"flex:1 1 auto;align-self:stretch;{css}{derived}\">{children}</div>"
+                    "<div{data_id} class=\"pathland-ftf\"{fit_attr}{event}{aria} style=\"display:flex;flex-direction:inherit;align-items:inherit;justify-content:inherit;flex:1 1 auto;align-self:stretch;min-width:0;min-height:0;{css}{derived}\">{children}</div>"
                 )
             }
             component_type::TEXT => {
@@ -3082,6 +3095,68 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("align-items:flex-start"), "Fill=3 → hug: {}", html);
+    }
+
+    #[test]
+    fn fit_slot_forwards_parent_alignment_into_its_box() {
+        use pathland_core::value_type;
+
+        // A `VStack(CENTER)` > SizeThatFits > HSTACK: the slot is a layout-transparent
+        // container, so it must forward the parent's cross-axis alignment (`inherit`)
+        // into its own box — otherwise its `align-self:stretch` box pins the candidate
+        // to the start, regressing the centered player-bar groups (the reasons the
+        // player bar moved its centered controls behind a fit slot). It keeps the
+        // size-taking `flex:1 1 auto;align-self:stretch` + `min-width/height:0`
+        // (the fitted width is measured from this box).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        // HorizontalAlignment.CENTER = 1.
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
+            1.0f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::SIZE_THAT_FITS as u32, 0));
+        // FIT_QUERY (LIST) → arena `[count=2][0][640]` → `data-pathland-fit="0,640"`.
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&2u32.to_le_bytes());
+        strings.extend_from_slice(&0.0f32.to_le_bytes());
+        strings.extend_from_slice(&640.0f32.to_le_bytes());
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::LIST as u32) << 16) | property_id::FIT_QUERY as u32,
+            0,
+        ));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::HSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 3, 0));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &strings, 1);
+        assert!(html.contains("align-items:center"), "parent VStack centers: {}", html);
+        assert!(html.contains("data-pathland-fit=\"0,640\""), "fit mirror rides the slot: {}", html);
+        let slot = "class=\"pathland-ftf\"";
+        let pos_before = html.find(slot).expect("slot div");
+        let snippet = &html[pos_before..html[pos_before..].find('>').unwrap() + pos_before + 1];
+        assert!(
+            snippet.contains("display:flex;")
+                && snippet.contains("flex-direction:inherit;")
+                && snippet.contains("align-items:inherit;")
+                && snippet.contains("justify-content:inherit;")
+                && snippet.contains("flex:1 1 auto;")
+                && snippet.contains("align-self:stretch;")
+                && snippet.contains("min-width:0;")
+                && snippet.contains("min-height:0;"),
+            "slot forwards the parent flex settings while staying size-taking: {snippet}"
+        );
+        assert!(!snippet.contains("align-items:stretch;"), "forwarded, not stretch-only: {snippet}");
+        assert!(html.contains("display:flex;flex-direction:row;"), "the candidate HSTACK stays a row");
     }
 
     #[test]

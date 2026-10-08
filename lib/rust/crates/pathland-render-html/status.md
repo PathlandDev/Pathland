@@ -39,7 +39,11 @@ Statelessness). Protocol contract: `spec/`.
   `SIZE_THAT_FITS` → `<div class="pathland-ftf">` (the fit slot: fill-sized with
   `data-pathland-fit` mirroring the `FIT_QUERY` LIST, decoded as `[count][f32×count]`
   at decode time — the DOM client derives the fit locally and reports
-  `FIT_CHANGED` on transitions),
+  `FIT_CHANGED` on transitions; the slot is layout-transparent, forwarding the
+  parent flex container's `flex-direction`/`align-items`/`justify-content`
+  (`inherit`) into its own box so a wrapper never pins a centered candidate to
+  the start — `VStack(CENTER)` > fit slot > `HSTACK` keeps centering; stays
+  size-taking via `flex:1 1 auto;align-self:stretch;min-width/height:0`),
   `COLOR` → `<div>`, `SHAPE` → CSS shapes / inline SVG, `DIVIDER` → `<hr>`,
   `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
   `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex
