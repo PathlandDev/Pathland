@@ -43,6 +43,7 @@ fn text_node(text: &str) -> Node {
         children: Vec::new(),
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
+    list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
@@ -57,6 +58,7 @@ fn vstack(children: Vec<Node>) -> Node {
         children,
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
+    list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
@@ -71,6 +73,7 @@ fn hstack(children: Vec<Node>) -> Node {
         children,
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
+    list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
@@ -437,4 +440,46 @@ fn string_property_emits_with_string_value_type_and_diffs() {
     let (ops3, strings3) = emit_and_collect_with_arena(&mut engine, &root);
     assert_eq!(ops3.len(), 1);
     assert_eq!(strings3[0], "Inter");
+}
+
+#[test]
+fn list_property_emits_fit_query_with_the_list_value_type() {
+    // A SIZE_THAT_FITS slot ({0, 640} thresholds) with its single selected child:
+    // FIT_QUERY rides the LIST value type with a nonzero arena ref; an unchanged
+    // list re-emits nothing on the next pass.
+    let mut engine = Engine::new();
+    let child = text_node("compact");
+    let mut root = built(Node {
+        id: 0,
+        component: Component::SizeThatFits,
+        children: vec![child],
+        properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
+        list_properties: BTreeMap::from([(property_id::FIT_QUERY, vec![0f32, 640.0])]),
+        token_properties: BTreeMap::new(),
+        text_binding: None,
+        property_bindings: BTreeMap::new(),
+        gestures: Vec::new(),
+    });
+
+    let (ops, _) = emit_and_collect_with_arena(&mut engine, &root);
+    let create = ops
+        .iter()
+        .find(|o| o.category() == category::TREE && o.command() == tree::CREATE_NODE)
+        .expect("slot created");
+    assert_eq!(create.b() as u16, component_type_id(&Component::SizeThatFits));
+
+    let query = ops
+        .iter()
+        .find(|o| {
+            o.category() == category::PARAMETER
+                && o.command() == parameter::SET_PROPERTY
+                && o.b() as u16 == property_id::FIT_QUERY
+        })
+        .expect("FIT_QUERY SET_PROPERTY emitted");
+    assert_eq!((query.b() >> 16) & 0xff, value_type::LIST as u32);
+
+    // An unchanged list must not re-emit.
+    let (ops2, _) = emit_and_collect_with_arena(&mut engine, &root);
+    assert_eq!(ops2.len(), 0, "unchanged list property must not re-emit");
 }
