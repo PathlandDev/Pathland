@@ -1,0 +1,17 @@
+In the Pathland repo (Java DSL in /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-view), map the CURRENT ".frame(. . .)" / frame-modifier API and its opcode emission so we can plan a SwiftUI-like redesign. Read-only.
+
+Report with exact file paths + line numbers + snippets:
+
+1. The current frame modifier type(s) — likely `FrameMod` and/or `Modifiers`/`ViewModifier`. Find its class file, its public API (all constructor/factory overloads, fields, e.g. fixed width/height, alignment), and how views chain it (`.with(...)`? `.frame(...)`? both?). See also `lib/java/pathland-view/src/main/java/com/pathland/view/` — list every file whose name relates to frame/size/width/height (e.g. FrameMod, Frame, SizeThatFits, FixedSize, FlexibleFrameProvider, Resizable, AspectRatio/ScaledToFit). Clarify whether there is ALREADY a `.frame(...)` method anywhere (e.g. a default method on the View interface or a Modifiers helper).
+
+2. Where the emitter (com.pathland.view.emit.Emitter) emits width/height/size properties: search for WIDTH / HEIGHT / 0x100B / 0x100C / 0x1018 / "frame" in Emitter.java and any related property-emit code. Show exactly how a fixed width/height currently becomes an opcode (which property ids, how FILL=-1/HUG=-2 map, which value type).
+
+3. The property-id constants in the Java DSL: find the Java mirror of the protocol's property constants (e.g. a `Property` class, `Categories`, `Commands`) — do WIDTH=0x100B / HEIGHT=0x100C exist there? Is there any existing FRAME property id or SET_FRAME command?
+
+4. How SizeThatFits / FixedSize / LayoutPriority interact with frame (do they share an 'ideal size' concept?). Look at SizeThatFits.java and any FixedSize.java.
+
+5. Tests covering frame in pathland-view (search test dir for frame/width/height). List test method names + what they assert (incl. any golden byte assertions).
+
+6. Usages of FrameMod / frame in the rest of the Java tree: lib/java/pathland-demo-views (e.g. MusicPlayerView, PlayerControlsStyle use `FrameMod.of(36,36)`, `FrameMod.of(160f)`) and demos. List every call site with exact current usage so migration impact is clear.
+
+Do NOT modify anything. Be thorough.
