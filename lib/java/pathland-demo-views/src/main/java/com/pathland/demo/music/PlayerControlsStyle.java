@@ -48,12 +48,12 @@ public final class PlayerControlsStyle implements AudioStyle {
         var seek = new SeekControl(position, seekRequest);
         var volumeControl = new VolumeControl(volume, volumeRequest);
 
-        var playControl = HStack.of(
+        var playControl = HStack.of(VerticalAlignment.CENTER, 18f,
                 Button.of(Icon.of(IconName.SKIP_BACK), () -> { prev(); restartSeek(); }).with(FontSize.of(20)),
                 Button.of(Icon.of(transportIcon), () -> config.playing().update(v -> !v)).with(FontSize.of(28)),
                 Button.of(Icon.of(IconName.SKIP_FORWARD), () -> { next(); restartSeek(); }).with(FontSize.of(20))
         );
-        var trackInfo = HStack.of(
+        var trackInfo = HStack.of(VerticalAlignment.CENTER, 18f,
                 Image.of(computed(() -> current.get().cover()))
                         .with(FrameMod.of(36, 36), ScaledToFit.of()),
                 VStack.of(HorizontalAlignment.LEADING, 2,
@@ -64,7 +64,7 @@ public final class PlayerControlsStyle implements AudioStyle {
                 ).with(FrameMod.of(160f))
         );
 
-        var volumeView = HStack.of(
+        var volumeView = HStack.of(VerticalAlignment.CENTER, 18f,
             Icon.of(IconName.VOLUME).with(FontSize.of(16)),
             Slider.of(volumeControl, 0f, 1f)
         );
