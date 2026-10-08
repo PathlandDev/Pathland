@@ -68,8 +68,8 @@ class MusicPlayerViewTest {
         assertTrue(countCreate(frame, Components.IMAGE) >= 3, "album art images render");
         assertTrue(anySetPropertyString(frame, Properties.IMAGE_SOURCE, COVER),
                 "the track rows reference the album cover asset");
-        assertTrue(countCreate(frame, Components.SIZE_THAT_FITS) == 1,
-                "the root row is a SizeThatFits fit slot");
+        assertTrue(countCreate(frame, Components.SIZE_THAT_FITS) == 2,
+                "the root row and the player-bar controls group are SizeThatFits fit slots");
     }
 
     @Test
@@ -78,7 +78,7 @@ class MusicPlayerViewTest {
         // The parent row is ≥ 600pt wide: the renderer reports FIT_CHANGED(index 1)
         // and the fit sink swaps the compact row for the row with the sidebar —
         // exactly how the server routes the DOM client's fit report (spec PRIMITIVES.md).
-        int slotId = m.result.fitInputs().keySet().iterator().next();
+        int slotId = slotIdByMaxThreshold(m.sink.frame(), 1024f);
         assertFalse(anySetText(m.sink.frame(), "Now Playing"), "compact before the fit change");
 
         m.result.fitInputs().get(slotId).accept(1);
@@ -103,18 +103,28 @@ class MusicPlayerViewTest {
         Frame frame = m.sink.frame();
 
         assertTrue(countCreate(frame, Components.BUTTON) >= 3, "transport + track-row buttons render");
-        assertTrue(countCreate(frame, Components.SLIDER) == 2, "seek + volume sliders render");
-        // Seek slider: progress as a percent 0..100; volume slider: 0..1 (value 0.7).
+        // Compact bar: the full-width seek bar (progress as 0..100 percent) always
+        // mounts; the volume slider lives in the WIDE controls cluster, a second
+        // SizeThatFits in the player bar — covered after firing that slot below.
+        assertTrue(countCreate(frame, Components.SLIDER) == 1, "seek slider renders in the compact bar");
         assertTrue(anySlider(frame, 0f, 100f), "seek slider carries its 0..100 percent range");
-        assertTrue(anySlider(frame, 0f, 1f), "volume slider carries its 0..1 range");
-        assertTrue(anySliderValue(frame, 0.7f), "volume slider carries the persisted value");
-        // The centered bar groups: transport | now-playing | volume (| dividers).
+        // The compact bar groups: transport | now-playing (| divider).
         assertTrue(anySetText(frame, "|"), "the bar groups are separated by | dividers");
         // The app-driven audio node: source + media control properties bound.
         assertTrue(anySetPropertyString(frame, Properties.AUDIO_SOURCE, "/_pathland/assets/audio/track1.mp3"),
                 "the audio node carries the current track's source");
         assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0), "the audio node binds play state");
         assertTrue(anySetProperty(frame, Properties.MEDIA_POSITION, 0f), "the audio node binds position");
+
+        // The full controls cluster (transport + now-playing + volume) wants ≥600pt:
+        // firing the player-bar slot's fit change mounts it — and its volume slider
+        // (persisted value 0.7) that the compact bar hides.
+        int barSlot = slotIdByMaxThreshold(frame, 600f);
+        m.result.fitInputs().get(barSlot).accept(1);
+        Frame wideBar = m.sink.frame();
+        assertTrue(countCreate(wideBar, Components.SLIDER) == 1, "the wide controls add the volume slider");
+        assertTrue(anySlider(wideBar, 0f, 1f), "volume slider carries its 0..1 range");
+        assertTrue(anySliderValue(wideBar, 0.7f), "volume slider carries the persisted value");
     }
 
     @Test
@@ -279,5 +289,45 @@ class MusicPlayerViewTest {
             }
         }
         return false;
+    }
+
+    private static int le32(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xFF)
+                | ((bytes[offset + 1] & 0xFF) << 8)
+                | ((bytes[offset + 2] & 0xFF) << 16)
+                | ((bytes[offset + 3] & 0xFF) << 24);
+    }
+
+    /** The `FIT_QUERY` threshold table (LIST value in the arena) for a fit slot. */
+    private static float[] fitThresholds(Frame frame, int slotId) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && op.a() == slotId && (op.b() & 0xFFFF) == Properties.FIT_QUERY) {
+                byte[] strings = frame.strings();
+                int offset = op.c();
+                int count = le32(strings, offset);
+                float[] thresholds = new float[count];
+                for (int i = 0; i < count; i++) {
+                    thresholds[i] = Float.intBitsToFloat(le32(strings, offset + 4 + i * 4));
+                }
+                return thresholds;
+            }
+        }
+        throw new AssertionError("no FIT_QUERY for slot " + slotId);
+    }
+
+    /** The SizeThatFits slot whose threshold table ends at the given width (e.g. the
+     *  root MusicPlayerView row at 1024f, the player-bar controls group at 600f). */
+    private static int slotIdByMaxThreshold(Frame frame, float maxThreshold) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE
+                    && op.b() == Components.SIZE_THAT_FITS) {
+                float[] thresholds = fitThresholds(frame, op.a());
+                if (thresholds[thresholds.length - 1] == maxThreshold) {
+                    return op.a();
+                }
+            }
+        }
+        throw new AssertionError("no fit slot with max threshold " + maxThreshold);
     }
 }

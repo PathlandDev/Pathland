@@ -100,6 +100,57 @@ class SizeThatFitsTest {
         assertTrue(containsText(sink.frame(), "compact"), "back to the fallback candidate");
     }
 
+    @Test
+    void nestedSlotMountEmitsASingleMountFrame() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        // An outer slot whose selected candidate nests another slot (e.g. the music
+        // player's root row wrapping a player-bar controls SizeThatFits). The outer
+        // structural effect's first merge must NOT re-emit the nested slot's
+        // unchanged FIT_QUERY — the threshold `float[]` is recreated per render, so
+        // a reference comparison would emit a spurious post-mount frame.
+        View nested = SizeThatFits.of(Fit.of(Text.of("wide"), 600f), Fit.of(Text.of("compact")));
+        View root = SizeThatFits.of(Fit.of(Text.of("fallback"), 1024f), Fit.of(VStack.of(nested)));
+        emitter.mount(root, Environment.DEFAULT);
+        assertEquals(1, sink.framesProduced(), "mount emits exactly one frame (no spurious reconcile frame)");
+    }
+
+    /** A fit change to the nested slot swaps only that slot's child. */
+    @Test
+    void nestedSlotFitChangeSwapsOnlyTheNestedSelection() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        View nested = SizeThatFits.of(Fit.of(Text.of("wide"), 600f), Fit.of(Text.of("compact")));
+        View root = SizeThatFits.of(Fit.of(Text.of("fallback"), 1024f), Fit.of(VStack.of(nested)));
+        RenderResult result = emitter.mount(root, Environment.DEFAULT);
+        assertEquals(2, result.fitInputs().size(), "both slots route a fit sink");
+
+        int nestedId = slotByThreshold(result, sink.frame(), 600f);
+        result.fitInputs().get(nestedId).accept(1);
+        Frame swap = sink.frame();
+        assertTrue(containsText(swap, "wide"), "the nested slot swapped to its wide candidate");
+        assertFalse(containsText(swap, "fallback"), "the outer slot's candidate is untouched");
+    }
+
+    private static int slotByThreshold(RenderResult result, Frame frame, float threshold) {
+        for (int id : result.fitInputs().keySet()) {
+            Opcode query = frame.opcodes().stream()
+                    .filter(o -> o.category() == Categories.PARAMETER
+                            && o.command() == Commands.Parameter.SET_PROPERTY
+                            && o.a() == id && (o.b() & 0xFFFF) == Properties.FIT_QUERY)
+                    .findFirst().orElseThrow();
+            byte[] strings = frame.strings();
+            int offset = query.c();
+            int count = le32(strings, offset);
+            for (int i = 0; i < count; i++) {
+                if (Float.intBitsToFloat(le32(strings, offset + 4 + i * 4)) == threshold) {
+                    return id;
+                }
+            }
+        }
+        throw new AssertionError("no slot with threshold " + threshold);
+    }
+
     private static int slotId(RenderResult result) {
         return result.fitInputs().keySet().iterator().next();
     }

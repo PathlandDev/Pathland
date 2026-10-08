@@ -14,6 +14,7 @@ import com.pathland.view.signal.Signals;
 import com.pathland.view.transport.Event;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -272,6 +273,17 @@ public final class Emitter {
         sink.setProperty(nodeId, property, valueType, value);
     }
 
+    /** Value equality for a retained property diff. `float[]` (LIST-typed values,
+     *  e.g. a SizeThatFits FIT_QUERY) are re-created on every render, so a
+     *  reference comparison would re-emit an unchanged LIST on every reconcile —
+     *  compare array contents instead ("identical recompute emits zero opcodes"). */
+    private static boolean propertyValuesEqual(Object a, Object b) {
+        if ((a instanceof float[] fa) && (b instanceof float[] fb)) {
+            return Arrays.equals(fa, fb);
+        }
+        return Objects.equals(a, b);
+    }
+
     /**
      * Register a node-level binding effect for every reactive text/property in the
      * tree. When the bound signal changes, only that node's delta opcode is emitted.
@@ -477,7 +489,7 @@ public final class Emitter {
             ops.add(() -> sink.setText(id, text));
         }
         for (Map.Entry<Integer, Object> entry : fresh.properties.entrySet()) {
-            if (!Objects.equals(entry.getValue(), old.properties.get(entry.getKey()))) {
+            if (!propertyValuesEqual(entry.getValue(), old.properties.get(entry.getKey()))) {
                 int id = fresh.id, property = entry.getKey();
                 Object value = entry.getValue();
                 ops.add(() -> emitProperty(id, property, value));
