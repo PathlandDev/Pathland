@@ -1,1 +1,1 @@
-SizeThatFits behaves weird. If the playerbar gets enough space it show the non compact view with volumne contorl. But then when there is enough space to show the NowPlayingBar then volume control dissappears again and does not come back even though it has enough space to show the volume control
+PErfect. Commit this
