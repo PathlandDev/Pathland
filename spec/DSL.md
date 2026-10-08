@@ -646,8 +646,8 @@ surface ([§5.6](#56-custom-modifiers-developer-authored)).
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
 |----------|---------------------------|--------------------|---------------|
-| `frame` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(float width))` / `.with(FrameMod.of(float width, float height))` / `.with(FrameMod.of(float width, float height, Alignment))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
-| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.with(FrameMod.of(float, float, float, float, float, float))` (NaN = unset) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
+| `frame` | `.frame(width:height:alignment:)` | `.frame(w, h)` / `.frame(w, h, alignment)` / `.frame(w, alignment)` / `.frameWidth(w)` / `.frameHeight(h)` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
+| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.frame(c -> c.minWidth(..).idealWidth(..).maxWidth(..).minHeight(..).idealHeight(..).maxHeight(..))` (the `Frame.Builder`; unset bounds are omitted — NaN/∞ = no limit) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
 | `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.with(Padding.of(int))` / `.with(Padding.of(float))` / `.with(Padding.of(int top, int right, int bottom, int left))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
 | `offset` | `.offset(x:y:)` | `.with(Offset.of(float x, float y))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
 | `position` | `.position(x:y:)` | `.with(Position.of(float x, float y))` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 |
@@ -869,7 +869,7 @@ Button.of("Save", this::save).with(ButtonStyleMod.of(MyButtonStyle.INSTANCE));
 // Label: the style decides which parts render (nullable parts = absent).
 enum BadgeLabelStyle implements LabelStyle { INSTANCE;
     @Override public View makeBody(Configuration c) {
-        return HStack.of(c.icon().with(FrameMod.of(18, 18)), c.title());
+        return HStack.of(c.icon().frame(18, 18), c.title());
     }
 }
 ```
@@ -1205,7 +1205,7 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 | `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.with(ForegroundStyle.of(Color))` | `.foreground_style(Color(0xFF0000FF))` |
 | `.background(.gray)` | `.background(Color)` | `.with(Background.of(Color))` | `.background(Color(0xFFEEEEEE))` |
 | `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.with(Border.of(Color, 2))` | `.border(Color, 2.0)` |
-| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.with(FrameMod.of(100, 24))` | `.frame(Some(100.0), Some(24.0), None)` |
+| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.frame(100, 24)` | `.frame(Some(100.0), Some(24.0), None)` |
 | `.padding(16)` | `.padding(16)` | `.with(Padding.of(16))` | `.padding(16.0)` |
 | `.font(.system(size: 28))` | `.font(size: 28)` | `.with(FontSize.of(28))` | `.font_size(28.0)` |
 | `.font(.largeTitle)` | `.font(Font.largeTitle())` | `.font(Font.largeTitle())` | `.font(Font::large_title())` |

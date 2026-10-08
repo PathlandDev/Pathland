@@ -73,6 +73,60 @@ public interface View {
     }
 
     /**
+     * A frame of {@code width} x {@code height} with no content alignment
+     * ({@code .frame(width:height:)}). {@code ±∞} axes expand to the available
+     * space ({@code Commands.Size.FILL}); {@code NaN} omits the axis.
+     */
+    default View frame(float width, float height) {
+        return with(new Frame(width, height, null, null));
+    }
+
+    /**
+     * A frame of {@code width} x {@code height} at {@code alignment}
+     * ({@code .frame(width:height:alignment:)}).
+     */
+    default View frame(float width, float height, Alignment alignment) {
+        return with(new Frame(width, height, (float) alignment.wire(), null));
+    }
+
+    /**
+     * A frame of a fixed {@code width} with no height hint at {@code alignment}:
+     * the view keeps its natural height and, as a flex child, stretches to its
+     * container's cross axis (e.g. a sidebar column filling a row's full height).
+     */
+    default View frame(float width, Alignment alignment) {
+        return with(new Frame(width, null, (float) alignment.wire(), null));
+    }
+
+    /**
+     * A frame of a fixed {@code width} with no height hint
+     * ({@code .frameWidth(_:)} — SwiftUI's {@code width} axis): the view keeps
+     * its natural height and stretches to the container's cross axis.
+     */
+    default View frameWidth(float width) {
+        return with(new Frame(width, null, null, null));
+    }
+
+    /** A frame of a fixed {@code height} with no width hint ({@code .frameHeight(_:)}). */
+    default View frameHeight(float height) {
+        return with(new Frame(null, height, null, null));
+    }
+
+    /**
+     * Configure a frame with {@code .frame(c -> …)}: a fluent
+     * {@link Frame.Builder} for complex layout constraints — min/ideal/max width
+     * and height bounds, an optional fixed {@code width}/{@code height}, and
+     * {@code alignment}. Any combination is valid; unset bounds are omitted.
+     * {@code ±∞} on a fixed axis means {@code FILL}; {@code NaN}/{@code ∞} on a
+     * bound means "no limit".
+     */
+    default View frame(java.util.function.Consumer<Frame.Builder> config) {
+        Frame.Builder builder = new Frame.Builder();
+        config.accept(builder);
+        return with(builder.build());
+    }
+
+    /**
      * Declare this view a route-changer that {@code navigate}s to {@code to} (a
      * direct selection — no back-stack entry). Resolved to the nearest enclosing
      * {@code Router} by the emitter (spec DSL.md §4.5 "any component can change

@@ -46,7 +46,7 @@ public final class TrackRowView implements View {
         var fg = computed(() -> isCurrent.get() ? MusicPlayerView.ACTIVE_ROW_FG : Color.BLACK);
         return Button.of(
                 HStack.of(VerticalAlignment.CENTER, 12f,
-                        Image.of(track.cover()).with(FrameMod.of(44, 44), ScaledToFit.of()),
+                        Image.of(track.cover()).frame(44, 44).with(ScaledToFit.of()),
                         VStack.of(HorizontalAlignment.LEADING, 2,
                                 Text.of(track.title()).with(FontWeightMod.of(FontWeight.SEMIBOLD)),
                                 Text.of(track.artist() + " · " + track.album())
@@ -68,6 +68,6 @@ public final class TrackRowView implements View {
                 // Full-width row: the layout contract's cross-axis default is hug
                 // (LAYOUT.md), so a row that should span the library column must
                 // explicitly FILL its width.
-                .with(FrameMod.of(Commands.Size.FILL));
+                .frameWidth(Commands.Size.FILL);
     }
 }

@@ -58,7 +58,7 @@ public final class PlayerBar implements View {
                 .onEnded(this::ended)
                 .with(AudioStyleMod.of(PlayerControlsStyle.of(trackIndex, position, seekRequest, volume, volumeRequest)))
                 .with(Background.of(MusicPlayerView.BAR_BG))
-                .with(FrameMod.of(Commands.Size.FILL, MusicPlayerView.BAR_HEIGHT));
+                .frame(Commands.Size.FILL, MusicPlayerView.BAR_HEIGHT);
     }
 
     /** The media ended: advance to the next track and restart from the top. The

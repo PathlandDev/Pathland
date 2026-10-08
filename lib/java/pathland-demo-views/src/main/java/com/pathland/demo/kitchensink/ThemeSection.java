@@ -9,7 +9,6 @@ import com.pathland.view.Text;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
 import com.pathland.view.Background;
-import com.pathland.view.FrameMod;
 import com.pathland.view.Padding;
 import com.pathland.view.ForegroundStyle;
 
@@ -32,12 +31,12 @@ public final class ThemeSection implements View {
                         Text.of("control.accent — control accent")
                                 .with(ForegroundStyle.of(Color.token("control.accent"))),
                         HStack.of(
-                                Rectangle.of().with(
-                                        FrameMod.of(120, 60, Alignment.CENTER),
-                                        Background.of(Color.token("color.surface"))),
-                                Rectangle.of().with(
-                                        FrameMod.of(120, 60, Alignment.CENTER),
-                                        Background.of(Color.token("dark.color.surface")))
+                                Rectangle.of()
+                                        .frame(120, 60, Alignment.CENTER)
+                                        .with(Background.of(Color.token("color.surface"))),
+                                Rectangle.of()
+                                        .frame(120, 60, Alignment.CENTER)
+                                        .with(Background.of(Color.token("dark.color.surface")))
                         ).with(Padding.of(4)),
                         Text.of("control.background — a token-referenced control fill")
                                 .with(

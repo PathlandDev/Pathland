@@ -12,7 +12,6 @@ import com.pathland.view.Background;
 import com.pathland.view.Border;
 import com.pathland.view.ClipShape;
 import com.pathland.view.CornerRadius;
-import com.pathland.view.FrameMod;
 import com.pathland.view.Hidden;
 import com.pathland.view.Padding;
 import com.pathland.view.Rotation;
@@ -47,12 +46,10 @@ public final class AppearanceSection implements View {
                                 .with(Background.of(GREEN_50), CornerRadius.of(6)),
                         Text.of("This text is hidden").with(Hidden.of()),
                         HStack.of(
-                                Rectangle.of().with(
-                                        FrameMod.of(90, 60, Alignment.CENTER),
+                                Rectangle.of().frame(90, 60, Alignment.CENTER).with(
                                         Background.of(Color.RED),
                                         ClipShape.of(ShapeKind.CIRCLE)),
-                                Rectangle.of().with(
-                                        FrameMod.of(90, 60, Alignment.CENTER),
+                                Rectangle.of().frame(90, 60, Alignment.CENTER).with(
                                         Background.of(Color.BLUE),
                                         CornerRadius.of(12))
                         ).with(Padding.of(4)),

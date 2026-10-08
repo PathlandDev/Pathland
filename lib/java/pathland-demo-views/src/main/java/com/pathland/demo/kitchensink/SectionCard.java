@@ -16,7 +16,6 @@ import com.pathland.view.CornerRadius;
 import com.pathland.view.FontSize;
 import com.pathland.view.FontWeightMod;
 import com.pathland.view.ForegroundStyle;
-import com.pathland.view.FrameMod;
 import com.pathland.view.Padding;
 
 
@@ -50,7 +49,7 @@ public final class SectionCard implements View {
                 Padding.of(16),
                 Background.of(Color.WHITE),
                 Border.of(BORDER, 1, 10),
-                CornerRadius.of(10),
-                FrameMod.of(Commands.Size.FILL, Float.NaN));
+                CornerRadius.of(10))
+                .frameWidth(Commands.Size.FILL);
     }
 }

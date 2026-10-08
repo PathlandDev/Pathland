@@ -8,7 +8,6 @@ import com.pathland.view.VStack;
 import com.pathland.view.View;
 import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
-import com.pathland.view.FrameMod;
 import com.pathland.view.Padding;
 
 
@@ -28,7 +27,7 @@ public final class TextFieldSection implements View {
         return new SectionCard("Text · TextField + TextEditor",
                 VStack.of(
                         TextField.of("Your name", name.signal()),
-                        TextEditor.of(name.signal()).with(FrameMod.of(240, 64, Alignment.CENTER)),
+                        TextEditor.of(name.signal()).frame(240, 64, Alignment.CENTER),
                         Text.of(greeting).with(Padding.of(4))
                 ).with(Padding.of(4))
         );

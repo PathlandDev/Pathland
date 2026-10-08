@@ -238,8 +238,12 @@ apps. Components and modifiers:
 - **Constructor props** (structural/layout: `alignment`, `spacing`) are
   constructor args, never chainable; **modifiers** (`padding`, `color`,
   `background`, `fontSize`, `fontWeight`, `frame`, `opacity`, `border`,
-  `visible`, …) chain on any view. No standalone width/height — use the
-  compound `frame(width, height, alignment)` modifier. Typed enums
+  `visible`, …) chain on any view. Sizing is the SwiftUI-like `frame` sugar on
+  `View`: `.frame(w, h)`, `.frame(w, h, alignment)`, `.frame(w, alignment)`,
+  standalone `.frameWidth(w)` / `.frameHeight(h)`, and the lambda configurator
+  `.frame(c -> c.minWidth(..).maxWidth(..).alignment(..))` (min/ideal/max bounds);
+  all compile to the same `WIDTH`/`HEIGHT`/`ALIGNMENT`/min-max `SET_PROPERTY`s.
+  Typed enums
   (`Alignment`/`TextAlignment`/`FontWeight`/`Truncation`), not raw ints.
 - **Environment scoping via a `ThreadLocal`** (Java 17+): `.buttonStyle(ButtonStyle)`
   injects a style down the whole child tree; `ButtonStyle.makeBody(Configuration)`
