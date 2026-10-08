@@ -219,6 +219,11 @@ single `style` attribute — no external compiler, no class system, no safelist:
   `_tailwind_compile`
   entry point, `tw.rs`, `tailwind.rs`, `build.rs`, `scripts/fetch-tailwind.mjs`,
   `vendor/`, and the `tailwind-embed` feature are **deleted**.
+  **The cdylib must be refreshed with `cargo build -p pathland-render-html`
+  (NOT just `cargo test` — tests rebuild the rlib, not the `.dylib`) before
+  `mvn install`**: the jar-embed step only fails on a *missing* dylib, a
+  *stale* one embeds silently and hosts SSR the old component surface (e.g. a
+  blank page for a newly-added component like `SIZE_THAT_FITS`).
 - **Debug comments** (`HtmlRenderer::with_debug_comments(true)`; C ABI
   `pathland_html_render_debug` / `_fragment_debug`): every rendered node is
   prefixed with an HTML comment naming its component type and the modifiers
