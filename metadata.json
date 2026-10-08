@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4DFT8YZ9MEYZDR9CKBQ6W22",
+  "strategy": "manual-commit",
+  "branch": "feat/size-that-fits",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PlayerControlsStyle.java"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 228019,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 461056,
+    "output_tokens": 878,
+    "api_call_count": 4
+  }
+}
