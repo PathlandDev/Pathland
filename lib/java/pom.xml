@@ -95,8 +95,10 @@
                     <version>3.3.1</version>
                     <configuration>
                         <!-- Re-copy static resources (e.g. the rebuilt
-                             pathland-dom-renderer.js) over existing target files instead
-                             of failing with FileAlreadyExistsException on repeat builds. -->
+                             content-hashed dom-renderer bundle and its
+                             dom-renderer.current manifest) over existing target
+                             files instead of failing with FileAlreadyExistsException
+                             on repeat builds. -->
                         <overwrite>true</overwrite>
                     </configuration>
                 </plugin>
@@ -119,9 +121,11 @@
          render-html module's embedded dylib (its antrun embed step only runs under Maven,
          NOT under IntelliJ's own build). IntelliJ then compiles the Java modules from its
          module outputs (the pathland modules are imported, so no ~/.m2 is used) and copies
-         the refreshed bundle into target/classes on Build Project. Invoke with
-         `mvn -P refresh-ide validate`, then Reload All Maven Projects → Build → Run, and
-         hard-refresh the browser once (the bundle is served immutable-cached). -->
+         the refreshed bundle + its dom-renderer.current manifest into target/classes on
+         Build Project. Invoke with `mvn -P refresh-ide validate`, then Reload All Maven
+         Projects → Build → Run → reload. The bundle is content-hashed
+         (dom-renderer-<sha256>.js) so a rebuilt bundle busts the immutable asset cache by
+         URL — a normal reload after restart is enough, no hard refresh. -->
     <profiles>
     <profile>
         <id>refresh-ide</id>

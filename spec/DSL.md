@@ -458,7 +458,11 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
 
 **Reserved framework root** — the host reserves **`/_pathland/**`** for its own
 system endpoints, so app routes never collide with them: the WebSocket lives at
-`/_pathland/ws`, the DOM-client bundle at `/_pathland/dom-renderer.js`, the
+`/_pathland/ws`, the DOM-client bundle under a **content-hashed name**
+(`/_pathland/dom-renderer-<sha256>.js`; the current name is published next to the
+copies in the one-line pointer `/_pathland/dom-renderer.current`, read by the SSR
+layer so the page always references the built artifact — the fresh URL per build
+busts immutable asset caches), the
 renderer-owned icon glyphs at `/_pathland/icons/<name>.svg` (served from the
 shared HTML-renderer library — `pathland_html_icon_svg` over the C ABI — which
 the DOM client lazily fetches when a delta references an `ICON_NAME` the page

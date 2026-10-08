@@ -138,8 +138,10 @@ jobs:
           npm test
           npm run build
 
-      # The demos serve the committed bundle from their static resource dirs;
-      # copying the freshly built one must not change the working tree.
+      # The demos serve the committed bundle from their static resource dirs
+      # (content-hashed dom-renderer-<sha256>.js + the dom-renderer.current
+      # pointer; stale hashed copies are pruned); copying the freshly built one
+      # must not change the working tree.
       - name: Verify the committed bundle matches the source (no drift)
         working-directory: lib/typescript
         run: |

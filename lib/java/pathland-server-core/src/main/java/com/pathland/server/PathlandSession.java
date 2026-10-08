@@ -218,9 +218,12 @@ public final class PathlandSession {
         // under `/{base}/**`. Carried as `data-pathland-base` so the DOM client
         // resolves its WebSocket and the bundle from the same base. Multi-app
         // hosts give each mounted app its own base (e.g. `/app2/_pathland`).
+        // The bundle name is content-hashed (see PathlandAssets) so a new build
+        // busts the immutable asset cache via a fresh URL.
         return html
                 .replace("<html>", "<html data-pathland-base=\"" + base + "\">")
-                .replace("</body>", "<script src=\"" + base + "/dom-renderer.js\" defer></script></body>");
+                .replace("</body>", "<script src=\"" + base + "/" + PathlandAssets.bundleName()
+                        + "\" defer></script></body>");
     }
 
     /** Tear down: close the persistent state, unsubscribe the emitter, stop the batcher, drop the connection. */

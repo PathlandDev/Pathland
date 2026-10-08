@@ -38,7 +38,8 @@ Java renderer is removed. Protocol contract: `spec/`.
 - **Text fields share one component class**: `TEXT_FIELD` inputs and `TEXT_EDITOR`
   textareas render with `class="pathland-input"` (Tailwind-style inset-outline
   styling from the Rust renderer's CSS); the copied `@pathland/dom-renderer`
-  bundle mirrors the class so delta-created fields hydrate identically.
+  bundle (content-hashed `dom-renderer-<sha256>.js` in both demos) mirrors the
+  class so delta-created fields hydrate identically.
 
 ## Removed (September 2026)
 

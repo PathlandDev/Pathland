@@ -12,8 +12,12 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **Single source, unified**: `src/` is the one client; `npm run build` emits
   `dist/pathland-dom-renderer.js` (IIFE, minified via esbuild), and
   `npm run copy-to-demos` copies it into both the Quarkus and Spring Boot demos'
-  static resource dirs. Both demos serve `/pathland-dom-renderer.js`; the old
-  duplicated `app.js` is removed.
+  static resource dirs under a **content-hashed name** (`dom-renderer-<sha256>.js`),
+  pruning stale `dom-renderer-*.js` and the pre-hash literal `dom-renderer.js` (the old
+  duplicated `app.js` is long since removed). A one-line pointer manifest
+  `dom-renderer.current` sits next to the copies; the SSR layer reads it
+  (`PathlandAssets`) to emit the right `<script src>` — the fresh URL per build busts
+  the immutable asset cache without any hard refresh.
 - **Per-window identity (`wid`)**: the client keeps a window id in `sessionStorage`
   (fresh per window/tab, kept across reloads of the same tab) and appends it as
   `?wid=` to the WebSocket URL (the server's per-window persisted-state scope). The

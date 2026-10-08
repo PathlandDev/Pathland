@@ -165,12 +165,15 @@ lib/java/
   Prefer the fat jar over an IDE run: an IntelliJ classpath can mix stale `~/.m2`
   jars with fresh `target/classes`, which has been observed to make the Rust SSR
   decode an empty tree (a valid but blank page). If running from IntelliJ:
-  **Reload All Maven Projects → Build**, and only one instance at a time (an
-  `immutable`-cached `dom-renderer.js` also needs a hard refresh after client
-  changes). After any Rust/TS change, refresh the two layers the IDE cannot
+  **Reload All Maven Projects → Build**, and only one instance at a time. The
+  DOM bundle is content-hashed (`dom-renderer-<sha256>.js`, pointer in
+  `_pathland/dom-renderer.current`) so a rebuilt bundle always busts the
+  immutable asset cache by URL — restart the app (fresh HTML references the new
+  name) and reload normally; no hard refresh is needed. After any Rust/TS
+  change, refresh the two layers the IDE cannot
   rebuild itself with `mvn -P refresh-ide validate` (root `pom.xml`: `cargo build
   -p pathland-render-html`, `npm run build:all`, and the render-html embedded
-  dylib re-copy), then Reload/Build → Run → hard-refresh.
+  dylib re-copy), then Reload/Build → Run → reload.
 
 ### Native C-ABI shim (`pathland-view-native` + `pathland-core-capi`)
 
