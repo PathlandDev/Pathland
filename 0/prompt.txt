@@ -1,7 +1,1 @@
-Please fix these tests: [ERROR]   MusicPlayerViewTest.libraryRendersTracksAndAlbumArt:61 first track title renders ==> expected: <true> but was: <false>
-[ERROR]   MusicPlayerViewTest.playerBarRendersTransportAndSliders:105 transport + track-row buttons render ==> expected: <true> but was: <false>
-
----
-
-Please fix these tests: [ERROR]   MusicPlayerViewTest.libraryRendersTracksAndAlbumArt:61 first track title renders ==> expected: <true> but was: <false>
-[ERROR]   MusicPlayerViewTest.playerBarRendersTransportAndSliders:105 transport + track-row buttons render ==> expected: <true> but was: <false>
+go
