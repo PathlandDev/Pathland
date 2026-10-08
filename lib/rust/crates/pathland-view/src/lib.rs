@@ -928,6 +928,7 @@ impl View for VStack {
             children: self.children.iter().map(|c| c.build()).collect(),
             properties: BTreeMap::new(),
             string_properties: BTreeMap::new(),
+            list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -974,6 +975,7 @@ impl View for HStack {
             children: self.children.iter().map(|c| c.build()).collect(),
             properties: BTreeMap::new(),
             string_properties: BTreeMap::new(),
+            list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -1005,6 +1007,7 @@ impl View for Text {
             children: Vec::new(),
             properties: BTreeMap::new(),
             string_properties: BTreeMap::new(),
+            list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -1038,6 +1041,7 @@ impl View for Spacer {
             children: Vec::new(),
             properties: BTreeMap::new(),
             string_properties: BTreeMap::new(),
+            list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -1069,6 +1073,7 @@ impl View for Button {
             children: Vec::new(),
             properties: BTreeMap::new(),
             string_properties: BTreeMap::new(),
+            list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
@@ -1094,6 +1099,7 @@ fn plain_node(component: Component, children: Vec<Node>, properties: BTreeMap<u1
         children,
         properties,
         string_properties: BTreeMap::new(),
+            list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
@@ -1992,5 +1998,118 @@ mod tests {
         assert!(map.contains_key(&2));
         assert!(!map.contains_key(&1));
         assert!(!map.contains_key(&3));
+    }
+}
+
+/// A `SizeThatFits` candidate: a view plus the minimum container width at which
+/// it is selected. The candidates' thresholds form the wire `FIT_QUERY` table
+/// (ascending); the renderer measures its allocated width, derives the fit
+/// locally, and reports `FIT_CHANGED` (spec/PRIMITIVES.md §SizeThatFits).
+pub struct Fit {
+    view: Box<dyn View>,
+    min_width: f32,
+}
+
+impl Fit {
+    /// A candidate shown when the slot's width is at least `min_width`.
+    pub fn new(view: impl View + 'static, min_width: f32) -> Self {
+        Self { view: Box::new(view), min_width }
+    }
+
+    /// A candidate with threshold 0 — always applicable (the fallback).
+    pub fn any(view: impl View + 'static) -> Self {
+        Self { view: Box::new(view), min_width: 0.0 }
+    }
+}
+
+/// The fit slot (`SIZE_THAT_FITS`): shows **one** candidate — the selected one
+/// — so only the selected child is ever transmitted. Candidates are held DSL-side;
+/// the emitted `FIT_QUERY` (ascending thresholds) lets the renderer pick.
+///
+/// The Rust DSL currently holds a **fixed** selected index (reactive selection
+/// via `FIT_CHANGED` is the Java DSL's structural slot; the retained
+/// `Component::SizeThatFits` output is identical).
+pub struct SizeThatFits {
+    fits: Vec<Fit>,
+    fit_index: usize,
+}
+
+impl SizeThatFits {
+    /// A slot over the given candidates (author order = fit preference; the
+    /// emitted `FIT_QUERY` is their ascending `minWidth`s, stable).
+    pub fn new(fits: Vec<Fit>) -> Self {
+        Self { fits, fit_index: 0 }
+    }
+
+    /// Select a candidate by its ascending `FIT_QUERY` index (default 0 — the
+    /// smallest threshold / fallback).
+    pub fn with_fit(mut self, index: usize) -> Self {
+        self.fit_index = index;
+        self
+    }
+}
+
+impl View for SizeThatFits {
+    fn build(&self) -> Node {
+        let mut sorted: Vec<&Fit> = self.fits.iter().collect();
+        sorted.sort_by(|a, b| {
+            a.min_width
+                .partial_cmp(&b.min_width)
+                .unwrap_or(core::cmp::Ordering::Equal)
+        });
+        let thresholds: Vec<f32> = sorted.iter().map(|f| f.min_width).collect();
+        let index = self
+            .fit_index
+            .min(sorted.len().saturating_sub(1));
+        let mut node = plain_node(Component::SizeThatFits, Vec::new(), alloc::collections::BTreeMap::new());
+        node.list_properties.insert(property_id::FIT_QUERY, thresholds);
+        if let Some(fit) = sorted.get(index) {
+            node.children.push(fit.view.build());
+        }
+        node
+    }
+}
+
+impl core::fmt::Debug for SizeThatFits {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("SizeThatFits")
+            .field("fits", &self.fits.len())
+            .field("fit_index", &self.fit_index)
+            .finish()
+    }
+}
+
+#[cfg(test)]
+mod sizethatfits_tests {
+    use super::*;
+
+    #[test]
+    fn fit_slot_builds_component_query_and_only_the_selected_child() {
+        // The slot emits SIZE_THAT_FITS + an ascending FIT_QUERY list and the
+        // single selected (fallback) child — unselected candidates never build.
+        let view = SizeThatFits::new(vec![
+            Fit::new(Text::new("wide"), 640.0),
+            Fit::any(Text::new("compact")),
+        ]);
+        let mut root = view.build();
+        let mut next = 1;
+        pathland_engine::assign_ids(&mut root, &mut next);
+
+        assert_eq!(root.component, Component::SizeThatFits);
+        let query = root.list_properties.get(&property_id::FIT_QUERY).unwrap();
+        assert_eq!(query.as_slice(), &[0.0, 640.0]);
+        assert_eq!(root.children.len(), 1, "only the selected candidate builds");
+    }
+
+    #[test]
+    fn with_fit_selects_the_requested_candidate() {
+        let view = SizeThatFits::new(vec![
+            Fit::new(Text::new("wide"), 640.0),
+            Fit::any(Text::new("compact")),
+        ])
+        .with_fit(1);
+        let node = view.build();
+        assert_eq!(node.children.len(), 1);
+        assert!(node.children[0].component == Component::Text { text: "wide".into() });
     }
 }

@@ -99,6 +99,10 @@ pub mod event {
     /// **Draft.** A bound media node's volume changed (host → guest); `B` =
     /// volume (f32, 0..1).
     pub const MEDIA_VOLUME_CHANGED: u8 = 0x12;
+    /// **Draft.** A `SIZE_THAT_FITS` slot's selected candidate index changed
+    /// (host → guest); `B` = index (f32). Reported once after the first measure,
+    /// then only when the derived fit index changes.
+    pub const FIT_CHANGED: u8 = 0x13;
 }
 
 /// Commands within the `META` category.
@@ -211,6 +215,10 @@ pub mod value_type {
     pub const ENUM: u8 = 0x06;
     pub const COLOR: u8 = 0x07;
     pub const DESIGN_TOKEN: u8 = 0x08;
+    /// **Draft.** Arena-backed length-prefixed array: `[u32 count][element × count]`
+    /// in the string arena (each element holds the value-type's bit pattern —
+    /// today `F32`s, e.g. the `FIT_QUERY` threshold table).
+    pub const LIST: u8 = 0x09;
 }
 
 /// Component types (u16, encoded in the low half of `B` of `TREE::CREATE_NODE`).
@@ -263,7 +271,11 @@ pub mod component_type {
     pub const LAZY_VGRID: u16 = 0x15;
     /// **Draft.** Virtualized horizontal grid.
     pub const LAZY_HGRID: u16 = 0x16;
-    // 0x17–0x1A reserved (formerly composite views, removed).
+    /// **Draft.** Fit slot (`SizeThatFits`): shows its single selected child —
+    /// only the selected candidate is ever transmitted. The renderer measures
+    /// its own allocated width against `FIT_QUERY` and reports `FIT_CHANGED`.
+    pub const SIZE_THAT_FITS: u16 = 0x17;
+    // 0x18–0x1A reserved (formerly composite views, removed).
     /// **Draft.** Virtualized vertical stack.
     pub const LAZY_VSTACK: u16 = 0x1B;
     /// **Draft.** Virtualized horizontal stack.
@@ -475,6 +487,10 @@ pub mod property_id {
     /// by a `NavigationContainer`/`Conditional.when` slot; the renderer may
     /// animate the swap and must render normally when it ignores the hint.
     pub const TRANSITION: u16 = 0x1031;
+    /// **Draft.** A `SIZE_THAT_FITS` slot's candidate fit-query (LIST): the
+    /// candidates' `minWidth` thresholds, ascending. The renderer measures its
+    /// allocated width and reports the derived fit index (`FIT_CHANGED`).
+    pub const FIT_QUERY: u16 = 0x1039;
     /// **Draft.** Predefined typography (ENUM code, see [`crate::text_style`]):
     /// `.font(.title2)` picks a whole design-system typography; the heading
     /// styles (LargeTitle…Headline) imply a heading element on a `TEXT`.

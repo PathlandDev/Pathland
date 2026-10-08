@@ -162,6 +162,15 @@ lib/java/
 - Run the Spring Boot demo (SSR + WebSocket deltas):
   `cd lib/java/pathland-spring-boot-demo && mvn package && java -jar target/pathland-spring-boot-demo-0.1.0.jar`.
   Needs JDK 17+ (the whole stack runs on every LTS from 17) and Spring Boot ≥ 3.5.
+  Prefer the fat jar over an IDE run: an IntelliJ classpath can mix stale `~/.m2`
+  jars with fresh `target/classes`, which has been observed to make the Rust SSR
+  decode an empty tree (a valid but blank page). If running from IntelliJ:
+  **Reload All Maven Projects → Build**, and only one instance at a time (an
+  `immutable`-cached `dom-renderer.js` also needs a hard refresh after client
+  changes). After any Rust/TS change, refresh the two layers the IDE cannot
+  rebuild itself with `mvn -P refresh-ide validate` (root `pom.xml`: `cargo build
+  -p pathland-render-html`, `npm run build:all`, and the render-html embedded
+  dylib re-copy), then Reload/Build → Run → hard-refresh.
 
 ### Native C-ABI shim (`pathland-view-native` + `pathland-core-capi`)
 

@@ -184,6 +184,17 @@ Stacks, scroll, and other containers lay their children out inside; a Fixed box
 constrains them (scroll for `SCROLLVIEW`, otherwise overflow is visible unless
 `CLIPS_TO_BOUNDS` clips it).
 
+### Size that fits (`SIZE_THAT_FITS` 0x17)
+
+A fit slot is **size-taking on both axes**: it stretches to its parent's
+proposal (`FILL` semantics — never hugs), because its **allocated width is the
+unit of fitting**. It holds at most one (selected) child, laid out normally
+inside the box. The renderer measures its allocated width and derives the fit
+index (threshold rule in [PRIMITIVES.md](./PRIMITIVES.md#size-that-fits)). No
+content-based measurement of candidates is ever done or transmitted — the query
+thresholds are app-declared, so the pick is a pure function of
+`(thresholds, allocated width)`.
+
 ---
 
 ## Conformance cases

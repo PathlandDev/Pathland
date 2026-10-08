@@ -179,7 +179,8 @@ with SwiftUI's view categories and are the **single authoritative allocation**.
 | `0x14` | `SCROLLVIEW` | Scrollable content container |
 | `0x15` | `LAZY_VGRID` | Virtualized vertical grid container (windowed rendering for large datasets) |
 | `0x16` | `LAZY_HGRID` | Virtualized horizontal grid container |
-| `0x17`–`0x1A` | — | Formerly `List`/`NavigationStack`/`NavigationSplitView` (composites, removed) — never reused |
+| `0x17` | `SIZE_THAT_FITS` | **Fit slot** — renders its single (currently-selected) child; the renderer measures its own allocated width against the `FIT_QUERY` threshold list and only the selected child is transmitted (see below) |
+| `0x18`–`0x1A` | — | Formerly `List`/`NavigationStack`/`NavigationSplitView` (composites, removed) — never reused |
 | `0x1B` | `LAZY_VSTACK` | Virtualized vertical stack |
 | `0x1C` | `LAZY_HSTACK` | Virtualized horizontal stack |
 | `0x1D` | `GRID_ROW` | Explicit row grouping for `GRID` (planned): a grid child whose children are one row's cells — the SwiftUI `GridRow` authoring surface |
@@ -684,6 +685,36 @@ children outside the visible region.
 
 Virtualized horizontal stack. **Allocation is identical to `HStack`**; only
 realization is windowed.
+
+### SizeThatFits — `SIZE_THAT_FITS` 0x17
+
+A **fit slot**: it shows **one child at a time — the currently selected
+candidate — so only that child is ever transmitted**. The app owns the
+candidates (their views never ride the wire); it transmits the **fit query**
+(`FIT_QUERY`, LIST — the candidates' `minWidth` thresholds, ascending) plus the
+selected child. The renderer measures its **own allocated width** (the slot is
+size-taking — it stretches to its parent's proposal, never hugs, so it always
+has a well-defined width) and selects the fit **locally**:
+
+> **Fit rule** — the selected index is `max{ i : thresholds[i] ≤ measured
+> width }` (threshold 0 candidate always qualifies — the fallback); equal
+> thresholds pick the **lower index**; before the first measure the app renders
+> the threshold-0 candidate (index 0). The measurement is in **logical points**,
+> so the pick is identical on every renderer given the same slot width.
+
+The renderer reports its selection back with **`FIT_CHANGED`** ([EVENTS.md](./EVENTS.md))
+— emitted **once after the first measure, and then only when the derived fit
+index changes** (a band crossing). It never streams the raw size. The app reacts
+by swapping the slot's child (a `TREE` delta pair); a selection that maps to the
+already-shown view re-emits **zero** opcodes.
+
+Semantics:
+- **Properties**: `FIT_QUERY` (`0x1039`, LIST).
+- **Events**: `FIT_CHANGED` (`0x13`, host → guest) — reported fit index.
+- **Children**: at most one (the current selection); candidate views live
+  app-side.
+- **Renderer statelessness**: the measured width and derived index are layout
+  output, not retained application state.
 
 ---
 

@@ -88,6 +88,16 @@ impl Builder {
         self.style(parameter::SET_TEXT, id, offset, 0);
     }
 
+    /// A `FIT_QUERY`-style `LIST` property: `[u32 count][f32 × count]` in the arena.
+    fn set_list_f32(&mut self, id: u32, prop: u16, elements: &[f32]) {
+        let offset = self.strings.len() as u32;
+        self.strings.extend_from_slice(&(elements.len() as u32).to_le_bytes());
+        for element in elements {
+            self.strings.extend_from_slice(&element.to_bits().to_le_bytes());
+        }
+        self.set_prop(id, value_type::LIST, prop, offset);
+    }
+
     fn set_prop(&mut self, id: u32, vt: u8, prop: u16, value: u32) {
         self.style(
             parameter::SET_PROPERTY,
@@ -136,6 +146,7 @@ fn scenarios() -> Vec<Scenario> {
         tokens(),
         semantics(),
         icons(),
+        sizethatfits(),
         media(),
     ]
 }
@@ -341,6 +352,26 @@ fn icons() -> Scenario {
     b.set_text(4, "Go");
     Scenario {
         name: "icons",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn sizethatfits() -> Scenario {
+    let mut b = Builder::new();
+    // A fit slot with its SELECTED child only (the fallback, threshold 0): the
+    // FIT_QUERY list rides the LIST value type; the SSR shell mirrors it in
+    // `data-pathland-fit` for the DOM client's local fit derivation.
+    b.create(1, component_type::VSTACK);
+    b.create(2, component_type::SIZE_THAT_FITS);
+    b.create(3, component_type::TEXT);
+    b.insert(1, 2);
+    b.insert(2, 3);
+    b.set_list_f32(2, property_id::FIT_QUERY, &[0.0, 640.0]);
+    b.set_text(3, "compact");
+    Scenario {
+        name: "sizethatfits",
         opcodes: b.opcodes,
         strings: b.strings,
         root: 1,

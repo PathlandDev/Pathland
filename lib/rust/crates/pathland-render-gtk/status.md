@@ -209,6 +209,16 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 
 ## Not implemented / gaps
 
+- **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY 0x1039 LIST / FIT_CHANGED 0x13) is
+  NOT implemented in the GTK renderer (removed)** — a fit slot node is unmapped (no
+  widget), `FIT_QUERY` is not decoded, and no `FIT_CHANGED` is reported. The protocol,
+  core, Java DSL, Rust DSL/engine, web (SSR + DOM) and server-routing surfaces are
+  implemented; GTK rendering is deferred because **GTK4 has no size-change
+  notification** (the GTK3 `size-allocate` signal was removed; there is no CSS
+  `@container` analog) — a future renderer would observe its own allocation via a
+  frame-clock `add_tick_callback` (or a `GtkWidget` `allocate` override), derive the
+  fit with `pathland_core::fit::fit_index`, and report `FIT_CHANGED` only on band
+  crossings.
 - **Layout contract (spec/LAYOUT.md)**: aligned — stacks apply the per-child
   rule on **both** axes (main axis: only `FILL`/greedy children stretch and
   leftover goes to them, everything else positioned at the start; cross axis:

@@ -74,6 +74,13 @@ public final class PathlandNode {
     /** Writable value-input sink (sliders/switches); the emitter routes VALUE_CHANGED into it. */
     public Consumer<Float> valueInput;
 
+    /** The CURRENT fit selection of a structural slot (a {@code SIZE_THAT_FITS}'s
+     *  retained candidate index, 0 when unset). Recorded by the slot's fit-input
+     *  consumer so a parent-subtree re-render (e.g. an outer fit slot's swap, which
+     *  re-instantiates the inner slot's view with a default selection) can carry the
+     *  selection across the reconcile instead of resetting a nested fit to compact. */
+    public int fitSelection;
+
     /** Editing-changed sink (sliders/text fields); the emitter routes EDITING_CHANGED
      *  (drag/commit boundaries) into it when the node declared the EDITING listener bit. */
     public Consumer<Boolean> editingInput;
@@ -84,6 +91,10 @@ public final class PathlandNode {
     /** Media-event sink (bound `AUDIO`/`VIDEO`); the emitter routes the media
      *  events (spec/EVENTS.md) into it — play state, time, ended, volume. */
     public MediaInput mediaInput;
+
+    /** Fit-index sink (`SIZE_THAT_FITS`): the host routes `FIT_CHANGED` into it —
+     *  a selected-candidate index the container converts into its slot selection. */
+    public Consumer<Integer> fitInput;
 
     /**
      * Structural slot: when non-null this node's single child subtree is selected by

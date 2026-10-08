@@ -89,3 +89,23 @@ export function readString(strings: Uint8Array, offset: number): string {
   }
   return new TextDecoder().decode(strings.subarray(start, start + len));
 }
+
+/** Read a length-prefixed f32 array (`[u32 count][f32 × count]`) at a relative
+ *  offset into the string section (the `LIST` value type — e.g. a `FIT_QUERY`
+ *  threshold table). */
+export function readList(strings: Uint8Array, offset: number): number[] {
+  if (offset + 4 > strings.length) {
+    throw new ProtocolError("list offset out of bounds");
+  }
+  const view = dv(strings);
+  const count = view.getUint32(offset, true);
+  const start = offset + 4;
+  if (start + count * 4 > strings.length) {
+    throw new ProtocolError("list length out of bounds");
+  }
+  const out: number[] = new Array(count);
+  for (let i = 0; i < count; i++) {
+    out[i] = view.getFloat32(start + i * 4, true);
+  }
+  return out;
+}

@@ -198,6 +198,7 @@ pub fn emit_constants_ts() -> String {
         ("MEDIA_TIME_UPDATED", fmt_u8(event::MEDIA_TIME_UPDATED)),
         ("MEDIA_ENDED", fmt_u8(event::MEDIA_ENDED)),
         ("MEDIA_VOLUME_CHANGED", fmt_u8(event::MEDIA_VOLUME_CHANGED)),
+        ("FIT_CHANGED", fmt_u8(event::FIT_CHANGED)),
     ]);
     out.push_str("\n// EVENT flags\n");
     write_consts(&mut out, "FLAG_", &[
@@ -230,6 +231,7 @@ pub fn emit_constants_ts() -> String {
         ("ENUM", fmt_u8(value_type::ENUM)),
         ("COLOR", fmt_u8(value_type::COLOR)),
         ("DESIGN_TOKEN", fmt_u8(value_type::DESIGN_TOKEN)),
+        ("LIST", fmt_u8(value_type::LIST)),
     ]);
     out.push_str("\n// Property IDs (spec/MODIFIERS.md)\n");
     write_consts(&mut out, 
@@ -270,6 +272,7 @@ pub fn emit_constants_ts() -> String {
             ("PLAYBACK_STATE", fmt_u16(property_id::PLAYBACK_STATE)),
             ("MEDIA_POSITION", fmt_u16(property_id::MEDIA_POSITION)),
             ("MEDIA_VOLUME", fmt_u16(property_id::MEDIA_VOLUME)),
+            ("FIT_QUERY", fmt_u16(property_id::FIT_QUERY)),
             ("BORDER_WIDTH", fmt_u16(property_id::BORDER_WIDTH)),
             ("BORDER_COLOR", fmt_u16(property_id::BORDER_COLOR)),
             ("BORDER_RADIUS", fmt_u16(property_id::BORDER_RADIUS)),
@@ -437,6 +440,7 @@ pub fn emit_constants_ts() -> String {
             ("SCROLLVIEW", fmt_u16(component_type::SCROLLVIEW)),
             ("LAZY_VGRID", fmt_u16(component_type::LAZY_VGRID)),
             ("LAZY_HGRID", fmt_u16(component_type::LAZY_HGRID)),
+            ("SIZE_THAT_FITS", fmt_u16(component_type::SIZE_THAT_FITS)),
             ("LAZY_VSTACK", fmt_u16(component_type::LAZY_VSTACK)),
             ("LAZY_HSTACK", fmt_u16(component_type::LAZY_HSTACK)),
             ("GRID_ROW", fmt_u16(component_type::GRID_ROW)),

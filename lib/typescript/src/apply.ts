@@ -68,14 +68,16 @@ import {
   PROP_VIDEO_SOURCE,
   VAL_DESIGN_TOKEN,
   VAL_ENUM,
+  VAL_LIST,
   VAL_STRING,
   VAL_U8,
 } from "./constants";
 import type { Batch, Opcode } from "./plpl";
-import { readString } from "./plpl";
+import { readList, readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
 import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
+  encodeFittedChanged,
   encodeMediaEnded,
   encodeMediaPlayStateChanged,
   encodeMediaTimeUpdated,
@@ -327,23 +329,43 @@ export interface DomRenderer {
    * `AUDIO`/`VIDEO` node can report play/pause/time/ended/volume (host → guest).
    */
   onMediaEvent?: (batch: Uint8Array) => void;
+  /**
+   * Optional fit-event sink: the host wires it to `transport.send` so a
+   * `SIZE_THAT_FITS` slot can report its derived fit index (`FIT_CHANGED`).
+   */
+  onFitEvent?: (batch: Uint8Array) => void;
 }
 
 /** Apply every opcode in a batch to the DOM (TREE structure + PARAMETER/META deltas). */
 export function applyBatch(batch: Batch, renderer: DomRenderer): void {
-  for (const op of batch.opcodes) {
-    switch (op.category) {
-      case CAT_TREE:
-        applyTree(op, renderer);
-        break;
-      case CAT_PARAMETER:
-        applyStyle(op, batch.strings, renderer);
-        break;
-      case CAT_META:
-        applyMeta(op, renderer);
-        break;
-      default:
-        break;
+  for (let i = 0; i < batch.opcodes.length; i++) {
+    const op = batch.opcodes[i]!;
+    try {
+      switch (op.category) {
+        case CAT_TREE:
+          applyTree(op, renderer);
+          break;
+        case CAT_PARAMETER:
+          applyStyle(op, batch.strings, renderer);
+          break;
+        case CAT_META:
+          applyMeta(op, renderer);
+          break;
+        default:
+          break;
+      }
+    } catch (err) {
+      // The batch is a renderer-consuming instruction stream; an empty catch
+      // would hide a structural bug. Log the exact op for remote diagnosis,
+      // then rethrow (the host's handleMessage surfaces it).
+      const el = renderer.byId.get(op.a);
+      const where = el instanceof Element
+        ? `${el.tagName.toLowerCase()}#${el.getAttribute("data-pathland-id")}.${el.className}`
+        : String(el);
+      console.error(
+        `[pathland] applyBatch failed at op ${i}/${batch.opcodes.length} ` +
+        `cat=${op.category} cmd=${op.command} a=${op.a} b=${op.b} c=${op.c} target=${where}`, err);
+      throw err;
     }
   }
   // Derived layout (fill propagation, ZStack sizing/positioning, cross-axis
@@ -443,15 +465,10 @@ function applyTree(op: Opcode, r: DomRenderer): void {
       const el = r.byId.get(op.a);
       if (el) {
         const host = el as HTMLElement;
-        // Stop a removed media node's 30 Hz position sampler.
-        const media = mediaElementOf(host);
-        if (media) {
-          const mediaStateFor = mediaState.get(media);
-          if (mediaStateFor && mediaStateFor.reportTimer) {
-            window.clearInterval(mediaStateFor.reportTimer);
-          }
-          mediaState.delete(media);
-        }
+        // `DELETE_NODE` covers the whole subtree: every descendant's registry
+        // entry must die too, or a later op could reuse a still-registered
+        // (detached) element and double-parent it (HierarchyRequestError).
+        purgeSubtreeRegistry(host, r);
         if (host.parentNode) {
           host.parentNode.removeChild(host);
         }
@@ -476,8 +493,12 @@ function applyTree(op: Opcode, r: DomRenderer): void {
       }
       const container = childrenContainer(parent);
       // Hydration/idempotent-replay guard: skip when the child is already there
-      // (the SSR DOM already holds the initial tree; a resync replays it).
-      if (container && !container.contains(child)) {
+      // (the SSR DOM already holds the initial tree; a resync replays it), or
+      // when a duplicate of the node already exists by id (drift protection —
+      // never render a second copy the app did not emit).
+      if (container && !container.contains(child)
+          && !(child instanceof Element && container instanceof Element
+            && container.querySelector(`[data-pathland-id="${op.b}"]`))) {
         let placed = placedChild(parent, child);
         if (comp === COMPONENT_PICKER && child instanceof HTMLElement) {
           // Picker children are option labels → materialize native `<option>`s.
@@ -541,13 +562,29 @@ function applyTree(op: Opcode, r: DomRenderer): void {
 }
 
 function insertAt(container: Node, child: Node, index: number): void {
+  // Inserting a node into itself or its own subtree yields an incorrect node
+  // tree — the child is effectively already positioned; skip (never throw).
+  if (child === container || container.contains(child)) {
+    return;
+  }
+  // The protocol's INSERT/MOVE index counts ELEMENT children. Debug-comment
+  // nodes (`<!-- #id … -->`, `pathland.debug-html=true`) are sibling children
+  // in the SSR-hydrated DOM, so counting them in `visible` shifts every index
+  // and e.g. would insert a trailing sidebar BEFORE the main area. Count
+  // elements only; the injected nav-back button is excluded by class.
   const visible = Array.from(container.childNodes).filter(
     (n) =>
-      (n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.COMMENT_NODE) &&
+      n.nodeType === Node.ELEMENT_NODE &&
       !(n instanceof HTMLElement && n.classList.contains(NAV_BACK_CLASS)),
   );
   const target = visible[index];
+  detachIfWrongParent(container, child);
   if (target) {
+    if (target === child || target.contains(child)) {
+      // Would yield an incorrect node tree (inserting a node before itself or a
+      // descendant) — the child is already positioned; nothing to do.
+      return;
+    }
     container.insertBefore(child, target);
   } else {
     container.appendChild(child);
@@ -793,6 +830,8 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
         }
       } else if (valueType === VAL_DESIGN_TOKEN) {
         applyTokenRefProperty(el, propId, readString(strings, op.c));
+      } else if (valueType === VAL_LIST) {
+        applyFitQuery(el, r, readList(strings, op.c));
       } else if (componentByNode.get(el) === COMPONENT_PROGRESS_VIEW
               && (propId === PROP_IS_INDETERMINATE || propId === PROP_PROGRESS)) {
         applyProgress(el, r, propId, valueType, op.c);
@@ -1264,6 +1303,142 @@ export function __setMediaLastReported(el: HTMLMediaElement, seconds: number): v
   }
 }
 
+// --- SizeThatFits (FIT_QUERY → local fit → FIT_CHANGED only on transitions) ---
+
+interface FitSlotState {
+  thresholds: number[];
+  lastIndex: number;
+  observer: ResizeObserver | null;
+}
+
+/** Per-`SIZE_THAT_FITS` slot state: the candidate thresholds + last reported index. */
+const fitState = new WeakMap<HTMLElement, FitSlotState>();
+
+/** The fit rule (spec/PRIMITIVES.md): max i with thresholds[i] <= width;
+ *  thresholds ascending, equal thresholds pick the lower index (stable). */
+function fitIndexFor(thresholds: number[], width: number): number {
+  let selected = 0;
+  for (const [i, t] of thresholds.entries()) {
+    if (t > width) break;
+    if (i === 0 || thresholds[i - 1] !== t) selected = i;
+  }
+  return selected;
+}
+
+/** Apply a LIST-typed property (a `FIT_QUERY` threshold table) to a fitted slot. */
+function applyFitQuery(el: HTMLElement, r: DomRenderer, thresholds: number[]): void {
+  el.setAttribute("data-pathland-fit", thresholds.join(","));
+  const state = ensureFitState(el, r);
+  state.thresholds = thresholds;
+  evaluateFit(el, r, state);
+}
+
+/** Hydrate a fitted slot from the SSR's `data-pathland-fit` attribute. */
+export function hydrateFitElement(el: HTMLElement, r: DomRenderer): void {
+  const raw = el.getAttribute("data-pathland-fit");
+  if (raw == null) return;
+  const thresholds = raw.split(",").map(Number).filter(Number.isFinite);
+  applyFitQuery(el, r, thresholds);
+}
+
+/**
+ * Re-report every fitted slot's CURRENT fit once — the host calls this right
+ * after the WebSocket opens, because a fit report emitted at boot is dropped
+ * (`onFitEvent` gates on `transport.open`, and the dropped report still sets
+ * `lastIndex`, so the ResizeObserver would otherwise stay silent on an
+ * unchanged width). Resetting `lastIndex` forces exactly one `FIT_CHANGED`;
+ * the observer keeps reporting later band crossings.
+ */
+export function refreshFitSlots(r: DomRenderer): void {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-fit]")) {
+    const state = fitState.get(el);
+    if (state) {
+      state.lastIndex = -1;
+      evaluateFit(el, r, state);
+    }
+  }
+}
+
+function ensureFitState(el: HTMLElement, r: DomRenderer): FitSlotState {
+  let state = fitState.get(el);
+  if (!state) {
+    state = { thresholds: [], lastIndex: -1, observer: null };
+    fitState.set(el, state);
+    if (typeof ResizeObserver !== "undefined") {
+      state.observer = new ResizeObserver(() => evaluateFit(el, r, state!));
+      state.observer.observe(el);
+    }
+  }
+  return state;
+}
+
+/** Re-derive a slot's fit from its measured width, reporting only on transitions
+ *  (the spec'd cadence — no size stream, only a `FIT_CHANGED` when the pick
+ *  actually changes; the first measure always reports once). */
+function evaluateFit(el: HTMLElement, r: DomRenderer, state: FitSlotState): void {
+  const send = r.onFitEvent;
+  if (!send) return;
+  const width = el.getBoundingClientRect().width;
+  const index = fitIndexFor(state.thresholds, width);
+  if (index === state.lastIndex) return;
+  state.lastIndex = index;
+  const id = Number(el.getAttribute("data-pathland-id"));
+  if (Number.isInteger(id) && id > 0) {
+    send(encodeFittedChanged(id, index));
+  }
+}
+
+/** Test-only: tear a fitted slot's observer down (mirrors CMD_DELETE_NODE). */
+export function destroyFitElement(el: HTMLElement): void {
+  const state = fitState.get(el);
+  if (state?.observer) {
+    state.observer.disconnect();
+  }
+  fitState.delete(el);
+}
+
+/** Drop every registry side-entry for a deleted subtree (a DELETE_NODE covers
+ *  the whole subtree): byId + per-node media samplers / fit observers. A node
+ *  left behind in `byId` is a detached-but-"live" element a later op could
+ *  reuse and double-parent (spec OPCODE.md — insert/delete ordering). */
+function purgeSubtreeRegistry(host: Element, r: DomRenderer): void {
+  const nodes = [
+    host,
+    ...Array.from(host.querySelectorAll<HTMLElement>("[data-pathland-id]")),
+  ];
+  for (const node of nodes) {
+    if (!(node instanceof Element)) {
+      continue;
+    }
+    const id = Number(node.getAttribute("data-pathland-id"));
+    if (Number.isInteger(id) && id > 0) {
+      r.byId.delete(id);
+    }
+    const media = mediaElementOf(node as HTMLElement);
+    if (media) {
+      const st = mediaState.get(media);
+      if (st?.reportTimer) {
+        window.clearInterval(st.reportTimer);
+      }
+      mediaState.delete(media);
+    }
+    const fit = fitState.get(node as HTMLElement);
+    if (fit?.observer) {
+      fit.observer.disconnect();
+    }
+    fitState.delete(node as HTMLElement);
+  }
+}
+
+/** Detach `child` from any OTHER parent before insertion so a stale pooled /
+ *  wrong-parent child can never be double-inserted into `container`. */
+function detachIfWrongParent(container: Node, child: Node): void {
+  const p = child.parentNode;
+  if (p && p !== container) {
+    p.removeChild(child);
+  }
+}
+
 /** Apply a media control property: drive the media element, suppress the echo,
  *  and wire its listeners. */
 function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, valueType: number, bits: number): void {
@@ -1352,6 +1527,14 @@ function finalizeNativeMedia(el: HTMLElement): void {
  *  custom control children), preserving the node's identity + style and moving
  *  the media element inside — the structure the Rust SSR emits. */
 function mediaToWrapper(el: HTMLElement, r: DomRenderer): HTMLElement {
+  // Idempotent: a media element already inside a `.pathland-media` wrapper is
+  // already materialized — re-wrapping here would nest wrappers and can turn a
+  // later child insert into inserting the wrapper into its own audio (a
+  // HierarchyRequestError). Return the existing wrapper unchanged.
+  const existing = el.parentElement;
+  if (existing?.classList.contains("pathland-media")) {
+    return existing;
+  }
   const wrapper = document.createElement("div");
   wrapper.className = "pathland-media";
   wrapper.setAttribute("data-pathland-media", "");
@@ -1362,11 +1545,16 @@ function mediaToWrapper(el: HTMLElement, r: DomRenderer): HTMLElement {
       wrapper.setAttribute(attr.name, attr.value);
     }
   }
+  const prevParent = el.parentNode;
   el.removeAttribute("data-pathland-id");
   el.style.cssText = "";
   wrapper.append(el);
-  if (el.parentNode) {
-    el.parentNode.replaceChild(wrapper, el);
+  // Substitute the wrapper for the media element in its ORIGINAL parent. The
+  // parent must be captured BEFORE the append — after it, `el.parentNode` is
+  // the wrapper itself, and replacing it with the wrapper would self-insert
+  // ("The new node is a parent of the node to insert to" / HierarchyRequestError).
+  if (prevParent) {
+    prevParent.replaceChild(wrapper, el);
   }
   const id = Number(wrapper.getAttribute("data-pathland-id") ?? 0);
   if (id) {

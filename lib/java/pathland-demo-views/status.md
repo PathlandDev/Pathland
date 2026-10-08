@@ -85,7 +85,11 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
 - **`MusicPlayerView`** (com.pathland.demo.music) — the **web demos' root** (an
   Apple Music-style player): a track **`LibraryView`** (left) + the
   **`NowPlayingSidebar`** (right) in a fill HStack, over the bottom
-  **`PlayerBar`**. Owns the player's `State` (persisted per-session under
+  **`PlayerBar`**. The main row is a **`SizeThatFits`** fit slot: the
+  now-playing sidebar transmits only when its parent row is **≥ 600pt** wide
+  (`Fit.of(rowWithSidebar, 600f)` / `Fit.of(mainArea)` — the `FIT_CHANGED`
+  report from the DOM client swaps the row; the shared `mainArea` nodes are
+  re-used by the reconcile). Owns the player's `State` (persisted per-session under
   `player.*` keys) and hands the bound signals to its subviews; each subview is
   its own `View` class. **Real playback**: the bottom bar is an app-driven
   `Audio` node whose custom **`PlayerControlsStyle`** (`AudioStyle`) renders the

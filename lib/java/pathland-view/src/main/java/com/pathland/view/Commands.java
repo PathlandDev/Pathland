@@ -49,6 +49,8 @@ public final class Commands {
         public static final int MEDIA_ENDED = 0x11;
         /** A bound media node's volume changed (B = 0..1, f32). */
         public static final int MEDIA_VOLUME_CHANGED = 0x12;
+        /** A `SIZE_THAT_FITS` slot's selected candidate changed (B = index, f32). */
+        public static final int FIT_CHANGED = 0x13;
         private Event() {}
     }
 

@@ -36,6 +36,14 @@ Statelessness). Protocol contract: `spec/`.
   embedded glyph for instant on-page swaps; `LABEL` →
   `role="img"` + `aria-label`, none → `aria-hidden`; sized `1em` so `FONT_SIZE`
   scales it, tinted via `fill="currentColor"`),
+  `SIZE_THAT_FITS` → `<div class="pathland-ftf">` (the fit slot: fill-sized with
+  `data-pathland-fit` mirroring the `FIT_QUERY` LIST, decoded as `[count][f32×count]`
+  at decode time — the DOM client derives the fit locally and reports
+  `FIT_CHANGED` on transitions; the slot is layout-transparent, forwarding the
+  parent flex container's `flex-direction`/`align-items`/`justify-content`
+  (`inherit`) into its own box so a wrapper never pins a centered candidate to
+  the start — `VStack(CENTER)` > fit slot > `HSTACK` keeps centering; stays
+  size-taking via `flex:1 1 auto;align-self:stretch;min-width/height:0`),
   `COLOR` → `<div>`, `SHAPE` → CSS shapes / inline SVG, `DIVIDER` → `<hr>`,
   `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
   `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex
@@ -215,6 +223,11 @@ single `style` attribute — no external compiler, no class system, no safelist:
   `_tailwind_compile`
   entry point, `tw.rs`, `tailwind.rs`, `build.rs`, `scripts/fetch-tailwind.mjs`,
   `vendor/`, and the `tailwind-embed` feature are **deleted**.
+  **The cdylib must be refreshed with `cargo build -p pathland-render-html`
+  (NOT just `cargo test` — tests rebuild the rlib, not the `.dylib`) before
+  `mvn install`**: the jar-embed step only fails on a *missing* dylib, a
+  *stale* one embeds silently and hosts SSR the old component surface (e.g. a
+  blank page for a newly-added component like `SIZE_THAT_FITS`).
 - **Debug comments** (`HtmlRenderer::with_debug_comments(true)`; C ABI
   `pathland_html_render_debug` / `_fragment_debug`): every rendered node is
   prefixed with an HTML comment naming its component type and the modifiers

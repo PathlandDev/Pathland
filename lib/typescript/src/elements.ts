@@ -24,6 +24,7 @@ import {
   COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_SCROLLVIEW,
+  COMPONENT_SIZE_THAT_FITS,
   COMPONENT_SHAPE,
   COMPONENT_SLIDER,
   COMPONENT_SPACER,
@@ -94,6 +95,25 @@ export function createElement(component: number): Node {
       el.style.flex = "1 1 auto";
       el.style.alignSelf = "stretch";
       el.style.overflow = "auto";
+      return el;
+    }
+    case COMPONENT_SIZE_THAT_FITS: {
+      // A fit slot: size-taking (fills the parent's proposal — the measured width
+      // is the fitting unit) with a `data-pathland-fit`-reflected threshold table.
+      // Layout-transparent: forwards the parent flex container's settings
+      // (`inherit`) so the sole candidate is laid out as if it sat directly in the
+      // parent (e.g. a centered VStack keeps centering a slot-wrapped HSTACK);
+      // mirrors the Rust SSR renderer's slot styles.
+      const el = document.createElement("div");
+      el.className = "pathland-ftf";
+      el.style.display = "flex";
+      el.style.flexDirection = "inherit";
+      el.style.alignItems = "inherit";
+      el.style.justifyContent = "inherit";
+      el.style.flex = "1 1 auto";
+      el.style.alignSelf = "stretch";
+      el.style.minWidth = "0";
+      el.style.minHeight = "0";
       return el;
     }
     case COMPONENT_TEXT:

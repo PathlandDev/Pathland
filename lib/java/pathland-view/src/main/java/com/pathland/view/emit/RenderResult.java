@@ -21,6 +21,7 @@ import java.util.function.Consumer;
  * @param editingInputs   node id → editing-changed sink (EDITING_CHANGED)
  * @param dateInputs      node id → date-input sink (DATE_CHANGED)
  * @param mediaInputs     node id → media-event sink (MEDIA_*; bound AUDIO/VIDEO)
+ * @param fitInputs       node id → fit-index sink (FIT_CHANGED; a SIZE_THAT_FITS slot)
  * @param navigateActions node id → declarative route-change action (a {@code .navigate/
  *                        push/replace} intent resolved to the nearest enclosing router)
  * @param navigateHandler global sink for {@code NAVIGATE} events (host → guest; a
@@ -35,5 +36,6 @@ public record RenderResult(
         Map<Integer, Consumer<Boolean>> editingInputs,
         Map<Integer, DateInput> dateInputs,
         Map<Integer, MediaInput> mediaInputs,
+        Map<Integer, Consumer<Integer>> fitInputs,
         Map<Integer, Runnable> navigateActions,
         Consumer<Event> navigateHandler) {}

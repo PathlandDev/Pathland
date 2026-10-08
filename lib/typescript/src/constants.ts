@@ -59,6 +59,7 @@ export const CMD_MEDIA_PLAY_STATE_CHANGED = 0x0f;
 export const CMD_MEDIA_TIME_UPDATED = 0x10;
 export const CMD_MEDIA_ENDED = 0x11;
 export const CMD_MEDIA_VOLUME_CHANGED = 0x12;
+export const CMD_FIT_CHANGED = 0x13;
 
 // EVENT flags
 export const FLAG_POINTER_SECONDARY = 0x0001;
@@ -88,6 +89,7 @@ export const VAL_STRING = 0x05;
 export const VAL_ENUM = 0x06;
 export const VAL_COLOR = 0x07;
 export const VAL_DESIGN_TOKEN = 0x08;
+export const VAL_LIST = 0x09;
 
 // Property IDs (spec/MODIFIERS.md)
 export const PROP_SPACING = 0x0001;
@@ -125,6 +127,7 @@ export const PROP_VIDEO_SOURCE = 0x1034;
 export const PROP_PLAYBACK_STATE = 0x1035;
 export const PROP_MEDIA_POSITION = 0x1036;
 export const PROP_MEDIA_VOLUME = 0x1037;
+export const PROP_FIT_QUERY = 0x1039;
 export const PROP_BORDER_WIDTH = 0x1003;
 export const PROP_BORDER_COLOR = 0x1004;
 export const PROP_BORDER_RADIUS = 0x1005;
@@ -330,6 +333,7 @@ export const COMPONENT_GRID = 0x0013;
 export const COMPONENT_SCROLLVIEW = 0x0014;
 export const COMPONENT_LAZY_VGRID = 0x0015;
 export const COMPONENT_LAZY_HGRID = 0x0016;
+export const COMPONENT_SIZE_THAT_FITS = 0x0017;
 export const COMPONENT_LAZY_VSTACK = 0x001b;
 export const COMPONENT_LAZY_HSTACK = 0x001c;
 export const COMPONENT_GRID_ROW = 0x001d;

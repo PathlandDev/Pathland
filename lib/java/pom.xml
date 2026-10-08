@@ -113,4 +113,73 @@
             </plugins>
         </pluginManagement>
     </build>
+
+    <!-- Run BEFORE an IntelliJ IDE run: refreshes the two layers the IDE cannot rebuild
+         itself — the Rust cdylib (cargo) and the DOM bundle (npm build:all) — plus the
+         render-html module's embedded dylib (its antrun embed step only runs under Maven,
+         NOT under IntelliJ's own build). IntelliJ then compiles the Java modules from its
+         module outputs (the pathland modules are imported, so no ~/.m2 is used) and copies
+         the refreshed bundle into target/classes on Build Project. Invoke with
+         `mvn -P refresh-ide validate`, then Reload All Maven Projects → Build → Run, and
+         hard-refresh the browser once (the bundle is served immutable-cached). -->
+    <profiles>
+    <profile>
+        <id>refresh-ide</id>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.1.0</version>
+                    <!-- Runs ONLY at the aggregator (parent); the refresh steps must
+                         not repeat once per child module. -->
+                    <inherited>false</inherited>
+                    <executions>
+                        <execution>
+                            <id>refresh-rust</id>
+                            <phase>validate</phase>
+                            <goals><goal>exec</goal></goals>
+                            <configuration>
+                                <workingDirectory>${session.executionRootDirectory}/../rust</workingDirectory>
+                                <executable>cargo</executable>
+                                <arguments>
+                                    <argument>build</argument>
+                                    <argument>--package=pathland-render-html</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>refresh-ts</id>
+                            <phase>validate</phase>
+                            <goals><goal>exec</goal></goals>
+                            <configuration>
+                                <workingDirectory>${session.executionRootDirectory}/../typescript</workingDirectory>
+                                <executable>npm</executable>
+                                <arguments>
+                                    <argument>run</argument>
+                                    <argument>build:all</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>refresh-render-html</id>
+                            <phase>validate</phase>
+                            <goals><goal>exec</goal></goals>
+                            <configuration>
+                                <workingDirectory>${session.executionRootDirectory}</workingDirectory>
+                                <executable>mvn</executable>
+                                <arguments>
+                                    <argument>-q</argument>
+                                    <argument>-pl</argument>
+                                    <argument>pathland-render-html</argument>
+                                    <argument>process-resources</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
+    </profiles>
 </project>

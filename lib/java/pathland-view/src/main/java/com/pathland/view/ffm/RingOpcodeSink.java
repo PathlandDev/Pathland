@@ -85,10 +85,32 @@ public final class RingOpcodeSink implements OpcodeSink, AutoCloseable {
         } else if (valueType == ValueTypes.DESIGN_TOKEN) {
             int ref = core.arenaAlloc(handle, ((Color) value).token().getBytes(StandardCharsets.UTF_8));
             push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, ref);
+        } else if (valueType == ValueTypes.LIST) {
+            int ref = core.arenaAlloc(handle, encodeList((float[]) value));
+            push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, ref);
         } else {
             push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b,
                     ValueEncoder.encodeBits(valueType, value));
         }
+    }
+
+    /** Encode a length-prefixed f32 array `[u32 count][f32 × count]` (spec/OPCODE.md). */
+    private static byte[] encodeList(float[] elements) {
+        byte[] out = new byte[4 + 4 * elements.length];
+        int value = elements.length;
+        out[0] = (byte) (value & 0xFF);
+        out[1] = (byte) ((value >>> 8) & 0xFF);
+        out[2] = (byte) ((value >>> 16) & 0xFF);
+        out[3] = (byte) ((value >>> 24) & 0xFF);
+        for (int i = 0; i < elements.length; i++) {
+            int bits = Float.floatToIntBits(elements[i]);
+            int o = 4 + 4 * i;
+            out[o] = (byte) (bits & 0xFF);
+            out[o + 1] = (byte) ((bits >>> 8) & 0xFF);
+            out[o + 2] = (byte) ((bits >>> 16) & 0xFF);
+            out[o + 3] = (byte) ((bits >>> 24) & 0xFF);
+        }
+        return out;
     }
 
     @Override

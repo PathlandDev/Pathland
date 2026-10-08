@@ -102,6 +102,10 @@ public final class Properties {
      *  styles imply a heading element on a {@code TEXT}; raw font modifiers
      *  override the visual on top and never imply a heading. */
     public static final int TEXT_STYLE = 0x1032;
+    /** A `SIZE_THAT_FITS` slot's candidate fit-query (LIST): the candidates'
+     *  `minWidth` thresholds, ascending. The renderer measures its allocated
+     *  width and reports the derived fit index ({@code FIT_CHANGED}). */
+    public static final int FIT_QUERY = 0x1039;
     // Semantic (0x2000 range)
     public static final int ROLE = 0x2001;
     public static final int STATE = 0x2002;

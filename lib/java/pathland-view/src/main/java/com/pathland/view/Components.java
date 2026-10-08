@@ -30,6 +30,9 @@ public final class Components {
     public static final int SCROLLVIEW = 0x14;
     public static final int LAZY_VGRID = 0x15;
     public static final int LAZY_HGRID = 0x16;
+    /** Fit slot: shows its single selected child; the renderer measures its own
+     *  allocated width against {@code FIT_QUERY} and reports {@code FIT_CHANGED}. */
+    public static final int SIZE_THAT_FITS = 0x17;
     public static final int LAZY_VSTACK = 0x1B;
     public static final int LAZY_HSTACK = 0x1C;
     /** Explicit row grouping for a {@code GRID}: a grid child whose children are one row's cells. */

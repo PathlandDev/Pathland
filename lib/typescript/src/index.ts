@@ -4,7 +4,7 @@
 // SSR HTML carries a `data-event-listeners` mask). Bundle: dist/pathland-dom-renderer.js
 
 import type { DomRenderer } from "./apply";
-import { setupMediaElement, updateNavBackButtons } from "./apply";
+import { hydrateFitElement, refreshFitSlots, setupMediaElement, updateNavBackButtons } from "./apply";
 import { Transport } from "./transport";
 import { log } from "./log";
 import { clearInFlightRange, markRangeInFlight } from "./inFlight";
@@ -152,6 +152,10 @@ function boot(): void {
       const { innerWidth: w, innerHeight: h } = window;
       log.info("route", `environment: viewport ${w}x${h}, route "${location.pathname}"`);
       t.send(encodeEnvironment(w, h, location.pathname));
+      // Re-report every fitted slot's CURRENT fit now the socket is open — a
+      // fit report emitted at boot (before the WS handshake) is dropped, so
+      // without this a wide first load would never switch to the wide candidate.
+      refreshFitSlots(renderer);
       // The SSR request never carries the wid, so it always rendered DEFAULT state. On a
       // same-tab reload (sessionStorage holds this window's wid) — or any load whose URL
       // carried a stale wid the SSR used — request a full snapshot to restore this
@@ -172,10 +176,25 @@ function boot(): void {
       transport.send(batch);
     }
   };
+  // Fit changes from SIZE_THAT_FITS slots (spec/PRIMITIVES.md §SizeThatFits):
+  // the slotted candidate index reported only on transitions.
+  renderer.onFitEvent = (batch) => {
+    if (transport.open) {
+      transport.send(batch);
+    }
+  };
   // Wire app-driven media nodes hydrated from the SSR HTML (they carry the
   // `data-pathland-media` marker) so playback state reports to the app.
   for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
     setupMediaElement(el, renderer);
+  }
+
+  // Hydrate fitted slots from the SSR HTML (they carry `data-pathland-fit`): an
+  // initial measure reports the first derived index once; subsequent reports
+  // arrive only on band crossings. The slot's own ResizeObserver detects width
+  // changes locally (spec/PRIMITIVES.md).
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-fit]")) {
+    hydrateFitElement(el, renderer);
   }
 
   // Enrich the environment after connect: a window resize re-emits the viewport

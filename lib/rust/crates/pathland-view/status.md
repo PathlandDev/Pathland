@@ -47,6 +47,11 @@ trees. Protocol contract: `spec/`.
 
 ## Not implemented / gaps
 
+- **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED)** is
+  **authored** (`SizeThatFits::new(Vec<Fit>)` + `Fit::new(view, minWidth)` /
+  `Fit::any`) emitting the slot + its single selected child + the `FIT_QUERY`
+  list (the engine's LIST value-type emission); **reactive selection is fixed** —
+  only the Java DSL's structural slot reacts to `FIT_CHANGED`.
 - `TextField`'s `PROMPT` and `Color`/`Image` sources are stored as placeholder
   values only (STRING props are supported via `Node::string_properties`, but
   these builders don't set them yet).

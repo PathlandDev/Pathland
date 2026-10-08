@@ -11,6 +11,8 @@ public final class ValueTypes {
     public static final int ENUM = 0x06;
     public static final int COLOR = 0x07;
     public static final int DESIGN_TOKEN = 0x08;
+    /** Arena-backed length-prefixed array (currently f32 elements, e.g. `FIT_QUERY`). */
+    public static final int LIST = 0x09;
 
     /** The protocol value type for a property id (mirrors {@code value_type_for}). */
     public static int forProperty(int prop) {
@@ -28,6 +30,7 @@ public final class ValueTypes {
                     Properties.ICON_NAME, Properties.GRID_TRACKS -> STRING;
             case Properties.LINE_LIMIT, Properties.SELECTION, Properties.ACTION_ID, Properties.BINDING_ID,
                     Properties.NAV_DEPTH, Properties.PLAYBACK_STATE -> U32;
+            case Properties.FIT_QUERY -> LIST;
             // Enums ride the wire as F32 holding the numeric enum code (spec convention).
             case Properties.ALIGNMENT, Properties.TEXT_ALIGNMENT, Properties.TRUNCATION_MODE,
                     Properties.TEXT_CASE, Properties.FONT_STYLE, Properties.FONT_DESIGN,

@@ -20,6 +20,7 @@
 use alloc::borrow::ToOwned;
 use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 
 use pathland_core::{value_type, value_type_for};
@@ -27,6 +28,18 @@ use pathland_core::Guest;
 
 use crate::node::{component_type_id, Component, Node};
 use crate::signal::{Dep, SignalId, SignalStore, SignalValue};
+
+/// Encode a `LIST` property's arena entry: `[u32 count][f32 × count]`
+/// (spec/OPCODE.md §Value types — a `FIT_QUERY` threshold table).
+fn encode_list(values: &[f32]) -> Vec<u8> {
+    let mut bytes = vec![0u8; 4 + 4 * values.len()];
+    bytes[0..4].copy_from_slice(&(values.len() as u32).to_le_bytes());
+    for (i, value) in values.iter().enumerate() {
+        let o = 4 + 4 * i;
+        bytes[o..o + 4].copy_from_slice(&value.to_bits().to_le_bytes());
+    }
+    bytes
+}
 
 /// Per-node state the engine remembers from the last emission.
 #[derive(Debug, Clone, PartialEq)]
@@ -40,6 +53,10 @@ struct SnapshotNode {
     /// arena offset is reused across passes so an unchanged string never
     /// re-allocates into the bump arena.
     string_properties: BTreeMap<u16, (String, u32)>,
+    /// Last-emitted `LIST` properties: property → (values, arena offset). The
+    /// arena offset is reused across passes so an unchanged list never
+    /// re-allocates into the bump arena.
+    list_properties: BTreeMap<u16, (Vec<f32>, u32)>,
     /// Last-emitted `DESIGN_TOKEN` refs: property → (token path, arena offset).
     /// The arena offset is reused across passes so an unchanged ref never
     /// re-allocates into the bump arena.
@@ -330,6 +347,7 @@ impl Engine {
         let props: &BTreeMap<u16, u32> = merged_props.as_ref().unwrap_or(&node.properties);
         let token_refs = &node.token_properties;
         let strings = &node.string_properties;
+        let lists = &node.list_properties;
 
         let prev = self.slot_mut(node.id).take();
         let token_changed = match &prev {
@@ -348,9 +366,18 @@ impl Engine {
             }
             None => !strings.is_empty(),
         };
+        let lists_changed = match &prev {
+            Some(p) => {
+                p.list_properties.len() != lists.len()
+                    || p.list_properties
+                        .iter()
+                        .any(|(prop, (old, _))| lists.get(prop) != Some(old))
+            }
+            None => !lists.is_empty(),
+        };
         let props_changed = match &prev {
-            Some(p) => &p.properties != props || token_changed || strings_changed,
-            None => !props.is_empty() || !token_refs.is_empty() || !strings.is_empty(),
+            Some(p) => &p.properties != props || token_changed || strings_changed || lists_changed,
+            None => !props.is_empty() || !token_refs.is_empty() || !strings.is_empty() || !lists.is_empty(),
         };
         let text_changed = match &prev {
             Some(p) => p.text.as_deref() != text_borrowed,
@@ -364,6 +391,9 @@ impl Engine {
         // String-property emission, built only on mount / when a value changed
         // (arena offsets reused from the previous snapshot otherwise).
         let mut string_emit: Option<BTreeMap<u16, (String, u32)>> = None;
+        // List-property emission, built only on mount / when a value changed
+        // (arena offsets reused from the previous snapshot otherwise).
+        let mut list_emit: Option<BTreeMap<u16, (Vec<f32>, u32)>> = None;
 
         // Properties in two passes — literals (skipping token-ref'd ids) then
         // token refs — so the steady-state emit performs no heap allocations.
@@ -405,6 +435,19 @@ impl Engine {
                         m.insert(*prop, (value.clone(), arena));
                     }
                     string_emit = Some(m);
+                }
+                if !lists.is_empty() {
+                    let mut m = BTreeMap::new();
+                    for (prop, values) in lists {
+                        let bytes = encode_list(values);
+                        let arena = guest
+                            .alloc(&bytes)
+                            .map_err(|_| pathland_core::RingError::Full)?;
+                        guest.set_property(node.id, *prop, value_type::LIST, arena)?;
+                        *out += 1;
+                        m.insert(*prop, (values.clone(), arena));
+                    }
+                    list_emit = Some(m);
                 }
                 if let Some(t) = text_borrowed {
                     guest.set_text(node.id, t)?;
@@ -488,6 +531,29 @@ impl Engine {
                     }
                     string_emit = Some(m);
                 }
+                if lists_changed {
+                    let mut m = BTreeMap::new();
+                    for (prop, values) in lists {
+                        let (arena, changed) = match p.list_properties.get(prop) {
+                            Some((old_values, old_offset)) if old_values == values => {
+                                (*old_offset, false)
+                            }
+                            _ => {
+                                let bytes = encode_list(values);
+                                let offset = guest
+                                    .alloc(&bytes)
+                                    .map_err(|_| pathland_core::RingError::Full)?;
+                                (offset, true)
+                            }
+                        };
+                        m.insert(*prop, (values.clone(), arena));
+                        if changed {
+                            guest.set_property(node.id, *prop, value_type::LIST, arena)?;
+                            *out += 1;
+                        }
+                    }
+                    list_emit = Some(m);
+                }
             }
         }
 
@@ -495,6 +561,7 @@ impl Engine {
         let mut prev_text = None;
         let mut prev_token_refs = None;
         let mut prev_strings = None;
+        let mut prev_lists = None;
         if let Some(p) = prev {
             if !props_changed {
                 prev_props = Some(p.properties);
@@ -507,6 +574,9 @@ impl Engine {
             }
             if !strings_changed {
                 prev_strings = Some(p.string_properties);
+            }
+            if !lists_changed {
+                prev_lists = Some(p.list_properties);
             }
             let _ = p;
         }
@@ -526,6 +596,10 @@ impl Engine {
             Some(m) => m,
             None => prev_strings.unwrap_or_default(),
         };
+        let list_properties = match list_emit {
+            Some(m) => m,
+            None => prev_lists.unwrap_or_default(),
+        };
         *self.slot_mut(node.id) = Some(SnapshotNode {
             component_type,
             parent,
@@ -533,6 +607,7 @@ impl Engine {
             text,
             properties,
             string_properties,
+            list_properties,
             token_refs: token_refs_snapshot,
             gen: self.gen,
         });

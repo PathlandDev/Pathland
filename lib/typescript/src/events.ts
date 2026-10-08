@@ -14,6 +14,7 @@ import {
   CMD_MEDIA_PLAY_STATE_CHANGED,
   CMD_MEDIA_TIME_UPDATED,
   CMD_MEDIA_VOLUME_CHANGED,
+  CMD_FIT_CHANGED,
   CMD_NAVIGATE,
   CMD_PING,
   CMD_POINTER_DOWN,
@@ -153,6 +154,11 @@ export function encodeMediaEnded(target: number): Uint8Array {
 /** A bound media node's volume changed (B = 0..1, f32). */
 export function encodeMediaVolumeChanged(target: number, volume: number): Uint8Array {
   return eventBatch(CMD_MEDIA_VOLUME_CHANGED, target, bitsFromF32(volume), 0);
+}
+
+/** A `SIZE_THAT_FITS` slot's selected candidate changed (B = index, f32). */
+export function encodeFittedChanged(target: number, index: number): Uint8Array {
+  return eventBatch(CMD_FIT_CHANGED, target, bitsFromF32(index), 0);
 }
 
 /** A DATE_CHANGED EVENT (A=target, B=days, C=millis of day). */

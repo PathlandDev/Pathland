@@ -33,6 +33,10 @@ pub struct Node {
     /// `PARAMETER:SET_PROPERTY` with the `DESIGN_TOKEN` value type. A token ref
     /// overrides the literal `properties` entry for the same id (spec/TOKENS.md).
     pub token_properties: BTreeMap<u16, String>,
+    /// List-valued properties (`propertyId → values`, e.g. a `FIT_QUERY`
+    /// threshold table), emitted as `PARAMETER:SET_PROPERTY` with the `LIST`
+    /// value type (arena-allocated as `[u32 count][f32 × count]` at emit time).
+    pub list_properties: BTreeMap<u16, Vec<f32>>,
     /// A signal the node's text is bound to (overrides `Component::Text` /
     /// `Component::Button` label when set).
     pub text_binding: Option<SignalId>,
@@ -53,6 +57,7 @@ impl core::fmt::Debug for Node {
             .field("properties", &self.properties)
             .field("string_properties", &self.string_properties)
             .field("token_properties", &self.token_properties)
+            .field("list_properties", &self.list_properties)
             .field("text_binding", &self.text_binding)
             .field("property_bindings", &self.property_bindings)
             .field("gestures", &self.gestures.len())
@@ -70,6 +75,7 @@ impl Node {
             properties: BTreeMap::new(),
             string_properties: BTreeMap::new(),
             token_properties: BTreeMap::new(),
+            list_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
             gestures: Vec::new(),
@@ -146,6 +152,10 @@ pub enum Component {
     LazyVStack,
     /// Virtualized horizontal stack.
     LazyHStack,
+    /// Fit slot (`SIZE_THAT_FITS`): shows its single (selected) child — only
+    /// the selected candidate is ever transmitted; the renderer measures its
+    /// own allocated width against the `FIT_QUERY` list and reports `FIT_CHANGED`.
+    SizeThatFits,
     /// Boolean control (`TOGGLE_STYLE`).
     Toggle,
     /// Numeric range control.
@@ -188,6 +198,7 @@ impl core::fmt::Debug for Component {
             Component::LazyHGrid => f.write_str("LazyHGrid"),
             Component::LazyVStack => f.write_str("LazyVStack"),
             Component::LazyHStack => f.write_str("LazyHStack"),
+            Component::SizeThatFits => f.write_str("SizeThatFits"),
             Component::Toggle => f.write_str("Toggle"),
             Component::Slider => f.write_str("Slider"),
             Component::TextField => f.write_str("TextField"),
@@ -223,6 +234,7 @@ pub fn component_type_id(component: &Component) -> u16 {
         Component::LazyHGrid => component_type::LAZY_HGRID,
         Component::LazyVStack => component_type::LAZY_VSTACK,
         Component::LazyHStack => component_type::LAZY_HSTACK,
+        Component::SizeThatFits => component_type::SIZE_THAT_FITS,
         Component::Toggle => component_type::TOGGLE,
         Component::Slider => component_type::SLIDER,
         Component::TextField => component_type::TEXT_FIELD,

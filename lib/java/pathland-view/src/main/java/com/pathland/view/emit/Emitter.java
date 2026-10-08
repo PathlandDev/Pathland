@@ -14,6 +14,7 @@ import com.pathland.view.signal.Signals;
 import com.pathland.view.transport.Event;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,6 +50,7 @@ public final class Emitter {
     private final Map<Integer, Consumer<Boolean>> editingInputs = new LinkedHashMap<>();
     private final Map<Integer, DateInput> dateInputs = new LinkedHashMap<>();
     private final Map<Integer, MediaInput> mediaInputs = new LinkedHashMap<>();
+    private final Map<Integer, Consumer<Integer>> fitInputs = new LinkedHashMap<>();
     private final Map<Integer, Runnable> navigateActions = new LinkedHashMap<>();
     private final List<EffectRef> bindings = new ArrayList<>();
     private final Map<Integer, List<EffectRef>> nodeBindings = new LinkedHashMap<>();
@@ -94,6 +96,7 @@ public final class Emitter {
         editingInputs.clear();
         dateInputs.clear();
         mediaInputs.clear();
+        fitInputs.clear();
         navigateActions.clear();
         navigateHandler = null;
         collectInputs(tree);
@@ -115,6 +118,7 @@ public final class Emitter {
                 Collections.unmodifiableMap(editingInputs),
                 Collections.unmodifiableMap(dateInputs),
                 Collections.unmodifiableMap(mediaInputs),
+                Collections.unmodifiableMap(fitInputs),
                 Collections.unmodifiableMap(navigateActions),
                 navigateHandler);
     }
@@ -191,6 +195,9 @@ public final class Emitter {
         if (node.mediaInput != null) {
             mediaInputs.put(node.id, node.mediaInput);
         }
+        if (node.fitInput != null) {
+            fitInputs.put(node.id, node.fitInput);
+        }
         if (node.navigateHandler != null) {
             navigateHandler = node.navigateHandler; // global: a NavigationContainer's router sink
         }
@@ -221,6 +228,7 @@ public final class Emitter {
         editingInputs.remove(node.id);
         dateInputs.remove(node.id);
         mediaInputs.remove(node.id);
+        fitInputs.remove(node.id);
         navigateActions.remove(node.id);
         for (PathlandNode child : node.children) {
             forgetInputs(child);
@@ -263,6 +271,17 @@ public final class Emitter {
                 ? ValueTypes.DESIGN_TOKEN
                 : ValueTypes.forProperty(property);
         sink.setProperty(nodeId, property, valueType, value);
+    }
+
+    /** Value equality for a retained property diff. `float[]` (LIST-typed values,
+     *  e.g. a SizeThatFits FIT_QUERY) are re-created on every render, so a
+     *  reference comparison would re-emit an unchanged LIST on every reconcile —
+     *  compare array contents instead ("identical recompute emits zero opcodes"). */
+    private static boolean propertyValuesEqual(Object a, Object b) {
+        if ((a instanceof float[] fa) && (b instanceof float[] fb)) {
+            return Arrays.equals(fa, fb);
+        }
+        return Objects.equals(a, b);
     }
 
     /**
@@ -439,6 +458,17 @@ public final class Emitter {
             PathlandNode fresh = i < newList.size() ? newList.get(i) : null;
             if (old != null && fresh != null && old.component == fresh.component) {
                 fresh.id = old.id; // stable id: reused across the swap
+                // A nested structural slot is retained state: re-rendering its parent
+                // subtree (an outer slot's candidate swap, a custom style's body re-run)
+                // re-instantiates the inner slot's View with a DEFAULT selection. Carry
+                // the previously selected candidate across the match before the diff —
+                // otherwise a nested fit (the player bar's controls slot under the root
+                // row) resets to compact and stays there (the DOM client never re-reports
+                // an unchanged width). "Identical recompute" then still emits zero ops.
+                if (fresh.structuralContent != null && old.structuralContent != null
+                        && old.fitSelection != fresh.fitSelection) {
+                    restoreFitSelection(old, fresh);
+                }
                 reconcileNode(old, fresh, ops);
             } else {
                 if (old != null) {
@@ -470,7 +500,7 @@ public final class Emitter {
             ops.add(() -> sink.setText(id, text));
         }
         for (Map.Entry<Integer, Object> entry : fresh.properties.entrySet()) {
-            if (!Objects.equals(entry.getValue(), old.properties.get(entry.getKey()))) {
+            if (!propertyValuesEqual(entry.getValue(), old.properties.get(entry.getKey()))) {
                 int id = fresh.id, property = entry.getKey();
                 Object value = entry.getValue();
                 ops.add(() -> emitProperty(id, property, value));
@@ -481,6 +511,53 @@ public final class Emitter {
             ops.add(() -> sink.setDate(id, days, millis));
         }
         reconcileChildren(fresh, old.children, fresh.children, ops);
+    }
+
+    /**
+     * Carry a nested structural slot's selection across a parent-subtree re-render.
+     * Re-rendering the parent (an outer slot's candidate swap, a custom style's body
+     * re-run) re-instantiates the inner slot with a DEFAULT selection (index 0), so
+     * re-apply the retained index to the fresh slot's signal and re-render its chosen
+     * candidate BEFORE the diff — the diff then compares like for like and emits
+     * nothing (a nested fit keeps its candidate; "identical recompute" stays zero-op).
+     */
+    private void restoreFitSelection(PathlandNode old, PathlandNode fresh) {
+        int selected = old.fitSelection;
+        if (fresh.fitInput != null) {
+            // The reconcile runs inside a structural slot's effect, where direct signal
+            // writes are guarded — this is a deliberate retained-selection write, so
+            // scope it out of the reactive context (`untracked` clears the current
+            // node): the fresh slot's signal gets the carried index without tripping
+            // the write guard, and no consumer is flushed yet (the fresh subtree's
+            // bindings are (re)registered after the reconcile).
+            Signals.untracked(() -> {
+                fresh.fitInput.accept(selected);
+                return null;
+            });
+        }
+        fresh.fitSelection = selected;
+        fresh.children.clear();
+        PathlandNode content = renderStructuralContent(fresh);
+        if (content != null) {
+            fresh.children.add(content);
+        }
+    }
+
+    /** Render a structural slot's currently selected candidate within its captured scope. */
+    private PathlandNode renderStructuralContent(PathlandNode slot) {
+        EnvironmentValues envScope = slot.environmentForChildren;
+        EnvironmentValues previous = Environment.current();
+        if (envScope != null) {
+            Environment.within(envScope);
+        }
+        try {
+            return Signals.untracked(() -> {
+                View view = slot.structuralContent == null ? null : slot.structuralContent.get();
+                return view == null ? null : view.render(env);
+            });
+        } finally {
+            Environment.restore(previous);
+        }
     }
 
     /** Emit a newly created node's content + its whole child subtree (children get fresh ids). */

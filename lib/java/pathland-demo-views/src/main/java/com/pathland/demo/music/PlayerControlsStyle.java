@@ -45,15 +45,15 @@ public final class PlayerControlsStyle implements AudioStyle {
     public View makeBody(Configuration config) {
         var current = computed(() -> MusicPlayerView.at(trackIndex.get()));
         var transportIcon = computed(() -> config.playing().get() ? IconName.PAUSE.wire() : IconName.PLAY.wire());
-        // The sliders PRESENT the display signals but WRITE the commands on a
-        // drag (decoupling a report from a command, spec/EVENTS.md Media).
         var seek = new SeekControl(position, seekRequest);
         var volumeControl = new VolumeControl(volume, volumeRequest);
-        var groups = HStack.of(VerticalAlignment.CENTER, 18f,
+
+        var playControl = HStack.of(VerticalAlignment.CENTER, 18f,
                 Button.of(Icon.of(IconName.SKIP_BACK), () -> { prev(); restartSeek(); }).with(FontSize.of(20)),
                 Button.of(Icon.of(transportIcon), () -> config.playing().update(v -> !v)).with(FontSize.of(28)),
-                Button.of(Icon.of(IconName.SKIP_FORWARD), () -> { next(); restartSeek(); }).with(FontSize.of(20)),
-                Text.of("|").with(FontSize.of(18), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
+                Button.of(Icon.of(IconName.SKIP_FORWARD), () -> { next(); restartSeek(); }).with(FontSize.of(20))
+        );
+        var trackInfo = HStack.of(VerticalAlignment.CENTER, 18f,
                 Image.of(computed(() -> current.get().cover()))
                         .with(FrameMod.of(36, 36), ScaledToFit.of()),
                 VStack.of(HorizontalAlignment.LEADING, 2,
@@ -61,11 +61,33 @@ public final class PlayerControlsStyle implements AudioStyle {
                                 .with(FontWeightMod.of(FontWeight.SEMIBOLD), LineLimit.of(1)),
                         Text.of(computed(() -> current.get().artist()))
                                 .with(FontSize.of(13), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG), LineLimit.of(1))
-                ).with(FrameMod.of(160f)),
-                Text.of("|").with(FontSize.of(18), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
-                Icon.of(IconName.VOLUME).with(FontSize.of(16)),
-                Slider.of(volumeControl, 0f, 1f)
+                ).with(FrameMod.of(160f))
         );
+
+        var volumeView = HStack.of(VerticalAlignment.CENTER, 18f,
+            Icon.of(IconName.VOLUME).with(FontSize.of(16)),
+            Slider.of(volumeControl, 0f, 1f)
+        );
+
+        var compactControls = HStack.of(VerticalAlignment.CENTER, 18f,
+                playControl,
+                Text.of("|").with(FontSize.of(18), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
+                trackInfo
+        );
+
+        var controls = HStack.of(VerticalAlignment.CENTER, 18f,
+                playControl,
+                Text.of("|").with(FontSize.of(18), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
+                trackInfo,
+                Text.of("|").with(FontSize.of(18), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
+                volumeView
+        );
+
+        var groups = SizeThatFits.of(
+                Fit.of(controls, 600),
+                Fit.of(compactControls)
+        );
+
         return VStack.of(HorizontalAlignment.CENTER, 0,
                 // Centered groups over a full-width seek bar (the slider's FILL
                 // width spans the bar via fill propagation; the groups stay

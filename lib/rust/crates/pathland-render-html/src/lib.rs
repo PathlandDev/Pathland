@@ -806,6 +806,35 @@ fn strings_str(strings: &[u8], offset: u32) -> Option<String> {
     std::str::from_utf8(&strings[start..start + len]).ok().map(str::to_owned)
 }
 
+/// Decode a `LIST` arena entry (`[u32 count][f32 × count]`) as a CSV string with
+/// trimmed thresholds (e.g. `"0,640"`) — the `FIT_QUERY` mirror the SSR shell
+/// emits in its `data-pathland-fit` attribute.
+fn list_csv(strings: &[u8], offset: u32) -> Option<String> {
+    let offset = offset as usize;
+    if offset + 4 > strings.len() {
+        return None;
+    }
+    let count = u32::from_le_bytes(strings[offset..offset + 4].try_into().ok()?) as usize;
+    let start = offset + 4;
+    if start + count * 4 > strings.len() {
+        return None;
+    }
+    let mut parts = Vec::with_capacity(count);
+    for i in 0..count {
+        let bits = u32::from_le_bytes(
+            strings[start + i * 4..start + i * 4 + 4].try_into().ok()?,
+        );
+        let value = f32::from_bits(bits);
+        // Trim: whole values render without a fraction ("0,640").
+        parts.push(if value.fract() == 0.0 {
+            format!("{:.0}", value)
+        } else {
+            format!("{:.1}", value)
+        });
+    }
+    Some(parts.join(","))
+}
+
 // --- Design tokens (spec/TOKENS.md) ---
 
 /// `SET_DESIGN_TOKEN` overrides collected from a snapshot batch. `base` holds
@@ -982,6 +1011,13 @@ fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings
                     if let Some(path) = strings_str(strings, op.c()) {
                         node.token_refs.insert(property, path);
                     }
+                } else if vt == value_type::LIST {
+                    // A length-prefixed f32 array — today a `FIT_QUERY` threshold
+                    // table; stored as its CSV form so the SSR shell can mirror it
+                    // in a `data-pathland-fit` attribute for the DOM client.
+                    if let Some(csv) = list_csv(strings, op.c()) {
+                        node.strings.insert(property, csv);
+                    }
                 } else {
                     node.properties.insert(property, op.c());
                 }
@@ -1156,6 +1192,35 @@ impl HtmlRenderer {
             }
             component_type::LAZY_HSTACK => {
                 wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
+            }
+            component_type::SIZE_THAT_FITS => {
+                // A fit slot (spec/PRIMITIVES.md §SizeThatFits): size-taking — it
+                // fills the parent's proposal, and that measured width is the unit
+                // of fitting. The single (selected) child is all that transmits;
+                // `data-pathland-fit` mirrors the FIT_QUERY threshold table so the
+                // DOM client can derive the fit locally (and only report FIT_CHANGED
+                // on transitions).
+                //
+                // The slot is a LAYOUT-TRANSPARENT container: it forwards the
+                // parent flex container's flex-direction/align-items/justify-content
+                // (`inherit`) to its own box, so its sole child is laid out exactly
+                // as if it sat directly in the parent — e.g. a `VStack(CENTER)` keeps
+                // centering a candidate the slot wraps, instead of the slot's
+                // `align-self:stretch` box pinning the child to the start (a
+                // regression when the player bar moved its centered groups behind a
+                // fit slot). Under a non-flex parent `inherit` degrades to the CSS
+                // initial values (`row`/`normal`), which matches the plain-box
+                // behavior the slot had before. `align-self:stretch` + `flex:1 1
+                // auto` stay so the slot still fills/measures the proposal, and
+                // `min-width/height:0` lets flexbox shrink below content.
+                let fit_attr = node
+                    .strings
+                    .get(&property_id::FIT_QUERY)
+                    .map(|csv| format!(" data-pathland-fit=\"{}\"", escape(csv)))
+                    .unwrap_or_default();
+                format!(
+                    "<div{data_id} class=\"pathland-ftf\"{fit_attr}{event}{aria} style=\"display:flex;flex-direction:inherit;align-items:inherit;justify-content:inherit;flex:1 1 auto;align-self:stretch;min-width:0;min-height:0;{css}{derived}\">{children}</div>"
+                )
             }
             component_type::TEXT => {
                 // A TEXT's tag is resolved by typography + role: a heading
@@ -3030,6 +3095,68 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("align-items:flex-start"), "Fill=3 → hug: {}", html);
+    }
+
+    #[test]
+    fn fit_slot_forwards_parent_alignment_into_its_box() {
+        use pathland_core::value_type;
+
+        // A `VStack(CENTER)` > SizeThatFits > HSTACK: the slot is a layout-transparent
+        // container, so it must forward the parent's cross-axis alignment (`inherit`)
+        // into its own box — otherwise its `align-self:stretch` box pins the candidate
+        // to the start, regressing the centered player-bar groups (the reasons the
+        // player bar moved its centered controls behind a fit slot). It keeps the
+        // size-taking `flex:1 1 auto;align-self:stretch` + `min-width/height:0`
+        // (the fitted width is measured from this box).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        // HorizontalAlignment.CENTER = 1.
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
+            1.0f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::SIZE_THAT_FITS as u32, 0));
+        // FIT_QUERY (LIST) → arena `[count=2][0][640]` → `data-pathland-fit="0,640"`.
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&2u32.to_le_bytes());
+        strings.extend_from_slice(&0.0f32.to_le_bytes());
+        strings.extend_from_slice(&640.0f32.to_le_bytes());
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            2,
+            ((value_type::LIST as u32) << 16) | property_id::FIT_QUERY as u32,
+            0,
+        ));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::HSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 3, 0));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &strings, 1);
+        assert!(html.contains("align-items:center"), "parent VStack centers: {}", html);
+        assert!(html.contains("data-pathland-fit=\"0,640\""), "fit mirror rides the slot: {}", html);
+        let slot = "class=\"pathland-ftf\"";
+        let pos_before = html.find(slot).expect("slot div");
+        let snippet = &html[pos_before..html[pos_before..].find('>').unwrap() + pos_before + 1];
+        assert!(
+            snippet.contains("display:flex;")
+                && snippet.contains("flex-direction:inherit;")
+                && snippet.contains("align-items:inherit;")
+                && snippet.contains("justify-content:inherit;")
+                && snippet.contains("flex:1 1 auto;")
+                && snippet.contains("align-self:stretch;")
+                && snippet.contains("min-width:0;")
+                && snippet.contains("min-height:0;"),
+            "slot forwards the parent flex settings while staying size-taking: {snippet}"
+        );
+        assert!(!snippet.contains("align-items:stretch;"), "forwarded, not stretch-only: {snippet}");
+        assert!(html.contains("display:flex;flex-direction:row;"), "the candidate HSTACK stays a row");
     }
 
     #[test]
