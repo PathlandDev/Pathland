@@ -1332,6 +1332,24 @@ export function hydrateFitElement(el: HTMLElement, r: DomRenderer): void {
   applyFitQuery(el, r, thresholds);
 }
 
+/**
+ * Re-report every fitted slot's CURRENT fit once — the host calls this right
+ * after the WebSocket opens, because a fit report emitted at boot is dropped
+ * (`onFitEvent` gates on `transport.open`, and the dropped report still sets
+ * `lastIndex`, so the ResizeObserver would otherwise stay silent on an
+ * unchanged width). Resetting `lastIndex` forces exactly one `FIT_CHANGED`;
+ * the observer keeps reporting later band crossings.
+ */
+export function refreshFitSlots(r: DomRenderer): void {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-fit]")) {
+    const state = fitState.get(el);
+    if (state) {
+      state.lastIndex = -1;
+      evaluateFit(el, r, state);
+    }
+  }
+}
+
 function ensureFitState(el: HTMLElement, r: DomRenderer): FitSlotState {
   let state = fitState.get(el);
   if (!state) {

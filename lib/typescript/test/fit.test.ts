@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyBatch, destroyFitElement } from "../src/apply";
+import { applyBatch, destroyFitElement, refreshFitSlots } from "../src/apply";
 import { parseBatch, readList } from "../src/plpl";
 import { buildBatch, stringEntry } from "./plpl.test";
 import {
@@ -55,6 +55,7 @@ function renderer(onFit?: (batch: Uint8Array) => void): DomRenderer {
 }
 
 beforeEach(() => {
+  document.body.innerHTML = ""; // isolate each test's DOM (fitted slots, icons)
   FakeResizeObserver.instances = [];
   (globalThis as Record<string, unknown>).ResizeObserver = FakeResizeObserver;
 });
@@ -159,6 +160,33 @@ describe("SizeThatFits · FIT_QUERY + local fit → FIT_CHANGED", () => {
     observer.trigger();
     expect(sent).toHaveLength(after); // no reports after teardown
     destroyFitElement(el); // idempotent
+  });
+
+  it("refreshFitSlots re-reports the current fit after the socket opens", () => {
+    // A first load: FIT_QUERY arrives before the WS handshake finishes, so the
+    // report is dropped (no onFitEvent yet) but lastIndex is still set — without
+    // refreshFitSlots the ResizeObserver would stay silent on an unchanged width.
+    const el = document.createElement("div");
+    el.setAttribute("data-pathland-id", "7");
+    document.body.appendChild(el);
+    const r = renderer(); // no onFitEvent yet — the boot report would be dropped
+    r.byId.set(7, el);
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 7, (VAL_LIST << 16) | PROP_FIT_QUERY, 0]], listEntry([0, 640])),
+      ),
+      r,
+    );
+    expect(el.getAttribute("data-pathland-fit")).toBe("0,640");
+
+    // Socket opens: the sink is now wired; refreshFitSlots must force one report.
+    const sent: Uint8Array[] = [];
+    r.onFitEvent = (batch) => sent.push(batch);
+    refreshFitSlots(r);
+
+    expect(sent).toHaveLength(1);
+    expect(decode(sent[0]!).command).toBe(CMD_FIT_CHANGED);
+    expect(decode(sent[0]!).a).toBe(7);
   });
 });
 

@@ -4,7 +4,7 @@
 // SSR HTML carries a `data-event-listeners` mask). Bundle: dist/pathland-dom-renderer.js
 
 import type { DomRenderer } from "./apply";
-import { hydrateFitElement, setupMediaElement, updateNavBackButtons } from "./apply";
+import { hydrateFitElement, refreshFitSlots, setupMediaElement, updateNavBackButtons } from "./apply";
 import { Transport } from "./transport";
 import { log } from "./log";
 import { clearInFlightRange, markRangeInFlight } from "./inFlight";
@@ -152,6 +152,10 @@ function boot(): void {
       const { innerWidth: w, innerHeight: h } = window;
       log.info("route", `environment: viewport ${w}x${h}, route "${location.pathname}"`);
       t.send(encodeEnvironment(w, h, location.pathname));
+      // Re-report every fitted slot's CURRENT fit now the socket is open — a
+      // fit report emitted at boot (before the WS handshake) is dropped, so
+      // without this a wide first load would never switch to the wide candidate.
+      refreshFitSlots(renderer);
       // The SSR request never carries the wid, so it always rendered DEFAULT state. On a
       // same-tab reload (sessionStorage holds this window's wid) — or any load whose URL
       // carried a stale wid the SSR used — request a full snapshot to restore this
