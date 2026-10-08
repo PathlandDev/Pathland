@@ -86,6 +86,15 @@ class MusicPlayerViewTest {
 
         assertTrue(anySetText(wide, "Now Playing"), "the now-playing sidebar renders after the fit change");
         assertTrue(anySetText(wide, "Up Next"), "the up-next pane renders");
+        // The main play area is REUSED (both candidates are HSTACKs at the same
+        // slot-child position), so the swap must NOT rebuild the player/library —
+        // only the sidebar subtree is created/inserted. A regression: if the two
+        // candidates' root components differ, the whole main area would be
+        // re-created (a large delta + node churn).
+        assertEquals(0, countCreate(wide, Components.AUDIO),
+                "the app-driven player node is re-used, not re-created");
+        assertEquals(0, countCreate(wide, Components.SIZE_THAT_FITS), "the slot itself is untouched");
+        assertTrue(countCreateAnything(wide) < 40, "the fit swap is a small delta, not a tree rebuild");
     }
 
     @Test
@@ -170,6 +179,16 @@ class MusicPlayerViewTest {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE
                     && op.b() == component) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static int countCreateAnything(Frame frame) {
+        int n = 0;
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE) {
                 n++;
             }
         }

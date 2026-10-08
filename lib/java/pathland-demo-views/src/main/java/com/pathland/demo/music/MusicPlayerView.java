@@ -86,8 +86,10 @@ public final class MusicPlayerView implements View {
                 ? Lyrics.previousLine(at(trackIndex.get()).title(), position.get())
                 : "");
         // The main play area (library + floating player bar + lyric pill) is
-        // shared by both fit candidates, so a row swap only inserts/removes the
-        // now-playing sidebar (the reconcile reuses these nodes).
+        // authored ONCE and wrapped in the same root component (HSTACK) for BOTH
+        // fit candidates, so the reconcile re-uses every shared node and a fit
+        // swap only inserts/removes the now-playing sidebar subtree — a handful
+        // of TREE deltas instead of rebuilding the whole main area.
         View mainArea = ZStack.of(Alignment.BOTTOM_CENTER,
                 new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
                 HStack.of(
@@ -97,15 +99,15 @@ public final class MusicPlayerView implements View {
                         .with(Shadow.of(10))
                 ).with(Padding.of(16)),
                 subtitlePill(block, previous, current));
-        View rowWithSidebar = HStack.of(
+        View wideRow = HStack.of(
                 mainArea,
                 new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
         ).with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL));
-        // The now-playing sidebar shows only when its parent row is ≥ 600pt
-        // wide; below that only the compact `mainArea` is transmitted.
+        View compactRow = HStack.of(mainArea)
+                .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL));
         return SizeThatFits.of(
-                Fit.of(rowWithSidebar, 600f),
-                Fit.of(mainArea)
+                Fit.of(wideRow, 1024f),
+                Fit.of(compactRow)
         )
         .with(FrameMod.of(Commands.Size.FILL, Commands.Size.FILL))
         .with(AccessibilityRole.of(Roles.MAIN));
