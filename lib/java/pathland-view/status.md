@@ -16,7 +16,14 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (`RenderResult.fitInputs`, via `InputDispatcher`), which swaps the child through
   the structural reconcile (an unchanged index re-emits zero opcodes). The LIST
   value type is written by `FrameOpcodeSink`/`RingOpcodeSink`
-  (`[count][f32 × count]` arena entries).
+  (`[count][f32 × count]` arena entries). A slot's selection is **retained node
+  state** (`PathlandNode.fitSelection`): a parent-subtree re-render (an outer
+  slot's candidate swap, a custom style body re-run) may rebuild a nested slot
+  with a default index, so the reconcile **carries the previous selection across
+  the match** (`Emitter.restoreFitSelection`) — a nested fit (the player bar's
+  controls slot under the root row) keeps its candidate instead of resetting to
+  compact (a reset would strand the DOM client, which never re-reports an
+  unchanged width).
 - **Construction is `.of()` only**: every concrete view/control exposes a
   static `<ViewName>.of(...)` factory (`Text.of`, `VStack.of`,
   `Button.of(label, action)`, `Slider.of(binding, min, max)`,

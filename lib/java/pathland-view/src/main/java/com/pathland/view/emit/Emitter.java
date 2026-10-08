@@ -458,6 +458,17 @@ public final class Emitter {
             PathlandNode fresh = i < newList.size() ? newList.get(i) : null;
             if (old != null && fresh != null && old.component == fresh.component) {
                 fresh.id = old.id; // stable id: reused across the swap
+                // A nested structural slot is retained state: re-rendering its parent
+                // subtree (an outer slot's candidate swap, a custom style's body re-run)
+                // re-instantiates the inner slot's View with a DEFAULT selection. Carry
+                // the previously selected candidate across the match before the diff —
+                // otherwise a nested fit (the player bar's controls slot under the root
+                // row) resets to compact and stays there (the DOM client never re-reports
+                // an unchanged width). "Identical recompute" then still emits zero ops.
+                if (fresh.structuralContent != null && old.structuralContent != null
+                        && old.fitSelection != fresh.fitSelection) {
+                    restoreFitSelection(old, fresh);
+                }
                 reconcileNode(old, fresh, ops);
             } else {
                 if (old != null) {
@@ -500,6 +511,53 @@ public final class Emitter {
             ops.add(() -> sink.setDate(id, days, millis));
         }
         reconcileChildren(fresh, old.children, fresh.children, ops);
+    }
+
+    /**
+     * Carry a nested structural slot's selection across a parent-subtree re-render.
+     * Re-rendering the parent (an outer slot's candidate swap, a custom style's body
+     * re-run) re-instantiates the inner slot with a DEFAULT selection (index 0), so
+     * re-apply the retained index to the fresh slot's signal and re-render its chosen
+     * candidate BEFORE the diff — the diff then compares like for like and emits
+     * nothing (a nested fit keeps its candidate; "identical recompute" stays zero-op).
+     */
+    private void restoreFitSelection(PathlandNode old, PathlandNode fresh) {
+        int selected = old.fitSelection;
+        if (fresh.fitInput != null) {
+            // The reconcile runs inside a structural slot's effect, where direct signal
+            // writes are guarded — this is a deliberate retained-selection write, so
+            // scope it out of the reactive context (`untracked` clears the current
+            // node): the fresh slot's signal gets the carried index without tripping
+            // the write guard, and no consumer is flushed yet (the fresh subtree's
+            // bindings are (re)registered after the reconcile).
+            Signals.untracked(() -> {
+                fresh.fitInput.accept(selected);
+                return null;
+            });
+        }
+        fresh.fitSelection = selected;
+        fresh.children.clear();
+        PathlandNode content = renderStructuralContent(fresh);
+        if (content != null) {
+            fresh.children.add(content);
+        }
+    }
+
+    /** Render a structural slot's currently selected candidate within its captured scope. */
+    private PathlandNode renderStructuralContent(PathlandNode slot) {
+        EnvironmentValues envScope = slot.environmentForChildren;
+        EnvironmentValues previous = Environment.current();
+        if (envScope != null) {
+            Environment.within(envScope);
+        }
+        try {
+            return Signals.untracked(() -> {
+                View view = slot.structuralContent == null ? null : slot.structuralContent.get();
+                return view == null ? null : view.render(env);
+            });
+        } finally {
+            Environment.restore(previous);
+        }
     }
 
     /** Emit a newly created node's content + its whole child subtree (children get fresh ids). */

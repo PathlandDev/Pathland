@@ -125,6 +125,18 @@ class MusicPlayerViewTest {
         assertTrue(countCreate(wideBar, Components.SLIDER) == 1, "the wide controls add the volume slider");
         assertTrue(anySlider(wideBar, 0f, 1f), "volume slider carries its 0..1 range");
         assertTrue(anySliderValue(wideBar, 0.7f), "volume slider carries the persisted value");
+
+        // Regression: switching the ROOT row to the now-playing sidebar re-renders
+        // the whole bar subtree — the NESTED controls slot must keep its wide
+        // selection. A reset to compact would re-emit the compact group's divider
+        // and churn the bar (the user-visible volume-vanish: the DOM client never
+        // re-reports an unchanged width, so it stays lost).
+        int rootSlot = slotIdByMaxThreshold(frame, 1024f);
+        m.result.fitInputs().get(rootSlot).accept(1);
+        Frame withSidebar = m.sink.frame();
+        assertFalse(anySetText(withSidebar, "|"), "the controls group is not reset by the root swap");
+        assertEquals(0, countCreate(withSidebar, Components.SLIDER), "the volume slider is reused, not re-created");
+        assertTrue(countCreateAnything(withSidebar) < 40, "the outer swap stays sidebar-only");
     }
 
     @Test

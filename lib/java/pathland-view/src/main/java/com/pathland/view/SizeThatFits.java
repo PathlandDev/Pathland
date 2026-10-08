@@ -88,12 +88,17 @@ public final class SizeThatFits {
             // emitter's structural effect tracks it and reconciles on change.
             node.structuralContent = () -> selectedView();
             // The host routes FIT_CHANGED here; a no-op index (already selected)
-            // re-reads the same view and the reconcile emits zero opcodes.
+            // re-reads the same view and the reconcile emits zero opcodes. The
+            // selection is recorded on the node (`fitSelection`) so a parent-subtree
+            // re-render can carry it across the reconcile (a nested fit slot must
+            // not reset to compact when an outer slot re-renders its candidate).
             node.fitInput = index -> {
                 if (index != null && index >= 0 && index < fits.size()) {
+                    node.fitSelection = index;
                     fitIndex.set(index);
                 }
             };
+            node.fitSelection = fitIndex.get();
             View selected = selectedView();
             if (selected != null) {
                 node.children.add(selected.render(env));

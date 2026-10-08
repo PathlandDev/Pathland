@@ -4,6 +4,7 @@ import com.pathland.view.emit.Emitter;
 import com.pathland.view.emit.Frame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
+import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.emit.RenderResult;
 import org.junit.jupiter.api.Test;
 
@@ -130,6 +131,58 @@ class SizeThatFitsTest {
         Frame swap = sink.frame();
         assertTrue(containsText(swap, "wide"), "the nested slot swapped to its wide candidate");
         assertFalse(containsText(swap, "fallback"), "the outer slot's candidate is untouched");
+    }
+
+    /** An outer slot's candidate swap must NOT reset a nested slot's selection:
+     *  re-rendering the parent subtree re-instantiates the inner slot with a default
+     *  index — a reset would drop the nested fit's chosen candidate (e.g. the player
+     *  bar's volume controls vanish when the root row shows the now-playing sidebar)
+     *  and the DOM client never re-reports an unchanged width, so it stays lost.
+     *  The nested slot is deliberately re-built FRESH on every render, mirroring a
+     *  custom style body (PlayerControlsStyle.makeBody) re-run on a subtree re-render. */
+    @Test
+    void outerSwapPreservesNestedSlotSelection() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        // Both root candidates re-build the nested slot each render (a fresh fit
+        // signal defaulting to 0) — like the shared player bar behind the music
+        // player's compact/wide root rows.
+        View root = SizeThatFits.of(
+                Fit.of(rebuiltNested("more"), 1024f),
+                Fit.of(rebuiltNested("less")));
+        RenderResult result = emitter.mount(root, Environment.DEFAULT);
+        Frame mountFrame = sink.frame();
+        int nestedId = slotByThreshold(result, mountFrame, 600f);
+        int rootId = slotByThreshold(result, mountFrame, 1024f);
+
+        // 1. The nested slot picks its wide candidate (volume controls shown).
+        result.fitInputs().get(nestedId).accept(1);
+        assertTrue(containsText(sink.frame(), "wide"), "nested slot goes wide");
+
+        // 2. The root row switches to the OTHER candidate (now-playing sidebar) —
+        //    the whole subtree re-renders, rebuilding the nested slot.
+        result.fitInputs().get(rootId).accept(1);
+        Frame swap = sink.frame();
+        // The regression: without carrying the selection across the reconcile, the
+        // rebuilt nested slot resets to compact and re-emits its fallback text.
+        assertFalse(containsText(swap, "compact"), "nested fit keeps its wide selection across the outer swap");
+        assertTrue(containsText(swap, "more"), "the outer candidate change is the only swap delta");
+
+        // 3. The nested slot's fit sink still routes (a later resize can move it).
+        result.fitInputs().get(nestedId).accept(0);
+        assertTrue(containsText(sink.frame(), "compact"), "the nested slot can still swap back");
+    }
+
+    /** A custom-style body: re-builds the nested fit slot (fresh signal, default 0) on
+     *  every render, like `AudioStyle.makeBody` does when its parent subtree re-renders. */
+    private static View rebuiltNested(String suffix) {
+        return new View() {
+            @Override
+            public PathlandNode render(Environment env) {
+                View nested = SizeThatFits.of(Fit.of(Text.of("wide"), 600f), Fit.of(Text.of("compact")));
+                return VStack.of(nested, Text.of(suffix)).render(env);
+            }
+        };
     }
 
     private static int slotByThreshold(RenderResult result, Frame frame, float threshold) {
