@@ -3,7 +3,7 @@
   "checkpoint_id": "01M4FYRMPR6X7VN0PQFE9R9M75",
   "strategy": "manual-commit",
   "branch": "spec/dsl-v2-authoring-surface",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     "lib/rust/crates/pathland-engine/src/node.rs",
     "lib/rust/crates/pathland-engine/src/signal.rs",
@@ -20,6 +20,13 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": ""
     }
   ],
   "token_usage": {

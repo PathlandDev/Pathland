@@ -1,0 +1,43 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4FYRMPR6X7VN0PQFE9R9M75",
+  "session_id": "ses_ee3b8f443ffe3QqpZq5kAMN30N",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-09T09:09:10.997758Z",
+  "branch": "spec/dsl-v2-authoring-surface",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/rust/crates/pathland-engine/src/node.rs",
+    "lib/rust/crates/pathland-engine/src/signal.rs",
+    "lib/rust/crates/pathland-engine/status.md",
+    "lib/rust/crates/pathland-render-gtk-demo/src/main.rs",
+    "lib/rust/crates/pathland-view/src/lib.rs",
+    "lib/rust/crates/pathland-view/status.md",
+    "spec/DSL.md"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "436e889f7646",
+  "checkpoint_transcript_start": 25,
+  "transcript_lines_at_start": 25,
+  "compact_transcript_start": 25,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-09T09:09:10.954117Z",
+    "agent_lines": 485,
+    "agent_removed": 72,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 485,
+    "total_lines_changed": 557,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
