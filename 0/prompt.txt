@@ -1,0 +1,39 @@
+You are migrating JAVA TEST files in `lib/java/pathland-view/src/test/java/**` to the v2 DSL authoring surface. You may ONLY edit files under `lib/java/pathland-view/src/test/**`. Do NOT edit main sources.
+
+## The v2 surface (already implemented, confirmed green)
+- Views construct via static `with(Consumer<Config>)` returning `ViewBuilder` (which IS a `View`): `Text.with(t -> t.text("x"))`, `VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(8f)).children(a, b)`, `Button.with(b -> b.title("t").action(() -> ...))`, `Button.with(b -> b.action(...)).children(label)`, `Grid.with(g -> g.columns(2)).children(a, b)`, `Slider.with(s -> s.value(sig).in(0f, 100f))`, `Toggle.with(t -> t.isOn(sig))`, `ProgressView.with(p -> p.value(...))`, `Picker.with(p -> p.selection(sig)).children(options)`, `DatePicker.with(d -> d.selection(days))`, etc.
+- `.modifiers(mod, mod2, ...)` — applies modifier values; chainable in any order with `with(config Lambda)` and `children(...)` on the builder.
+- Inner config classes are `X.Config` e.g. `Grid.Config`, `Grid.with(g -> g.columns(2).rows(3))`.
+- Modifier factories: `Padding.with(p -> p.uniform(16))`, `Padding.with(p -> p.edges(t, r, b, l))`, `FontSize.with(s -> s.size(18))`, `ForegroundStyle.with(f -> f.color(color))`, `Background.with(b -> b.color(color))`, `Frame.with(f -> f.width(100f).height(24f))`, `Border.with(b -> b.color(c).width(w).radius(r))`, `Opacity.with(o -> o.value(v))`, `LineLimit.with(l -> l.value(n))`, `AccessibilityRole.with(a -> a.role(role))`, `AccessibilityLabel.with(a -> a.text(t))`, `ClipShape.with(c -> c.shape(ShapeKind))`, `Offset.with(o -> o.x(x).y(y))`, `Shadow.with(s -> s.color(c).radius(r))`, `AspectRatio.with(a -> a.ratio(r).contentMode(mode))`, `CornerRadius.with(c -> c.radius(r))`, `Blur.with(b -> b.radius(r))`, `FixedSize.with(f -> f.horizontal(true).vertical(true))`, `ImageSource.with(s -> s.source(src))`, `Kerning.with(k -> k.value(v))`, `Visible.with(v -> v.visible(flag))`, `Disabled.with(d -> d.disabled(b))`, `AllowsHitTesting.with(a -> a.allowed(b))`, `Underline.with(u -> u.enabled(b))`, etc.
+- Single-value enum/Font/Style types ARE the modifier: `FontWeight.BOLD`, `Font.system(18f)`, `Font.title2()`, `TextAlignment.CENTER`, `Truncation.TAIL`, `TextCase.UPPERCASE`, `ControlSize.REGULAR`, `FontDesign.ROUNDED`, `FontStyle.ITALIC`, `PlainButtonStyle.INSTANCE`, `BorderedButtonStyle.INSTANCE`. Pass directly to `.modifiers(...)`, never `XxxMod.of(...)`.
+- Empty-config views: `Divider.modifiers()`, `Spacer.modifiers()`, `Group.children()`, `Rectangle.modifiers()`, `Circle.modifiers()`, `Capsule.modifiers()`, `Ellipse.modifiers()`, `ScaledToFit.with()`, `ScaledToFill.with()`, `Clipped.with()`, `Hidden.with()`, `Italic.with()`, `ColorInvert.with()`.
+- `RoundedRectangle.with(r -> r.cornerRadius(12))`, `Shape.with(s -> s.kind(ShapeKind.CIRCLE))`.
+- `Label.with(l -> l.title("t").icon("i"))`, `Label.with(l -> l.title(sig))`, `Label.with(l -> l.title("t").icon(Icon.with(i -> i.name(IconName.X))))`.
+- `Image.with(i -> i.source("name"))`, `Icon.with(i -> i.name(IconName.HOME))`, `Audio.with(a -> a.source(src))`, `Video.with(v -> v.source(src))`.
+- Navigation (import `com.pathland.view.router.*`): `NavigationContainer.with(n -> n.router(router))`, `NavigationLink.with(l -> l.label("..").to("/x"))`, `NavigationLink.with(l -> l.label("..").to("/x").router(router))`, `Navigation.container(router)` now returns `ViewBuilder<NavigationContainer, NavigationContainer.Config>` assignable to `View`. `Router`/`RouteTable`/`Navigation.navigator()` builders are UNCHANGED.
+- `Conditional.when(sig, then, else)`, `Conditional.when(sig, Case.of(v, view), Case.otherwise(view))`, `SizeThatFits.of(Fit.of(view, 640f), Fit.of(view))`, `Color.of(int)/Color.rgb/Color.argb/Color.token` are factory functions — KEEP.
+- `Frame.ofWidth(w)/Frame.ofHeight(h)/Frame.with(f -> ...)` — keep valid.
+- `View.with(ViewModifier...)` instance method still exists and is the correct way to apply modifiers to a plain-non-builder `View` (e.g. a composite). Builders should use `.modifiers(...)`.
+
+## What to change in the tests
+1. `X.of(...)` view construction → v2 `X.with(...)`/`X.children(...)` per above.
+2. `view.font(Font.x())` → `view.modifiers(Font.x())`
+3. `view.with(ButtonStyleMod.of(style))` → `view.modifiers(style)`
+4. `view.environment(key, val)` → `view.modifiers(EnvironmentBinding.with(e -> e.key(key).value(val)))` (import `com.pathland.view.EnvironmentBinding`) — or `.with(EnvironmentBinding.with(...))` when chaining on a plain View.
+5. `FontWeightMod.of(X)` and all `*Mod.of(X)` → the value X directly (imports removed).
+6. `view.navigate/push/replace(path)` sugar → `.modifiers(NavigationIntent.navigate(path))` etc. (import `com.pathland.view.router.NavigationIntent`).
+7. `view.onPathChange(l)` → `.modifiers(PathChange.with(p -> p.listener(l)))` (import `com.pathland.view.PathChange`).
+
+## Rules
+- Do NOT change assertion logic, expected values, or test names. Only authoring syntax.
+- Where a test variable was typed as a concrete view (e.g. `VStack`) holding a builder now, change the declared type to `View` or `var`.
+- Prefer `.modifiers(...)` on builders; keep `.with(...)` for plain `View` values (Conditional results, SizeThatFits results, composites).
+- Consult main classes under `lib/java/pathland-view/src/main/java/com/pathland/view/` to confirm config setter names; never guess. The main API is already migrated and compiles.
+- Do not reformat unrelated code.
+- Do NOT remove the `AccessibilityRole.of(20)`-style factory-validation tests if they test factory behavior; if a test asserts a factory throws, keep the factory call in that specific test but note it.
+
+## Verify
+`cd lib/java && mvn -o -q -pl pathland-view test`
+All tests must pass (they pass on main today at 143). Fix your edited files until green. Do not edit main sources.
+
+Report: files changed, any residue, test count/result.
