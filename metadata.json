@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4G0NZ3CY9HTCD3BEA32CQ4W",
+  "strategy": "manual-commit",
+  "branch": "spec/dsl-v2-authoring-surface",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ChildrenView.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Configurable.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Text.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/VStack.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/View.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ViewBuilder.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/ViewBuilderTest.java"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 432535,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 11144320,
+    "output_tokens": 7135,
+    "api_call_count": 20
+  }
+}
