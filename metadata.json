@@ -3,7 +3,7 @@
   "checkpoint_id": "01M4GQ5XRXFC6V243QRBMRVAD6",
   "strategy": "manual-commit",
   "branch": "style/demo-chain-order",
-  "checkpoints_count": 2,
+  "checkpoints_count": 3,
   "files_touched": [
     "AGENTS.md",
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/AppearanceSection.java",
@@ -42,6 +42,13 @@
       "transcript": "/1/full.jsonl",
       "compact_transcript": "/1/transcript.jsonl",
       "content_hash": "/1/content_hash.txt",
+      "prompt": ""
+    },
+    {
+      "metadata": "/2/metadata.json",
+      "transcript": "/2/full.jsonl",
+      "compact_transcript": "/2/transcript.jsonl",
+      "content_hash": "/2/content_hash.txt",
       "prompt": ""
     }
   ],
