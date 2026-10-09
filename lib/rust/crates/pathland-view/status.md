@@ -54,19 +54,20 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 - **`Theme` / `AdaptiveTheme` (global overrides)**: re-exports
   `pathland_engine::Theme` and `AdaptiveTheme { light, dark }`. Emit once at
   mount via `Engine::apply_theme` / `Engine::apply_adaptive_theme`.
-- **Signals + binding (Phase 1a)**: typed signal handles
-  (`Signal<T>`/`WritableSignal<T>` + `SignalValueKind`/`IntoSignalId`) over the
-  engine's reactive store; `Engine::signal`/`read`/`set` (typed). The DSL binds a
-  node's **text** (`Text::with(|t| { t.text_signal(sig); })`) and a **property**
-  (`FontSize::bound(sig)`, `FontWeight::bound`, `ForegroundStyle::bound`,
-  `Background::bound`, `Opacity::bound`, or generic `Bound::new(prop, sig)`) to a
-  signal, so a change re-emits only that node's `SET_TEXT`/`SET_PROPERTY`.
+- **Reactive signals (Phase 1)**: a shared `Runtime`
+  (`Rc<RefCell<Store>>`, `no_std` — no thread-local) with typed handles
+  (`Signal<T>`/`WritableSignal<T>`, `SignalValueKind`/`IntoSignalId`), value
+  signals, **computed** (lazy, memoized, equality-suppressed, chained) and
+  **effect** (runs immediately, then on dependency change) signals, and
+  `untracked` reads; `Engine::signal`/`computed`/`effect`/`read`/`set`. The DSL
+  binds a node's **text** (`Text::with(|t| { t.text_signal(sig); })`) and a
+  **property** (`FontSize::bound(sig)`, `FontWeight::bound`,
+  `ForegroundStyle::bound`, `Background::bound`, `Opacity::bound`, or generic
+  `Bound::new(prop, sig)`) to a signal, so a change re-emits only that node's
+  `SET_TEXT`/`SET_PROPERTY` (a computed's change re-emits its bound nodes too).
 
 ## Not implemented / gaps
 
-- **Computed/derived signals + effects** (`Signals.computed`/`effect`/`untracked`)
-  — not yet. The engine exposes only writable value signals; a reactive
-  computation graph (equal to the Java DSL's) is the remaining Phase 1 work.
 - **Two-way bindings (value controls) + actions**: no `valueInput`/`textInput`
   sinks or event routing; `Button` carries a string label only.
 - **Styles / environment**: no `ButtonStyle`/`LabelStyle`/… or `EnvironmentKey`

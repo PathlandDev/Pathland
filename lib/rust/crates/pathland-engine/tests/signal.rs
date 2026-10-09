@@ -249,7 +249,9 @@ fn typed_signal_read_write_and_binding() {
     // Typed write emits only the bound node and updates the typed read.
     let mut guest = Guest::new(&mut mem, &layout);
     guest.begin_frame();
-    let n = engine.set(label, String::from("world"), &mut guest).unwrap();
+    let n = engine
+        .set(label.clone(), String::from("world"), &mut guest)
+        .unwrap();
     guest.end_frame();
     assert_eq!(n, 1);
     assert_eq!(engine.read(label.as_readonly()), Some(String::from("world")));
@@ -269,7 +271,9 @@ fn typed_numeric_signal_packs_by_kind() {
 
     let mut guest = Guest::new(&mut mem, &layout);
     guest.begin_frame();
-    let n = engine.set(spacing, 12.0f32, &mut guest).unwrap();
+    let n = engine
+        .set(spacing.clone(), 12.0f32, &mut guest)
+        .unwrap();
     guest.end_frame();
     assert_eq!(n, 1);
 
@@ -281,4 +285,31 @@ fn typed_numeric_signal_packs_by_kind() {
         .find(|o| o.b() as u16 == property_id::SPACING)
         .unwrap();
     assert_eq!(op.c_f32(), 12.0);
+}
+
+#[test]
+fn computed_signal_reemits_its_bound_node() {
+    let mut engine = Engine::new();
+    let n = engine.signal(2.0f32);
+    let nc = n.clone();
+    let label = engine.computed(move || {
+        String::from(if nc.get().unwrap() > 1.0 { "big" } else { "small" })
+    });
+
+    let (mut mem, layout) = with_guest();
+    let mut root = vstack(vec![text_node("")]);
+    root.children[0].text_binding = Some(label.id());
+    assign_ids(&mut root, &mut 1);
+    emit_full(&mut engine, &root, &mut mem, &layout);
+
+    // Setting the source recomputes the computed and re-emits the bound node.
+    let (count, ops) = set_and_collect(&mut engine, n.id(), SignalValue::F32(0.0), &mut mem, &layout);
+    assert_eq!(count, 1);
+    assert_eq!(ops[0].command(), parameter::SET_TEXT);
+    assert_eq!(ops[0].a(), 2);
+
+    // A second set that leaves the computed value unchanged emits nothing.
+    let (count, ops) = set_and_collect(&mut engine, n.id(), SignalValue::F32(-5.0), &mut mem, &layout);
+    assert_eq!(count, 0);
+    assert!(ops.is_empty());
 }

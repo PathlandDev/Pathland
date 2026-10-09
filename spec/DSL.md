@@ -1352,10 +1352,11 @@ application-authored modifiers share the same `modifiers(...)` surface.
 **Status deltas captured by this table**: the Java DSL is surface-complete with
 the three operations, modifiers as values via `.modifiers(...)` (no sugar on
 `View`), and styles as modifiers; the Rust DSL now exposes the surface plus
-**typed signals and text/property binding** (`Signal<T>`/`WritableSignal<T>`,
-`Engine::signal`/`read`/`set`), but is still without computed/effects, two-way
-control bindings, or actions. Both are per-project implementation status tracked
-in each project's `status.md`.
+**signals** — value, computed (lazy/memoized/equality-suppressed), and effect
+signals in a shared `no_std` runtime (`Signal<T>`/`WritableSignal<T>`,
+`Engine::signal`/`computed`/`effect`/`read`/`set`) with text/property binding —
+but is still without two-way control bindings or actions. Both are per-project
+implementation status tracked in each project's `status.md`.
 
 ---
 

@@ -2954,24 +2954,39 @@ mod tests {
 
     #[test]
     fn text_binds_to_a_signal() {
-        let mut engine = Engine::new();
+        let engine = Engine::new();
         let label = engine.signal(String::from("hi"));
+        let id = label.id();
         let node = Text::with(|t| {
             t.text_signal(label);
         })
         .build();
-        assert_eq!(node.text_binding, Some(label.id()));
+        assert_eq!(node.text_binding, Some(id));
     }
 
     #[test]
     fn property_binds_to_a_signal() {
-        let mut engine = Engine::new();
+        let engine = Engine::new();
         let size = engine.signal(20.0f32);
+        let id = size.id();
         let node = Text::new("x").modifiers(FontSize::bound(size)).build();
-        assert_eq!(
-            node.property_bindings.get(&property_id::FONT_SIZE),
-            Some(&size.id())
-        );
+        assert_eq!(node.property_bindings.get(&property_id::FONT_SIZE), Some(&id));
+    }
+
+    #[test]
+    fn computed_binds_text() {
+        let engine = Engine::new();
+        let n = engine.signal(2.0f32);
+        let nc = n.clone();
+        let label = engine.computed(move || {
+            String::from(if nc.get().unwrap() > 1.0 { "big" } else { "small" })
+        });
+        let id = label.id();
+        let node = Text::with(|t| {
+            t.text_signal(label);
+        })
+        .build();
+        assert_eq!(node.text_binding, Some(id));
     }
 
     #[test]

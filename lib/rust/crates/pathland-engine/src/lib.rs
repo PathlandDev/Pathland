@@ -2,8 +2,8 @@
 //!
 //! The retained view tree (`Node`/`Component`) and the diff-based reactive
 //! emitter (`Engine`) that turns it into declarative `TREE`/`PARAMETER` opcodes,
-//! plus the reactive signals (`SignalStore`/`SignalId`/`SignalValue`) the
-//! engine records during emission.
+//! plus the reactive signals (`Runtime`/`SignalId`/`SignalValue`, computed and
+//! effects) the engine records during emission.
 //!
 //! This crate is `no_std` + `alloc`. It depends on [`pathland_core`] for the
 //! wire types (`Opcode`, `Guest`, `RingError`) and protocol constants.
@@ -27,7 +27,6 @@ mod theme;
 pub use engine::{EmitResult, Engine};
 pub use node::*;
 pub use signal::{
-    Dep, IntoSignalId, Signal, SignalId, SignalStore, SignalValue, SignalValueKind,
-    WritableSignal,
+    Dep, IntoSignalId, Runtime, Signal, SignalId, SignalValue, SignalValueKind, WritableSignal,
 };
 pub use theme::{AdaptiveTheme, Theme};

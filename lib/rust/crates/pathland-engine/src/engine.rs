@@ -27,7 +27,7 @@ use pathland_core::{value_type, value_type_for};
 use pathland_core::Guest;
 
 use crate::node::{component_type_id, Component, Node};
-use crate::signal::{Dep, Signal, SignalId, SignalStore, SignalValue, SignalValueKind, WritableSignal};
+use crate::signal::{Dep, Runtime, Signal, SignalId, SignalValue, SignalValueKind, WritableSignal};
 
 /// Encode a `LIST` property's arena entry: `[u32 count][f32 × count]`
 /// (spec/OPCODE.md §Value types — a `FIT_QUERY` threshold table).
@@ -82,8 +82,8 @@ pub struct Engine {
     snapshot: Vec<Option<SnapshotNode>>,
     /// Monotonic generation stamp for the current pass.
     gen: u64,
-    /// Reactive signal store (owns values + the reverse dependency index).
-    store: SignalStore,
+    /// Reactive signal runtime (values + computed/effects + node dependencies).
+    store: Runtime,
 }
 
 impl Default for Engine {
@@ -97,8 +97,13 @@ impl Engine {
         Self {
             snapshot: Vec::new(),
             gen: 0,
-            store: SignalStore::default(),
+            store: Runtime::new(),
         }
+    }
+
+    /// The shared reactive runtime (for creating typed signals / computeds).
+    pub fn runtime(&self) -> Runtime {
+        self.store.clone()
     }
 
     /// Reconcile `root` against the snapshot, emitting only changed opcodes.
@@ -108,9 +113,10 @@ impl Engine {
         guest: &mut Guest<'_>,
     ) -> Result<EmitResult, pathland_core::RingError> {
         self.gen = self.gen.wrapping_add(1);
-        // Rebuild the signal dependency index from scratch; reconcile re-adds
-        // the bindings this tree actually uses, so stale subscriptions vanish.
-        self.store.clear_deps();
+        // Rebuild the signal->node dependency index from scratch; reconcile
+        // re-adds the bindings this tree actually uses, so stale subscriptions
+        // vanish.
+        self.store.clear_node_deps();
         let mut out = 0usize;
         self.reconcile_node(root, None, 0, guest, &mut out)?;
 
@@ -208,19 +214,29 @@ impl Engine {
 
     // --- Signals ---
 
-    /// Create a new signal with an initial value.
+    /// Create a new (untyped) signal with an initial value.
     pub fn create_signal(&mut self, value: SignalValue) -> SignalId {
         self.store.create(value)
     }
 
     /// Create a typed writable signal with an initial value.
-    pub fn signal<T: SignalValueKind>(&mut self, initial: T) -> WritableSignal<T> {
-        WritableSignal::from_id(self.store.create(initial.into_signal_value()))
+    pub fn signal<T: SignalValueKind>(&self, initial: T) -> WritableSignal<T> {
+        self.store.signal(initial)
     }
 
-    /// Read a typed signal's current value (the same instance a binding reads).
+    /// Create a typed **computed** signal (lazily evaluated, memoized).
+    pub fn computed<T: SignalValueKind>(&self, compute: impl Fn() -> T + 'static) -> Signal<T> {
+        self.store.computed(compute)
+    }
+
+    /// Register an **effect** (runs immediately, then on dependency change).
+    pub fn effect(&self, run: impl Fn() + 'static) {
+        self.store.effect(run);
+    }
+
+    /// Read a typed signal's current value.
     pub fn read<T: SignalValueKind>(&self, signal: Signal<T>) -> Option<T> {
-        self.store.get(signal.id()).and_then(T::from_signal_value)
+        signal.get()
     }
 
     /// Write a typed writable signal and re-emit only the nodes bound to it.
@@ -234,11 +250,12 @@ impl Engine {
     }
 
     /// Read a signal's current value.
-    pub fn get_signal(&self, id: SignalId) -> Option<&SignalValue> {
-        self.store.get(id)
+    pub fn get_signal(&self, id: SignalId) -> Option<SignalValue> {
+        Some(self.store.get(id))
     }
 
-    /// Replace a signal's value and re-emit only the nodes that depend on it.
+    /// Replace a signal's value and re-emit only the nodes that depend on it
+    /// (including nodes bound to any computed signal it feeds).
     ///
     /// Writes `SET_PROPERTY` / `SET_TEXT` deltas for the bound nodes whose
     /// materialized value changed. Returns the number of opcodes written.
@@ -248,19 +265,30 @@ impl Engine {
         value: SignalValue,
         guest: &mut Guest<'_>,
     ) -> Result<usize, pathland_core::RingError> {
-        if !self.store.set(id, value) {
+        let changed = self.store.set(id, value);
+        let mut out = 0usize;
+        for cell in changed {
+            out += self.emit_cell(cell, guest)?;
+        }
+        Ok(out)
+    }
+
+    /// Re-emit the node bindings on one (changed) signal.
+    fn emit_cell(
+        &mut self,
+        id: SignalId,
+        guest: &mut Guest<'_>,
+    ) -> Result<usize, pathland_core::RingError> {
+        let deps: Vec<Dep> = self.store.node_deps(id);
+        if deps.is_empty() {
             return Ok(0);
         }
+        let value = self.store.get(id);
         let mut out = 0usize;
-        let deps: Vec<Dep> = self.store.deps(id).to_vec();
         for dep in deps {
             match dep {
                 Dep::Text { node } => {
-                    let new_text: Option<String> = self
-                        .store
-                        .get(id)
-                        .and_then(SignalValue::to_text)
-                        .map(ToOwned::to_owned);
+                    let new_text: Option<String> = value.to_text().map(ToOwned::to_owned);
                     let prev_text = self.snapshot_text(node);
                     if new_text.as_deref() != prev_text {
                         if let Some(t) = new_text.as_deref() {
@@ -273,10 +301,7 @@ impl Engine {
                     }
                 }
                 Dep::Property { node, prop } => {
-                    let new_value = self
-                        .store
-                        .get(id)
-                        .and_then(SignalValue::to_property_u32);
+                    let new_value = value.to_property_u32();
                     let prev_value = self.snapshot_property(node, prop);
                     if new_value != prev_value {
                         if let Some(v) = new_value {
@@ -342,16 +367,15 @@ impl Engine {
         // Resolve bindings (owned) before taking the mutable snapshot borrow.
         let bound_text: Option<String> = node
             .text_binding
-            .and_then(|sid| self.store.get(sid))
-            .and_then(SignalValue::to_text)
-            .map(ToOwned::to_owned);
+            .map(|sid| self.store.get(sid))
+            .and_then(|v| v.to_text().map(ToOwned::to_owned));
 
         let merged_props: Option<BTreeMap<u16, u32>> = if node.property_bindings.is_empty() {
             None
         } else {
             let mut m = node.properties.clone();
             for (prop, sid) in &node.property_bindings {
-                if let Some(v) = self.store.get(*sid).and_then(SignalValue::to_property_u32) {
+                if let Some(v) = self.store.get(*sid).to_property_u32() {
                     m.insert(*prop, v);
                 }
             }
@@ -634,10 +658,11 @@ impl Engine {
 
         // Record signal dependencies for this node.
         if let Some(sid) = node.text_binding {
-            self.store.add_dep(sid, Dep::Text { node: node.id });
+            self.store.add_node_dep(sid, Dep::Text { node: node.id });
         }
         for (prop, sid) in &node.property_bindings {
-            self.store.add_dep(*sid, Dep::Property { node: node.id, prop: *prop });
+            self.store
+                .add_node_dep(*sid, Dep::Property { node: node.id, prop: *prop });
         }
 
         for (i, child) in node.children.iter().enumerate() {

@@ -167,7 +167,7 @@ impl NativeHost {
 
     /// Read a signal's current value.
     pub fn get_signal(&self, id: SignalId) -> Option<SignalValue> {
-        self.engine.get_signal(id).cloned()
+        self.engine.get_signal(id)
     }
 
     /// Replace a signal's value, re-emitting only the nodes that depend on it.
