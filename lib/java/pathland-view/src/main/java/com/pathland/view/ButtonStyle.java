@@ -15,7 +15,7 @@ public interface ButtonStyle extends Style {
     /** Scopes this style down the wrapped subtree ({@code .modifiers(ButtonStyle)}). */
     @Override
     default View body(View content) {
-        return new EnvironmentView(content, (EnvironmentKey<Object>) (EnvironmentKey<?>) Environment.BUTTON_STYLE, this);
+        return EnvironmentView.of(content, Environment.BUTTON_STYLE, this);
     }
 
     /**

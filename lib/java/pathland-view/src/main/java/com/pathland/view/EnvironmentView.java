@@ -19,6 +19,12 @@ final class EnvironmentView implements View {
         this.value = value;
     }
 
+    /** A scope wrapper for a typed {@link EnvironmentKey} → value binding. */
+    @SuppressWarnings("unchecked")
+    static <T> EnvironmentView of(View content, EnvironmentKey<T> key, T value) {
+        return new EnvironmentView(content, (EnvironmentKey<Object>) key, value);
+    }
+
     @Override
     public PathlandNode render(Environment env) {
         EnvironmentValues scope = Environment.current().with(key, value);

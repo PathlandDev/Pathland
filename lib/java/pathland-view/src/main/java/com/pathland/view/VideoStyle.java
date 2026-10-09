@@ -15,7 +15,7 @@ public interface VideoStyle extends Style {
     /** Scopes this style down the wrapped subtree ({@code .modifiers(VideoStyle)}). */
     @Override
     default View body(View content) {
-        return new EnvironmentView(content, (EnvironmentKey<Object>) (EnvironmentKey<?>) Environment.VIDEO_STYLE, this);
+        return EnvironmentView.of(content, Environment.VIDEO_STYLE, this);
     }
 
     /**

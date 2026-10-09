@@ -22,7 +22,7 @@ public interface AudioStyle extends Style {
     /** Scopes this style down the wrapped subtree ({@code .modifiers(AudioStyle)}). */
     @Override
     default View body(View content) {
-        return new EnvironmentView(content, (EnvironmentKey<Object>) (EnvironmentKey<?>) Environment.AUDIO_STYLE, this);
+        return EnvironmentView.of(content, Environment.AUDIO_STYLE, this);
     }
 
     /**
