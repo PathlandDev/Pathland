@@ -1,0 +1,148 @@
+You are migrating Java files in the Pathland repo to the v2 authoring surface. This is a precise, mechanical rewrite — you may ONLY edit files under `lib/java/pathland-demo-views/src/main/java`. Do NOT edit anything else.
+
+Goal: rewrite every view construction from the legacy `.of(...)` + `.with(...)` style to the v2 `with(Consumer)` builder + `.modifiers(...)`/`.children(...)` fluent surface (spec `spec/DSL.md` §2, §4, §5). The library (`lib/java/pathland-view`) ALREADY defines the v2 entry points.
+
+## The v2 surface (read the actual class files to confirm signatures)
+Each concrete view exposes static entry points returning a `ViewBuilder`:
+- `Text.with(t -> t.text("hello"))`  — value config
+- `VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(8)).children(a, b, c)` — configure + children
+- `.modifiers(mod1, mod2, ...)` — apply modifier values (innermost-first), chainable in ANY order with `with(...)` and `children(...)`.
+
+Every modifier class has a `with(Consumer<Config>)` static factory; single-value enum/Font/Style types are themselves the modifier.
+`FontWeight.BOLD`, `Font.system(18f)`, `Font.headline()`, `TextAlignment.CENTER`, `Truncation.TAIL`, `TextCase.UPPERCASE`, `ControlSize.REGULAR`, `FontDesign.ROUNDED`, `FontStyle.ITALIC`, `PlainButtonStyle.INSTANCE` and other `ButtonStyle`/`LabelStyle`/`AudioStyle`/`VideoStyle` instances are modifier VALUES you pass directly to `.modifiers(...)` — never a `*Mod.of(...)` wrapper.
+
+## Translation table (value → v2)
+Views:
+- `Text.of("x")` → `Text.with(t -> t.text("x"))`
+- `Text.of(sig)` → `Text.with(t -> t.text(sig))`
+- `Image.of(src)` → `Image.with(i -> i.source(src))`
+- `VStack.of(a, b, c)` → `VStack.children(a, b, c)`
+- `VStack.of(align, spacing, a, b)` → `VStack.with(v -> v.alignment(align).spacing(spacing)).children(a, b)`
+- `HStack.of(...)` → same pattern with `VerticalAlignment` and `.alignment(h -> h.alignment(VerticalAlignment.CENTER).spacing(12f))`
+- `ZStack.of(align, a, b)` → `ZStack.with(z -> z.alignment(align)).children(a, b)`
+- `Grid.of(columns, a, b)` → `Grid.with(g -> g.columns(columns)).children(a, b)`
+- `GridRow.of(a, b)` → `GridRow.children(a, b)`
+- `ScrollView.of(a, b)` → `ScrollView.children(a, b)`
+- `Group.of(...)` → `Group.children(...)`
+- `Spacer.of()` → `Spacer.modifiers()`
+- `Divider.of()` → `Divider.modifiers()`
+- `Rectangle.of()` → `Rectangle.modifiers()`
+- `Circle.of()` → `Circle.modifiers()`
+- `Capsule.of()` → `Capsule.modifiers()`
+- `Ellipse.of()` → `Ellipse.modifiers()`
+- `RoundedRectangle.of(r)` → `RoundedRectangle.with(rr -> rr.cornerRadius(r))`
+- `Shape.of(kind)` → `Shape.with(s -> s.kind(kind))`
+- `Button.of(label, action)` → `Button.with(b -> b.action(action)).children(label)`
+- `Button.of(title, action)` → `Button.with(b -> b.title(title).action(action))`
+- `Toggle.of(ToggleStyle.SWITCH, binding, "label")` → `Toggle.with(t -> t.style(ToggleStyle.SWITCH).isOn(binding).label("label"))`
+- `Slider.of(binding, min, max)` → `Slider.with(s -> s.value(binding).in(min, max))`  (Signal overloads: `.in(min, max)` takes 2 floats)
+- `TextField.of("placeholder", binding)` → `TextField.with(t -> t.placeholder("placeholder").text(binding))`
+- `ProgressView.of(value)` → `ProgressView.with(p -> p.value(value))`
+- `Gauge.of(v, min, max)` → `Gauge.with(g -> g.value(v).minValue(min).maxValue(max))`
+- `Picker.of(style, selection, options)` → `Picker.with(p -> p.style(style).selection(selection)).children(options)`
+- `Menu.of(trigger, actions...)` → `Menu.children(trigger, actions...)`
+- `Menu.of(trigger, selection, actions...)` → `Menu.with(m -> m.selection(selection)).children(trigger, actions...)`
+- `Audio.of(src)` → `Audio.with(a -> a.source(src))`
+- `Video.of(src)` → `Video.with(v -> v.source(src))`
+- `Label.of(title, icon)` → `Label.with(l -> l.title(title).icon(icon))`
+- `Label.of(title)` → `Label.with(l -> l.title(title))`
+- `Icon.of(name)` → `Icon.with(i -> i.name(name))`
+- `NavigationContainer.of(router)` → `NavigationContainer.with(n -> n.router(router))`
+- `Navigation.of(router)` → `Navigation.container(router)`  (return type changed to `ViewBuilder`)
+- `NavigationLink.of(label, router, to)` → `NavigationLink.with(l -> l.label(label).router(router).to(to))`
+- `NavigationLink.of(label, to)` → `NavigationLink.with(l -> l.label(label).to(to))`
+- `Stepper.of(binding, min, max, step)` → `Stepper.with(s -> s.value(binding).in(min, max).step(step))`
+- `DatePicker.of(mode, days)` → `DatePicker.with(d -> d.mode(mode).selection(days))`
+- `ColorPicker.of(binding)` → `ColorPicker.with(c -> c.selection(binding))`
+
+KEEP AS-IS (they are factory functions, not the legacy bridge): `Conditional.when(...)`, `Conditional.Case.of(...)`, `Conditional.Case.otherwise(...)`, `SizeThatFits.of(...)`, `Fit.of(...)`, `Color.of(int)/Color.rgb/Color.argb/Color.token`, `Signals.*`, `Frame.ofWidth/ofHeight` remain valid.
+
+Modifiers (`.of(...)` → `X.with(c -> c.setter(...))`):
+- `FontSize.of(n)` → `FontSize.with(s -> s.size(n))`
+- `ForegroundStyle.of(color)` → `ForegroundStyle.with(f -> f.color(color))`
+- `Background.of(color)` → `Background.with(b -> b.color(color))`
+- `Padding.of(n)` → `Padding.with(p -> p.uniform(n))`
+- `Padding.of(t, r, b, l)` → `Padding.with(p -> p.edges(t, r, b, l))`
+- `Frame.of(w, h)` → `Frame.with(f -> f.width(w).height(h))`
+- `Frame.of(w, h, align)` → `Frame.with(f -> f.width(w).height(h).alignment(align))`
+- `Frame.of(w, align)` → `Frame.with(f -> f.width(w).alignment(align))`
+- `TopBorder.of(...)` / `Border.of(color, w)` → `Border.with(b -> b.color(color).width(w))`
+- `Border.of(color, w, r)` → `Border.with(b -> b.color(color).width(w).radius(r))`
+- `Opacity.of(v)` → `Opacity.with(o -> o.value(v))`
+- `CornerRadius.of(v)` → `CornerRadius.with(c -> c.radius(v))`
+- `Offset.of(x, y)` → `Offset.with(o -> o.x(x).y(y))`
+- `Position.of(x, y)` → `Position.with(o -> o.x(x).y(y))`
+- `Rotation.of(deg)` → `Rotation.with(r -> r.degrees(deg))`
+- `Shadow.of(r)` → `Shadow.with(s -> s.radius(r))`
+- `Shadow.of(color, r, x, y)` → `Shadow.with(s -> s.color(color).radius(r).x(x).y(y))`
+- `AspectRatio.of(ratio, mode)` → `AspectRatio.with(a -> a.ratio(ratio).contentMode(mode))`
+- `Blur.of(n)` → `Blur.with(b -> b.radius(n))`
+- `ScaleEffect.of(v)` → `ScaleEffect.with(s -> s.value(v))`
+- `ClipShape.of(kind)` → `ClipShape.with(c -> c.shape(kind))`
+- `ScaledToFit.of()` → `ScaledToFit.with()`
+- `ScaledToFill.of()` → `ScaledToFill.with()`
+- `Clipped.of()` → `Clipped.with()`
+- `Hidden.of()` → `Hidden.with()`
+- `Italic.of()` → `Italic.with()`
+- `Visible.of(v)` → `Visible.with(vs -> vs.visible(v))`
+- `Disabled.of(v)` → `Disabled.with(d -> d.disabled(v))`
+- `AllowsHitTesting.of(v)` → `AllowsHitTesting.with(a -> a.allowed(v))`
+- `LineLimit.of(n)` → `LineLimit.with(l -> l.value(n))`
+- `AccessibilityRole.of(role)` → `AccessibilityRole.with(a -> a.role(role))`
+- `AccessibilityState.of(state)` → `AccessibilityState.with(a -> a.state(state))`
+- `AccessibilityLabel.of(text)` → `AccessibilityLabel.with(a -> a.text(text))`
+- `Saturation.of(v)` → `Saturation.with(s -> s.value(v))`
+- `Contrast.of(v)` → `Contrast.with(c -> c.value(v))`
+- `Brightness.of(v)` → `Brightness.with(b -> b.value(v))`
+- `Grayscale.of(v)` → `Grayscale.with(g -> g.value(v))`
+- `HueRotation.of(deg)` → `HueRotation.with(h -> h.degrees(deg))`
+- `Kerning.of(v)` → `Kerning.with(k -> k.value(v))`
+- `Tracking.of(v)` → `Tracking.with(t -> t.value(v))`
+- `BaselineOffset.of(v)` → `BaselineOffset.with(b -> b.value(v))`
+- `LineSpacing.of(v)` → `LineSpacing.with(l -> l.value(v))`
+- `FontWidth.of(v)` → `FontWidth.with(f -> f.value(v))`
+- `MinimumScaleFactor.of(v)` → `MinimumScaleFactor.with(m -> m.value(v))`
+- `ColorMultiply.of(color)` → `ColorMultiply.with(c -> c.color(color))`
+- `Underline.of()` → `Underline.with()` ; `Underline.of(on)` → `Underline.with(u -> u.enabled(on))`
+- `Strikethrough.of()` → `Strikethrough.with()` ; `Strikethrough.of(on)` → `Strikethrough.with(s -> s.enabled(on))`
+- `TapGesture.of(action)` → `TapGesture.with(g -> g.action(action))`
+- `PointerEvents.of(mask)` → `PointerEvents.with(p -> p.mask(mask))`
+- `imageSource.of(src)` → `ImageSource.with(s -> s.source(src))` (class is `ImageSource`)
+
+Mod shims — DELETE all uses, replace with the value/modifier directly:
+- `FontWeightMod.of(FontWeight.BOLD)` → `FontWeight.BOLD`
+- `ButtonStyleMod.of(style)` → `style`  (e.g. `PlainButtonStyle.INSTANCE`, `BorderedButtonStyle.of()`)
+- `LabelStyleMod.of(style)` → `style`
+- `AudioStyleMod.of(style)` → `style`
+- `VideoStyleMod.of(style)` → `style`
+- `FontMod.of(font)` → `font`  (e.g. `Font.headline()`)
+- `TextAlignmentMod.of(x)` → `x` (it is a `TextAlignment` enum)
+- `TruncationMod.of(x)` → `x`
+- `TextCaseMod.of(x)` → `x`
+- `ControlSizeMod.of(x)` → `x`
+- `FontDesignMod.of(x)` → `x`
+- `FontStyleMod.of(x)` → `x`
+
+View sugar — the per-modifier methods `view.font(...)`, `view.navigate(...)`, `view.environment(...)`, `view.onPathChange(...)`, `view.buttonStyle(...)` (if any) must be replaced:
+- `.font(f)` → `.modifiers(f)`
+- `.navigate(path)` → `.modifiers(NavigationIntent.navigate(path))`  (import `com.pathland.view.router.NavigationIntent`)
+- `.push(path)` → `.modifiers(NavigationIntent.push(path))`
+- `.replace(path)` → `.modifiers(NavigationIntent.replace(path))`
+- `.environment(key, value)` → `.modifiers(EnvironmentBinding.with(e -> e.key(key).value(value)))`  (import `com.pathland.view.EnvironmentBinding`)
+- `.onPathChange(listener)` → `.modifiers(PathChange.with(p -> p.listener(listener)))`  (import `com.pathland.view.PathChange`)
+
+## Rules
+1. Preserve the `View`/`ViewBuilder` types: after the whole fluent chain the result is a `View` — assignable to any `View`, `View a`, or return type. If a local variable was typed `VStack`/`Button`/etc. and now holds a `ViewBuilder`, change the variable type to `View`.
+2. `.modifiers(...)` chains: `Text.of("x").with(A, B)` becomes `Text.with(t -> t.text("x")).modifiers(A, B)`. Note `.with(A, B)` on a concrete view instance (the old View instance method) becomes `.modifiers(A, B)` on the builder.
+3. When a karaoke/`computed`/`Signals.computed(...)` or `Environment.value(...)` or `Signal` is passed to a value config, keep it — the config setters accept `Signal<T>` overloads.
+4. `Color.rgb(...)`, `Color.argb(...)`, `Color.token(...)`, `Color.WHITE`, `Color.CLEAR`, `Color.BLACK` are unchanged.
+5. `Commands.Size.FILL` and `Commands.Size.HUG` in `Frame` configs: use `.width(Commands.Size.FILL)` / `.height(Commands.Size.FILL)`.
+6. Do NOT reformat code beyond your edits (no unrelated whitespace changes).
+7. If you find a construct you cannot map with certainty, consult the corresponding class file under `lib/java/pathland-view/src/main/java/com/pathland/view/` to confirm the `Config` setter / `with` signature, then translate correctly. Never guess — read.
+
+## Compile verification
+After editing all files, run:
+`cd lib/java && mvn -o -q -pl pathland-demo-views -am compile`
+Fix any errors in the demo files until it compiles cleanly. The pathland-view module itself is already green — do not modify it. If a compiler error points into `pathland-view` main classes, report it (do NOT fix library files).
+
+Report back: a list of each file changed, any residue of `.of(`, `.with(` old-style you could not migrate, and the final `mvn compile` result.
