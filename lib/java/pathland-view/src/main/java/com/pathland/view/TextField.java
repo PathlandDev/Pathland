@@ -1,6 +1,8 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 import com.pathland.view.signal.WritableSignal;
 
 import java.util.function.Consumer;
@@ -16,11 +18,17 @@ public final class TextField implements View, Configurable<TextField.Config> {
     /** {@link TextField} values. */
     public static final class Config implements View.Config {
 
-        private String placeholder;
+        private Signal<String> placeholder;
         private WritableSignal<String> binding;
 
-        /** Set the placeholder ({@code PROMPT}). */
+        /** Set a static placeholder ({@code PROMPT}). */
         public Config placeholder(String placeholder) {
+            this.placeholder = Signals.constant(placeholder);
+            return this;
+        }
+
+        /** Bind the placeholder ({@code PROMPT}) to a signal. */
+        public Config placeholder(Signal<String> placeholder) {
             this.placeholder = placeholder;
             return this;
         }
@@ -64,7 +72,7 @@ public final class TextField implements View, Configurable<TextField.Config> {
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.TEXT_FIELD);
         if (config.placeholder != null) {
-            node.properties.put(Properties.PROMPT, config.placeholder);
+            node.property(Properties.PROMPT, config.placeholder);
         }
         if (config.binding != null) {
             node.textBinding = config.binding;

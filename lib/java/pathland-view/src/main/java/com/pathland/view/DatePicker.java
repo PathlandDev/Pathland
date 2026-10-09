@@ -1,26 +1,32 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 import com.pathland.view.signal.WritableSignal;
 
 import java.util.function.Consumer;
 
 /**
  * A date & time selection control ({@code DatePicker}). The value is carried by
- * the {@code PARAMETER::SET_DATE} command ({@code B}=days since epoch, {@code C}=millis of
- * day); the bound signal holds days since epoch. Renders with the
- * {@code DATE_PICKER_MODE} token.
+ * the {@code PARAMETER::SET_DATE} command; the bound signal holds days since epoch.
  */
 public final class DatePicker implements View, Configurable<DatePicker.Config> {
 
     /** {@link DatePicker} values. */
     public static final class Config implements View.Config {
 
-        private DatePickerMode mode;
+        private Signal<DatePickerMode> mode;
         private WritableSignal<Integer> days;
 
-        /** Set the picker mode. */
+        /** Set a static picker mode. */
         public Config mode(DatePickerMode mode) {
+            this.mode = Signals.constant(mode);
+            return this;
+        }
+
+        /** Bind the picker mode to a signal. */
+        public Config mode(Signal<DatePickerMode> mode) {
             this.mode = mode;
             return this;
         }
@@ -64,7 +70,7 @@ public final class DatePicker implements View, Configurable<DatePicker.Config> {
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.DATE_PICKER);
         if (config.mode != null) {
-            node.properties.put(Properties.DATE_PICKER_MODE, (float) config.mode.wire());
+            node.property(Properties.DATE_PICKER_MODE, config.mode);
         }
         if (config.days != null) {
             node.days = config.days.get();

@@ -175,11 +175,27 @@ VStack.modifiers(m).children(a, b).with { v in v.spacing(8) }
 ```
 
 **Values are a config-builder lambda.** `with { c in … }` populates a per-view
-fluent **config** (`VStack.Config`, `Text.Config`, …). The config accepts raw
-values **or** `Signal`s (so `c.text(signal)` stays reactive) and is the *same
-type* a style's `makeBody(Config)` receives ([§5.7](#57-styleable-controls-the-style-contract)).
+fluent **config** (`VStack.Config`, `Text.Config`, …). It is the *same type* a
+style's `makeBody(Config)` receives ([§5.7](#57-styleable-controls-the-style-contract)).
 The builder is **fluent and mutable**: setters return the config. Config-less
 views (`Divider`, `Spacer`) take an empty `with()`.
+
+**Every value member is reactive-capable (MUST).** A config member that carries a
+value exposes **two forms** — a raw value and a `Signal<T>`:
+
+```
+Text.with(t -> t.text("hi"))            ≡  Text.with(t -> t.text(constant("hi")))
+Visible.with(v -> v.visible(flagSignal))      // reactive visibility
+Frame.with(f -> f.width(widthSignal))         // reactive sizing, layout included
+```
+
+The **raw form is sugar for a constant signal**; a **non-constant** signal
+becomes a **node-level binding** — a change re-emits only that node's `SET_TEXT`
+/ `SET_PROPERTY`, and a constant emits as a plain property with **zero binding
+overhead**. This holds for *every* value member, layout included
+(`spacing`, `alignment`, `padding`, `frame`, `columns`, …): anything describable
+in the protocol can animate. A control's two-way *value* takes a
+`WritableSignal<T>`; every other member takes a one-way `Signal<T>`.
 
 **Per-language realization.** Java cannot declare a static and an instance
 method with the same signature, so the Java realization holds the three
@@ -222,6 +238,13 @@ reactive core every DSL exposes.
 synchronous flush at the end of the outermost write, glitch-free propagation
 (each computed recomputes at most once per flush), error caching, write
 discipline, and circular-dependency detection.
+
+**One signal per value.** A view or modifier holds **one `Signal<T>`** for each
+reactive value — never a raw field *plus* a signal field for the same value. A
+static value is authored through a raw config setter, which wraps a
+`constant(...)` signal; the emitter treats a constant as a plain, non-reactive
+property (no binding/effect). `WritableSignal<T>` extends `Signal<T>`, so a
+two-way binding also satisfies a one-way member.
 
 ### 3.2 Two-way binding
 
@@ -715,6 +738,14 @@ Text.with(t -> t.text("hi")).modifiers(
         FontWeight.BOLD,
         ForegroundStyle.with(f -> f.color(Color.WHITE)));
 ```
+
+**Every value member above also accepts a `Signal<T>`**
+(`Padding.with(p -> p.uniform(padSignal))`, `Frame.with(f -> f.width(widthSignal))`,
+`ForegroundStyle.with(f -> f.color(colorSignal))`) — see
+[§2](#2-canonical-signature-notation). Because `Signal<T>` is a
+`@FunctionalInterface`, a bare lambda would also type-check but would register a
+(harmless) reactive binding; **literals MUST use the raw overload**, which wraps
+a `ConstantSignal` (no binding overhead).
 
 ### 5.1 Layout & frame
 
@@ -1286,6 +1317,11 @@ Rules:
 - A language whose enums cannot implement the modifier interface (C#) MUST
   supply the equivalent single-value modifier form (a `record struct`, a static
   readonly value, or an implicit conversion).
+- **Reactive values are config members, in every language.** A config member
+  accepts a raw value or a signal ([§2](#2-canonical-signature-notation)). Rust
+  realizes this with `impl Into<Reactive<T>>` on each builder setter
+  (`Reactive<T> { Static(T), Signal(SignalId) }`); the former `Bound` /
+  `*.bound` modifier surface is folded into it and **removed**.
 - Names are recommendations; semantics
   ([§1](#1-design-principles-dsl-flavored)) are the contract.
 
@@ -1351,7 +1387,9 @@ application-authored modifiers share the same `modifiers(...)` surface.
 
 **Status deltas captured by this table**: the Java DSL is surface-complete with
 the three operations, modifiers as values via `.modifiers(...)` (no sugar on
-`View`), and styles as modifiers; the Rust DSL now exposes the surface plus
+`View`), and styles as modifiers; **every value member carries a raw + `Signal<T>`
+form** (uniform signals-first configs, so any property — layout included — can
+react); the Rust DSL now exposes the surface plus
 **signals** — value, computed (lazy/memoized/equality-suppressed), and effect
 signals in a shared `no_std` runtime (`Signal<T>`/`WritableSignal<T>`,
 `Engine::signal`/`computed`/`effect`/`read`/`set`) with text/property binding —

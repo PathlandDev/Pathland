@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /** Shape geometry for a {@code SHAPE} node (the {@code SHAPE_KIND} enum). */
-public enum ShapeKind {
+public enum ShapeKind implements WireValue {
 
     CIRCLE(0),
     RECTANGLE(1),

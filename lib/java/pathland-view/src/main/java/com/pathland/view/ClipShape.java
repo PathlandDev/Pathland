@@ -1,5 +1,8 @@
 package com.pathland.view;
 
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
+
 import java.util.function.Consumer;
 
 /**
@@ -10,10 +13,16 @@ public final class ClipShape implements ViewModifier {
     /** {@link ClipShape} values. */
     public static final class Config {
 
-        private ShapeKind shape;
+        private Signal<ShapeKind> shape;
 
-        /** Set the clip shape. */
+        /** Set a static clip shape. */
         public Config shape(ShapeKind shape) {
+            this.shape = Signals.constant(shape);
+            return this;
+        }
+
+        /** Bind the clip shape to a signal. */
+        public Config shape(Signal<ShapeKind> shape) {
             this.shape = shape;
             return this;
         }
@@ -38,9 +47,10 @@ public final class ClipShape implements ViewModifier {
 
     @Override
     public View body(View content) {
+        Signal<ShapeKind> shape =
+                config.shape != null ? config.shape : Signals.constant(ShapeKind.RECTANGLE);
         return Modified.props(content,
                 Modified.prop(Properties.CLIPS_TO_BOUNDS, 1),
-                Modified.prop(Properties.SHAPE_KIND,
-                        (float) (config.shape != null ? config.shape : ShapeKind.RECTANGLE).wire()));
+                Modified.prop(Properties.SHAPE_KIND, shape));
     }
 }

@@ -1,12 +1,14 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 
 import java.util.function.Consumer;
 
 /**
  * Determinate progress or an activity indicator ({@code ProgressView}).
- * {@code progress} is {@code 0..1}; {@code indeterminate()} builds the animated
+ * {@code value} is {@code 0..1}; {@code indeterminate()} builds the animated
  * spinner variant ({@code IS_INDETERMINATE}).
  */
 public final class ProgressView implements View, Configurable<ProgressView.Config> {
@@ -14,17 +16,27 @@ public final class ProgressView implements View, Configurable<ProgressView.Confi
     /** {@link ProgressView} values. */
     public static final class Config implements View.Config {
 
-        private Float value;
+        private Signal<Float> value;
+        private boolean indeterminate;
 
         /** Set the determinate value ({@code 0..1}). */
         public Config value(float value) {
+            this.value = Signals.constant(value);
+            this.indeterminate = false;
+            return this;
+        }
+
+        /** Bind the determinate value ({@code 0..1}) to a signal. */
+        public Config value(Signal<Float> value) {
             this.value = value;
+            this.indeterminate = false;
             return this;
         }
 
         /** Build the indeterminate activity-indicator variant. */
         public Config indeterminate() {
-            this.value = -1f;
+            this.value = null;
+            this.indeterminate = true;
             return this;
         }
     }
@@ -37,12 +49,18 @@ public final class ProgressView implements View, Configurable<ProgressView.Confi
 
     /** A determinate progress bar ({@code value} in {@code 0..1}). */
     public static ProgressView of(float value) {
-        return new ProgressView(new Config().value(value));
+        Config config = new Config();
+        if (value < 0f) {
+            config.indeterminate();
+        } else {
+            config.value(value);
+        }
+        return new ProgressView(config);
     }
 
     /** A determinate progress bar ({@code value} in {@code 0..1}). */
     public static ProgressView progress(float value) {
-        return new ProgressView(new Config().value(value));
+        return of(value);
     }
 
     /** An indeterminate activity indicator (renderer-animated). */
@@ -70,10 +88,10 @@ public final class ProgressView implements View, Configurable<ProgressView.Confi
     @Override
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.PROGRESS_VIEW);
-        if (config.value == null || config.value < 0f) {
+        if (config.indeterminate || config.value == null) {
             node.properties.put(Properties.IS_INDETERMINATE, 1);
         } else {
-            node.properties.put(Properties.PROGRESS, config.value);
+            node.property(Properties.PROGRESS, config.value);
         }
         return node;
     }

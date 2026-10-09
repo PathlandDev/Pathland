@@ -1,28 +1,34 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 import com.pathland.view.signal.WritableSignal;
 
 import java.util.function.Consumer;
 
 /**
  * A boolean switch, checkbox, or toggle button ({@code Toggle}). The visual
- * variant is the {@code TOGGLE_STYLE} token ({@code Switch}/{@code Checkbox}/{@code Button}).
- * The checked state binds to a {@link WritableSignal<Boolean>} (its current value is the
- * initial state); user changes flow back as {@code VALUE_CHANGED} (0/1) and are written
- * into the binding.
+ * variant is the {@code TOGGLE_STYLE} token; the checked state binds to a
+ * {@link WritableSignal<Boolean>} (two-way).
  */
 public final class Toggle implements View, Configurable<Toggle.Config> {
 
     /** {@link Toggle} values. */
     public static final class Config implements View.Config {
 
-        private ToggleStyle style = ToggleStyle.SWITCH;
+        private Signal<ToggleStyle> style;
         private WritableSignal<Boolean> binding;
-        private String label;
+        private Signal<String> label;
 
-        /** Set the visual variant ({@code TOGGLE_STYLE}). */
+        /** Set a static visual variant ({@code TOGGLE_STYLE}). */
         public Config style(ToggleStyle style) {
+            this.style = Signals.constant(style);
+            return this;
+        }
+
+        /** Bind the visual variant ({@code TOGGLE_STYLE}) to a signal. */
+        public Config style(Signal<ToggleStyle> style) {
             this.style = style;
             return this;
         }
@@ -33,8 +39,14 @@ public final class Toggle implements View, Configurable<Toggle.Config> {
             return this;
         }
 
-        /** Set the label. */
+        /** Set a static label. */
         public Config label(String label) {
+            this.label = Signals.constant(label);
+            return this;
+        }
+
+        /** Bind the label to a signal. */
+        public Config label(Signal<String> label) {
             this.label = label;
             return this;
         }
@@ -81,14 +93,16 @@ public final class Toggle implements View, Configurable<Toggle.Config> {
     @Override
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.TOGGLE);
-        node.properties.put(Properties.TOGGLE_STYLE, (float) config.style.wire());
+        node.property(Properties.TOGGLE_STYLE,
+                config.style != null ? config.style : Signals.constant(ToggleStyle.SWITCH));
         if (config.binding != null) {
             node.properties.put(Properties.SELECTED, config.binding.get() ? 1 : 0);
             node.propertyBindings.put(Properties.SELECTED, config.binding);
             node.valueInput = v -> config.binding.set(v > 0f);
         }
         if (config.label != null) {
-            node.text = config.label;
+            node.textBinding = config.label;
+            node.text = config.label.get();
         }
         return node;
     }

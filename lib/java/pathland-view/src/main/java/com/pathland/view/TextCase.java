@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /** Text case transformation (the {@code TEXT_CASE} enum: {@code None}=0, {@code Uppercase}=1, {@code Lowercase}=2). */
-public enum TextCase implements ViewModifier {
+public enum TextCase implements ViewModifier, WireValue {
 
     NONE(0),
     UPPERCASE(1),

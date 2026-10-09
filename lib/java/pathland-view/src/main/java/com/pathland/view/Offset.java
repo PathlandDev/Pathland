@@ -1,5 +1,8 @@
 package com.pathland.view;
 
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
+
 import java.util.function.Consumer;
 
 /**
@@ -10,17 +13,29 @@ public final class Offset implements ViewModifier {
     /** {@link Offset} values. */
     public static final class Config {
 
-        private Float x;
-        private Float y;
+        private Signal<Float> x;
+        private Signal<Float> y;
 
-        /** Set the horizontal offset. */
+        /** Set a static horizontal offset. */
         public Config x(float x) {
+            this.x = Signals.constant(x);
+            return this;
+        }
+
+        /** Bind the horizontal offset to a signal. */
+        public Config x(Signal<Float> x) {
             this.x = x;
             return this;
         }
 
-        /** Set the vertical offset. */
+        /** Set a static vertical offset. */
         public Config y(float y) {
+            this.y = Signals.constant(y);
+            return this;
+        }
+
+        /** Bind the vertical offset to a signal. */
+        public Config y(Signal<Float> y) {
             this.y = y;
             return this;
         }
@@ -45,8 +60,10 @@ public final class Offset implements ViewModifier {
 
     @Override
     public View body(View content) {
+        Signal<Float> x = config.x != null ? config.x : Signals.constant(0f);
+        Signal<Float> y = config.y != null ? config.y : Signals.constant(0f);
         return Modified.props(content,
-                Modified.prop(Properties.OFFSET_X, config.x != null ? config.x : 0f),
-                Modified.prop(Properties.OFFSET_Y, config.y != null ? config.y : 0f));
+                Modified.prop(Properties.OFFSET_X, x),
+                Modified.prop(Properties.OFFSET_Y, y));
     }
 }

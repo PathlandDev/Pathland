@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /** Text alignment (protocol ENUM values). */
-public enum TextAlignment implements ViewModifier {
+public enum TextAlignment implements ViewModifier, WireValue {
 
     LEADING(0),
     CENTER(1),

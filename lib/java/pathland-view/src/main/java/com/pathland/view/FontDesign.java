@@ -4,7 +4,7 @@ package com.pathland.view;
  * Font design (the {@code FONT_DESIGN} enum: {@code Default}=0, {@code Serif}=1,
  * {@code Rounded}=2, {@code Monospaced}=3).
  */
-public enum FontDesign implements ViewModifier {
+public enum FontDesign implements ViewModifier, WireValue {
 
     DEFAULT(0),
     SERIF(1),

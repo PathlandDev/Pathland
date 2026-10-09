@@ -1,6 +1,8 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -15,17 +17,29 @@ public final class VStack implements View, Configurable<VStack.Config>, Children
     /** {@link VStack} values. */
     public static final class Config implements View.Config {
 
-        private HorizontalAlignment alignment;
-        private Float spacing;
+        private Signal<HorizontalAlignment> alignment;
+        private Signal<Float> spacing;
 
         /** Set the cross-axis alignment. */
         public Config alignment(HorizontalAlignment alignment) {
+            this.alignment = Signals.constant(alignment);
+            return this;
+        }
+
+        /** Bind the cross-axis alignment to a signal. */
+        public Config alignment(Signal<HorizontalAlignment> alignment) {
             this.alignment = alignment;
             return this;
         }
 
         /** Set the main-axis gap. */
         public Config spacing(float spacing) {
+            this.spacing = Signals.constant(spacing);
+            return this;
+        }
+
+        /** Bind the main-axis gap to a signal. */
+        public Config spacing(Signal<Float> spacing) {
             this.spacing = spacing;
             return this;
         }
@@ -97,10 +111,10 @@ public final class VStack implements View, Configurable<VStack.Config>, Children
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.VSTACK);
         if (config.alignment != null) {
-            node.properties.put(Properties.ALIGNMENT, (float) config.alignment.wire());
+            node.property(Properties.ALIGNMENT, config.alignment);
         }
         if (config.spacing != null) {
-            node.properties.put(Properties.SPACING, config.spacing);
+            node.property(Properties.SPACING, config.spacing);
         }
         for (View child : children) {
             node.children.add(child.render(env));

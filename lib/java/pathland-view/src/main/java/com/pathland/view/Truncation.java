@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /** Truncation mode for multi-line text (protocol ENUM values). */
-public enum Truncation implements ViewModifier {
+public enum Truncation implements ViewModifier, WireValue {
 
     HEAD(0),
     MIDDLE(1),

@@ -1,6 +1,8 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -11,38 +13,62 @@ public final class LazyVGrid implements View, Configurable<LazyVGrid.Config>, Ch
     /** {@link LazyVGrid} values. */
     public static final class Config implements View.Config {
 
-        private Alignment alignment;
-        private Float spacing;
-        private Integer columns;
-        private List<GridItem> tracks;
+        private Signal<Alignment> alignment;
+        private Signal<Float> spacing;
+        private Signal<Integer> columns;
+        private Signal<List<GridItem>> tracks;
 
-        /** Set the cell alignment. */
+        /** Set a static cell alignment. */
         public Config alignment(Alignment alignment) {
+            this.alignment = Signals.constant(alignment);
+            return this;
+        }
+
+        /** Bind the cell alignment to a signal. */
+        public Config alignment(Signal<Alignment> alignment) {
             this.alignment = alignment;
             return this;
         }
 
-        /** Set the cell gap. */
+        /** Set a static cell gap. */
         public Config spacing(float spacing) {
+            this.spacing = Signals.constant(spacing);
+            return this;
+        }
+
+        /** Bind the cell gap to a signal. */
+        public Config spacing(Signal<Float> spacing) {
             this.spacing = spacing;
             return this;
         }
 
-        /** Set a fixed column count (equal {@code 1fr} tracks). */
+        /** Set a static column count (equal {@code 1fr} tracks). */
         public Config columns(int columns) {
+            this.columns = Signals.constant(columns);
+            return this;
+        }
+
+        /** Bind the column count to a signal. */
+        public Config columns(Signal<Integer> columns) {
             this.columns = columns;
             return this;
         }
 
-        /** Set explicit per-track sizes. */
+        /** Set static per-track sizes. */
         public Config tracks(List<GridItem> tracks) {
-            this.tracks = List.copyOf(tracks);
+            this.tracks = Signals.constant(List.copyOf(tracks));
             return this;
         }
 
-        /** Set explicit per-track sizes. */
+        /** Set static per-track sizes. */
         public Config tracks(GridItem... tracks) {
-            this.tracks = List.of(tracks);
+            this.tracks = Signals.constant(List.of(tracks));
+            return this;
+        }
+
+        /** Bind per-track sizes to a signal. */
+        public Config tracks(Signal<List<GridItem>> tracks) {
+            this.tracks = tracks;
             return this;
         }
     }
@@ -132,31 +158,20 @@ public final class LazyVGrid implements View, Configurable<LazyVGrid.Config>, Ch
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.LAZY_VGRID);
         if (config.alignment != null) {
-            node.properties.put(Properties.ALIGNMENT, (float) config.alignment.wire());
+            node.property(Properties.ALIGNMENT, config.alignment);
         }
         if (config.spacing != null) {
-            node.properties.put(Properties.SPACING, config.spacing);
+            node.property(Properties.SPACING, config.spacing);
         }
         if (config.tracks != null) {
-            node.properties.put(Properties.GRID_TRACKS, joinTracks(config.tracks));
+            node.property(Properties.GRID_TRACKS, GridTracks.signal(config.tracks));
         }
         if (config.columns != null) {
-            node.properties.put(Properties.GRID_COLUMNS, (float) config.columns);
+            node.property(Properties.GRID_COLUMNS, config.columns);
         }
         for (View child : children) {
             node.children.add(child.render(env));
         }
         return node;
-    }
-
-    private static String joinTracks(List<GridItem> tracks) {
-        StringBuilder sb = new StringBuilder();
-        for (GridItem t : tracks) {
-            if (sb.length() > 0) {
-                sb.append(',');
-            }
-            sb.append(t.token());
-        }
-        return sb.toString();
     }
 }

@@ -13,10 +13,16 @@ public final class Opacity implements ViewModifier {
     /** {@link Opacity} values. */
     public static final class Config {
 
-        private float value;
+        private Signal<Float> value;
 
-        /** Set the opacity ({@code 0..1}). */
+        /** Set a static opacity ({@code 0..1}). */
         public Config value(float value) {
+            this.value = Signals.constant(value);
+            return this;
+        }
+
+        /** Bind the opacity ({@code 0..1}) to a signal. */
+        public Config value(Signal<Float> value) {
             this.value = value;
             return this;
         }
@@ -41,6 +47,7 @@ public final class Opacity implements ViewModifier {
 
     @Override
     public View body(View content) {
-        return Modified.props(content, Modified.prop(Properties.OPACITY, config.value));
+        Signal<Float> value = config.value != null ? config.value : Signals.constant(1f);
+        return Modified.props(content, Modified.prop(Properties.OPACITY, value));
     }
 }

@@ -1,213 +1,224 @@
 package com.pathland.view;
 
+import com.pathland.view.signal.ConstantSignal;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
  * The SwiftUI-like {@code frame} sizing modifier — a {@link ViewModifier} value
- * applied with {@code .with(...)}: {@code .with(Frame.of(w, h))},
- * {@code .with(Frame.ofWidth(w))} / {@code .with(Frame.ofHeight(h))}, and the
- * lambda configurator {@code .with(Frame.of(c -> c.minWidth(..).alignment(..)))}.
- *
- * <p>The modifier compiles to the same discipline as the legacy {@code FrameMod}
- * (the wire is unchanged): a fixed {@code WIDTH}/{@code HEIGHT} ({@code ±∞}
- * normalized to {@code Commands.Size.FILL}, {@code NaN} omitting the axis), an
- * {@code ALIGNMENT} enum code, and the min/ideal/max bounds — each as an ordinary
- * {@code PARAMETER::SET_PROPERTY} ({@code 0x100B}/{@code 0x100C}/{@code 0x0002}/
- * {@code 0x0012}-{@code 0x0017}). Every value is packed as an {@code F32}, matching
- * the legacy output bit for bit.
+ * applied with {@code .modifiers(Frame.with(f -> …))}: a fixed {@code width}/
+ * {@code height} ({@code ±∞} normalized to {@code Commands.Size.FILL}), an
+ * {@code ALIGNMENT}, and the min/ideal/max bounds. Every value member is
+ * signal-capable (spec DSL.md §2).
  */
 public final class Frame implements ViewModifier {
 
-    private final Float width;
-    private final Float height;
-    private final Float alignment;
-    private final float[] bounds;
+    /** {@link Frame} values. */
+    public static final class Config {
 
-    // Package-private: construction flows through the static factories, never directly.
-    Frame(Float width, Float height, Float alignment, float[] bounds) {
-        this.width = width;
-        this.height = height;
-        this.alignment = alignment;
-        this.bounds = bounds;
+        private Signal<Float> width;
+        private Signal<Float> height;
+        private Signal<Alignment> alignment;
+        private final Signal<Float>[] bounds = newBounds();
+
+        /** A fixed {@code width} (finite; {@code ±∞} = {@code FILL}). */
+        public Config width(float value) {
+            this.width = rawSize(value);
+            return this;
+        }
+
+        /** Bind a fixed {@code width} to a signal. */
+        public Config width(Signal<Float> value) {
+            this.width = value;
+            return this;
+        }
+
+        /** A fixed {@code height} (finite; {@code ±∞} = {@code FILL}). */
+        public Config height(float value) {
+            this.height = rawSize(value);
+            return this;
+        }
+
+        /** Bind a fixed {@code height} to a signal. */
+        public Config height(Signal<Float> value) {
+            this.height = value;
+            return this;
+        }
+
+        public Config minWidth(float value) {
+            return bound(0, value);
+        }
+
+        public Config minWidth(Signal<Float> value) {
+            bounds[0] = value;
+            return this;
+        }
+
+        public Config idealWidth(float value) {
+            return bound(1, value);
+        }
+
+        public Config idealWidth(Signal<Float> value) {
+            bounds[1] = value;
+            return this;
+        }
+
+        public Config maxWidth(float value) {
+            return bound(2, value);
+        }
+
+        public Config maxWidth(Signal<Float> value) {
+            bounds[2] = value;
+            return this;
+        }
+
+        public Config minHeight(float value) {
+            return bound(3, value);
+        }
+
+        public Config minHeight(Signal<Float> value) {
+            bounds[3] = value;
+            return this;
+        }
+
+        public Config idealHeight(float value) {
+            return bound(4, value);
+        }
+
+        public Config idealHeight(Signal<Float> value) {
+            bounds[4] = value;
+            return this;
+        }
+
+        public Config maxHeight(float value) {
+            return bound(5, value);
+        }
+
+        public Config maxHeight(Signal<Float> value) {
+            bounds[5] = value;
+            return this;
+        }
+
+        /** Position the content inside the resulting box. */
+        public Config alignment(Alignment value) {
+            this.alignment = Signals.constant(value);
+            return this;
+        }
+
+        /** Bind the content alignment to a signal. */
+        public Config alignment(Signal<Alignment> value) {
+            this.alignment = value;
+            return this;
+        }
+
+        private Config bound(int index, float value) {
+            // NaN / an infinite bound means "no limit" — omitted.
+            if (!Float.isNaN(value) && !Float.isInfinite(value)) {
+                bounds[index] = Signals.constant(value);
+            }
+            return this;
+        }
     }
 
-    /**
-     * A frame of a fixed {@code width} with no height hint: the view keeps its
-     * natural height and, as a flex child, stretches to its container's cross axis.
-     */
+    private static Signal<Float>[] newBounds() {
+        @SuppressWarnings("unchecked")
+        Signal<Float>[] bounds = new Signal[6];
+        return bounds;
+    }
+
+    private final Config config;
+
+    private Frame(Config config) {
+        this.config = config;
+    }
+
+    /** A frame of a fixed {@code width} with no height hint. */
     public static Frame of(float width) {
-        return new Frame(width, null, null, null);
+        return new Frame(new Config().width(width));
     }
 
-    /**
-     * A frame of {@code width} x {@code height} with no content alignment. Infinite
-     * axes ({@link Float#POSITIVE_INFINITY}) expand to the available space
-     * ({@code Commands.Size.FILL}); a {@code NaN} axis is omitted.
-     */
+    /** A frame of {@code width} x {@code height}. */
     public static Frame of(float width, float height) {
-        return new Frame(width, height, null, null);
+        return new Frame(new Config().width(width).height(height));
     }
 
-    /**
-     * A frame of a fixed {@code width} at {@code alignment} with no height hint.
-     */
+    /** A frame of a fixed {@code width} at {@code alignment}. */
     public static Frame of(float width, Alignment alignment) {
-        return new Frame(width, null, (float) alignment.wire(), null);
+        return new Frame(new Config().width(width).alignment(alignment));
     }
 
     /** A frame of {@code width} x {@code height} at {@code alignment}. */
     public static Frame of(float width, float height, Alignment alignment) {
-        return new Frame(width, height, (float) alignment.wire(), null);
+        return new Frame(new Config().width(width).height(height).alignment(alignment));
     }
 
     /** A frame of a fixed {@code width} (SwiftUI's {@code frame(width:)}). */
     public static Frame ofWidth(float width) {
-        return new Frame(width, null, null, null);
+        return new Frame(new Config().width(width));
     }
 
     /** A frame of a fixed {@code height} (SwiftUI's {@code frame(height:)}). */
     public static Frame ofHeight(float height) {
-        return new Frame(null, height, null, null);
+        return new Frame(new Config().height(height));
     }
 
-    /**
-     * Configure a frame with {@code .with(Frame.of(c -> …))}: a fluent
-     * {@link Builder} for complex layout constraints — min/ideal/max width and
-     * height bounds, an optional fixed {@code width}/{@code height}, and
-     * {@code alignment}. Any combination is valid; unset bounds are omitted.
-     * {@code ±∞} on a fixed axis means {@code FILL}; {@code NaN}/{@code ∞} on a
-     * bound means "no limit".
-     */
-    public static Frame of(Consumer<Builder> config) {
-        Builder builder = new Builder();
-        config.accept(builder);
-        return builder.build();
+    /** Configure a frame with {@code .modifiers(Frame.with(f -> …))}. */
+    public static Frame of(Consumer<Config> config) {
+        Config c = new Config();
+        config.accept(c);
+        return new Frame(c);
     }
 
-    /** Configure a frame with {@code .modifiers(Frame.with(f -> f.width(w).height(h)))}. */
-    public static Frame with(Consumer<Builder> configure) {
+    /** Configure a frame. */
+    public static Frame with(Consumer<Config> configure) {
         return of(configure);
     }
 
     @Override
     public View body(View content) {
         List<Modified.Prop> props = new ArrayList<>();
-        if (width != null && !Float.isNaN(width)) {
-            props.add(Modified.prop(Properties.WIDTH, fillOr(width)));
+        if (config.width != null && !isOmitted(config.width)) {
+            props.add(Modified.prop(Properties.WIDTH, normalized(config.width)));
         }
-        if (height != null && !Float.isNaN(height)) {
-            props.add(Modified.prop(Properties.HEIGHT, fillOr(height)));
+        if (config.height != null && !isOmitted(config.height)) {
+            props.add(Modified.prop(Properties.HEIGHT, normalized(config.height)));
         }
-        if (alignment != null) {
-            props.add(Modified.prop(Properties.ALIGNMENT, alignment));
+        if (config.alignment != null) {
+            props.add(Modified.prop(Properties.ALIGNMENT, config.alignment));
         }
-        if (bounds != null) {
-            addBound(props, Properties.MIN_WIDTH, bounds[0]);
-            addBound(props, Properties.IDEAL_WIDTH, bounds[1]);
-            addBound(props, Properties.MAX_WIDTH, bounds[2]);
-            addBound(props, Properties.MIN_HEIGHT, bounds[3]);
-            addBound(props, Properties.IDEAL_HEIGHT, bounds[4]);
-            addBound(props, Properties.MAX_HEIGHT, bounds[5]);
+        int[] boundProps = {
+            Properties.MIN_WIDTH, Properties.IDEAL_WIDTH, Properties.MAX_WIDTH,
+            Properties.MIN_HEIGHT, Properties.IDEAL_HEIGHT, Properties.MAX_HEIGHT
+        };
+        for (int i = 0; i < boundProps.length; i++) {
+            if (config.bounds[i] != null) {
+                props.add(Modified.prop(boundProps[i], config.bounds[i]));
+            }
         }
         return Modified.props(content, props.toArray(new Modified.Prop[0]));
     }
 
-    private static void addBound(List<Modified.Prop> props, int property, float value) {
-        // NaN = unset; an infinite min/max bound means "no limit" — both are omitted.
-        if (!Float.isNaN(value) && !Float.isInfinite(value)) {
-            props.add(Modified.prop(property, value));
-        }
+    private static Signal<Float> rawSize(float value) {
+        return Float.isNaN(value) ? null : Signals.constant(value);
     }
 
-    /**
-     * Normalize an infinite size hint ({@code frame(maxWidth: .infinity)}) to the
-     * {@code Commands.Size.FILL} sentinel; finite values pass through unchanged.
-     */
+    private static boolean isOmitted(Signal<Float> size) {
+        return size instanceof ConstantSignal && Float.isNaN(size.get());
+    }
+
+    /** Normalize an infinite size hint to the FILL sentinel (reactively). */
+    private static Signal<Float> normalized(Signal<Float> size) {
+        if (size instanceof ConstantSignal) {
+            return Signals.constant(fillOr(size.get()));
+        }
+        return Signals.computed(() -> fillOr(size.get()));
+    }
+
     private static float fillOr(float value) {
         return Float.isInfinite(value) ? Commands.Size.FILL : value;
-    }
-
-    /**
-     * The {@code Frame.of(c -> …)} configurator: fluent, accumulates any mix of a
-     * fixed {@code width}/{@code height}, the six min/ideal/max bounds, and an
-     * {@code alignment}. Fixed axes and bounds are independent wire properties,
-     * so they combine freely (a fixed box with hard min/max limits, say).
-     *
-     * <p>Value rules match the modifier contract: {@code ±∞} on
-     * {@code width}/{@code height} means {@code FILL}; {@code NaN} or {@code ∞}
-     * on a bound means "no limit" (omitted).
-     */
-    public static final class Builder {
-
-        private Float width;
-        private Float height;
-        private Float alignment;
-        private final float[] bounds = new float[6];
-        private final boolean[] boundSet = new boolean[6];
-
-        /** A fixed {@code width} (finite; {@code ±∞} = {@code FILL}). */
-        public Builder width(float value) {
-            this.width = value;
-            return this;
-        }
-
-        /** A fixed {@code height} (finite; {@code ±∞} = {@code FILL}). */
-        public Builder height(float value) {
-            this.height = value;
-            return this;
-        }
-
-        public Builder minWidth(float value) {
-            return bound(0, value);
-        }
-
-        public Builder idealWidth(float value) {
-            return bound(1, value);
-        }
-
-        public Builder maxWidth(float value) {
-            return bound(2, value);
-        }
-
-        public Builder minHeight(float value) {
-            return bound(3, value);
-        }
-
-        public Builder idealHeight(float value) {
-            return bound(4, value);
-        }
-
-        public Builder maxHeight(float value) {
-            return bound(5, value);
-        }
-
-        /** Position the content inside the resulting box. */
-        public Builder alignment(Alignment value) {
-            this.alignment = (float) value.wire();
-            return this;
-        }
-
-        private Builder bound(int index, float value) {
-            this.bounds[index] = value;
-            this.boundSet[index] = true;
-            return this;
-        }
-
-        Frame build() {
-            boolean any = false;
-            for (boolean set : boundSet) {
-                any |= set;
-            }
-            if (!any) {
-                return new Frame(width, height, alignment, null);
-            }
-            float[] selected = new float[6];
-            for (int i = 0; i < selected.length; i++) {
-                selected[i] = boundSet[i] ? bounds[i] : Float.NaN;
-            }
-            return new Frame(width, height, alignment, selected);
-        }
     }
 }

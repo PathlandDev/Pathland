@@ -4,7 +4,7 @@ package com.pathland.view;
  * Font weight. The protocol carries {@code FONT_WEIGHT} as a numeric {@code F32} on
  * the 100–900 scale (regular ≈ 400, bold ≈ 700); {@link #wire()} returns that value.
  */
-public enum FontWeight implements ViewModifier {
+public enum FontWeight implements ViewModifier, WireValue {
 
     LIGHT(300),
     REGULAR(400),

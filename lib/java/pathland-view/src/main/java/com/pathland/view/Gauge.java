@@ -1,6 +1,8 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 
 import java.util.function.Consumer;
 
@@ -10,24 +12,42 @@ public final class Gauge implements View, Configurable<Gauge.Config> {
     /** {@link Gauge} values. */
     public static final class Config implements View.Config {
 
-        private Float value;
-        private Float min;
-        private Float max;
+        private Signal<Float> value;
+        private Signal<Float> min;
+        private Signal<Float> max;
 
-        /** Set the displayed value. */
+        /** Set a static displayed value. */
         public Config value(float value) {
+            this.value = Signals.constant(value);
+            return this;
+        }
+
+        /** Bind the displayed value to a signal. */
+        public Config value(Signal<Float> value) {
             this.value = value;
             return this;
         }
 
-        /** Set the scale minimum. */
+        /** Set a static scale minimum. */
         public Config minValue(float min) {
+            this.min = Signals.constant(min);
+            return this;
+        }
+
+        /** Bind the scale minimum to a signal. */
+        public Config minValue(Signal<Float> min) {
             this.min = min;
             return this;
         }
 
-        /** Set the scale maximum. */
+        /** Set a static scale maximum. */
         public Config maxValue(float max) {
+            this.max = Signals.constant(max);
+            return this;
+        }
+
+        /** Bind the scale maximum to a signal. */
+        public Config maxValue(Signal<Float> max) {
             this.max = max;
             return this;
         }
@@ -65,13 +85,13 @@ public final class Gauge implements View, Configurable<Gauge.Config> {
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.GAUGE);
         if (config.value != null) {
-            node.properties.put(Properties.VALUE, config.value);
+            node.property(Properties.VALUE, config.value);
         }
         if (config.min != null) {
-            node.properties.put(Properties.MIN_VALUE, config.min);
+            node.property(Properties.MIN_VALUE, config.min);
         }
         if (config.max != null) {
-            node.properties.put(Properties.MAX_VALUE, config.max);
+            node.property(Properties.MAX_VALUE, config.max);
         }
         return node;
     }

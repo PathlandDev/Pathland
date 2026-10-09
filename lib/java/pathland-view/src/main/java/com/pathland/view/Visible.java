@@ -1,5 +1,8 @@
 package com.pathland.view;
 
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
+
 import java.util.function.Consumer;
 
 /**
@@ -10,35 +13,42 @@ public final class Visible implements ViewModifier {
     /** {@link Visible} values. */
     public static final class Config {
 
-        private boolean visible = true;
+        private Signal<Boolean> visible;
 
-        /** Set visibility. */
+        /** Set a static visibility. */
         public Config visible(boolean visible) {
+            this.visible = Signals.constant(visible);
+            return this;
+        }
+
+        /** Bind visibility to a signal. */
+        public Config visible(Signal<Boolean> visible) {
             this.visible = visible;
             return this;
         }
     }
 
-    private final boolean visible;
+    private final Config config;
 
-    private Visible(boolean visible) {
-        this.visible = visible;
+    private Visible(Config config) {
+        this.config = config;
     }
 
     /** Show ({@code visible} = shown). */
     public static Visible of(boolean visible) {
-        return new Visible(visible);
+        return new Visible(new Config().visible(visible));
     }
 
     /** Configure the visibility. */
     public static Visible with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
-        return new Visible(config.visible);
+        return new Visible(config);
     }
 
     @Override
     public View body(View content) {
-        return Modified.props(content, Modified.prop(Properties.VISIBLE, visible ? 1 : 0));
+        Signal<Boolean> visible = config.visible != null ? config.visible : Signals.constant(true);
+        return Modified.props(content, Modified.prop(Properties.VISIBLE, visible));
     }
 }

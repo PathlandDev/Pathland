@@ -1,6 +1,8 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -14,10 +16,16 @@ public final class ZStack implements View, Configurable<ZStack.Config>, Children
     /** {@link ZStack} values. */
     public static final class Config implements View.Config {
 
-        private Alignment alignment;
+        private Signal<Alignment> alignment;
 
         /** Set the 2D alignment (positions children on both axes). */
         public Config alignment(Alignment alignment) {
+            this.alignment = Signals.constant(alignment);
+            return this;
+        }
+
+        /** Bind the 2D alignment to a signal. */
+        public Config alignment(Signal<Alignment> alignment) {
             this.alignment = alignment;
             return this;
         }
@@ -82,7 +90,7 @@ public final class ZStack implements View, Configurable<ZStack.Config>, Children
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.ZSTACK);
         if (config.alignment != null) {
-            node.properties.put(Properties.ALIGNMENT, (float) config.alignment.wire());
+            node.property(Properties.ALIGNMENT, config.alignment);
         }
         for (View child : children) {
             node.children.add(child.render(env));

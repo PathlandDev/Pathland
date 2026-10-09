@@ -40,6 +40,17 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   scopes the matching environment key. The legacy `.of(...)` factories and
   `View.with(ViewModifier...)` remain temporarily as a **bridge** until every
   consumer (demo views, starters, renderers) is migrated, then are removed.
+- **Signals-first configs (spec DSL.md §2)**: **every value member** exposes a raw
+  setter (sugar for `Signals.constant`) and a `Signal<T>` setter — layout included
+  (`spacing`, `alignment`, `padding`, `frame`, `columns`/`tracks`, …). A
+  non-constant signal becomes a **node-level binding** (re-emits only that
+  property); a constant carries zero binding overhead. Two-way control *values*
+  take `WritableSignal<T>`; every other member takes a one-way `Signal<T>`
+  (`WritableSignal extends Signal`). Views and modifiers place values through the
+  single `PathlandNode.property(id, Signal<?>)` path; `emit.ReactiveValues`
+  coerces a signal's value to the property's declared wire type
+  (`ValueTypes.forProperty`) and maps `WireValue` enums to their numeric code.
+  `State`/`Signals` are unchanged.
 - **Construction `.of()` (legacy bridge)**: every concrete view/control exposes a
   static `<ViewName>.of(...)` factory (`Text.of`, `VStack.of`,
   `Button.of(label, action)`, `Slider.of(binding, min, max)`,
@@ -368,4 +379,7 @@ the JNA ring
 test runs when `libpathland_core` is on `java.library.path`. The v2 authoring
 surface is covered by `ViewBuilderTest` (with/modifiers/children any-order) and
 `ModifierWithTest` (modifier `with(...)`, enum/`Font` value-is-modifier,
-`Frame.with` builder). CI proves every LTS from 17 (Temurin 17/21/25).
+`Frame.with` builder); signals-first configs by `ReactiveConfigTest` (a
+non-constant value member re-emits exactly one `SET_PROPERTY` — boolean, float,
+enum, string, container spacing — and a constant registers no binding). CI proves
+every LTS from 17 (Temurin 17/21/25).

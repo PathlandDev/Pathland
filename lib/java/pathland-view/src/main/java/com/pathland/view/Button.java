@@ -1,6 +1,8 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -8,9 +10,8 @@ import java.util.function.Consumer;
 /**
  * An interactive button ({@code Button}). Accepts an arbitrary child view as
  * the label. The control owns the native {@code BUTTON} node and wires the action on
- * it (whole button tappable, including its padding); the active {@link ButtonStyle}
- * (spec DSL.md §5.7) supplies the button's content — the label, decorated — as the
- * button node's child, so a composite label keeps its own layout.
+ * it; the active {@link ButtonStyle} (spec DSL.md §5.7) supplies the button's content
+ * as the button node's child.
  *
  * <p>Content precedence (spec DSL.md §4): a child supplied via {@code .children(…)}
  * wins, then a {@code title} value, then the style's own content.
@@ -21,7 +22,7 @@ public final class Button implements View, Configurable<Button.Config>, Children
     public static final class Config implements View.Config {
 
         private Runnable action;
-        private String title;
+        private Signal<String> title;
 
         /** Set the tap action. */
         public Config action(Runnable action) {
@@ -29,8 +30,14 @@ public final class Button implements View, Configurable<Button.Config>, Children
             return this;
         }
 
-        /** Set a plain text title (used when no child is supplied). */
+        /** Set a static plain text title (used when no child is supplied). */
         public Config title(String title) {
+            this.title = Signals.constant(title);
+            return this;
+        }
+
+        /** Bind the plain text title to a signal. */
+        public Config title(Signal<String> title) {
             this.title = title;
             return this;
         }

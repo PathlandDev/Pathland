@@ -1,6 +1,8 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
+import com.pathland.view.signal.Signal;
+import com.pathland.view.signal.Signals;
 import com.pathland.view.signal.WritableSignal;
 
 import java.util.List;
@@ -16,11 +18,17 @@ public final class Picker implements View, Configurable<Picker.Config>, Children
     /** {@link Picker} values. */
     public static final class Config implements View.Config {
 
-        private PickerStyle style = PickerStyle.MENU;
+        private Signal<PickerStyle> style;
         private WritableSignal<Integer> selection;
 
-        /** Set the presentation style. */
+        /** Set a static presentation style. */
         public Config style(PickerStyle style) {
+            this.style = Signals.constant(style);
+            return this;
+        }
+
+        /** Bind the presentation style to a signal. */
+        public Config style(Signal<PickerStyle> style) {
             this.style = style;
             return this;
         }
@@ -75,10 +83,10 @@ public final class Picker implements View, Configurable<Picker.Config>, Children
     @Override
     public PathlandNode render(Environment env) {
         PathlandNode node = new PathlandNode(Components.PICKER);
-        node.properties.put(Properties.PICKER_STYLE, (float) config.style.wire());
+        node.property(Properties.PICKER_STYLE,
+                config.style != null ? config.style : Signals.constant(PickerStyle.MENU));
         if (config.selection != null) {
-            node.properties.put(Properties.SELECTION, config.selection.get());
-            node.propertyBindings.put(Properties.SELECTION, config.selection);
+            node.property(Properties.SELECTION, config.selection);
             node.valueInput = v -> config.selection.set(Math.round(v));
         }
         for (View option : children) {
