@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 2.375313911999998,
+    "cost": 2.378501807999998,
     "tokens": {
-      "input": 6726148,
-      "output": 567476,
+      "input": 6726976,
+      "output": 568042,
       "reasoning": 300392,
       "cache": {
-        "read": 281890304,
+        "read": 282798336,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791548895531
+      "updated": 1791548937715
     }
   },
   "messages": [
@@ -217954,21 +217954,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001614546,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 454486,
+          "input": 575,
+          "output": 279,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 453632
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791548895577
+          "created": 1791548895577,
+          "completed": 1791548928465
         },
+        "finish": "tool-calls",
         "id": "msg_120a2b159002UasNsiKJKAhA21",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -217985,20 +217988,115 @@
           "tool": "bash",
           "callID": "call_4387dda85d894f4ca0be3d31",
           "state": {
-            "metadata": {
-              "output": "M  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/SplitNavDemo.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterControls.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterView.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/NameField.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/home/HomeView.java\n"
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git status --short | head -5 && git commit -q -m \"$(cat <<'EOF'\nstyle(demo): canonical chain order — modifiers, with, children (issue #140)\n\nReformat every authoring chain in pathland-demo-views to the convention from\nissue #140: one `.modifiers(...)` call listing all modifiers (innermost-first,\neach on its own line), then the value `.with(...)`, then `.children(...)` for\ncontent-bearing views — each chain operation on its own line, children and\nmodifier args line-wrapped. Leaves inside children keep `.with(...)` then a\nsingle `.modifiers(...)`; plain composites (PlayerBar/SizeThatFits results)\nstack modifiers in one `.with(...)`.\n\nBehavior is unchanged (the three operations' order never affects emitted\nbytes — spec DSL.md §2, source-surface only). Demo-views tests 31 green; full\nJava reactor 482 green. Closes #140.\nEOF\n)\" && git log --oneline -1"
             },
+            "output": "M  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/SplitNavDemo.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterControls.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterView.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/NameField.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/home/HomeView.java\n00e99b45 style(demo): canonical chain order — modifiers, with, children (issue #140)\n",
+            "metadata": {
+              "output": "M  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/SplitNavDemo.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterControls.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterView.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/NameField.java\nM  lib/java/pathland-demo-views/src/main/java/com/pathland/demo/home/HomeView.java\n00e99b45 style(demo): canonical chain order — modifiers, with, children (issue #140)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git status --short | head -5 && git commit -q -m \"$(cat <<'EOF'\nstyle(demo): canonical chain order — modifiers, with, children (issue #140)\n\nReformat every authoring chain in pathland-demo-views to the convention from\nissue #140: one `.modifiers(...)` call listing all modifiers (innermost-first,\neach on its own line), then the value `.with(...)`, then `.children(...)` for\ncontent-bearing views — each chain operation on its own line, children and\nmodifier args line-wrapped. Leaves inside children keep `.with(...)` then a\nsingle `.modifiers(...)`; plain composites (PlayerBar/SizeThatFits results)\nstack modifiers in one `.with(...)`.\n\nBehavior is unchanged (the three operations' order never affects emitted\nbytes — spec DSL.md §2, source-surface only). Demo-views tests 31 green; full\nJava reactor 482 green. Closes #140.\nEOF\n)\" && git log --oneline -1",
             "time": {
-              "start": 1791548903969
+              "start": 1791548903969,
+              "end": 1791548928249
             }
           },
           "id": "prt_120a2b948001XQM29xIFSl5q9J",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_120a2b159002UasNsiKJKAhA21"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "6ba0fe15da457f6039f28e67c7a83f460770f921",
+          "type": "step-finish",
+          "tokens": {
+            "total": 454486,
+            "input": 575,
+            "output": 279,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 453632
+            }
+          },
+          "cost": 0.001614546,
+          "id": "prt_120a33166001jFV7I9g8Ms9rCd",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120a2b159002UasNsiKJKAhA21"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_12091fa71001lUOlu43DzPnC4R",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00157335,
+        "tokens": {
+          "total": 454940,
+          "input": 253,
+          "output": 287,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 454400
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791548928854,
+          "completed": 1791548937570
+        },
+        "finish": "stop",
+        "id": "msg_120a33356002GIZv7y0HMN0Q9K",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "6ba0fe15da457f6039f28e67c7a83f460770f921",
+          "type": "step-start",
+          "id": "prt_120a33c8c001mBs3CRdebpiAnM",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120a33356002GIZv7y0HMN0Q9K"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `00e99b45`. \n\n## Summary\n\nImplemented issue #140 on branch `style/demo-chain-order`: reformed every demo-view chain in `pathland-demo-views` to the canonical order — **`.modifiers(...)`** (single call, all modifiers innermost-first, each on its own line) → **`.with(...)`** → **`.children(...)`**, one chain op per line with wrapped args. Leaves keep `.with(...)` + one `.modifiers(...)`; plain composites (PlayerBar, `SizeThatFits` results) stack modifiers in a single `.with(...)` (the builder surface doesn't apply there).\n\n**27 files** reformatted (all demo views; the one test chain `new SplitNavDemo().with(...)` was already on a plain composite and left as-is).\n\n**Verification:** demo-views 31 tests green; full Java reactor **482 tests green** — behavior unchanged, confirmed across the emitter/renderer suites (source-surface only per DSL.md §2).\n\n**Note:** I used the two-statement form (`View content = VStack…; return new SectionCard(…, content);`) for the kitchen-sink sections that wrap in `SectionCard` — it avoids deep paren-pileups while keeping the chain itself in canonical order. Say the word if you'd rather keep those strictly inline.",
+          "time": {
+            "start": 1791548931588,
+            "end": 1791548937433
+          },
+          "id": "prt_120a33e04001JERUehBf7bd35x",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120a33356002GIZv7y0HMN0Q9K"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "6ba0fe15da457f6039f28e67c7a83f460770f921",
+          "type": "step-finish",
+          "tokens": {
+            "total": 454940,
+            "input": 253,
+            "output": 287,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 454400
+            }
+          },
+          "cost": 0.00157335,
+          "id": "prt_120a35526001obiGHI5nO3Xb2n",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120a33356002GIZv7y0HMN0Q9K"
         }
       ]
     }
