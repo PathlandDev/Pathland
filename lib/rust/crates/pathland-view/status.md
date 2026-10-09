@@ -74,6 +74,12 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   with `collect_input_handlers` and routes `TEXT_CHANGED`/`VALUE_CHANGED`/
   `DATE_CHANGED` into them (the sink writes the signal; the host re-emits the
   tree to flush the delta).
+- **Styles + environment (Phase 3)**: an [`Environment`] threaded through
+  `View::build_env` (the `no_std` equivalent of the Java thread-local) scopes a
+  subtree; `ButtonStyle` (`make_body(&ButtonConfig) -> Option<Box<dyn View>>`)
+  supplies a button's content (Composite Override Mode), applied with
+  `ViewExt::button_style(style)`. Built-ins `PlainButtonStyle` (native path) and
+  `BorderedButtonStyle`; custom styles implement the trait.
 
 ## Not implemented / gaps
 
@@ -81,8 +87,9 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   for Toggle/Slider/TextField/Picker; Stepper/TextEditor/DatePicker/ColorPicker
   sink wiring lands in the DSL but the renderer side for some controls is still
   to come. Date/color two-way is not wired (needs `SET_DATE`).
-- **Styles / environment**: no `ButtonStyle`/`LabelStyle`/… or `EnvironmentKey`
-  subtree scoping (Phase 3).
+- **Styles**: only `ButtonStyle` (there is no `Label`/`Audio`/`Video` view in the
+  Rust DSL, so `LabelStyle`/`AudioStyle`/`VideoStyle` have no target). The
+  environment carries only the button-style slot (no arbitrary typed keys).
 - **Navigation / conditional**: `Router`/`RouteTable`/`NavigationContainer`/
   `NavigationLink`/`Conditional` are absent (Phase 4); `Label`/`GridRow` are
   absent.

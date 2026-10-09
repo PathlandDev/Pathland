@@ -100,8 +100,17 @@ pub use recognizer::TapRecognizer;
 /// A composable view. Implement for custom views; the core components and
 /// [`Modified`] wrappers implement it already.
 pub trait View {
-    /// Build the retained node for this view.
-    fn build(&self) -> Node;
+    /// Build the retained node for this view under the ambient [`Environment`].
+    ///
+    /// The environment carries subtree-scoped values (the style for a button,
+    /// …). Java implements this scope with a thread-local; `no_std` Rust threads
+    /// it explicitly through this method.
+    fn build_env(&self, env: &mut Environment) -> Node;
+
+    /// Build the retained node with a fresh, empty environment.
+    fn build(&self) -> Node {
+        self.build_env(&mut Environment::default())
+    }
 }
 
 /// A view decorator (SwiftUI `ViewModifier`): transforms a node's properties.
@@ -202,9 +211,105 @@ pub trait ViewExt: View + Sized {
             mods: modifiers.into_modifiers(),
         }
     }
+
+    /// Scope a [`ButtonStyle`] down this subtree (the active style for any
+    /// `Button` whose own content it supplies).
+    fn button_style(self, style: impl ButtonStyle + 'static) -> WithButtonStyle<Self> {
+        WithButtonStyle {
+            view: self,
+            style: Rc::new(style),
+        }
+    }
 }
 
 impl<T: View> ViewExt for T {}
+
+// ---------------------------------------------------------------------------
+// Environment + styles
+// ---------------------------------------------------------------------------
+
+/// The subtree-scoped environment — the one inheritance mechanism.
+///
+/// Java implements this scope with a thread-local over the synchronous render
+/// pass; `no_std` Rust threads it explicitly through [`View::build_env`]. A
+/// style-setting wrapper saves/restores the slot around building its subtree.
+#[derive(Default)]
+pub struct Environment {
+    button_style: Option<Rc<dyn ButtonStyle>>,
+}
+
+impl Environment {
+    /// An empty environment.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The active button style (defaults to [`PlainButtonStyle`]).
+    pub fn button_style(&self) -> Rc<dyn ButtonStyle> {
+        self.button_style
+            .clone()
+            .unwrap_or_else(|| Rc::new(PlainButtonStyle))
+    }
+}
+
+/// A button style: supplies a button's **content** (the control owns the native
+/// component and the interaction). `None` = the control's native content.
+pub trait ButtonStyle {
+    /// Build the styled content for `config`, or `None` for the native path.
+    fn make_body(&self, config: &ButtonConfig) -> Option<Box<dyn View>>;
+}
+
+/// The default style: the button's own label (native path, no content view).
+pub struct PlainButtonStyle;
+
+impl ButtonStyle for PlainButtonStyle {
+    fn make_body(&self, _config: &ButtonConfig) -> Option<Box<dyn View>> {
+        None
+    }
+}
+
+/// A bordered button style: the label with padding + a border.
+pub struct BorderedButtonStyle;
+
+impl ButtonStyle for BorderedButtonStyle {
+    fn make_body(&self, config: &ButtonConfig) -> Option<Box<dyn View>> {
+        let label = Text::with(|t| {
+            t.text(config.label.clone());
+        })
+        .modifiers((
+            Padding(8.0),
+            Border::new(Color::argb(0xFF_888888), 1.0),
+        ));
+        Some(Box::new(label))
+    }
+}
+
+/// A view wrapped by a scoped [`ButtonStyle`] (applied via
+/// [`ViewExt::button_style`]).
+pub struct WithButtonStyle<V> {
+    view: V,
+    style: Rc<dyn ButtonStyle>,
+}
+
+impl<V: View> View for WithButtonStyle<V> {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let previous = env.button_style.take();
+        env.button_style = Some(self.style.clone());
+        let node = self.view.build_env(env);
+        env.button_style = previous;
+        node
+    }
+}
+
+impl<V: Configurable> Configurable for WithButtonStyle<V> {
+    type Config = V::Config;
+    fn config(&self) -> &Self::Config {
+        self.view.config()
+    }
+    fn config_mut(&mut self) -> &mut Self::Config {
+        self.view.config_mut()
+    }
+}
 
 /// A view wrapped by a list of modifiers (applied innermost-first at `build`).
 pub struct Modified<V> {
@@ -213,8 +318,8 @@ pub struct Modified<V> {
 }
 
 impl<V: View> View for Modified<V> {
-    fn build(&self) -> Node {
-        let mut node = self.view.build();
+    fn build_env(&self, _env: &mut Environment) -> Node {
+        let mut node = self.view.build_env(_env);
         for modifier in &self.mods {
             modifier.apply(&mut node);
         }
@@ -589,7 +694,7 @@ impl Color {
 }
 
 impl View for Color {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(Component::Color, Vec::new(), BTreeMap::new());
         match self {
             Color::Literal(v) => {
@@ -1014,8 +1119,8 @@ fn apply_color(node: &mut Node, prop: u16, color: Color) {
     }
 }
 
-fn build_children(children: &[Box<dyn View>]) -> Vec<Node> {
-    children.iter().map(|c| c.build()).collect()
+fn build_children(children: &[Box<dyn View>], env: &mut Environment) -> Vec<Node> {
+    children.iter().map(|c| c.build_env(env)).collect()
 }
 
 // --- two-way binding sinks (app-side; never serialized) --------------------
@@ -1122,7 +1227,7 @@ impl Configurable for Text {
 }
 
 impl View for Text {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(
             Component::Text {
                 text: self.config.text.clone(),
@@ -1178,7 +1283,7 @@ impl Configurable for Image {
 }
 
 impl View for Image {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(Component::Image, Vec::new(), BTreeMap::new());
         if !self.config.source.is_empty() {
             node.string_properties
@@ -1349,7 +1454,7 @@ impl Configurable for Icon {
 }
 
 impl View for Icon {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(Component::Icon, Vec::new(), BTreeMap::new());
         if !self.config.name.is_empty() {
             node.string_properties
@@ -1378,7 +1483,7 @@ impl Shape {
 }
 
 impl View for Shape {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         p.insert(property_id::SHAPE_KIND, (self.0.value() as f32).to_bits());
         plain_node(Component::Shape, Vec::new(), p)
@@ -1399,23 +1504,23 @@ pub struct Capsule;
 pub struct Ellipse;
 
 impl View for Rectangle {
-    fn build(&self) -> Node {
-        Shape(ShapeKind::Rectangle).build()
+    fn build_env(&self, _env: &mut Environment) -> Node {
+        Shape(ShapeKind::Rectangle).build_env(_env)
     }
 }
 impl View for Circle {
-    fn build(&self) -> Node {
-        Shape(ShapeKind::Circle).build()
+    fn build_env(&self, _env: &mut Environment) -> Node {
+        Shape(ShapeKind::Circle).build_env(_env)
     }
 }
 impl View for Capsule {
-    fn build(&self) -> Node {
-        Shape(ShapeKind::Capsule).build()
+    fn build_env(&self, _env: &mut Environment) -> Node {
+        Shape(ShapeKind::Capsule).build_env(_env)
     }
 }
 impl View for Ellipse {
-    fn build(&self) -> Node {
-        Shape(ShapeKind::Ellipse).build()
+    fn build_env(&self, _env: &mut Environment) -> Node {
+        Shape(ShapeKind::Ellipse).build_env(_env)
     }
 }
 
@@ -1424,7 +1529,7 @@ impl View for Ellipse {
 pub struct Divider;
 
 impl View for Divider {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         plain_node(Component::Divider, Vec::new(), BTreeMap::new())
     }
 }
@@ -1434,7 +1539,7 @@ impl View for Divider {
 pub struct Spacer;
 
 impl View for Spacer {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         plain_node(Component::Spacer, Vec::new(), BTreeMap::new())
     }
 }
@@ -1466,7 +1571,7 @@ impl ProgressViewConfig {
 }
 
 impl View for ProgressView {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         match self.config.value {
             Some(v) => {
@@ -1525,7 +1630,7 @@ impl GaugeConfig {
 }
 
 impl View for Gauge {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         p.insert(property_id::VALUE, self.config.value.to_bits());
         p.insert(property_id::MIN_VALUE, self.config.min.to_bits());
@@ -1604,7 +1709,7 @@ impl Children for VStack {
 }
 
 impl View for VStack {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
@@ -1612,7 +1717,7 @@ impl View for VStack {
         if let Some(s) = self.config.spacing {
             p.insert(property_id::SPACING, s.to_bits());
         }
-        plain_node(Component::VStack, build_children(&self.children), p)
+        plain_node(Component::VStack, build_children(&self.children, _env), p)
     }
 }
 
@@ -1651,7 +1756,7 @@ impl Children for HStack {
 }
 
 impl View for HStack {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
@@ -1659,7 +1764,7 @@ impl View for HStack {
         if let Some(s) = self.config.spacing {
             p.insert(property_id::SPACING, s.to_bits());
         }
-        plain_node(Component::HStack, build_children(&self.children), p)
+        plain_node(Component::HStack, build_children(&self.children, _env), p)
     }
 }
 
@@ -1698,12 +1803,12 @@ impl Children for ZStack {
 }
 
 impl View for ZStack {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
         }
-        plain_node(Component::ZStack, build_children(&self.children), p)
+        plain_node(Component::ZStack, build_children(&self.children, _env), p)
     }
 }
 
@@ -1791,10 +1896,10 @@ impl Children for Grid {
 }
 
 impl View for Grid {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         plain_node(
             Component::Grid,
-            build_children(&self.children),
+            build_children(&self.children, _env),
             grid_props(&self.config),
         )
     }
@@ -1824,10 +1929,10 @@ impl Children for ScrollView {
 }
 
 impl View for ScrollView {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         plain_node(
             Component::ScrollView,
-            build_children(&self.children),
+            build_children(&self.children, _env),
             BTreeMap::new(),
         )
     }
@@ -1867,10 +1972,10 @@ impl Children for LazyVGrid {
 }
 
 impl View for LazyVGrid {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         plain_node(
             Component::LazyVGrid,
-            build_children(&self.children),
+            build_children(&self.children, _env),
             grid_props(&self.config),
         )
     }
@@ -1911,10 +2016,10 @@ impl Children for LazyHGrid {
 }
 
 impl View for LazyHGrid {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         plain_node(
             Component::LazyHGrid,
-            build_children(&self.children),
+            build_children(&self.children, _env),
             grid_props(&self.config),
         )
     }
@@ -1955,7 +2060,7 @@ impl Children for LazyVStack {
 }
 
 impl View for LazyVStack {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
@@ -1963,7 +2068,7 @@ impl View for LazyVStack {
         if let Some(s) = self.config.spacing {
             p.insert(property_id::SPACING, s.to_bits());
         }
-        plain_node(Component::LazyVStack, build_children(&self.children), p)
+        plain_node(Component::LazyVStack, build_children(&self.children, _env), p)
     }
 }
 
@@ -2002,7 +2107,7 @@ impl Children for LazyHStack {
 }
 
 impl View for LazyHStack {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
@@ -2010,7 +2115,7 @@ impl View for LazyHStack {
         if let Some(s) = self.config.spacing {
             p.insert(property_id::SPACING, s.to_bits());
         }
-        plain_node(Component::LazyHStack, build_children(&self.children), p)
+        plain_node(Component::LazyHStack, build_children(&self.children, _env), p)
     }
 }
 
@@ -2070,7 +2175,7 @@ impl Configurable for Button {
 }
 
 impl View for Button {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(
             Component::Button {
                 label: self.config.label.clone(),
@@ -2091,6 +2196,12 @@ impl View for Button {
                 existing | pathland_core::listener::POINTER_DOWN | pathland_core::listener::POINTER_UP,
             );
             node.gestures.push(Gesture::Tap(action.clone()));
+        }
+        // The active style supplies the button's content (Composite Override
+        // Mode); the default style keeps the native path (no content child).
+        let style = _env.button_style();
+        if let Some(content) = style.make_body(&self.config) {
+            node.children.push(content.build_env(_env));
         }
         node
     }
@@ -2152,7 +2263,7 @@ impl Configurable for TextField {
 }
 
 impl View for TextField {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(Component::TextField, Vec::new(), BTreeMap::new());
         if !self.config.placeholder.is_empty() {
             node.string_properties
@@ -2199,7 +2310,7 @@ impl Configurable for TextEditor {
 }
 
 impl View for TextEditor {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(Component::TextEditor, Vec::new(), BTreeMap::new());
         if let Some(signal) = &self.config.binding {
             bind_text(&mut node, signal.clone());
@@ -2239,7 +2350,7 @@ impl ToggleConfig {
 }
 
 impl View for Toggle {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         p.insert(
             property_id::TOGGLE_STYLE,
@@ -2322,7 +2433,7 @@ fn build_range(component: Component, config: &RangeConfig) -> Node {
 }
 
 impl View for Slider {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         build_range(Component::Slider, &self.config)
     }
 }
@@ -2346,7 +2457,7 @@ pub struct Stepper {
 }
 
 impl View for Stepper {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         build_range(Component::Stepper, &self.config)
     }
 }
@@ -2395,7 +2506,7 @@ impl Configurable for DatePicker {
 }
 
 impl View for DatePicker {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(Component::DatePicker, Vec::new(), BTreeMap::new());
         if self.config.mode != 0 {
             node.properties.insert(
@@ -2436,10 +2547,10 @@ impl Children for Picker {
 }
 
 impl View for Picker {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut node = plain_node(
             Component::Picker,
-            build_children(&self.children),
+            build_children(&self.children, _env),
             BTreeMap::new(),
         );
         if let Some(signal) = &self.binding {
@@ -2472,10 +2583,10 @@ impl Children for Menu {
 }
 
 impl View for Menu {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         plain_node(
             Component::Menu,
-            build_children(&self.children),
+            build_children(&self.children, _env),
             BTreeMap::new(),
         )
     }
@@ -2505,7 +2616,7 @@ impl ColorPickerConfig {
 }
 
 impl View for ColorPicker {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut p = BTreeMap::new();
         p.insert(property_id::COLOR_VALUE, self.config.value);
         plain_node(Component::ColorPicker, Vec::new(), p)
@@ -2633,7 +2744,7 @@ impl SizeThatFits {
 }
 
 impl View for SizeThatFits {
-    fn build(&self) -> Node {
+    fn build_env(&self, _env: &mut Environment) -> Node {
         let mut sorted: Vec<&Fit> = self.fits.iter().collect();
         sorted.sort_by(|a, b| {
             a.min_width
@@ -2646,7 +2757,7 @@ impl View for SizeThatFits {
         node.list_properties
             .insert(property_id::FIT_QUERY, thresholds);
         if let Some(fit) = sorted.get(index) {
-            node.children.push(fit.view.build());
+            node.children.push(fit.view.build_env(_env));
         }
         node
     }
@@ -3259,6 +3370,56 @@ mod tests {
         let mut taps = BTreeMap::new();
         collect_tap_handlers(&node, &mut taps);
         assert!(taps.contains_key(&0));
+    }
+
+    #[test]
+    fn default_button_style_keeps_the_native_path() {
+        let node = Button::with(|b| {
+            b.label("Go");
+        })
+        .build();
+        assert_eq!(node.component, Component::Button { label: "Go".into() });
+        assert!(node.children.is_empty(), "no content child by default");
+    }
+
+    #[test]
+    fn button_style_supplies_the_content_child() {
+        let node = Button::with(|b| {
+            b.label("Go");
+        })
+        .button_style(BorderedButtonStyle)
+        .build();
+        // The style content is the button's single child (Composite Override).
+        assert_eq!(node.children.len(), 1);
+        assert_eq!(
+            node.children[0].component,
+            Component::Text { text: "Go".into() }
+        );
+        assert_eq!(
+            node.children[0].properties.get(&property_id::BORDER_WIDTH),
+            Some(&1.0f32.to_bits())
+        );
+    }
+
+    #[test]
+    fn custom_button_style_overrides_content() {
+        struct BadgeStyle;
+        impl ButtonStyle for BadgeStyle {
+            fn make_body(&self, config: &ButtonConfig) -> Option<Box<dyn View>> {
+                Some(Box::new(Text::with(|t| {
+                    t.text(alloc::format!("[{}]", config.label));
+                })))
+            }
+        }
+        let node = Button::with(|b| {
+            b.label("Go");
+        })
+        .button_style(BadgeStyle)
+        .build();
+        assert_eq!(
+            node.children[0].component,
+            Component::Text { text: "[Go]".into() }
+        );
     }
 
     #[test]

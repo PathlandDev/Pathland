@@ -1356,9 +1356,11 @@ the three operations, modifiers as values via `.modifiers(...)` (no sugar on
 signals in a shared `no_std` runtime (`Signal<T>`/`WritableSignal<T>`,
 `Engine::signal`/`computed`/`effect`/`read`/`set`) with text/property binding —
 **two-way control bindings** (input sinks collected with
-`collect_input_handlers`) and **actions** (`Button::action`). It is still without
-styles/environment and navigation/conditional. Both are per-project
-implementation status tracked in each project's `status.md`.
+`collect_input_handlers`) and **actions** (`Button::action`), plus
+**styles + environment** (a subtree `Environment` threaded through
+`View::build_env`, `ButtonStyle` applied with `ViewExt::button_style`). It is
+still without navigation/conditional. Both are per-project implementation status
+tracked in each project's `status.md`.
 
 ---
 
