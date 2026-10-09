@@ -64,6 +64,6 @@ public final class AppearanceSection implements View {
                                                         Background.with(b -> b.color(Color.BLUE)),
                                                         CornerRadius.with(c -> c.radius(12)))),
                         Text.with(t -> t.text("zIndex above")).modifiers(ZIndex.with(z -> z.value(3))));
-        return new SectionCard("Appearance · border / shadow / opacity / transform", content);
+        return SectionCard.with(s -> s.title("Appearance · border / shadow / opacity / transform")).children(content);
     }
 }

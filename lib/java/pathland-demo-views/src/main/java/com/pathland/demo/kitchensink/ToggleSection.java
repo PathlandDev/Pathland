@@ -33,6 +33,6 @@ public final class ToggleSection implements View {
                         Toggle.with(t -> t.style(ToggleStyle.BUTTON).isOn(bold.signal()).label("Bold toggle")),
                         Text.with(t -> t.text(summary)).modifiers(
                                 Padding.with(p -> p.uniform(4))));
-        return new SectionCard("Toggle · Switch / Checkbox / Button", content);
+        return SectionCard.with(s -> s.title("Toggle · Switch / Checkbox / Button")).children(content);
     }
 }

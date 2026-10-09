@@ -42,6 +42,6 @@ public final class ColorSection implements View {
                                                 .modifiers(Background.with(b -> b.color(accent.signal())))),
                         Text.with(t -> t.text(accentLabel)).modifiers(
                                 Padding.with(p -> p.uniform(4))));
-        return new SectionCard("Color · ColorPicker + Color view + Rectangle", content);
+        return SectionCard.with(s -> s.title("Color · ColorPicker + Color view + Rectangle")).children(content);
     }
 }

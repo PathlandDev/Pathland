@@ -41,6 +41,6 @@ public final class PickerSection implements View {
                                 Button.with(b -> b.title("Item 2").action(() -> { }))),
                         Text.with(t -> t.text("Menu action items are Buttons; choices route via VALUE_CHANGED"))
                                 .modifiers(ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88)))));
-        return new SectionCard("Picker + Menu", content);
+        return SectionCard.with(s -> s.title("Picker + Menu")).children(content);
     }
 }

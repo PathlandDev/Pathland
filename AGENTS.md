@@ -229,6 +229,16 @@ apps. Components and modifiers:
 - `View` is an **open interface** — the library ships `Text`/`Image`/`Color`/
   `Rectangle`, `VStack`/`HStack`/`ZStack`, `Spacer`, `Button`, `TextField(placeholder, WritableSignal<String>)`, and
   application code (Quarkus/Spring/desktop) defines its own views by implementing `View`.
+- **Custom views use the configurator** (spec DSL.md §2): an app-authored `View`
+  with values implements `Configurable<View.Config>`, holds a **`private`
+  constructor**, and exposes `static ViewBuilder<View, Config> with(Consumer<Config>)`
+  — creation goes through the configurator, never a parameterized constructor.
+  The `pathland-view-processor` `ViewAuthoringProcessor` **errors** on
+  public/protected constructors **with parameters** in custom `View`
+  implementations (no-arg roots and abstract views are exempt), so the
+  convention is compile-enforced where the processor is wired
+  (`annotationProcessorPaths`). The library's own views follow the same shape
+  (`Audio`, `Text`, …).
 - **SwiftUI-style `body()`**: composite views declare `View body()` (their subtree);
   the library's primitives override `render(Environment)` to materialize a
   `PathlandNode`. `body()` is evaluated **once at mount** — reactive values come from

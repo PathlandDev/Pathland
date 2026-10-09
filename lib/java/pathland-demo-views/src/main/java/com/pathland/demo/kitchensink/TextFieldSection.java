@@ -33,6 +33,6 @@ public final class TextFieldSection implements View {
                                 Frame.with(f -> f.width(240).height(64).alignment(Alignment.CENTER))),
                         Text.with(t -> t.text(greeting)).modifiers(
                                 Padding.with(p -> p.uniform(4))));
-        return new SectionCard("Text · TextField + TextEditor", content);
+        return SectionCard.with(s -> s.title("Text · TextField + TextEditor")).children(content);
     }
 }

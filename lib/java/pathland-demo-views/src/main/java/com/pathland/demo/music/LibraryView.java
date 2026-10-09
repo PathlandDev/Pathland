@@ -5,39 +5,87 @@ import com.pathland.view.signal.WritableSignal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * The library pane: the "Library" header and the full track list. Each row is a
  * {@link TrackRowView}; selecting one starts that track through the app-owned
  * player state (owned by the root view).
+ *
+ * <p>Configured with {@code LibraryView.with(l -> l.trackIndex(...).position(...)...)}
+ * — a private constructor keeps creation on the configurator (spec DSL.md §2).
  */
-public final class LibraryView implements View {
+public final class LibraryView implements View, Configurable<LibraryView.Config> {
 
-    private final WritableSignal<Integer> trackIndex;
-    private final WritableSignal<Float> position;
-    private final WritableSignal<Boolean> playing;
-    private final WritableSignal<Float> seekRequest;
+    /** {@link LibraryView} values. */
+    public static final class Config implements View.Config {
 
-    /**
-     * @param trackIndex the current track index
-     * @param position   the play position (seconds), reset on selection
-     * @param playing    whether a track is playing
-     * @param seekRequest the seek command signal (seconds), reset on selection so
-     *                    the newly-selected track starts from the beginning
-     */
-    public LibraryView(WritableSignal<Integer> trackIndex, WritableSignal<Float> position,
-                       WritableSignal<Boolean> playing, WritableSignal<Float> seekRequest) {
-        this.trackIndex = trackIndex;
-        this.position = position;
-        this.playing = playing;
-        this.seekRequest = seekRequest;
+        private WritableSignal<Integer> trackIndex;
+        private WritableSignal<Float> position;
+        private WritableSignal<Boolean> playing;
+        private WritableSignal<Float> seekRequest;
+
+        /** The current track index. */
+        public Config trackIndex(WritableSignal<Integer> trackIndex) {
+            this.trackIndex = trackIndex;
+            return this;
+        }
+
+        /** The play position (seconds), reset on selection. */
+        public Config position(WritableSignal<Float> position) {
+            this.position = position;
+            return this;
+        }
+
+        /** Whether a track is playing. */
+        public Config playing(WritableSignal<Boolean> playing) {
+            this.playing = playing;
+            return this;
+        }
+
+        /** The seek command signal (seconds), reset on selection so the
+         *  newly-selected track starts from the beginning. */
+        public Config seekRequest(WritableSignal<Float> seekRequest) {
+            this.seekRequest = seekRequest;
+            return this;
+        }
+    }
+
+    private final Config config;
+
+    private LibraryView(Config config) {
+        this.config = config;
+    }
+
+    /** Configure the library pane's values. */
+    public static ViewBuilder<LibraryView, Config> with(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new ViewBuilder<>(new LibraryView(config));
+    }
+
+    /** Apply modifiers to a bare library pane. */
+    public static ViewBuilder<LibraryView, Config> modifiers(ViewModifier... modifiers) {
+        return new ViewBuilder<>(new LibraryView(new Config())).modifiers(modifiers);
+    }
+
+    @Override
+    public Config config() {
+        return config;
     }
 
     @Override
     public View body() {
         List<View> rows = new ArrayList<>();
         for (int i = 0; i < MusicPlayerView.TRACKS.size(); i++) {
-            rows.add(new TrackRowView(MusicPlayerView.TRACKS.get(i), i, trackIndex, position, playing, seekRequest));
+            int index = i;
+            rows.add(TrackRowView.with(r -> r
+                    .track(MusicPlayerView.TRACKS.get(index))
+                    .index(index)
+                    .trackIndex(config.trackIndex)
+                    .position(config.position)
+                    .playing(config.playing)
+                    .seekRequest(config.seekRequest)));
         }
         // A trailing spacer absorbs the leftover vertical space.
         rows.add(Spacer.modifiers());

@@ -25,6 +25,6 @@ public final class MediaSection implements View {
                                 .modifiers(Frame.with(f -> f.width(320).height(180).alignment(Alignment.CENTER))),
                         Audio.with(a -> a.source("https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3")),
                         Text.with(t -> t.text("Playback controls are native — the app only supplies the source.")));
-        return new SectionCard("Media · video + audio (renderer-native controls)", content);
+        return SectionCard.with(s -> s.title("Media · video + audio (renderer-native controls)")).children(content);
     }
 }

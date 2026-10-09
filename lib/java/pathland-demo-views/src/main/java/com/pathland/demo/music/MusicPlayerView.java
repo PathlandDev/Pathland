@@ -93,11 +93,20 @@ public final class MusicPlayerView implements View {
         View mainArea = ZStack
                 .with(z -> z.alignment(Alignment.BOTTOM_CENTER))
                 .children(
-                        new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
+                        LibraryView.with(l -> l
+                                .trackIndex(trackIndex.signal())
+                                .position(position.signal())
+                                .playing(playing.signal())
+                                .seekRequest(seekRequest.signal())),
                         HStack
                                 .modifiers(Padding.with(p -> p.uniform(16)))
-                                .children(new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
-                                        seekRequest.signal(), volumeRequest.signal())
+                                .children(PlayerBar.with(p -> p
+                                        .trackIndex(trackIndex.signal())
+                                        .position(position.signal())
+                                        .playing(playing.signal())
+                                        .volume(volume.signal())
+                                        .seekRequest(seekRequest.signal())
+                                        .volumeRequest(volumeRequest.signal()))
                                         .with(
                                                 Border.with(b -> b.color(MusicPlayerView.BAR_BORDER).width(1).radius(500)),
                                                 Shadow.with(s -> s.radius(10)))),
@@ -106,7 +115,7 @@ public final class MusicPlayerView implements View {
                 .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(
                         mainArea,
-                        new NowPlayingSidebar(trackIndex.signal()).with(Clipped.with()));
+                        NowPlayingSidebar.with(s -> s.trackIndex(trackIndex.signal())).with(Clipped.with()));
         View compactRow = HStack
                 .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(mainArea);

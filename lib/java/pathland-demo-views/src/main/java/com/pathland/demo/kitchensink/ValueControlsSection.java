@@ -35,6 +35,6 @@ public final class ValueControlsSection implements View {
                         Stepper.with(s -> s.value(value.signal()).in(0f, 100f).step(5f)),
                         Gauge.with(g -> g.value(value.get()).minValue(0f).maxValue(100f)),
                         ProgressView.with(p -> p.value(value.get() / 100f)));
-        return new SectionCard("Value controls · Slider / Stepper / Gauge / Progress", content);
+        return SectionCard.with(s -> s.title("Value controls · Slider / Stepper / Gauge / Progress")).children(content);
     }
 }

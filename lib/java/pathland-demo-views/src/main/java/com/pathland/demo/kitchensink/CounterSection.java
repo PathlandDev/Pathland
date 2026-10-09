@@ -45,6 +45,6 @@ public final class CounterSection implements View {
                         Text.with(t -> t.text("Step size")).modifiers(
                                 ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88)))),
                         Stepper.with(s -> s.value(step.signal()).in(1, 10).step(1)));
-        return new SectionCard("Counter · State + Button + Stepper", content);
+        return SectionCard.with(s -> s.title("Counter · State + Button + Stepper")).children(content);
     }
 }

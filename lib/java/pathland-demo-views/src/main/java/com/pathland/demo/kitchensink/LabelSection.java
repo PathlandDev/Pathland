@@ -36,6 +36,6 @@ public final class LabelSection implements View {
                         Label.with(l -> l.title(status.signal()).icon(Icon.with(i -> i.name(IconName.INFO)))),
                         Button.with(b -> b.title("Toggle status")
                                 .action(() -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready"))));
-        return new SectionCard("Label · title + icon, three labelStyles", content);
+        return SectionCard.with(s -> s.title("Label · title + icon, three labelStyles")).children(content);
     }
 }

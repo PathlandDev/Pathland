@@ -60,7 +60,7 @@ public final class LayoutSection implements View {
                                                 CornerRadius.with(c -> c.radius(4)),
                                                 Offset.with(o -> o.x(0).y(28)))),
                         Divider.modifiers());
-        return new SectionCard("Layout · Grid / Lazy / HStack+Spacer / ZStack / Divider", content);
+        return SectionCard.with(s -> s.title("Layout · Grid / Lazy / HStack+Spacer / ZStack / Divider")).children(content);
     }
 
     private static View cell(String label) {

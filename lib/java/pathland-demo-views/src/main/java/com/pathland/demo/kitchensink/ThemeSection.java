@@ -43,6 +43,6 @@ public final class ThemeSection implements View {
                                 .modifiers(
                                         Padding.with(p -> p.uniform(8)),
                                         Background.with(b -> b.color(Color.token("control.background")))));
-        return new SectionCard("Theme · design tokens + SET_DESIGN_TOKEN overrides", content);
+        return SectionCard.with(s -> s.title("Theme · design tokens + SET_DESIGN_TOKEN overrides")).children(content);
     }
 }

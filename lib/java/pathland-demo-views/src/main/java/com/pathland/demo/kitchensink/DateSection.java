@@ -29,6 +29,6 @@ public final class DateSection implements View {
                         DatePicker.with(d -> d.mode(DatePickerMode.DATE).selection(days.signal())),
                         Text.with(t -> t.text(dateLabel)).modifiers(
                                 Padding.with(p -> p.uniform(4))));
-        return new SectionCard("DatePicker · PARAMETER::SET_DATE", content);
+        return SectionCard.with(s -> s.title("DatePicker · PARAMETER::SET_DATE")).children(content);
     }
 }

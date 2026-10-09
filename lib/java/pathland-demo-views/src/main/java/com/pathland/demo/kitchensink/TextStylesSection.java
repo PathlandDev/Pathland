@@ -48,6 +48,6 @@ public final class TextStylesSection implements View {
                         Text.with(t -> t.text("Centered")).modifiers(
                                 TextAlignment.CENTER,
                                 Frame.with(f -> f.width(180).alignment(Alignment.CENTER))));
-        return new SectionCard("Text styles · text modifiers", content);
+        return SectionCard.with(s -> s.title("Text styles · text modifiers")).children(content);
     }
 }
