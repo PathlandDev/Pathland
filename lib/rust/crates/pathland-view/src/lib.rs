@@ -84,8 +84,9 @@ use pathland_core::property_id;
 
 pub use pathland_core;
 pub use pathland_engine::{
-    assign_ids, collect_tap_handlers, component_type_id, AdaptiveTheme, Component, Engine, Gesture,
-    IntoSignalId, Node, Signal, SignalId, SignalValue, SignalValueKind, Theme, WritableSignal,
+    assign_ids, collect_input_handlers, collect_tap_handlers, component_type_id, AdaptiveTheme,
+    Component, Engine, Gesture, InputHandlers, IntoSignalId, Node, Signal, SignalId, SignalValue,
+    SignalValueKind, Theme, WritableSignal,
 };
 
 mod recognizer;
@@ -1015,6 +1016,56 @@ fn apply_color(node: &mut Node, prop: u16, color: Color) {
 
 fn build_children(children: &[Box<dyn View>]) -> Vec<Node> {
     children.iter().map(|c| c.build()).collect()
+}
+
+// --- two-way binding sinks (app-side; never serialized) --------------------
+
+fn text_sink(signal: WritableSignal<String>) -> pathland_engine::TextInputHandler {
+    Rc::new(RefCell::new(move |value: &str| {
+        signal.set(String::from(value));
+    }))
+}
+
+fn value_sink_f32(signal: WritableSignal<f32>) -> pathland_engine::ValueInputHandler {
+    Rc::new(RefCell::new(move |value: f32| {
+        signal.set(value);
+    }))
+}
+
+fn value_sink_bool(signal: WritableSignal<bool>) -> pathland_engine::ValueInputHandler {
+    Rc::new(RefCell::new(move |value: f32| {
+        signal.set(value > 0.0);
+    }))
+}
+
+/// Mark a node as value/text/date bound (the renderer's event gate).
+fn mark_binding(node: &mut Node) {
+    node.properties.insert(property_id::BINDING_ID, 1);
+}
+
+/// Bind a text control's value to a signal (two-way).
+fn bind_text(node: &mut Node, signal: WritableSignal<String>) {
+    node.text_binding = Some(signal.id());
+    mark_binding(node);
+    node.gestures.push(Gesture::TextInput(text_sink(signal)));
+}
+
+/// Bind an f32-valued property (`VALUE`) to a signal (two-way).
+fn bind_value_f32(node: &mut Node, prop: u16, signal: WritableSignal<f32>) {
+    let initial = signal.get().unwrap_or(0.0);
+    node.properties.insert(prop, initial.to_bits());
+    node.property_bindings.insert(prop, signal.id());
+    mark_binding(node);
+    node.gestures.push(Gesture::ValueInput(value_sink_f32(signal)));
+}
+
+/// Bind a bool-valued property (`SELECTED`) to a signal (two-way).
+fn bind_value_bool(node: &mut Node, prop: u16, signal: WritableSignal<bool>) {
+    let initial = signal.get().unwrap_or(false);
+    node.properties.insert(prop, if initial { 1 } else { 0 });
+    node.property_bindings.insert(prop, signal.id());
+    mark_binding(node);
+    node.gestures.push(Gesture::ValueInput(value_sink_bool(signal)));
 }
 
 // ---------------------------------------------------------------------------
@@ -1971,22 +2022,30 @@ children_static!(LazyHStack);
 // ---------------------------------------------------------------------------
 
 /// An interactive button.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Default)]
 pub struct Button {
     config: ButtonConfig,
 }
 
 /// [`Button`] values.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Default)]
 pub struct ButtonConfig {
     /// The button label.
     pub label: String,
+    /// The action fired on tap.
+    pub action: Option<Rc<RefCell<dyn FnMut() + 'static>>>,
 }
 
 impl ButtonConfig {
     /// Set the button label.
     pub fn label(&mut self, label: impl Into<String>) -> &mut Self {
         self.label = label.into();
+        self
+    }
+
+    /// Set the action fired on tap.
+    pub fn action(&mut self, action: impl FnMut() + 'static) -> &mut Self {
+        self.action = Some(Rc::new(RefCell::new(action)));
         self
     }
 }
@@ -2012,13 +2071,28 @@ impl Configurable for Button {
 
 impl View for Button {
     fn build(&self) -> Node {
-        plain_node(
+        let mut node = plain_node(
             Component::Button {
                 label: self.config.label.clone(),
             },
             Vec::new(),
             BTreeMap::new(),
-        )
+        );
+        // A button action is a tap gesture on the button node (whole button
+        // tappable); the renderer reports the raw pointer events.
+        if let Some(action) = &self.config.action {
+            let existing = node
+                .properties
+                .get(&property_id::EVENT_LISTENERS)
+                .copied()
+                .unwrap_or(0);
+            node.properties.insert(
+                property_id::EVENT_LISTENERS,
+                existing | pathland_core::listener::POINTER_DOWN | pathland_core::listener::POINTER_UP,
+            );
+            node.gestures.push(Gesture::Tap(action.clone()));
+        }
+        node
     }
 }
 
@@ -2030,22 +2104,30 @@ pub fn button(label: &str) -> Button {
 }
 
 /// A single-line text input.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct TextField {
     config: TextFieldConfig,
 }
 
 /// [`TextField`] values.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct TextFieldConfig {
     /// The placeholder (emits `PROMPT`).
     pub placeholder: String,
+    /// A two-way text binding (writes back on `TEXT_CHANGED`).
+    pub binding: Option<WritableSignal<String>>,
 }
 
 impl TextFieldConfig {
     /// Set the placeholder.
     pub fn placeholder(&mut self, placeholder: impl Into<String>) -> &mut Self {
         self.placeholder = placeholder.into();
+        self
+    }
+
+    /// Bind the field's value to a signal (two-way).
+    pub fn text(&mut self, signal: WritableSignal<String>) -> &mut Self {
+        self.binding = Some(signal);
         self
     }
 }
@@ -2076,6 +2158,9 @@ impl View for TextField {
             node.string_properties
                 .insert(property_id::PROMPT, self.config.placeholder.clone());
         }
+        if let Some(signal) = &self.config.binding {
+            bind_text(&mut node, signal.clone());
+        }
         node
     }
 }
@@ -2083,32 +2168,72 @@ impl View for TextField {
 view_statics!(TextField);
 
 /// A multi-line text input.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct TextEditor;
+#[derive(Debug, Clone, Default)]
+pub struct TextEditor {
+    config: TextEditorConfig,
+}
 
-impl View for TextEditor {
-    fn build(&self) -> Node {
-        plain_node(Component::TextEditor, Vec::new(), BTreeMap::new())
+/// [`TextEditor`] values.
+#[derive(Debug, Clone, Default)]
+pub struct TextEditorConfig {
+    /// A two-way text binding (writes back on `TEXT_CHANGED`).
+    pub binding: Option<WritableSignal<String>>,
+}
+
+impl TextEditorConfig {
+    /// Bind the editor's value to a signal (two-way).
+    pub fn text(&mut self, signal: WritableSignal<String>) -> &mut Self {
+        self.binding = Some(signal);
+        self
     }
 }
 
+impl Configurable for TextEditor {
+    type Config = TextEditorConfig;
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
+    fn config_mut(&mut self) -> &mut Self::Config {
+        &mut self.config
+    }
+}
+
+impl View for TextEditor {
+    fn build(&self) -> Node {
+        let mut node = plain_node(Component::TextEditor, Vec::new(), BTreeMap::new());
+        if let Some(signal) = &self.config.binding {
+            bind_text(&mut node, signal.clone());
+        }
+        node
+    }
+}
+
+view_statics!(TextEditor);
+
 /// A boolean control with a `TOGGLE_STYLE` token (0=Switch, 1=Checkbox, 2=Button).
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Toggle {
     config: ToggleConfig,
 }
 
 /// [`Toggle`] values.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ToggleConfig {
     /// The `TOGGLE_STYLE` token (0=Switch, 1=Checkbox, 2=Button).
     pub style: u8,
+    /// A two-way boolean binding (writes back on `VALUE_CHANGED`).
+    pub binding: Option<WritableSignal<bool>>,
 }
 
 impl ToggleConfig {
     /// Set the toggle style token.
     pub fn style(&mut self, style: u8) -> &mut Self {
         self.style = style;
+        self
+    }
+    /// Bind the checked state to a signal (two-way).
+    pub fn is_on(&mut self, signal: WritableSignal<bool>) -> &mut Self {
+        self.binding = Some(signal);
         self
     }
 }
@@ -2120,7 +2245,11 @@ impl View for Toggle {
             property_id::TOGGLE_STYLE,
             (self.config.style as f32).to_bits(),
         );
-        plain_node(Component::Toggle, Vec::new(), p)
+        let mut node = plain_node(Component::Toggle, Vec::new(), p);
+        if let Some(signal) = &self.config.binding {
+            bind_value_bool(&mut node, property_id::SELECTED, signal.clone());
+        }
+        node
     }
 }
 
@@ -2137,13 +2266,13 @@ impl Configurable for Toggle {
 view_statics!(Toggle);
 
 /// A numeric range control.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Slider {
     config: RangeConfig,
 }
 
-/// A numeric range (`Slider`/`Stepper`): value + min + max.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+/// A numeric range (`Slider`/`Stepper`): value + min + max (+ optional binding).
+#[derive(Debug, Clone, Default)]
 pub struct RangeConfig {
     /// The current value.
     pub value: f32,
@@ -2151,6 +2280,8 @@ pub struct RangeConfig {
     pub min: f32,
     /// The range maximum.
     pub max: f32,
+    /// A two-way value binding (writes back on `VALUE_CHANGED`).
+    pub binding: Option<WritableSignal<f32>>,
 }
 
 impl RangeConfig {
@@ -2166,6 +2297,12 @@ impl RangeConfig {
         self.max = max;
         self
     }
+    /// Bind the value to a signal (two-way); its current value is the initial.
+    pub fn bind(&mut self, signal: WritableSignal<f32>) -> &mut Self {
+        self.value = signal.get().unwrap_or(0.0);
+        self.binding = Some(signal);
+        self
+    }
 }
 
 fn range_props(config: &RangeConfig) -> BTreeMap<u16, u32> {
@@ -2176,9 +2313,17 @@ fn range_props(config: &RangeConfig) -> BTreeMap<u16, u32> {
     p
 }
 
+fn build_range(component: Component, config: &RangeConfig) -> Node {
+    let mut node = plain_node(component, Vec::new(), range_props(config));
+    if let Some(signal) = &config.binding {
+        bind_value_f32(&mut node, property_id::VALUE, signal.clone());
+    }
+    node
+}
+
 impl View for Slider {
     fn build(&self) -> Node {
-        plain_node(Component::Slider, Vec::new(), range_props(&self.config))
+        build_range(Component::Slider, &self.config)
     }
 }
 
@@ -2195,14 +2340,14 @@ impl Configurable for Slider {
 view_statics!(Slider);
 
 /// An increment/decrement control.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Stepper {
     config: RangeConfig,
 }
 
 impl View for Stepper {
     fn build(&self) -> Node {
-        plain_node(Component::Stepper, Vec::new(), range_props(&self.config))
+        build_range(Component::Stepper, &self.config)
     }
 }
 
@@ -2219,26 +2364,68 @@ impl Configurable for Stepper {
 view_statics!(Stepper);
 
 /// A date & time picker.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct DatePicker;
+#[derive(Debug, Clone, Default)]
+pub struct DatePicker {
+    config: DatePickerConfig,
+}
+
+/// [`DatePicker`] values.
+#[derive(Debug, Clone, Default)]
+pub struct DatePickerConfig {
+    /// The `DATE_PICKER_MODE` token (date/time/dateAndTime).
+    pub mode: u8,
+}
+
+impl DatePickerConfig {
+    /// Set the `DATE_PICKER_MODE` token.
+    pub fn mode(&mut self, mode: u8) -> &mut Self {
+        self.mode = mode;
+        self
+    }
+}
+
+impl Configurable for DatePicker {
+    type Config = DatePickerConfig;
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
+    fn config_mut(&mut self) -> &mut Self::Config {
+        &mut self.config
+    }
+}
 
 impl View for DatePicker {
     fn build(&self) -> Node {
-        plain_node(Component::DatePicker, Vec::new(), BTreeMap::new())
+        let mut node = plain_node(Component::DatePicker, Vec::new(), BTreeMap::new());
+        if self.config.mode != 0 {
+            node.properties.insert(
+                property_id::DATE_PICKER_MODE,
+                (self.config.mode as f32).to_bits(),
+            );
+        }
+        node
     }
 }
+
+view_statics!(DatePicker);
 
 container_debug!(Picker);
 /// A selection control (options are children).
 #[derive(Default)]
 pub struct Picker {
     children: Vec<Box<dyn View>>,
+    binding: Option<WritableSignal<f32>>,
 }
 
 impl Picker {
     /// An empty picker.
     pub fn new() -> Self {
         Self::default()
+    }
+    /// Bind the selected index (as `f32`) to a signal (two-way).
+    pub fn bind(mut self, signal: WritableSignal<f32>) -> Self {
+        self.binding = Some(signal);
+        self
     }
 }
 
@@ -2250,11 +2437,15 @@ impl Children for Picker {
 
 impl View for Picker {
     fn build(&self) -> Node {
-        plain_node(
+        let mut node = plain_node(
             Component::Picker,
             build_children(&self.children),
             BTreeMap::new(),
-        )
+        );
+        if let Some(signal) = &self.binding {
+            bind_value_f32(&mut node, property_id::VALUE, signal.clone());
+        }
+        node
     }
 }
 
@@ -2293,13 +2484,13 @@ impl View for Menu {
 children_static!(Menu);
 
 /// A native color picker.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ColorPicker {
     config: ColorPickerConfig,
 }
 
 /// [`ColorPicker`] values.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ColorPickerConfig {
     /// The packed `0xAARRGGBB` value.
     pub value: u32,
@@ -2987,6 +3178,87 @@ mod tests {
         })
         .build();
         assert_eq!(node.text_binding, Some(id));
+    }
+
+    #[test]
+    fn text_field_two_way_binding_writes_the_signal() {
+        let engine = Engine::new();
+        let name = engine.signal(String::from("initial"));
+        let node = TextField::with(|t| {
+            t.placeholder("Name");
+            t.text(name.clone());
+        })
+        .build();
+        assert_eq!(node.text_binding, Some(name.id()));
+        assert!(node.properties.contains_key(&property_id::BINDING_ID));
+
+        let mut handlers = InputHandlers::default();
+        collect_input_handlers(&node, &mut handlers);
+        (handlers.text.get(&0).unwrap().borrow_mut())("updated");
+        assert_eq!(name.get(), Some(String::from("updated")));
+    }
+
+    #[test]
+    fn toggle_two_way_binding_writes_the_signal() {
+        let engine = Engine::new();
+        let on = engine.signal(false);
+        let node = Toggle::with(|t| {
+            t.is_on(on.clone());
+        })
+        .build();
+        assert_eq!(
+            node.property_bindings.get(&property_id::SELECTED),
+            Some(&on.id())
+        );
+
+        let mut handlers = InputHandlers::default();
+        collect_input_handlers(&node, &mut handlers);
+        (handlers.value.get(&0).unwrap().borrow_mut())(1.0);
+        assert_eq!(on.get(), Some(true));
+    }
+
+    #[test]
+    fn slider_two_way_binding_reads_initial_and_writes() {
+        let engine = Engine::new();
+        let value = engine.signal(5.0f32);
+        let node = Slider::with(|s| {
+            s.min(0.0);
+            s.max(10.0);
+            s.bind(value.clone());
+        })
+        .build();
+        // The initial value comes from the signal.
+        assert_eq!(
+            node.properties.get(&property_id::VALUE),
+            Some(&5.0f32.to_bits())
+        );
+        assert_eq!(
+            node.property_bindings.get(&property_id::VALUE),
+            Some(&value.id())
+        );
+
+        let mut handlers = InputHandlers::default();
+        collect_input_handlers(&node, &mut handlers);
+        (handlers.value.get(&0).unwrap().borrow_mut())(7.5);
+        assert_eq!(value.get(), Some(7.5));
+    }
+
+    #[test]
+    fn button_action_wires_a_tap() {
+        let node = Button::with(|b| {
+            b.label("Go");
+            b.action(|| {});
+        })
+        .build();
+        let listeners = node
+            .properties
+            .get(&property_id::EVENT_LISTENERS)
+            .copied()
+            .unwrap_or(0);
+        assert!(listeners & pathland_core::listener::POINTER_DOWN != 0);
+        let mut taps = BTreeMap::new();
+        collect_tap_handlers(&node, &mut taps);
+        assert!(taps.contains_key(&0));
     }
 
     #[test]

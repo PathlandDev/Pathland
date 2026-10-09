@@ -15,6 +15,15 @@ use pathland_core::component_type;
 
 use crate::signal::SignalId;
 
+/// An app-side tap callback.
+pub type TapHandler = Rc<RefCell<dyn FnMut() + 'static>>;
+/// An app-side value (`f32`) input sink.
+pub type ValueInputHandler = Rc<RefCell<dyn FnMut(f32) + 'static>>;
+/// An app-side text input sink.
+pub type TextInputHandler = Rc<RefCell<dyn FnMut(&str) + 'static>>;
+/// An app-side date input sink.
+pub type DateInputHandler = Rc<RefCell<dyn FnMut(i32, u32) + 'static>>;
+
 /// A node in the retained view tree (the application's canonical UI tree).
 #[derive(Clone, PartialEq)]
 pub struct Node {
@@ -83,21 +92,34 @@ impl Node {
     }
 }
 
-/// An app-side gesture handler attached to a view.
+/// An app-side gesture / input handler attached to a view.
 ///
 /// Callbacks live only in the application's retained tree and are **never**
 /// emitted as protocol — the protocol carries only the declarative
-/// `EVENT_LISTENERS` signal. Tap is the first gesture; more can be added later.
+/// `EVENT_LISTENERS` / `BINDING_ID` signals. A tap is composed app-side from raw
+/// pointer events; `ValueInput`/`TextInput`/`DateInput` are the two-way binding
+/// sinks a host routes a control's `VALUE_CHANGED` / `TEXT_CHANGED` /
+/// `DATE_CHANGED` into.
 #[derive(Clone)]
 pub enum Gesture {
     /// A tap gesture: invoke the closure when a tap is recognized.
-    Tap(Rc<RefCell<dyn FnMut() + 'static>>),
+    Tap(TapHandler),
+    /// A value control's sink: write the bound signal from `VALUE_CHANGED`.
+    ValueInput(ValueInputHandler),
+    /// A text control's sink: write the bound signal from `TEXT_CHANGED`.
+    TextInput(TextInputHandler),
+    /// A date control's sink: write the bound signal from `DATE_CHANGED`.
+    DateInput(DateInputHandler),
 }
 
 impl PartialEq for Gesture {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Gesture::Tap(a), Gesture::Tap(b)) => Rc::ptr_eq(a, b),
+            (Gesture::ValueInput(a), Gesture::ValueInput(b)) => Rc::ptr_eq(a, b),
+            (Gesture::TextInput(a), Gesture::TextInput(b)) => Rc::ptr_eq(a, b),
+            (Gesture::DateInput(a), Gesture::DateInput(b)) => Rc::ptr_eq(a, b),
+            _ => false,
         }
     }
 }
@@ -106,6 +128,9 @@ impl core::fmt::Debug for Gesture {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Gesture::Tap(_) => f.write_str("Tap(..)"),
+            Gesture::ValueInput(_) => f.write_str("ValueInput(..)"),
+            Gesture::TextInput(_) => f.write_str("TextInput(..)"),
+            Gesture::DateInput(_) => f.write_str("DateInput(..)"),
         }
     }
 }
@@ -264,15 +289,49 @@ pub fn assign_ids(root: &mut Node, next: &mut u32) {
 /// Call after [`assign_ids`] so each node has its stable id; the returned map
 /// keys the recognizer's tap target to the closure registered by
 /// `.on_tap_gesture(...)`.
-pub fn collect_tap_handlers(
-    root: &Node,
-    out: &mut BTreeMap<u32, Rc<RefCell<dyn FnMut() + 'static>>>,
-) {
+pub fn collect_tap_handlers(root: &Node, out: &mut BTreeMap<u32, TapHandler>) {
     for gesture in &root.gestures {
-        let Gesture::Tap(handler) = gesture;
-        out.insert(root.id, handler.clone());
+        if let Gesture::Tap(handler) = gesture {
+            out.insert(root.id, handler.clone());
+        }
     }
     for child in &root.children {
         collect_tap_handlers(child, out);
+    }
+}
+
+/// App-side two-way binding sinks collected from a built (and id-assigned) tree,
+/// keyed by node id. A host routes the control events into these:
+/// `TEXT_CHANGED` → [`InputHandlers::text`], `VALUE_CHANGED` →
+/// [`InputHandlers::value`], `DATE_CHANGED` → [`InputHandlers::date`]. Each sink
+/// writes its bound signal; re-emit the tree afterwards to flush the delta.
+#[derive(Default)]
+pub struct InputHandlers {
+    /// `TEXT_CHANGED` sinks (text fields / editors).
+    pub text: BTreeMap<u32, TextInputHandler>,
+    /// `VALUE_CHANGED` sinks (toggle / slider / stepper / picker / color picker).
+    pub value: BTreeMap<u32, ValueInputHandler>,
+    /// `DATE_CHANGED` sinks (date pickers).
+    pub date: BTreeMap<u32, DateInputHandler>,
+}
+
+/// Collect the two-way binding sinks from a built (and id-assigned) tree.
+pub fn collect_input_handlers(root: &Node, out: &mut InputHandlers) {
+    for gesture in &root.gestures {
+        match gesture {
+            Gesture::TextInput(handler) => {
+                out.text.insert(root.id, handler.clone());
+            }
+            Gesture::ValueInput(handler) => {
+                out.value.insert(root.id, handler.clone());
+            }
+            Gesture::DateInput(handler) => {
+                out.date.insert(root.id, handler.clone());
+            }
+            Gesture::Tap(_) => {}
+        }
+    }
+    for child in &root.children {
+        collect_input_handlers(child, out);
     }
 }

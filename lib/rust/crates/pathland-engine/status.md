@@ -47,14 +47,18 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
   bound nodes (`set_signal` re-emits every changed cell's node deps).
 - **Signals bound to node text/properties**: `set_signal` re-emits only the
   bound nodes (`SET_TEXT`/`SET_PROPERTY`); `get_signal` returns the current value.
-- **Gestures**: `Tap` (app-side callback, never serialized).
+- **Gestures / input sinks**: `Gesture::Tap` (app-side callback) plus the
+  two-way binding sinks `Gesture::ValueInput`/`TextInput`/`DateInput` (with
+  `TapHandler`/`ValueInputHandler`/`TextInputHandler`/`DateInputHandler` aliases).
+  `collect_tap_handlers` and `collect_input_handlers` (→ `InputHandlers`) expose
+  the app-side registries; sinks are never serialized.
 - **`assign_ids`** (pre-order stable ids).
 
 ## Not implemented / gaps
 
-- Only the `Tap` gesture.
+- Only the `Tap` gesture plus value/text/date input sinks; no other gesture.
 - Signal-bound properties cannot carry token refs (a token ref is a static path).
-- No two-way value/text input sinks or routing (the host drives `set_signal`).
+- `get_signal` returns an owned value (the store is shared via `Rc<RefCell>`).
 
 ## Verified by
 

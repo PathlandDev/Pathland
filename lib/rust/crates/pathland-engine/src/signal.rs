@@ -47,11 +47,15 @@ pub enum SignalValue {
 impl SignalValue {
     /// Pack this value as a `SET_PROPERTY` `u32` value. `None` for [`Str`],
     /// which is only valid for text bindings.
+    ///
+    /// `Bool` packs as a raw `0`/`1` (the boolean properties are `U8`);
+    /// `Enum` packs as the enum code widened to an F32 bit pattern (the enum
+    /// properties are `F32`).
     pub fn to_property_u32(&self) -> Option<u32> {
         match self {
             SignalValue::F32(f) => Some(f.to_bits()),
             SignalValue::U32(u) => Some(*u),
-            SignalValue::Bool(b) => Some(if *b { 1.0f32 } else { 0.0f32 }.to_bits()),
+            SignalValue::Bool(b) => Some(if *b { 1 } else { 0 }),
             SignalValue::Enum(e) => Some((*e as f32).to_bits()),
             SignalValue::Str(_) => None,
         }
@@ -569,6 +573,15 @@ impl<T: SignalValueKind> WritableSignal<T> {
     pub fn get(&self) -> Option<T> {
         self.runtime.read(self.id)
     }
+
+    /// Write the value (updates dependent computeds and runs affected effects).
+    ///
+    /// This does **not** emit into the ring (the runtime has no guest); a host's
+    /// two-way binding sink calls it and then re-emits the tree to flush the
+    /// node delta.
+    pub fn set(&self, value: T) -> Vec<SignalId> {
+        self.runtime.set(self.id, value.into_signal_value())
+    }
 }
 
 impl<T> Clone for WritableSignal<T> {
@@ -688,8 +701,8 @@ mod tests {
     fn packing_matches_protocol_convention() {
         assert_eq!(SignalValue::F32(4.0).to_property_u32(), Some(4.0f32.to_bits()));
         assert_eq!(SignalValue::U32(0xFF_0000FF).to_property_u32(), Some(0xFF_0000FF));
-        assert_eq!(SignalValue::Bool(true).to_property_u32(), Some(1.0f32.to_bits()));
-        assert_eq!(SignalValue::Bool(false).to_property_u32(), Some(0.0f32.to_bits()));
+        assert_eq!(SignalValue::Bool(true).to_property_u32(), Some(1));
+        assert_eq!(SignalValue::Bool(false).to_property_u32(), Some(0));
         assert_eq!(SignalValue::Enum(2).to_property_u32(), Some(2.0f32.to_bits()));
         assert_eq!(SignalValue::Str("x".into()).to_property_u32(), None);
         assert_eq!(SignalValue::Str("x".into()).to_text(), Some("x"));

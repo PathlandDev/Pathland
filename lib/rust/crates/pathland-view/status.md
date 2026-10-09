@@ -65,11 +65,22 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   `ForegroundStyle::bound`, `Background::bound`, `Opacity::bound`, or generic
   `Bound::new(prop, sig)`) to a signal, so a change re-emits only that node's
   `SET_TEXT`/`SET_PROPERTY` (a computed's change re-emits its bound nodes too).
+- **Two-way bindings + actions (Phase 2)**: a control binds a writable signal
+  and records an app-side **input sink** (a `Gesture::TextInput`/`ValueInput`/
+  `DateInput` on the node, never serialized) plus the `BINDING_ID` event gate —
+  `TextField`/`TextEditor` (`t.text(sig)`), `Toggle` (`t.is_on(sig)`),
+  `Slider`/`Stepper` (`s.bind(sig)`, initial from the signal), `Picker`
+  (`p.bind(sig)`). `Button::action(f)` wires the tap. A host collects the sinks
+  with `collect_input_handlers` and routes `TEXT_CHANGED`/`VALUE_CHANGED`/
+  `DATE_CHANGED` into them (the sink writes the signal; the host re-emits the
+  tree to flush the delta).
 
 ## Not implemented / gaps
 
-- **Two-way bindings (value controls) + actions**: no `valueInput`/`textInput`
-  sinks or event routing; `Button` carries a string label only.
+- **Renderer coverage**: the GTK renderer reports `VALUE_CHANGED`/`TEXT_CHANGED`
+  for Toggle/Slider/TextField/Picker; Stepper/TextEditor/DatePicker/ColorPicker
+  sink wiring lands in the DSL but the renderer side for some controls is still
+  to come. Date/color two-way is not wired (needs `SET_DATE`).
 - **Styles / environment**: no `ButtonStyle`/`LabelStyle`/… or `EnvironmentKey`
   subtree scoping (Phase 3).
 - **Navigation / conditional**: `Router`/`RouteTable`/`NavigationContainer`/
