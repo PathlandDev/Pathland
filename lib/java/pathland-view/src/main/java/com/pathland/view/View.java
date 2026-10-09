@@ -24,6 +24,15 @@ import com.pathland.view.signal.Signal;
 public interface View {
 
     /**
+     * The base marker for a view's **value config** ({@code V.Config}). The
+     * config is populated by the static {@code View.with(Consumer<Config>)}
+     * factory and is the same type a style's {@code makeBody(Config)} reads
+     * (spec DSL.md §5.7).
+     */
+    interface Config {
+    }
+
+    /**
      * Declarative composition: a composite view returns its subtree here. Primitives
      * return {@code this} (the identity body) and instead override
      * {@link #render(Environment)}.
