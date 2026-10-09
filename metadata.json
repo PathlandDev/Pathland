@@ -3,7 +3,7 @@
   "checkpoint_id": "01M4FS8M6F445GBGTEDP7EZ6TY",
   "strategy": "manual-commit",
   "branch": "spec/dsl-v2-authoring-surface",
-  "checkpoints_count": 6,
+  "checkpoints_count": 7,
   "files_touched": [
     "lib/rust/crates/pathland-render-gtk-demo/src/main.rs",
     "lib/rust/crates/pathland-render-gtk/src/host.rs",
@@ -32,6 +32,13 @@
       "transcript": "/2/full.jsonl",
       "compact_transcript": "/2/transcript.jsonl",
       "content_hash": "/2/content_hash.txt",
+      "prompt": ""
+    },
+    {
+      "metadata": "/3/metadata.json",
+      "transcript": "/3/full.jsonl",
+      "compact_transcript": "/3/transcript.jsonl",
+      "content_hash": "/3/content_hash.txt",
       "prompt": ""
     }
   ],
