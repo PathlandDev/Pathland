@@ -3,7 +3,7 @@
   "checkpoint_id": "01M4GA5MTDBAKYVC71Y2TF423J",
   "strategy": "manual-commit",
   "branch": "style/demo-chain-order",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/SplitNavDemo.java",
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterControls.java",
@@ -39,6 +39,13 @@
       "transcript": "/0/full.jsonl",
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
       "prompt": ""
     }
   ],
