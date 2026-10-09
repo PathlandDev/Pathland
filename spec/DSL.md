@@ -194,7 +194,7 @@ Per-language adaptation summary:
 |----------|------|-----------------------|---------|
 | SwiftUI | `camelCase` | trailing closures + result builder | `VStack(alignment: .center, spacing: 8) { Text("x").padding(16) }` |
 | Java (`com.pathland.view`) | `camelCase` | `with(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.with(v -> v.spacing(8)).children(Text.with(t -> t.text("x")).modifiers(Padding.with(p -> p.uniform(16))))` |
-| Rust (`pathland-view`) | `snake_case` | assoc fn + `ViewExt` trait + macros | `vstack![text("x").modifiers([Padding(16.0)])]` |
+| Rust (`pathland-view`) | `snake_case` | assoc fn + `ViewExt` trait + macros | `vstack![text("x").modifiers(Padding(16.0))]` |
 
 ---
 
@@ -442,7 +442,7 @@ bitmask (transport-aware event guards) — see [EVENTS.md](./EVENTS.md).
 
 | Gesture | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL |
 |---------|---------------------------|----------|----------|
-| tap | `.onTapGesture { action }` | `.modifiers(TapGesture.with(g -> g.action(Runnable)))` | `.on_tap_gesture(f)` |
+| tap | `.onTapGesture { action }` | `.modifiers(TapGesture.with(g -> g.action(Runnable)))` | `.modifiers(TapGesture::new(f))` |
 | raw pointer | `.gesture` composition from raw inputs | `.modifiers(PointerEvents.with(p -> p.mask(int)))` | `.pointer_events(u32 mask)` |
 
 Tap is **not** a protocol event: it is composed app-side from `POINTER_DOWN`
@@ -849,8 +849,8 @@ every conformant DSL: modifiers are never hard-bound to a view type.
 | | Canonical | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view`) |
 |-|-----------|-------------------------------|----------------------------|
 | authoring | `struct Card: ViewModifier { func body(content: Content) -> some View }` | `@FunctionalInterface ViewModifier { View body(View content) }` | `trait ViewModifier { fn apply(&mut Node) }` |
-| applying | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` / `content.modifiers(A, B)` | `content.with(Card)` |
-| single-value | `.modifier(Padding(16))` | `content.modifiers(Padding.with(p -> p.uniform(16)))` | `content.with(Padding(16.0))` |
+| applying | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` / `content.modifiers(A, B)` | `content.modifiers(Card)` |
+| single-value | `.modifier(Padding(16))` | `content.modifiers(Padding.with(p -> p.uniform(16)))` | `content.modifiers(Padding(16.0))` |
 
 **Composition**: a custom modifier composes core modifiers **or** wraps
 `content` with additional structure (a background, an overlay, a frame) and
@@ -863,7 +863,8 @@ emission stays diff-based, and a renderer that cannot apply a modifier
 
 **Realization deltas**:
 - **Rust** — every core modifier (`Padding`, `FontSize`, `ForegroundStyle`,
-  `Frame`, …) implements `ViewModifier`, and `.modifiers([...])` applies them.
+  `Frame`, …) implements `ViewModifier`, and `.modifiers(...)` applies them
+  (a single modifier or a tuple).
   Caveat: `apply(&mut Node)` mutates the built node's properties only — it
   cannot wrap `content` with new structure (the Java/SwiftUI `body(content)`
   form can). A conformant DSL's custom-modifier mechanism should support
@@ -1269,8 +1270,8 @@ language's idioms. The canonical (Java/SwiftUI-shaped) spelling is
 | Aspect | Java | C# | Rust | Go | Python |
 |--------|------|----|------|----|--------|
 | configure values | `with(c -> …)` | `With(c => …)` | `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
-| apply modifiers | `.modifiers(…)` | `.Modifiers(…)` | `.modifiers([…])` | `.Modifiers(…)` | `.modifiers(…)` |
-| supply children | `.children(…)` | `.Children(…)` | `.children([…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
+| apply modifiers | `.modifiers(…)` | `.Modifiers(…)` | `.modifiers(…)` (single or tuple) | `.Modifiers(…)` | `.modifiers(…)` |
+| supply children | `.children(…)` | `.Children(…)` | `.children(vec![…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
 | creation + chaining | static on the view; chain on the returned builder | static on the view; chain via **extension methods** | associated fn `Type::with`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
 | same-name static + chain | **builder split** (static on class, chain on builder) | extension methods (separate static class) | assoc fn + trait method | package func + method (not type-scoped) | **not expressible** (methods are last-wins) |
 | `with` name legal | yes | yes (`With`; lowercase `with` is the record keyword) | yes | yes | **no** — `with` is a keyword → kwargs / `configure` |
@@ -1320,27 +1321,27 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 | SwiftUI | Canonical DSL | Java DSL | Rust DSL |
 |---------|---------------|----------|----------|
 | `Text("Hi")` | `Text("Hi")` | `Text.with(t -> t.text("Hi"))` | `text("Hi")` |
-| `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.with(v -> v.alignment(Alignment.CENTER).spacing(8)).children(…)` | `vstack![…].modifiers([Spacing(8.0)])` |
+| `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.with(v -> v.alignment(Alignment.CENTER).spacing(8)).children(…)` | `VStack::with(\|v\| { v.spacing(8.0); }).children(vec![…])` |
 | `Button("+") { inc() }` | `Button("+", action)` | `Button.with(b -> b.title("+").action(() -> inc()))` | `button("+")` (no action yet) |
 | `TextField("Name", text: $name)` | `TextField("Name", text: writable)` | `TextField.with(t -> t.placeholder("Name").text(name))` | `TextField::new` (no binding yet) |
 | `Toggle("On", isOn: $on)` | `Toggle("On", isOn: writable)` | `Toggle.with(t -> t.label("On").isOn(binding))` | `Toggle(style)` (no binding yet) |
 | `Slider(value: $v, in: 0...100)` | `Slider(value: writable, in: min...max)` | `Slider.with(s -> s.value(vSig).min(0).max(100))` | `Slider::new` (no binding yet) |
 | `DatePicker("D", selection: $d)` | `DatePicker("D", selection: writable)` | `DatePicker.with(d -> d.mode(DatePickerMode.DATE).selection(days))` | `DatePicker` (bare) |
-| `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.modifiers(ForegroundStyle.with(f -> f.color(Color)))` | `.foreground_style(Color(0xFF0000FF))` |
-| `.background(.gray)` | `.background(Color)` | `.modifiers(Background.with(b -> b.color(Color)))` | `.background(Color(0xFFEEEEEE))` |
-| `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.modifiers(Border.with(b -> b.color(Color).width(2)))` | `.border(Color, 2.0)` |
-| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.modifiers(Frame.with(f -> f.width(100).height(24)))` | `.frame(Some(100.0), Some(24.0), None)` |
-| `.padding(16)` | `.padding(16)` | `.modifiers(Padding.with(p -> p.uniform(16)))` | `.padding(16.0)` |
-| `.font(.system(size: 28))` | `.font(size: 28)` | `.modifiers(Font.with(f -> f.system(28)))` | `.font_size(28.0)` |
-| `.font(.largeTitle)` | `.font(Font.largeTitle())` | `.modifiers(Font.largeTitle())` | `.font(Font::large_title())` |
-| `.font(.custom("Georgia", size: 20))` | `.font(Font.custom("Georgia", 20))` | `.modifiers(Font.with(f -> f.custom("Georgia", 20)))` | `.font(Font::custom("Georgia", 20.0))` |
-| `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.modifiers(FontWeight.BOLD)` | `.font_weight(700.0)` |
+| `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.modifiers(ForegroundStyle.with(f -> f.color(Color)))` | `.modifiers(ForegroundStyle(Color::argb(0xFF0000FF)))` |
+| `.background(.gray)` | `.background(Color)` | `.modifiers(Background.with(b -> b.color(Color)))` | `.modifiers(Background(Color::argb(0xFFEEEEEE)))` |
+| `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.modifiers(Border.with(b -> b.color(Color).width(2)))` | `.modifiers(Border::new(Color::argb(…), 2.0))` |
+| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.modifiers(Frame.with(f -> f.width(100).height(24)))` | `.modifiers(Frame::new(Some(100.0), Some(24.0), None))` |
+| `.padding(16)` | `.padding(16)` | `.modifiers(Padding.with(p -> p.uniform(16)))` | `.modifiers(Padding(16.0))` |
+| `.font(.system(size: 28))` | `.font(size: 28)` | `.modifiers(Font.with(f -> f.system(28)))` | `.modifiers(FontSize(28.0))` |
+| `.font(.largeTitle)` | `.font(Font.largeTitle())` | `.modifiers(Font.largeTitle())` | `.modifiers(Font::large_title())` |
+| `.font(.custom("Georgia", size: 20))` | `.font(Font.custom("Georgia", 20))` | `.modifiers(Font.with(f -> f.custom("Georgia", 20)))` | `.modifiers(Font::custom("Georgia", 20.0))` |
+| `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.modifiers(FontWeight.BOLD)` | `.modifiers(FontWeight(700.0))` |
 | `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.modifiers(Shadow.with(s -> s.color(Color).radius(r).x(x).y(y)))` | (not yet) |
-| `.onTapGesture { go() }` | `.onTapGesture(action)` | `.modifiers(TapGesture.with(g -> g.action(() -> go())))` | `.on_tap_gesture(\|\| go())` |
+| `.onTapGesture { go() }` | `.onTapGesture(action)` | `.modifiers(TapGesture.with(g -> g.action(() -> go())))` | `.modifiers(TapGesture::new(\|\| go()))` |
 | `if showLogin { LoginView() } else { HomeView() }` | `if/else` in a result builder | `Conditional.when(showLogin, new LoginView(), new HomeView())` | `if`/`match` in `build()` |
 | `NavigationStack { … }` | `Router` + `NavigationContainer` | `NavigationContainer.with(n -> n.router(router))` | `NavigationContainer::with(\|n\| n.router(router))` |
 | `NavigationLink("Users", value:)` | `NavigationLink("label", router, to)` | `NavigationLink.with(l -> l.label("Users").router(router).to("/users"))` | `navigation_link(...)` |
-| `content.modifier(Card())` | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` | `.with(Card)` |
+| `content.modifier(Card())` | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` | `.modifiers(Card)` |
 
 The three operations (`with` / `modifiers` / `children`) are the one mechanism
 for construction and modification alike

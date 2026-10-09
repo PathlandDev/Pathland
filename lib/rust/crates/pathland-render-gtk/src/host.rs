@@ -441,7 +441,7 @@ mod tests {
     use super::*;
     use pathland_engine::Engine;
     use pathland_core::{init_memory, Guest, MemoryLayout};
-    use pathland_view::{assign_ids, text, vstack, View, ViewExt};
+    use pathland_view::{assign_ids, text, vstack, Configurable, Padding, View, ViewExt};
 
     #[test]
     fn decodes_a_declarative_frame() {
@@ -450,8 +450,10 @@ mod tests {
         init_memory(&mut mem, &layout);
 
         let mut root = vstack![text("ab"), text("cd")]
-            .spacing(4.0)
-            .padding(8.0)
+            .with(|v| {
+                v.spacing(4.0);
+            })
+            .modifiers(Padding(8.0))
             .build();
         assign_ids(&mut root, &mut 1);
 
@@ -491,8 +493,10 @@ mod tests {
         let mut tree = RenderTree::default();
 
         let mut a = vstack![text("ab")]
-            .spacing(4.0)
-            .padding(8.0)
+            .with(|v| {
+                v.spacing(4.0);
+            })
+            .modifiers(Padding(8.0))
             .build();
         assign_ids(&mut a, &mut 1);
         {
@@ -508,8 +512,10 @@ mod tests {
 
         // Delta: spacing 4 -> 12.
         let mut b = vstack![text("ab")]
-            .spacing(12.0)
-            .padding(8.0)
+            .with(|v| {
+                v.spacing(12.0);
+            })
+            .modifiers(Padding(8.0))
             .build();
         assign_ids(&mut b, &mut 1);
         {

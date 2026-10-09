@@ -21,7 +21,10 @@ use std::time::Instant;
 use pathland_engine::Engine;
 use pathland_core::{listener, size};
 use pathland_core_transport::RingTransport;
-use pathland_view::{assign_ids, button, hstack, text, vstack, Align, Color, Node, View, ViewExt};
+use pathland_view::{
+    assign_ids, button, hstack, text, vstack, Align, Color, Configurable, ForegroundStyle, Frame,
+    Node, Padding, PointerEvents, TapGesture, View, ViewExt,
+};
 
 const APP_ID: &str = "org.pathland.GtkDemo";
 
@@ -35,28 +38,34 @@ fn build_tree(count: &Rc<RefCell<u32>>) -> Node {
     vstack![
         hstack![
             text(format!("Count: {}", *count.borrow()).as_str())
-                .frame(Some(size::FILL), None, None),
-            button("Increment").on_tap_gesture(move || *tap_count.borrow_mut() += 1),
+                .modifiers(Frame::new(Some(size::FILL), None, None)),
+            button("Increment").modifiers(TapGesture::new(move || *tap_count.borrow_mut() += 1)),
         ]
-        .spacing(8.0)
-        .padding(16.0),
-        text("Pathland · GTK4 · shared ring").foreground_style(Color::argb(0xFF_888888)),
+        .with(|v| {
+            v.spacing(8.0);
+        })
+        .modifiers(Padding(16.0)),
+        text("Pathland · GTK4 · shared ring").modifiers(ForegroundStyle(Color::argb(0xFF_888888))),
         // A non-button view (Text) declaring raw pointer listeners — proving any
         // element can emit events via the `EVENT_LISTENERS` property.
-        text("I am a Text with raw pointer listeners")
-            .pointer_events(listener::POINTER_DOWN | listener::POINTER_UP)
-            .foreground_style(Color::argb(0xFF_0000AA)),
+        text("I am a Text with raw pointer listeners").modifiers((
+            PointerEvents(listener::POINTER_DOWN | listener::POINTER_UP),
+            ForegroundStyle(Color::argb(0xFF_0000AA)),
+        )),
         vstack![
             text("short"),
             text("a much longer label"),
             text("x"),
         ]
-        .spacing(4.0)
-        .padding(16.0)
-        .frame(None, None, Some(Align::Center)),
+        .with(|v| {
+            v.spacing(4.0);
+        })
+        .modifiers((Padding(16.0), Frame::new(None, None, Some(Align::Center)))),
     ]
-    .spacing(12.0)
-    .padding(24.0)
+    .with(|v| {
+        v.spacing(12.0);
+    })
+    .modifiers(Padding(24.0))
     .build()
 }
 
