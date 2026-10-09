@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4G0NZ3CY9HTCD3BEA32CQ4W",
+  "session_id": "ses_ee4bd8053ffegKzjgv8tBO3P4Y",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-09T09:42:44.981591Z",
+  "branch": "spec/dsl-v2-authoring-surface",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ChildrenView.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Configurable.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Text.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/VStack.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/View.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ViewBuilder.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/ViewBuilderTest.java"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "c701cbd59f9d",
+  "checkpoint_transcript_start": 19,
+  "transcript_lines_at_start": 19,
+  "compact_transcript_start": 19,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
