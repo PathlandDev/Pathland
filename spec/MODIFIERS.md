@@ -323,7 +323,7 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
   at once (`Font.custom(name, size, weight, design)` → all four). A heading
   typography (LargeTitle…Headline) implies a heading element on a `TEXT`; a
   custom/system font never implies a heading — it only styles the text.
-  Individual raw modifiers (`FontSize`, `FontWeightMod`, …) layer on top.
+  Individual raw modifiers (`FontSize`, `FontWeight`, …) layer on top.
 - **`LABEL`** is a `STRING` property (the accessibility label), distinct from a
   `TEXT_FIELD`'s caption label.
 

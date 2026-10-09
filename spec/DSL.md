@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** October 1, 2026
+**Last Updated:** October 9, 2026
 
 ---
 
@@ -41,17 +41,16 @@ A DSL in a new language is **conformant** when it:
 > **Implementation status** is tracked per implementing project (a `status.md`
 > in each protocol crate/library), **not** in this specification. The Java DSL
 > (`com.pathland.view`) and the Rust DSL (`pathland-view`) are the two reference
-> realizations and are cited here by their **current signatures**; where they
-> diverge from the canonical form below, that divergence is noted as a *delta*,
-> and [§8](#8-java-dsl-convergence-adopted) records the adopted Java convergence.
-> This document defines the contract only.
+> realizations; the "Java DSL" / "Rust DSL" columns below record the **agreed
+> reference shapes**, not implementation status. This document defines the
+> contract only.
 
 ### Two guiding rules
 
 1. **Stay as close to SwiftUI as possible.** View names, modifier names, and
    signature shapes mirror SwiftUI. Adapt only where the host language forces
-   it (Rust snake_case + macros; Java camelCase + static factories), and never
-   in a way that reorders or renames the canonical parameters.
+   it (Rust snake_case + macros; Java camelCase + builders; Python kwargs), and
+   never in a way that reorders or renames the canonical parameters.
 2. **State variables are signals.** Pathland does **not** use SwiftUI's
    `@State`/`@Binding` property wrappers. The view syntax is SwiftUI; the
    reactivity model is Angular-style signals (writable signals, computeds,
@@ -68,6 +67,13 @@ DSL must be *shaped* by them:
 - **Declarative structure, never positions.** The DSL expresses `WHAT` — a
   `VStack`, a `HStack`, a `Text` — and constraint properties (spacing, padding,
   alignment, size hints). It never computes bounds and never emits rects.
+- **Exactly three authoring operations.** Every view exposes the same three
+  operations — **configure values** (§5.0 `with`), **apply modifiers**
+  (`modifiers`), and, for content-bearing views, **supply children**
+  (`children`). The three are a single fluent builder: any of them may be the
+  first call and they may be chained in **any order** (see
+  [§2](#2-canonical-signature-notation)); a later call overrides an earlier
+  value for the same property.
 - **`body()` is evaluated once at mount.** A composite view declares its
   subtree once; reactivity comes from **signals**, never from re-evaluating the
   body. This is what lets the emitter produce fine-grained
@@ -86,20 +92,27 @@ DSL must be *shaped* by them:
   still emitted.
 - **There is exactly one modifier mechanism.** Built-in core modifiers are
   **not** a separate syntax: they are `ViewModifier` values the library ships,
-  and the sugar methods (`.padding(_:)`, `.foregroundStyle(_:)`) are
-  conveniences that construct them via `.with(...)`. Core and
-  application-authored modifiers share the same surface.
+  composed into a view through the shared `modifiers(...)` operation. There is
+  **no per-modifier sugar on the view type** — `Padding` applied via
+  `.modifiers(Padding.with(p -> p.uniform(16)))`. Core and application-authored
+  modifiers share the same surface.
+- **A modifier's type is named for the modifier it applies — never with a
+  `Mod` suffix.** Where a modifier applies a single value (a font, a font
+  weight, an alignment, a style), the value type itself MAY *be* the modifier
+  (`FontWeight.BOLD`, `Font.headline()`, `MyButtonStyle`), so there is one name
+  for the concept. Languages that cannot merge the two (e.g. C#, whose enums
+  cannot implement interfaces) use the equivalent value form. See
+  [§9.3](#93-language-adaptation-rules).
 - **There is exactly one style mechanism.** A customizable control/view takes
   its **content** from a *style* value (`ButtonStyle`, `LabelStyle`,
   `AudioStyle`, `VideoStyle`, …) scoped through the environment; the control
   owns its native component + interaction and the style owns the content
   ([§5.7](#57-styleable-controls-the-style-contract)). Closed-variant/token
   styles (`ToggleStyle`, `PickerStyle`, `TextStyle`) are the same surface.
-- **Constructor properties vs modifiers.** Structural/layout parameters
-  (`alignment`, `spacing`) are **constructor arguments**, never chainable.
-  Everything decorative (padding, color, font, frame, border, …) is a
-  **chainable modifier**. There is no standalone width/height — use the
-  compound `frame` modifier.
+- **Values vs modifiers.** Structural/layout parameters and a control's bound
+  value (`alignment`, `spacing`, `text`, `isOn`, `selection`) are **values**
+  configured through `with(...)`. Everything decorative (padding, color, font,
+  frame, border, …) is a **modifier** applied through `modifiers(...)`.
 - **`Color` is never a modifier.** `Color` has SwiftUI's dual identity: it is a
   **View** (a layout-greedy solid-color fill) and a **Data Type** (passed into
   style-taking modifiers: `.foregroundStyle`, `.background`, `.border`,
@@ -119,28 +132,69 @@ DSL must be *shaped* by them:
 The canonical signatures below are written SwiftUI-shaped and language
 agnostic. Conventions used:
 
-- `T("…")` / `View("…")` — a view/control constructor.
+- `View(config:)` / `T("…")` — a view/control constructed with its **values**.
 - `{ ... }` — the child subtree (a trailing closure in SwiftUI; a vararg,
   macro, builder, or lambda in other languages).
 - `Signal<T>` — a read-only derived or writable signal; `WritableSignal<T>` —
   a two-way binding target. A control takes a `WritableSignal<T>` for its
   value (see [§3](#3-state-model-signals)).
 - `()` — the action a `Button` fires.
-- `.with(name)` — apply a **modifier value** to a view; chainable on any
+- `.modifier(m)` — apply a **modifier value** to a view; chainable on any
   view. Every modifier — built-in or application-authored — is such a value
-  ([§5.6](#56-custom-modifiers-developer-authored)); the sugar names
-  (`.padding`, `.foregroundStyle`, …) are shorthand that construct the
-  built-in values.
-- Modifiers chain as `.name(args)` on any view and are applied
-  **innermost-first** (the last chained modifier's property wins).
+  ([§5.6](#56-custom-modifiers-developer-authored)).
+- Modifiers chain and are applied **innermost-first** (the last chained
+  modifier's property wins).
 
-Per-language adaptation rules:
+### The three operations
+
+Every concrete view exposes the same three operations. They form one fluent
+**builder**: any of the three may be the first call, and they may be chained in
+any order. A later call overrides an earlier value for the same property.
+
+| Operation | Purpose | Canonical (SwiftUI-shaped) |
+|-----------|---------|----------------------------|
+| **values** | Configure structural/layout values and a control's bound value | `View(config:)` — labels in the constructor |
+| **modifiers** | Apply `ViewModifier` values, innermost-first | `.modifier(_:)` / `.padding(_:)` / … |
+| **children** | Supply the content subtree (content-bearing views only) | trailing closure `{ … }` |
+
+The **canonical builder spelling** (the recommended form; per-language spellings
+are in [§9.3](#93-language-adaptation-rules)) is:
+
+```
+ViewName.with { values }              // values   — a config-builder lambda
+      .modifiers(modifier, ...)       // modifiers — varargs
+      .children(view, ...)            // children  — varargs, content-bearing views only
+```
+
+Any of the three may start the chain, e.g. all of these are equivalent:
+
+```
+VStack.with { v in v.spacing(8) }.children(a, b).modifiers(m)
+VStack.children(a, b).with { v in v.spacing(8) }.modifiers(m)
+VStack.modifiers(m).children(a, b).with { v in v.spacing(8) }
+```
+
+**Values are a config-builder lambda.** `with { c in … }` populates a per-view
+fluent **config** (`VStack.Config`, `Text.Config`, …). The config accepts raw
+values **or** `Signal`s (so `c.text(signal)` stays reactive) and is the *same
+type* a style's `makeBody(Config)` receives ([§5.7](#57-styleable-controls-the-style-contract)).
+The builder is **fluent and mutable**: setters return the config. Config-less
+views (`Divider`, `Spacer`) take an empty `with()`.
+
+**Per-language realization.** Java cannot declare a static and an instance
+method with the same signature, so the Java realization holds the three
+statically on the view class and exposes the chainable forms on the returned
+builder/view type. Other languages map the operations to their idioms
+(extension methods, associated functions + traits, package constructors +
+methods, kwargs) — see [§9.3](#93-language-adaptation-rules).
+
+Per-language adaptation summary:
 
 | Language | Case | Composition mechanism | Example |
 |----------|------|-----------------------|---------|
-| SwiftUI | `camelCase` | trailing closures + result builder | `VStack { Text("x").padding() }` |
-| Java (`com.pathland.view`) | `camelCase` | `.of()` factories + varargs + `.with(...)`/`.with(...)` | `VStack.of(Text.of("x").with(Padding.of(16)))` |
-| Rust (`pathland-view`) | `snake_case` | macros + free functions + chainable trait methods | `vstack![text("x").padding(16.0)]` |
+| SwiftUI | `camelCase` | trailing closures + result builder | `VStack(alignment: .center, spacing: 8) { Text("x").padding(16) }` |
+| Java (`com.pathland.view`) | `camelCase` | `with(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.with(v -> v.spacing(8)).children(Text.with(t -> t.text("x")).modifiers(Padding.with(p -> p.uniform(16))))` |
+| Rust (`pathland-view`) | `snake_case` | assoc fn + `ViewExt` trait + macros | `vstack![text("x").modifiers([Padding(16.0)])]` |
 
 ---
 
@@ -171,9 +225,10 @@ discipline, and circular-dependency detection.
 
 ### 3.2 Two-way binding
 
-A control's value is **a `WritableSignal<T>` passed to its constructor**:
-`TextField(placeholder, writable)`, `Toggle(label, isOn: writable)`,
-`Slider(value: writable, in: min...max)`. The flow:
+A control's value is **a `WritableSignal<T>` supplied as a config value**:
+`TextField.with(t -> t.placeholder("…").text(writable))`,
+`Toggle.with(t -> t.isOn(writable))`,
+`Slider.with(s -> s.value(writable).min(0).max(100))`. The flow:
 
 1. At **mount**, the DSL control records a **value input** (a sink on the
    retained node) for the signal, and the emitter exposes routing registries to
@@ -184,9 +239,10 @@ A control's value is **a `WritableSignal<T>` passed to its constructor**:
 3. The signal flush re-emits **only that node's** delta (`SET_TEXT`,
    `SET_PROPERTY`, `SET_DATE`) back through the emitter.
 
-Reading is equally fine-grained: a node's text or a property can be **bound to
-a signal** (`Text(signal)`, `.foregroundStyle(signal)`, `.fontSize(signal)`),
-so a change re-emits only the bound node.
+Reading is equally fine-grained: a node's text or a property value can be
+**bound to a signal** — `Text.with(t -> t.text(signal))`,
+`.modifiers(ForegroundStyle.with(f -> f.color(colorSignal)), FontSize.with(s -> s.size(sizeSignal)))`
+— so a change re-emits only the bound node.
 
 ### 3.3 Persisted state (`State<T>`)
 
@@ -216,8 +272,8 @@ single child subtree is selected by a signal and **reconciled** when the
 signal changes. This is the foundation for `if`/`else`, `switch`, and
 navigation ([§4.5](#45-navigation)).
 
-| Canonical (SwiftUI-shaped) | Java DSL (current) | Rust DSL (current) | Emits |
-|----------------------------|--------------------|--------------------|-------|
+| Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits |
+|----------------------------|----------|----------|-------|
 | `if cond { then } else { else }` in a result builder | `Conditional.when(Signal<Boolean>, View then, View else)` | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
 | `switch value { case a -> v; default -> d }` | `Conditional.when(Signal<T>, Case.of(T, View)...)` + `Case.otherwise(View)` | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
 
@@ -229,11 +285,11 @@ lowercase factories on a final class with a private constructor, mirroring
 import static com.pathland.view.Conditional.when;
 import static com.pathland.view.Conditional.Case;
 
-when(showLogin, LoginView.of(), HomeView.of());              // if / else
+when(showLogin, new LoginView(), new HomeView());           // if / else
 when(mode,
-    Case.of(RouteMode.HOME, HomeView.of()),
-    Case.of(RouteMode.USERS, UsersView.of()),
-    Case.otherwise(NotFoundView.of()));                      // switch + default
+    Case.of(RouteMode.HOME, new HomeView()),
+    Case.of(RouteMode.USERS, new UsersView()),
+    Case.otherwise(new NotFoundView()));                     // switch + default
 ```
 
 The names `if`, `switch`, `case`, and `else` are Java reserved keywords, so
@@ -241,7 +297,9 @@ The names `if`, `switch`, `case`, and `else` are Java reserved keywords, so
 name, and `Case.of(...)` / `Case.otherwise(...)` carry the branches. A boolean
 signal takes the two-branch overload (`then`, `else`); an enum/int/string
 signal takes keyed `Case` branches typed to the signal's value type, with an
-optional `Case.otherwise` default.
+optional `Case.otherwise` default. (`Conditional` / `Case` are the one place
+`.of(...)` survives — they are not views or modifiers but statically-imported
+branch factories.)
 
 **Emission contract** (the body-once exception, formalized):
 
@@ -273,48 +331,52 @@ type. An optional `switch!` macro is sugar.
 
 Component ids and wire behavior come from
 [PRIMITIVES.md](./PRIMITIVES.md); the tables here give the **DSL signature**.
-`Java DSL (current)` is the reference realization today.
+The `Java DSL` column is the reference realization shape. Every view exposes
+the three operations of [§2](#2-canonical-signature-notation): `values` via
+`with(...)`, `modifiers(...)`, and — where noted — `children(...)`.
 
 ### 4.1 Primitive drawing & visual nodes
 
-| View | Canonical (SwiftUI-shaped) | Java DSL (current) | Emits / Binds |
-|------|---------------------------|--------------------|---------------|
-| `Text` | `Text("…")` / `Text(Signal<String>)` | `Text.of(String)` / `Text.of(Signal<String>)` | `TEXT` 0x01; content `SET_TEXT` |
-| `Image` | `Image("name")` / `Image(systemName:)` | `Image.of()` / `Image.of(String source)` | `IMAGE` 0x02; `IMAGE_SOURCE` 0x1002 |
-| `Icon` | — (semantic symbol; SwiftUI `Image(systemName:)`) | `Icon.of(IconName)` / `Icon.of(String name)` / `Icon.of(Signal<String>)` / `Icon.labeled(IconName, String)` | `ICON` 0x0B; `ICON_NAME` 0x1038 (spec/ICONS.md) |
-| `Color` | `Color(.sRGB, red:green:blue:)` (a View) | `Color.rgb(int,int,int)` (implements `View`) | `COLOR` 0x03; `COLOR` 0x100A |
-| `Shape` | `Rectangle()`, `Circle()`, `Capsule()`, `RoundedRectangle(cornerRadius:)` | `Rectangle.of()` | `SHAPE` 0x04; `SHAPE_KIND` 0x0006 |
-| `Divider` | `Divider()` | `Divider.of()` | `DIVIDER` 0x05 |
-| `Spacer` | `Spacer()` | `Spacer.of()` | `SPACER` 0x06 |
-| `ProgressView` | `ProgressView(value:)` / `ProgressView()` | `ProgressView.of(float)` / `ProgressView.of()` | `PROGRESS_VIEW` 0x07; `PROGRESS` 0x200E / `IS_INDETERMINATE` 0x200F |
-| `Gauge` | `Gauge(value:in:)` | `Gauge.of(float value, float min, float max)` | `GAUGE` 0x08; `VALUE`/`MIN_VALUE`/`MAX_VALUE` |
-| `Label` | `Label("title", systemImage:)` (composite) | `Label.of(String title)` / `Label.of(String title, String icon)` / `Label.of(String title, Icon)` / `Label.of(Signal<String>…)` | a composite `HSTACK` + `IMAGE` (or `ICON`) + `TEXT` (PRIMITIVES.md "Composite views") — no component ID |
+| View | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
+|------|---------------------------|----------|---------------|
+| `Text` | `Text("…")` / `Text(Signal<String>)` | `Text.with(t -> t.text(String))` / `Text.with(t -> t.text(Signal<String>))` | `TEXT` 0x01; content `SET_TEXT` |
+| `Image` | `Image("name")` / `Image(systemName:)` | `Image.with(i -> i.source(String))` / `Image.with(i -> i.systemName(String))` | `IMAGE` 0x02; `IMAGE_SOURCE` 0x1002 |
+| `Icon` | — (semantic symbol; SwiftUI `Image(systemName:)`) | `Icon.with(i -> i.name(IconName))` / `Icon.with(i -> i.name(String))` / `Icon.with(i -> i.name(Signal<String>))` / `Icon.labeled(IconName, String)` | `ICON` 0x0B; `ICON_NAME` 0x1038 (spec/ICONS.md) |
+| `Color` | `Color(.sRGB, red:green:blue:)` (a View) | `Color.with(c -> c.rgb(int,int,int))` (implements `View`); `Color.token(path)` as data | `COLOR` 0x03; `COLOR` 0x100A |
+| `Shape` | `Rectangle()`, `Circle()`, `Capsule()`, `RoundedRectangle(cornerRadius:)` | `Rectangle.with()` / `Circle.with()` / `Capsule.with()` / `Ellipse.with()` / `RoundedRectangle.with(r -> r.cornerRadius(float))` / generic `Shape.with(s -> s.kind(ShapeKind))` | `SHAPE` 0x04; `SHAPE_KIND` 0x0006 |
+| `Divider` | `Divider()` | `Divider.with()` | `DIVIDER` 0x05 |
+| `Spacer` | `Spacer()` | `Spacer.with()` | `SPACER` 0x06 |
+| `ProgressView` | `ProgressView(value:)` / `ProgressView()` | `ProgressView.with(p -> p.value(float))` / `ProgressView.with()` | `PROGRESS_VIEW` 0x07; `PROGRESS` 0x200E / `IS_INDETERMINATE` 0x200F |
+| `Gauge` | `Gauge(value:in:)` | `Gauge.with(g -> g.value(float).min(float).max(float))` | `GAUGE` 0x08; `VALUE`/`MIN_VALUE`/`MAX_VALUE` |
+| `Label` | `Label("title", systemImage:)` (composite) | `Label.with(l -> l.title(String).icon(String))` / `Label.with(l -> l.title(Signal<String>).icon(Icon))` — title-only, icon-only, or reactive parts; content supplied by the scoped `labelStyle` | a composite `HSTACK` + `IMAGE` (or `ICON`) + `TEXT` (PRIMITIVES.md "Composite views") — no component ID |
 
-**Deltas (Java)**: primitives are constructed with `<ViewName>.of(...)`
-factories (`Text.of("…")`). Full `ShapeKind` coverage ships as named views
-(`Rectangle.of()`, `Circle.of()`, `Capsule.of()`, `Ellipse.of()`,
-`RoundedRectangle.of(cornerRadius:)`) plus generic `Shape.of(ShapeKind)` for
-`Path`. `Label` is a **composite** (PRIMITIVES.md) whose content is produced by
-the scoped `labelStyle` ([§5.7](#57-styleable-controls-the-style-contract)):
-`DefaultLabelStyle` renders an `HStack` of an optional `IMAGE` and an optional
-`TEXT`, `TitleOnlyLabelStyle`/`IconOnlyLabelStyle` render one part; the title
-always drives the accessibility label.
+**`with()` for values.** Primitives are constructed by `with(...)`; a
+config-less primitive (`Divider`, `Spacer`) takes an empty `with()`. `Label` is
+a **composite** whose content is produced by the scoped `labelStyle`
+([§5.7](#57-styleable-controls-the-style-contract)): `DefaultLabelStyle` renders
+an `HStack` of an optional `IMAGE` and an optional `TEXT`,
+`TitleOnlyLabelStyle`/`IconOnlyLabelStyle` render one part; the title always
+drives the accessibility label. `Color` keeps its dual identity: `Color.with(c
+-> c.rgb(..))` is a layout-greedy fill view, `Color.token(path)` is a data
+value passed to style-taking modifiers ([§7](#7-theme-management)).
 
 ### 4.2 Layout & container nodes
 
-| View | Canonical (SwiftUI-shaped) | Java DSL (current) | Emits / Binds |
-|------|---------------------------|--------------------|---------------|
-| `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.of(View...)` / `VStack.of(HorizontalAlignment, float, View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
-| `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.of(View...)` / `HStack.of(VerticalAlignment, float, View...)` | `HSTACK` 0x11 |
-| `ZStack` | `ZStack(alignment:) { … }` | `ZStack.of(View...)` / `ZStack.of(Alignment, View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
-| `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.of(View...)` / `Grid.of(int columns, View...)` / `Grid.of(int columns, int rows, View...)` / `Grid.of(int columns, int rows, Alignment, float, View...)` / `Grid.of(List<GridItem>, View...)` / `Grid.of(List<GridItem>, Alignment, float, View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
-| `GridRow` | `GridRow { … }` | `GridRow.of(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
-| `ScrollView` | `ScrollView { … }` | `ScrollView.of(View...)` | `SCROLLVIEW` 0x14 |
-| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.of(View...)` / `LazyVGrid.of(int columns, View...)` / `LazyVGrid.of(List<GridItem>, View...)` / `LazyVGrid.of(int columns, Alignment, float, View...)` / `LazyVGrid.of(List<GridItem>, Alignment, float, View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS` |
-| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.of(View...)` / `LazyHGrid.of(int rows, View...)` / `LazyHGrid.of(List<GridItem>, View...)` / `LazyHGrid.of(int rows, Alignment, float, View...)` / `LazyHGrid.of(List<GridItem>, Alignment, float, View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
-| `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.of(View...)` | `LAZY_VSTACK` 0x1B |
-| `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.of(View...)` | `LAZY_HSTACK` 0x1C |
-| `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.of(Fit...)` / `SizeThatFits.of(View...)` (candidates `Fit.of(view, minWidth)` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
+Containers are **content-bearing**: they expose `children(...)`.
+
+| View | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
+|------|---------------------------|----------|---------------|
+| `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.with(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
+| `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.with(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `HSTACK` 0x11 |
+| `ZStack` | `ZStack(alignment:) { … }` | `ZStack.with(z -> z.alignment(Alignment)).children(View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
+| `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.with(g -> g.columns(int).rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
+| `GridRow` | `GridRow { … }` | `GridRow.with().children(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
+| `ScrollView` | `ScrollView { … }` | `ScrollView.with().children(View...)` | `SCROLLVIEW` 0x14 |
+| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.with(g -> g.columns(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS` |
+| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.with(g -> g.rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
+| `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.with(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `LAZY_VSTACK` 0x1B |
+| `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.with(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `LAZY_HSTACK` 0x1C |
+| `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.with(s -> s.axis(Axis)).children(Fit.with(f -> f.view(View).minWidth(float))...)` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
 
 Alignment is **position-only** (SwiftUI/Compose parity): `VStack` takes a
 `HorizontalAlignment` (leading/center/trailing), `HStack` a `VerticalAlignment`
@@ -322,53 +384,47 @@ Alignment is **position-only** (SwiftUI/Compose parity): `VStack` takes a
 alignment) a 2D `Alignment` (topLeading … bottomTrailing). Stretching a child is
 its `FILL` size kind, never an alignment.
 
-**Deltas (Java)**: stacks are constructed with the `<ViewName>.of(...)` factory
-using varargs (`VStack.of(children...)`), not a builder/trailing-closure
-block. Constructor layout properties come as a separate overload
-(`VStack.of(Alignment, float, View...)`). The canonical SwiftUI form passes
-`alignment`/`spacing` as labeled constructor arguments inside the braces' call.
-
-**Grid counts**: `GRID_COLUMNS`/`GRID_ROWS` are **constructor properties**
+**Grid counts**: `GRID_COLUMNS`/`GRID_ROWS` are **config values**
 (SwiftUI `LazyVGrid(columns:)` / Compose `GridCells.Fixed(n)` parity), never
 chainable modifiers. The grid's own size uses the universal `WIDTH`/`HEIGHT`
-frame model — a `.frame(width:)` on a grid is a pixel box, never a count. A
-count is `int` in the DSL and emits a positive F32; absent = auto-fit. The
-static `Grid` takes optional `columns:`/`rows:` (both absent = SwiftUI `Grid`
-auto-fit); `LazyVGrid` takes `columns:`; `LazyHGrid` takes `rows:`.
+frame model — a `Frame` on a grid is a pixel box, never a count. A count is
+`int` in the DSL and emits a positive F32; absent = auto-fit. The static `Grid`
+takes optional `columns`/`rows` (both absent = SwiftUI `Grid` auto-fit);
+`LazyVGrid` takes `columns`; `LazyHGrid` takes `rows`.
 
-**`GridItem` (per-track sizes)**: a **`List<GridItem>`** overload expresses
+**`GridItem` (per-track sizes)**: a **`List<GridItem>`** config value expresses
 per-track sizes (SwiftUI `GridItem` / Compose `GridCells` parity) —
 `GridItem.flexible()` (`flex`), `GridItem.fixed(pts)` (`fixed:<pts>`),
 `GridItem.adaptive(min)` (`adaptive:<min>`). The list serializes to the
 `GRID_TRACKS` STRING property (comma-separated), which **takes precedence** over
-the counts; a count overload is the `N`×`flexible` sugar. CSS-grid-native —
-renderers without a native per-track equivalent size tracks naturally
-(renderer status, spec/PRIMITIVES.md §grid model).
+the counts; a count is the `N`×`flexible` sugar. CSS-grid-native — renderers
+without a native per-track equivalent size tracks naturally (renderer status,
+spec/PRIMITIVES.md §grid model).
 
 ### 4.3 Semantic controls
 
-Two-way value controls bind a `WritableSignal`. Actions bind a callback.
+Two-way value controls bind a `WritableSignal` (a config value). Actions bind a
+callback. Controls marked **content-bearing** expose `children(...)` for their
+content (their style turns it into the control's child, [§5.7](#57-styleable-controls-the-style-contract)).
 
-| Control | Canonical (SwiftUI-shaped) | Java DSL (current) | Emits / Binds |
-|---------|---------------------------|--------------------|---------------|
-| `Button` | `Button("title", action)` / `Button(action:label:)` | `Button.of(String, Runnable)` / `Button.of(View, Runnable)` | `BUTTON` 0x20 (control node); the label is its **child** via the active `ButtonStyle` ([§5.7](#57-styleable-controls-the-style-contract)); tap = composed `POINTER_DOWN`+`POINTER_UP` |
-| `TextField` | `TextField("placeholder", text: writable)` | `TextField.of(String, WritableSignal<String>)` | `TEXT_FIELD` 0x21; `TEXT_CHANGED` → text input |
-| `SecureField` | `SecureField("…", text: writable)` | (secure via `IS_SECURE` token) | `TEXT_FIELD` 0x21 + `IS_SECURE` 0x200D |
-| `TextEditor` | `TextEditor(text: writable)` | `TextEditor.of(WritableSignal<String>)` | `TEXT_EDITOR` 0x22 |
-| `Toggle` | `Toggle("label", isOn: writable)` | `Toggle.of(boolean, WritableSignal<Boolean>)` / `Toggle.of(String label, WritableSignal<Boolean>)` / `Toggle.of(ToggleStyle, boolean, WritableSignal<Boolean>, String)` | `TOGGLE` 0x24; `VALUE_CHANGED` → value input; `TOGGLE_STYLE` 0x2018 |
-| `Slider` | `Slider(value: writable, in: min...max)` | `Slider.of(WritableSignal<Float>, float min, float max)` | `SLIDER` 0x25; `VALUE_CHANGED` → value input |
-| `Stepper` | `Stepper("label", value: writable, in: min...max, step:)` | `Stepper.of(WritableSignal<Float>, float min, float max, float step)` | `STEPPER` 0x26; `VALUE_CHANGED` → value input |
-| `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.of(DatePickerMode, WritableSignal<Integer>)` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `PARAMETER::SET_DATE` |
-| `Picker` | `Picker("label", selection: writable) { options }` | `Picker.of(PickerStyle, WritableSignal<Integer>, View... options)` | `PICKER` 0x28; `VALUE_CHANGED` (index) → value input |
-| `Menu` | `Menu { actions } label: { trigger }` | `Menu.of(View trigger, View... actions)` / `Menu.of(View, WritableSignal<Integer>, View...)` | `MENU` 0x29; `VALUE_CHANGED` (item index) → value input |
-| `ColorPicker` | `ColorPicker("label", selection: writable)` | `ColorPicker.of(WritableSignal<Color>)` | `COLOR_PICKER` 0x2A; `VALUE_CHANGED` (packed `0xAARRGGBB` as f32) → value input |
+| Control | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
+|---------|---------------------------|----------|---------------|
+| `Button` | `Button("title", action)` / `Button(action:label:)` | **content-bearing** — `Button.with(b -> b.title(String).action(Runnable))` and/or `.children(View)`; the title string is handed to the active `ButtonStyle`, an explicit child takes precedence ([§5.7](#57-styleable-controls-the-style-contract)) | `BUTTON` 0x20 (control node); tap = composed `POINTER_DOWN`+`POINTER_UP` |
+| `TextField` | `TextField("placeholder", text: writable)` | `TextField.with(t -> t.placeholder(String).text(WritableSignal<String>))` | `TEXT_FIELD` 0x21; `TEXT_CHANGED` → text input |
+| `SecureField` | `SecureField("…", text: writable)` | `TextField.with(t -> t.placeholder(String).text(writable).secure(true))` | `TEXT_FIELD` 0x21 + `IS_SECURE` 0x200D |
+| `TextEditor` | `TextEditor(text: writable)` | `TextEditor.with(t -> t.text(WritableSignal<String>))` | `TEXT_EDITOR` 0x22 |
+| `Toggle` | `Toggle("label", isOn: writable)` | `Toggle.with(t -> t.style(ToggleStyle).label(String).isOn(WritableSignal<Boolean>))` | `TOGGLE` 0x24; `VALUE_CHANGED` → value input; `TOGGLE_STYLE` 0x2018 |
+| `Slider` | `Slider(value: writable, in: min...max)` | `Slider.with(s -> s.value(WritableSignal<Float>).min(float).max(float).onEditingChanged(Consumer<Boolean>))` | `SLIDER` 0x25; `VALUE_CHANGED` → value input |
+| `Stepper` | `Stepper("label", value: writable, in: min...max, step:)` | `Stepper.with(s -> s.value(WritableSignal<Float>).min(float).max(float).step(float).label(String))` | `STEPPER` 0x26; `VALUE_CHANGED` → value input |
+| `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.with(d -> d.mode(DatePickerMode).selection(WritableSignal<Integer>))` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `PARAMETER::SET_DATE` |
+| `Picker` | `Picker("label", selection: writable) { options }` | **content-bearing** — `Picker.with(p -> p.style(PickerStyle).selection(WritableSignal<Integer>)).children(View... options)` | `PICKER` 0x28; `VALUE_CHANGED` (index) → value input |
+| `Menu` | `Menu { actions } label: { trigger }` | **content-bearing** — `Menu.with(m -> m.trigger(View).selection(WritableSignal<Integer>)).children(View... actions)` | `MENU` 0x29; `VALUE_CHANGED` (item index) → value input |
+| `ColorPicker` | `ColorPicker("label", selection: writable)` | `ColorPicker.with(c -> c.selection(WritableSignal<Color>))` | `COLOR_PICKER` 0x2A; `VALUE_CHANGED` (packed `0xAARRGGBB` as f32) → value input |
 
-**Deltas (Java)**: the value binding is **binding-first** in `.of(...)` —
-`Slider.of(binding, min, max)` reads the initial value from the signal (the
-single source of truth) instead of SwiftUI's labeled `value:in:` range
-binding. `Button` takes a `(label, action)` pair rather than SwiftUI's
-`Button("title") { action }` trailing-action form. `Toggle` offers the
-SwiftUI-closer `of(label, isOn)`; `DatePicker` binds **days-since-epoch**
+**Value bindings.** The value binding is a **config value** — the DSL reads the
+initial value from the signal (the single source of truth) instead of SwiftUI's
+labeled `value:in:` range binding. `Button` binds an action and content rather
+than SwiftUI's trailing-action form. `DatePicker` binds **days-since-epoch**
 (`WritableSignal<Integer>`) rather than a date object — the protocol's
 `SET_DATE`/`DATE_CHANGED` two-field encoding is days + millis-of-day (see
 [§8](#8-java-dsl-convergence-adopted)).
@@ -384,10 +440,10 @@ bitmask (transport-aware event guards) — see [EVENTS.md](./EVENTS.md).
 
 ### 4.4 Gestures
 
-| Gesture | Canonical (SwiftUI-shaped) | Java DSL (current) | Rust DSL (current) |
-|---------|---------------------------|--------------------|--------------------|
-| tap | `.onTapGesture { action }` | `.with(TapGesture.of(Runnable))` | `.on_tap_gesture(f)` |
-| raw pointer | `.gesture` composition from raw inputs | `.with(PointerEvents.of(int mask))` | `.pointer_events(u32 mask)` |
+| Gesture | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL |
+|---------|---------------------------|----------|----------|
+| tap | `.onTapGesture { action }` | `.modifiers(TapGesture.with(g -> g.action(Runnable)))` | `.on_tap_gesture(f)` |
+| raw pointer | `.gesture` composition from raw inputs | `.modifiers(PointerEvents.with(p -> p.mask(int)))` | `.pointer_events(u32 mask)` |
 
 Tap is **not** a protocol event: it is composed app-side from `POINTER_DOWN`
 then `POINTER_UP` on the same target (`EVENT_LISTENERS` bits 0|2). The
@@ -415,17 +471,19 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
 
 - `PlatformDefault` (default): the **renderer** supplies the chrome — the
   platform's native navigation container where one exists, and a renderer-drawn
-  back affordance where none exists. `NavigationContainer.of(router)`.
+  back affordance where none exists.
+  `NavigationContainer.with(n -> n.router(router))`.
 - `Custom`: the **developer owns all navigation UI** — they draw their own
   back buttons / bars in the destinations and call `router.back()` /
   `navigate(...)` directly; the renderer adds no chrome (no native header-bar
-  back button, no DOM back button). `NavigationContainer.of(router, Chrome.CUSTOM)`.
+  back button, no DOM back button).
+  `NavigationContainer.with(n -> n.router(router).chrome(Chrome.CUSTOM))`.
   Renderers treat a missing `NAV_CHROME` as `PlatformDefault`.
 
-| View | Canonical (SwiftUI-shaped) | Java DSL (current) | Rust DSL (current) | Emits / Binds |
-|------|----------------------------|--------------------|--------------------|---------------|
-| `NavigationContainer` | `NavigationStack(path:) { destination(for:) }` | `NavigationContainer.of(Router)` / `.of(Router, Chrome.CUSTOM)` | `NavigationContainer::new(Router)` | a `Group` slot + `ROUTE` `0x2019`, `NAV_DEPTH` `0x201A`, `NAV_CHROME` `0x201B`, `TRANSITION` `0x1031`; destination swap = `TREE` deltas |
-| `NavigationLink` | `NavigationLink("label", value:)` | `NavigationLink.of(String, Router, String to)` / `NavigationLink.of(String, String to)` (router-agnostic) | `navigation_link(...)` | a `BUTTON` whose tap pushes `to` (via the router, or resolved to the nearest enclosing router when router-agnostic) |
+| View | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits / Binds |
+|------|----------------------------|----------|----------|---------------|
+| `NavigationContainer` | `NavigationStack(path:) { destination(for:) }` | `NavigationContainer.with(n -> n.router(Router).chrome(Chrome))` | `NavigationContainer::with(|n| n.router(router))` | a `Group` slot + `ROUTE` `0x2019`, `NAV_DEPTH` `0x201A`, `NAV_CHROME` `0x201B`, `TRANSITION` `0x1031`; destination swap = `TREE` deltas |
+| `NavigationLink` | `NavigationLink("label", value:)` | `NavigationLink.with(l -> l.label(String).router(Router).to(String))` / `NavigationLink.with(l -> l.label(String).to(String))` (router-agnostic) | `navigation_link(...)` | a `BUTTON` whose tap pushes `to` (via the router, or resolved to the nearest enclosing router when router-agnostic) |
 | `RouteTable` | — | `RouteTable` (builder), or `Navigation.navigator(...)` (the ergonomic facade) | `RouteTable::new(...)` | none (app-side matching) |
 
 **Router state** — app-owned (never renderer state):
@@ -475,7 +533,7 @@ correctly.
 
 **The `Navigation` facade** — the ergonomic entry point. `Navigation.navigator`
 collapses the route table + router + seeding into one readable flow, and
-`Navigation.of(router)` is the container:
+`Navigation.container(router)` is the container:
 
 ```java
 Router router = Navigation.navigator("/kitchen")     // seeds the initial path
@@ -484,7 +542,7 @@ Router router = Navigation.navigator("/kitchen")     // seeds the initial path
     .fallback(new NotFoundView())
     .build();
 
-View shell = Navigation.of(router);                  // == NavigationContainer.of(router)
+View shell = Navigation.container(router);           // == NavigationContainer.with(n -> n.router(router))
 Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
 ```
 
@@ -500,10 +558,11 @@ Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
   style an active menu row or gate conditional content:
   `Signals.computed(() -> Navigation.isActive(router, path).get() ? ACTIVE : CLEAR)`.
 - **The environment is the one scoping system** (SwiftUI `.environment`): values
-  are bound down a subtree with `View.environment(key, value)` and read with
-  `Environment.value(key)`; nearest wins. Styles use it too — `buttonStyle`
-  binds `Environment.BUTTON_STYLE` (`EnvironmentKey<ButtonStyle>`), so a style
-  scoped above a structural container survives its destination re-render.
+  are bound down a subtree with the `EnvironmentBinding` modifier value and read
+  with `Environment.value(key)`; nearest wins. Styles use it too —
+  `ButtonStyle` binds `Environment.BUTTON_STYLE`
+  (`EnvironmentKey<ButtonStyle>`), so a style scoped above a structural
+  container survives its destination re-render.
 - **The router as a scoped environment value** (SwiftUI `.environment` style):
   `Navigation.ROUTER` is an `EnvironmentKey<Router>`. A `NavigationContainer` scopes
   it to its destination subtree; any component reads
@@ -512,12 +571,13 @@ Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
   the scope when they re-render their destination.
 - **Environment reads always return a signal** (`Environment.value(key)` →
   `Signal<T>`): a value injected as a `Signal` comes back as the same instance, so a
-  node bound to it (e.g. `Text.of(Environment.value(key))`) re-emits when it changes;
-  a plain value is wrapped in a constant signal (`.get()` gives the value). Inject a
-  reactive value with `view.environment(key, signal)`. A read made **before the key is
-  bound** (e.g. in a field initializer, before the enclosing `.environment(...)` scope
-  is pushed) returns a **lazy signal** that captures the binding on the first `.get()`
-  during render — the SwiftUI `@Environment` field style:
+  node bound to it (e.g. `Text.with(t -> t.text(Environment.value(key)))`) re-emits
+  when it changes; a plain value is wrapped in a constant signal (`.get()` gives the
+  value). Inject a reactive value with the `EnvironmentBinding` modifier. A read
+  made **before the key is bound** (e.g. in a field initializer, before the
+  enclosing binding scope is pushed) returns a **lazy signal** that captures the
+  binding on the first `.get()` during render — the SwiftUI `@Environment` field
+  style:
   ```java
   private final Signal<Router> router = Environment.value(Navigation.ROUTER);
   @Override public View body() { ... menuRow(router.get(), ...) ... }
@@ -530,7 +590,8 @@ or without navigation), like SwiftUI's `onOpenURL` generalized across platforms:
 // host (always):
 WritableSignal<String> activePath = Signals.signal(env.route());
 RenderResult result = emitter.mount(
-        root.environment(Platform.ACTIVE_PATH, activePath), new Environment(state));
+        root.modifiers(EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
+        new Environment(state));
 // re-route on deep-link/popstate:
 activePath.set(env.route());   // or from a NAVIGATE event URL
 ```
@@ -542,20 +603,24 @@ activePath.set(env.route());   // or from a NAVIGATE event URL
   writable (the host's `Platform.ACTIVE_PATH` always is). The initial value is
   guard-processed.
 - **An app without navigation** just observes the signal — read it, or register
-  `View.onPathChange(path -> …)` (fires on every change, including the initial value).
+  a `PathChange` modifier listener (`PathChange.with(p -> p.listener(path -> …))`)
+  (fires on every change, including the initial value).
 - `NAVIGATE` events: a URL updates `activePath` (→ bound router re-routes guard-aware,
-  `onPathChange` listeners fire); a back (no URL) goes to `RenderResult.navigateHandler`
+  `PathChange` listeners fire); a back (no URL) goes to `RenderResult.navigateHandler`
   → `router.pop()` — meaningful only when a router exists.
 
 **Any component can change the route** — declarative navigation intents. A
 component anywhere *inside* a `NavigationContainer` can change the route without
-threading a `Router` by hand, using a `NavigationMod` on a `BUTTON`:
+threading a `Router` by hand, using the `NavigationIntent` modifier:
 
 ```java
-Button.of("Go to kitchen").navigate("/kitchen");  // direct selection
-Button.of("Open item").push("/item/1");           // drill-down (back-stack)
-Button.of("Swap").replace("/settings");           // guard redirect / replace
-NavigationLink.of("Users", "/users");             // router-agnostic (pushes)
+Button.with(b -> b.title("Go to kitchen").action(...))
+      .modifiers(NavigationIntent.navigate("/kitchen"));   // direct selection
+Button.with(b -> b.title("Open item").action(...))
+      .modifiers(NavigationIntent.push("/item/1"));        // drill-down (back-stack)
+Button.with(b -> b.title("Swap").action(...))
+      .modifiers(NavigationIntent.replace("/settings"));   // guard redirect / replace
+NavigationLink.with(l -> l.label("Users").to("/users"));   // router-agnostic (pushes)
 ```
 
 - The intent (`navigateTo` + a `NavOp` — `NAVIGATE`/`PUSH`/`REPLACE`) is
@@ -613,10 +678,11 @@ contract keeps the renderer stateless:
   platform — the same `NavigationContainer` works on both, and the renderer's
   use (or not) of a native container is purely a presentation decision.
 
-**Deltas (Java)**: `Router` / `RouteTable` live in
-`com.pathland.view.router`; `Conditional` in `com.pathland.view`. The
-`NavigationContainer` is a structural container, so `if`/`switch`-style sugar
-is the `Conditional.when` form of [§3.4](#34-structural-reactivity-conditional-rendering).
+**Java realization**: `Router` / `RouteTable` live in
+`com.pathland.view.router`; `NavigationIntent` there too; `Conditional` in
+`com.pathland.view`. The `NavigationContainer` is a structural container, so
+`if`/`switch`-style sugar is the `Conditional.when` form of
+[§3.4](#34-structural-reactivity-conditional-rendering).
 
 ---
 
@@ -627,68 +693,77 @@ Properties, value types, and emission rules come from
 compound SwiftUI modifier expands to **one `SET_PROPERTY` per underlying
 property** (`.frame` → `WIDTH` + `HEIGHT` + `ALIGNMENT`; `.border` →
 `BORDER_COLOR` + `BORDER_WIDTH`; `.shadow` → `SHADOW_COLOR` + `SHADOW_RADIUS` +
-`SHADOW_X` + `SHADOW_Y`). `Java DSL (current)` is the reference realization.
+`SHADOW_X` + `SHADOW_Y`). The `Java DSL` column is the reference realization.
 
-**One mechanism for every modifier.** Each entry in the tables below is a
-`ViewModifier` value. `padding(16)` is shorthand for
-`.with(Padding.of(16))`; `foregroundStyle(color)` for
-`.with(ForegroundStyle.of(color))`. The tables list the canonical sugar
-names; core and application-authored modifiers use the same `.with(...)`
-surface ([§5.6](#56-custom-modifiers-developer-authored)).
+### 5.0 Authoring a modifier
 
-> **Java realization**: the Java DSL ships **no modifier sugar on `View`** —
-> modifiers are values applied via `.with(X.of(...))` (single) or
-> `.with(X.of(...), Y.of(...))` (several, innermost-first). The "Java DSL
-> (current)" column lists the value form; the parameter list is carried from the
-> canonical signature.
+**One mechanism for every modifier.** Each entry below is a `ViewModifier`
+value, applied through the shared `modifiers(...)` operation:
+
+- **Parameterized modifiers** are created with `Modifier.with(c -> …)` (a fluent
+  config builder), e.g. `Padding.with(p -> p.uniform(16))`,
+  `Frame.with(f -> f.width(100).height(24))`.
+- **Single-value modifiers** — a font, a font weight, an alignment, a style —
+  may pass the value directly, because the value type *is* the modifier: `FontWeight.BOLD`,
+  `TextAlignment.CENTER`, `Font.headline()`, `MyButtonStyle`.
+- A modifier's type is **never** suffixed with `Mod` (§1).
+
+```java
+Text.with(t -> t.text("hi")).modifiers(
+        Padding.with(p -> p.uniform(16)),
+        Frame.with(f -> f.width(100).height(24)),
+        FontWeight.BOLD,
+        ForegroundStyle.with(f -> f.color(Color.WHITE)));
+```
 
 ### 5.1 Layout & frame
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
-|----------|---------------------------|--------------------|---------------|
-| `frame` | `.frame(width:height:alignment:)` | `.with(Frame.of(w, h))` / `.with(Frame.of(w, h, alignment))` / `.with(Frame.of(w, alignment))` / `.with(Frame.ofWidth(w))` / `.with(Frame.ofHeight(h))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
-| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.with(Frame.of(c -> c.minWidth(..).idealWidth(..).maxWidth(..).minHeight(..).idealHeight(..).maxHeight(..)))` (the `Frame.Builder`; unset bounds are omitted — NaN/∞ = no limit) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
-| `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.with(Padding.of(int))` / `.with(Padding.of(float))` / `.with(Padding.of(int top, int right, int bottom, int left))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
-| `offset` | `.offset(x:y:)` | `.with(Offset.of(float x, float y))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
-| `position` | `.position(x:y:)` | `.with(Position.of(float x, float y))` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 |
-| `fixedSize` | `.fixedSize()` / `.fixedSize(horizontal:vertical:)` | `.with(FixedSize.of())` / `.with(FixedSize.of(boolean, boolean))` | `FIXED_SIZE_HORIZONTAL` 0x0018, `FIXED_SIZE_VERTICAL` 0x0019 |
-| `layoutPriority` | `.layoutPriority(_:)` | `.with(LayoutPriority.of(float))` | `LAYOUT_PRIORITY` 0x001A |
-| `zIndex` | `.zIndex(_:)` | `.with(ZIndex.of(float))` | `Z_INDEX` 0x100F |
-| `aspectRatio` | `.aspectRatio(_:contentMode:)` | `.with(AspectRatio.of(float, ContentMode))` | `ASPECT_RATIO` 0x001B, `CONTENT_MODE` 0x001C |
-| `scaledToFit` | `.scaledToFit()` | `.with(ScaledToFit.of())` | `CONTENT_MODE` 0x001C (Fit) |
-| `scaledToFill` | `.scaledToFill()` | `.with(ScaledToFill.of())` | `CONTENT_MODE` 0x001C (Fill) |
-| `minimumScaleFactor` | `.minimumScaleFactor(_:)` | `.with(MinimumScaleFactor.of(float))` | `MINIMUM_SCALE_FACTOR` 0x001D |
+| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+|----------|---------------------------|----------|---------------|
+| `frame` | `.frame(width:height:alignment:)` | `.modifiers(Frame.with(f -> f.width(w).height(h).alignment(a)))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
+| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.modifiers(Frame.with(f -> f.minWidth(..).idealWidth(..).maxWidth(..).minHeight(..).idealHeight(..).maxHeight(..)))` (the `Frame.Builder`; unset bounds are omitted — NaN/∞ = no limit) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
+| `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.modifiers(Padding.with(p -> p.uniform(float)))` / `.modifiers(Padding.with(p -> p.edges(t, r, b, l)))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
+| `offset` | `.offset(x:y:)` | `.modifiers(Offset.with(o -> o.x(float).y(float)))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
+| `position` | `.position(x:y:)` | `.modifiers(Position.with(p -> p.x(float).y(float)))` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 |
+| `fixedSize` | `.fixedSize()` / `.fixedSize(horizontal:vertical:)` | `.modifiers(FixedSize.with())` / `.modifiers(FixedSize.with(f -> f.horizontal(boolean).vertical(boolean)))` | `FIXED_SIZE_HORIZONTAL` 0x0018, `FIXED_SIZE_VERTICAL` 0x0019 |
+| `layoutPriority` | `.layoutPriority(_:)` | `.modifiers(LayoutPriority.with(l -> l.value(float)))` | `LAYOUT_PRIORITY` 0x001A |
+| `zIndex` | `.zIndex(_:)` | `.modifiers(ZIndex.with(z -> z.value(float)))` | `Z_INDEX` 0x100F |
+| `aspectRatio` | `.aspectRatio(_:contentMode:)` | `.modifiers(AspectRatio.with(a -> a.ratio(float).contentMode(ContentMode)))` | `ASPECT_RATIO` 0x001B, `CONTENT_MODE` 0x001C |
+| `scaledToFit` | `.scaledToFit()` | `.modifiers(ScaledToFit.with())` | `CONTENT_MODE` 0x001C (Fit) |
+| `scaledToFill` | `.scaledToFill()` | `.modifiers(ScaledToFill.with())` | `CONTENT_MODE` 0x001C (Fill) |
+| `minimumScaleFactor` | `.minimumScaleFactor(_:)` | `.modifiers(MinimumScaleFactor.with(m -> m.value(float)))` | `MINIMUM_SCALE_FACTOR` 0x001D |
 
 **Semantics**: `WIDTH`/`HEIGHT` use the sentinels `FILL` (−1.0 = expand) and
 `HUG_CONTENT` (−2.0 = intrinsic); omitting an axis leaves it to the native
 renderer. SwiftUI's `.frame(maxWidth: .infinity)` / `maxHeight: .infinity` is
 written by passing `Float.POSITIVE_INFINITY` (Java) / `f32::INFINITY` (Rust) to
-the width/height overloads, which is normalized to `FILL` before emission. In
-the min/ideal/max overload an infinite `maxWidth`/`maxHeight` means *no limit*
+the width/height builder members, which is normalized to `FILL` before emission.
+In the min/ideal/max builder an infinite `maxWidth`/`maxHeight` means *no limit*
 (the bound is omitted). `OFFSET` is a post-layout translation; `POSITION` is
 absolute placement within the parent.
 
 ### 5.2 Text formatting
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
-|----------|---------------------------|--------------------|---------------|
-| `font` | `.font(.system(size:))` | `.with(FontSize.of(float))` / `.with(FontSize.of(Signal<Float>))` | `FONT_SIZE` 0x1007 |
-| `fontWeight` | `.fontWeight(_:)` | `.with(FontWeightMod.of(FontWeight))` | `FONT_WEIGHT` 0x1008 (100–900) |
-| `font` (custom) | `.font(.custom(name:size:))` | `.with(FontFamily.of(String))` | `FONT_FAMILY` 0x1009 |
-| `fontStyle` | `.italic()` / `.fontDesign(_:)` | `.with(Italic.of())` / `.with(FontStyleMod.of(FontStyle))` / `.with(FontDesignMod.of(FontDesign))` | `FONT_STYLE` 0x1017, `FONT_DESIGN` 0x1018 |
-| `fontWidth` | `.fontWidth(_:)` | `.with(FontWidth.of(float))` | `FONT_WIDTH` 0x1019 |
-| `kerning` | `.kerning(_:)` | `.with(Kerning.of(float))` | `KERNING` 0x101A |
-| `tracking` | `.tracking(_:)` | `.with(Tracking.of(float))` | `TRACKING` 0x101B |
-| `baselineOffset` | `.baselineOffset(_:)` | `.with(BaselineOffset.of(float))` | `BASELINE_OFFSET` 0x101C |
-| `lineSpacing` | `.lineSpacing(_:)` | `.with(LineSpacing.of(float))` | `LINE_SPACING` 0x101D |
-| `lineLimit` | `.lineLimit(_:)` | `.with(LineLimit.of(int))` | `LINE_LIMIT` 0x000B (0 = unlimited) |
-| `multilineTextAlignment` | `.multilineTextAlignment(_:)` | `.with(TextAlignmentMod.of(TextAlignment))` | `TEXT_ALIGNMENT` 0x000C |
-| `truncationMode` | `.truncationMode(_:)` | `.with(TruncationMod.of(Truncation))` | `TRUNCATION_MODE` 0x000D |
-| `textCase` | `.textCase(_:)` | `.with(TextCaseMod.of(TextCase))` | `TEXT_CASE` 0x101E |
-| `underline` | `.underline()` | `.with(Underline.of())` / `.with(Underline.of(boolean))` | `UNDERLINE` 0x101F |
-| `strikethrough` | `.strikethrough()` | `.with(Strikethrough.of())` / `.with(Strikethrough.of(boolean))` | `STRIKETHROUGH` 0x1020 |
-| `foregroundStyle` | `.foregroundStyle(_:)` | `.with(ForegroundStyle.of(Color))` / `.with(ForegroundStyle.of(Signal<Color>))` | `COLOR` 0x100A |
-| `tint` | `.tint(_:)` | `.with(Tint.of(Color))` | `TINT` 0x1030 |
+| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+|----------|---------------------------|----------|---------------|
+| `font` | `.font(.system(size:))` | `.modifiers(Font.with(f -> f.system(float)))` / `Font.with(f -> f.system(size, weight, design))` | `FONT_SIZE` 0x1007 (+ `FONT_WEIGHT`/`FONT_DESIGN` when given) |
+| `font` (predefined) | `.font(.largeTitle)` | `.modifiers(Font.headline())` (the `Font` value *is* the modifier) | `TEXT_STYLE` 0x1032 |
+| `fontWeight` | `.fontWeight(_:)` | `.modifiers(FontWeight.BOLD)` (the enum *is* the modifier) | `FONT_WEIGHT` 0x1008 (100–900) |
+| `font` (custom) | `.font(.custom(name:size:))` | `.modifiers(Font.with(f -> f.custom("Georgia", 20)))` | `FONT_FAMILY` 0x1009 |
+| `fontStyle` | `.italic()` / `.fontDesign(_:)` | `.modifiers(Italic.with())` / `.modifiers(FontStyle.ITALIC)` / `.modifiers(FontDesign.SERIF)` | `FONT_STYLE` 0x1017, `FONT_DESIGN` 0x1018 |
+| `fontWidth` | `.fontWidth(_:)` | `.modifiers(FontWidth.with(w -> w.value(float)))` | `FONT_WIDTH` 0x1019 |
+| `kerning` | `.kerning(_:)` | `.modifiers(Kerning.with(k -> k.value(float)))` | `KERNING` 0x101A |
+| `tracking` | `.tracking(_:)` | `.modifiers(Tracking.with(t -> t.value(float)))` | `TRACKING` 0x101B |
+| `baselineOffset` | `.baselineOffset(_:)` | `.modifiers(BaselineOffset.with(b -> b.value(float)))` | `BASELINE_OFFSET` 0x101C |
+| `lineSpacing` | `.lineSpacing(_:)` | `.modifiers(LineSpacing.with(l -> l.value(float)))` | `LINE_SPACING` 0x101D |
+| `lineLimit` | `.lineLimit(_:)` | `.modifiers(LineLimit.with(l -> l.value(int)))` | `LINE_LIMIT` 0x000B (0 = unlimited) |
+| `multilineTextAlignment` | `.multilineTextAlignment(_:)` | `.modifiers(TextAlignment.CENTER)` (the enum *is* the modifier) | `TEXT_ALIGNMENT` 0x000C |
+| `truncationMode` | `.truncationMode(_:)` | `.modifiers(Truncation.TAIL)` (the enum *is* the modifier) | `TRUNCATION_MODE` 0x000D |
+| `textCase` | `.textCase(_:)` | `.modifiers(TextCase.UPPERCASE)` (the enum *is* the modifier) | `TEXT_CASE` 0x101E |
+| `underline` | `.underline()` | `.modifiers(Underline.with())` / `.modifiers(Underline.with(u -> u.enabled(boolean)))` | `UNDERLINE` 0x101F |
+| `strikethrough` | `.strikethrough()` | `.modifiers(Strikethrough.with())` / `.modifiers(Strikethrough.with(s -> s.enabled(boolean)))` | `STRIKETHROUGH` 0x1020 |
+| `foregroundStyle` | `.foregroundStyle(_:)` | `.modifiers(ForegroundStyle.with(f -> f.color(Color)))` / `.modifiers(ForegroundStyle.with(f -> f.color(Signal<Color>)))` | `COLOR` 0x100A |
+| `tint` | `.tint(_:)` | `.modifiers(Tint.with(t -> t.color(Color)))` | `TINT` 0x1030 |
 
 > **`Color` is never a modifier** — there is no `.color()` and
 > `.foregroundColor(_:)` is deprecated. Foreground styling is
@@ -696,64 +771,65 @@ absolute placement within the parent.
 
 ### 5.3 Appearance & effects
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
-|----------|---------------------------|--------------------|---------------|
-| `background` | `.background(_:)` | `.with(Background.of(Color))` / `.with(Background.of(Signal<Color>))` | `BACKGROUND_COLOR` 0x1001 |
-| `border` | `.border(_:width:)` | `.with(Border.of(Color color, float width, float radius))` | `BORDER_COLOR` 0x1004, `BORDER_WIDTH` 0x1003, `BORDER_RADIUS` 0x1005 |
+| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+|----------|---------------------------|----------|---------------|
+| `background` | `.background(_:)` | `.modifiers(Background.with(b -> b.color(Color)))` / `.modifiers(Background.with(b -> b.color(Signal<Color>)))` | `BACKGROUND_COLOR` 0x1001 |
+| `border` | `.border(_:width:)` | `.modifiers(Border.with(b -> b.color(Color).width(float).radius(float)))` | `BORDER_COLOR` 0x1004, `BORDER_WIDTH` 0x1003, `BORDER_RADIUS` 0x1005 |
 | `border` (edges) | `.border(_:width:edges:)` | (not exposed) | + `BORDER_EDGES` 0x1016 (u32 bitmask: `TOP`=1, `LEADING`=2, `BOTTOM`=4, `TRAILING`=8) |
-| `cornerRadius` | `.cornerRadius(_:)` | `.with(CornerRadius.of(float))` | `BORDER_RADIUS` 0x1005 |
-| `shadow` | `.shadow(color:radius:x:y:)` | `.with(Shadow.of(Color, float, float, float))` / `.with(Shadow.of(float))` | `SHADOW_COLOR` 0x1021, `SHADOW_RADIUS` 0x1022, `SHADOW_X` 0x1023, `SHADOW_Y` 0x1024 |
-| `opacity` | `.opacity(_:)` | `.with(Opacity.of(float))` | `OPACITY` 0x100D |
-| `blur` | `.blur(radius:)` | `.with(Blur.of(float))` | `BLUR_RADIUS` 0x1025 |
-| `saturation` | `.saturation(_:)` | `.with(Saturation.of(float))` | `SATURATION` 0x1026 |
-| `contrast` | `.contrast(_:)` | `.with(Contrast.of(float))` | `CONTRAST` 0x1027 |
-| `brightness` | `.brightness(_:)` | `.with(Brightness.of(float))` | `BRIGHTNESS` 0x1028 |
-| `grayscale` | `.grayscale(_:)` | `.with(Grayscale.of(float))` | `GRAYSCALE` 0x1029 |
-| `hueRotation` | `.hueRotation(_:)` | `.with(HueRotation.of(float))` | `HUE_ROTATION` 0x102A |
-| `colorMultiply` | `.colorMultiply(_:)` | `.with(ColorMultiply.of(Color))` | `COLOR_MULTIPLY` 0x102B |
-| `colorInvert` | `.colorInvert()` | `.with(ColorInvert.of())` | `COLOR_INVERT` 0x102C |
-| `clipped` | `.clipped()` | `.with(Clipped.of())` | `CLIPS_TO_BOUNDS` 0x1010 |
-| `clipShape` | `.clipShape(_:)` | `.with(ClipShape.of(ShapeKind))` | `CLIPS_TO_BOUNDS` 0x1010 + `SHAPE_KIND` 0x0006 |
+| `cornerRadius` | `.cornerRadius(_:)` | `.modifiers(CornerRadius.with(c -> c.radius(float)))` | `BORDER_RADIUS` 0x1005 |
+| `shadow` | `.shadow(color:radius:x:y:)` | `.modifiers(Shadow.with(s -> s.color(Color).radius(float).x(float).y(float)))` / `.modifiers(Shadow.with(s -> s.radius(float)))` | `SHADOW_COLOR` 0x1021, `SHADOW_RADIUS` 0x1022, `SHADOW_X` 0x1023, `SHADOW_Y` 0x1024 |
+| `opacity` | `.opacity(_:)` | `.modifiers(Opacity.with(o -> o.value(float)))` | `OPACITY` 0x100D |
+| `blur` | `.blur(radius:)` | `.modifiers(Blur.with(b -> b.radius(float)))` | `BLUR_RADIUS` 0x1025 |
+| `saturation` | `.saturation(_:)` | `.modifiers(Saturation.with(s -> s.value(float)))` | `SATURATION` 0x1026 |
+| `contrast` | `.contrast(_:)` | `.modifiers(Contrast.with(c -> c.value(float)))` | `CONTRAST` 0x1027 |
+| `brightness` | `.brightness(_:)` | `.modifiers(Brightness.with(b -> b.value(float)))` | `BRIGHTNESS` 0x1028 |
+| `grayscale` | `.grayscale(_:)` | `.modifiers(Grayscale.with(g -> g.value(float)))` | `GRAYSCALE` 0x1029 |
+| `hueRotation` | `.hueRotation(_:)` | `.modifiers(HueRotation.with(h -> h.degrees(float)))` | `HUE_ROTATION` 0x102A |
+| `colorMultiply` | `.colorMultiply(_:)` | `.modifiers(ColorMultiply.with(c -> c.color(Color)))` | `COLOR_MULTIPLY` 0x102B |
+| `colorInvert` | `.colorInvert()` | `.modifiers(ColorInvert.with())` | `COLOR_INVERT` 0x102C |
+| `clipped` | `.clipped()` | `.modifiers(Clipped.with())` | `CLIPS_TO_BOUNDS` 0x1010 |
+| `clipShape` | `.clipShape(_:)` | `.modifiers(ClipShape.with(c -> c.shape(ShapeKind)))` | `CLIPS_TO_BOUNDS` 0x1010 + `SHAPE_KIND` 0x0006 |
 
-**Delta (Java)**: the border modifier value is `Border.of(color, width[, radius])`
-— canonical color-then-width order; corner radius is a separate
-`.cornerRadius` value (`CornerRadius.of`).
+**Border** canonical order is color-then-width; corner radius is a separate
+`CornerRadius` modifier.
 
 ### 5.4 Transform
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
-|----------|---------------------------|--------------------|---------------|
-| `rotationEffect` | `.rotationEffect(_:anchor:)` | `.with(Rotation.of(float))` | `ROTATION_DEGREES` 0x102D |
-| `scaleEffect` | `.scaleEffect(_:anchor:)` | `.with(ScaleEffect.of(float))` | `SCALE` 0x102E |
+| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+|----------|---------------------------|----------|---------------|
+| `rotationEffect` | `.rotationEffect(_:anchor:)` | `.modifiers(Rotation.with(r -> r.degrees(float)))` | `ROTATION_DEGREES` 0x102D |
+| `scaleEffect` | `.scaleEffect(_:anchor:)` | `.modifiers(ScaleEffect.with(s -> s.value(float)))` | `SCALE` 0x102E |
 
 Anchor is renderer-token-owned (center default); the protocol does not transmit
 anchors. Transforms do not affect layout.
 
 ### 5.5 Interaction & state
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL (current) | Property(ies) |
-|----------|---------------------------|--------------------|---------------|
-| `hidden` | `.hidden()` | `.with(Hidden.of())` / `.with(Visible.of(boolean))` | `VISIBLE` 0x100E |
-| `disabled` | `.disabled(_:)` | `.with(Disabled.of(boolean))` | `ENABLED` 0x2003 (inverse: 1 = interactive) |
-| `allowsHitTesting` | `.allowsHitTesting(_:)` | `.with(AllowsHitTesting.of(boolean))` | `ALLOWS_HIT_TESTING` 0x102F |
-| `controlSize` | `.controlSize(_:)` | `.with(ControlSizeMod.of(ControlSize))` | `CONTROL_SIZE` 0x200C |
-| `accessibilityLabel` | `.accessibilityLabel(_:)` | `.with(AccessibilityLabel.of(String))` | `LABEL` 0x200A |
-| `accessibilityRole` | `.accessibilityRole(_:)` | `.with(AccessibilityRole.of(int))` | `ROLE` 0x2001 |
-| `accessibilityState` | `.accessibilityState(_:)` | `.with(AccessibilityState.of(int))` | `STATE` 0x2002 |
-| `modifier` (custom) | `.with(_:)` | `.with(ViewModifier)` | composes core modifiers |
-| `buttonStyle` | `.buttonStyle(_:)` | `.with(ButtonStyleMod.of(ButtonStyle))` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins); the style supplies the button's content ([§5.7](#57-styleable-controls-the-style-contract)) |
-| `labelStyle` | `.labelStyle(_:)` | `.with(LabelStyleMod.of(LabelStyle))` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
-| `audioStyle` | `.audioStyle(_:)` | `.with(AudioStyleMod.of(AudioStyle))` | environment-scoped (`Environment.AUDIO_STYLE` key, nearest-wins); the style supplies the `AUDIO` node's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
-| `videoStyle` | `.videoStyle(_:)` | `.with(VideoStyleMod.of(VideoStyle))` | environment-scoped (`Environment.VIDEO_STYLE` key, nearest-wins); the style supplies the `VIDEO` node's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
+| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+|----------|---------------------------|----------|---------------|
+| `hidden` | `.hidden()` | `.modifiers(Hidden.with())` / `.modifiers(Visible.with(v -> v.visible(boolean)))` | `VISIBLE` 0x100E |
+| `disabled` | `.disabled(_:)` | `.modifiers(Disabled.with(d -> d.disabled(boolean)))` | `ENABLED` 0x2003 (inverse: 1 = interactive) |
+| `allowsHitTesting` | `.allowsHitTesting(_:)` | `.modifiers(AllowsHitTesting.with(a -> a.allowed(boolean)))` | `ALLOWS_HIT_TESTING` 0x102F |
+| `controlSize` | `.controlSize(_:)` | `.modifiers(ControlSize.LARGE)` (the enum *is* the modifier) | `CONTROL_SIZE` 0x200C |
+| `accessibilityLabel` | `.accessibilityLabel(_:)` | `.modifiers(AccessibilityLabel.with(a -> a.text(String)))` | `LABEL` 0x200A |
+| `accessibilityRole` | `.accessibilityRole(_:)` | `.modifiers(AccessibilityRole.with(a -> a.role(int)))` | `ROLE` 0x2001 |
+| `accessibilityState` | `.accessibilityState(_:)` | `.modifiers(AccessibilityState.with(a -> a.state(int)))` | `STATE` 0x2002 |
+| `modifier` (custom) | `.modifier(_:)` | `.modifiers(ViewModifier)` | composes core modifiers |
+| `buttonStyle` | `.buttonStyle(_:)` | `.modifiers(ButtonStyle)` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins); the style supplies the button's content ([§5.7](#57-styleable-controls-the-style-contract)) |
+| `labelStyle` | `.labelStyle(_:)` | `.modifiers(LabelStyle)` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
+| `audioStyle` | `.audioStyle(_:)` | `.modifiers(AudioStyle)` | environment-scoped (`Environment.AUDIO_STYLE` key, nearest-wins); the style supplies the `AUDIO` node's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
+| `videoStyle` | `.videoStyle(_:)` | `.modifiers(VideoStyle)` | environment-scoped (`Environment.VIDEO_STYLE` key, nearest-wins); the style supplies the `VIDEO` node's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
+| `environment` | `.environment(_:_:)` | `.modifiers(EnvironmentBinding.with(e -> e.key(EnvironmentKey).value(value)))` | environment-scoped (a typed `EnvironmentKey`, nearest-wins); no wire property |
 | `focusable` | `.focusable(_:)` | (via the `PointerEvents` modifier) | **no property** — declares `FOCUS` listener bit 5; observe `FOCUS_CHANGED` |
-| raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.with(PointerEvents.of(int))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
+| raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifiers(PointerEvents.with(p -> p.mask(int)))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
 
-**Delta (Java)**: `.visible(boolean)` is a Pathland extra (SwiftUI only has
-`.hidden()` — `Visible.of(...)`/`Hidden.of()`). `.accessibilityRole`/
-`.accessibilityState` take raw `int` codes today rather than a typed enum. Raw
-input listeners are exposed only through the `PointerEvents` modifier value —
-there is no per-event sugar (e.g. a `.focusable` or `.onSubmit` that sets the
-matching bit).
+**Notes**: `visible(boolean)` is a Pathland extra (SwiftUI only has
+`.hidden()` — `Visible`/`Hidden`). `accessibilityRole`/`accessibilityState`
+take raw `int` codes today rather than a typed enum. Raw input listeners are
+exposed through the `PointerEvents` modifier value — there is no per-event sugar
+(e.g. a `.focusable` or `.onSubmit` that sets the matching bit). `environment`
+is the one inheritance/scoping modifier
+([§6 rule 6](#6-authoring-conventions)), alongside the style modifiers.
 
 ### 5.6 Custom modifiers (developer-authored)
 
@@ -765,17 +841,16 @@ every conformant DSL: modifiers are never hard-bound to a view type.
   (`Text`), a container (`VStack`), a control (`Button`), a custom view, or an
   already-modified view. The same modifier value applies everywhere.
 - **One mechanism.** Core and application-authored modifiers are the **same
-  surface**: a `ViewModifier` value applied via `.with(...)`. The library's
-  sugar names (`.padding`, `.foregroundStyle`, …) are conveniences that
-  construct the built-in `ViewModifier` values; there is exactly one modifier
-  mechanism ([§5](#5-modifier-surface)). The Java realization ships **no sugar**
-  — `.with(Padding.of(16))` is the only form (the varargs accept several at once).
+  surface**: a `ViewModifier` value applied via `.modifiers(...)`. There is
+  **no per-modifier sugar on the view type**; a parameterized modifier is
+  constructed with `Modifier.with(...)` and single-value modifiers pass the
+  value directly ([§5.0](#50-authoring-a-modifier)).
 
 | | Canonical | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view`) |
 |-|-----------|-------------------------------|----------------------------|
 | authoring | `struct Card: ViewModifier { func body(content: Content) -> some View }` | `@FunctionalInterface ViewModifier { View body(View content) }` | `trait ViewModifier { fn apply(&mut Node) }` |
-| applying | `content.modifier(Card())` | `content.with(CardStyle.of(...))` / `content.with(A.of(...), B.of(...))` | `content.with(Card)` |
-| sugar | `.padding(16)` ≡ `.modifier(Padding(16))` | **no sugar** — `.with(Padding.of(16))` only | `.padding(16.0)` ≡ `.with(Padding(16.0))` |
+| applying | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` / `content.modifiers(A, B)` | `content.with(Card)` |
+| single-value | `.modifier(Padding(16))` | `content.modifiers(Padding.with(p -> p.uniform(16)))` | `content.with(Padding(16.0))` |
 
 **Composition**: a custom modifier composes core modifiers **or** wraps
 `content` with additional structure (a background, an overlay, a frame) and
@@ -787,18 +862,18 @@ emission stays diff-based, and a renderer that cannot apply a modifier
 **allows and ignores** it.
 
 **Realization deltas**:
-- **Rust** — already conformant: every core modifier (`Padding`, `FontSize`,
-  `ForegroundStyle`, `Frame`, …) implements `ViewModifier`, and the sugar
-  methods delegate to `.with(...)`. Caveat: `apply(&mut Node)` mutates the
-  built node's properties only — it cannot wrap `content` with new structure
-  (the Java/SwiftUI `body(content)` form can). A conformant DSL's
-  custom-modifier mechanism should support wrapping.
-- **Java** — fully conformant: every core modifier is a `ViewModifier` value
-  (`Padding.of(16)`, `ForegroundStyle.of(color)`, …) applied via `.with(...)`;
-  `View` has no modifier sugar, and `buttonStyle` is the `ButtonStyleMod`
-  modifier value (which binds the `Environment.BUTTON_STYLE` key down the
-  subtree — subtree scoping is environment-only). Application-authored
-  `ViewModifier.body(View)` is SwiftUI-shaped and can wrap content with structure.
+- **Rust** — every core modifier (`Padding`, `FontSize`, `ForegroundStyle`,
+  `Frame`, …) implements `ViewModifier`, and `.modifiers([...])` applies them.
+  Caveat: `apply(&mut Node)` mutates the built node's properties only — it
+  cannot wrap `content` with new structure (the Java/SwiftUI `body(content)`
+  form can). A conformant DSL's custom-modifier mechanism should support
+  wrapping.
+- **Java** — every core modifier is a `ViewModifier` value applied via
+  `.modifiers(...)`; `View` has no modifier sugar, and a style
+  (`ButtonStyle`, …) is itself a `ViewModifier` value (it binds the
+  `Environment.BUTTON_STYLE` key down the subtree — subtree scoping is
+  environment-only). Application-authored `ViewModifier.body(View)` is
+  SwiftUI-shaped and can wrap content with structure.
 
 ### 5.7 Styleable controls (the style contract)
 
@@ -814,19 +889,31 @@ author-facing shape of the protocol's **Composite Override Mode**
   `EVENT_LISTENERS` (Button), the value/text/date sink, or the media sink
   (Audio/Video). The **whole control is interactive**, including its padding.
 - **The style owns the content.** A style returns the control's **content view**
-  from `makeBody(Configuration)`; the control attaches it as the control node's
+  from `makeBody(Config)`; the control attaches it as the control node's
   **single child**. The content keeps its own component(s), layout, and
   properties — a style **never** sets or overwrites the control's component and
   never wires the interaction. The result is a control with children → protocol
   **Composite Override Mode**.
-- **Scoping is environment-only.** A style is scoped down a subtree with the
-  matching `<Style>Mod` value, which binds the style's `EnvironmentKey` over the
-  wrapped subtree (nearest wins); the control reads it via its
+- **The style consumes the control's config.** The `Config` a style's
+  `makeBody(Config)` receives is the **same type** the view configured through
+  `with(...)` ([§2](#2-canonical-signature-notation)): `ButtonStyle.makeBody(Button.Config)`,
+  `LabelStyle.makeBody(Label.Config)`, `AudioStyle.makeBody(Audio.Config)`,
+  `VideoStyle.makeBody(Video.Config)`. The style **reads** the config (the
+  control's values: content, action, label, media state); it does not mutate it.
+- **A style is a modifier.** Styles are `ViewModifier` values scoped down a
+  subtree with `.modifiers(<Style>)`, binding the style's `EnvironmentKey` over
+  the wrapped subtree (nearest wins); the control reads it via its
   `Environment.<name>Style()` accessor. This is the one inheritance mechanism
-  ([§6 rule 6](#6-authoring-conventions)); `buttonStyle` binds
-  `Environment.BUTTON_STYLE`, `audioStyle` `Environment.AUDIO_STYLE`,
-  `videoStyle` `Environment.VIDEO_STYLE`, `labelStyle`
+  ([§6 rule 6](#6-authoring-conventions)); `ButtonStyle` binds
+  `Environment.BUTTON_STYLE`, `AudioStyle` `Environment.AUDIO_STYLE`,
+  `VideoStyle` `Environment.VIDEO_STYLE`, `LabelStyle`
   `Environment.LABEL_STYLE`.
+- **Button content precedence (three developer options).** A `Button`'s content
+  resolves as: (1) an **explicit child** supplied via `.children(...)` wins;
+  else (2) the config **title** string (wrapped as a `Text`); else (3) the
+  **style-supplied content** from `makeBody`. The `buttonStyle` modifier itself
+  (option 3) lets a developer hand content in through the style. This mirrors
+  SwiftUI's multiple button-authoring forms.
 - **Defaults preserve the native path.** The default style contributes the
   control's natural content: `PlainButtonStyle` → the label;
   `NativeAudioStyle`/`NativeVideoStyle` → **no content** (an empty-content
@@ -839,37 +926,39 @@ author-facing shape of the protocol's **Composite Override Mode**
 - **Main-axis alignment is the content's own layout — no protocol property.**
   A control's content box centers its child by default; to left-align a
   composite label (e.g. a navigation row), make the label full-width
-  (`.frame(.infinity)`) and let its own `ALIGNMENT` place its content. There is
-  deliberately no main-axis/justification property (the engine describes WHAT,
-  never WHERE — [§1](#1-design-principles-dsl-flavored)).
+  (`Frame.with(f -> f.width(FILL))`) and let its own `ALIGNMENT` place its
+  content. There is deliberately no main-axis/justification property (the engine
+  describes WHAT, never WHERE — [§1](#1-design-principles-dsl-flavored)).
 - **Closed-variant ("token") styles are the same surface, not a wrapper.** Some
   styles select a whole native variant rather than supplying content:
   `ToggleStyle`/`PickerStyle`/`TextStyle` are wire **enums** applied as
   properties (`TOGGLE_STYLE`, …), and `LabelStyle` shapes which parts render.
   They are scoped/read exactly like the wrapper styles above.
 
-Canonical signatures (SwiftUI-shaped) and the Java realization:
+Canonical signatures (SwiftUI-shaped) and the realization:
 
-| Control | Style protocol | `Configuration` | Default style |
-|---------|----------------|-----------------|---------------|
-| `Button` | `ButtonStyle { makeBody(config) -> View }` | `(label: View)` | `PlainButtonStyle` (label) |
-| `Label` | `LabelStyle { makeBody(config) -> View }` | `(title: View?, icon: View?)` | `DefaultLabelStyle` (title + icon) |
-| `Audio` | `AudioStyle { makeBody(config) -> View }` | `(playing, position, volume, duration)` | `NativeAudioStyle` (no content) |
-| `Video` | `VideoStyle { makeBody(config) -> View }` | `(playing, position, volume, duration)` | `NativeVideoStyle` (no content) |
+| Control | Style protocol | `Config` | Default style |
+|---------|----------------|----------|---------------|
+| `Button` | `ButtonStyle { makeBody(config) -> View }` | the `Button.Config` (title, action, content) | `PlainButtonStyle` (label) |
+| `Label` | `LabelStyle { makeBody(config) -> View }` | the `Label.Config` (title, icon) | `DefaultLabelStyle` (title + icon) |
+| `Audio` | `AudioStyle { makeBody(config) -> View }` | the `Audio.Config` (playing, position, volume, duration) | `NativeAudioStyle` (no content) |
+| `Video` | `VideoStyle { makeBody(config) -> View }` | the `Video.Config` (playing, position, volume, duration) | `NativeVideoStyle` (no content) |
 
 ```java
-// Button: the control wires the action; the style decorates the label.
+// Button: the control wires the action; the style decorates the label/content.
 enum MyButtonStyle implements ButtonStyle { INSTANCE;
-    @Override public View makeBody(Configuration c) {
-        return c.label().with(Padding.of(12), Background.of(BLUE));
+    @Override public View makeBody(Button.Config c) {
+        return c.content().modifiers(Padding.with(p -> p.uniform(12)), Background.with(b -> b.color(BLUE)));
     }
 }
-Button.of("Save", this::save).with(ButtonStyleMod.of(MyButtonStyle.INSTANCE));
+Button.with(b -> b.title("Save").action(this::save)).modifiers(MyButtonStyle.INSTANCE);
 
 // Label: the style decides which parts render (nullable parts = absent).
 enum BadgeLabelStyle implements LabelStyle { INSTANCE;
-    @Override public View makeBody(Configuration c) {
-        return HStack.of(c.icon().with(Frame.of(18, 18)), c.title());
+    @Override public View makeBody(Label.Config c) {
+        return HStack.with().children(
+                c.icon().modifiers(Frame.with(f -> f.width(18).height(18))),
+                c.title());
     }
 }
 ```
@@ -879,8 +968,8 @@ The Java DSL ships `PlainButtonStyle`/`BorderedButtonStyle`,
 `NativeAudioStyle`/`NativeVideoStyle`; application-authored styles implement the
 same interfaces. **Delta:** SwiftUI's `LabelStyleConfiguration.title`/`.icon`
 are always-present views; Pathland passes `null` for an absent part (a style
-checks `hasTitle()`/`hasIcon()`). And because the Java DSL has no per-modifier
-sugar (§5), a style is applied with `.with(<Style>Mod.of(style))`.
+checks `hasTitle()`/`hasIcon()`). Because styles are modifiers, a style is
+applied with `.modifiers(<Style>)`.
 
 ---
 
@@ -891,13 +980,14 @@ A conformant DSL follows these conventions:
 1. **Names**: SwiftUI view/modifier names; per-language case (camelCase,
    snake_case). `foregroundStyle` not `foregroundColor`; `fontWeight`,
    `multilineTextAlignment`, `scaledToFit`, `allowsHitTesting` keep their
-   SwiftUI spellings.
+   SwiftUI spellings. A modifier's type is **never** suffixed `Mod`.
 2. **Signature order**: canonical parameter order is preserved —
    `.border(color, width)`, `.frame(width, height, alignment)`,
    `.shadow(color, radius, x, y)`. Compound modifiers expand to one property
    per argument.
-3. **Constructor vs modifier**: structural (alignment, spacing) in the
-   constructor; everything else chainable.
+3. **Values vs modifiers**: structural/layout values and a control's bound value
+   are configured through `with(...)`; everything else is a chainable
+   `modifiers(...)` value. The three operations may be chained in any order.
 4. **Typed enums**: `HorizontalAlignment` (leading/center/trailing, for
    `VStack`), `VerticalAlignment` (top/center/bottom, for `HStack`), `Alignment`
    (2D — topLeading … bottomTrailing — for `ZStack`/grids and the `frame`
@@ -911,18 +1001,18 @@ A conformant DSL follows these conventions:
    `DatePickerMode` (date/time/dateAndTime), `ShapeKind`
    (circle/rectangle/roundedRectangle/capsule/ellipse/path). Numeric codes
    come from MODIFIERS.md's appendix; the DSL resolves them.
-5. **`Spacer`/`Color` as views**: `Spacer()` is a flexible expanding filler;
-   `Color(...)` in a tree is a layout-greedy fill.
+5. **`Spacer`/`Color` as views**: `Spacer` is a flexible expanding filler;
+   `Color` in a tree is a layout-greedy fill.
 6. **The environment is the only inheritance mechanism.** Any value that must
    reach a whole subtree — a style (`ButtonStyle`), the router, the active path,
    the session's persisted state — is injected through the environment, never
    threaded through constructors and never through a second scoping system. The
    environment is a hierarchical, nearest-wins scope of typed `EnvironmentKey`
-   values (`View.environment(key, value)` / `Environment.value(key)`, Java;
-   §4.5). A language MAY implement the scope with a thread-local over the
+   values (the `EnvironmentBinding` modifier value / `Environment.value(key)`,
+   Java; §4.5). A language MAY implement the scope with a thread-local over the
    synchronous render pass (Java does) — but that is the implementation of the
    one mechanism, not an additional one. A subtree-scoping modifier MUST be
-   expressed as an `EnvironmentKey` binding: `buttonStyle` binds
+   expressed as an `EnvironmentKey` binding: `ButtonStyle` binds
    `Environment.BUTTON_STYLE` (`EnvironmentKey<ButtonStyle>`), exactly like the
    router and the active path.
 7. **Reactivity discipline**: `body()` is evaluated once; a signal read during
@@ -943,9 +1033,9 @@ Pathland theming is **application-owned over a renderer-owned token system**
 §Design Token System). The DSL gives the author two distinct surfaces:
 
 1. **Token references in style modifiers** — semantic intent instead of a
-   literal: `.foregroundStyle(Color.token("color.primary"))` emits a
-   `DESIGN_TOKEN` reference the renderer resolves against the current scheme.
-   No opcode is re-emitted when a token or the scheme changes.
+   literal: `ForegroundStyle.with(f -> f.color(Color.token("color.primary")))`
+   emits a `DESIGN_TOKEN` reference the renderer resolves against the current
+   scheme. No opcode is re-emitted when a token or the scheme changes.
 2. **Global theme overrides** — a batch of `PARAMETER::SET_DESIGN_TOKEN` commands
    rolled at mount: a single-scheme `Theme` or an `AdaptiveTheme` light+dark
    pair (base = **light**, `dark.`-prefixed = **dark**).
@@ -964,8 +1054,8 @@ reference rides the `DESIGN_TOKEN` value type (`0x08`) with the token path in
 the arena — **never** a packed literal. A property carries exactly one value
 (literal or reference, never both).
 
-| Canonical (SwiftUI-shaped) | Java DSL (current) | Rust DSL (current) | Emits |
-|----------------------------|--------------------|--------------------|-------|
+| Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits |
+|----------------------------|----------|----------|-------|
 | `Color.token("color.primary")` | `Color.token("color.primary")` | `Color::token("color.primary")` | `DESIGN_TOKEN` ref (`0x08`) in any COLOR-typed property: `COLOR` 0x100A (`.foregroundStyle`), `BACKGROUND_COLOR` 0x1001, `BORDER_COLOR` 0x1004, `SHADOW_COLOR` 0x1021, `TINT` 0x1030, … |
 | `Color.token("dark.color.surface")` | `Color.token("dark.color.surface")` | `Color::token("dark.color.surface")` | same — an explicit dark-variant reference |
 | `.padding(space.2)` / `Spacing(space.2)` | (token-valued spacing/padding) | (token-valued spacing/padding) | `DESIGN_TOKEN` ref in a F32-typed property: `PADDING` 0x1011 / `SPACING` 0x0001 / `CONTENT_MARGINS` 0x0005, … (see TOKENS.md §Generative token families) |
@@ -994,12 +1084,12 @@ theming.
 
 | Canonical (SwiftUI-shaped) | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view` / `pathland-engine`) | Emits |
 |----------------------------|--------------------------------|-----------------------------------------------|-------|
-| `Theme()` — one-scheme override batch | `new Theme()` (`ThemeData`) | `Theme::new()` | one `PARAMETER::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
+| `Theme()` — one-scheme override batch | `Theme.with()` / `ThemeData` | `Theme::new()` | one `PARAMETER::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
 | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `COLOR`-typed override (sRGB `0xAARRGGBB`) |
 | `.f32("space.base", 4.0)` | `.f32("space.base", 4.0f)` | `.f32("space.base", 4.0)` | `F32`-typed override (lengths in device pixels) |
 | `.u32("…", v)` / `.u8("…", v)` | `.u32(path, int)` / `.u8(path, int)` | `.u32(path, v)` / `.u8(path, v)` | `U32` / `U8`-typed override |
 | `.string("font.body.family", "Inter")` | `.string(path, String)` | `.string(path, "Inter")` | `STRING`-typed override (arena) |
-| `AdaptiveTheme(light, dark)` | `new AdaptiveTheme(light, dark)` | `AdaptiveTheme::new(light, dark)` | light overrides as base tokens; dark overrides `dark.`-prefixed |
+| `AdaptiveTheme(light, dark)` | `AdaptiveTheme.with(light, dark)` | `AdaptiveTheme::new(light, dark)` | light overrides as base tokens; dark overrides `dark.`-prefixed |
 
 Emission contract:
 
@@ -1031,46 +1121,52 @@ Authoring rules:
 ## 8. Java DSL convergence (adopted)
 
 The Java DSL (`com.pathland.view`) has the complete surface. The convergence
-below has been **adopted** (`.of()` construction, the removal of the `View.*`
-factories, and modifiers as `ViewModifier` values); the remaining items are
-marked *optional*. The canonical contract is [§4](#4-view-surface) and
-[§5](#5-modifier-surface).
+below has been **adopted**: construction through the three operations
+(`with` / `modifiers` / `children`), and modifiers as `ViewModifier` values with
+**no `Mod` suffix** and **no per-modifier sugar on `View`**. The canonical
+contract is [§4](#4-view-surface) and [§5](#5-modifier-surface).
 
 | Canonical | Java (adopted) | Optional / remaining |
 |-----------|----------------|----------------------|
-| `Text("…")` | `Text.of(String)` / `Text.of(Signal<String>)` | — |
-| `Button("…", action)` / `Button(action:label:)` | `Button.of(String, Runnable)` / `Button.of(View, Runnable)` | — |
-| `Toggle("label", isOn: writable)` | `Toggle.of(String label, WritableSignal<Boolean>)` (+ `ToggleStyle` overload) | — |
-| `Slider(value: in:)` | `Slider.of(binding, min, max)` (binding first) | — |
-| `.border(color, width)` | `Border.of(Color, float)` via `.with(...)` | `Border.of(Color, float, float)` radius convenience |
-| `DatePicker(selection:)` | `DatePicker.of(mode, days)` | *optional* `Date`-shaped overload encoding days + millis-of-day per `SET_DATE`/`DATE_CHANGED` |
+| `Text("…")` | `Text.with(t -> t.text("…"))` (String or `Signal<String>`) | — |
+| `Button("…", action)` / `Button(action:label:)` | `Button.with(b -> b.title("…").action(action))` and/or `.children(label)` | — |
+| `Toggle("label", isOn: writable)` | `Toggle.with(t -> t.label("…").isOn(writable))` | — |
+| `Slider(value: in:)` | `Slider.with(s -> s.value(writable).min(..).max(..))` (binding in config) | — |
+| `.border(color, width)` | `Border.with(b -> b.color(..).width(..))` via `.modifiers(...)` | radius convenience on the same builder |
+| `DatePicker(selection:)` | `DatePicker.with(d -> d.mode(..).selection(days))` | *optional* `Date`-shaped config encoding days + millis-of-day per `SET_DATE`/`DATE_CHANGED` |
 
 Adopted conventions:
 
-- **`.of()` is the one construction path.** Every concrete view/control exposes
-  a static `<ViewName>.of(...)` factory on its own class. Construction is never
-  `new <ViewName>()` and never `View.<name>(...)`.
+- **`with` / `modifiers` / `children` are the one construction path.** Every
+  concrete view/control exposes these three operations; `.of(...)` is gone.
+  They are available **at creation or chained, in any order**
+  ([§2](#2-canonical-signature-notation)).
+- **`with(config)` is a fluent config builder.** The config holds the view's
+  values and is the same type a style's `makeBody(Config)` reads
+  ([§5.7](#57-styleable-controls-the-style-contract)).
 - **The `View.*` static-factory surface is removed.** The entire factory block
   (`text`, `image`, `rectangle`, `spacer`, `vstack`, `hstack`, `zstack`,
   `button`, `textField`, `textEditor`, `toggle`, `slider`, `stepper`,
   `progressView`, `gauge`, `divider`, `grid`, `scrollView`, `lazyVStack`,
   `lazyHStack`, `lazyVGrid`, `lazyHGrid`, `picker`, `menu`, `colorPicker`,
   `datePicker`, `group`) is deleted from `View.java`.
-- **`Group` is a first-class view.** `Group.of(View...)` is a transparent
-  container view (SwiftUI `Group`).
+- **`Group` is a first-class view.** `Group.with().children(View...)` is a
+  transparent container view (SwiftUI `Group`).
 - **Core and custom modifiers share one mechanism.** Core modifiers are
-  `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`) applied
-  via `.with(...)` — there is **no sugar on `View`**; several modifiers at
-  once use `.with(...)`, innermost-first. Parameterized modifier values use
-  `.of(...)`; `buttonStyle` is the `ButtonStyleMod` value (an environment
-  binding: it scopes `Environment.BUTTON_STYLE` down the subtree).
-- **Full `ShapeKind` coverage.** `Circle.of()`, `Capsule.of()`, `Ellipse.of()`,
-  `RoundedRectangle.of(cornerRadius:)`, generic `Shape.of(ShapeKind)` (for
-  `Path`).
-- *Optional*: an environment path letting the trailing-action form
-  (`Button(label) { action }`) read the action from the environment, if a
-  Java-idiomatic trailing lambda is desirable.
-- *Optional*: a `Date`-shaped `DatePicker` binding (see table).
+  `ViewModifier` values (`Padding.with(p -> p.uniform(16))`,
+  `ForegroundStyle.with(f -> f.color(color))`) applied via `.modifiers(...)` —
+  there is **no sugar on `View`**; several modifiers at once use
+  `.modifiers(...)`, innermost-first. Single-value modifiers pass the value
+  directly (`FontWeight.BOLD`).
+- **No `Mod` suffix.** A modifier type is named for the modifier it applies;
+  where it wraps a single value, the value type is the modifier. Main's
+  `FrameMod → Frame` (with the wire batch renamed `emit.Frame → ProtocolFrame`)
+  is the precedent; the remaining `*Mod` types are renamed accordingly
+  (`FontWeightMod → FontWeight`, `ButtonStyleMod → ButtonStyle`, …;
+  `EnvironmentMod → EnvironmentBinding`, `router/NavigationMod → NavigationIntent`).
+- **Full `ShapeKind` coverage.** `Circle.with()`, `Capsule.with()`,
+  `Ellipse.with()`, `RoundedRectangle.with(r -> r.cornerRadius(..))`, generic
+  `Shape.with(s -> s.kind(ShapeKind))` (for `Path`).
 - Implementation status: `lib/java/pathland-view/status.md`.
 
 ---
@@ -1090,18 +1186,27 @@ are the companion specs.
   `LazyVGrid`, `LazyHGrid`, `LazyVStack`, `LazyHStack`; `Button`,
   `TextField`, `SecureField`, `TextEditor`, `Toggle`, `Slider`, `Stepper`,
   `Picker`, `Menu`, `DatePicker`, `ColorPicker`.
-- [ ] **Modifiers** — every entry of [§5](#5-modifier-surface), chainable on
-  any view, innermost-first, emitting one property per underlying argument.
+- [ ] **The three operations** — configure values, apply modifiers, supply
+  children — available at creation or by chaining, in any order
+  ([§2](#2-canonical-signature-notation)). Each language maps them to its idiom
+  ([§9.3](#93-language-adaptation-rules)).
+- [ ] **Modifiers** — every entry of [§5](#5-modifier-surface), applicable to
+  any view, innermost-first, emitting one property per underlying argument; a
+  modifier's type carries no `Mod` suffix.
 - [ ] **Custom modifiers / unified mechanism** — a `ViewModifier` authoring
-  surface (`body(content) -> View`) + `.with(...)` chainable on **any**
-  view; **core modifiers are implemented through the same mechanism**, never a
-  separate syntax ([§5.6](#56-custom-modifiers-developer-authored)).
+  surface (`body(content) -> View`) + a chainable `modifiers(...)` operation on
+  **any** view; **core modifiers are implemented through the same mechanism**,
+  never a separate syntax ([§5.6](#56-custom-modifiers-developer-authored)).
+- [ ] **Shared config with styles** — a style's `makeBody(Config)` receives the
+  same config type the control configured via `with(...)`
+  ([§5.7](#57-styleable-controls-the-style-contract)).
 - [ ] **Signals** — `signal`, `computed`, `effect`, `untracked`,
   `get`/`set`/`update`/`asReadonly`, with equality suppression, synchronous
   flush, glitch-free propagation, error caching, write discipline, circular
   detection ([§3.1](#31-signal-surface)).
-- [ ] **Two-way bindings** — every value control takes a writable signal and
-  exposes a sink the host routes its event into ([§3.2](#32-two-way-binding)).
+- [ ] **Two-way bindings** — every value control takes a writable signal (a
+  config value) and exposes a sink the host routes its event into
+  ([§3.2](#32-two-way-binding)).
 - [ ] **Persisted state** — `State<T>` keyed fields (or the language's
   equivalent wiring) against a platform-neutral store ([§3.3](#33-persisted-state-statet)).
 - [ ] **Gestures** — `.onTapGesture` (composed from raw pointer down/up) and
@@ -1138,9 +1243,9 @@ are the companion specs.
    (`A` = arenaRef path, `B` = valueType, `C` = value); a `dark.`-prefixed path
    supplies the dark design (base = light — [TOKENS.md](./TOKENS.md)).
 4. `WIDTH`/`HEIGHT` sentinels: `FILL` = −1.0, `HUG_CONTENT` = −2.0.
-5. `Grid` counts map to the **constructor properties** `GRID_COLUMNS` (`0x001E`) /
+5. `Grid` counts map to the **config values** `GRID_COLUMNS` (`0x001E`) /
    `GRID_ROWS` (`0x001F`): a positive `int` count emits a positive F32; absent =
-   auto-fit. A **`List<GridItem>`** overload serializes to the **`GRID_TRACKS`**
+   auto-fit. A **`List<GridItem>`** value serializes to the **`GRID_TRACKS`**
    (`0x0020`, STRING) per-track spec, which takes precedence over the counts. A
    `WIDTH`/`HEIGHT` frame on a grid is the grid's **box**, never a count
    ([§4.2](#42-layout--container-nodes)).
@@ -1155,14 +1260,33 @@ are the companion specs.
 
 ### 9.3 Language adaptation rules
 
-| SwiftUI mechanism | Adapt as |
-|-------------------|----------|
-| trailing closure / result builder for children | varargs (Java), macros (Rust), builders/block (C#/Kotlin), element list (any) |
-| `Binding<T>` (Swift) | `WritableSignal<T>` (always — signals are the model, never property wrappers) |
-| `some View` opaque return | the language's `View` interface/trait (Java `View`, Rust `View` trait) |
-| `@State`/`@Binding` property wrappers | signals + persisted `State<T>` ([§3.3](#33-persisted-state-statet)) |
-| labeled parameters | named params where the language has them; otherwise preserve **parameter order** and document labels |
-| method chaining for modifiers | default methods (Java), extension traits (Rust), extension methods (C#/Kotlin) |
+**The three operations are normative; their spellings are not.** A conformant
+DSL MUST expose *configure values*, *apply modifiers*, and *supply children*,
+each available at creation or by chaining (any order), mapped to the host
+language's idioms. The canonical (Java/SwiftUI-shaped) spelling is
+`with` / `modifiers` / `children`.
+
+| Aspect | Java | C# | Rust | Go | Python |
+|--------|------|----|------|----|--------|
+| configure values | `with(c -> …)` | `With(c => …)` | `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
+| apply modifiers | `.modifiers(…)` | `.Modifiers(…)` | `.modifiers([…])` | `.Modifiers(…)` | `.modifiers(…)` |
+| supply children | `.children(…)` | `.Children(…)` | `.children([…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
+| creation + chaining | static on the view; chain on the returned builder | static on the view; chain via **extension methods** | associated fn `Type::with`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
+| same-name static + chain | **builder split** (static on class, chain on builder) | extension methods (separate static class) | assoc fn + trait method | package func + method (not type-scoped) | **not expressible** (methods are last-wins) |
+| `with` name legal | yes | yes (`With`; lowercase `with` is the record keyword) | yes | yes | **no** — `with` is a keyword → kwargs / `configure` |
+| varargs children | yes | `params` | no — slices/arrays or macros | `...` | `*args` |
+| value *is* the modifier | enum OK | **enum can't implement an interface** → `record struct` / static readonly value | enum OK | typed const + method OK | enum member with `apply` OK |
+
+Rules:
+
+- A language that cannot express "static-or-chained under one name" (Python)
+  MUST still offer the three operations — value configuration via kwargs /
+  `configure(...)`, modifiers and children via chainable methods.
+- A language whose enums cannot implement the modifier interface (C#) MUST
+  supply the equivalent single-value modifier form (a `record struct`, a static
+  readonly value, or an implicit conversion).
+- Names are recommendations; semantics
+  ([§1](#1-design-principles-dsl-flavored)) are the contract.
 
 ### 9.4 Conformance recipe
 
@@ -1193,44 +1317,44 @@ reference implementations:
 Representative rows; the full surface is in [§4](#4-view-surface) and
 [§5](#5-modifier-surface).
 
-| SwiftUI | Canonical DSL | Java DSL (current) | Rust DSL (current) |
-|---------|---------------|--------------------|--------------------|
-| `Text("Hi")` | `Text("Hi")` | `Text.of("Hi")` | `text("Hi")` |
-| `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.of(Alignment.CENTER, 8, children...)` | `vstack![…].with(Spacing.of(8.0))` |
-| `Button("+") { inc() }` | `Button("+", action)` | `Button.of("+", () -> inc())` | `button("+")` (no action yet) |
-| `TextField("Name", text: $name)` | `TextField("Name", text: writable)` | `TextField.of("Name", name)` | `TextField { placeholder }` (no binding yet) |
-| `Toggle("On", isOn: $on)` | `Toggle("On", isOn: writable)` | `Toggle.of(selected, binding)` | `Toggle(style)` (no binding yet) |
-| `Slider(value: $v, in: 0...100)` | `Slider(value: writable, in: min...max)` | `Slider.of(vSig, 0, 100)` | `Slider { value, min, max }` (no binding yet) |
-| `DatePicker("D", selection: $d)` | `DatePicker("D", selection: writable)` | `DatePicker.of(DatePickerMode.DATE, days)` | `DatePicker` (bare) |
-| `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.with(ForegroundStyle.of(Color))` | `.foreground_style(Color(0xFF0000FF))` |
-| `.background(.gray)` | `.background(Color)` | `.with(Background.of(Color))` | `.background(Color(0xFFEEEEEE))` |
-| `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.with(Border.of(Color, 2))` | `.border(Color, 2.0)` |
-| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.with(Frame.of(100, 24))` | `.frame(Some(100.0), Some(24.0), None)` |
-| `.padding(16)` | `.padding(16)` | `.with(Padding.of(16))` | `.padding(16.0)` |
-| `.font(.system(size: 28))` | `.font(size: 28)` | `.with(FontSize.of(28))` | `.font_size(28.0)` |
-| `.font(.largeTitle)` | `.font(Font.largeTitle())` | `.font(Font.largeTitle())` | `.font(Font::large_title())` |
-| `.font(.custom("Georgia", size: 20))` | `.font(Font.custom("Georgia", 20))` | `.font(Font.custom("Georgia", 20f))` | `.font(Font::custom("Georgia", 20.0))` |
-| `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.with(FontWeightMod.of(FontWeight.BOLD))` | `.font_weight(700.0)` |
-| `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.with(Shadow.of(Color, float, float, float))` | (not yet) |
-| `.onTapGesture { go() }` | `.onTapGesture(action)` | `.with(TapGesture.of(() -> go()))` | `.on_tap_gesture(|| go())` |
-| `if showLogin { LoginView() } else { HomeView() }` | `if/else` in a result builder | `Conditional.when(showLogin, LoginView.of(), HomeView.of())` | `if`/`match` in `build()` |
-| `NavigationStack { … }` | `Router` + `NavigationContainer` | `NavigationContainer.of(router)` | `NavigationContainer::new(router)` |
-| `NavigationLink("Users", value:)` | `NavigationLink("label", router, to)` | `NavigationLink.of("Users", router, "/users")` | `navigation_link(...)` |
-| `content.with(Card())` | `content.with(Card())` | `content.with(CardStyle.of(...))` | `.with(Card)` |
+| SwiftUI | Canonical DSL | Java DSL | Rust DSL |
+|---------|---------------|----------|----------|
+| `Text("Hi")` | `Text("Hi")` | `Text.with(t -> t.text("Hi"))` | `text("Hi")` |
+| `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.with(v -> v.alignment(Alignment.CENTER).spacing(8)).children(…)` | `vstack![…].modifiers([Spacing(8.0)])` |
+| `Button("+") { inc() }` | `Button("+", action)` | `Button.with(b -> b.title("+").action(() -> inc()))` | `button("+")` (no action yet) |
+| `TextField("Name", text: $name)` | `TextField("Name", text: writable)` | `TextField.with(t -> t.placeholder("Name").text(name))` | `TextField::new` (no binding yet) |
+| `Toggle("On", isOn: $on)` | `Toggle("On", isOn: writable)` | `Toggle.with(t -> t.label("On").isOn(binding))` | `Toggle(style)` (no binding yet) |
+| `Slider(value: $v, in: 0...100)` | `Slider(value: writable, in: min...max)` | `Slider.with(s -> s.value(vSig).min(0).max(100))` | `Slider::new` (no binding yet) |
+| `DatePicker("D", selection: $d)` | `DatePicker("D", selection: writable)` | `DatePicker.with(d -> d.mode(DatePickerMode.DATE).selection(days))` | `DatePicker` (bare) |
+| `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.modifiers(ForegroundStyle.with(f -> f.color(Color)))` | `.foreground_style(Color(0xFF0000FF))` |
+| `.background(.gray)` | `.background(Color)` | `.modifiers(Background.with(b -> b.color(Color)))` | `.background(Color(0xFFEEEEEE))` |
+| `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.modifiers(Border.with(b -> b.color(Color).width(2)))` | `.border(Color, 2.0)` |
+| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.modifiers(Frame.with(f -> f.width(100).height(24)))` | `.frame(Some(100.0), Some(24.0), None)` |
+| `.padding(16)` | `.padding(16)` | `.modifiers(Padding.with(p -> p.uniform(16)))` | `.padding(16.0)` |
+| `.font(.system(size: 28))` | `.font(size: 28)` | `.modifiers(Font.with(f -> f.system(28)))` | `.font_size(28.0)` |
+| `.font(.largeTitle)` | `.font(Font.largeTitle())` | `.modifiers(Font.largeTitle())` | `.font(Font::large_title())` |
+| `.font(.custom("Georgia", size: 20))` | `.font(Font.custom("Georgia", 20))` | `.modifiers(Font.with(f -> f.custom("Georgia", 20)))` | `.font(Font::custom("Georgia", 20.0))` |
+| `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.modifiers(FontWeight.BOLD)` | `.font_weight(700.0)` |
+| `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.modifiers(Shadow.with(s -> s.color(Color).radius(r).x(x).y(y)))` | (not yet) |
+| `.onTapGesture { go() }` | `.onTapGesture(action)` | `.modifiers(TapGesture.with(g -> g.action(() -> go())))` | `.on_tap_gesture(\|\| go())` |
+| `if showLogin { LoginView() } else { HomeView() }` | `if/else` in a result builder | `Conditional.when(showLogin, new LoginView(), new HomeView())` | `if`/`match` in `build()` |
+| `NavigationStack { … }` | `Router` + `NavigationContainer` | `NavigationContainer.with(n -> n.router(router))` | `NavigationContainer::with(\|n\| n.router(router))` |
+| `NavigationLink("Users", value:)` | `NavigationLink("label", router, to)` | `NavigationLink.with(l -> l.label("Users").router(router).to("/users"))` | `navigation_link(...)` |
+| `content.modifier(Card())` | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` | `.with(Card)` |
 
-Core modifier sugar (`.padding`, `.foregroundStyle`, …) is shorthand for
-`.with(CoreModifier.of(...))` — one mechanism for built-in and
-application-authored modifiers alike ([§5.6](#56-custom-modifiers-developer-authored)).
-The Java realization has **no sugar**: `.with(Padding.of(16))` is the only
-form, with `.with(...)` for several at once.
+The three operations (`with` / `modifiers` / `children`) are the one mechanism
+for construction and modification alike
+([§2](#2-canonical-signature-notation),
+[§5.6](#56-custom-modifiers-developer-authored)); built-in and
+application-authored modifiers share the same `modifiers(...)` surface.
 
-**Status deltas captured by this table**: the Java DSL is surface-complete —
-`<ViewName>.of(...)` construction, modifiers as values via `.with(...)`
-(no sugar on `View`), `ButtonStyleMod` for `.buttonStyle`; the Rust DSL is
-structural today — `pathland-view` exposes the view/modifier surface without
-signals, two-way bindings, or actions (signals live in `pathland-core::signal`
-for engine-side binding). Both are per-project implementation status tracked in
-each project's `status.md`.
+**Status deltas captured by this table**: the Java DSL is surface-complete with
+the three operations, modifiers as values via `.modifiers(...)` (no sugar on
+`View`), and styles as modifiers; the Rust DSL is structural today —
+`pathland-view` exposes the view/modifier surface without signals, two-way
+bindings, or actions (signals live in `pathland-core::signal` for engine-side
+binding). Both are per-project implementation status tracked in each project's
+`status.md`.
 
 ---
 
@@ -1242,3 +1366,7 @@ each project's `status.md`.
 - Component ids: [PRIMITIVES.md](./PRIMITIVES.md); property ids and value
   types: [MODIFIERS.md](./MODIFIERS.md); event ids and listener bits:
   [EVENTS.md](./EVENTS.md). These specs are the single source of truth.
+- The v2 authoring surface (`with` / `modifiers` / `children`, shared
+  config-with-styles, no `Mod` suffix) is a **source-surface** change only: it
+  emits the **same bytes** as the prior `.of(...)` / `.with(...)` surface for an
+  equivalent tree — no component/property/event/opcode change.
