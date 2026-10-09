@@ -1,1 +1,1 @@
-go
+go. Compact firt and then go
