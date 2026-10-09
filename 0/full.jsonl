@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 1.0273148459999992,
+    "cost": 1.0319163299999994,
     "tokens": {
-      "input": 2026957,
-      "output": 235565,
-      "reasoning": 244691,
+      "input": 2031779,
+      "output": 236395,
+      "reasoning": 246404,
       "cache": {
-        "read": 145039232,
+        "read": 145823360,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791539542162
+      "updated": 1791539572684
     }
   },
   "messages": [
@@ -141154,21 +141154,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001378536,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 195509,
+          "input": 2216,
+          "output": 552,
+          "reasoning": 229,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 192512
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791539542161
+          "created": 1791539542161,
+          "completed": 1791539556327
         },
+        "finish": "tool-calls",
         "id": "msg_12013f891001mdORkeXTHT00PF",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -141207,22 +141210,386 @@
           "tool": "bash",
           "callID": "call_00_kbx7y7gxxJRBOzyNnNSq5678",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nfeat(view-java): v2 authoring surface — views, modifiers, value-is-modifier\n\nComplete the Java library side of DSL v2 (spec/DSL.md §2/§5) on top of the\nViewBuilder infra. Additive: the legacy .of(...)/View.with(...) entry points\nremain as a temporary bridge, so the module compiles and stays green.\n\n- Views: Text/VStack/HStack/ZStack/Grid/GridRow/ScrollView/Group/Lazy*/\n  shapes/Image/Icon/Divider/Spacer/ProgressView/Gauge/Label/Button/TextField/\n  TextEditor/Toggle/Slider/Stepper/Picker/DatePicker/Menu/ColorPicker/Audio/\n  Video expose with(Consumer<Config>) + modifiers(...) (+ children(...) for\n  content-bearing), with the Config carrying constructor values.\n- Modifiers: Modifier.with(c -> ...) + Config for Padding, ForegroundStyle,\n  Opacity, Frame (Frame.with), FontSize, FontFamily, Background, Border,\n  CornerRadius, LineLimit, Tint, ZIndex, Blur, Saturation, Contrast, Brightness,\n  Grayscale, Rotation, ScaleEffect, Kerning, Tracking, BaselineOffset,\n  LineSpacing, FontWidth, HueRotation, MinimumScaleFactor, LayoutPriority,\n  Offset, Position, FixedSize, AspectRatio, ColorMultiply, ClipShape, Shadow,\n  Visible, Disabled, AllowsHitTesting, Underline, Strikethrough,\n  AccessibilityLabel/Role/State, PointerEvents, ActionId, BindingId,\n  ImageSource, TapGesture; no-value with() on ColorInvert/Clipped/Hidden/\n  ScaledToFit/ScaledToFill/Italic.\n- Value-is-modifier (§5.0): FontWeight, TextAlignment, Truncation, TextCase,\n  ControlSize, FontStyle, FontDesign implement ViewModifier; Font is the\n  modifier; Style extends ViewModifier so .modifiers(MyButtonStyle) scopes the\n  matching environment key.\n\nTests: ViewBuilderTest, ModifierWithTest. mvn -o -pl pathland-view test -> 136\ngreen. status.md updated.\nEOF\n)\" && git log --oneline -3"
             },
+            "output": "15b654dd feat(view-java): v2 authoring surface — views, modifiers, value-is-modifier\n50335f13 feat(view-java): v2 authoring infra — ViewBuilder + Config (slice 1)\n766b064a feat(view): persisted state (phase 5)\n",
+            "metadata": {
+              "output": "15b654dd feat(view-java): v2 authoring surface — views, modifiers, value-is-modifier\n50335f13 feat(view-java): v2 authoring infra — ViewBuilder + Config (slice 1)\n766b064a feat(view): persisted state (phase 5)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nfeat(view-java): v2 authoring surface — views, modifiers, value-is-modifier\n\nComplete the Java library side of DSL v2 (spec/DSL.md §2/§5) on top of the\nViewBuilder infra. Additive: the legacy .of(...)/View.with(...) entry points\nremain as a temporary bridge, so the module compiles and stays green.\n\n- Views: Text/VStack/HStack/ZStack/Grid/GridRow/ScrollView/Group/Lazy*/\n  shapes/Image/Icon/Divider/Spacer/ProgressView/Gauge/Label/Button/TextField/\n  TextEditor/Toggle/Slider/Stepper/Picker/DatePicker/Menu/ColorPicker/Audio/\n  Video expose with(Consumer<Config>) + modifiers(...) (+ children(...) for\n  content-bearing), with the Config carrying constructor values.\n- Modifiers: Modifier.with(c -> ...) + Config for Padding, ForegroundStyle,\n  Opacity, Frame (Frame.with), FontSize, FontFamily, Background, Border,\n  CornerRadius, LineLimit, Tint, ZIndex, Blur, Saturation, Contrast, Brightness,\n  Grayscale, Rotation, ScaleEffect, Kerning, Tracking, BaselineOffset,\n  LineSpacing, FontWidth, HueRotation, MinimumScaleFactor, LayoutPriority,\n  Offset, Position, FixedSize, AspectRatio, ColorMultiply, ClipShape, Shadow,\n  Visible, Disabled, AllowsHitTesting, Underline, Strikethrough,\n  AccessibilityLabel/Role/State, PointerEvents, ActionId, BindingId,\n  ImageSource, TapGesture; no-value with() on ColorInvert/Clipped/Hidden/\n  ScaledToFit/ScaledToFill/Italic.\n- Value-is-modifier (§5.0): FontWeight, TextAlignment, Truncation, TextCase,\n  ControlSize, FontStyle, FontDesign implement ViewModifier; Font is the\n  modifier; Style extends ViewModifier so .modifiers(MyButtonStyle) scopes the\n  matching environment key.\n\nTests: ViewBuilderTest, ModifierWithTest. mvn -o -pl pathland-view test -> 136\ngreen. status.md updated.\nEOF\n)\" && git log --oneline -3",
             "time": {
-              "start": 1791539548442
+              "start": 1791539548442,
+              "end": 1791539556221
             }
           },
           "id": "prt_120140a60001fNmCKcYNeHeAo3",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_12013f891001mdORkeXTHT00PF"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d9331b253aa844c7b471f7c83f7ad02b04213f32",
+          "type": "step-finish",
+          "tokens": {
+            "total": 195509,
+            "input": 2216,
+            "output": 552,
+            "reasoning": 229,
+            "cache": {
+              "write": 0,
+              "read": 192512
+            }
+          },
+          "cost": 0.001378536,
+          "id": "prt_120142fb4001eCTLkqZ6SV2M4b",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_12013f891001mdORkeXTHT00PF"
         }
       ]
+    },
+    {
+      "info": {
+        "parentID": "msg_12013e7860013ed08xTP1y0bz9",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001489434,
+        "tokens": {
+          "total": 197025,
+          "input": 255,
+          "output": 113,
+          "reasoning": 1329,
+          "cache": {
+            "write": 0,
+            "read": 195328
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791539556355,
+          "completed": 1791539565849
+        },
+        "finish": "tool-calls",
+        "id": "msg_120143003001e2wGnV1qASUTw0",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "d9331b253aa844c7b471f7c83f7ad02b04213f32",
+          "type": "step-start",
+          "id": "prt_120143773001UqTQgo5lbVAk1C",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120143003001e2wGnV1qASUTw0"
+        },
+        {
+          "type": "reasoning",
+          "text": "Committed as 15b654dd. Now the user wants to discuss reactivity before continuing.\n\n\"Let's discuss reactivity before we continue.\" So they want to talk about the reactivity model before doing the consumer migration. Let me engage: ask what aspect they want to discuss, or lay out the current reactivity state and open questions.\n\nGiven the context, \"reactivity\" likely refers to the signal/computed/effect model and how the DSL binds it, possibly concerns about:\n- Config being mutable and read at render vs. signals.\n- `body()` evaluated once at mount (Java) — structural reactivity via `Conditional`/slots.\n- The v2 `with(Consumer<Config>)` capturing signals vs raw values.\n- Effects/lifecycle, computed memoization, glitch-free flush.\n- Two-way binding.\n- How this maps to the spec §3 and whether the Java emitter's node-level binding effects match.\n\nI should not dump a huge essay. The user said \"let's discuss\" — so I should open the discussion: summarize the current reactivity design (both Rust and Java) concisely, surface the key decisions/open questions, and ask which aspect they want to focus on. Use the question tool? The question tool is for gathering choices. This is a discussion; I could ask an open question. But the instructions say use question tool when needing decisions. A discussion prompt could be a few options.\n\nLet me first recall the current reactivity state accurately. Let me look at the spec §3 for the canonical model and the Java signal/emit implementation to ground the discussion. I already know a lot, but let me be precise.\n\nKey facts:\n- Java `com.pathland.view.signal`: signal/computed/effect/untracked, glitch-free synchronous flush, equality suppression, error caching, write discipline, circular-dependency detection.\n- `Signals.constant` = ConstantSignal trait for statics (no binding).\n- Emitter: mounts once, stable ids, node-level binding effects; a signal change re-emits only that node's SET_TEXT/SET_PROPERTY. Empty/unbound signals emit zero opcodes.\n- Structural reactivity: `Conditional.when`, structural slots (`PathlandNode.structuralContent`, `structuralStringValue`, etc.), reconcileSlot.\n- `View.text(Signal)` / `node_bind_text`, `node_bind_property` in Rust; Java `Modified.Prop` with signal for property bindings, `node.textBinding`, `node.propertyBindings`.\n- Config values can accept raw or Signal (e.g. `Text.Config.text(Signal)`, `ForegroundStyle.Config.color(Signal)`, `FontSize.Config.size(Signal)`).\n- `body()` evaluated once at mount; reactive values come from signals not body re-eval (per AGENTS.md and issue #88).\n- Rust engine: `pathland-engine::signal::Runtime` (Rc<RefCell<Store>>), typed Signal<T>/WritableSignal<T>, Engine::signal/computed/effect/read/set; `Bound` modifier.\n\nOpen questions / tensions I can identify for discussion:\n1. **Config mutability vs. reactivity**: In v2, `with(c -> c.text(signal))` stores a Signal in the Config; render reads `signal.get()` and records `node.textBinding`. But if the Config setter is called *after* mount (mutating the config object), nothing re-emits — the tree is retained. Is that acceptable? (i.e., config is mount-time only; reactivity only via signals.) The spec says with is mount-time; reactive values via signals. So mutating config post-mount is undefined. Should we guard/forbid? Or document.\n\n2. **`body()` once at mount**: structural changes (conditionals, navigation) use slots + signals. But a config value that is a *raw* value computed from a signal read inside `with(...)` at mount won't update. Only `Signal`-typed config members re-emit. E.g. `Text.with(t -> t.text(someComputed))` where `text` accepts String vs Signal — must pass the Signal. Is the API clear enough? Should raw overloads be removed to force signals?\n\n3. **Equality suppression & computed granularity**: Java signal flush semantics vs Rust engine runtime parity. Are they identical? (glitch-free, once-per-flush). Cross-language conformance.\n\n4. **Effects lifecycle**: when a node is removed (structural reconcile), its binding effects must be disposed. Is that handled? (Emitter reconcile should dispose.) Leaks?\n\n5. **Two-way binding**: control binds WritableSignal; event → sink writes; flush re-emits only that node. Consistent with spec §3.2.\n\n6. **Structural reactivity vs. diff-based props**: `Conditional`/`NavigationContainer`/`SizeThatFits` slots use `structuralContent` suppliers that read a signal during reconcile, tracked by a structural effect.\n\n7. **`State<T>` / PersistentState**: auto-wired signals.\n\n8. **The relationship between the Java `Signal` and the Rust engine's signals** — the Java DSL owns its own tree + diff emission (via JNA ring or frame sink); the Rust engine has its own Runtime. Two independent reactive cores. For SSR/WebSocket (Java) and desktop (Java), the Java core matters; the Rust core is for Rust DSL. Parity is a goal.\n\n9. **Deferred**: computed/derived signals + effects were \"planned next step\" per AGENTS, but Java already has them; Rust has them now too (phase 1). \n\nI think the user wants to discuss something specific. Rather than guess, I'll give a tight orientation of the current model + the main open design questions, and ask which they want to dig into. Let me use the question tool with a few focused options plus free-form.\n\nActually the user said \"Let's discuss reactivity before we continue\" — they probably have a specific concern (maybe about how config-in-signals works, or that body() runs once, or about SSR reactivity). I should invite their specific concern but also provide grounding.\n\nLet me first re-read spec §3 (lines 201-330) to ground the discussion accurately, and the Java signal package briefly. Let me read spec §3 fully.\n\nLet me read spec/DSL.md lines 201-330.",
+          "time": {
+            "start": 1791539558421,
+            "end": 1791539565381
+          },
+          "id": "prt_120143815001lVG7H3J7YwdmXc",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120143003001e2wGnV1qASUTw0"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `15b654dd`. Now let's talk reactivity. Let me ground the discussion in the canonical spec first.",
+          "time": {
+            "start": 1791539565383,
+            "end": 1791539565738
+          },
+          "id": "prt_120145347001590laHyt3qewlx",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120143003001e2wGnV1qASUTw0"
+        },
+        {
+          "type": "tool",
+          "tool": "read",
+          "callID": "call_00_BvBg4745BFodSFoA8c5B4703",
+          "state": {
+            "status": "completed",
+            "input": {
+              "filePath": "/Users/michael/Development/michaelkrog/Pathland/spec/DSL.md",
+              "limit": 130,
+              "offset": 201
+            },
+            "output": "<path>/Users/michael/Development/michaelkrog/Pathland/spec/DSL.md</path>\n<type>file</type>\n<content>\n201: ## 3. State model (signals)\n202: \n203: Pathland state is **Angular-style signals**. This is the non-negotiable\n204: reactive core every DSL exposes.\n205: \n206: ### 3.1 Signal surface\n207: \n208: | Canonical | Java DSL (`com.pathland.view.signal`) | Semantics |\n209: |-----------|--------------------------------------|-----------|\n210: | `signal(initial)` | `Signals.signal(T)` | a writable signal |\n211: | `signal(name, initial)` | `Signals.signal(String, T)` | named (names surface in dependency errors) |\n212: | `signal(initial, equal)` | `Signals.signal(T, BiPredicate<T,T>)` | custom equality |\n213: | `computed(fn)` | `Signals.computed(Supplier<T>)` | lazy, memoized derived signal |\n214: | `effect(fn)` | `Signals.effect(Runnable)` | runs immediately, then on dependency change |\n215: | `untracked(fn)` | `Signals.untracked(Supplier<T>)` | reads without recording dependencies |\n216: | `read()` | `get()` | current value |\n217: | `write(v)` | `set(T)` | replace (no-op when equal) |\n218: | `update(fn)` | `update(UnaryOperator<T>)` | derive from current and write |\n219: | `asReadonly()` | `asReadonly()` | read-only view of a writable signal |\n220: \n221: **Guarantees** (must be preserved by any implementation): equality suppression,\n222: synchronous flush at the end of the outermost write, glitch-free propagation\n223: (each computed recomputes at most once per flush), error caching, write\n224: discipline, and circular-dependency detection.\n225: \n226: ### 3.2 Two-way binding\n227: \n228: A control's value is **a `WritableSignal<T>` supplied as a config value**:\n229: `TextField.with(t -> t.placeholder(\"…\").text(writable))`,\n230: `Toggle.with(t -> t.isOn(writable))`,\n231: `Slider.with(s -> s.value(writable).min(0).max(100))`. The flow:\n232: \n233: 1. At **mount**, the DSL control records a **value input** (a sink on the\n234:    retained node) for the signal, and the emitter exposes routing registries to\n235:    the host: tap actions, text inputs, value inputs, date inputs.\n236: 2. The host receives the control's raw event (`TEXT_CHANGED`,\n237:    `VALUE_CHANGED`, `DATE_CHANGED`, or a composed tap) and calls the sink,\n238:    which **writes into the signal**.\n239: 3. The signal flush re-emits **only that node's** delta (`SET_TEXT`,\n240:    `SET_PROPERTY`, `SET_DATE`) back through the emitter.\n241: \n242: Reading is equally fine-grained: a node's text or a property value can be\n243: **bound to a signal** — `Text.with(t -> t.text(signal))`,\n244: `.modifiers(ForegroundStyle.with(f -> f.color(colorSignal)), FontSize.with(s -> s.size(sizeSignal)))`\n245: — so a change re-emits only the bound node.\n246: \n247: ### 3.3 Persisted state (`State<T>`)\n248: \n249: A `State<T>` field is the SwiftUI-`@State`-shaped form of a persisted signal,\n250: **auto-wired by key**:\n251: \n252: ```java\n253: State<Integer> count = new State<>(0);            // key = field name \"count\"\n254: State<Integer> total = new State<>(0, \"total\");   // explicit store key\n255: count.get(); count.set(0); count.update(v -> v + 1);\n256: count.signal();                                   // the WritableSignal (for TextField, …)\n257: ```\n258: \n259: The store (`StateStore`) is untyped and platform-neutral (in-memory, Redis,\n260: file, SQLite, LocalStorage, NVS flash). The Java realization wires `State`\n261: fields via an annotation processor that generates a `<View>_StateBinder` per\n262: view class; connection happens when the view renders. A generated DSL in a\n263: language without reflection/annotation processing MUST offer the equivalent\n264: explicit wiring.\n265: \n266: ### 3.4 Structural reactivity (conditional rendering)\n267: \n268: The tree is normally static once mounted ([\"`body()` is evaluated once at\n269: mount\"](#1-design-principles-dsl-flavored)); the **only** sanctioned way to\n270: change *structure* reactively is a **structural container**: a slot whose\n271: single child subtree is selected by a signal and **reconciled** when the\n272: signal changes. This is the foundation for `if`/`else`, `switch`, and\n273: navigation ([§4.5](#45-navigation)).\n274: \n275: | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits |\n276: |----------------------------|----------|----------|-------|\n277: | `if cond { then } else { else }` in a result builder | `Conditional.when(Signal<Boolean>, View then, View else)` | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |\n278: | `switch value { case a -> v; default -> d }` | `Conditional.when(Signal<T>, Case.of(T, View)...)` + `Case.otherwise(View)` | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |\n279: \n280: **Java realization** (`com.pathland.view.Conditional`): statically importable\n281: lowercase factories on a final class with a private constructor, mirroring\n282: [`Signals`](#31-signal-surface):\n283: \n284: ```java\n285: import static com.pathland.view.Conditional.when;\n286: import static com.pathland.view.Conditional.Case;\n287: \n288: when(showLogin, new LoginView(), new HomeView());           // if / else\n289: when(mode,\n290:     Case.of(RouteMode.HOME, new HomeView()),\n291:     Case.of(RouteMode.USERS, new UsersView()),\n292:     Case.otherwise(new NotFoundView()));                     // switch + default\n293: ```\n294: \n295: The names `if`, `switch`, `case`, and `else` are Java reserved keywords, so\n296: `when` (Kotlin's `switch` analog, and a valid Java identifier) is the method\n297: name, and `Case.of(...)` / `Case.otherwise(...)` carry the branches. A boolean\n298: signal takes the two-branch overload (`then`, `else`); an enum/int/string\n299: signal takes keyed `Case` branches typed to the signal's value type, with an\n300: optional `Case.otherwise` default. (`Conditional` / `Case` are the one place\n301: `.of(...)` survives — they are not views or modifiers but statically-imported\n302: branch factories.)\n303: \n304: **Emission contract** (the body-once exception, formalized):\n305: \n306: 1. A structural container holds a **stable slot node** (a `Group`, see\n307:    [§8](#8-java-dsl-convergence-adopted)) whose single child is the currently\n308:    selected content. Selection is a **content function** over the selector\n309:    signal — `if`/`else` and `switch` are sugar over it, so value-parametrized\n310:    content (e.g. a route param) is a first-class case.\n311: 2. On selector change the container re-evaluates the content function,\n312:    **renders the new subtree**, and the emitter **reconciles** it against the\n313:    retained snapshot — emitting only `TREE` deltas (`CREATE_NODE` /\n314:    `DELETE_NODE` / `INSERT_CHILD` / `REMOVE_CHILD` / `MOVE_CHILD`).\n315: 3. **Identical structure emits zero opcodes.** The reconcile diffs old vs new;\n316:    a recompute that yields the same structure produces no `TREE` deltas, so no\n317:    equality predicate is needed on the selector signal.\n318: 4. Structural containers **nest**: a container inside a container re-evaluates\n319:    and reconciles its own slot independently.\n320: 5. All other reactivity stays fine-grained (`SET_TEXT` / `SET_PROPERTY`); a\n321:    structural container never re-emits siblings or ancestors.\n322: \n323: **Rust delta**: the Rust DSL builds `Node` trees directly and the host rebuilds\n324: + re-`assign_id`s + diffs on every interaction, so plain `if`/`match` in\n325: `build()` already produces the same reconcile — no wrapper slot and no special\n326: type. An optional `switch!` macro is sugar.\n327: \n328: ---\n329: \n330: ## 4. View surface\n\n(Showing lines 201-330 of 1380. Use offset=331 to continue.)\n</content>",
+            "metadata": {
+              "preview": "## 3. State model (signals)\n\nPathland state is **Angular-style signals**. This is the non-negotiable\nreactive core every DSL exposes.\n\n### 3.1 Signal surface\n\n| Canonical | Java DSL (`com.pathland.view.signal`) | Semantics |\n|-----------|--------------------------------------|-----------|\n| `signal(initial)` | `Signals.signal(T)` | a writable signal |\n| `signal(name, initial)` | `Signals.signal(String, T)` | named (names surface in dependency errors) |\n| `signal(initial, equal)` | `Signals.signal(T, BiPredicate<T,T>)` | custom equality |\n| `computed(fn)` | `Signals.computed(Supplier<T>)` | lazy, memoized derived signal |\n| `effect(fn)` | `Signals.effect(Runnable)` | runs immediately, then on dependency change |\n| `untracked(fn)` | `Signals.untracked(Supplier<T>)` | reads without recording dependencies |\n| `read()` | `get()` | current value |\n| `write(v)` | `set(T)` | replace (no-op when equal) |\n| `update(fn)` | `update(UnaryOperator<T>)` | derive from current and write |\n| `asReadonly()` | `asReadonly()` | read-only view of a writable signal |\n",
+              "truncated": true,
+              "loaded": [],
+              "display": {
+                "type": "file",
+                "path": "/Users/michael/Development/michaelkrog/Pathland/spec/DSL.md",
+                "text": "## 3. State model (signals)\n\nPathland state is **Angular-style signals**. This is the non-negotiable\nreactive core every DSL exposes.\n\n### 3.1 Signal surface\n\n| Canonical | Java DSL (`com.pathland.view.signal`) | Semantics |\n|-----------|--------------------------------------|-----------|\n| `signal(initial)` | `Signals.signal(T)` | a writable signal |\n| `signal(name, initial)` | `Signals.signal(String, T)` | named (names surface in dependency errors) |\n| `signal(initial, equal)` | `Signals.signal(T, BiPredicate<T,T>)` | custom equality |\n| `computed(fn)` | `Signals.computed(Supplier<T>)` | lazy, memoized derived signal |\n| `effect(fn)` | `Signals.effect(Runnable)` | runs immediately, then on dependency change |\n| `untracked(fn)` | `Signals.untracked(Supplier<T>)` | reads without recording dependencies |\n| `read()` | `get()` | current value |\n| `write(v)` | `set(T)` | replace (no-op when equal) |\n| `update(fn)` | `update(UnaryOperator<T>)` | derive from current and write |\n| `asReadonly()` | `asReadonly()` | read-only view of a writable signal |\n\n**Guarantees** (must be preserved by any implementation): equality suppression,\nsynchronous flush at the end of the outermost write, glitch-free propagation\n(each computed recomputes at most once per flush), error caching, write\ndiscipline, and circular-dependency detection.\n\n### 3.2 Two-way binding\n\nA control's value is **a `WritableSignal<T>` supplied as a config value**:\n`TextField.with(t -> t.placeholder(\"…\").text(writable))`,\n`Toggle.with(t -> t.isOn(writable))`,\n`Slider.with(s -> s.value(writable).min(0).max(100))`. The flow:\n\n1. At **mount**, the DSL control records a **value input** (a sink on the\n   retained node) for the signal, and the emitter exposes routing registries to\n   the host: tap actions, text inputs, value inputs, date inputs.\n2. The host receives the control's raw event (`TEXT_CHANGED`,\n   `VALUE_CHANGED`, `DATE_CHANGED`, or a composed tap) and calls the sink,\n   which **writes into the signal**.\n3. The signal flush re-emits **only that node's** delta (`SET_TEXT`,\n   `SET_PROPERTY`, `SET_DATE`) back through the emitter.\n\nReading is equally fine-grained: a node's text or a property value can be\n**bound to a signal** — `Text.with(t -> t.text(signal))`,\n`.modifiers(ForegroundStyle.with(f -> f.color(colorSignal)), FontSize.with(s -> s.size(sizeSignal)))`\n— so a change re-emits only the bound node.\n\n### 3.3 Persisted state (`State<T>`)\n\nA `State<T>` field is the SwiftUI-`@State`-shaped form of a persisted signal,\n**auto-wired by key**:\n\n```java\nState<Integer> count = new State<>(0);            // key = field name \"count\"\nState<Integer> total = new State<>(0, \"total\");   // explicit store key\ncount.get(); count.set(0); count.update(v -> v + 1);\ncount.signal();                                   // the WritableSignal (for TextField, …)\n```\n\nThe store (`StateStore`) is untyped and platform-neutral (in-memory, Redis,\nfile, SQLite, LocalStorage, NVS flash). The Java realization wires `State`\nfields via an annotation processor that generates a `<View>_StateBinder` per\nview class; connection happens when the view renders. A generated DSL in a\nlanguage without reflection/annotation processing MUST offer the equivalent\nexplicit wiring.\n\n### 3.4 Structural reactivity (conditional rendering)\n\nThe tree is normally static once mounted ([\"`body()` is evaluated once at\nmount\"](#1-design-principles-dsl-flavored)); the **only** sanctioned way to\nchange *structure* reactively is a **structural container**: a slot whose\nsingle child subtree is selected by a signal and **reconciled** when the\nsignal changes. This is the foundation for `if`/`else`, `switch`, and\nnavigation ([§4.5](#45-navigation)).\n\n| Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits |\n|----------------------------|----------|----------|-------|\n| `if cond { then } else { else }` in a result builder | `Conditional.when(Signal<Boolean>, View then, View else)` | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |\n| `switch value { case a -> v; default -> d }` | `Conditional.when(Signal<T>, Case.of(T, View)...)` + `Case.otherwise(View)` | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |\n\n**Java realization** (`com.pathland.view.Conditional`): statically importable\nlowercase factories on a final class with a private constructor, mirroring\n[`Signals`](#31-signal-surface):\n\n```java\nimport static com.pathland.view.Conditional.when;\nimport static com.pathland.view.Conditional.Case;\n\nwhen(showLogin, new LoginView(), new HomeView());           // if / else\nwhen(mode,\n    Case.of(RouteMode.HOME, new HomeView()),\n    Case.of(RouteMode.USERS, new UsersView()),\n    Case.otherwise(new NotFoundView()));                     // switch + default\n```\n\nThe names `if`, `switch`, `case`, and `else` are Java reserved keywords, so\n`when` (Kotlin's `switch` analog, and a valid Java identifier) is the method\nname, and `Case.of(...)` / `Case.otherwise(...)` carry the branches. A boolean\nsignal takes the two-branch overload (`then`, `else`); an enum/int/string\nsignal takes keyed `Case` branches typed to the signal's value type, with an\noptional `Case.otherwise` default. (`Conditional` / `Case` are the one place\n`.of(...)` survives — they are not views or modifiers but statically-imported\nbranch factories.)\n\n**Emission contract** (the body-once exception, formalized):\n\n1. A structural container holds a **stable slot node** (a `Group`, see\n   [§8](#8-java-dsl-convergence-adopted)) whose single child is the currently\n   selected content. Selection is a **content function** over the selector\n   signal — `if`/`else` and `switch` are sugar over it, so value-parametrized\n   content (e.g. a route param) is a first-class case.\n2. On selector change the container re-evaluates the content function,\n   **renders the new subtree**, and the emitter **reconciles** it against the\n   retained snapshot — emitting only `TREE` deltas (`CREATE_NODE` /\n   `DELETE_NODE` / `INSERT_CHILD` / `REMOVE_CHILD` / `MOVE_CHILD`).\n3. **Identical structure emits zero opcodes.** The reconcile diffs old vs new;\n   a recompute that yields the same structure produces no `TREE` deltas, so no\n   equality predicate is needed on the selector signal.\n4. Structural containers **nest**: a container inside a container re-evaluates\n   and reconciles its own slot independently.\n5. All other reactivity stays fine-grained (`SET_TEXT` / `SET_PROPERTY`); a\n   structural container never re-emits siblings or ancestors.\n\n**Rust delta**: the Rust DSL builds `Node` trees directly and the host rebuilds\n+ re-`assign_id`s + diffs on every interaction, so plain `if`/`match` in\n`build()` already produces the same reconcile — no wrapper slot and no special\ntype. An optional `switch!` macro is sugar.\n\n---\n\n## 4. View surface",
+                "lineStart": 201,
+                "lineEnd": 330,
+                "totalLines": 1380,
+                "truncated": true
+              }
+            },
+            "title": "spec/DSL.md",
+            "time": {
+              "start": 1791539565639,
+              "end": 1791539565648
+            }
+          },
+          "id": "prt_1201453a2001hsK6Ldm4dz3KqY",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120143003001e2wGnV1qASUTw0"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d9331b253aa844c7b471f7c83f7ad02b04213f32",
+          "type": "step-finish",
+          "tokens": {
+            "total": 197025,
+            "input": 255,
+            "output": 113,
+            "reasoning": 1329,
+            "cache": {
+              "write": 0,
+              "read": 195328
+            }
+          },
+          "cost": 0.001489434,
+          "id": "prt_1201454e6001oCbTGiuBxS2bAy",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120143003001e2wGnV1qASUTw0"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_12013e7860013ed08xTP1y0bz9",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001018326,
+        "tokens": {
+          "total": 199340,
+          "input": 2181,
+          "output": 68,
+          "reasoning": 99,
+          "cache": {
+            "write": 0,
+            "read": 196992
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791539565873,
+          "completed": 1791539569183
+        },
+        "finish": "tool-calls",
+        "id": "msg_120145531001Q8iAzKpaPA6p5K",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "d9331b253aa844c7b471f7c83f7ad02b04213f32",
+          "type": "step-start",
+          "id": "prt_120145c65001pvo8j5dq7GWObj",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120145531001Q8iAzKpaPA6p5K"
+        },
+        {
+          "type": "reasoning",
+          "text": "Now I have the canonical model. Let me also glance at the Java signal package to speak precisely, and the emitter's binding/disposal behavior. But the user wants a *discussion*, not an implementation. Let me identify the key reactivity topics and open questions, and ask what they want to discuss.\n\nLet me quickly check what exists in the signal package and emitter for disposal, to ground the discussion in reality. Let me list files.\n\nLet me look at the signal package and emit package.",
+          "time": {
+            "start": 1791539568358,
+            "end": 1791539568885
+          },
+          "id": "prt_120145ee6001HqHYpOh93Imnw8",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120145531001Q8iAzKpaPA6p5K"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_UOUIIUOXBt3misZMC4WP4681",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-view/src/main/java/com/pathland/view && ls signal emit"
+            },
+            "output": "emit:\nDateInput.java\nEmitter.java\nFrameOpcodeSink.java\nInputDispatcher.java\nMediaInput.java\nOpcode.java\nOpcodeSink.java\nPathlandNode.java\nProtocolFrame.java\nReactiveValues.java\nRenderResult.java\nValueEncoder.java\n\nsignal:\nComputedSignal.java\nConstantSignal.java\nEffect.java\nEffectException.java\nEffectOptions.java\nEffectRef.java\nReactiveContext.java\nReactiveNode.java\nScheduler.java\nSignal.java\nSignals.java\nWritableSignal.java\nWritableSignalImpl.java\n",
+            "metadata": {
+              "output": "emit:\nDateInput.java\nEmitter.java\nFrameOpcodeSink.java\nInputDispatcher.java\nMediaInput.java\nOpcode.java\nOpcodeSink.java\nPathlandNode.java\nProtocolFrame.java\nReactiveValues.java\nRenderResult.java\nValueEncoder.java\n\nsignal:\nComputedSignal.java\nConstantSignal.java\nEffect.java\nEffectException.java\nEffectOptions.java\nEffectRef.java\nReactiveContext.java\nReactiveNode.java\nScheduler.java\nSignal.java\nSignals.java\nWritableSignal.java\nWritableSignalImpl.java\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-view/src/main/java/com/pathland/view && ls signal emit",
+            "time": {
+              "start": 1791539569051,
+              "end": 1791539569064
+            }
+          },
+          "id": "prt_1201460f6001rJV2EV6sUZ2jzw",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120145531001Q8iAzKpaPA6p5K"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d9331b253aa844c7b471f7c83f7ad02b04213f32",
+          "type": "step-finish",
+          "tokens": {
+            "total": 199340,
+            "input": 2181,
+            "output": 68,
+            "reasoning": 99,
+            "cache": {
+              "write": 0,
+              "read": 196992
+            }
+          },
+          "cost": 0.001018326,
+          "id": "prt_1201461e50017Sm5A9tVJyjW8e",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120145531001Q8iAzKpaPA6p5K"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_12013e7860013ed08xTP1y0bz9",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000715188,
+        "tokens": {
+          "total": 199619,
+          "input": 170,
+          "output": 97,
+          "reasoning": 56,
+          "cache": {
+            "write": 0,
+            "read": 199296
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791539569209,
+          "completed": 1791539572657
+        },
+        "finish": "tool-calls",
+        "id": "msg_120146239001MPQWeD8r51L96G",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "d9331b253aa844c7b471f7c83f7ad02b04213f32",
+          "type": "step-start",
+          "id": "prt_120146a9e001LNJ5RU8N3lOrIU",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120146239001MPQWeD8r51L96G"
+        },
+        {
+          "type": "reasoning",
+          "text": "Let me check the Emitter for how binding effects are created and disposed (structural reconcile). Let me grep for \"effect\" and \"dispose\" in Emitter.java, and check the signal disposal API.\n\nLet me look at Emitter.java's binding creation and node removal.",
+          "time": {
+            "start": 1791539571771,
+            "end": 1791539572189
+          },
+          "id": "prt_120146c3b001utdOphT8VZPT6L",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120146239001MPQWeD8r51L96G"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_P5sAacZsUIeW4Pa61kt88917",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-view/src/main/java/com/pathland/view && grep -n \"effect\\|EffectRef\\|dispose\\|unsubscribe\\|nodeBindings\\|structuralEffect\\|binding\" emit/Emitter.java | head -60"
+            },
+            "output": "11:import com.pathland.view.signal.EffectRef;\n27: * emits the structural frame (TREE + PARAMETER), and registers a node-level binding effect\n28: * per reactive text/property. A signal change re-emits only that binding's\n34: * effect. On selector change the emitter re-evaluates the content, diffs the retained\n36: * recompute emits zero opcodes. The slot's own subtree bindings are owned by that\n37: * effect, so nested structural containers work.\n40: * and its signal bindings live here, and the {@link OpcodeSink} (frame or ring) carries\n55:    private final List<EffectRef> bindings = new ArrayList<>();\n56:    private final Map<Integer, List<EffectRef>> nodeBindings = new LinkedHashMap<>();\n81:    /** Mount the view tree: assign ids, emit the structural frame, register bindings. */\n109:        bindings.clear();\n110:        nodeBindings.clear();\n153:    /** Stop all registered binding effects (e.g. when tearing down the tree). */\n155:        for (EffectRef effect : bindings) {\n156:            effect.destroy();\n158:        bindings.clear();\n159:        nodeBindings.clear();\n288:     * Register a node-level binding effect for every reactive text/property in the\n290:     * The effect's first (immediate) run reads the current value and finds it equal to\n294:     * into its child subtree here: its structural effect owns that subtree entirely\n295:     * (it re-registers bindings after each reconcile), which keeps nested structural\n301:            EffectRef structural = Signals.effect(() -> reconcileSlot(node));\n302:            bindings.add(structural);\n303:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(structural);\n317:            EffectRef effect = Signals.effect(() -> {\n326:            bindings.add(effect);\n327:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);\n330:            EffectRef effect = Signals.effect(() -> {\n339:            bindings.add(effect);\n340:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);\n346:            // node at mount, so no re-emit effect is needed.\n350:            EffectRef effect = Signals.effect(() -> {\n359:            bindings.add(effect);\n360:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);\n366:            EffectRef effect = Signals.effect(() -> {\n372:            bindings.add(effect);\n373:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);\n379:     * a {@code Signals.effect}: the content supplier reads the selector signal (the\n381:     * values inside it stay fine-grained (owned by their own node-level binding effects).\n386:        // environment + any slot-provided bindings like the router), so destinations\n495:        String oldText = old.text; // last-emitted text (kept current by bindings)\n527:            // The reconcile runs inside a structural slot's effect, where direct signal\n532:            // bindings are (re)registered after the reconcile).\n590:    /** Destroy the binding effects owned by a subtree (before it is replaced). */\n598:        List<EffectRef> refs = nodeBindings.remove(node.id);\n600:            for (EffectRef ref : refs) {\n603:            bindings.removeAll(refs);\n",
+            "metadata": {
+              "output": "11:import com.pathland.view.signal.EffectRef;\n27: * emits the structural frame (TREE + PARAMETER), and registers a node-level binding effect\n28: * per reactive text/property. A signal change re-emits only that binding's\n34: * effect. On selector change the emitter re-evaluates the content, diffs the retained\n36: * recompute emits zero opcodes. The slot's own subtree bindings are owned by that\n37: * effect, so nested structural containers work.\n40: * and its signal bindings live here, and the {@link OpcodeSink} (frame or ring) carries\n55:    private final List<EffectRef> bindings = new ArrayList<>();\n56:    private final Map<Integer, List<EffectRef>> nodeBindings = new LinkedHashMap<>();\n81:    /** Mount the view tree: assign ids, emit the structural frame, register bindings. */\n109:        bindings.clear();\n110:        nodeBindings.clear();\n153:    /** Stop all registered binding effects (e.g. when tearing down the tree). */\n155:        for (EffectRef effect : bindings) {\n156:            effect.destroy();\n158:        bindings.clear();\n159:        nodeBindings.clear();\n288:     * Register a node-level binding effect for every reactive text/property in the\n290:     * The effect's first (immediate) run reads the current value and finds it equal to\n294:     * into its child subtree here: its structural effect owns that subtree entirely\n295:     * (it re-registers bindings after each reconcile), which keeps nested structural\n301:            EffectRef structural = Signals.effect(() -> reconcileSlot(node));\n302:            bindings.add(structural);\n303:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(structural);\n317:            EffectRef effect = Signals.effect(() -> {\n326:            bindings.add(effect);\n327:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);\n330:            EffectRef effect = Signals.effect(() -> {\n339:            bindings.add(effect);\n340:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);\n346:            // node at mount, so no re-emit effect is needed.\n350:            EffectRef effect = Signals.effect(() -> {\n359:            bindings.add(effect);\n360:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);\n366:            EffectRef effect = Signals.effect(() -> {\n372:            bindings.add(effect);\n373:            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);\n379:     * a {@code Signals.effect}: the content supplier reads the selector signal (the\n381:     * values inside it stay fine-grained (owned by their own node-level binding effects).\n386:        // environment + any slot-provided bindings like the router), so destinations\n495:        String oldText = old.text; // last-emitted text (kept current by bindings)\n527:            // The reconcile runs inside a structural slot's effect, where direct signal\n532:            // bindings are (re)registered after the reconcile).\n590:    /** Destroy the binding effects owned by a subtree (before it is replaced). */\n598:        List<EffectRef> refs = nodeBindings.remove(node.id);\n600:            for (EffectRef ref : refs) {\n603:            bindings.removeAll(refs);\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-view/src/main/java/com/pathland/view && grep -n \"effect\\|EffectRef\\|dispose\\|unsubscribe\\|nodeBindings\\|structuralEffect\\|binding\" emit/Emitter.java | head -60",
+            "time": {
+              "start": 1791539572447,
+              "end": 1791539572461
+            }
+          },
+          "id": "prt_120146dde001vM7B55B78hAUFt",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120146239001MPQWeD8r51L96G"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d9331b253aa844c7b471f7c83f7ad02b04213f32",
+          "type": "step-finish",
+          "tokens": {
+            "total": 199619,
+            "input": 170,
+            "output": 97,
+            "reasoning": 56,
+            "cache": {
+              "write": 0,
+              "read": 199296
+            }
+          },
+          "cost": 0.000715188,
+          "id": "prt_120146f7d001LlcohGaj3Ynhc8",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_120146239001MPQWeD8r51L96G"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_12013e7860013ed08xTP1y0bz9",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0,
+        "tokens": {
+          "input": 0,
+          "output": 0,
+          "reasoning": 0,
+          "cache": {
+            "read": 0,
+            "write": 0
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791539572683
+        },
+        "id": "msg_120146fcb0016RVBcs2RZUiNpL",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": []
     }
   ]
 }
