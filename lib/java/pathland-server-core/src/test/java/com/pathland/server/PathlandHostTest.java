@@ -21,7 +21,7 @@ class PathlandHostTest {
     private static final StateStore STORE = new InMemoryStateStore();
 
     private static PathlandApp app(String label) {
-        return () -> Text.of(label);
+        return () -> Text.with(t -> t.text(label));
     }
 
     private static PathlandHost host(MountedApp... mounts) {

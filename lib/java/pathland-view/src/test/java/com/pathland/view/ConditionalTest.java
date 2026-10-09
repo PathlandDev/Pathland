@@ -37,7 +37,8 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> show = Signals.signal(true);
         AtomicInteger taps = new AtomicInteger();
-        View root = VStack.of(when(show, Text.of("A"), Button.of("B", taps::incrementAndGet)));
+        View root = VStack.children(when(show, Text.with(t -> t.text("A")),
+                Button.with(b -> b.title("B").action(taps::incrementAndGet))));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
 
         assertEquals(0, result.tapActions().size(), "the text branch has no tap action");
@@ -68,9 +69,9 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> n = Signals.signal(1);
         View root = when(n,
-                Case.of(1, Text.of("same")),
-                Case.of(2, Text.of("same")),
-                Case.otherwise(Text.of("other")));
+                Case.of(1, Text.with(t -> t.text("same"))),
+                Case.of(2, Text.with(t -> t.text("same"))),
+                Case.otherwise(Text.with(t -> t.text("other"))));
         emitter.mount(root, Environment.DEFAULT);
         int frames = sink.framesProduced();
 
@@ -95,9 +96,9 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> mode = Signals.signal(2);
         View root = when(mode,
-                Case.of(1, Text.of("Home")),
-                Case.of(2, Text.of("Users")),
-                Case.otherwise(Text.of("NotFound")));
+                Case.of(1, Text.with(t -> t.text("Home"))),
+                Case.of(2, Text.with(t -> t.text("Users"))),
+                Case.otherwise(Text.with(t -> t.text("NotFound"))));
         emitter.mount(root, Environment.DEFAULT);
 
         ProtocolFrame initial = sink.frame();
@@ -118,7 +119,7 @@ class ConditionalTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> mode = Signals.signal(1);
-        View root = when(mode, Case.of(1, Text.of("A")));
+        View root = when(mode, Case.of(1, Text.with(t -> t.text("A"))));
         emitter.mount(root, Environment.DEFAULT);
 
         mode.set(5); // no matching branch and no otherwise -> the slot empties
@@ -139,7 +140,8 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> show = Signals.signal(true);
         WritableSignal<Boolean> flag = Signals.signal(true);
-        View root = when(show, when(flag, Text.of("a"), Text.of("b")), Text.of("flat"));
+        View root = when(show, when(flag, Text.with(t -> t.text("a")), Text.with(t -> t.text("b"))),
+                Text.with(t -> t.text("flat")));
         emitter.mount(root, Environment.DEFAULT);
 
         // Inner swap only: same TEXT component at the same position -> one SET_TEXT.
@@ -172,7 +174,7 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> show = Signals.signal(true);
         WritableSignal<String> label = Signals.signal("Hi");
-        View root = when(show, Text.of(label), Text.of("else"));
+        View root = when(show, Text.with(t -> t.text(label)), Text.with(t -> t.text("else")));
         emitter.mount(root, Environment.DEFAULT);
 
         // The structural effect tracks only the selector; the content's reactive text is owned
@@ -193,7 +195,7 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> show = Signals.signal(true);
         WritableSignal<String> label = Signals.signal("one");
-        View root = when(show, Text.of(label), Text.of("other"));
+        View root = when(show, Text.with(t -> t.text(label)), Text.with(t -> t.text("other")));
         emitter.mount(root, Environment.DEFAULT);
 
         show.set(false); // swap to the else branch (static text)

@@ -10,6 +10,11 @@ public final class ScaledToFill implements ViewModifier {
         return new ScaledToFill();
     }
 
+    /** Fill. */
+    public static ScaledToFill with() {
+        return new ScaledToFill();
+    }
+
     @Override
     public View body(View content) {
         return Modified.props(content, Modified.prop(Properties.CONTENT_MODE, (float) ContentMode.FILL.wire()));

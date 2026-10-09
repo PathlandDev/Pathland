@@ -3,7 +3,6 @@ package com.pathland.demo.settings;
 import com.pathland.view.AccessibilityRole;
 import com.pathland.view.FontSize;
 import com.pathland.view.FontWeight;
-import com.pathland.view.FontWeightMod;
 import com.pathland.view.Padding;
 import com.pathland.view.Roles;
 import com.pathland.view.Slider;
@@ -26,18 +25,18 @@ public final class SettingsView implements View {
         var dark = signal(false);
         var volume = signal(50f);
         var volumeLabel = computed(() -> "Volume: " + volume.get().intValue());
-        return VStack.of(
+        return VStack.children(
                 // The destination title is a heading → `<h2>`.
-                Text.of("Settings").with(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD))
-                        .with(AccessibilityRole.of(Roles.HEADER)),
-                Text.of("A few controls bound to plain signals — the content area is "
-                        + "just another destination view.").with(Padding.of(8)),
-                Toggle.of(ToggleStyle.SWITCH, dark, "Dark mode"),
-                Text.of(volumeLabel).with(Padding.of(8)),
-                Slider.of(volume, 0f, 100f)
+                Text.with(t -> t.text("Settings")).modifiers(FontSize.with(s -> s.size(24)), FontWeight.BOLD)
+                        .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                Text.with(t -> t.text("A few controls bound to plain signals — the content area is "
+                        + "just another destination view.")).modifiers(Padding.with(p -> p.uniform(8))),
+                Toggle.with(t -> t.style(ToggleStyle.SWITCH).isOn(dark).label("Dark mode")),
+                Text.with(t -> t.text(volumeLabel)).modifiers(Padding.with(p -> p.uniform(8))),
+                Slider.with(s -> s.value(volume).in(0f, 100f))
         )
         // The destination content region → `<main>`.
-        .with(AccessibilityRole.of(Roles.MAIN))
-        .with(Padding.of(24));
+        .modifiers(AccessibilityRole.with(a -> a.role(Roles.MAIN)))
+        .modifiers(Padding.with(p -> p.uniform(24)));
     }
 }

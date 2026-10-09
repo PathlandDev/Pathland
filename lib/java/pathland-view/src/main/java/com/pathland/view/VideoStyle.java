@@ -12,6 +12,12 @@ public interface VideoStyle extends Style {
     /** Build the styled content for {@code config}. */
     View makeBody(Configuration config);
 
+    /** Scopes this style down the wrapped subtree ({@code .modifiers(VideoStyle)}). */
+    @Override
+    default View body(View content) {
+        return EnvironmentView.of(content, Environment.VIDEO_STYLE, this);
+    }
+
     /**
      * The media configuration of the video being styled (same shape as
      * {@link AudioStyle.Configuration}); the source rides the {@code Video} view.

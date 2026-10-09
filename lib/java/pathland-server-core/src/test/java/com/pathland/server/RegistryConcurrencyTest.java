@@ -109,8 +109,8 @@ class RegistryConcurrencyTest {
     /** A counter button: node 1 = Button, node 2 = Text label {@code n=<count>}. */
     private static View counterApp() {
         WritableSignal<Integer> count = Signals.signal(0);
-        return Button.of(Text.of(Signals.computed(() -> "n=" + count.get())),
-                () -> count.update(i -> i + 1));
+        return Button.with(b -> b.action(() -> count.update(i -> i + 1)))
+                .children(Text.with(t -> t.text(Signals.computed(() -> "n=" + count.get()))));
     }
 
     private static void sleep(long millis) {

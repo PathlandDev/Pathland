@@ -227,26 +227,38 @@ SwiftUI-like authoring surface shared by desktop, Spring Boot, and Quarkus
 apps. Components and modifiers:
 
 - `View` is an **open interface** — the library ships `Text`/`Image`/`Color`/
-  `Rectangle`, `VStack`/`HStack`/`ZStack`, `Spacer`, `Button(View label, Runnable)` +
-  `Button(String, Runnable)`, `TextField(placeholder, WritableSignal<String>)`, and
+  `Rectangle`, `VStack`/`HStack`/`ZStack`, `Spacer`, `Button`, `TextField(placeholder, WritableSignal<String>)`, and
   application code (Quarkus/Spring/desktop) defines its own views by implementing `View`.
 - **SwiftUI-style `body()`**: composite views declare `View body()` (their subtree);
   the library's primitives override `render(Environment)` to materialize a
   `PathlandNode`. `body()` is evaluated **once at mount** — reactive values come from
-  signals (`View.text(Signal)`, `Signals.computed`), not from body re-evaluation, so
-  the emitter keeps its fine-grained `SET_TEXT`/`SET_PROPERTY` deltas.
-- **Constructor props** (structural/layout: `alignment`, `spacing`) are
-  constructor args, never chainable; **modifiers** (`padding`, `color`,
-  `background`, `fontSize`, `fontWeight`, `frame`, `opacity`, `border`,
-  `visible`, …) chain on any view. Sizing is the `Frame` modifier value
-  (`Frame.of(w, h)`, `Frame.of(w, h, alignment)`, `Frame.of(w, alignment)`,
-  standalone `Frame.ofWidth(w)` / `Frame.ofHeight(h)`, and the lambda
-  configurator `Frame.of(c -> c.minWidth(..).maxWidth(..).alignment(..))`
-  (min/ideal/max bounds), applied via `.with(...)` like any other modifier; all
+  signals (`Text.with(t -> t.text(Signal))`, `Signals.computed`), not from body
+  re-evaluation, so the emitter keeps its fine-grained `SET_TEXT`/`SET_PROPERTY` deltas.
+- **The three operations (spec DSL.md §2)**: every concrete view exposes
+  `with(Consumer<Config>)` (values) / `.modifiers(ViewModifier...)` / `.children(View...)`
+  chainable in **any order** on a returned `ViewBuilder` (Java's static-vs-instance
+  rule: the statics sit on the view class, the chain on the builder). Values are a
+  fluent per-view `Config` (`VStack.with(v -> v.alignment(...).spacing(8))`,
+  `Text.with(t -> t.text("hi"))`); modifiers are `ViewModifier` values
+  (`Padding.with(p -> p.uniform(16))`) or — for single values — the value itself
+  (`FontWeight.BOLD`, `Font.headline()`, a `ButtonStyle`). The `View` interface has
+  **no per-modifier sugar** (`font`/`navigate`/`environment`/`onPathChange` were
+  removed — use `.modifiers(Font…)`, `.modifiers(NavigationIntent.navigate(…))`,
+  `.modifiers(EnvironmentBinding.with(e -> e.key(…).value(…)))`,
+  `.modifiers(PathChange.with(p -> p.listener(…)))`), and the `*Mod` shims
+  (`EnvironmentMod`→`EnvironmentBinding`, `router/NavigationMod`→`NavigationIntent`,
+  `PathChangeMod`→`PathChange`, `FontWeightMod`→`FontWeight`, …) are **removed**.
+  Sizing is the `Frame` modifier value
+  (`Frame.with(f -> f.width(w).height(h).alignment(..))`, standalone
+  `Frame.ofWidth(w)` / `Frame.ofHeight(h)`, and the lambda
+  configurator `Frame.with(f -> f.minWidth(..).maxWidth(..).alignment(..))`
+  (min/ideal/max bounds)); all
   compile to the same `WIDTH`/`HEIGHT`/`ALIGNMENT`/min-max `SET_PROPERTY`s.
   Typed enums
-  (`Alignment`/`TextAlignment`/`FontWeight`/`Truncation`), not raw ints.
-- **Environment scoping via a `ThreadLocal`** (Java 17+): `.buttonStyle(ButtonStyle)`
+  (`Alignment`/`TextAlignment`/`FontWeight`/`Truncation`), not raw ints. The
+  `.of(...)` construction convenience factories remain as an alternate spelling
+  (spec conformance — same bytes), but consumers are all on the v2 surface.
+- **Environment scoping via a `ThreadLocal`** (Java 17+): a `ButtonStyle` modifier
   injects a style down the whole child tree; `ButtonStyle.makeBody(Configuration)`
   with built-in `PlainButtonStyle` / `BorderedButtonStyle`. Custom wrappers via
   `ViewModifier.body(View)`. The `Environment` also carries the session's
@@ -278,9 +290,11 @@ tests (golden byte layout + round-trips), replacing the old codegen assert pass.
 
 - **Single signal value convention**: a view or modifier holds **one `Signal<T>`
   field** for a reactive value — never a raw field *plus* a signal field for the
-  same value. Static values are authored through the raw `of(T)` overload, which
-  wraps them in `Signals.constant(...)` (e.g. `Text.of("Hello")` ≡
-  `Text.of(Signals.constant("Hello"))`); the emitter treats a `ConstantSignal` as
+  same value. Static values are authored through the raw config setter (or the
+  `.of(T)` convenience), which
+  wraps them in `Signals.constant(...)` (e.g. `Text.with(t -> t.text("Hello"))` ≡
+  `Text.with(t -> t.text(Signals.constant("Hello")))`); the emitter treats a
+  `ConstantSignal` as
   a plain, non-reactive property (no binding/effect), so statics carry zero
   binding overhead. Controls' config fields for *distinct* properties
   (`min`/`max`/`step`/`placeholder`/`mode`/`style`) stay raw.

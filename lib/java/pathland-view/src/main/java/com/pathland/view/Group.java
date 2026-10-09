@@ -10,17 +10,42 @@ import java.util.List;
  * grouping itself carries no layout. A future protocol component may let it splice
  * children directly into the parent.
  */
-public final class Group implements View {
+public final class Group implements View, Configurable<Group.Config>, ChildrenView {
 
-    private final List<View> children;
+    /** {@link Group} has no values. */
+    public static final class Config implements View.Config {
+    }
 
-    private Group(View... children) {
-        this.children = List.of(children);
+    private final Config config = new Config();
+    private List<View> children = List.of();
+
+    private Group(List<View> children) {
+        this.children = children;
     }
 
     /** A group of child views. */
     public static Group of(View... children) {
-        return new Group(children);
+        return new Group(List.of(children));
+    }
+
+    /** Supply the group's children. */
+    public static ViewBuilder<Group, Config> children(View... children) {
+        return new ViewBuilder<>(new Group(List.of())).children(children);
+    }
+
+    /** Apply modifiers to an empty group. */
+    public static ViewBuilder<Group, Config> modifiers(ViewModifier... modifiers) {
+        return new ViewBuilder<>(new Group(List.of())).modifiers(modifiers);
+    }
+
+    @Override
+    public Config config() {
+        return config;
+    }
+
+    @Override
+    public void setChildren(List<View> children) {
+        this.children = List.copyOf(children);
     }
 
     @Override

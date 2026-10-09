@@ -27,18 +27,18 @@ public final class PickerSection implements View {
     public View body() {
         var choiceLabel = computed(() -> "Choice: " + choice.get());
         return new SectionCard("Picker + Menu",
-                VStack.of(
-                        Text.of(choiceLabel).with(Padding.of(4)),
-                        Picker.of(PickerStyle.SEGMENTED, choice.signal(),
-                                Text.of("One"), Text.of("Two"), Text.of("Three")),
-                        Picker.of(PickerStyle.MENU, choice.signal(),
-                                Text.of("One"), Text.of("Two"), Text.of("Three")),
-                        Menu.of(Button.of("Actions ▾", () -> { }),
-                                Button.of("Item 1", () -> { }),
-                                Button.of("Item 2", () -> { })),
-                        Text.of("Menu action items are Buttons; choices route via VALUE_CHANGED")
-                                .with(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88)))
-                ).with(Padding.of(4))
+                VStack.children(
+                        Text.with(t -> t.text(choiceLabel)).modifiers(Padding.with(p -> p.uniform(4))),
+                        Picker.with(p -> p.style(PickerStyle.SEGMENTED).selection(choice.signal())).children(
+                                Text.with(t -> t.text("One")), Text.with(t -> t.text("Two")), Text.with(t -> t.text("Three"))),
+                        Picker.with(p -> p.style(PickerStyle.MENU).selection(choice.signal())).children(
+                                Text.with(t -> t.text("One")), Text.with(t -> t.text("Two")), Text.with(t -> t.text("Three"))),
+                        Menu.children(Button.with(b -> b.title("Actions ▾").action(() -> { })),
+                                Button.with(b -> b.title("Item 1").action(() -> { })),
+                                Button.with(b -> b.title("Item 2").action(() -> { }))),
+                        Text.with(t -> t.text("Menu action items are Buttons; choices route via VALUE_CHANGED"))
+                                .modifiers(ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88))))
+                ).modifiers(Padding.with(p -> p.uniform(4)))
         );
     }
 }

@@ -10,17 +10,12 @@ import com.pathland.view.TextCase;
 import com.pathland.view.Truncation;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
-import com.pathland.view.FontDesignMod;
-import com.pathland.view.FontWeightMod;
 import com.pathland.view.Italic;
 import com.pathland.view.Kerning;
 import com.pathland.view.LineLimit;
 import com.pathland.view.Padding;
 import com.pathland.view.Strikethrough;
-import com.pathland.view.TextAlignmentMod;
-import com.pathland.view.TextCaseMod;
 import com.pathland.view.Tracking;
-import com.pathland.view.TruncationMod;
 import com.pathland.view.Underline;
 
 
@@ -34,26 +29,26 @@ public final class TextStylesSection implements View {
     @Override
     public View body() {
         return new SectionCard("Text styles · text modifiers",
-                VStack.of(
-                        Text.of("Regular").with(FontWeightMod.of(FontWeight.REGULAR)),
-                        Text.of("Bold").with(FontWeightMod.of(FontWeight.BOLD)),
-                        Text.of("Italic").with(Italic.of()),
-                        Text.of("Underline").with(Underline.of()),
-                        Text.of("Strikethrough").with(Strikethrough.of()),
-                        Text.of("UPPERCASE").with(TextCaseMod.of(TextCase.UPPERCASE)),
-                        Text.of("Monospaced").with(FontDesignMod.of(FontDesign.MONOSPACED)),
-                        Text.of("Serif").with(FontDesignMod.of(FontDesign.SERIF)),
-                        Text.of("K e r n e d").with(Kerning.of(2)),
-                        Text.of("Tracking").with(Tracking.of(3)),
-                        Text.of("A very long line of text that must be truncated to a single line.")
-                                .with(
-                                        LineLimit.of(1),
-                                        TruncationMod.of(Truncation.TAIL))
-                                .with(Frame.of(280, Alignment.CENTER)),
-                        Text.of("Centered").with(
-                                TextAlignmentMod.of(TextAlignment.CENTER))
-                                .with(Frame.of(180, Alignment.CENTER))
-                ).with(Padding.of(4))
+                VStack.children(
+                        Text.with(t -> t.text("Regular")).modifiers(FontWeight.REGULAR),
+                        Text.with(t -> t.text("Bold")).modifiers(FontWeight.BOLD),
+                        Text.with(t -> t.text("Italic")).modifiers(Italic.with()),
+                        Text.with(t -> t.text("Underline")).modifiers(Underline.with()),
+                        Text.with(t -> t.text("Strikethrough")).modifiers(Strikethrough.with()),
+                        Text.with(t -> t.text("UPPERCASE")).modifiers(TextCase.UPPERCASE),
+                        Text.with(t -> t.text("Monospaced")).modifiers(FontDesign.MONOSPACED),
+                        Text.with(t -> t.text("Serif")).modifiers(FontDesign.SERIF),
+                        Text.with(t -> t.text("K e r n e d")).modifiers(Kerning.with(k -> k.value(2))),
+                        Text.with(t -> t.text("Tracking")).modifiers(Tracking.with(tr -> tr.value(3))),
+                        Text.with(t -> t.text("A very long line of text that must be truncated to a single line."))
+                                .modifiers(
+                                        LineLimit.with(l -> l.value(1)),
+                                        Truncation.TAIL)
+                                .modifiers(Frame.with(f -> f.width(280).alignment(Alignment.CENTER))),
+                        Text.with(t -> t.text("Centered")).modifiers(
+                                TextAlignment.CENTER)
+                                .modifiers(Frame.with(f -> f.width(180).alignment(Alignment.CENTER)))
+                ).modifiers(Padding.with(p -> p.uniform(4)))
         );
     }
 }

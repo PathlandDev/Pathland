@@ -2767,7 +2767,7 @@ mod tests {
     use pathland_engine::Engine;
     use pathland_core::tokens::Scheme;
     use pathland_core::{init_memory, property_id, size, value_type, Guest, Host, MemoryLayout};
-    use pathland_view::{assign_ids, text, vstack, View, ViewExt};
+    use pathland_view::{assign_ids, text, vstack, Configurable, ForegroundStyle, View, ViewExt};
 
     #[test]
     fn size_hint_maps_width_height_sentinels() {
@@ -2832,7 +2832,9 @@ mod tests {
         init_memory(&mut mem, &layout);
 
         let mut root = vstack![text("ab"), text("cd")]
-            .spacing(4.0)
+            .with(|v| {
+                v.spacing(4.0);
+            })
             .build();
         assign_ids(&mut root, &mut 1);
 
@@ -2859,7 +2861,7 @@ mod tests {
         init_memory(&mut mem, &layout);
 
         let mut root = text("x")
-            .foreground_style(pathland_view::Color::token("color.primary"))
+            .modifiers(ForegroundStyle(pathland_view::Color::token("color.primary")))
             .build();
         assign_ids(&mut root, &mut 1);
 
@@ -2888,7 +2890,7 @@ mod tests {
         init_memory(&mut mem, &layout);
 
         let mut root = text("x")
-            .foreground_style(pathland_view::Color::token("color.primary"))
+            .modifiers(ForegroundStyle(pathland_view::Color::token("color.primary")))
             .build();
         assign_ids(&mut root, &mut 1);
         let mut engine = Engine::new();

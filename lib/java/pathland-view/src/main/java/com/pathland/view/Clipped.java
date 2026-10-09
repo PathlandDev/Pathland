@@ -10,6 +10,11 @@ public final class Clipped implements ViewModifier {
         return new Clipped();
     }
 
+    /** Clip. */
+    public static Clipped with() {
+        return new Clipped();
+    }
+
     @Override
     public View body(View content) {
         return Modified.props(content, Modified.prop(Properties.CLIPS_TO_BOUNDS, 1));

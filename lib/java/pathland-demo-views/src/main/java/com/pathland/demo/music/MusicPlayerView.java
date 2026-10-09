@@ -90,27 +90,27 @@ public final class MusicPlayerView implements View {
         // fit candidates, so the reconcile re-uses every shared node and a fit
         // swap only inserts/removes the now-playing sidebar subtree — a handful
         // of TREE deltas instead of rebuilding the whole main area.
-        View mainArea = ZStack.of(Alignment.BOTTOM_CENTER,
+        View mainArea = ZStack.with(z -> z.alignment(Alignment.BOTTOM_CENTER)).children(
                 new LibraryView(trackIndex.signal(), position.signal(), playing.signal(), seekRequest.signal()),
-                HStack.of(
+                HStack.children(
                     new PlayerBar(trackIndex.signal(), position.signal(), playing.signal(), volume.signal(),
                         seekRequest.signal(), volumeRequest.signal())
-                        .with(Border.of(MusicPlayerView.BAR_BORDER, 1, 500))
-                        .with(Shadow.of(10))
-                ).with(Padding.of(16)),
+                        .with(Border.with(b -> b.color(MusicPlayerView.BAR_BORDER).width(1).radius(500)))
+                        .with(Shadow.with(s -> s.radius(10)))
+                ).modifiers(Padding.with(p -> p.uniform(16))),
                 subtitlePill(block, previous, current));
-        View wideRow = HStack.of(
+        View wideRow = HStack.children(
                 mainArea,
-                new NowPlayingSidebar(trackIndex.signal()).with(Clipped.of())
-        ).with(Frame.of(Commands.Size.FILL, Commands.Size.FILL));
-        View compactRow = HStack.of(mainArea)
-                .with(Frame.of(Commands.Size.FILL, Commands.Size.FILL));
+                new NowPlayingSidebar(trackIndex.signal()).with(Clipped.with())
+        ).modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)));
+        View compactRow = HStack.children(mainArea)
+                .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)));
         return SizeThatFits.of(
                 Fit.of(wideRow, 1024f),
                 Fit.of(compactRow)
         )
-        .with(Frame.of(Commands.Size.FILL, Commands.Size.FILL))
-        .with(AccessibilityRole.of(Roles.MAIN));
+        .with(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
+        .with(AccessibilityRole.with(a -> a.role(Roles.MAIN)));
     }
 
     /** The karaoke lyric pill just above the floating player bar: always two
@@ -119,28 +119,28 @@ public final class MusicPlayerView implements View {
      *  black pill; invisible (clear) when there is no block. Taps pass through. */
     private static View subtitlePill(Signal<List<String>> block, Signal<String> previous,
                                      Signal<Integer> current) {
-        View currentLine = Text.of(computed(() -> {
+        View currentLine = Text.with(t -> t.text(computed(() -> {
             String p = previous.get();
             return p.isEmpty() ? lineAt(block.get(), current.get()) : p;
-        }))
-                .with(FontSize.of(13))
-                .with(FontStyleMod.of(FontStyle.ITALIC))
-                .with(ForegroundStyle.of(Color.WHITE));
-        View nextLine = Text.of(computed(() -> {
+        })))
+                .modifiers(FontSize.with(s -> s.size(13)))
+                .modifiers(FontStyle.ITALIC)
+                .modifiers(ForegroundStyle.with(f -> f.color(Color.WHITE)));
+        View nextLine = Text.with(t -> t.text(computed(() -> {
             String p = previous.get();
             return p.isEmpty() ? "" : lineAt(block.get(), current.get());
-        }))
-                .with(FontSize.of(13))
-                .with(FontStyleMod.of(FontStyle.ITALIC))
-                .with(ForegroundStyle.of(Color.argb(170, 255, 255, 255)));
-        return VStack.of(HorizontalAlignment.CENTER, 2, currentLine, nextLine)
-                .with(Padding.of(6, 12, 6, 12))
-                .with(CornerRadius.of(8))
-                .with(Offset.of(0, -(BAR_HEIGHT + 24)))
-                .with(AllowsHitTesting.of(false))
-                .with(Background.of(computed(() -> block.get().isEmpty() || current.get() < 0
+        })))
+                .modifiers(FontSize.with(s -> s.size(13)))
+                .modifiers(FontStyle.ITALIC)
+                .modifiers(ForegroundStyle.with(f -> f.color(Color.argb(170, 255, 255, 255))));
+        return VStack.with(v -> v.alignment(HorizontalAlignment.CENTER).spacing(2)).children(currentLine, nextLine)
+                .modifiers(Padding.with(p -> p.edges(6, 12, 6, 12)))
+                .modifiers(CornerRadius.with(c -> c.radius(8)))
+                .modifiers(Offset.with(o -> o.x(0).y(-(BAR_HEIGHT + 24))))
+                .modifiers(AllowsHitTesting.with(a -> a.allowed(false)))
+                .modifiers(Background.with(b -> b.color(computed(() -> block.get().isEmpty() || current.get() < 0
                         ? Color.CLEAR
-                        : Color.argb(128, 0, 0, 0))));
+                        : Color.argb(128, 0, 0, 0)))));
     }
 
     /** The row text for a block index (empty beyond the block). */

@@ -2,6 +2,7 @@ package com.pathland.server;
 
 import com.pathland.render.html.HtmlRenderer;
 import com.pathland.view.Environment;
+import com.pathland.view.EnvironmentBinding;
 import com.pathland.view.Platform;
 import com.pathland.view.emit.Emitter;
 import com.pathland.view.emit.ProtocolFrame;
@@ -128,7 +129,7 @@ public final class PathlandSession {
         // active path is injected as a scoped environment value; any root works (with or
         // without navigation).
         RenderResult result = emitter.mount(
-                app.newRoot().environment(Platform.ACTIVE_PATH, activePath),
+                app.newRoot().with(EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
                 new Environment(state));
         this.inputDispatcher = new InputDispatcher(result, activePath);
         this.rootId = result.rootId();

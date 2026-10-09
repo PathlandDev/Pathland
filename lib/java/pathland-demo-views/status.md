@@ -40,8 +40,9 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   `NavigationContainer` content area on the right that swaps on selection
   (`router.navigate` — direct selection, no back-stack growth). Mounted directly
   by both demos' `SessionApp` with the active platform path provided as an
-  environment value — **`new SplitNavDemo().environment(Platform.ACTIVE_PATH,
-  activePath)`**; `SplitNavDemo.body()` reads it and builds a **bound** router
+  environment value — **`new SplitNavDemo().with(EnvironmentBinding.with(e ->
+  e.key(Platform.ACTIVE_PATH).value(activePath)))`**; `SplitNavDemo.body()` reads it
+  and builds a **bound** router
   (`Navigation.navigator()...build(activePath)`) — external path changes are
   guard-processed and navigation is mirrored back into the signal. The view is
   router-free (no app factory / `NavigationApp`).
@@ -50,13 +51,16 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   first message on the WebSocket), so deep links render correctly on the first
   frame; env re-routing sets `activePath`, `NAVIGATE`-with-URL sets `activePath`,
   and `NAVIGATE`-back forwards into `RenderResult.navigateHandler`. The view also
-  demonstrates **`onPathChange`** (logging the active path). The
+  demonstrates **`PathChange.with(p -> p.listener(...))`** (logging the active
+  path). The
   active menu row is highlighted **reactively** via `Navigation.isActive(router,
-  path)` → a computed signal that drives `Background.of(Signal<Color>)` /
-  `ForegroundStyle.of(Signal<Color>)`, so a selection re-emits only that row's
-  color properties. Content areas are router-free, self-contained views
+  path)` → a computed signal that drives
+  `Background.with(b -> b.color(Signal<Color>))` /
+  `ForegroundStyle.with(f -> f.color(Signal<Color>))`, so a selection re-emits only
+  that row's color properties. Content areas are router-free, self-contained views
   instantiated inline in the route table:
-  - `HomeView` — titled welcome pane with a declarative `.navigate("/kitchen")`
+  - `HomeView` — titled welcome pane with a declarative
+    `.modifiers(NavigationIntent.navigate("/kitchen"))`
     button (spec DSL.md §4.5 — a component inside the container changing the
     route without a router) (`/` and `/home`).
   - `KitchenSinkView` — the full showcase (`/kitchen`).

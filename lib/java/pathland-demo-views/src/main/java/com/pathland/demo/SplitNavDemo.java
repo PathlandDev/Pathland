@@ -13,7 +13,7 @@ import com.pathland.view.router.Router;
  * `HStack` sidebar + detail): a fixed **menu column on the left** with three items and
  * a `NavigationContainer` **content area on the right** that swaps on selection. The
  * menu is the developer's own navigation UI; the content area is the navigation slot
- * (`Navigation.of(router)`), so the renderer provides the detail chrome.
+ * (`Navigation.container(router)`), so the renderer provides the detail chrome.
  *
  * <p>Routes: {@code /} and {@code /home} (Home), {@code /kitchen} (the full
  * {@link KitchenSinkView} showcase), {@code /settings} (a couple of bound controls), plus
@@ -42,16 +42,16 @@ public final class SplitNavDemo implements View {
                 .route("/home", new HomeView())
                 .route("/kitchen", new KitchenSinkView())
                 .route("/settings", new SettingsView())
-                .fallback(Text.of("Not Found"))
+                .fallback(Text.with(t -> t.text("Not Found")))
                 .build(Environment.value(Platform.ACTIVE_PATH));
         // The split: a fixed sidebar column + the structural navigation slot (detail).
         // onPathChange demonstrates observing the active platform path without a router.
-        return HStack.of(new Sidebar(),
-                        ScrollView.of(Navigation.of(router)).with(Frame.ofWidth(Float.POSITIVE_INFINITY))
+        return HStack.children(new Sidebar(),
+                        ScrollView.children(Navigation.container(router)).modifiers(Frame.ofWidth(Float.POSITIVE_INFINITY))
                 )
-                .with(Frame.ofWidth(Float.POSITIVE_INFINITY))
-                .onPathChange(path -> System.out.println("[split] active path: " + path))
-                .environment(Navigation.ROUTER, router);
+                .modifiers(Frame.ofWidth(Float.POSITIVE_INFINITY))
+                .modifiers(PathChange.with(p -> p.listener(path -> System.out.println("[split] active path: " + path))))
+                .modifiers(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router)));
     }
 
 }

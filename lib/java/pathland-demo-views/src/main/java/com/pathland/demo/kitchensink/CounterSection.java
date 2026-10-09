@@ -13,7 +13,6 @@ import com.pathland.view.View;
 import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.FontSize;
-import com.pathland.view.FontWeightMod;
 import com.pathland.view.ForegroundStyle;
 import com.pathland.view.Padding;
 
@@ -32,16 +31,16 @@ public final class CounterSection implements View {
     public View body() {
         var countLabel = computed(() -> "Count: " + count.get());
         return new SectionCard("Counter · State + Button + Stepper",
-                VStack.of(
-                        Text.of(countLabel).with(FontSize.of(28), FontWeightMod.of(FontWeight.BOLD)),
-                        HStack.of(VerticalAlignment.TOP, 4,
-                                Button.of("−", () -> count.update(v -> v - step.get().intValue())),
-                                Button.of("+", () -> count.update(v -> v + step.get().intValue())),
-                                Button.of("Reset", () -> count.set(0))
-                        ).with(Padding.of(4)),
-                        Text.of("Step size").with(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88))),
-                        Stepper.of(step.signal(), 1, 10, 1)
-                ).with(Padding.of(4))
+                VStack.children(
+                        Text.with(t -> t.text(countLabel)).modifiers(FontSize.with(s -> s.size(28)), FontWeight.BOLD),
+                        HStack.with(h -> h.alignment(VerticalAlignment.TOP).spacing(4)).children(
+                                Button.with(b -> b.title("−").action(() -> count.update(v -> v - step.get().intValue()))),
+                                Button.with(b -> b.title("+").action(() -> count.update(v -> v + step.get().intValue()))),
+                                Button.with(b -> b.title("Reset").action(() -> count.set(0)))
+                        ).modifiers(Padding.with(p -> p.uniform(4))),
+                        Text.with(t -> t.text("Step size")).modifiers(ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88)))),
+                        Stepper.with(s -> s.value(step.signal()).in(1, 10).step(1))
+                ).modifiers(Padding.with(p -> p.uniform(4)))
         );
     }
 }

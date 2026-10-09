@@ -1,18 +1,22 @@
 package com.pathland.view;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * A font specification ({@code Font}): a predefined typography from the
  * design system, a custom font family + size, or a system font with an exact
- * size/weight/design. Applied with {@link FontMod} / {@link View#font(Font)}.
+ * size/weight/design. The {@code Font} value **is** the modifier
+ * ({@code .modifiers(Font.headline())}).
  *
  * <p>A heading typography ({@link TextStyle} {@code LargeTitle}…{@code Headline})
  * makes a {@link Text} a heading element ({@code <h1>}–{@code <h5>}); a custom
  * or system font never implies a heading — it only styles the text. The
- * individual modifiers ({@link FontSize}, {@link FontWeightMod},
- * {@link FontFamily}, {@link FontDesignMod}, …) remain available for one-off
+ * individual modifiers ({@link FontSize}, {@link FontWeight},
+ * {@link FontFamily}, {@link FontDesign}, …) remain available for one-off
  * overrides on top.
  */
-public final class Font {
+public final class Font implements ViewModifier {
 
     private final TextStyle style; // non-null → predefined typography (TEXT_STYLE)
     private final String family;   // custom family (FONT_FAMILY)
@@ -86,5 +90,28 @@ public final class Font {
 
     FontDesign design() {
         return design;
+    }
+
+    /** The font is itself the modifier. */
+    @Override
+    public View body(View content) {
+        if (style != null) {
+            // Predefined typography: the heading styles imply a heading element.
+            return Modified.props(content, Modified.prop(Properties.TEXT_STYLE, (float) style.code()));
+        }
+        List<Modified.Prop> props = new ArrayList<>(4);
+        if (family != null) {
+            props.add(Modified.prop(Properties.FONT_FAMILY, family));
+        }
+        if (size != null) {
+            props.add(Modified.prop(Properties.FONT_SIZE, size));
+        }
+        if (weight != null) {
+            props.add(Modified.prop(Properties.FONT_WEIGHT, (float) weight.wire()));
+        }
+        if (design != null) {
+            props.add(Modified.prop(Properties.FONT_DESIGN, (float) design.wire()));
+        }
+        return Modified.props(content, props.toArray(new Modified.Prop[0]));
     }
 }

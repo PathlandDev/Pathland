@@ -10,6 +10,6 @@ public enum TitleOnlyLabelStyle implements LabelStyle {
 
     @Override
     public View makeBody(Configuration config) {
-        return config.hasTitle() ? config.title() : Group.of();
+        return config.hasTitle() ? config.title() : Group.children();
     }
 }

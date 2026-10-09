@@ -1,6 +1,6 @@
 # pathland-view (Java) — implementation status
 
-**Last updated:** September 14, 2026
+**Last updated:** October 9, 2026
 
 The hand-written, framework-agnostic Java 17+ DSL (`com.pathland.view`):
 declarative views, Angular-style signals, fine-grained emitter, `PLPL` wire
@@ -24,15 +24,49 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   controls slot under the root row) keeps its candidate instead of resetting to
   compact (a reset would strand the DOM client, which never re-reports an
   unchanged width).
-- **Construction is `.of()` only**: every concrete view/control exposes a
-  static `<ViewName>.of(...)` factory (`Text.of`, `VStack.of`,
-  `Button.of(label, action)`, `Slider.of(binding, min, max)`,
-  `DatePicker.of(mode, days)`, …); constructors are private and the former
-  `View.*` static-factory surface is **removed**. `Slider`/`Stepper` are
-  binding-first (initial value read from the signal); `Toggle` also offers the
-  label-first `of(label, isOn)` overload; `Color.of(int)` alias. Grids take
-  their track counts as constructor args: `Grid.of(int columns[, int rows], …)`,
-  `LazyVGrid.of(int columns, …)`, `LazyHGrid.of(int rows, …)` — absent = auto-fit
+- **v2 authoring surface (complete)**: every concrete view exposes
+  the three operations — values via static `View.with(Consumer<Config>)`,
+  `.modifiers(ViewModifier...)`, and (content-bearing views) `.children(View...)`
+  — on the returned generic `ViewBuilder<V, C>` (any order; `View.Config`,
+  `Configurable<C>`, `ChildrenView`; `View` keeps only `body()`/`render()` —
+  Java's static-vs-instance rule means the statics sit on the view classes and
+  the chain lives on the builder). Modifiers are built with `Modifier.with(c -> …)`
+  (`Padding.with(p -> p.uniform(16))`, `Frame.with(f -> f.width(100).height(24))`,
+  `ForegroundStyle.with(f -> f.color(c))`); **single-value modifiers are the value
+  itself** (`FontWeight.BOLD`, `TextAlignment.CENTER`, `Truncation.TAIL`,
+  `TextCase.UPPERCASE`, `ControlSize.LARGE`, `FontStyle.ITALIC`,
+  `FontDesign.SERIF`, `Font.system(18)` — the enums + `Font` implement
+  `ViewModifier`), and `Style extends ViewModifier`, so `.modifiers(MyButtonStyle)`
+  scopes the matching environment key. The `View` per-modifier sugar
+  (`font`/`navigate`/`environment`/`onPathChange`), the `View.with(ViewModifier...)`
+  general modifier chain in favor of `.modifiers(...)`, and the `*Mod` shims
+  (`EnvironmentMod`→`EnvironmentBinding`, `NavigationMod`→`NavigationIntent`,
+  `PathChangeMod`→`PathChange`, `FontWeightMod`→`FontWeight`, …) are **removed** —
+  every consumer (demo views, starters, renderers) is on the v2 surface. The
+  `.of(...)` construction convenience factories remain as an alternate spelling
+  (spec conformance — the v2 surface emits the same bytes), but no consumer or
+  test uses them anymore. The `View` interface carries no per-modifier factory
+  methods (spec `DSL.md` §5.6).
+- **Signals-first configs (spec DSL.md §2)**: **every value member** exposes a raw
+  setter (sugar for `Signals.constant`) and a `Signal<T>` setter — layout included
+  (`spacing`, `alignment`, `padding`, `frame`, `columns`/`tracks`, …). A
+  non-constant signal becomes a **node-level binding** (re-emits only that
+  property); a constant carries zero binding overhead. Two-way control *values*
+  take `WritableSignal<T>`; every other member takes a one-way `Signal<T>`
+  (`WritableSignal extends Signal`). Views and modifiers place values through the
+  single `PathlandNode.property(id, Signal<?>)` path; `emit.ReactiveValues`
+  coerces a signal's value to the property's declared wire type
+  (`ValueTypes.forProperty`) and maps `WireValue` enums to their numeric code.
+  `State`/`Signals` are unchanged.
+- **Construction**: every concrete view/control is
+  built with <View>.with(c -> …) / .children(...) / .modifiers(...)
+  (`Text.with(t -> t.text("x"))`, `VStack.with(v -> v.spacing(8)).children(a, b)`,
+  `Button.with(b -> b.action(...)).children(label)`,
+  `Slider.with(s -> s.value(binding).in(min, max))`,
+  `DatePicker.with(d -> d.selection(days))`, …). `Slider`/`Stepper` are
+  binding-first (initial value read from the signal). Grids take
+  their track counts as config values: `Grid.with(g -> g.columns(int[, rows]), …)`,
+  `LazyVGrid.with(g -> g.columns(int), …)`, `LazyHGrid.with(g -> g.rows(int), …)` — absent = auto-fit
   (spec/PRIMITIVES.md §grid model); the counts emit `GRID_COLUMNS`/`GRID_ROWS`,
   never a pixel `WIDTH`/`HEIGHT`. **Per-track sizes** via a `List<GridItem>`
   overload (`GridItem.flexible()` / `.fixed(pts)` / `.adaptive(min)`) emit the
@@ -46,28 +80,29 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   alignment.
   GTK falls back to natural sizing (see render-gtk status).
 - **One modifier mechanism — no sugar on `View`**: core modifiers are
-  `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,
-  `Border.of(color, width)`, …) applied via `.with(...)` (one or several,
+  `ViewModifier` values built via `Modifier.with(c -> …)`
+  (`Padding.with(p -> p.uniform(16))`, `ForegroundStyle.with(f -> f.color(c))`,
+  `Border.with(b -> b.color(c).width(w))`, …) or passed as the bare value when the
+  value *is* the modifier (`FontWeight.BOLD`, `Font.headline()`, `MyButtonStyle`),
+  applied via `.modifiers(...)` (one or several,
   innermost-first); sizing is the `Frame` modifier value — the static factories
   `Frame.of(w, h)`, `Frame.of(w, h, alignment)`, `Frame.of(w, alignment)`,
   `Frame.ofWidth(w)`, `Frame.ofHeight(h)`, and the lambda configurator
   `Frame.of(c -> c.minWidth(..).maxWidth(..).alignment(..))` (the fluent
-  `Frame.Builder`: min/ideal/max bounds + optional fixed axes + alignment, all
-  freely combinable). All forms compile to the same properties the legacy
-  `FrameMod.of(…)` produced (byte-identical wire): the width/height overloads
-  leave `ALIGNMENT` unset (alignment optional, so a stack's own cross-axis
-  alignment is preserved); `±∞` width/height is normalized to
-  `Commands.Size.FILL` and `NaN` omits the axis; an infinite min/ideal/max
-  bound is omitted (no limit);
-  the `View` interface has **no per-modifier factory methods** (application
-  authors' views share the modifier-value surface — spec `DSL.md` §5.6).
-  `buttonStyle` is the `ButtonStyleMod` value (an **environment**
-  binding — it scopes `Environment.BUTTON_STYLE`, an `EnvironmentKey<ButtonStyle>`,
-  down the subtree). `labelStyle` is the `LabelStyleMod` value (it scopes
-  `Environment.LABEL_STYLE`, an `EnvironmentKey<LabelStyle>`; `LabelStyle` is an
-  **interface** with `DefaultLabelStyle`/`TitleOnlyLabelStyle`/
-  `IconOnlyLabelStyle`; the style shapes the emitted child tree, never a wire
-  property).
+  `Frame.Config`: min/ideal/max bounds + optional fixed axes + alignment, all
+  freely combinable). The width/height overloads leave `ALIGNMENT` unset
+  (alignment optional, so a stack's own cross-axis alignment is preserved);
+  `±∞` width/height is normalized to `Commands.Size.FILL` and `NaN` omits the
+  axis; an infinite min/ideal/max bound is omitted (no limit).
+  The `View` interface has **no per-modifier factory methods** (application
+  authors' views share the modifier-value surface — spec `DSL.md` §5.6), and
+  the `*Mod` shims are removed. A style is itself a modifier: `buttonStyle` is a
+  `ButtonStyle` value (an **environment** binding — it scopes
+  `Environment.BUTTON_STYLE`, an `EnvironmentKey<ButtonStyle>`, down the subtree).
+  `labelStyle` is a `LabelStyle` value (it scopes `Environment.LABEL_STYLE`, an
+  `EnvironmentKey<LabelStyle>`; `LabelStyle` is an **interface** with
+  `DefaultLabelStyle`/`TitleOnlyLabelStyle`/`IconOnlyLabelStyle`; the style shapes
+  the emitted child tree, never a wire property).
 - **One styleable-control contract (spec `DSL.md` §5.7)**: a `Style` supplies a
   control's **content** via `makeBody(Configuration)`; the control owns its native
   component + interaction and attaches the content as its child (Composite Override
@@ -78,11 +113,12 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `AUDIO`/`VIDEO` node and attach the active style's control UI as its child (the
   `EmptyContent` sentinel = native controls, no child). Label parts are passed to
   `LabelStyle` (nullable; `hasTitle()`/`hasIcon()`).
-  Reactive overloads
-  (`ForegroundStyle.of(Signal)`, `Background.of(Signal)`, `FontSize.of(Signal)`)
-  re-emit only the bound node. Enum-collision modifier names use the `Mod`
-  suffix (`FontWeightMod`, `TextAlignmentMod`, `TruncationMod`, `TextCaseMod`,
-  `FontStyleMod`, `FontDesignMod`, `ControlSizeMod`); the `frame` sizing type is
+  Reactive values
+  (`ForegroundStyle.with(f -> f.color(signal))`, `Background.with(b -> b.color(signal))`,
+  `FontSize.with(s -> s.size(signal))`)
+  re-emit only the bound node. Value-is-modifier enum types carry **no `Mod`
+  suffix** (`FontWeight`, `TextAlignment`, `Truncation`, `TextCase`,
+  `FontStyle`, `FontDesign`, `ControlSize`); the `frame` sizing type is
   `Frame`; the wire batch type is `emit.ProtocolFrame` (renamed from `emit.Frame`,
   so the modifier name is unambiguous).
 - **Views**: `View` (open interface), `VStack`, `HStack`, `ZStack`, `Group`
@@ -152,24 +188,26 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   reads it); `META::RESYNC`/`PING`/`PONG`/`ENVIRONMENT`/event batches carry `0`.
   Consumers detect a lost batch by a sequence gap and recover with a snapshot
   (spec/OPCODE.md §Sequence gap detection).
-- **Modifiers** (modifier values applied via `.with(...)`,
+- **Modifiers** (modifier values applied via `.modifiers(...)`,
   chainable on any view): `Padding`, `ForegroundStyle(Color)` (no `.color()`),
-  `Background(Color)`, `Tint`, `Opacity`, `FontSize`, `FontWeightMod`, `Border`
-  (`Border.of(color, width)` canonical + `(color, width, radius)` convenience),
+  `Background(Color)`, `Tint`, `Opacity`, `FontSize`, `FontWeight`, `Border`
+  (`Border.with(b -> b.color(color).width(w))` canonical + `radius`),
   `Visible`/`Hidden`, `frame` (`Frame` — factories `Frame.of(w, h[, alignment])`/
   `Frame.of(w, alignment)` + `Frame.ofWidth`/`Frame.ofHeight` + the
-  `Frame.Builder` min/ideal/max configurator `Frame.of(c -> …)`), `Offset`, `Position`,
+  `Frame.with(f -> …)` configurator), `Offset`, `Position`,
   `FixedSize`, `LayoutPriority`, `ZIndex`, `AspectRatio`/`ScaledToFit`/
-  `ScaledToFill`, `MinimumScaleFactor`, `FontStyleMod`/`Italic`/`FontDesignMod`/
+  `ScaledToFill`, `MinimumScaleFactor`, `FontStyle`/`Italic`/`FontDesign`/
   `FontWidth`/`Kerning`/`Tracking`/`BaselineOffset`/`LineSpacing`/`LineLimit`/
-  `TextAlignmentMod`/`TruncationMod`/`TextCaseMod`/`Underline`/`Strikethrough`/
+  `TextAlignment`/`Truncation`/`TextCase`/`Underline`/`Strikethrough`/
   `FontFamily`, `CornerRadius`, `Shadow`, `Blur`, `Saturation`/`Contrast`/
   `Brightness`/`Grayscale`/`HueRotation`/`ColorMultiply`/`ColorInvert`,
   `Clipped`/`ClipShape`, `Rotation`, `ScaleEffect`, `Disabled`,
-  `AllowsHitTesting`, `ControlSizeMod`,
+  `AllowsHitTesting`, `ControlSize`,
   `AccessibilityLabel`/`AccessibilityRole`/`AccessibilityState`, `ImageSource`,
   `PointerEvents` (OR-in), `ActionId`/`BindingId`, `TapGesture` (onTapGesture),
-  `ButtonStyleMod`, `LabelStyleMod` — `Color` is never a modifier.
+  `ButtonStyle`, `LabelStyle`, `AudioStyle`, `VideoStyle`,
+  `EnvironmentBinding`, `PathChange`, `NavigationIntent` — `Color` is never a
+  modifier.
   `AccessibilityLabel`/`Image` accept reactive `Signal<String>` overloads
   (node-level `LABEL`/`IMAGE_SOURCE` bindings).
 - **`Roles` constants** (`com.pathland.view.Roles`): the canonical **semantic**
@@ -181,20 +219,21 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   outside the semantic catalog (a custom button uses `Button` + `ButtonStyle`).
 - **`Icon` + `IconName`** (the `ICON` primitive, spec/ICONS.md): a canonical
   `IconName` written once and mapped by each renderer to its native symbol
-  (Adwaita on GTK, Lucide on the web). `Icon.of(IconName)` /
-  `Icon.of(String)` / `Icon.of(Signal<String>)` / `Icon.labeled(…, label)`;
-  `Label.of(title, Icon)` (and the signal-title variant) composes the icon part;
+  (Adwaita on GTK, Lucide on the web). `Icon.with(i -> i.name(IconName))` /
+  `Icon.with(i -> i.name(String))` / `Icon.with(i -> i.name(Signal<String>))` /
+  `Icon.labeled(…, label)`;
+  `Label.with(l -> l.title(..).icon(View))` composes the icon part;
   a reactive name re-emits only `ICON_NAME`. Size/tint follow `FONT_SIZE` /
   `COLOR`; `LABEL` makes the icon presentable.
-- **`Font` + `FontMod` + `View.font(_:)`** — the `Font` spec: a
+- **`Font` (is itself the modifier)** — the `Font` spec: a
   predefined typography (`Font.title2()` → `TEXT_STYLE`, heading styles imply a
   heading element), a custom family + size (`Font.custom(name, size)` →
   `FONT_FAMILY` + `FONT_SIZE`), a fully-custom typography
   (`Font.custom(name, size, weight, design)` → all four axes), or a system
   size/weight/design (`Font.system(size, weight, design)`). `TextStyle` is the
   design-system typography enum (`TEXT_STYLE` codes). The individual font
-  modifiers (`FontSize`, `FontWeightMod`, `FontFamily`, `FontDesignMod`,
-  `FontStyleMod`, `FontWidth`, `Italic`) remain available for one-off overrides.
+  modifiers (`FontSize`, `FontWeight`, `FontFamily`, `FontDesign`,
+  `FontStyle`, `FontWidth`, `Italic`) remain available for one-off overrides.
 - **Value types**: `ValueTypes.forProperty` mirrors `value_type_for` —
   `COLOR` family → `COLOR`; `VISIBLE`/`ENABLED`/`CLIPS_TO_BOUNDS`/`UNDERLINE`/
   `STRIKETHROUGH`/`COLOR_INVERT`/`ALLOWS_HIT_TESTING`/`IS_SECURE`/
@@ -233,7 +272,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (`Signal<Route>` + back-stack; `navigate`/`push`/`pop`/`replace`/`back`,
   `handlePlatformNavigation`/`handleEvent`), **`Navigation`** (the ergonomic
   facade: `Navigation.navigator(initialPath).route(...).fallback(...).build()`
-  collapses table + router + seeding, `Navigation.of(router)` is the container,
+  collapses table + router + seeding, `Navigation.container(router)` is the slot,
   `Navigation.isActive(router, path)` → a reactive `Signal<Boolean>` for
   active-route styling, `Navigation.ROUTER` = the `EnvironmentKey<Router>`),
   **`Params`** (typed path-param access — `get`/
@@ -243,7 +282,8 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `Platform.ACTIVE_PATH` signal: external writes are re-routed **guard-aware**,
   its own navigation is mirrored back, the initial value is guard-processed), and
   **generic scoped environment values**
-  (`EnvironmentKey`/`EnvironmentValues` + `View.environment(key, value)` +
+  (`EnvironmentKey`/`EnvironmentValues` + the `EnvironmentBinding` modifier value
+  (`EnvironmentBinding.with(e -> e.key(key).value(value))`) +
   `Environment.value(key)` — the `.environment` style, hierarchical nearest-
   wins; a `NavigationContainer` scopes `Navigation.ROUTER` to its destination
   subtree and structural slots re-apply the incoming scope on re-render via
@@ -253,12 +293,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   plain value is wrapped in a constant signal; a read made before the key is bound
   returns a **lazy signal** that captures the binding on the first `.get()` during
   render, enabling the `@Environment` **field style**
-  (`private final Signal<Router> router = Environment.value(Navigation.ROUTER);`);
-  inject reactive values with `view.environment(key, signal)`), plus the
+  (`private final Signal<Router> router = Environment.value(Navigation.ROUTER);`)),
+  plus the
   **universal active platform path** (`Platform.ACTIVE_PATH` =
   `EnvironmentKey<String>`, the host injects a writable signal — provided for every
   app with or without navigation — read via `Environment.value` and observed via
-  `View.onPathChange(Consumer)` / reading the signal; fires on every change incl.
+  the `PathChange` modifier value (`PathChange.with(p -> p.listener(...))`) /
+  reading the signal; fires on every change incl.
   the initial value),
   `NavigationContainer` (structural
   slot emitting the `ROUTE` property coalesced into the same frame as the
@@ -270,8 +311,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   nav UI), and a `TRANSITION` PlatformDefault hint renderers may use
   to animate the swap), `NavigationLink` (a `BUTTON` that pushes — both
   explicit-router and **router-agnostic** overloads). **Any component can change
-  the route** (spec DSL.md §4.5): `Button.of(...).navigate/push/replace(path)`
-  (`NavigationMod`) and router-agnostic `NavigationLink.of(label, to)` record a
+  the route** (spec DSL.md §4.5): `Button.with(...).modifiers(NavigationIntent.navigate/push/replace(path))`
+  (`NavigationIntent`) and router-agnostic
+  `NavigationLink.with(l -> l.label("..").to(path))` record a
   `NavOp` intent on the node; the emitter resolves it to the **nearest
   enclosing** `Router` (the `NavigationContainer` the component lives under)
   during the retained-tree walk and exposes it on
@@ -345,5 +387,10 @@ values** (`View.environment` + `Environment.value` hierarchy/restore), and the
 **universal active path** (a bound router re-routing guard-aware on external
 signal writes + mirroring its own navigation; `onPathChange` firing on changes));
 the JNA ring
-test runs when `libpathland_core` is on `java.library.path`. CI proves every
-LTS from 17 (Temurin 17/21/25).
+test runs when `libpathland_core` is on `java.library.path`. The v2 authoring
+surface is covered by `ViewBuilderTest` (with/modifiers/children any-order) and
+`ModifierWithTest` (modifier `with(...)`, enum/`Font` value-is-modifier,
+`Frame.with` builder); signals-first configs by `ReactiveConfigTest` (a
+non-constant value member re-emits exactly one `SET_PROPERTY` — boolean, float,
+enum, string, container spacing — and a constant registers no binding). CI proves
+every LTS from 17 (Temurin 17/21/25).

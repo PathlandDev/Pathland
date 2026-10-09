@@ -8,7 +8,7 @@ package com.pathland.view;
  * element when applied to a {@link Text}: the renderer emits
  * {@code <h1>}–{@code <h5>} (the level comes from the style — no {@code ROLE}
  * needed). The non-heading styles render as plain {@code <span>} text. A raw
- * font modifier ({@link FontSize}, {@link FontWeightMod}, …) never implies a
+ * font modifier ({@link FontSize}, {@link FontWeight}, …) never implies a
  * heading — it only overrides the typography's visual.
  */
 public enum TextStyle {

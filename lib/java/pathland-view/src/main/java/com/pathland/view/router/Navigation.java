@@ -2,6 +2,7 @@ package com.pathland.view.router;
 
 import com.pathland.view.EnvironmentKey;
 import com.pathland.view.View;
+import com.pathland.view.ViewBuilder;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
 
@@ -23,15 +24,16 @@ import java.util.function.Predicate;
  *     .fallback(new NotFoundView())
  *     .build();
  *
- * View shell = Navigation.of(router);                     // the navigation slot
+ * View shell = Navigation.container(router);              // the navigation slot
  * Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
  * }</pre>
  *
  * <p>The active router is also available as a scoped environment value
- * ({@link #ROUTER}): provide it at the app root via {@code view.environment(ROUTER,
- * router)} (or a {@code NavigationContainer} scopes it to its destination subtree),
- * and any component reads {@code Environment.value(ROUTER)} during render — no
- * constructor threading.
+ * ({@link #ROUTER}): provide it at the app root via
+ * {@code root.modifiers(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router)))}
+ * (or a {@code NavigationContainer} scopes it to its destination subtree), and any
+ * component reads {@code Environment.value(ROUTER)} during render — no constructor
+ * threading.
  */
 public final class Navigation {
 
@@ -40,14 +42,15 @@ public final class Navigation {
 
     private Navigation() {}
 
-    /** The navigation container over {@code router} ({@code NavigationContainer.of}). */
-    public static NavigationContainer of(Router router) {
-        return NavigationContainer.of(router);
+    /** The navigation container over {@code router} ({@code NavigationContainer.with}). */
+    public static ViewBuilder<NavigationContainer, NavigationContainer.Config> container(Router router) {
+        return container(router, Chrome.PLATFORM_DEFAULT);
     }
 
     /** The navigation container over {@code router} with an explicit chrome mode. */
-    public static NavigationContainer of(Router router, Chrome chrome) {
-        return NavigationContainer.of(router, chrome);
+    public static ViewBuilder<NavigationContainer, NavigationContainer.Config> container(
+            Router router, Chrome chrome) {
+        return NavigationContainer.with(n -> n.router(router).chrome(chrome));
     }
 
     /** A route list builder for a router seeded at {@code /}. */

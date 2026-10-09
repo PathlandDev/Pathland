@@ -12,12 +12,12 @@ public final class KitchenSinkView implements View {
 
     @Override
     public View body() {
-        return ScrollView.of(VStack.of(HorizontalAlignment.LEADING, 10,
+        return ScrollView.children(VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(10)).children(
                 // The kitchen-sink title is a heading → `<h2>`.
-                Text.of("Pathland Kitchensink").with(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD), Padding.of(8, 0 ,8 ,0))
-                        .with(AccessibilityRole.of(Roles.HEADER)),
-                Text.of("Every protocol primitive, control, modifier, and state binding")
-                        .with(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88))),
+                Text.with(t -> t.text("Pathland Kitchensink")).modifiers(FontSize.with(s -> s.size(24)), FontWeight.BOLD, Padding.with(p -> p.edges(8, 0 ,8 ,0)))
+                        .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                Text.with(t -> t.text("Every protocol primitive, control, modifier, and state binding"))
+                        .modifiers(ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88)))),
                 new CounterSection(),
                 new TextFieldSection(),
                 new ToggleSection(),
@@ -31,13 +31,13 @@ public final class KitchenSinkView implements View {
                 new LabelSection(),
                 new MediaSection(),
                 new AppearanceSection(),
-                Text.of("Pathland · per-session · 16-byte deltas")
-                        .with(
-                                ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88)),
-                                Padding.of(16))
+                Text.with(t -> t.text("Pathland · per-session · 16-byte deltas"))
+                        .modifiers(
+                                ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88))),
+                                Padding.with(p -> p.uniform(16)))
         )
         // The demo's main content region → `<main>`.
-        .with(AccessibilityRole.of(Roles.MAIN))
-        .with(Padding.of(24)));
+        .modifiers(AccessibilityRole.with(a -> a.role(Roles.MAIN)))
+        .modifiers(Padding.with(p -> p.uniform(24))));
     }
 }

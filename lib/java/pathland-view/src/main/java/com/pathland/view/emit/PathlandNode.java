@@ -2,6 +2,7 @@ package com.pathland.view.emit;
 
 import com.pathland.view.View;
 import com.pathland.view.router.NavOp;
+import com.pathland.view.signal.ConstantSignal;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.transport.Event;
 
@@ -165,6 +166,23 @@ public final class PathlandNode {
     /** Whether this node carries reactive (signal-backed) text. */
     public boolean hasReactiveText() {
         return textBinding != null;
+    }
+
+    /**
+     * Set a property from a config value that carries a signal. A non-constant
+     * signal is recorded as a node-level binding (the emitter re-emits only this
+     * property on change); a {@link ConstantSignal} just sets the plain value (no
+     * binding overhead). This is the single path a view or modifier uses to place
+     * a reactive-capable value (spec DSL.md §2).
+     */
+    public void property(int id, Signal<?> signal) {
+        if (signal == null) {
+            return;
+        }
+        properties.put(id, ReactiveValues.from(id, signal));
+        if (!(signal instanceof ConstantSignal)) {
+            propertyBindings.put(id, signal);
+        }
     }
 
     /** Current text value: the bound signal's value when reactive, else the static text. */

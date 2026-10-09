@@ -3,7 +3,7 @@ package com.pathland.view;
 /** A `VStack`'s cross-axis alignment ({@code HorizontalAlignment}): the
  *  horizontal position of children within the stack. Position-only — a child's
  *  {@code FILL} size kind stretches, never an alignment. */
-public enum HorizontalAlignment {
+public enum HorizontalAlignment implements WireValue {
 
     LEADING(0),
     CENTER(1),

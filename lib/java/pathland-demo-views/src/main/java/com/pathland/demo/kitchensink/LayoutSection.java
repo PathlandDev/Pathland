@@ -29,39 +29,39 @@ public final class LayoutSection implements View {
     @Override
     public View body() {
         return new SectionCard("Layout · Grid / Lazy / HStack+Spacer / ZStack / Divider",
-                VStack.of(
-                        Grid.of(
+                VStack.children(
+                        Grid.children(
                                 cell("1"), cell("2"), cell("3"),
                                 cell("4"), cell("5"), cell("6")),
-                        LazyVStack.of(
-                                Text.of("Lazy row A"),
-                                Text.of("Lazy row B"),
-                                Text.of("Lazy row C")).with(Padding.of(4)),
-                        HStack.of(
-                                Text.of("Left"),
-                                Spacer.of(),
-                                Text.of("Right"))
-                                .with(Frame.of(260, Alignment.CENTER)),
-                        ZStack.of(
-                                Rectangle.of().with(Frame.of(180, 80, Alignment.CENTER)).with(
-                                        Background.of(Color.rgb(0xE3, 0xF2, 0xFD)),
-                                        CornerRadius.of(8)),
-                                Text.of("badge").with(
-                                        FontSize.of(12),
-                                        Padding.of(4),
-                                        Background.of(Color.rgb(0xFF, 0xC1, 0x07)),
-                                        CornerRadius.of(4),
-                                        Offset.of(0, 28))
-                        ).with(Padding.of(4)),
-                        Divider.of()
-                ).with(Padding.of(4))
+                        LazyVStack.children(
+                                Text.with(t -> t.text("Lazy row A")),
+                                Text.with(t -> t.text("Lazy row B")),
+                                Text.with(t -> t.text("Lazy row C"))).modifiers(Padding.with(p -> p.uniform(4))),
+                        HStack.children(
+                                Text.with(t -> t.text("Left")),
+                                Spacer.modifiers(),
+                                Text.with(t -> t.text("Right")))
+                                .modifiers(Frame.with(f -> f.width(260).alignment(Alignment.CENTER))),
+                        ZStack.children(
+                                Rectangle.modifiers(Frame.with(f -> f.width(180).height(80).alignment(Alignment.CENTER))).modifiers(
+                                        Background.with(b -> b.color(Color.rgb(0xE3, 0xF2, 0xFD))),
+                                        CornerRadius.with(c -> c.radius(8))),
+                                Text.with(t -> t.text("badge")).modifiers(
+                                        FontSize.with(s -> s.size(12)),
+                                        Padding.with(p -> p.uniform(4)),
+                                        Background.with(b -> b.color(Color.rgb(0xFF, 0xC1, 0x07))),
+                                        CornerRadius.with(c -> c.radius(4)),
+                                        Offset.with(o -> o.x(0).y(28)))
+                        ).modifiers(Padding.with(p -> p.uniform(4))),
+                        Divider.modifiers()
+                ).modifiers(Padding.with(p -> p.uniform(4)))
         );
     }
 
     private static View cell(String label) {
-        return Text.of(label).with(
-                Padding.of(12),
-                Background.of(Color.rgb(0xF3, 0xF4, 0xF6)),
-                CornerRadius.of(6));
+        return Text.with(t -> t.text(label)).modifiers(
+                Padding.with(p -> p.uniform(12)),
+                Background.with(b -> b.color(Color.rgb(0xF3, 0xF4, 0xF6))),
+                CornerRadius.with(c -> c.radius(6)));
     }
 }

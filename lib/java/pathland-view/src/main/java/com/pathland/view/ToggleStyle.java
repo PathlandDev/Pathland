@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 /** The visual variant of a {@code TOGGLE} control (the {@code TOGGLE_STYLE} enum). */
-public enum ToggleStyle {
+public enum ToggleStyle implements WireValue {
 
     SWITCH(0),
     CHECKBOX(1),

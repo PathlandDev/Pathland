@@ -28,7 +28,6 @@ import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
 import com.pathland.view.signal.WritableSignal;
-import com.pathland.view.ButtonStyleMod;
 import com.pathland.view.Font;
 
 import org.junit.jupiter.api.Assumptions;
@@ -59,9 +58,9 @@ class HtmlRendererTest {
 
     @Test
     void rendersVStackOfTextAndButton() {
-        View root = VStack.of(
-                Text.of("Hello Pathland"),
-                Button.of("Increment", () -> { }));
+        View root = VStack.children(
+                Text.with(t -> t.text("Hello Pathland")),
+                Button.with(b -> b.title("Increment").action(() -> { })));
         ProtocolFrame frame = frameOf(root);
         HtmlRenderer renderer = renderer();
         String html = renderer.render(frame, 1);
@@ -83,7 +82,8 @@ class HtmlRendererTest {
 
     @Test
     void rendersFullSnapshotFragment() {
-        View root = VStack.of(Text.of("Static"), Text.of(Signals.computed(() -> "Count: 0")));
+        View root = VStack.children(Text.with(t -> t.text("Static")),
+                Text.with(t -> t.text(Signals.computed(() -> "Count: 0"))));
         HtmlRenderer renderer = renderer();
         String html = renderer.renderFragment(frameOf(root), 1);
         assertTrue(html.contains("Count: 0"));
@@ -94,8 +94,8 @@ class HtmlRendererTest {
 
     @Test
     void rendersBorderedStyledButton() {
-        View root = VStack.of(Button.of("Go", () -> { }))
-                .with(ButtonStyleMod.of(com.pathland.view.BorderedButtonStyle.INSTANCE));
+        View root = VStack.children(Button.with(b -> b.title("Go").action(() -> { })))
+                .modifiers(com.pathland.view.BorderedButtonStyle.INSTANCE);
         String html = renderer().render(frameOf(root), 1);
         assertTrue(html.contains("data-pathland-id=\"2\""), "styled button keeps its node id");
     }
@@ -105,14 +105,15 @@ class HtmlRendererTest {
         WritableSignal<Float> value = Signals.signal(0.5f);
         WritableSignal<Boolean> on = Signals.signal(true);
         WritableSignal<Integer> choice = Signals.signal(0);
-        View root = VStack.of(
-                Toggle.of(ToggleStyle.CHECKBOX, on, "Go"),
-                Slider.of(value, 0f, 1f),
-                Picker.of(PickerStyle.MENU, choice, Text.of("A"), Text.of("B")),
-                ProgressView.of(0.4f),
-                Divider.of(),
-                TextEditor.of(Signals.signal("hello")),
-                DatePicker.of(DatePickerMode.DATE, Signals.signal(20487)));
+        View root = VStack.children(
+                Toggle.with(t -> t.style(ToggleStyle.CHECKBOX).isOn(on).label("Go")),
+                Slider.with(s -> s.value(value).in(0f, 1f)),
+                Picker.with(p -> p.style(PickerStyle.MENU).selection(choice))
+                        .children(Text.with(t -> t.text("A")), Text.with(t -> t.text("B"))),
+                ProgressView.with(p -> p.value(0.4f)),
+                Divider.modifiers(),
+                TextEditor.with(e -> e.text(Signals.signal("hello"))),
+                DatePicker.with(d -> d.mode(DatePickerMode.DATE).selection(Signals.signal(20487))));
         String html = renderer().render(frameOf(root), 1);
 
         assertTrue(html.contains("type=\"checkbox\""), "toggle checkbox");
@@ -127,7 +128,7 @@ class HtmlRendererTest {
 
     @Test
     void escapesText() {
-        String html = renderer().renderFragment(frameOf(VStack.of(Text.of("<a & b>"))), 1);
+        String html = renderer().renderFragment(frameOf(VStack.children(Text.with(t -> t.text("<a & b>")))), 1);
         assertTrue(html.contains("&lt;a &amp; b&gt;"));
     }
 
@@ -135,24 +136,25 @@ class HtmlRendererTest {
     void rendersSemanticRoleElements() {
         // A generic stack with a NAVIGATION role renders as a <nav> landmark; the
         // element conveys the role, so no redundant ARIA attribute is emitted.
-        View nav = VStack.of(Text.of("Menu"))
-                .with(AccessibilityRole.of(Roles.NAVIGATION));
+        View nav = VStack.children(Text.with(t -> t.text("Menu")))
+                .modifiers(AccessibilityRole.with(a -> a.role(Roles.NAVIGATION)));
         String navHtml = renderer().renderFragment(frameOf(nav), 1);
         assertTrue(navHtml.contains("<nav "), "navigation role -> <nav>");
         assertFalse(navHtml.contains("role=\"navigation\""), "nav conveys the role (no ARIA attr)");
 
         // A generic Text with a HEADER (heading) role renders as <h2>.
-        View heading = Text.of("Title").with(AccessibilityRole.of(Roles.HEADER));
+        View heading = Text.with(t -> t.text("Title"))
+                .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER)));
         String headingHtml = renderer().renderFragment(frameOf(heading), 1);
         assertTrue(headingHtml.contains("<h2 "), "header role -> <h2>");
 
         // A heading TEXT_STYLE typography makes a Text a heading even without a
         // role (Font.title2() -> <h3>); a non-heading style stays a <span>.
-        View title = Text.of("Sub").font(Font.title2());
+        View title = Text.with(t -> t.text("Sub")).modifiers(Font.title2());
         String titleHtml = renderer().renderFragment(frameOf(title), 1);
         assertTrue(titleHtml.contains("<h3 "), "title2 typography -> <h3>");
 
-        View sub = Text.of("Sub").font(Font.subheadline());
+        View sub = Text.with(t -> t.text("Sub")).modifiers(Font.subheadline());
         String subHtml = renderer().renderFragment(frameOf(sub), 1);
         assertTrue(subHtml.contains("<span "), "subheadline typography stays a <span>");
     }
@@ -168,12 +170,12 @@ class HtmlRendererTest {
     void rendersMedia() {
         // Video/audio render with renderer-native controls; an image with an
         // accessibility label renders its `alt` and ContentMode Fill → cover.
-        View root = VStack.of(
-                Video.of("https://example.com/sample.mp4"),
-                Audio.of("https://example.com/sample.mp3"),
-                Image.of("/_pathland/assets/icons/home.svg")
-                        .with(AccessibilityLabel.of("Home"))
-                        .with(ScaledToFill.of())
+        View root = VStack.children(
+                Video.with(v -> v.source("https://example.com/sample.mp4")),
+                Audio.with(a -> a.source("https://example.com/sample.mp3")),
+                Image.with(i -> i.source("/_pathland/assets/icons/home.svg"))
+                        .modifiers(AccessibilityLabel.with(l -> l.text("Home")))
+                        .modifiers(ScaledToFill.with())
         );
         String html = renderer().renderFragment(frameOf(root), 1);
         assertTrue(html.contains("<video"), "video element");
@@ -187,9 +189,9 @@ class HtmlRendererTest {
 
     @Test
     void debugRenderEmitsNodeCommentsButDefaultDoesNot() {
-        View root = VStack.of(
-                com.pathland.view.Text.of("Hello"),
-                com.pathland.view.Button.of("Go", () -> { }));
+        View root = VStack.children(
+                com.pathland.view.Text.with(t -> t.text("Hello")),
+                com.pathland.view.Button.with(b -> b.title("Go").action(() -> { })));
         ProtocolFrame frame = frameOf(root);
 
         // Default render: no comments.

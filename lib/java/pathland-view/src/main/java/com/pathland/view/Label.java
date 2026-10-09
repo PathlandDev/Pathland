@@ -3,6 +3,8 @@ package com.pathland.view;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
 
+import java.util.function.Consumer;
+
 /**
  * A text title with an optional icon ({@code Label}). The label's parts are
  * handed to the active {@link LabelStyle}, which decides which render and how they are
@@ -11,67 +13,108 @@ import com.pathland.view.signal.Signals;
  * is <em>always</em> the label's accessibility label, even when only the icon is shown
  * (so an icon-only label stays announced by screen readers). A blank title or icon is
  * suppressed (the part is passed as {@code null}).
- *
- * <p>The title/icon are each a single {@link Signal<String>} — bound parts re-emit only
- * that node's delta when the signal changes; static parts are sugar for constant
- * signals. Whether a part is <em>present</em> is decided at mount (label style is a
- * mount-time scope); issue #88 tracks re-shaping a subtree when a signal read during
- * render changes.
  */
-public final class Label implements View {
+public final class Label implements View, Configurable<Label.Config> {
 
-    private final Signal<String> titleSignal;
-    private final Signal<String> iconSignal;
-    private final View iconView;
+    /** {@link Label} values. */
+    public static final class Config implements View.Config {
 
-    private Label(Signal<String> titleSignal, Signal<String> iconSignal) {
-        this(titleSignal, iconSignal, null);
+        private Signal<String> title;
+        private Signal<String> icon;
+        private View iconView;
+
+        /** Set a static title. */
+        public Config title(String title) {
+            this.title = Signals.constant(title);
+            return this;
+        }
+
+        /** Bind the title to a reactive signal. */
+        public Config title(Signal<String> title) {
+            this.title = title;
+            return this;
+        }
+
+        /** Set a static icon (by image name). */
+        public Config icon(String icon) {
+            this.icon = Signals.constant(icon);
+            return this;
+        }
+
+        /** Bind the icon to a reactive signal. */
+        public Config icon(Signal<String> icon) {
+            this.icon = icon;
+            return this;
+        }
+
+        /** Set a semantic {@link Icon} (or any icon view) as the icon part. */
+        public Config icon(View icon) {
+            this.iconView = icon;
+            return this;
+        }
     }
 
-    private Label(Signal<String> titleSignal, Signal<String> iconSignal, View iconView) {
-        this.titleSignal = titleSignal;
-        this.iconSignal = iconSignal;
-        this.iconView = iconView;
+    private final Config config;
+
+    private Label(Config config) {
+        this.config = config;
     }
 
     /** A title-only label (no icon). */
     public static Label of(String title) {
-        return new Label(Signals.constant(title), null);
+        return new Label(new Config().title(title));
     }
 
     /** A label with a title and an icon. */
     public static Label of(String title, String icon) {
-        return new Label(Signals.constant(title), Signals.constant(icon));
+        return new Label(new Config().title(title).icon(icon));
     }
 
     /** A label with a title and a semantic {@link Icon}. */
     public static Label of(String title, Icon icon) {
-        return new Label(Signals.constant(title), null, icon);
+        return new Label(new Config().title(title).icon(icon));
     }
 
     /** A label whose title is bound to a signal, with a semantic {@link Icon}. */
     public static Label of(Signal<String> title, Icon icon) {
-        return new Label(title, null, icon);
+        return new Label(new Config().title(title).icon(icon));
     }
 
     /** A title-only label whose title is bound to a reactive signal. */
     public static Label of(Signal<String> title) {
-        return new Label(title, null);
+        return new Label(new Config().title(title));
     }
 
     /** A label with a reactive title and a static icon. */
     public static Label of(Signal<String> title, String icon) {
-        return new Label(title, Signals.constant(icon));
+        return new Label(new Config().title(title).icon(icon));
     }
 
     /** A label with a static title and a reactive icon. */
     public static Label of(String title, Signal<String> icon) {
-        return new Label(Signals.constant(title), icon);
+        return new Label(new Config().title(title).icon(icon));
     }
 
     /** A label whose title and icon are both bound to reactive signals. */
     public static Label of(Signal<String> title, Signal<String> icon) {
-        return new Label(title, icon);
+        return new Label(new Config().title(title).icon(icon));
+    }
+
+    /** Configure the label's values. */
+    public static ViewBuilder<Label, Config> with(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new ViewBuilder<>(new Label(config));
+    }
+
+    /** Apply modifiers to a bare label. */
+    public static ViewBuilder<Label, Config> modifiers(ViewModifier... modifiers) {
+        return new ViewBuilder<>(new Label(new Config())).modifiers(modifiers);
+    }
+
+    @Override
+    public Config config() {
+        return config;
     }
 
     @Override
@@ -80,20 +123,20 @@ public final class Label implements View {
         if (style == null) {
             style = DefaultLabelStyle.INSTANCE;
         }
-        String title = titleSignal != null ? titleSignal.get() : null;
-        String icon = iconSignal != null ? iconSignal.get() : null;
+        String title = config.title != null ? config.title.get() : null;
+        String icon = config.icon != null ? config.icon.get() : null;
 
-        View titleView = nonBlank(title) ? Text.of(titleSignal).with(LineLimit.of(1)) : null;
-        View iconPart = iconView != null
-                ? iconView
-                : (nonBlank(icon) ? Image.of(iconSignal) : null);
+        View titleView = nonBlank(title) ? Text.with(t -> t.text(config.title)).modifiers(LineLimit.with(l -> l.value(1))) : null;
+        View iconPart = config.iconView != null
+                ? config.iconView
+                : (nonBlank(icon) ? Image.with(i -> i.source(config.icon)) : null);
 
         View content = style.makeBody(new LabelStyle.Configuration(titleView, iconPart));
         if (content == null) {
-            content = Group.of();
+            content = Group.children();
         }
         if (nonBlank(title)) {
-            content = content.with(AccessibilityLabel.of(titleSignal));
+            content = content.with(AccessibilityLabel.with(a -> a.text(config.title)));
         }
         return content;
     }

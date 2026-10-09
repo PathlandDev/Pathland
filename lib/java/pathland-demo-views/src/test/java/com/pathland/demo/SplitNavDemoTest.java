@@ -4,6 +4,7 @@ import com.pathland.view.Categories;
 import com.pathland.view.Commands;
 import com.pathland.view.Components;
 import com.pathland.view.Environment;
+import com.pathland.view.EnvironmentBinding;
 import com.pathland.view.Platform;
 import com.pathland.view.Properties;
 import com.pathland.view.emit.Emitter;
@@ -48,7 +49,8 @@ class SplitNavDemoTest {
     private static Mount mount(FrameOpcodeSink sink, String initialPath) {
         var activePath = signal(initialPath);
         RenderResult result = new Emitter(sink).mount(
-                new SplitNavDemo().environment(Platform.ACTIVE_PATH, activePath), env());
+                new SplitNavDemo().with(
+                        EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))), env());
         return new Mount(result, activePath);
     }
 
