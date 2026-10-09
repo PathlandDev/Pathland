@@ -2,7 +2,7 @@ package com.pathland.view.transport;
 
 import com.pathland.view.Categories;
 import com.pathland.view.Commands;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.Opcode;
 
 import java.io.ByteArrayOutputStream;
@@ -40,7 +40,7 @@ public final class FrameCodec {
     private FrameCodec() {}
 
     /** Encode a self-contained frame as a network batch (sequence 0 — not a delta batch). */
-    public static byte[] encodeFrame(Frame frame) {
+    public static byte[] encodeFrame(ProtocolFrame frame) {
         return encodeFrame(frame, 0);
     }
 
@@ -50,7 +50,7 @@ public final class FrameCodec {
      * sequence by one for each delta batch it encodes so a consumer can detect
      * a lost batch (spec/OPCODE.md §Sequence gap detection).
      */
-    public static byte[] encodeFrame(Frame frame, int sequence) {
+    public static byte[] encodeFrame(ProtocolFrame frame, int sequence) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         writeHeader(out, GUEST_TO_HOST, sequence, frame.opcodes().size());
         for (Opcode op : frame.opcodes()) {
@@ -62,9 +62,9 @@ public final class FrameCodec {
     }
 
     /** Decode a self-contained frame batch into opcodes + string section. */
-    public static Frame decodeFrame(byte[] bytes) {
+    public static ProtocolFrame decodeFrame(byte[] bytes) {
         Parsed parsed = parse(bytes);
-        return new Frame(parsed.opcodes(), parsed.strings());
+        return new ProtocolFrame(parsed.opcodes(), parsed.strings());
     }
 
     /** The per-stream message sequence encoded in a batch header (offset 8). */

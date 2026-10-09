@@ -4,7 +4,7 @@ import com.pathland.view.Button;
 import com.pathland.view.Environment;
 import com.pathland.view.Text;
 import com.pathland.view.View;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.signal.Signals;
@@ -139,7 +139,7 @@ class RegistryConcurrencyTest {
             List<String> values = new ArrayList<>();
             for (byte[] bytes : recorded) {
                 try {
-                    Frame frame = FrameCodec.decodeFrame(bytes);
+                    ProtocolFrame frame = FrameCodec.decodeFrame(bytes);
                     for (Opcode op : frame.opcodes()) {
                         if (op.category() == 0x02 && op.command() == 0x03) { // PARAMETER::SET_TEXT
                             values.add(frame.stringAt(op.b()));

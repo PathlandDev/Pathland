@@ -4,7 +4,7 @@ import com.pathland.view.Categories;
 import com.pathland.view.Commands;
 import com.pathland.view.Environment;
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.RenderResult;
@@ -33,7 +33,7 @@ class CounterViewTest {
 
         emitter.mount(new CounterView(), new Environment(state));
 
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         assertTrue(anySetText(frame, "Count: 5"), "count label reflects the persisted value");
         assertTrue(anySetText(frame, "Name: Ada"), "name label reflects the persisted value");
 
@@ -60,7 +60,7 @@ class CounterViewTest {
         emitter.destroy();
     }
 
-    private static boolean anySetText(Frame frame, String text) {
+    private static boolean anySetText(ProtocolFrame frame, String text) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
                 if (text.equals(frame.stringAt(op.b()))) {

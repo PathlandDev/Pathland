@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.view.AccessibilityRole;
 import com.pathland.view.Alignment;
 import com.pathland.view.Color;
@@ -16,7 +17,6 @@ import com.pathland.view.CornerRadius;
 import com.pathland.view.FontSize;
 import com.pathland.view.FontWeightMod;
 import com.pathland.view.ForegroundStyle;
-import com.pathland.view.FrameMod;
 import com.pathland.view.Padding;
 
 
@@ -50,7 +50,7 @@ public final class SectionCard implements View {
                 Padding.of(16),
                 Background.of(Color.WHITE),
                 Border.of(BORDER, 1, 10),
-                CornerRadius.of(10),
-                FrameMod.of(Commands.Size.FILL, Float.NaN));
+                CornerRadius.of(10))
+                .with(Frame.ofWidth(Commands.Size.FILL));
     }
 }

@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.InputDispatcher;
 import com.pathland.view.emit.Opcode;
@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Full pipeline: view tree -> emitter -> opcodes -> codec -> HTML-ready frame. */
 class EmitterTest {
 
-    private static long countOps(Frame frame, int category, int command) {
+    private static long countOps(ProtocolFrame frame, int category, int command) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == category && o.command() == command)
                 .count();
@@ -42,7 +42,7 @@ class EmitterTest {
                 Button.of("Tap", () -> { }));
 
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         assertEquals(1, result.rootId());
         assertTrue(countOps(frame, Categories.TREE, Commands.Tree.CREATE_NODE) >= 3,
@@ -60,7 +60,7 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
 
         emitter.mount(Grid.of(2, 3, Text.of("a"), Text.of("b")), Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         List<Float> columns = frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_PROPERTY)
@@ -85,7 +85,7 @@ class EmitterTest {
         emitter.mount(Grid.of(
                 List.of(GridItem.flexible(), GridItem.fixed(80f), GridItem.adaptive(50f)),
                 Text.of("a")), Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         Opcode tracks = frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_PROPERTY)
@@ -103,7 +103,7 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
 
         emitter.mount(Grid.of(GridRow.of(Text.of("a"), Text.of("b")), Text.of("c")), Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         Opcode gridRow = frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE)
@@ -129,11 +129,11 @@ class EmitterTest {
         emitter.mount(root, Environment.DEFAULT);
 
         // The label's text node is id 3 (root=1, static text=2, reactive text=3).
-        Frame initial = sink.frame();
+        ProtocolFrame initial = sink.frame();
         assertEquals(2, countOps(initial, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
 
         count.set(5);
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "exactly one delta opcode");
         Opcode only = delta.opcodes().get(0);
         assertEquals(Categories.PARAMETER, only.category());
@@ -162,7 +162,7 @@ class EmitterTest {
         emitter.mount(VStack.of(Text.of("x").with(ForegroundStyle.of(color))), Environment.DEFAULT);
 
         count.set(1);
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, delta.opcodes().size());
         Opcode only = delta.opcodes().get(0);
         assertEquals(Categories.PARAMETER, only.category());
@@ -183,13 +183,13 @@ class EmitterTest {
                 Text.of(text));
         emitter.mount(root, Environment.DEFAULT);
 
-        Frame initial = sink.frame();
+        ProtocolFrame initial = sink.frame();
         assertTrue(countOps(initial, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 1,
                 "constant background emitted at mount");
         assertEquals(2, countOps(initial, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
 
         text.set("b");
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "constant bound no re-emit effect");
         Opcode only = delta.opcodes().get(0);
         assertEquals(Commands.Parameter.SET_TEXT, only.command());
@@ -207,7 +207,7 @@ class EmitterTest {
                 .with(LineLimit.of(2))        // U32
                 .with(ScaledToFit.of());      // CONTENT_MODE enum code as F32
         emitter.mount(root, Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         boolean sawVisible = false, sawString = false;
         for (Opcode op : frame.opcodes()) {
@@ -245,7 +245,7 @@ class EmitterTest {
                 .with(ForegroundStyle.of(Color.token("color.primary")))
                 .with(Background.of(Color.token("dark.color.surface")));
         emitter.mount(root, Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         boolean sawPrimary = false;
         boolean sawDark = false;
@@ -277,7 +277,7 @@ class EmitterTest {
                         Button.of("Increment", () -> { }))
                 .with(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
 
         // The styled button carries background + border + EVENT_LISTENERS props.
         assertTrue(countOps(frame, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 4,
@@ -350,7 +350,7 @@ class EmitterTest {
         System.arraycopy(routeBytes, 0, strings, 4, routeBytes.length);
         Opcode route = new Opcode(Categories.META, Commands.Meta.ENVIRONMENT, 0,
                 Commands.Environment.ROUTE, 0, 0);
-        byte[] batch = FrameCodec.encodeFrame(new Frame(List.of(width, height, route), strings));
+        byte[] batch = FrameCodec.encodeFrame(new ProtocolFrame(List.of(width, height, route), strings));
 
         assertTrue(FrameCodec.isEnvironment(batch), "the batch carries ENVIRONMENT fields");
         assertFalse(FrameCodec.isEnvironment(FrameCodec.encodeResync()), "a resync is not an environment");
@@ -373,7 +373,7 @@ class EmitterTest {
         emitter.mount(VStack.of(Text.of("Hello Pathland")), Environment.DEFAULT);
 
         byte[] wire = FrameCodec.encodeFrame(sink.frame());
-        Frame decoded = FrameCodec.decodeFrame(wire);
+        ProtocolFrame decoded = FrameCodec.decodeFrame(wire);
         assertEquals(sink.frame().opcodes(), decoded.opcodes());
         assertTrue(new String(decoded.strings()).contains("Hello Pathland"));
     }
@@ -421,7 +421,7 @@ class EmitterTest {
                 .count();
 
         emitter.renderFull();
-        Frame snapshot = sink.frame();
+        ProtocolFrame snapshot = sink.frame();
         long treeOps = snapshot.opcodes().stream()
                 .filter(op -> op.category() == Categories.TREE)
                 .count();
@@ -439,7 +439,7 @@ class EmitterTest {
         WritableSignal<Integer> days = Signals.signal(20487);
         emitter.mount(DatePicker.of(DatePickerMode.DATE, days), Environment.DEFAULT);
 
-        Frame initial = sink.frame();
+        ProtocolFrame initial = sink.frame();
         boolean sawSetDate = false;
         for (Opcode op : initial.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_DATE) {
@@ -451,7 +451,7 @@ class EmitterTest {
         assertTrue(sawSetDate, "DatePicker emits PARAMETER::SET_DATE at mount");
 
         days.set(20488);
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, delta.opcodes().size());
         Opcode only = delta.opcodes().get(0);
         assertEquals(Categories.PARAMETER, only.category());
@@ -541,7 +541,7 @@ class EmitterTest {
                 Environment.DEFAULT);
 
         byte[] wire = FrameCodec.encodeFrame(sink.frame());
-        Frame decoded = FrameCodec.decodeFrame(wire);
+        ProtocolFrame decoded = FrameCodec.decodeFrame(wire);
 
         boolean sawRef = false;
         for (Opcode op : decoded.opcodes()) {
@@ -567,7 +567,7 @@ class EmitterTest {
                 .f32("space.base", 4.0f);
         new AdaptiveTheme(light, dark).emit(sink);
 
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         boolean sawLight = false, sawDark = false, sawF32 = false, sawString = false, sawDarkF32 = false;
         for (Opcode op : frame.opcodes()) {
             assertEquals(Categories.PARAMETER, op.category());
@@ -608,7 +608,7 @@ class EmitterTest {
         assertTrue(sawString, "STRING override emitted");
 
         // Overrides ride the network batch too.
-        Frame decoded = FrameCodec.decodeFrame(FrameCodec.encodeFrame(frame));
+        ProtocolFrame decoded = FrameCodec.decodeFrame(FrameCodec.encodeFrame(frame));
         assertEquals(frame.opcodes(), decoded.opcodes());
     }
 
@@ -617,7 +617,7 @@ class EmitterTest {
         // A single Theme (ThemeData) mounts as light-only overrides.
         FrameOpcodeSink sink = new FrameOpcodeSink();
         new Theme().color("color.accent", 0xFF123456).emit(sink);
-        Frame frame = sink.frame();
+        ProtocolFrame frame = sink.frame();
         assertEquals(1, frame.opcodes().size());
         Opcode only = frame.opcodes().get(0);
         assertEquals("color.accent", frame.stringAt(only.a()));

@@ -23,7 +23,7 @@ import com.pathland.view.Video;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
@@ -51,7 +51,7 @@ class HtmlRendererTest {
         }
     }
 
-    private static Frame frameOf(View root) {
+    private static ProtocolFrame frameOf(View root) {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         new Emitter(sink).mount(root, Environment.DEFAULT);
         return sink.frame();
@@ -62,7 +62,7 @@ class HtmlRendererTest {
         View root = VStack.of(
                 Text.of("Hello Pathland"),
                 Button.of("Increment", () -> { }));
-        Frame frame = frameOf(root);
+        ProtocolFrame frame = frameOf(root);
         HtmlRenderer renderer = renderer();
         String html = renderer.render(frame, 1);
 
@@ -190,7 +190,7 @@ class HtmlRendererTest {
         View root = VStack.of(
                 com.pathland.view.Text.of("Hello"),
                 com.pathland.view.Button.of("Go", () -> { }));
-        Frame frame = frameOf(root);
+        ProtocolFrame frame = frameOf(root);
 
         // Default render: no comments.
         assertFalse(renderer().renderFragment(frame, 1).contains("<!--"));

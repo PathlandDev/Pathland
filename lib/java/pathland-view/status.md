@@ -40,23 +40,28 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 - **Alignment is three typed enums, all position-only**:
   `HorizontalAlignment` (leading/center/trailing) for `VStack`s,
   `VerticalAlignment` (top/center/bottom) for `HStack`s, and a 2D `Alignment`
-  (topLeading…bottomTrailing) for `ZStack`s, grids, and `FrameMod`'s content
+  (topLeading…bottomTrailing) for `ZStack`s, grids, and the `Frame` modifier's content
   placement — all encoding the single wire `ALIGNMENT` 2D code (0–8, spec
   PRIMITIVES.md §ZStack). Stretching is a child's `FILL` size kind, never an
   alignment.
   GTK falls back to natural sizing (see render-gtk status).
 - **One modifier mechanism — no sugar on `View`**: core modifiers are
   `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,
-  `Border.of(color, width)`, `FrameMod.of(w, h, align)`, …) applied via
-  `.with(...)` (one or several, innermost-first);
-  `FrameMod.of(w)` / `of(w, h)` leave `ALIGNMENT` unset (alignment optional, so a
-  stack's own cross-axis alignment is preserved); `FrameMod.of(...)` width/height
-  overloads accept `Float.POSITIVE_INFINITY` (maxWidth/maxHeight:
-  .infinity) normalized to `Commands.Size.FILL`, and an infinite min/ideal/max
-  bound is omitted;
-  the `View` interface has no per-modifier factory methods. Built-in and
-  application-authored modifiers share the exact same surface (spec `DSL.md`
-  §5.6); `buttonStyle` is the `ButtonStyleMod` value (an **environment**
+  `Border.of(color, width)`, …) applied via `.with(...)` (one or several,
+  innermost-first); sizing is the `Frame` modifier value — the static factories
+  `Frame.of(w, h)`, `Frame.of(w, h, alignment)`, `Frame.of(w, alignment)`,
+  `Frame.ofWidth(w)`, `Frame.ofHeight(h)`, and the lambda configurator
+  `Frame.of(c -> c.minWidth(..).maxWidth(..).alignment(..))` (the fluent
+  `Frame.Builder`: min/ideal/max bounds + optional fixed axes + alignment, all
+  freely combinable). All forms compile to the same properties the legacy
+  `FrameMod.of(…)` produced (byte-identical wire): the width/height overloads
+  leave `ALIGNMENT` unset (alignment optional, so a stack's own cross-axis
+  alignment is preserved); `±∞` width/height is normalized to
+  `Commands.Size.FILL` and `NaN` omits the axis; an infinite min/ideal/max
+  bound is omitted (no limit);
+  the `View` interface has **no per-modifier factory methods** (application
+  authors' views share the modifier-value surface — spec `DSL.md` §5.6).
+  `buttonStyle` is the `ButtonStyleMod` value (an **environment**
   binding — it scopes `Environment.BUTTON_STYLE`, an `EnvironmentKey<ButtonStyle>`,
   down the subtree). `labelStyle` is the `LabelStyleMod` value (it scopes
   `Environment.LABEL_STYLE`, an `EnvironmentKey<LabelStyle>`; `LabelStyle` is an
@@ -77,8 +82,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (`ForegroundStyle.of(Signal)`, `Background.of(Signal)`, `FontSize.of(Signal)`)
   re-emit only the bound node. Enum-collision modifier names use the `Mod`
   suffix (`FontWeightMod`, `TextAlignmentMod`, `TruncationMod`, `TextCaseMod`,
-  `FontStyleMod`, `FontDesignMod`, `ControlSizeMod`); `FrameMod` avoids
-  `emit.Frame`.
+  `FontStyleMod`, `FontDesignMod`, `ControlSizeMod`); the `frame` sizing type is
+  `Frame`; the wire batch type is `emit.ProtocolFrame` (renamed from `emit.Frame`,
+  so the modifier name is unambiguous).
 - **Views**: `View` (open interface), `VStack`, `HStack`, `ZStack`, `Group`
   (transparent container, maps to a `VSTACK` node today), `Text`, `Image`,
   `Audio`, `Video`,
@@ -150,7 +156,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   chainable on any view): `Padding`, `ForegroundStyle(Color)` (no `.color()`),
   `Background(Color)`, `Tint`, `Opacity`, `FontSize`, `FontWeightMod`, `Border`
   (`Border.of(color, width)` canonical + `(color, width, radius)` convenience),
-  `Visible`/`Hidden`, `FrameMod` (fixed and min/ideal/max), `Offset`, `Position`,
+  `Visible`/`Hidden`, `frame` (`Frame` — factories `Frame.of(w, h[, alignment])`/
+  `Frame.of(w, alignment)` + `Frame.ofWidth`/`Frame.ofHeight` + the
+  `Frame.Builder` min/ideal/max configurator `Frame.of(c -> …)`), `Offset`, `Position`,
   `FixedSize`, `LayoutPriority`, `ZIndex`, `AspectRatio`/`ScaledToFit`/
   `ScaledToFill`, `MinimumScaleFactor`, `FontStyleMod`/`Italic`/`FontDesignMod`/
   `FontWidth`/`Kerning`/`Tracking`/`BaselineOffset`/`LineSpacing`/`LineLimit`/

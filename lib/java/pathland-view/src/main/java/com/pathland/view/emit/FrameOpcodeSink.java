@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An {@link OpcodeSink} that accumulates a self-contained {@link Frame} (opcodes +
+ * An {@link OpcodeSink} that accumulates a self-contained {@link ProtocolFrame} (opcodes +
  * string section) entirely in the JVM. This is the SSR / WebSocket path: the frame is
  * rendered to HTML or encoded to the network batch wire format.
  */
@@ -19,11 +19,11 @@ public class FrameOpcodeSink implements OpcodeSink {
 
     private final List<Opcode> opcodes = new ArrayList<>();
     private final ByteArrayOutputStream strings = new ByteArrayOutputStream();
-    private Frame frame = Frame.EMPTY;
+    private ProtocolFrame frame = ProtocolFrame.EMPTY;
     private int framesProduced;
 
     /** The frame built by the last {@code beginFrame/endFrame} pair. */
-    public Frame frame() {
+    public ProtocolFrame frame() {
         return frame;
     }
 
@@ -44,7 +44,7 @@ public class FrameOpcodeSink implements OpcodeSink {
 
     @Override
     public void endFrame() {
-        frame = new Frame(List.copyOf(opcodes), strings.toByteArray());
+        frame = new ProtocolFrame(List.copyOf(opcodes), strings.toByteArray());
         framesProduced++;
     }
 

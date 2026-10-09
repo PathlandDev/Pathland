@@ -27,7 +27,7 @@ public final class NowPlayingSidebar implements View {
                 Text.of("Now Playing").with(FontSize.of(18), FontWeightMod.of(FontWeight.BOLD))
                         .with(AccessibilityRole.of(Roles.HEADER)),
                 Image.of(computed(() -> MusicPlayerView.at(trackIndex.get()).cover()))
-                        .with(FrameMod.of(220, 220), ScaledToFill.of())
+                        .with(Frame.of(220, 220)).with(ScaledToFill.of())
                         .with(Border.of(Color.BLACK, 1, 8)),
                 Text.of(computed(() -> MusicPlayerView.at(trackIndex.get()).title()))
                         .with(FontSize.of(20), FontWeightMod.of(FontWeight.BOLD)),
@@ -41,7 +41,7 @@ public final class NowPlayingSidebar implements View {
         )
         .with(Padding.of(24))
         .with(Background.of(MusicPlayerView.SIDEBAR_BG))
-        .with(FrameMod.of(MusicPlayerView.SIDEBAR_WIDTH, Commands.Size.FILL));
+        .with(Frame.of(MusicPlayerView.SIDEBAR_WIDTH, Commands.Size.FILL));
     }
 
     /** The track {@code offset} places after the current one. */

@@ -1,6 +1,6 @@
 package com.pathland.server.test;
 
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.transport.EnvironmentData;
 import com.pathland.view.transport.Event;
@@ -20,7 +20,7 @@ import java.util.function.Predicate;
 /**
  * A minimal Pathland WebSocket test client, shared by the starters' multi-session
  * stress tests. Wraps a JDK {@link WebSocket}, speaks the PLPL wire protocol
- * (environment / resync / click / ping), and collects every decoded {@link Frame}.
+ * (environment / resync / click / ping), and collects every decoded {@link ProtocolFrame}.
  * Each connection is a separate session (a fresh {@code wid} scopes its persisted
  * state; the server keys the UI model by the per-connection id).
  *
@@ -37,7 +37,7 @@ public final class WsSession implements AutoCloseable {
      *  Frames arrive on the listener thread while the test thread polls/iterates, so
      *  both collections are {@link CopyOnWriteArrayList} (thread-safe for add+iterate). */
     private static final class Listener implements WebSocket.Listener {
-        final List<Frame> frames = new CopyOnWriteArrayList<>();
+        final List<ProtocolFrame> frames = new CopyOnWriteArrayList<>();
         final List<Integer> peerCloseCodes = new CopyOnWriteArrayList<>();
         volatile boolean open;
 
@@ -119,7 +119,7 @@ public final class WsSession implements AutoCloseable {
     }
 
     /** Every decoded frame so far (all batches received on this connection). */
-    public List<Frame> frames() {
+    public List<ProtocolFrame> frames() {
         return Collections.unmodifiableList(listener.frames);
     }
 
@@ -141,7 +141,7 @@ public final class WsSession implements AutoCloseable {
     /** All SET_TEXT string values received (the label sequence of a counter app). */
     public List<String> textValues() {
         List<String> values = new ArrayList<>();
-        for (Frame frame : listener.frames) {
+        for (ProtocolFrame frame : listener.frames) {
             for (Opcode op : frame.opcodes()) {
                 if (op.category() == 0x02 && op.command() == 0x03) { // PARAMETER::SET_TEXT
                     values.add(frame.stringAt(op.b()));
@@ -157,7 +157,7 @@ public final class WsSession implements AutoCloseable {
     }
 
     /** Poll until a frame matching {@code predicate} arrives or the timeout elapses. */
-    public boolean awaitFrame(Predicate<Frame> predicate, long timeoutMs) throws InterruptedException {
+    public boolean awaitFrame(Predicate<ProtocolFrame> predicate, long timeoutMs) throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
         while (System.nanoTime() < deadline) {
             if (listener.frames.stream().anyMatch(predicate)) {

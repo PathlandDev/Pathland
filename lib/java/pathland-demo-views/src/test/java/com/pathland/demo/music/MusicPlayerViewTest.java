@@ -6,7 +6,7 @@ import com.pathland.view.Components;
 import com.pathland.view.Environment;
 import com.pathland.view.Properties;
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.InputDispatcher;
 import com.pathland.view.emit.MediaInput;
@@ -56,7 +56,7 @@ class MusicPlayerViewTest {
     @Test
     void libraryRendersTracksAndAlbumArt() {
         Mounted m = mount();
-        Frame frame = m.sink.frame();
+        ProtocolFrame frame = m.sink.frame();
 
         assertTrue(anySetText(frame, "Building on Solid Ground"), "first track title renders");
         assertTrue(anySetText(frame, "Rendered Free"), "a later track title renders");
@@ -82,7 +82,7 @@ class MusicPlayerViewTest {
         assertFalse(anySetText(m.sink.frame(), "Now Playing"), "compact before the fit change");
 
         m.result.fitInputs().get(slotId).accept(1);
-        Frame wide = m.sink.frame();
+        ProtocolFrame wide = m.sink.frame();
 
         assertTrue(anySetText(wide, "Now Playing"), "the now-playing sidebar renders after the fit change");
         assertTrue(anySetText(wide, "Up Next"), "the up-next pane renders");
@@ -100,7 +100,7 @@ class MusicPlayerViewTest {
     @Test
     void playerBarRendersTransportAndSliders() {
         Mounted m = mount();
-        Frame frame = m.sink.frame();
+        ProtocolFrame frame = m.sink.frame();
 
         assertTrue(countCreate(frame, Components.BUTTON) >= 3, "transport + track-row buttons render");
         // Compact bar: the full-width seek bar (progress as 0..100 percent) always
@@ -121,7 +121,7 @@ class MusicPlayerViewTest {
         // (persisted value 0.7) that the compact bar hides.
         int barSlot = slotIdByMaxThreshold(frame, 600f);
         m.result.fitInputs().get(barSlot).accept(1);
-        Frame wideBar = m.sink.frame();
+        ProtocolFrame wideBar = m.sink.frame();
         assertTrue(countCreate(wideBar, Components.SLIDER) == 1, "the wide controls add the volume slider");
         assertTrue(anySlider(wideBar, 0f, 1f), "volume slider carries its 0..1 range");
         assertTrue(anySliderValue(wideBar, 0.7f), "volume slider carries the persisted value");
@@ -133,7 +133,7 @@ class MusicPlayerViewTest {
         // re-reports an unchanged width, so it stays lost).
         int rootSlot = slotIdByMaxThreshold(frame, 1024f);
         m.result.fitInputs().get(rootSlot).accept(1);
-        Frame withSidebar = m.sink.frame();
+        ProtocolFrame withSidebar = m.sink.frame();
         assertFalse(anySetText(withSidebar, "|"), "the controls group is not reset by the root swap");
         assertEquals(0, countCreate(withSidebar, Components.SLIDER), "the volume slider is reused, not re-created");
         assertTrue(countCreateAnything(withSidebar) < 40, "the outer swap stays sidebar-only");
@@ -191,12 +191,12 @@ class MusicPlayerViewTest {
         // that per-second echo is what caused the seek jitter. The seek command
         // is written only by a user drag (seekRequest), never by a report.
         dispatcher.dispatch(com.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertFalse(anyProperty(delta, Properties.MEDIA_POSITION),
                 "a position report must not emit a MEDIA_POSITION seek");
     }
 
-    private static int countCreate(Frame frame, int component) {
+    private static int countCreate(ProtocolFrame frame, int component) {
         int n = 0;
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE
@@ -207,7 +207,7 @@ class MusicPlayerViewTest {
         return n;
     }
 
-    private static int countCreateAnything(Frame frame) {
+    private static int countCreateAnything(ProtocolFrame frame) {
         int n = 0;
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE) {
@@ -217,7 +217,7 @@ class MusicPlayerViewTest {
         return n;
     }
 
-    private static boolean anySlider(Frame frame, float min, float max) {
+    private static boolean anySlider(ProtocolFrame frame, float min, float max) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() != Categories.PARAMETER || op.command() != Commands.Parameter.SET_PROPERTY) {
                 continue;
@@ -230,7 +230,7 @@ class MusicPlayerViewTest {
         return false;
     }
 
-    private static boolean anySliderValue(Frame frame, float value) {
+    private static boolean anySliderValue(ProtocolFrame frame, float value) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == Properties.VALUE
@@ -241,7 +241,7 @@ class MusicPlayerViewTest {
         return false;
     }
 
-    private static boolean hasProperty(Frame frame, int property, float value) {
+    private static boolean hasProperty(ProtocolFrame frame, int property, float value) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && Float.intBitsToFloat(op.c()) == value) {
@@ -251,7 +251,7 @@ class MusicPlayerViewTest {
         return false;
     }
 
-    private static boolean anySetText(Frame frame, String text) {
+    private static boolean anySetText(ProtocolFrame frame, String text) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT
                     && text.equals(frame.stringAt(op.b()))) {
@@ -261,7 +261,7 @@ class MusicPlayerViewTest {
         return false;
     }
 
-    private static boolean anySetProperty(Frame frame, int property, int value) {
+    private static boolean anySetProperty(ProtocolFrame frame, int property, int value) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && op.c() == value) {
@@ -271,7 +271,7 @@ class MusicPlayerViewTest {
         return false;
     }
 
-    private static boolean anyProperty(Frame frame, int property) {
+    private static boolean anyProperty(ProtocolFrame frame, int property) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property) {
@@ -281,7 +281,7 @@ class MusicPlayerViewTest {
         return false;
     }
 
-    private static boolean anySetProperty(Frame frame, int property, float value) {
+    private static boolean anySetProperty(ProtocolFrame frame, int property, float value) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property && Float.intBitsToFloat(op.c()) == value) {
@@ -292,7 +292,7 @@ class MusicPlayerViewTest {
     }
 
 
-    private static boolean anySetPropertyString(Frame frame, int property, String value) {
+    private static boolean anySetPropertyString(ProtocolFrame frame, int property, String value) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && (op.b() & 0xFFFF) == property
@@ -311,7 +311,7 @@ class MusicPlayerViewTest {
     }
 
     /** The `FIT_QUERY` threshold table (LIST value in the arena) for a fit slot. */
-    private static float[] fitThresholds(Frame frame, int slotId) {
+    private static float[] fitThresholds(ProtocolFrame frame, int slotId) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
                     && op.a() == slotId && (op.b() & 0xFFFF) == Properties.FIT_QUERY) {
@@ -330,7 +330,7 @@ class MusicPlayerViewTest {
 
     /** The SizeThatFits slot whose threshold table ends at the given width (e.g. the
      *  root MusicPlayerView row at 1024f, the player-bar controls group at 600f). */
-    private static int slotIdByMaxThreshold(Frame frame, float maxThreshold) {
+    private static int slotIdByMaxThreshold(ProtocolFrame frame, float maxThreshold) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE
                     && op.b() == Components.SIZE_THAT_FITS) {

@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.view.Alignment;
 import com.pathland.view.FontDesign;
 import com.pathland.view.FontWeight;
@@ -11,7 +12,6 @@ import com.pathland.view.VStack;
 import com.pathland.view.View;
 import com.pathland.view.FontDesignMod;
 import com.pathland.view.FontWeightMod;
-import com.pathland.view.FrameMod;
 import com.pathland.view.Italic;
 import com.pathland.view.Kerning;
 import com.pathland.view.LineLimit;
@@ -48,11 +48,11 @@ public final class TextStylesSection implements View {
                         Text.of("A very long line of text that must be truncated to a single line.")
                                 .with(
                                         LineLimit.of(1),
-                                        TruncationMod.of(Truncation.TAIL),
-                                        FrameMod.of(280, Float.NaN, Alignment.CENTER)),
+                                        TruncationMod.of(Truncation.TAIL))
+                                .with(Frame.of(280, Alignment.CENTER)),
                         Text.of("Centered").with(
-                                TextAlignmentMod.of(TextAlignment.CENTER),
-                                FrameMod.of(180, Float.NaN, Alignment.CENTER))
+                                TextAlignmentMod.of(TextAlignment.CENTER))
+                                .with(Frame.of(180, Alignment.CENTER))
                 ).with(Padding.of(4))
         );
     }

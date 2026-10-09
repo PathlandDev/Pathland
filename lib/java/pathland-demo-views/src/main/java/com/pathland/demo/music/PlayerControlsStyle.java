@@ -55,13 +55,13 @@ public final class PlayerControlsStyle implements AudioStyle {
         );
         var trackInfo = HStack.of(VerticalAlignment.CENTER, 18f,
                 Image.of(computed(() -> current.get().cover()))
-                        .with(FrameMod.of(36, 36), ScaledToFit.of()),
+                        .with(Frame.of(36, 36)).with(ScaledToFit.of()),
                 VStack.of(HorizontalAlignment.LEADING, 2,
                         Text.of(computed(() -> current.get().title()))
                                 .with(FontWeightMod.of(FontWeight.SEMIBOLD), LineLimit.of(1)),
                         Text.of(computed(() -> current.get().artist()))
                                 .with(FontSize.of(13), ForegroundStyle.of(MusicPlayerView.SECONDARY_FG), LineLimit.of(1))
-                ).with(FrameMod.of(160f))
+                ).with(Frame.ofWidth(160f))
         );
 
         var volumeView = HStack.of(VerticalAlignment.CENTER, 18f,
@@ -96,7 +96,7 @@ public final class PlayerControlsStyle implements AudioStyle {
                 Slider.of(new PercentSeek(seek,
                                 () -> MusicPlayerView.at(trackIndex.get()).duration()),
                         0f, 100f, seek::onEditingChanged)
-                        .with(FrameMod.of(Float.POSITIVE_INFINITY), Padding.of(0, 16, 0, 16))
+                        .with(Frame.ofWidth(Float.POSITIVE_INFINITY)).with(Padding.of(0, 16, 0, 16))
         );
     }
 

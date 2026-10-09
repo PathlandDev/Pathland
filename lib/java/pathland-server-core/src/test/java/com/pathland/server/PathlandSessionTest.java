@@ -7,7 +7,7 @@ import com.pathland.view.Environment;
 import com.pathland.view.Platform;
 import com.pathland.view.Text;
 import com.pathland.view.View;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.PathlandNode;
 import com.pathland.view.signal.Signal;
@@ -220,7 +220,7 @@ class PathlandSessionTest {
     private static boolean framesContainText(RecordingConnection conn, String text) {
         for (byte[] bytes : conn.frames()) {
             try {
-                Frame frame = FrameCodec.decodeFrame(bytes);
+                ProtocolFrame frame = FrameCodec.decodeFrame(bytes);
                 for (Opcode op : frame.opcodes()) {
                     if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
                         if (text.equals(frame.stringAt(op.b()))) {

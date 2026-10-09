@@ -1,7 +1,7 @@
 package com.pathland.view;
 
 import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.emit.RenderResult;
@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ConditionalTest {
 
-    private static long countOps(Frame frame, int category, int command) {
+    private static long countOps(ProtocolFrame frame, int category, int command) {
         return frame.opcodes().stream()
                 .filter(o -> o.category() == category && o.command() == command)
                 .count();
@@ -43,7 +43,7 @@ class ConditionalTest {
         assertEquals(0, result.tapActions().size(), "the text branch has no tap action");
 
         show.set(false);
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
 
         // The slot's single child changed component type (TEXT -> BUTTON): remove + delete the
         // old, create + insert the new. Under the wrapper model the button is a BUTTON shell
@@ -81,7 +81,7 @@ class ConditionalTest {
 
         // 2 -> 3: otherwise branch, same TEXT component at the same position -> a SET_TEXT delta.
         n.set(3);
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "same component, changed text -> one SET_TEXT");
         Opcode only = delta.opcodes().get(0);
         assertEquals(Categories.PARAMETER, only.category());
@@ -100,7 +100,7 @@ class ConditionalTest {
                 Case.otherwise(Text.of("NotFound")));
         emitter.mount(root, Environment.DEFAULT);
 
-        Frame initial = sink.frame();
+        ProtocolFrame initial = sink.frame();
         assertEquals(1, countOps(initial, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
         Opcode text = initial.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_TEXT)
@@ -122,12 +122,12 @@ class ConditionalTest {
         emitter.mount(root, Environment.DEFAULT);
 
         mode.set(5); // no matching branch and no otherwise -> the slot empties
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.REMOVE_CHILD));
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.DELETE_NODE));
 
         mode.set(1); // matching branch again -> the slot re-fills
-        Frame refill = sink.frame();
+        ProtocolFrame refill = sink.frame();
         assertEquals(1, countOps(refill, Categories.TREE, Commands.Tree.CREATE_NODE));
         assertEquals(1, countOps(refill, Categories.TREE, Commands.Tree.INSERT_CHILD));
         assertEquals(1, countOps(refill, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
@@ -144,7 +144,7 @@ class ConditionalTest {
 
         // Inner swap only: same TEXT component at the same position -> one SET_TEXT.
         flag.set(false);
-        Frame inner = sink.frame();
+        ProtocolFrame inner = sink.frame();
         assertEquals(1, inner.opcodes().size());
         assertEquals(Commands.Parameter.SET_TEXT, inner.opcodes().get(0).command());
 
@@ -152,7 +152,7 @@ class ConditionalTest {
         // structural effect and bindings must be destroyed, not leaked. DELETE_NODE covers the
         // whole removed subtree (spec OPCODE.md), so only the subtree root is deleted.
         show.set(false);
-        Frame outer = sink.frame();
+        ProtocolFrame outer = sink.frame();
         assertEquals(1, countOps(outer, Categories.TREE, Commands.Tree.REMOVE_CHILD));
         assertEquals(1, countOps(outer, Categories.TREE, Commands.Tree.DELETE_NODE),
                 "the inner slot node is deleted (DELETE_NODE covers its subtree)");
@@ -178,7 +178,7 @@ class ConditionalTest {
         // The structural effect tracks only the selector; the content's reactive text is owned
         // by its own node-level binding effect.
         label.set("Hello");
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "reactive text inside a branch is one SET_TEXT");
         Opcode only = delta.opcodes().get(0);
         assertEquals(Categories.PARAMETER, only.category());
@@ -197,20 +197,20 @@ class ConditionalTest {
         emitter.mount(root, Environment.DEFAULT);
 
         show.set(false); // swap to the else branch (static text)
-        Frame swap = sink.frame();
+        ProtocolFrame swap = sink.frame();
         assertEquals("other", lastText(swap));
 
         show.set(true); // swap back to the reactive branch
-        Frame back = sink.frame();
+        ProtocolFrame back = sink.frame();
         assertEquals("one", lastText(back));
 
         label.set("two"); // the re-registered binding is live again
-        Frame delta = sink.frame();
+        ProtocolFrame delta = sink.frame();
         assertEquals(1, delta.opcodes().size());
         assertEquals("two", delta.stringAt(delta.opcodes().get(0).b()));
     }
 
-    private static String lastText(Frame frame) {
+    private static String lastText(ProtocolFrame frame) {
         Opcode text = frame.opcodes().stream()
                 .filter(o -> o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_TEXT)
                 .reduce((a, b) -> b)

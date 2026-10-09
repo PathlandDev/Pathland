@@ -1,5 +1,6 @@
 package com.pathland.demo.kitchensink;
 
+import com.pathland.view.Frame;
 import com.pathland.view.Alignment;
 import com.pathland.view.Color;
 import com.pathland.view.Divider;
@@ -15,7 +16,6 @@ import com.pathland.view.ZStack;
 import com.pathland.view.Background;
 import com.pathland.view.CornerRadius;
 import com.pathland.view.FontSize;
-import com.pathland.view.FrameMod;
 import com.pathland.view.Offset;
 import com.pathland.view.Padding;
 
@@ -41,10 +41,9 @@ public final class LayoutSection implements View {
                                 Text.of("Left"),
                                 Spacer.of(),
                                 Text.of("Right"))
-                                .with(FrameMod.of(260, Float.NaN, Alignment.CENTER)),
+                                .with(Frame.of(260, Alignment.CENTER)),
                         ZStack.of(
-                                Rectangle.of().with(
-                                        FrameMod.of(180, 80, Alignment.CENTER),
+                                Rectangle.of().with(Frame.of(180, 80, Alignment.CENTER)).with(
                                         Background.of(Color.rgb(0xE3, 0xF2, 0xFD)),
                                         CornerRadius.of(8)),
                                 Text.of("badge").with(

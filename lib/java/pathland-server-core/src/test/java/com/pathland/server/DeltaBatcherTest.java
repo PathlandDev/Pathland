@@ -3,7 +3,7 @@ package com.pathland.server;
 import com.pathland.view.Categories;
 import com.pathland.view.Commands;
 import com.pathland.view.ValueTypes;
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.Opcode;
 import com.pathland.view.transport.FrameCodec;
 import org.junit.jupiter.api.Test;
@@ -34,16 +34,16 @@ class DeltaBatcherTest {
         // A long flush interval + manual flush keeps the test deterministic.
         DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, sent::add);
 
-        // Frame 1: SET_TEXT "ab" (offset 0) + a numeric VALUE change.
+        // ProtocolFrame 1: SET_TEXT "ab" (offset 0) + a numeric VALUE change.
         byte[] strings1 = stringSection("ab");
-        Frame f1 = new Frame(List.of(
+        ProtocolFrame f1 = new ProtocolFrame(List.of(
                 new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, 0, 0),
                 new Opcode(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, 1,
                         (ValueTypes.F32 << 16) | PROP_VALUE, Float.floatToIntBits(0.5f))),
                 strings1);
-        // Frame 2: SET_TEXT "cd" (its relative offset 0 must rebase past frame 1's section).
+        // ProtocolFrame 2: SET_TEXT "cd" (its relative offset 0 must rebase past frame 1's section).
         byte[] strings2 = stringSection("cd");
-        Frame f2 = new Frame(List.of(
+        ProtocolFrame f2 = new ProtocolFrame(List.of(
                 new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 2, 0, 0)),
                 strings2);
 
@@ -53,9 +53,9 @@ class DeltaBatcherTest {
         batcher.close();
 
         assertEquals(1, sent.size(), "all frames flush as a single batch");
-        Frame merged = FrameCodec.decodeFrame(sent.get(0));
+        ProtocolFrame merged = FrameCodec.decodeFrame(sent.get(0));
         assertEquals(3, merged.opcodes().size());
-        // Frame 1's SET_TEXT offset stays 0 ("ab"); frame 2's is rebased to 6.
+        // ProtocolFrame 1's SET_TEXT offset stays 0 ("ab"); frame 2's is rebased to 6.
         assertEquals("ab", merged.stringAt(0));
         assertEquals("cd", merged.stringAt(6));
     }
@@ -69,12 +69,12 @@ class DeltaBatcherTest {
         List<byte[]> sent = new ArrayList<>();
         DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, sent::add);
 
-        // Frame 1: a 10-byte string "prefix" (4 length + 6 bytes).
-        batcher.append(new Frame(List.of(
+        // ProtocolFrame 1: a 10-byte string "prefix" (4 length + 6 bytes).
+        batcher.append(new ProtocolFrame(List.of(
                 new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, 0, 0)),
                 stringSection("prefix")));
-        // Frame 2: a LIST FIT_QUERY at its own relative offset 0.
-        batcher.append(new Frame(List.of(
+        // ProtocolFrame 2: a LIST FIT_QUERY at its own relative offset 0.
+        batcher.append(new ProtocolFrame(List.of(
                 new Opcode(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, 2,
                         (ValueTypes.LIST << 16) | 0x1039, 0)),
                 listSection(0f, 640f)));
@@ -82,7 +82,7 @@ class DeltaBatcherTest {
         batcher.flush();
         batcher.close();
 
-        Frame merged = FrameCodec.decodeFrame(sent.get(0));
+        ProtocolFrame merged = FrameCodec.decodeFrame(sent.get(0));
         assertTrue(merged.opcodes().stream().anyMatch(o ->
                         (o.b() & 0xFFFF) == 0x1039 && o.c() == 10),
                 "the LIST FIT_QUERY offset rebases past the merged prefix");
@@ -95,7 +95,7 @@ class DeltaBatcherTest {
 
         // A 100-frame drag burst (numeric VALUE deltas only).
         for (int i = 0; i < 100; i++) {
-            batcher.append(new Frame(List.of(
+            batcher.append(new ProtocolFrame(List.of(
                     new Opcode(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, 1,
                             (ValueTypes.F32 << 16) | PROP_VALUE, Float.floatToIntBits(i / 100.0f))),
                     new byte[0]));
@@ -104,7 +104,7 @@ class DeltaBatcherTest {
         batcher.close();
 
         assertEquals(1, sent.size(), "a drag burst collapses to a single message");
-        Frame merged = FrameCodec.decodeFrame(sent.get(0));
+        ProtocolFrame merged = FrameCodec.decodeFrame(sent.get(0));
         assertEquals(100, merged.opcodes().size());
     }
 
@@ -114,10 +114,10 @@ class DeltaBatcherTest {
         DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, sent::add);
 
         batcher.flush(); // nothing pending: must not consume a sequence number
-        batcher.append(new Frame(List.of(new Opcode(
+        batcher.append(new ProtocolFrame(List.of(new Opcode(
                 Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, 0, 0)), new byte[0]));
         batcher.flush();
-        batcher.append(new Frame(List.of(new Opcode(
+        batcher.append(new ProtocolFrame(List.of(new Opcode(
                 Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 2, 0, 0)), new byte[0]));
         batcher.flush();
         batcher.close();
@@ -143,14 +143,14 @@ class DeltaBatcherTest {
             }
         });
 
-        batcher.append(new Frame(List.of(new Opcode(
+        batcher.append(new ProtocolFrame(List.of(new Opcode(
                 Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, 0, 0)), new byte[0]));
         Thread flusher = new Thread(batcher::flush);
         flusher.start();
         assertTrue(senderEntered.await(2, TimeUnit.SECONDS), "sender entered and is blocking");
 
         long t0 = System.nanoTime();
-        batcher.append(new Frame(List.of(new Opcode(
+        batcher.append(new ProtocolFrame(List.of(new Opcode(
                 Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 2, 0, 0)), new byte[0]));
         long elapsedMs = (System.nanoTime() - t0) / 1_000_000;
         assertTrue(elapsedMs < 100, "append blocked behind a blocking sender (" + elapsedMs + " ms)");

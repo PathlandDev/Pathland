@@ -1,6 +1,6 @@
 package com.pathland.render.html;
 
-import com.pathland.view.emit.Frame;
+import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.transport.FrameCodec;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
@@ -175,17 +175,17 @@ public final class HtmlRenderer {
      * Render a full snapshot frame as a complete HTML document. The frame is the
      * self-contained mount/snapshot batch (TREE + PARAMETER) the emitter produced.
      */
-    public String render(Frame frame, int root) {
+    public String render(ProtocolFrame frame, int root) {
         return renderFrame(frame, root, true);
     }
 
     /** Render a full snapshot frame as an HTML fragment (no {@code <html>}). */
-    public String renderFragment(Frame frame, int root) {
+    public String renderFragment(ProtocolFrame frame, int root) {
         return renderFrame(frame, root, false);
     }
 
     /** Alias of {@link #renderFragment} for the {@code META::RESYNC} snapshot path. */
-    public String renderFullSnapshot(Frame frame, int root) {
+    public String renderFullSnapshot(ProtocolFrame frame, int root) {
         return renderFrame(frame, root, false);
     }
 
@@ -196,7 +196,7 @@ public final class HtmlRenderer {
      * {@code <!-- #1 VStack: spacing=4, alignment=Fill -->}). Debugging aid —
      * opt-in; the plain {@link #render} output is unchanged.
      */
-    public String renderDebug(Frame frame, int root) {
+    public String renderDebug(ProtocolFrame frame, int root) {
         return renderFrameDebug(frame, root, true);
     }
 
@@ -204,7 +204,7 @@ public final class HtmlRenderer {
      * Render a snapshot frame as an HTML fragment with **debug comments** on
      * every node (see {@link #renderDebug}).
      */
-    public String renderFragmentDebug(Frame frame, int root) {
+    public String renderFragmentDebug(ProtocolFrame frame, int root) {
         return renderFrameDebug(frame, root, false);
     }
 
@@ -232,15 +232,15 @@ public final class HtmlRenderer {
         }
     }
 
-    private String renderFrame(Frame frame, int root, boolean fullDocument) {
+    private String renderFrame(ProtocolFrame frame, int root, boolean fullDocument) {
         return renderFrame(frame, root, fullDocument, false);
     }
 
-    private String renderFrameDebug(Frame frame, int root, boolean fullDocument) {
+    private String renderFrameDebug(ProtocolFrame frame, int root, boolean fullDocument) {
         return renderFrame(frame, root, fullDocument, true);
     }
 
-    private String renderFrame(Frame frame, int root, boolean fullDocument, boolean debug) {
+    private String renderFrame(ProtocolFrame frame, int root, boolean fullDocument, boolean debug) {
         byte[] bytes = FrameCodec.encodeFrame(frame);
         try (com.sun.jna.Memory memory = new com.sun.jna.Memory(bytes.length)) {
             memory.write(0, bytes, 0, bytes.length);
