@@ -87,6 +87,12 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   `navigate`/`push`/`pop`/`replace`), `NavigationContainer` (builds the current
   destination and carries `ROUTE`/`NAV_DEPTH`/`NAV_CHROME` on a container slot),
   and `NavigationLink` (a button that changes the route via a router).
+- **Persisted state (Phase 5)**: `pathland_view::state` — a platform-neutral
+  `StateStore` trait (`get`/`set` by key over `SignalValue`) + the in-process
+  `InMemoryStateStore`; `PersistentState::state(name, initial)` returns a
+  `State<T>` that auto-loads (or the initial) and auto-saves on change (via a
+  runtime effect), keyed `"{name}:{scope}"`. Rust has no annotation processor, so
+  fields are wired explicitly.
 
 ## Not implemented / gaps
 
@@ -100,6 +106,8 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 - **Navigation**: links hold a router explicitly (no nearest-enclosing-router
   resolution / `NavigationIntent`); `NAVIGATE` event routing is app-side; no
   `Label`/`GridRow` components.
+- **State backends**: only the in-memory `StateStore` ships in Rust (the Java
+  library has Redis + in-memory; File/SQLite/LocalStorage/NVS are future).
 - **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED)** is
   **authored** (`SizeThatFits::new(Vec<Fit>)` + `Fit::new(view, minWidth)` /
   `Fit::any`) emitting the slot + its single selected child + the `FIT_QUERY`
