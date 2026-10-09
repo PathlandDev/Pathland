@@ -10,6 +10,7 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::marker::PhantomData;
 
 /// A signal's value: one of the protocol value kinds.
 ///
@@ -64,6 +65,175 @@ pub enum Dep {
     Text { node: u32 },
     /// A node property is bound to the signal.
     Property { node: u32, prop: u16 },
+}
+
+/// A value kind that maps to/from a [`SignalValue`] — the typed-signal surface.
+///
+/// The store itself is dynamically typed ([`SignalValue`]); this trait is the
+/// ergonomic typing at the `Engine` boundary (`Engine::signal` / `Engine::read`).
+pub trait SignalValueKind: Clone + PartialEq + core::fmt::Debug + 'static {
+    /// Pack this value as a signal value.
+    fn into_signal_value(self) -> SignalValue;
+    /// Read this kind back out of a signal value, if the value's kind matches.
+    fn from_signal_value(value: &SignalValue) -> Option<Self>;
+}
+
+impl SignalValueKind for f32 {
+    fn into_signal_value(self) -> SignalValue {
+        SignalValue::F32(self)
+    }
+    fn from_signal_value(value: &SignalValue) -> Option<Self> {
+        match value {
+            SignalValue::F32(v) => Some(*v),
+            _ => None,
+        }
+    }
+}
+
+impl SignalValueKind for u32 {
+    fn into_signal_value(self) -> SignalValue {
+        SignalValue::U32(self)
+    }
+    fn from_signal_value(value: &SignalValue) -> Option<Self> {
+        match value {
+            SignalValue::U32(v) => Some(*v),
+            _ => None,
+        }
+    }
+}
+
+impl SignalValueKind for bool {
+    fn into_signal_value(self) -> SignalValue {
+        SignalValue::Bool(self)
+    }
+    fn from_signal_value(value: &SignalValue) -> Option<Self> {
+        match value {
+            SignalValue::Bool(v) => Some(*v),
+            _ => None,
+        }
+    }
+}
+
+impl SignalValueKind for u8 {
+    fn into_signal_value(self) -> SignalValue {
+        SignalValue::Enum(self)
+    }
+    fn from_signal_value(value: &SignalValue) -> Option<Self> {
+        match value {
+            SignalValue::Enum(v) => Some(*v),
+            _ => None,
+        }
+    }
+}
+
+impl SignalValueKind for String {
+    fn into_signal_value(self) -> SignalValue {
+        SignalValue::Str(self)
+    }
+    fn from_signal_value(value: &SignalValue) -> Option<Self> {
+        match value {
+            SignalValue::Str(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+}
+
+/// A read-only handle to a signal (a typed [`SignalId`]).
+///
+/// Handles are `Copy` newtypes; the value lives in the engine's signal store, so
+/// read it with [`Engine::read`](crate::Engine::read) and write a
+/// [`WritableSignal`] with
+/// [`Engine::set_signal`](crate::Engine::set_signal).
+#[derive(PartialEq, Eq, Hash)]
+pub struct Signal<T> {
+    id: SignalId,
+    _kind: PhantomData<fn() -> T>,
+}
+
+impl<T> Signal<T> {
+    /// Wrap a raw id as a typed read-only signal.
+    pub const fn from_id(id: SignalId) -> Self {
+        Signal {
+            id,
+            _kind: PhantomData,
+        }
+    }
+    /// The underlying id.
+    pub const fn id(self) -> SignalId {
+        self.id
+    }
+}
+
+impl<T> Clone for Signal<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T> Copy for Signal<T> {}
+impl<T> core::fmt::Debug for Signal<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Signal({})", self.id.0)
+    }
+}
+
+/// A writable handle to a signal (a typed [`SignalId`]).
+#[derive(PartialEq, Eq, Hash)]
+pub struct WritableSignal<T> {
+    id: SignalId,
+    _kind: PhantomData<fn() -> T>,
+}
+
+impl<T> WritableSignal<T> {
+    /// Wrap a raw id as a typed writable signal.
+    pub const fn from_id(id: SignalId) -> Self {
+        WritableSignal {
+            id,
+            _kind: PhantomData,
+        }
+    }
+    /// The underlying id.
+    pub const fn id(self) -> SignalId {
+        self.id
+    }
+    /// A read-only view of this signal.
+    pub const fn as_readonly(self) -> Signal<T> {
+        Signal::from_id(self.id)
+    }
+}
+
+impl<T> Clone for WritableSignal<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+impl<T> Copy for WritableSignal<T> {}
+impl<T> core::fmt::Debug for WritableSignal<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "WritableSignal({})", self.id.0)
+    }
+}
+
+/// Anything that identifies a signal — a raw [`SignalId`] or a typed
+/// [`Signal`]/[`WritableSignal`] handle. Lets DSL builders accept either.
+pub trait IntoSignalId {
+    /// The underlying id.
+    fn into_signal_id(self) -> SignalId;
+}
+
+impl IntoSignalId for SignalId {
+    fn into_signal_id(self) -> SignalId {
+        self
+    }
+}
+impl<T> IntoSignalId for Signal<T> {
+    fn into_signal_id(self) -> SignalId {
+        self.id()
+    }
+}
+impl<T> IntoSignalId for WritableSignal<T> {
+    fn into_signal_id(self) -> SignalId {
+        self.id()
+    }
 }
 
 #[derive(Debug)]

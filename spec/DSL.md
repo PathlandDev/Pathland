@@ -1351,11 +1351,11 @@ application-authored modifiers share the same `modifiers(...)` surface.
 
 **Status deltas captured by this table**: the Java DSL is surface-complete with
 the three operations, modifiers as values via `.modifiers(...)` (no sugar on
-`View`), and styles as modifiers; the Rust DSL is structural today —
-`pathland-view` exposes the view/modifier surface without signals, two-way
-bindings, or actions (signals live in `pathland-core::signal` for engine-side
-binding). Both are per-project implementation status tracked in each project's
-`status.md`.
+`View`), and styles as modifiers; the Rust DSL now exposes the surface plus
+**typed signals and text/property binding** (`Signal<T>`/`WritableSignal<T>`,
+`Engine::signal`/`read`/`set`), but is still without computed/effects, two-way
+control bindings, or actions. Both are per-project implementation status tracked
+in each project's `status.md`.
 
 ---
 

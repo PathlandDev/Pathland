@@ -85,7 +85,7 @@ use pathland_core::property_id;
 pub use pathland_core;
 pub use pathland_engine::{
     assign_ids, collect_tap_handlers, component_type_id, AdaptiveTheme, Component, Engine, Gesture,
-    Node, Theme,
+    IntoSignalId, Node, Signal, SignalId, SignalValue, SignalValueKind, Theme, WritableSignal,
 };
 
 mod recognizer;
@@ -914,6 +914,72 @@ impl ViewModifier for ZIndex {
     }
 }
 
+/// Binds a node property to a signal — a **reactive property**. The engine
+/// resolves the binding during emit (recording the dependency) and re-emits
+/// only that node's `SET_PROPERTY` when the signal changes.
+///
+/// Convenience constructors live on the per-property modifiers
+/// (`FontSize::bound`, `FontWeight::bound`, `ForegroundStyle::bound`,
+/// `Background::bound`, `Opacity::bound`), or construct it directly.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Bound {
+    /// The property id.
+    pub property: u16,
+    /// The signal the property reads.
+    pub signal: SignalId,
+}
+
+impl Bound {
+    /// A property bound to a signal.
+    pub fn new(property: u16, signal: impl IntoSignalId) -> Self {
+        Bound {
+            property,
+            signal: signal.into_signal_id(),
+        }
+    }
+}
+
+impl ViewModifier for Bound {
+    fn apply(&self, node: &mut Node) {
+        node.property_bindings.insert(self.property, self.signal);
+    }
+}
+
+impl FontSize {
+    /// A font size bound to a signal.
+    pub fn bound(signal: impl IntoSignalId) -> Bound {
+        Bound::new(property_id::FONT_SIZE, signal)
+    }
+}
+
+impl FontWeight {
+    /// A font weight bound to a signal.
+    pub fn bound(signal: impl IntoSignalId) -> Bound {
+        Bound::new(property_id::FONT_WEIGHT, signal)
+    }
+}
+
+impl ForegroundStyle {
+    /// A foreground color bound to a signal.
+    pub fn bound(signal: impl IntoSignalId) -> Bound {
+        Bound::new(property_id::COLOR, signal)
+    }
+}
+
+impl Background {
+    /// A background color bound to a signal.
+    pub fn bound(signal: impl IntoSignalId) -> Bound {
+        Bound::new(property_id::BACKGROUND_COLOR, signal)
+    }
+}
+
+impl Opacity {
+    /// An opacity bound to a signal.
+    pub fn bound(signal: impl IntoSignalId) -> Bound {
+        Bound::new(property_id::OPACITY, signal)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -964,14 +1030,23 @@ pub struct Text {
 /// [`Text`] values.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TextConfig {
-    /// The text content.
+    /// The static text content.
     pub text: String,
+    /// A signal the text binds to (overrides `text` when set).
+    pub binding: Option<SignalId>,
 }
 
 impl TextConfig {
-    /// Set the text content.
+    /// Set the static text content (clears any signal binding).
     pub fn text(&mut self, text: impl Into<String>) -> &mut Self {
         self.text = text.into();
+        self.binding = None;
+        self
+    }
+
+    /// Bind the text to a signal (re-emits `SET_TEXT` when it changes).
+    pub fn text_signal(&mut self, signal: impl IntoSignalId) -> &mut Self {
+        self.binding = Some(signal.into_signal_id());
         self
     }
 }
@@ -997,13 +1072,15 @@ impl Configurable for Text {
 
 impl View for Text {
     fn build(&self) -> Node {
-        plain_node(
+        let mut node = plain_node(
             Component::Text {
                 text: self.config.text.clone(),
             },
             Vec::new(),
             BTreeMap::new(),
-        )
+        );
+        node.text_binding = self.config.binding;
+        node
     }
 }
 
@@ -2872,6 +2949,28 @@ mod tests {
                 .get(&property_id::IMAGE_SOURCE)
                 .map(String::as_str),
             Some("/a/b.png")
+        );
+    }
+
+    #[test]
+    fn text_binds_to_a_signal() {
+        let mut engine = Engine::new();
+        let label = engine.signal(String::from("hi"));
+        let node = Text::with(|t| {
+            t.text_signal(label);
+        })
+        .build();
+        assert_eq!(node.text_binding, Some(label.id()));
+    }
+
+    #[test]
+    fn property_binds_to_a_signal() {
+        let mut engine = Engine::new();
+        let size = engine.signal(20.0f32);
+        let node = Text::new("x").modifiers(FontSize::bound(size)).build();
+        assert_eq!(
+            node.property_bindings.get(&property_id::FONT_SIZE),
+            Some(&size.id())
         );
     }
 

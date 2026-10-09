@@ -26,5 +26,8 @@ mod theme;
 
 pub use engine::{EmitResult, Engine};
 pub use node::*;
-pub use signal::{Dep, SignalId, SignalStore, SignalValue};
+pub use signal::{
+    Dep, IntoSignalId, Signal, SignalId, SignalStore, SignalValue, SignalValueKind,
+    WritableSignal,
+};
 pub use theme::{AdaptiveTheme, Theme};

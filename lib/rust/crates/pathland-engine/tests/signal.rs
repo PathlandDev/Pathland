@@ -232,3 +232,53 @@ fn rebinding_drops_stale_dependency() {
     assert_eq!(n, 0);
     assert!(ops.is_empty());
 }
+
+#[test]
+fn typed_signal_read_write_and_binding() {
+    let mut engine = Engine::new();
+    let label = engine.signal(String::from("hello"));
+    // Typed read returns the current value.
+    assert_eq!(engine.read(label.as_readonly()), Some(String::from("hello")));
+
+    let (mut mem, layout) = with_guest();
+    let mut root = vstack(vec![text_node("")]);
+    root.children[0].text_binding = Some(label.id());
+    assign_ids(&mut root, &mut 1);
+    emit_full(&mut engine, &root, &mut mem, &layout);
+
+    // Typed write emits only the bound node and updates the typed read.
+    let mut guest = Guest::new(&mut mem, &layout);
+    guest.begin_frame();
+    let n = engine.set(label, String::from("world"), &mut guest).unwrap();
+    guest.end_frame();
+    assert_eq!(n, 1);
+    assert_eq!(engine.read(label.as_readonly()), Some(String::from("world")));
+}
+
+#[test]
+fn typed_numeric_signal_packs_by_kind() {
+    let mut engine = Engine::new();
+    let spacing = engine.signal(4.0f32);
+    assert_eq!(engine.read(spacing.as_readonly()), Some(4.0));
+
+    let (mut mem, layout) = with_guest();
+    let mut root = vstack(vec![text_node("x")]);
+    root.property_bindings.insert(property_id::SPACING, spacing.id());
+    assign_ids(&mut root, &mut 1);
+    emit_full(&mut engine, &root, &mut mem, &layout);
+
+    let mut guest = Guest::new(&mut mem, &layout);
+    guest.begin_frame();
+    let n = engine.set(spacing, 12.0f32, &mut guest).unwrap();
+    guest.end_frame();
+    assert_eq!(n, 1);
+
+    let mut host = Host::new(&mut mem, &layout);
+    let frames = host.frames();
+    let ops: Vec<Opcode> = frames[0].opcodes().collect();
+    let op = ops
+        .iter()
+        .find(|o| o.b() as u16 == property_id::SPACING)
+        .unwrap();
+    assert_eq!(op.c_f32(), 12.0);
+}

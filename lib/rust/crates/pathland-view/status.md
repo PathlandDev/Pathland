@@ -54,22 +54,31 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 - **`Theme` / `AdaptiveTheme` (global overrides)**: re-exports
   `pathland_engine::Theme` and `AdaptiveTheme { light, dark }`. Emit once at
   mount via `Engine::apply_theme` / `Engine::apply_adaptive_theme`.
+- **Signals + binding (Phase 1a)**: typed signal handles
+  (`Signal<T>`/`WritableSignal<T>` + `SignalValueKind`/`IntoSignalId`) over the
+  engine's reactive store; `Engine::signal`/`read`/`set` (typed). The DSL binds a
+  node's **text** (`Text::with(|t| { t.text_signal(sig); })`) and a **property**
+  (`FontSize::bound(sig)`, `FontWeight::bound`, `ForegroundStyle::bound`,
+  `Background::bound`, `Opacity::bound`, or generic `Bound::new(prop, sig)`) to a
+  signal, so a change re-emits only that node's `SET_TEXT`/`SET_PROPERTY`.
 
 ## Not implemented / gaps
 
-- **Signals / two-way bindings / actions / styles / environment** — the Rust
-  DSL is **structural only**. The engine already has a signal store
-  (`Engine::create_signal`/`set_signal`, partial re-emit) and `Node` binding
-  fields, but the DSL does not expose signals, control value bindings, `Button`
-  actions, or `ButtonStyle`/`LabelStyle`/… Full Java-DSL parity is tracked as a
-  phased effort (`spec/DSL.md` §9; `Button` carries a string label only).
+- **Computed/derived signals + effects** (`Signals.computed`/`effect`/`untracked`)
+  — not yet. The engine exposes only writable value signals; a reactive
+  computation graph (equal to the Java DSL's) is the remaining Phase 1 work.
+- **Two-way bindings (value controls) + actions**: no `valueInput`/`textInput`
+  sinks or event routing; `Button` carries a string label only.
+- **Styles / environment**: no `ButtonStyle`/`LabelStyle`/… or `EnvironmentKey`
+  subtree scoping (Phase 3).
+- **Navigation / conditional**: `Router`/`RouteTable`/`NavigationContainer`/
+  `NavigationLink`/`Conditional` are absent (Phase 4); `Label`/`GridRow` are
+  absent.
 - **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED)** is
   **authored** (`SizeThatFits::new(Vec<Fit>)` + `Fit::new(view, minWidth)` /
   `Fit::any`) emitting the slot + its single selected child + the `FIT_QUERY`
   list; **reactive selection is fixed** — only the Java DSL's structural slot
   reacts to `FIT_CHANGED`.
-- `Label`, `GridRow`, navigation (`Router`/`NavigationContainer`/…), and
-  `Conditional` are not present.
 - No `ACTION_ID`/`BINDING_ID` helpers; `Toggle`/`Picker`/`Menu` lack typed
   value APIs (raw tokens only).
 

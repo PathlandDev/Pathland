@@ -27,7 +27,7 @@ use pathland_core::{value_type, value_type_for};
 use pathland_core::Guest;
 
 use crate::node::{component_type_id, Component, Node};
-use crate::signal::{Dep, SignalId, SignalStore, SignalValue};
+use crate::signal::{Dep, Signal, SignalId, SignalStore, SignalValue, SignalValueKind, WritableSignal};
 
 /// Encode a `LIST` property's arena entry: `[u32 count][f32 × count]`
 /// (spec/OPCODE.md §Value types — a `FIT_QUERY` threshold table).
@@ -211,6 +211,26 @@ impl Engine {
     /// Create a new signal with an initial value.
     pub fn create_signal(&mut self, value: SignalValue) -> SignalId {
         self.store.create(value)
+    }
+
+    /// Create a typed writable signal with an initial value.
+    pub fn signal<T: SignalValueKind>(&mut self, initial: T) -> WritableSignal<T> {
+        WritableSignal::from_id(self.store.create(initial.into_signal_value()))
+    }
+
+    /// Read a typed signal's current value (the same instance a binding reads).
+    pub fn read<T: SignalValueKind>(&self, signal: Signal<T>) -> Option<T> {
+        self.store.get(signal.id()).and_then(T::from_signal_value)
+    }
+
+    /// Write a typed writable signal and re-emit only the nodes bound to it.
+    pub fn set<T: SignalValueKind>(
+        &mut self,
+        signal: WritableSignal<T>,
+        value: T,
+        guest: &mut Guest<'_>,
+    ) -> Result<usize, pathland_core::RingError> {
+        self.set_signal(signal.id(), value.into_signal_value(), guest)
     }
 
     /// Read a signal's current value.
