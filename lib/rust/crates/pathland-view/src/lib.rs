@@ -459,13 +459,118 @@ impl ShapeKind {
 // Modifiers
 // ---------------------------------------------------------------------------
 
-/// Uniform padding (a styling modifier, applied to any view).
+/// A config value that is either a **static** value or a **signal binding**
+/// (spec DSL.md §2): a static value emits as a plain property; a signal becomes a
+/// node-level binding that re-emits only that property when it changes. This is
+/// the Rust realization of "every value member accepts a raw value or a signal".
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Padding(pub f32);
+pub enum Reactive<T> {
+    /// A raw, non-reactive value.
+    Static(T),
+    /// A property bound to a signal.
+    Signal(SignalId),
+}
 
-/// Text font size in points.
+/// Convert a raw value or a signal into a [`Reactive`] config value. Implemented
+/// for `T` (static) and for `Signal<T>`/`WritableSignal<T>` (binding); the former
+/// `Bound` modifier folds into this.
+pub trait IntoReactive<T> {
+    /// Convert into a [`Reactive`].
+    fn into_reactive(self) -> Reactive<T>;
+}
+
+impl<T> IntoReactive<T> for T {
+    fn into_reactive(self) -> Reactive<T> {
+        Reactive::Static(self)
+    }
+}
+
+impl<T> IntoReactive<T> for Signal<T> {
+    fn into_reactive(self) -> Reactive<T> {
+        Reactive::Signal(self.id())
+    }
+}
+
+impl<T> IntoReactive<T> for WritableSignal<T> {
+    fn into_reactive(self) -> Reactive<T> {
+        Reactive::Signal(self.id())
+    }
+}
+
+/// Apply a reactive f32 property (static value or signal binding).
+fn reactive_f32(node: &mut Node, prop: u16, r: &Reactive<f32>) {
+    match r {
+        Reactive::Static(v) => {
+            node.properties.insert(prop, v.to_bits());
+        }
+        Reactive::Signal(id) => {
+            node.property_bindings.insert(prop, *id);
+        }
+    }
+}
+
+/// Apply a reactive enum property (a `u8` code stored as `F32`).
+fn reactive_enum(node: &mut Node, prop: u16, r: &Reactive<u8>) {
+    match r {
+        Reactive::Static(v) => {
+            node.properties.insert(prop, (*v as f32).to_bits());
+        }
+        Reactive::Signal(id) => {
+            node.property_bindings.insert(prop, *id);
+        }
+    }
+}
+
+/// Apply a reactive u32 property.
+fn reactive_u32(node: &mut Node, prop: u16, r: &Reactive<u32>) {
+    match r {
+        Reactive::Static(v) => {
+            node.properties.insert(prop, *v);
+        }
+        Reactive::Signal(id) => {
+            node.property_bindings.insert(prop, *id);
+        }
+    }
+}
+
+/// Apply a reactive color property (literal/token static, or signal binding).
+fn reactive_color(node: &mut Node, prop: u16, r: &Reactive<Color>) {
+    match r {
+        Reactive::Static(c) => apply_color(node, prop, *c),
+        Reactive::Signal(id) => {
+            node.property_bindings.insert(prop, *id);
+        }
+    }
+}
+
+/// Uniform padding (a styling modifier, applied to any view). `Padding(16.0)` is
+/// static; `Padding(signal)` binds `PADDING` to a signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct FontSize(pub f32);
+pub struct Padding {
+    value: Reactive<f32>,
+}
+
+/// A uniform padding value (raw or signal).
+#[allow(non_snake_case)]
+pub fn Padding(value: impl IntoReactive<f32>) -> Padding {
+    Padding {
+        value: value.into_reactive(),
+    }
+}
+
+/// Text font size in points. `FontSize(28.0)` static, `FontSize(signal)` bound.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FontSize {
+    value: Reactive<f32>,
+}
+
+/// A font size value (raw or signal).
+#[allow(non_snake_case)]
+pub fn FontSize(value: impl IntoReactive<f32>) -> FontSize {
+    FontSize {
+        value: value.into_reactive(),
+    }
+}
 
 /// Predefined typography from the design system (SwiftUI `Font.TextStyle`),
 /// carried by the `TEXT_STYLE` property. The renderer owns the concrete
@@ -711,17 +816,48 @@ impl View for Color {
     }
 }
 
-/// Foreground color modifier (SwiftUI `.foregroundStyle`).
+/// Foreground color modifier (SwiftUI `.foregroundStyle`). `ForegroundStyle(color)`
+/// static, `ForegroundStyle(signal)` bound.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ForegroundStyle(pub Color);
+pub struct ForegroundStyle {
+    color: Reactive<Color>,
+}
 
-/// Background color (a `Color` value).
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Background(pub Color);
+/// A foreground color (raw or signal).
+#[allow(non_snake_case)]
+pub fn ForegroundStyle(color: impl IntoReactive<Color>) -> ForegroundStyle {
+    ForegroundStyle {
+        color: color.into_reactive(),
+    }
+}
 
-/// Accent/tint color (a `TINT` property).
+/// Background color (a `Color` value). `Background(color)` static, bound likewise.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Tint(pub Color);
+pub struct Background {
+    color: Reactive<Color>,
+}
+
+/// A background color (raw or signal).
+#[allow(non_snake_case)]
+pub fn Background(color: impl IntoReactive<Color>) -> Background {
+    Background {
+        color: color.into_reactive(),
+    }
+}
+
+/// Accent/tint color (a `TINT` property). Raw or signal.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Tint {
+    color: Reactive<Color>,
+}
+
+/// A tint color (raw or signal).
+#[allow(non_snake_case)]
+pub fn Tint(color: impl IntoReactive<Color>) -> Tint {
+    Tint {
+        color: color.into_reactive(),
+    }
+}
 
 /// The compound `frame` sizing modifier (SwiftUI `frame`).
 ///
@@ -822,33 +958,31 @@ impl core::fmt::Debug for TapGesture {
 
 impl ViewModifier for Padding {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::PADDING, self.0.to_bits());
+        reactive_f32(node, property_id::PADDING, &self.value);
     }
 }
 
 impl ViewModifier for FontSize {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::FONT_SIZE, self.0.to_bits());
+        reactive_f32(node, property_id::FONT_SIZE, &self.value);
     }
 }
 
 impl ViewModifier for ForegroundStyle {
     fn apply(&self, node: &mut Node) {
-        apply_color(node, property_id::COLOR, self.0);
+        reactive_color(node, property_id::COLOR, &self.color);
     }
 }
 
 impl ViewModifier for Background {
     fn apply(&self, node: &mut Node) {
-        apply_color(node, property_id::BACKGROUND_COLOR, self.0);
+        reactive_color(node, property_id::BACKGROUND_COLOR, &self.color);
     }
 }
 
 impl ViewModifier for Tint {
     fn apply(&self, node: &mut Node) {
-        apply_color(node, property_id::TINT, self.0);
+        reactive_color(node, property_id::TINT, &self.color);
     }
 }
 
@@ -882,70 +1016,162 @@ impl ViewModifier for TapGesture {
     }
 }
 
-/// Opacity (0..1). `.opacity(_:)`.
+/// Opacity (0..1). `.opacity(_:)`. Raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Opacity(pub f32);
+pub struct Opacity {
+    value: Reactive<f32>,
+}
+
+/// An opacity value (raw or signal).
+#[allow(non_snake_case)]
+pub fn Opacity(value: impl IntoReactive<f32>) -> Opacity {
+    Opacity {
+        value: value.into_reactive(),
+    }
+}
 
 /// Hidden (SwiftUI `.hidden()`); sets `VISIBLE` = 0.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Hidden;
 
-/// Border (SwiftUI `.border(color:width:)`).
+/// Border (SwiftUI `.border(color:width:)`), raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Border {
-    pub color: Color,
-    pub width: f32,
+    color: Reactive<Color>,
+    width: Reactive<f32>,
 }
 
 impl Border {
-    /// A border from a color and width.
-    pub const fn new(color: Color, width: f32) -> Self {
-        Self { color, width }
+    /// A border from a color and width (each raw or signal).
+    pub fn new(color: impl IntoReactive<Color>, width: impl IntoReactive<f32>) -> Self {
+        Self {
+            color: color.into_reactive(),
+            width: width.into_reactive(),
+        }
     }
 }
 
-/// Corner radius (SwiftUI `.cornerRadius(_:)`).
+/// Corner radius (SwiftUI `.cornerRadius(_:)`). Raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CornerRadius(pub f32);
+pub struct CornerRadius {
+    value: Reactive<f32>,
+}
 
-/// Font weight (100–900). `.fontWeight(_:)`.
+/// A corner radius value (raw or signal).
+#[allow(non_snake_case)]
+pub fn CornerRadius(value: impl IntoReactive<f32>) -> CornerRadius {
+    CornerRadius {
+        value: value.into_reactive(),
+    }
+}
+
+/// Font weight (100–900). `.fontWeight(_:)`. Raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct FontWeight(pub f32);
+pub struct FontWeight {
+    value: Reactive<f32>,
+}
 
-/// Line limit (0 = unlimited). `.lineLimit(_:)`.
+/// A font weight value (raw or signal).
+#[allow(non_snake_case)]
+pub fn FontWeight(value: impl IntoReactive<f32>) -> FontWeight {
+    FontWeight {
+        value: value.into_reactive(),
+    }
+}
+
+/// Line limit (0 = unlimited). `.lineLimit(_:)`. Raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct LineLimit(pub u32);
+pub struct LineLimit {
+    value: Reactive<u32>,
+}
 
-/// Text alignment (0=Leading, 1=Center, 2=Trailing).
+/// A line limit value (raw or signal).
+#[allow(non_snake_case)]
+pub fn LineLimit(value: impl IntoReactive<u32>) -> LineLimit {
+    LineLimit {
+        value: value.into_reactive(),
+    }
+}
+
+/// Text alignment (0=Leading, 1=Center, 2=Trailing). Raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TextAlignment(pub u8);
+pub struct TextAlignment {
+    value: Reactive<u8>,
+}
 
-/// Truncation mode (0=Head, 1=Middle, 2=Tail).
+/// A text alignment value (raw or signal).
+#[allow(non_snake_case)]
+pub fn TextAlignment(value: impl IntoReactive<u8>) -> TextAlignment {
+    TextAlignment {
+        value: value.into_reactive(),
+    }
+}
+
+/// Truncation mode (0=Head, 1=Middle, 2=Tail). Raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TruncationMode(pub u8);
+pub struct TruncationMode {
+    value: Reactive<u8>,
+}
 
-/// Post-layout translation. `.offset(x:y:)`.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+/// A truncation mode value (raw or signal).
+#[allow(non_snake_case)]
+pub fn TruncationMode(value: impl IntoReactive<u8>) -> TruncationMode {
+    TruncationMode {
+        value: value.into_reactive(),
+    }
+}
+
+/// Post-layout translation. `.offset(x:y:)`. Raw or signal.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Offset {
-    pub x: f32,
-    pub y: f32,
+    x: Reactive<f32>,
+    y: Reactive<f32>,
 }
 
-/// Absolute position within the parent. `.position(x:y:)`.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct Position {
-    pub x: f32,
-    pub y: f32,
+impl Offset {
+    /// An offset from x and y (each raw or signal).
+    pub fn new(x: impl IntoReactive<f32>, y: impl IntoReactive<f32>) -> Self {
+        Self {
+            x: x.into_reactive(),
+            y: y.into_reactive(),
+        }
+    }
 }
 
-/// Z-index. `.zIndex(_:)`.
+/// Absolute position within the parent. `.position(x:y:)`. Raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ZIndex(pub f32);
+pub struct Position {
+    x: Reactive<f32>,
+    y: Reactive<f32>,
+}
+
+impl Position {
+    /// A position from x and y (each raw or signal).
+    pub fn new(x: impl IntoReactive<f32>, y: impl IntoReactive<f32>) -> Self {
+        Self {
+            x: x.into_reactive(),
+            y: y.into_reactive(),
+        }
+    }
+}
+
+/// Z-index. `.zIndex(_:)`. Raw or signal.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ZIndex {
+    value: Reactive<f32>,
+}
+
+/// A z-index value (raw or signal).
+#[allow(non_snake_case)]
+pub fn ZIndex(value: impl IntoReactive<f32>) -> ZIndex {
+    ZIndex {
+        value: value.into_reactive(),
+    }
+}
 
 impl ViewModifier for Opacity {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::OPACITY, self.0.to_bits());
+        reactive_f32(node, property_id::OPACITY, &self.value);
     }
 }
 
@@ -957,134 +1183,58 @@ impl ViewModifier for Hidden {
 
 impl ViewModifier for Border {
     fn apply(&self, node: &mut Node) {
-        apply_color(node, property_id::BORDER_COLOR, self.color);
-        node.properties
-            .insert(property_id::BORDER_WIDTH, self.width.to_bits());
+        reactive_color(node, property_id::BORDER_COLOR, &self.color);
+        reactive_f32(node, property_id::BORDER_WIDTH, &self.width);
     }
 }
 
 impl ViewModifier for CornerRadius {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::BORDER_RADIUS, self.0.to_bits());
+        reactive_f32(node, property_id::BORDER_RADIUS, &self.value);
     }
 }
 
 impl ViewModifier for FontWeight {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::FONT_WEIGHT, self.0.to_bits());
+        reactive_f32(node, property_id::FONT_WEIGHT, &self.value);
     }
 }
 
 impl ViewModifier for LineLimit {
     fn apply(&self, node: &mut Node) {
-        node.properties.insert(property_id::LINE_LIMIT, self.0);
+        reactive_u32(node, property_id::LINE_LIMIT, &self.value);
     }
 }
 
 impl ViewModifier for TextAlignment {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::TEXT_ALIGNMENT, (self.0 as f32).to_bits());
+        reactive_enum(node, property_id::TEXT_ALIGNMENT, &self.value);
     }
 }
 
 impl ViewModifier for TruncationMode {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::TRUNCATION_MODE, (self.0 as f32).to_bits());
+        reactive_enum(node, property_id::TRUNCATION_MODE, &self.value);
     }
 }
 
 impl ViewModifier for Offset {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::OFFSET_X, self.x.to_bits());
-        node.properties
-            .insert(property_id::OFFSET_Y, self.y.to_bits());
+        reactive_f32(node, property_id::OFFSET_X, &self.x);
+        reactive_f32(node, property_id::OFFSET_Y, &self.y);
     }
 }
 
 impl ViewModifier for Position {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::POSITION_X, self.x.to_bits());
-        node.properties
-            .insert(property_id::POSITION_Y, self.y.to_bits());
+        reactive_f32(node, property_id::POSITION_X, &self.x);
+        reactive_f32(node, property_id::POSITION_Y, &self.y);
     }
 }
 
 impl ViewModifier for ZIndex {
     fn apply(&self, node: &mut Node) {
-        node.properties
-            .insert(property_id::Z_INDEX, self.0.to_bits());
-    }
-}
-
-/// Binds a node property to a signal — a **reactive property**. The engine
-/// resolves the binding during emit (recording the dependency) and re-emits
-/// only that node's `SET_PROPERTY` when the signal changes.
-///
-/// Convenience constructors live on the per-property modifiers
-/// (`FontSize::bound`, `FontWeight::bound`, `ForegroundStyle::bound`,
-/// `Background::bound`, `Opacity::bound`), or construct it directly.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Bound {
-    /// The property id.
-    pub property: u16,
-    /// The signal the property reads.
-    pub signal: SignalId,
-}
-
-impl Bound {
-    /// A property bound to a signal.
-    pub fn new(property: u16, signal: impl IntoSignalId) -> Self {
-        Bound {
-            property,
-            signal: signal.into_signal_id(),
-        }
-    }
-}
-
-impl ViewModifier for Bound {
-    fn apply(&self, node: &mut Node) {
-        node.property_bindings.insert(self.property, self.signal);
-    }
-}
-
-impl FontSize {
-    /// A font size bound to a signal.
-    pub fn bound(signal: impl IntoSignalId) -> Bound {
-        Bound::new(property_id::FONT_SIZE, signal)
-    }
-}
-
-impl FontWeight {
-    /// A font weight bound to a signal.
-    pub fn bound(signal: impl IntoSignalId) -> Bound {
-        Bound::new(property_id::FONT_WEIGHT, signal)
-    }
-}
-
-impl ForegroundStyle {
-    /// A foreground color bound to a signal.
-    pub fn bound(signal: impl IntoSignalId) -> Bound {
-        Bound::new(property_id::COLOR, signal)
-    }
-}
-
-impl Background {
-    /// A background color bound to a signal.
-    pub fn bound(signal: impl IntoSignalId) -> Bound {
-        Bound::new(property_id::BACKGROUND_COLOR, signal)
-    }
-}
-
-impl Opacity {
-    /// An opacity bound to a signal.
-    pub fn bound(signal: impl IntoSignalId) -> Bound {
-        Bound::new(property_id::OPACITY, signal)
+        reactive_f32(node, property_id::Z_INDEX, &self.value);
     }
 }
 
@@ -1560,30 +1710,28 @@ pub struct ProgressView {
 /// [`ProgressView`] values.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ProgressViewConfig {
-    /// `Some(fraction)` for determinate progress; `None` = indeterminate.
-    pub value: Option<f32>,
+    /// `Some(fraction)` for determinate progress; `None` = indeterminate. Raw or signal.
+    pub value: Option<Reactive<f32>>,
 }
 
 impl ProgressViewConfig {
-    /// Set the determinate fraction (0..1).
-    pub fn value(&mut self, value: f32) -> &mut Self {
-        self.value = Some(value);
+    /// Set the determinate fraction (0..1), raw or signal.
+    pub fn value(&mut self, value: impl IntoReactive<f32>) -> &mut Self {
+        self.value = Some(value.into_reactive());
         self
     }
 }
 
 impl View for ProgressView {
     fn build_env(&self, _env: &mut Environment) -> Node {
-        let mut p = BTreeMap::new();
-        match self.config.value {
-            Some(v) => {
-                p.insert(property_id::PROGRESS, v.to_bits());
-            }
+        let mut node = plain_node(Component::ProgressView, Vec::new(), BTreeMap::new());
+        match &self.config.value {
+            Some(v) => reactive_f32(&mut node, property_id::PROGRESS, v),
             None => {
-                p.insert(property_id::IS_INDETERMINATE, 1);
+                node.properties.insert(property_id::IS_INDETERMINATE, 1);
             }
         }
-        plain_node(Component::ProgressView, Vec::new(), p)
+        node
     }
 }
 
@@ -1606,38 +1754,48 @@ pub struct Gauge {
 }
 
 /// [`Gauge`] values.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GaugeConfig {
-    /// The current value.
-    pub value: f32,
-    /// The range minimum.
-    pub min: f32,
-    /// The range maximum.
-    pub max: f32,
+    /// The current value (raw or signal).
+    pub value: Reactive<f32>,
+    /// The range minimum (raw or signal).
+    pub min: Reactive<f32>,
+    /// The range maximum (raw or signal).
+    pub max: Reactive<f32>,
+}
+
+impl Default for GaugeConfig {
+    fn default() -> Self {
+        Self {
+            value: Reactive::Static(0.0),
+            min: Reactive::Static(0.0),
+            max: Reactive::Static(0.0),
+        }
+    }
 }
 
 impl GaugeConfig {
-    pub fn value(&mut self, value: f32) -> &mut Self {
-        self.value = value;
+    pub fn value(&mut self, value: impl IntoReactive<f32>) -> &mut Self {
+        self.value = value.into_reactive();
         self
     }
-    pub fn min(&mut self, min: f32) -> &mut Self {
-        self.min = min;
+    pub fn min(&mut self, min: impl IntoReactive<f32>) -> &mut Self {
+        self.min = min.into_reactive();
         self
     }
-    pub fn max(&mut self, max: f32) -> &mut Self {
-        self.max = max;
+    pub fn max(&mut self, max: impl IntoReactive<f32>) -> &mut Self {
+        self.max = max.into_reactive();
         self
     }
 }
 
 impl View for Gauge {
     fn build_env(&self, _env: &mut Environment) -> Node {
-        let mut p = BTreeMap::new();
-        p.insert(property_id::VALUE, self.config.value.to_bits());
-        p.insert(property_id::MIN_VALUE, self.config.min.to_bits());
-        p.insert(property_id::MAX_VALUE, self.config.max.to_bits());
-        plain_node(Component::Gauge, Vec::new(), p)
+        let mut node = plain_node(Component::Gauge, Vec::new(), BTreeMap::new());
+        reactive_f32(&mut node, property_id::VALUE, &self.config.value);
+        reactive_f32(&mut node, property_id::MIN_VALUE, &self.config.min);
+        reactive_f32(&mut node, property_id::MAX_VALUE, &self.config.max);
+        node
     }
 }
 
@@ -1670,8 +1828,8 @@ pub struct VStack {
 pub struct StackConfig {
     /// Cross-axis alignment.
     pub alignment: Option<Align>,
-    /// Main-axis gap.
-    pub spacing: Option<f32>,
+    /// Main-axis gap (raw or signal).
+    pub spacing: Option<Reactive<f32>>,
 }
 
 impl StackConfig {
@@ -1680,9 +1838,9 @@ impl StackConfig {
         self.alignment = Some(alignment);
         self
     }
-    /// Set the main-axis gap.
-    pub fn spacing(&mut self, spacing: f32) -> &mut Self {
-        self.spacing = Some(spacing);
+    /// Set the main-axis gap (raw or signal; a signal re-emits only `SPACING`).
+    pub fn spacing(&mut self, spacing: impl IntoReactive<f32>) -> &mut Self {
+        self.spacing = Some(spacing.into_reactive());
         self
     }
 }
@@ -1716,10 +1874,11 @@ impl View for VStack {
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
         }
+        let mut node = plain_node(Component::VStack, build_children(&self.children, _env), p);
         if let Some(s) = self.config.spacing {
-            p.insert(property_id::SPACING, s.to_bits());
+            reactive_f32(&mut node, property_id::SPACING, &s);
         }
-        plain_node(Component::VStack, build_children(&self.children, _env), p)
+        node
     }
 }
 
@@ -1763,10 +1922,11 @@ impl View for HStack {
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
         }
+        let mut node = plain_node(Component::HStack, build_children(&self.children, _env), p);
         if let Some(s) = self.config.spacing {
-            p.insert(property_id::SPACING, s.to_bits());
+            reactive_f32(&mut node, property_id::SPACING, &s);
         }
-        plain_node(Component::HStack, build_children(&self.children, _env), p)
+        node
     }
 }
 
@@ -1828,50 +1988,49 @@ pub struct Grid {
 /// Grid values (`Grid`/`LazyVGrid`/`LazyHGrid`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct GridConfig {
-    /// Fixed column count (`GRID_COLUMNS`).
-    pub columns: Option<u32>,
-    /// Fixed row count (`GRID_ROWS`).
-    pub rows: Option<u32>,
+    /// Fixed column count (`GRID_COLUMNS`, raw or signal).
+    pub columns: Option<Reactive<f32>>,
+    /// Fixed row count (`GRID_ROWS`, raw or signal).
+    pub rows: Option<Reactive<f32>>,
     /// Cross-axis alignment.
     pub alignment: Option<Align>,
-    /// Main-axis gap.
-    pub spacing: Option<f32>,
+    /// Main-axis gap (raw or signal).
+    pub spacing: Option<Reactive<f32>>,
 }
 
 impl GridConfig {
-    pub fn columns(&mut self, columns: u32) -> &mut Self {
-        self.columns = Some(columns);
+    pub fn columns(&mut self, columns: impl IntoReactive<f32>) -> &mut Self {
+        self.columns = Some(columns.into_reactive());
         self
     }
-    pub fn rows(&mut self, rows: u32) -> &mut Self {
-        self.rows = Some(rows);
+    pub fn rows(&mut self, rows: impl IntoReactive<f32>) -> &mut Self {
+        self.rows = Some(rows.into_reactive());
         self
     }
     pub fn alignment(&mut self, alignment: Align) -> &mut Self {
         self.alignment = Some(alignment);
         self
     }
-    pub fn spacing(&mut self, spacing: f32) -> &mut Self {
-        self.spacing = Some(spacing);
+    pub fn spacing(&mut self, spacing: impl IntoReactive<f32>) -> &mut Self {
+        self.spacing = Some(spacing.into_reactive());
         self
     }
 }
 
-fn grid_props(config: &GridConfig) -> BTreeMap<u16, u32> {
-    let mut p = BTreeMap::new();
+fn grid_apply(config: &GridConfig, node: &mut Node) {
     if let Some(c) = config.columns {
-        p.insert(property_id::GRID_COLUMNS, (c as f32).to_bits());
+        reactive_f32(node, property_id::GRID_COLUMNS, &c);
     }
     if let Some(r) = config.rows {
-        p.insert(property_id::GRID_ROWS, (r as f32).to_bits());
+        reactive_f32(node, property_id::GRID_ROWS, &r);
     }
     if let Some(a) = config.alignment {
-        p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
+        node.properties
+            .insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
     }
     if let Some(s) = config.spacing {
-        p.insert(property_id::SPACING, s.to_bits());
+        reactive_f32(node, property_id::SPACING, &s);
     }
-    p
 }
 
 impl Grid {
@@ -1899,11 +2058,13 @@ impl Children for Grid {
 
 impl View for Grid {
     fn build_env(&self, _env: &mut Environment) -> Node {
-        plain_node(
+        let mut node = plain_node(
             Component::Grid,
             build_children(&self.children, _env),
-            grid_props(&self.config),
-        )
+            BTreeMap::new(),
+        );
+        grid_apply(&self.config, &mut node);
+        node
     }
 }
 
@@ -1975,11 +2136,13 @@ impl Children for LazyVGrid {
 
 impl View for LazyVGrid {
     fn build_env(&self, _env: &mut Environment) -> Node {
-        plain_node(
+        let mut node = plain_node(
             Component::LazyVGrid,
             build_children(&self.children, _env),
-            grid_props(&self.config),
-        )
+            BTreeMap::new(),
+        );
+        grid_apply(&self.config, &mut node);
+        node
     }
 }
 
@@ -2019,11 +2182,13 @@ impl Children for LazyHGrid {
 
 impl View for LazyHGrid {
     fn build_env(&self, _env: &mut Environment) -> Node {
-        plain_node(
+        let mut node = plain_node(
             Component::LazyHGrid,
             build_children(&self.children, _env),
-            grid_props(&self.config),
-        )
+            BTreeMap::new(),
+        );
+        grid_apply(&self.config, &mut node);
+        node
     }
 }
 
@@ -2067,10 +2232,11 @@ impl View for LazyVStack {
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
         }
+        let mut node = plain_node(Component::LazyVStack, build_children(&self.children, _env), p);
         if let Some(s) = self.config.spacing {
-            p.insert(property_id::SPACING, s.to_bits());
+            reactive_f32(&mut node, property_id::SPACING, &s);
         }
-        plain_node(Component::LazyVStack, build_children(&self.children, _env), p)
+        node
     }
 }
 
@@ -2114,10 +2280,11 @@ impl View for LazyHStack {
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
         }
+        let mut node = plain_node(Component::LazyHStack, build_children(&self.children, _env), p);
         if let Some(s) = self.config.spacing {
-            p.insert(property_id::SPACING, s.to_bits());
+            reactive_f32(&mut node, property_id::SPACING, &s);
         }
-        plain_node(Component::LazyHStack, build_children(&self.children, _env), p)
+        node
     }
 }
 
@@ -3503,7 +3670,7 @@ mod tests {
     #[test]
     fn grid_config_emits_counts() {
         let node = Grid::with(|g| {
-            g.columns(2).rows(3).spacing(4.0);
+            g.columns(2.0).rows(3.0).spacing(4.0);
         })
         .children(vec![Box::new(text("a"))])
         .build();
@@ -3546,8 +3713,20 @@ mod tests {
         let engine = Engine::new();
         let size = engine.signal(20.0f32);
         let id = size.id();
-        let node = Text::new("x").modifiers(FontSize::bound(size)).build();
+        let node = Text::new("x").modifiers(FontSize(size)).build();
         assert_eq!(node.property_bindings.get(&property_id::FONT_SIZE), Some(&id));
+    }
+
+    #[test]
+    fn container_spacing_accepts_a_signal() {
+        let engine = Engine::new();
+        let spacing = engine.signal(4.0f32);
+        let id = spacing.id();
+        let node = VStack::with(|s| {
+            s.spacing(spacing);
+        })
+        .build();
+        assert_eq!(node.property_bindings.get(&property_id::SPACING), Some(&id));
     }
 
     #[test]

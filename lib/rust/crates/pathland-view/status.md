@@ -61,10 +61,18 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   **effect** (runs immediately, then on dependency change) signals, and
   `untracked` reads; `Engine::signal`/`computed`/`effect`/`read`/`set`. The DSL
   binds a node's **text** (`Text::with(|t| { t.text_signal(sig); })`) and a
-  **property** (`FontSize::bound(sig)`, `FontWeight::bound`,
-  `ForegroundStyle::bound`, `Background::bound`, `Opacity::bound`, or generic
-  `Bound::new(prop, sig)`) to a signal, so a change re-emits only that node's
-  `SET_TEXT`/`SET_PROPERTY` (a computed's change re-emits its bound nodes too).
+  **property** — **every value member accepts a raw value or a signal**
+  (`Reactive<T>`/`IntoReactive<T>`, spec DSL.md §2): a signal is a node-level
+  binding, so a change re-emits only that node's `SET_PROPERTY`. Modifiers spell
+  this `Padding(16.0)` (static) vs `Padding(sig)` (bound) — `FontSize(sig)`,
+  `ForegroundStyle(sig)`, `Background(sig)`, `Opacity(sig)`,
+  `Border::new(color, width)`, `CornerRadius(sig)`, `FontWeight(sig)`,
+  `LineLimit(sig)`, `Offset::new(x, y)`, `Position::new(x, y)`, `ZIndex(sig)` …
+  the former `Bound`/`*.bound` modifier surface is **removed**. View configs
+  take signals the same way (`VStack::with(|v| { v.spacing(sig); })`, «Grid»:
+  `columns`/`rows`/`spacing`, `ProgressView::value`, `Gauge` value/min/max).
+  Reactive values cover the engine's `SignalValueKind`s (`f32`/`u32`/`u8`/
+  `bool`); `Align` and token colors remain static (no typed signal kind yet).
 - **Two-way bindings + actions (Phase 2)**: a control binds a writable signal
   and records an app-side **input sink** (a `Gesture::TextInput`/`ValueInput`/
   `DateInput` on the node, never serialized) plus the `BINDING_ID` event gate —
