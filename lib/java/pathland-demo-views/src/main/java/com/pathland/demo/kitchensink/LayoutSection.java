@@ -28,34 +28,39 @@ public final class LayoutSection implements View {
 
     @Override
     public View body() {
-        return new SectionCard("Layout · Grid / Lazy / HStack+Spacer / ZStack / Divider",
-                VStack.children(
+        View content = VStack
+                .modifiers(Padding.with(p -> p.uniform(4)))
+                .children(
                         Grid.children(
                                 cell("1"), cell("2"), cell("3"),
                                 cell("4"), cell("5"), cell("6")),
-                        LazyVStack.children(
-                                Text.with(t -> t.text("Lazy row A")),
-                                Text.with(t -> t.text("Lazy row B")),
-                                Text.with(t -> t.text("Lazy row C"))).modifiers(Padding.with(p -> p.uniform(4))),
-                        HStack.children(
-                                Text.with(t -> t.text("Left")),
-                                Spacer.modifiers(),
-                                Text.with(t -> t.text("Right")))
-                                .modifiers(Frame.with(f -> f.width(260).alignment(Alignment.CENTER))),
-                        ZStack.children(
-                                Rectangle.modifiers(Frame.with(f -> f.width(180).height(80).alignment(Alignment.CENTER))).modifiers(
-                                        Background.with(b -> b.color(Color.rgb(0xE3, 0xF2, 0xFD))),
-                                        CornerRadius.with(c -> c.radius(8))),
-                                Text.with(t -> t.text("badge")).modifiers(
-                                        FontSize.with(s -> s.size(12)),
-                                        Padding.with(p -> p.uniform(4)),
-                                        Background.with(b -> b.color(Color.rgb(0xFF, 0xC1, 0x07))),
-                                        CornerRadius.with(c -> c.radius(4)),
-                                        Offset.with(o -> o.x(0).y(28)))
-                        ).modifiers(Padding.with(p -> p.uniform(4))),
-                        Divider.modifiers()
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+                        LazyVStack
+                                .modifiers(Padding.with(p -> p.uniform(4)))
+                                .children(
+                                        Text.with(t -> t.text("Lazy row A")),
+                                        Text.with(t -> t.text("Lazy row B")),
+                                        Text.with(t -> t.text("Lazy row C"))),
+                        HStack
+                                .modifiers(Frame.with(f -> f.width(260).alignment(Alignment.CENTER)))
+                                .children(
+                                        Text.with(t -> t.text("Left")),
+                                        Spacer.modifiers(),
+                                        Text.with(t -> t.text("Right"))),
+                        ZStack
+                                .modifiers(Padding.with(p -> p.uniform(4)))
+                                .children(
+                                        Rectangle.modifiers(Frame.with(f -> f.width(180).height(80).alignment(Alignment.CENTER)))
+                                                .modifiers(
+                                                        Background.with(b -> b.color(Color.rgb(0xE3, 0xF2, 0xFD))),
+                                                        CornerRadius.with(c -> c.radius(8))),
+                                        Text.with(t -> t.text("badge")).modifiers(
+                                                FontSize.with(s -> s.size(12)),
+                                                Padding.with(p -> p.uniform(4)),
+                                                Background.with(b -> b.color(Color.rgb(0xFF, 0xC1, 0x07))),
+                                                CornerRadius.with(c -> c.radius(4)),
+                                                Offset.with(o -> o.x(0).y(28)))),
+                        Divider.modifiers());
+        return new SectionCard("Layout · Grid / Lazy / HStack+Spacer / ZStack / Divider", content);
     }
 
     private static View cell(String label) {

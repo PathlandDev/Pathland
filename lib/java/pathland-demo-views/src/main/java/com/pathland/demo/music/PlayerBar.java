@@ -49,17 +49,19 @@ public final class PlayerBar implements View {
         // The position/volume REPORTS flow to the DISPLAY signals (onPositionReport/
         // onVolumeReport); MEDIA_POSITION/MEDIA_VOLUME are bound to the seek/volume
         // COMMANDS, so a report never echoes back as a command (spec/EVENTS.md Media).
-        return Audio.with(a -> a
-                .source(computed(() -> current.get().audio()))
-                .playing(playing)
-                .position(seekRequest)
-                .onPositionReport(position)
-                .volume(volumeRequest)
-                .onVolumeReport(volume)
-                .onEnded(this::ended))
-                .modifiers(PlayerControlsStyle.of(trackIndex, position, seekRequest, volume, volumeRequest))
-                .modifiers(Background.with(b -> b.color(MusicPlayerView.BAR_BG)))
-                .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)));
+        return Audio
+                .modifiers(
+                        PlayerControlsStyle.of(trackIndex, position, seekRequest, volume, volumeRequest),
+                        Background.with(b -> b.color(MusicPlayerView.BAR_BG)),
+                        Frame.with(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)))
+                .with(a -> a
+                        .source(computed(() -> current.get().audio()))
+                        .playing(playing)
+                        .position(seekRequest)
+                        .onPositionReport(position)
+                        .volume(volumeRequest)
+                        .onVolumeReport(volume)
+                        .onEnded(this::ended));
     }
 
     /** The media ended: advance to the next track and restart from the top. The

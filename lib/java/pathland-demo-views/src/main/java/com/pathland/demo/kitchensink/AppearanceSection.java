@@ -33,29 +33,37 @@ public final class AppearanceSection implements View {
 
     @Override
     public View body() {
-        return new SectionCard("Appearance · border / shadow / opacity / transform",
-                VStack.children(
+        View content = VStack
+                .modifiers(Padding.with(p -> p.uniform(4)))
+                .children(
                         Text.with(t -> t.text("Card with shadow")).modifiers(
-                                        Padding.with(p -> p.uniform(20)),
-                                        Background.with(b -> b.color(Color.WHITE)),
-                                        Border.with(b -> b.color(BLUE_200).width(2).radius(12)),
-                                        CornerRadius.with(c -> c.radius(12)),
-                                        Shadow.with(s -> s.color(Color.rgb(0, 0, 0)).radius(6).x(2).y(4))),
-                        Text.with(t -> t.text("Rotated 6°")).modifiers(Rotation.with(r -> r.degrees(6)), Padding.with(p -> p.uniform(8)))
-                                .modifiers(Background.with(b -> b.color(RED_50)), CornerRadius.with(c -> c.radius(6))),
-                        Text.with(t -> t.text("Scaled 1.2×")).modifiers(ScaleEffect.with(s -> s.value(1.2f)), Padding.with(p -> p.uniform(8)))
-                                .modifiers(Background.with(b -> b.color(GREEN_50)), CornerRadius.with(c -> c.radius(6))),
+                                Padding.with(p -> p.uniform(20)),
+                                Background.with(b -> b.color(Color.WHITE)),
+                                Border.with(b -> b.color(BLUE_200).width(2).radius(12)),
+                                CornerRadius.with(c -> c.radius(12)),
+                                Shadow.with(s -> s.color(Color.rgb(0, 0, 0)).radius(6).x(2).y(4))),
+                        Text.with(t -> t.text("Rotated 6°")).modifiers(
+                                Rotation.with(r -> r.degrees(6)),
+                                Padding.with(p -> p.uniform(8)),
+                                Background.with(b -> b.color(RED_50)),
+                                CornerRadius.with(c -> c.radius(6))),
+                        Text.with(t -> t.text("Scaled 1.2×")).modifiers(
+                                ScaleEffect.with(s -> s.value(1.2f)),
+                                Padding.with(p -> p.uniform(8)),
+                                Background.with(b -> b.color(GREEN_50)),
+                                CornerRadius.with(c -> c.radius(6))),
                         Text.with(t -> t.text("This text is hidden")).modifiers(Hidden.with()),
-                        HStack.children(
-                                Rectangle.modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER))).modifiers(
-                                        Background.with(b -> b.color(Color.RED)),
-                                        ClipShape.with(c -> c.shape(ShapeKind.CIRCLE))),
-                                Rectangle.modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER))).modifiers(
-                                        Background.with(b -> b.color(Color.BLUE)),
-                                        CornerRadius.with(c -> c.radius(12)))
-                        ).modifiers(Padding.with(p -> p.uniform(4))),
-                        Text.with(t -> t.text("zIndex above")).modifiers(ZIndex.with(z -> z.value(3)))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+                        HStack
+                                .modifiers(Padding.with(p -> p.uniform(4)))
+                                .children(
+                                        Rectangle.modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(Background.with(b -> b.color(Color.RED)),
+                                                        ClipShape.with(c -> c.shape(ShapeKind.CIRCLE))),
+                                        Rectangle.modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(
+                                                        Background.with(b -> b.color(Color.BLUE)),
+                                                        CornerRadius.with(c -> c.radius(12)))),
+                        Text.with(t -> t.text("zIndex above")).modifiers(ZIndex.with(z -> z.value(3))));
+        return new SectionCard("Appearance · border / shadow / opacity / transform", content);
     }
 }

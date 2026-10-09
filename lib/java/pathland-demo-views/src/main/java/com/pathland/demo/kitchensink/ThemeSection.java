@@ -25,25 +25,24 @@ public final class ThemeSection implements View {
 
     @Override
     public View body() {
-        return new SectionCard("Theme · design tokens + SET_DESIGN_TOKEN overrides",
-                VStack.children(
+        View content = VStack
+                .modifiers(Padding.with(p -> p.uniform(4)))
+                .children(
                         Text.with(t -> t.text("color.primary — accent text"))
                                 .modifiers(ForegroundStyle.with(f -> f.color(Color.token("color.primary")))),
                         Text.with(t -> t.text("control.accent — control accent"))
                                 .modifiers(ForegroundStyle.with(f -> f.color(Color.token("control.accent")))),
-                        HStack.children(
-                                Rectangle.modifiers()
-                                        .modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
-                                        .modifiers(Background.with(b -> b.color(Color.token("color.surface")))),
-                                Rectangle.modifiers()
-                                        .modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
-                                        .modifiers(Background.with(b -> b.color(Color.token("dark.color.surface"))))
-                        ).modifiers(Padding.with(p -> p.uniform(4))),
+                        HStack
+                                .modifiers(Padding.with(p -> p.uniform(4)))
+                                .children(
+                                        Rectangle.modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(Background.with(b -> b.color(Color.token("color.surface")))),
+                                        Rectangle.modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(Background.with(b -> b.color(Color.token("dark.color.surface"))))),
                         Text.with(t -> t.text("control.background — a token-referenced control fill"))
                                 .modifiers(
                                         Padding.with(p -> p.uniform(8)),
-                                        Background.with(b -> b.color(Color.token("control.background"))))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+                                        Background.with(b -> b.color(Color.token("control.background")))));
+        return new SectionCard("Theme · design tokens + SET_DESIGN_TOKEN overrides", content);
     }
 }

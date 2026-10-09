@@ -39,17 +39,20 @@ public final class SectionCard implements View {
 
     @Override
     public View body() {
-        return VStack.children(
-                // A section title is a heading → `<h2>`.
-                Text.with(t -> t.text(title)).modifiers(FontSize.with(s -> s.size(14)), FontWeight.SEMIBOLD, ForegroundStyle.with(f -> f.color(TITLE_COLOR)))
-                        .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
-                Divider.modifiers(Padding.with(p -> p.edges(0, 0, 8, 0))),
-                content
-        ).modifiers(
-                Padding.with(p -> p.uniform(16)),
-                Background.with(b -> b.color(Color.WHITE)),
-                Border.with(b -> b.color(BORDER).width(1).radius(10)),
-                CornerRadius.with(c -> c.radius(10)))
-                .modifiers(Frame.ofWidth(Commands.Size.FILL));
+        return VStack
+                .modifiers(
+                        Padding.with(p -> p.uniform(16)),
+                        Background.with(b -> b.color(Color.WHITE)),
+                        Border.with(b -> b.color(BORDER).width(1).radius(10)),
+                        CornerRadius.with(c -> c.radius(10)),
+                        Frame.ofWidth(Commands.Size.FILL))
+                .children(
+                        // A section title is a heading → `<h2>`.
+                        Text.with(t -> t.text(title)).modifiers(
+                                FontSize.with(s -> s.size(14)), FontWeight.SEMIBOLD,
+                                ForegroundStyle.with(f -> f.color(TITLE_COLOR)),
+                                AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                        Divider.modifiers(Padding.with(p -> p.edges(0, 0, 8, 0))),
+                        content);
     }
 }

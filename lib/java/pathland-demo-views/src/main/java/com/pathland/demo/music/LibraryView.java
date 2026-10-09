@@ -42,17 +42,16 @@ public final class LibraryView implements View {
         // A trailing spacer absorbs the leftover vertical space.
         rows.add(Spacer.modifiers());
 
-        return VStack.children(
-                Text.with(t -> t.text("Library")).modifiers(FontSize.with(s -> s.size(26)), FontWeight.BOLD)
-                        .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
-                Text.with(t -> t.text(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums"))
-                        .modifiers(ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
-                Divider.modifiers(Padding.with(p -> p.edges(0, 0, 0, 10))),
-                ScrollView.children(
-                    VStack.children(rows.toArray(new View[0]))
-                )
-        )
-        .modifiers(Padding.with(p -> p.uniform(24)))
-        .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)));
+        return VStack
+                .modifiers(
+                        Padding.with(p -> p.uniform(24)),
+                        Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
+                .children(
+                        Text.with(t -> t.text("Library")).modifiers(
+                                FontSize.with(s -> s.size(26)), FontWeight.BOLD, AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                        Text.with(t -> t.text(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums"))
+                                .modifiers(ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
+                        Divider.modifiers(Padding.with(p -> p.edges(0, 0, 0, 10))),
+                        ScrollView.children(VStack.children(rows.toArray(new View[0]))));
     }
 }

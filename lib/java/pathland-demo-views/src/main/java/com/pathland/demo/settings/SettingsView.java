@@ -25,18 +25,19 @@ public final class SettingsView implements View {
         var dark = signal(false);
         var volume = signal(50f);
         var volumeLabel = computed(() -> "Volume: " + volume.get().intValue());
-        return VStack.children(
-                // The destination title is a heading → `<h2>`.
-                Text.with(t -> t.text("Settings")).modifiers(FontSize.with(s -> s.size(24)), FontWeight.BOLD)
-                        .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
-                Text.with(t -> t.text("A few controls bound to plain signals — the content area is "
-                        + "just another destination view.")).modifiers(Padding.with(p -> p.uniform(8))),
-                Toggle.with(t -> t.style(ToggleStyle.SWITCH).isOn(dark).label("Dark mode")),
-                Text.with(t -> t.text(volumeLabel)).modifiers(Padding.with(p -> p.uniform(8))),
-                Slider.with(s -> s.value(volume).in(0f, 100f))
-        )
-        // The destination content region → `<main>`.
-        .modifiers(AccessibilityRole.with(a -> a.role(Roles.MAIN)))
-        .modifiers(Padding.with(p -> p.uniform(24)));
+        return VStack
+                // The destination content region → `<main>`.
+                .modifiers(
+                        AccessibilityRole.with(a -> a.role(Roles.MAIN)),
+                        Padding.with(p -> p.uniform(24)))
+                .children(
+                        // The destination title is a heading → `<h2>`.
+                        Text.with(t -> t.text("Settings")).modifiers(
+                                FontSize.with(s -> s.size(24)), FontWeight.BOLD, AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                        Text.with(t -> t.text("A few controls bound to plain signals — the content area is "
+                                + "just another destination view.")).modifiers(Padding.with(p -> p.uniform(8))),
+                        Toggle.with(t -> t.style(ToggleStyle.SWITCH).isOn(dark).label("Dark mode")),
+                        Text.with(t -> t.text(volumeLabel)).modifiers(Padding.with(p -> p.uniform(8))),
+                        Slider.with(s -> s.value(volume).in(0f, 100f)));
     }
 }

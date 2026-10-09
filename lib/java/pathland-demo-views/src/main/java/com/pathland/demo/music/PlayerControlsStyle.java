@@ -48,56 +48,79 @@ public final class PlayerControlsStyle implements AudioStyle {
         var seek = new SeekControl(position, seekRequest);
         var volumeControl = new VolumeControl(volume, volumeRequest);
 
-        var playControl = HStack.with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f)).children(
-                Button.with(b -> b.action(() -> { prev(); restartSeek(); })).children(Icon.with(i -> i.name(IconName.SKIP_BACK))).modifiers(FontSize.with(s -> s.size(20))),
-                Button.with(b -> b.action(() -> config.playing().update(v -> !v))).children(Icon.with(i -> i.name(transportIcon))).modifiers(FontSize.with(s -> s.size(28))),
-                Button.with(b -> b.action(() -> { next(); restartSeek(); })).children(Icon.with(i -> i.name(IconName.SKIP_FORWARD))).modifiers(FontSize.with(s -> s.size(20)))
-        );
-        var trackInfo = HStack.with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f)).children(
-                Image.with(i -> i.source(computed(() -> current.get().cover())))
-                        .modifiers(Frame.with(f -> f.width(36).height(36))).modifiers(ScaledToFit.with()),
-                VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2)).children(
-                        Text.with(t -> t.text(computed(() -> current.get().title())))
-                                .modifiers(FontWeight.SEMIBOLD, LineLimit.with(l -> l.value(1))),
-                        Text.with(t -> t.text(computed(() -> current.get().artist())))
-                                .modifiers(FontSize.with(s -> s.size(13)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG)), LineLimit.with(l -> l.value(1)))
-                ).modifiers(Frame.ofWidth(160f))
-        );
+        var playControl = HStack
+                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .children(
+                        Button
+                                .modifiers(FontSize.with(s -> s.size(20)))
+                                .with(b -> b.action(() -> { prev(); restartSeek(); }))
+                                .children(Icon.with(i -> i.name(IconName.SKIP_BACK))),
+                        Button
+                                .modifiers(FontSize.with(s -> s.size(28)))
+                                .with(b -> b.action(() -> config.playing().update(v -> !v)))
+                                .children(Icon.with(i -> i.name(transportIcon))),
+                        Button
+                                .modifiers(FontSize.with(s -> s.size(20)))
+                                .with(b -> b.action(() -> { next(); restartSeek(); }))
+                                .children(Icon.with(i -> i.name(IconName.SKIP_FORWARD))));
+        var trackInfo = HStack
+                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .children(
+                        Image.with(i -> i.source(computed(() -> current.get().cover()))).modifiers(
+                                Frame.with(f -> f.width(36).height(36)),
+                                ScaledToFit.with()),
+                        VStack
+                                .modifiers(Frame.ofWidth(160f))
+                                .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
+                                .children(
+                                        Text.with(t -> t.text(computed(() -> current.get().title())))
+                                                .modifiers(FontWeight.SEMIBOLD, LineLimit.with(l -> l.value(1))),
+                                        Text.with(t -> t.text(computed(() -> current.get().artist())))
+                                                .modifiers(
+                                                        FontSize.with(s -> s.size(13)),
+                                                        ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG)),
+                                                        LineLimit.with(l -> l.value(1)))));
 
-        var volumeView = HStack.with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f)).children(
-            Icon.with(i -> i.name(IconName.VOLUME)).modifiers(FontSize.with(s -> s.size(16))),
-            Slider.with(s -> s.value(volumeControl).in(0f, 1f))
-        );
+        var volumeView = HStack
+                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .children(
+                        Icon.with(i -> i.name(IconName.VOLUME)).modifiers(FontSize.with(s -> s.size(16))),
+                        Slider.with(s -> s.value(volumeControl).in(0f, 1f)));
 
-        var compactControls = HStack.with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f)).children(
-                playControl,
-                Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
-                trackInfo
-        );
+        var compactControls = HStack
+                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .children(
+                        playControl,
+                        Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
+                        trackInfo);
 
-        var controls = HStack.with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f)).children(
-                playControl,
-                Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
-                trackInfo,
-                Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
-                volumeView
-        );
+        var controls = HStack
+                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .children(
+                        playControl,
+                        Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
+                        trackInfo,
+                        Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
+                        volumeView);
 
         var groups = SizeThatFits.of(
                 Fit.of(controls, 600),
                 Fit.of(compactControls)
         );
 
-        return VStack.with(v -> v.alignment(HorizontalAlignment.CENTER).spacing(0)).children(
-                // Centered groups over a full-width seek bar (the slider's FILL
-                // width spans the bar via fill propagation; the groups stay
-                // centered above it).
-                groups,
-                Slider.with(s -> s.value(new PercentSeek(seek,
-                                () -> MusicPlayerView.at(trackIndex.get()).duration()))
-                        .in(0f, 100f).onEditingChanged(seek::onEditingChanged))
-                        .modifiers(Frame.ofWidth(Float.POSITIVE_INFINITY)).modifiers(Padding.with(p -> p.edges(0, 16, 0, 16)))
-        );
+        return VStack
+                .with(v -> v.alignment(HorizontalAlignment.CENTER).spacing(0))
+                .children(
+                        // Centered groups over a full-width seek bar (the slider's FILL
+                        // width spans the bar via fill propagation; the groups stay
+                        // centered above it).
+                        groups,
+                        Slider.with(s -> s.value(new PercentSeek(seek,
+                                        () -> MusicPlayerView.at(trackIndex.get()).duration()))
+                                .in(0f, 100f).onEditingChanged(seek::onEditingChanged))
+                                .modifiers(
+                                        Frame.ofWidth(Float.POSITIVE_INFINITY),
+                                        Padding.with(p -> p.edges(0, 16, 0, 16))));
     }
 
     /** Previous track (wraps around); the seek restarts via the command binding. */

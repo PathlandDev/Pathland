@@ -14,19 +14,23 @@ public final class HomeView implements View {
 
     @Override
     public View body() {
-        return VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(24)).children(
-                VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2)).children(
-                    // The destination title is a heading → `<h2>`.
-                    Text.with(t -> t.text("Home")).modifiers(FontSize.with(s -> s.size(24)), FontWeight.BOLD)
-                            .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
-                    Text.with(t -> t.text("A master-detail (split) navigation demo: the menu on the left "
-                            + "drives the content area on the right."))
-                ),
-                // Declarative route-change: resolves to the nearest enclosing router.
-                Button.with(b -> b.title("Open kitchen sink").action(() -> {})).modifiers(NavigationIntent.navigate("/kitchen"))
-        )
-        // The destination content region → `<main>`.
-        .modifiers(AccessibilityRole.with(a -> a.role(Roles.MAIN)))
-        .modifiers(Padding.with(p -> p.uniform(24)));
+        return VStack
+                // The destination content region → `<main>`.
+                .modifiers(
+                        AccessibilityRole.with(a -> a.role(Roles.MAIN)),
+                        Padding.with(p -> p.uniform(24)))
+                .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(24))
+                .children(
+                        VStack
+                                .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
+                                .children(
+                                        // The destination title is a heading → `<h2>`.
+                                        Text.with(t -> t.text("Home")).modifiers(
+                                                FontSize.with(s -> s.size(24)), FontWeight.BOLD, AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                                        Text.with(t -> t.text("A master-detail (split) navigation demo: the menu on the left "
+                                                + "drives the content area on the right."))),
+                        // Declarative route-change: resolves to the nearest enclosing router.
+                        Button.with(b -> b.title("Open kitchen sink").action(() -> {}))
+                                .modifiers(NavigationIntent.navigate("/kitchen")));
     }
 }

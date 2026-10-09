@@ -24,8 +24,9 @@ public final class LabelSection implements View {
 
     @Override
     public View body() {
-        return new SectionCard("Label · title + icon, three labelStyles",
-                VStack.children(
+        View content = VStack
+                .modifiers(Padding.with(p -> p.uniform(4)))
+                .children(
                         Label.with(l -> l.title("Settings").icon(Icon.with(i -> i.name(IconName.SETTINGS)))),
                         Label.with(l -> l.title("Save changes").icon(Icon.with(i -> i.name(IconName.SAVE))))
                                 .modifiers(TitleOnlyLabelStyle.INSTANCE),
@@ -34,8 +35,7 @@ public final class LabelSection implements View {
                                 .modifiers(DefaultLabelStyle.INSTANCE),
                         Label.with(l -> l.title(status.signal()).icon(Icon.with(i -> i.name(IconName.INFO)))),
                         Button.with(b -> b.title("Toggle status")
-                                .action(() -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready")))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+                                .action(() -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready"))));
+        return new SectionCard("Label · title + icon, three labelStyles", content);
     }
 }

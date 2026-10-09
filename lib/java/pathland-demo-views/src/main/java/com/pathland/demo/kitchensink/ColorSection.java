@@ -30,16 +30,18 @@ public final class ColorSection implements View {
             int rgb = accent.get().argb() & 0xFFFFFF;
             return String.format("Accent #%06x", rgb);
         });
-        return new SectionCard("Color · ColorPicker + Color view + Rectangle",
-                VStack.children(
+        View content = VStack
+                .modifiers(Padding.with(p -> p.uniform(4)))
+                .children(
                         ColorPicker.with(c -> c.selection(accent.signal())),
-                        HStack.children(
-                                accent.get().with(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER))),
-                                Rectangle.modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER))).modifiers(
-                                        Background.with(b -> b.color(accent.signal())))
-                        ).modifiers(Padding.with(p -> p.uniform(4))),
-                        Text.with(t -> t.text(accentLabel)).modifiers(Padding.with(p -> p.uniform(4)))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+                        HStack
+                                .modifiers(Padding.with(p -> p.uniform(4)))
+                                .children(
+                                        accent.get().with(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER))),
+                                        Rectangle.modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(Background.with(b -> b.color(accent.signal())))),
+                        Text.with(t -> t.text(accentLabel)).modifiers(
+                                Padding.with(p -> p.uniform(4))));
+        return new SectionCard("Color · ColorPicker + Color view + Rectangle", content);
     }
 }

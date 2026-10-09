@@ -28,8 +28,9 @@ public final class TextStylesSection implements View {
 
     @Override
     public View body() {
-        return new SectionCard("Text styles · text modifiers",
-                VStack.children(
+        View content = VStack
+                .modifiers(Padding.with(p -> p.uniform(4)))
+                .children(
                         Text.with(t -> t.text("Regular")).modifiers(FontWeight.REGULAR),
                         Text.with(t -> t.text("Bold")).modifiers(FontWeight.BOLD),
                         Text.with(t -> t.text("Italic")).modifiers(Italic.with()),
@@ -40,15 +41,13 @@ public final class TextStylesSection implements View {
                         Text.with(t -> t.text("Serif")).modifiers(FontDesign.SERIF),
                         Text.with(t -> t.text("K e r n e d")).modifiers(Kerning.with(k -> k.value(2))),
                         Text.with(t -> t.text("Tracking")).modifiers(Tracking.with(tr -> tr.value(3))),
-                        Text.with(t -> t.text("A very long line of text that must be truncated to a single line."))
-                                .modifiers(
-                                        LineLimit.with(l -> l.value(1)),
-                                        Truncation.TAIL)
-                                .modifiers(Frame.with(f -> f.width(280).alignment(Alignment.CENTER))),
+                        Text.with(t -> t.text("A very long line of text that must be truncated to a single line.")).modifiers(
+                                LineLimit.with(l -> l.value(1)),
+                                Truncation.TAIL,
+                                Frame.with(f -> f.width(280).alignment(Alignment.CENTER))),
                         Text.with(t -> t.text("Centered")).modifiers(
-                                TextAlignment.CENTER)
-                                .modifiers(Frame.with(f -> f.width(180).alignment(Alignment.CENTER)))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+                                TextAlignment.CENTER,
+                                Frame.with(f -> f.width(180).alignment(Alignment.CENTER))));
+        return new SectionCard("Text styles · text modifiers", content);
     }
 }
