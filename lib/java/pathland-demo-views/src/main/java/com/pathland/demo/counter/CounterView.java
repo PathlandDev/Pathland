@@ -19,14 +19,14 @@ public final class CounterView implements View {
 
     @Override
     public View body() {
-        return VStack.of(
+        return VStack.children(
                 new CounterControls(),
                 new NameField(),
-                Text.of("Pathland · per-session · 16-byte deltas")
-                        .with(ForegroundStyle.of(Color.rgb(0x88, 0x88, 0x88)))
+                Text.with(t -> t.text("Pathland · per-session · 16-byte deltas"))
+                        .modifiers(ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88))))
         )
         // The app's main content region → `<main>`.
-        .with(AccessibilityRole.of(Roles.MAIN))
-        .with(Padding.of(24));
+        .modifiers(AccessibilityRole.with(a -> a.role(Roles.MAIN)))
+        .modifiers(Padding.with(p -> p.uniform(24)));
     }
 }

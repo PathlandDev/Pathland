@@ -15,7 +15,6 @@ import com.pathland.view.Background;
 import com.pathland.view.Border;
 import com.pathland.view.CornerRadius;
 import com.pathland.view.FontSize;
-import com.pathland.view.FontWeightMod;
 import com.pathland.view.ForegroundStyle;
 import com.pathland.view.Padding;
 
@@ -40,17 +39,17 @@ public final class SectionCard implements View {
 
     @Override
     public View body() {
-        return VStack.of(
+        return VStack.children(
                 // A section title is a heading → `<h2>`.
-                Text.of(title).with(FontSize.of(14), FontWeightMod.of(FontWeight.SEMIBOLD), ForegroundStyle.of(TITLE_COLOR))
-                        .with(AccessibilityRole.of(Roles.HEADER)),
-                Divider.of().with(Padding.of(0, 0, 8, 0)),
+                Text.with(t -> t.text(title)).modifiers(FontSize.with(s -> s.size(14)), FontWeight.SEMIBOLD, ForegroundStyle.with(f -> f.color(TITLE_COLOR)))
+                        .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                Divider.modifiers(Padding.with(p -> p.edges(0, 0, 8, 0))),
                 content
-        ).with(
-                Padding.of(16),
-                Background.of(Color.WHITE),
-                Border.of(BORDER, 1, 10),
-                CornerRadius.of(10))
-                .with(Frame.ofWidth(Commands.Size.FILL));
+        ).modifiers(
+                Padding.with(p -> p.uniform(16)),
+                Background.with(b -> b.color(Color.WHITE)),
+                Border.with(b -> b.color(BORDER).width(1).radius(10)),
+                CornerRadius.with(c -> c.radius(10)))
+                .modifiers(Frame.ofWidth(Commands.Size.FILL));
     }
 }

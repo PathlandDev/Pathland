@@ -1,13 +1,17 @@
 package com.pathland.view.router;
 
 import com.pathland.view.Components;
+import com.pathland.view.Configurable;
 import com.pathland.view.Environment;
 import com.pathland.view.EnvironmentValues;
 import com.pathland.view.Properties;
 import com.pathland.view.View;
+import com.pathland.view.ViewBuilder;
+import com.pathland.view.ViewModifier;
 import com.pathland.view.emit.PathlandNode;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * The navigation slot (spec DSL.md §4.5): a structural container
@@ -17,33 +21,60 @@ import java.util.Objects;
  * {@code history.pushState}). The slot materializes as a {@code Group} (a bare
  * {@code VSTACK} node with no spacing/alignment).
  *
- * <p>The container also registers its router's {@code NAVIGATE} handler, which the
- * emitter surfaces on {@code RenderResult.navigateHandler} so a host can forward raw
- * {@code NAVIGATE} events (native back, browser {@code popstate}) straight into the
- * router.
+ * <p>{@code NavigationContainer.with(n -> n.router(router))} (see {@link Chrome} for
+ * the chrome-mode choice). The container also registers its router's {@code NAVIGATE}
+ * handler, which the emitter surfaces on {@code RenderResult.navigateHandler} so a
+ * host can forward raw {@code NAVIGATE} events (native back, browser {@code popstate})
+ * straight into the router.
  */
-public final class NavigationContainer implements View {
+public final class NavigationContainer implements View, Configurable<NavigationContainer.Config> {
 
-    private final Router router;
-    private final Chrome chrome;
+    /** {@link NavigationContainer} values. */
+    public static final class Config implements View.Config {
 
-    private NavigationContainer(Router router, Chrome chrome) {
-        this.router = Objects.requireNonNull(router, "router");
-        this.chrome = Objects.requireNonNull(chrome, "chrome");
+        private Router router;
+        private Chrome chrome = Chrome.PLATFORM_DEFAULT;
+
+        /** The router the slot renders. */
+        public Config router(Router router) {
+            this.router = router;
+            return this;
+        }
+
+        /** The chrome mode ({@link Chrome}). */
+        public Config chrome(Chrome chrome) {
+            this.chrome = chrome;
+            return this;
+        }
     }
 
-    /** A navigation slot over {@code router}, with the renderer's default chrome. */
-    public static NavigationContainer of(Router router) {
-        return new NavigationContainer(router, Chrome.PLATFORM_DEFAULT);
+    private final Config config;
+
+    private NavigationContainer(Config config) {
+        this.config = config;
     }
 
-    /** A navigation slot over {@code router} with an explicit chrome mode. */
-    public static NavigationContainer of(Router router, Chrome chrome) {
-        return new NavigationContainer(router, chrome);
+    /** Configure the navigation slot ({@code NavigationContainer.with(n -> n.router(router))}). */
+    public static ViewBuilder<NavigationContainer, Config> with(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new ViewBuilder<>(new NavigationContainer(config));
+    }
+
+    /** Apply modifiers to a bare navigation slot. */
+    public static ViewBuilder<NavigationContainer, Config> modifiers(ViewModifier... modifiers) {
+        return new ViewBuilder<>(new NavigationContainer(new Config())).modifiers(modifiers);
+    }
+
+    @Override
+    public Config config() {
+        return config;
     }
 
     @Override
     public PathlandNode render(Environment env) {
+        Router router = Objects.requireNonNull(config.router, "router");
+        Chrome chrome = Objects.requireNonNull(config.chrome, "chrome");
         PathlandNode node = new PathlandNode(Components.VSTACK); // Group-backed slot
         node.structuralContent = router::destination; // reads the route signal (tracked)
         // Scope the router to this subtree (a component inside a destination reads

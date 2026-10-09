@@ -95,7 +95,7 @@ public final class Button implements View, Configurable<Button.Config>, Children
         // own component(s) and layout (Composite Override Mode, PRIMITIVES.md §2).
         View label = !children.isEmpty()
                 ? children.get(0)
-                : (config.title != null ? Text.of(config.title) : null);
+                : (config.title != null ? Text.with(t -> t.text(config.title)) : null);
 
         PathlandNode node = new PathlandNode(Components.BUTTON);
         ButtonStyle style = env.buttonStyle();

@@ -21,9 +21,9 @@ public final class CounterControls implements View {
     @Override
     public View body() {
         var countLabel = computed(() -> "Count: " + count.get());
-        return HStack.of(
-                Text.of(countLabel),
-                Button.of("Increment", () -> count.update(v -> v + 1))
-        ).with(Padding.of(16));
+        return HStack.children(
+                Text.with(t -> t.text(countLabel)),
+                Button.with(b -> b.title("Increment").action(() -> count.update(v -> v + 1)))
+        ).modifiers(Padding.with(p -> p.uniform(16)));
     }
 }

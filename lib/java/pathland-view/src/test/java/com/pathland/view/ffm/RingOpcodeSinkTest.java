@@ -40,7 +40,9 @@ class RingOpcodeSinkTest {
         try (RingOpcodeSink sink = new RingOpcodeSink(core)) {
             Emitter emitter = new Emitter(sink);
             emitter.mount(
-                    VStack.of(Text.of("Hi"), Button.of("Go", () -> { })),
+                    VStack.children(
+                            Text.with(t -> t.text("Hi")),
+                            Button.with(b -> b.title("Go").action(() -> { }))),
                     Environment.DEFAULT);
 
             long len = core.ringLen(sink.handle());

@@ -6,10 +6,10 @@ import com.pathland.view.signal.Signal;
  * The rendering environment — the single inheritance/scoping mechanism in the DSL.
  * Carries a hierarchical scope of {@link EnvironmentValues} keyed by
  * {@link EnvironmentKey} ({@code EnvironmentValues} style): a parent injects
- * a value down the entire child tree via {@code .environment(key, value)}, and any
- * descendant reads it with {@link #value(EnvironmentKey)}.
+ * a value down the entire child tree via the {@link EnvironmentBinding} modifier
+ * value, and any descendant reads it with {@link #value(EnvironmentKey)}.
  *
- * <p>A {@code .environment(key, value)} modifier binds a value for the subtree it
+ * <p>{@link EnvironmentBinding} binds a value for the subtree it
  * wraps — nearest wins, so an inner binding overrides an outer one. The mount render
  * is synchronous and single-threaded, so a {@link ThreadLocal} is equivalent to
  * ScopedValue here while keeping the library on every LTS from Java 17. This
@@ -30,7 +30,7 @@ public final class Environment {
 
     /**
      * The environment key for the active {@link ButtonStyle} ({@code .buttonStyle}).
-     * {@code ButtonStyleMod} binds it down the wrapped subtree via the generic
+     * {@code ButtonStyle} (a {@code Style} — the value is the modifier) scopes it down the wrapped subtree via the generic
      * environment; {@link Button} reads it with {@link #buttonStyle()}
      * (defaulting to {@link PlainButtonStyle}).
      */
@@ -38,7 +38,7 @@ public final class Environment {
 
     /**
      * The environment key for the active {@link LabelStyle} ({@code .labelStyle}).
-     * {@code LabelStyleMod} binds it down the wrapped subtree via the generic
+     * {@code LabelStyle} (a {@code Style} — the value is the modifier) scopes it down the wrapped subtree via the generic
      * environment; {@link Label} reads it with {@link #labelStyle()}
      * (defaulting to {@link DefaultLabelStyle}).
      */
@@ -46,7 +46,7 @@ public final class Environment {
 
     /**
      * The environment key for the active {@link AudioStyle} ({@code .audioStyle}).
-     * {@code AudioStyleMod} binds it down the wrapped subtree; {@link Audio} reads
+     * {@code AudioStyle} (a {@code Style} — the value is the modifier) scopes it down the wrapped subtree; {@link Audio} reads
      * it with {@link #audioStyle()} (defaulting to
      * {@link NativeAudioStyle}).
      */
@@ -54,7 +54,7 @@ public final class Environment {
 
     /**
      * The environment key for the active {@link VideoStyle} ({@code .videoStyle}).
-     * {@code VideoStyleMod} binds it down the wrapped subtree; {@link Video} reads
+     * {@code VideoStyle} (a {@code Style} — the value is the modifier) scopes it down the wrapped subtree; {@link Video} reads
      * it with {@link #videoStyle()} (defaulting to
      * {@link NativeVideoStyle}).
      */
@@ -129,13 +129,13 @@ public final class Environment {
      * for reactive updates, and its {@code WritableSignal} capability is preserved),
      * a plain value is wrapped in a constant signal. When the key is <em>not</em> yet
      * bound — e.g. read in a field initializer before the enclosing
-     * {@code .environment(...)} scope is pushed — a lazy {@link EnvironmentSignal} is
+     * {@code EnvironmentBinding} scope is pushed — a lazy {@link EnvironmentSignal} is
      * returned instead, which resolves the key on each {@code .get()} and keeps the
      * last captured binding.
      *
      * <pre>{@code
      * Router router = Environment.value(Navigation.ROUTER).get();  // one-off read
-     * Text.of(Environment.value(Platform.ACTIVE_PATH));            // reactive binding
+     * Text.with(t -> t.text(Environment.value(Platform.ACTIVE_PATH)));  // reactive binding
      * // field style (resolved at render time, inside the pushed scope):
      * private final Signal<Router> router = Environment.value(Navigation.ROUTER);
      * }</pre>

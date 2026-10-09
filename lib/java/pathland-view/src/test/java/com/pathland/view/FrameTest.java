@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 class FrameTest {
 
     private static PathlandNode render(Frame frame) {
-        return Text.of("x").with(frame).render(Environment.DEFAULT);
+        return Text.with(t -> t.text("x")).modifiers(frame).render(Environment.DEFAULT);
     }
 
     // -- convenience factories --------------------------------------------------

@@ -109,7 +109,7 @@ class LabelTest {
     @Test
     void defaultLabelRendersTitleAndIcon() {
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(Label.of("Save", "save.svg"), Environment.DEFAULT);
+        new Emitter(sink).mount(Label.with(l -> l.title("Save").icon("save.svg")), Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
         int stack = nodeId(frame, Components.HSTACK);
@@ -129,7 +129,7 @@ class LabelTest {
     void titleOnlyStyleDropsTheIcon() {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(
-                Label.of("Save", "save.svg").with(LabelStyleMod.of(TitleOnlyLabelStyle.INSTANCE)),
+                Label.with(l -> l.title("Save").icon("save.svg")).modifiers(TitleOnlyLabelStyle.INSTANCE),
                 Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
@@ -143,7 +143,7 @@ class LabelTest {
     void iconOnlyStyleKeepsTheTitleAsA11yLabel() {
         FrameOpcodeSink sink = sink();
         new Emitter(sink).mount(
-                Label.of("Save", "save.svg").with(LabelStyleMod.of(IconOnlyLabelStyle.INSTANCE)),
+                Label.with(l -> l.title("Save").icon("save.svg")).modifiers(IconOnlyLabelStyle.INSTANCE),
                 Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
@@ -156,7 +156,7 @@ class LabelTest {
     @Test
     void blankTitleOrIconIsSuppressed() {
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(Label.of("", ""), Environment.DEFAULT);
+        new Emitter(sink).mount(Label.with(l -> l.title("").icon("")), Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
         assertFalse(hasComponent(frame, Components.TEXT), "a blank title renders no text");
@@ -165,7 +165,7 @@ class LabelTest {
                 "a blank title sets no accessibility label");
 
         FrameOpcodeSink sink2 = sink();
-        new Emitter(sink2).mount(Label.of("", "save.svg"), Environment.DEFAULT);
+        new Emitter(sink2).mount(Label.with(l -> l.title("").icon("save.svg")), Environment.DEFAULT);
         ProtocolFrame frame2 = sink2.frame();
         assertFalse(hasComponent(frame2, Components.TEXT));
         assertTrue(hasComponent(frame2, Components.IMAGE), "a blank title still renders the icon");
@@ -184,7 +184,7 @@ class LabelTest {
         };
 
         new Emitter(sink()).mount(
-                probe.with(LabelStyleMod.of(IconOnlyLabelStyle.INSTANCE)),
+                probe.with(IconOnlyLabelStyle.INSTANCE),
                 Environment.DEFAULT);
         assertEquals(IconOnlyLabelStyle.INSTANCE, seen.get(0), "the scoped style is readable via Environment.value");
 
@@ -197,7 +197,7 @@ class LabelTest {
     void reactiveTitleReEmitsTextAndLabel() {
         WritableSignal<String> title = Signals.signal("Save");
         AccumulatingSink sink = new AccumulatingSink();
-        new Emitter(sink).mount(Label.of(title, "save.svg"), Environment.DEFAULT);
+        new Emitter(sink).mount(Label.with(l -> l.title(title).icon("save.svg")), Environment.DEFAULT);
 
         ProtocolFrame first = sink.frames().get(0);
         int text = nodeId(first, Components.TEXT);
@@ -215,7 +215,7 @@ class LabelTest {
     void reactiveIconReEmitsImageSource() {
         WritableSignal<String> icon = Signals.signal("save.svg");
         AccumulatingSink sink = new AccumulatingSink();
-        new Emitter(sink).mount(Label.of("Save", icon), Environment.DEFAULT);
+        new Emitter(sink).mount(Label.with(l -> l.title("Save").icon(icon)), Environment.DEFAULT);
 
         ProtocolFrame first = sink.frames().get(0);
         int image = nodeId(first, Components.IMAGE);
@@ -235,7 +235,7 @@ class LabelTest {
                 .route("/two", p -> probeStyle(seen))
                 .build();
         new Emitter(sink()).mount(
-                NavigationContainer.of(router).with(LabelStyleMod.of(TitleOnlyLabelStyle.INSTANCE)),
+                NavigationContainer.with(n -> n.router(router)).modifiers(TitleOnlyLabelStyle.INSTANCE),
                 Environment.DEFAULT);
 
         seen.clear();

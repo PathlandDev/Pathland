@@ -10,6 +10,6 @@ public enum IconOnlyLabelStyle implements LabelStyle {
 
     @Override
     public View makeBody(Configuration config) {
-        return config.hasIcon() ? config.icon() : Group.of();
+        return config.hasIcon() ? config.icon() : Group.children();
     }
 }

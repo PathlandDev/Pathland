@@ -17,8 +17,10 @@ public class ViewBuilderTest {
 
     @Test
     void operationsMayBeUsedInAnyOrder() {
-        View a = VStack.with(v -> v.spacing(8)).children(Text.of("a")).modifiers(Padding.of(4));
-        View b = VStack.children(Text.of("a")).modifiers(Padding.of(4)).with(v -> v.spacing(8));
+        View a = VStack.with(v -> v.spacing(8)).children(Text.with(t -> t.text("a")))
+                .modifiers(Padding.with(p -> p.uniform(4)));
+        View b = VStack.children(Text.with(t -> t.text("a")))
+                .modifiers(Padding.with(p -> p.uniform(4))).with(v -> v.spacing(8));
 
         PathlandNode na = a.render(Environment.DEFAULT);
         PathlandNode nb = b.render(Environment.DEFAULT);
@@ -33,7 +35,8 @@ public class ViewBuilderTest {
     @Test
     void staticModifiersEntryStartsTheChain() {
         PathlandNode node =
-                VStack.modifiers(Padding.of(16)).children(Text.of("x")).render(Environment.DEFAULT);
+                VStack.modifiers(Padding.with(p -> p.uniform(16)))
+                        .children(Text.with(t -> t.text("x"))).render(Environment.DEFAULT);
         assertEquals(16f, node.properties.get(Properties.PADDING));
         assertTrue(node.children.size() == 1);
     }

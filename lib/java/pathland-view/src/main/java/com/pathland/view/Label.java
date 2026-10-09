@@ -47,8 +47,8 @@ public final class Label implements View, Configurable<Label.Config> {
             return this;
         }
 
-        /** Set a semantic {@link Icon}. */
-        public Config icon(Icon icon) {
+        /** Set a semantic {@link Icon} (or any icon view) as the icon part. */
+        public Config icon(View icon) {
             this.iconView = icon;
             return this;
         }
@@ -126,17 +126,17 @@ public final class Label implements View, Configurable<Label.Config> {
         String title = config.title != null ? config.title.get() : null;
         String icon = config.icon != null ? config.icon.get() : null;
 
-        View titleView = nonBlank(title) ? Text.of(config.title).with(LineLimit.of(1)) : null;
+        View titleView = nonBlank(title) ? Text.with(t -> t.text(config.title)).modifiers(LineLimit.with(l -> l.value(1))) : null;
         View iconPart = config.iconView != null
                 ? config.iconView
-                : (nonBlank(icon) ? Image.of(config.icon) : null);
+                : (nonBlank(icon) ? Image.with(i -> i.source(config.icon)) : null);
 
         View content = style.makeBody(new LabelStyle.Configuration(titleView, iconPart));
         if (content == null) {
-            content = Group.of();
+            content = Group.children();
         }
         if (nonBlank(title)) {
-            content = content.with(AccessibilityLabel.of(config.title));
+            content = content.with(AccessibilityLabel.with(a -> a.text(config.title)));
         }
         return content;
     }

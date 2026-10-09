@@ -19,9 +19,9 @@ public final class NameField implements View {
     @Override
     public View body() {
         var nameLabel = computed(() -> "Name: " + name.get());
-        return VStack.of(
-                TextField.of("Your name", name.signal()),
-                Text.of(nameLabel)
+        return VStack.children(
+                TextField.with(t -> t.placeholder("Your name").text(name.signal())),
+                Text.with(t -> t.text(nameLabel))
         );
     }
 }

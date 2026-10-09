@@ -7,7 +7,7 @@ import java.util.Map;
  * An immutable, hierarchical scope of environment values
  * ({@code EnvironmentValues}): a parent chain where each node adds (or overrides)
  * one {@link EnvironmentKey} → value binding. Lookup returns the nearest binding,
- * so a scoped {@code .environment(key, value)} overrides an outer one for its
+ * so a scoped {@code EnvironmentBinding} overrides an outer one for its
  * subtree only. Values are resolved during render; structural slots re-apply the
  * incoming scope when they re-render their destination.
  *

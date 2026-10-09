@@ -26,11 +26,11 @@ public final class TextFieldSection implements View {
         var greeting = computed(() ->
                 "Hello, " + (name.get().isEmpty() ? "stranger" : name.get()) + "!");
         return new SectionCard("Text · TextField + TextEditor",
-                VStack.of(
-                        TextField.of("Your name", name.signal()),
-                        TextEditor.of(name.signal()).with(Frame.of(240, 64, Alignment.CENTER)),
-                        Text.of(greeting).with(Padding.of(4))
-                ).with(Padding.of(4))
+                VStack.children(
+                        TextField.with(t -> t.placeholder("Your name").text(name.signal())),
+                        TextEditor.with(t -> t.text(name.signal())).modifiers(Frame.with(f -> f.width(240).height(64).alignment(Alignment.CENTER))),
+                        Text.with(t -> t.text(greeting)).modifiers(Padding.with(p -> p.uniform(4)))
+                ).modifiers(Padding.with(p -> p.uniform(4)))
         );
     }
 }

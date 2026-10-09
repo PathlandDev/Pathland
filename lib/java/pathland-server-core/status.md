@@ -39,7 +39,7 @@ dependency — framework glue lives in the starters.
   `wid`, and a same-tab reload re-syncs that window's persisted state over the
   WebSocket. The old `session` cookie is removed.
 - **`PathlandSession`** — per-session: builds the `Platform.ACTIVE_PATH` signal, mounts
-  `app.newRoot().environment(ACTIVE_PATH, activePath)`, **delta-batched send-on-`endFrame`**
+  `app.newRoot().with(EnvironmentBinding.with(e -> e.key(ACTIVE_PATH).value(activePath)))`, **delta-batched send-on-`endFrame`**
   (`DeltaBatcher` coalesces per-signal frames into one batch — flush ~20 ms or 16 KB,
   string offsets rebased — so a continuous input burst can't overflow a remote WebSocket
   send queue), `applyEnvironment` (re-route guard-aware via the bound router),

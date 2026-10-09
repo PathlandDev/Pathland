@@ -43,7 +43,8 @@ class SizeThatFitsTest {
     void mountsSlotWithAscendingFitQueryAndOnlyTheSelectedChild() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        View root = VStack.of(SizeThatFits.of(Fit.of(Text.of("wide"), 640f), Fit.of(Text.of("compact"))));
+        View root = VStack.children(SizeThatFits.of(Fit.of(Text.with(t -> t.text("wide")), 640f),
+                Fit.of(Text.with(t -> t.text("compact")))));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
 
         ProtocolFrame initial = sink.frame();
@@ -76,7 +77,9 @@ class SizeThatFitsTest {
         Emitter emitter = new Emitter(sink);
         // Different candidate components: a fallback TEXT and a wide BUTTON — the swap
         // must be STRUCTURAL (TREE deltas), not a same-component SET_TEXT.
-        View root = VStack.of(SizeThatFits.of(Fit.of(Button.of("wide", () -> { }), 640f), Fit.of(Text.of("compact"))));
+        View root = VStack.children(SizeThatFits.of(
+                Fit.of(Button.with(b -> b.title("wide").action(() -> { })), 640f),
+                Fit.of(Text.with(t -> t.text("compact")))));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
 
         Consumer<Integer> fit = result.fitInputs().get(slotId(result));
@@ -110,8 +113,10 @@ class SizeThatFitsTest {
         // structural effect's first merge must NOT re-emit the nested slot's
         // unchanged FIT_QUERY — the threshold `float[]` is recreated per render, so
         // a reference comparison would emit a spurious post-mount frame.
-        View nested = SizeThatFits.of(Fit.of(Text.of("wide"), 600f), Fit.of(Text.of("compact")));
-        View root = SizeThatFits.of(Fit.of(Text.of("fallback"), 1024f), Fit.of(VStack.of(nested)));
+        View nested = SizeThatFits.of(Fit.of(Text.with(t -> t.text("wide")), 600f),
+                Fit.of(Text.with(t -> t.text("compact"))));
+        View root = SizeThatFits.of(Fit.of(Text.with(t -> t.text("fallback")), 1024f),
+                Fit.of(VStack.children(nested)));
         emitter.mount(root, Environment.DEFAULT);
         assertEquals(1, sink.framesProduced(), "mount emits exactly one frame (no spurious reconcile frame)");
     }
@@ -121,8 +126,10 @@ class SizeThatFitsTest {
     void nestedSlotFitChangeSwapsOnlyTheNestedSelection() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        View nested = SizeThatFits.of(Fit.of(Text.of("wide"), 600f), Fit.of(Text.of("compact")));
-        View root = SizeThatFits.of(Fit.of(Text.of("fallback"), 1024f), Fit.of(VStack.of(nested)));
+        View nested = SizeThatFits.of(Fit.of(Text.with(t -> t.text("wide")), 600f),
+                Fit.of(Text.with(t -> t.text("compact"))));
+        View root = SizeThatFits.of(Fit.of(Text.with(t -> t.text("fallback")), 1024f),
+                Fit.of(VStack.children(nested)));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
         assertEquals(2, result.fitInputs().size(), "both slots route a fit sink");
 
@@ -179,8 +186,9 @@ class SizeThatFitsTest {
         return new View() {
             @Override
             public PathlandNode render(Environment env) {
-                View nested = SizeThatFits.of(Fit.of(Text.of("wide"), 600f), Fit.of(Text.of("compact")));
-                return VStack.of(nested, Text.of(suffix)).render(env);
+                View nested = SizeThatFits.of(Fit.of(Text.with(t -> t.text("wide")), 600f),
+                        Fit.of(Text.with(t -> t.text("compact"))));
+                return VStack.children(nested, Text.with(t -> t.text(suffix))).render(env);
             }
         };
     }

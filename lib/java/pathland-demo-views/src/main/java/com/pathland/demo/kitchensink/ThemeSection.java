@@ -26,24 +26,24 @@ public final class ThemeSection implements View {
     @Override
     public View body() {
         return new SectionCard("Theme · design tokens + SET_DESIGN_TOKEN overrides",
-                VStack.of(
-                        Text.of("color.primary — accent text")
-                                .with(ForegroundStyle.of(Color.token("color.primary"))),
-                        Text.of("control.accent — control accent")
-                                .with(ForegroundStyle.of(Color.token("control.accent"))),
-                        HStack.of(
-                                Rectangle.of()
-                                        .with(Frame.of(120, 60, Alignment.CENTER))
-                                        .with(Background.of(Color.token("color.surface"))),
-                                Rectangle.of()
-                                        .with(Frame.of(120, 60, Alignment.CENTER))
-                                        .with(Background.of(Color.token("dark.color.surface")))
-                        ).with(Padding.of(4)),
-                        Text.of("control.background — a token-referenced control fill")
-                                .with(
-                                        Padding.of(8),
-                                        Background.of(Color.token("control.background")))
-                ).with(Padding.of(4))
+                VStack.children(
+                        Text.with(t -> t.text("color.primary — accent text"))
+                                .modifiers(ForegroundStyle.with(f -> f.color(Color.token("color.primary")))),
+                        Text.with(t -> t.text("control.accent — control accent"))
+                                .modifiers(ForegroundStyle.with(f -> f.color(Color.token("control.accent")))),
+                        HStack.children(
+                                Rectangle.modifiers()
+                                        .modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                        .modifiers(Background.with(b -> b.color(Color.token("color.surface")))),
+                                Rectangle.modifiers()
+                                        .modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                        .modifiers(Background.with(b -> b.color(Color.token("dark.color.surface"))))
+                        ).modifiers(Padding.with(p -> p.uniform(4))),
+                        Text.with(t -> t.text("control.background — a token-referenced control fill"))
+                                .modifiers(
+                                        Padding.with(p -> p.uniform(8)),
+                                        Background.with(b -> b.color(Color.token("control.background"))))
+                ).modifiers(Padding.with(p -> p.uniform(4)))
         );
     }
 }

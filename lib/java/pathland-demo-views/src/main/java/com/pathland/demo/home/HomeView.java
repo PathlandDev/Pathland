@@ -1,6 +1,7 @@
 package com.pathland.demo.home;
 
 import com.pathland.view.*;
+import com.pathland.view.router.NavigationIntent;
 
 /**
  * The Home content area of the {@code SplitNavDemo}: a titled welcome pane with a short
@@ -13,19 +14,19 @@ public final class HomeView implements View {
 
     @Override
     public View body() {
-        return VStack.of(HorizontalAlignment.LEADING, 24,
-                VStack.of(HorizontalAlignment.LEADING, 2,
+        return VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(24)).children(
+                VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2)).children(
                     // The destination title is a heading → `<h2>`.
-                    Text.of("Home").with(FontSize.of(24), FontWeightMod.of(FontWeight.BOLD))
-                            .with(AccessibilityRole.of(Roles.HEADER)),
-                    Text.of("A master-detail (split) navigation demo: the menu on the left "
-                            + "drives the content area on the right.")
+                    Text.with(t -> t.text("Home")).modifiers(FontSize.with(s -> s.size(24)), FontWeight.BOLD)
+                            .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                    Text.with(t -> t.text("A master-detail (split) navigation demo: the menu on the left "
+                            + "drives the content area on the right."))
                 ),
                 // Declarative route-change: resolves to the nearest enclosing router.
-                Button.of("Open kitchen sink", () -> {}).navigate("/kitchen")
+                Button.with(b -> b.title("Open kitchen sink").action(() -> {})).modifiers(NavigationIntent.navigate("/kitchen"))
         )
         // The destination content region → `<main>`.
-        .with(AccessibilityRole.of(Roles.MAIN))
-        .with(Padding.of(24));
+        .modifiers(AccessibilityRole.with(a -> a.role(Roles.MAIN)))
+        .modifiers(Padding.with(p -> p.uniform(24)));
     }
 }

@@ -11,20 +11,20 @@ class IconTest {
 
     @Test
     void rendersIconComponentWithCanonicalName() {
-        PathlandNode node = Icon.of(IconName.PLAY).render(Environment.DEFAULT);
+        PathlandNode node = Icon.with(i -> i.name(IconName.PLAY)).render(Environment.DEFAULT);
         assertEquals(Components.ICON, node.component);
         assertEquals("play", node.properties.get(Properties.ICON_NAME));
     }
 
     @Test
     void labeledIconCarriesAccessibilityLabel() {
-        PathlandNode node = Icon.labeled(IconName.MUSIC, "Playlist").render(Environment.DEFAULT);
+        PathlandNode node = Icon.with(i -> i.name(IconName.MUSIC).label("Playlist")).render(Environment.DEFAULT);
         assertEquals("Playlist", node.properties.get(Properties.LABEL));
     }
 
     @Test
     void labelWithIconComposesTheIconView() {
-        View label = Label.of("Home", Icon.of(IconName.HOME));
+        View label = Label.with(l -> l.title("Home").icon(Icon.with(i -> i.name(IconName.HOME))));
         PathlandNode node = label.render(Environment.DEFAULT);
         assertTrue(containsComponent(node, Components.ICON), "the label composes the Icon view");
     }

@@ -1,62 +1,105 @@
 package com.pathland.view.router;
 
 import com.pathland.view.Button;
+import com.pathland.view.Configurable;
 import com.pathland.view.Environment;
 import com.pathland.view.Text;
 import com.pathland.view.View;
+import com.pathland.view.ViewBuilder;
+import com.pathland.view.ViewModifier;
 import com.pathland.view.emit.PathlandNode;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * A tappable link that changes the route (spec DSL.md §4.5). With an explicit
  * {@link Router} it {@link Router#push(String) pushes} onto that router's
- * back-stack; the router-agnostic overloads ({@code NavigationLink.of(label, to)})
- * declare a {@link NavOp#PUSH} intent that the emitter resolves to the **nearest
+ * back-stack; the router-agnostic call ({@code NavigationLink.with(l -> l.to("/users"))})
+ * declares a {@link NavOp#PUSH} intent that the emitter resolves to the **nearest
  * enclosing** {@link Router} — no router is threaded by hand. Renders through the
  * active {@code ButtonStyle} as a native {@code BUTTON}; its tap action is routed
  * via the emitter's tap/navigate-action registry exactly like a button.
  */
-public final class NavigationLink implements View {
+public final class NavigationLink implements View, Configurable<NavigationLink.Config> {
 
-    private final View button;
+    /** {@link NavigationLink} values. */
+    public static final class Config implements View.Config {
 
-    private NavigationLink(View label, Router router, String to) {
-        Objects.requireNonNull(router, "router");
-        Objects.requireNonNull(to, "to");
-        this.button = Button.of(label, () -> router.push(to));
+        private String label;
+        private View labelView;
+        private Router router;
+        private String to;
+
+        /** A plain text label. */
+        public Config label(String label) {
+            this.label = label;
+            this.labelView = null;
+            return this;
+        }
+
+        /** An arbitrary child view as the label. */
+        public Config label(View label) {
+            this.labelView = label;
+            this.label = null;
+            return this;
+        }
+
+        /** The explicit router to push onto (or {@code null} for the router-agnostic form). */
+        public Config router(Router router) {
+            this.router = router;
+            return this;
+        }
+
+        /** The destination path. */
+        public Config to(String to) {
+            this.to = to;
+            return this;
+        }
     }
 
-    private NavigationLink(View label, String to) {
-        Objects.requireNonNull(to, "to");
-        // The tap's real effect is the declared navigation intent (`.push`), which the
-        // host routes via navigateActions before tapActions; the button action is a
-        // no-op placeholder (Button requires one).
-        this.button = Button.of(label, () -> {}).push(to);
+    private final Config config;
+
+    private NavigationLink(Config config) {
+        this.config = config;
     }
 
-    /** A link with a plain text title. */
-    public static NavigationLink of(String label, Router router, String to) {
-        return new NavigationLink(Text.of(label), router, to);
+    /** Configure the link ({@code NavigationLink.with(l -> l.label(...).to(...))}). */
+    public static ViewBuilder<NavigationLink, Config> with(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new ViewBuilder<>(new NavigationLink(config));
     }
 
-    /** A link with an arbitrary child view as its label. */
-    public static NavigationLink of(View label, Router router, String to) {
-        return new NavigationLink(label, router, to);
+    /** Apply modifiers to a bare link. */
+    public static ViewBuilder<NavigationLink, Config> modifiers(ViewModifier... modifiers) {
+        Config config = new Config();
+        config.to("");
+        return new ViewBuilder<>(new NavigationLink(config)).modifiers(modifiers);
     }
 
-    /** A router-agnostic link (push intent resolved to the nearest enclosing router). */
-    public static NavigationLink of(String label, String to) {
-        return new NavigationLink(Text.of(label), to);
-    }
-
-    /** A router-agnostic link with an arbitrary child view as its label. */
-    public static NavigationLink of(View label, String to) {
-        return new NavigationLink(label, to);
+    @Override
+    public Config config() {
+        return config;
     }
 
     @Override
     public PathlandNode render(Environment env) {
-        return button.render(env);
+        Objects.requireNonNull(config.to, "to");
+        View label = config.labelView != null
+                ? config.labelView
+                : Text.with(t -> t.text(config.label == null ? "" : config.label));
+        if (config.router != null) {
+            return Button.children(label)
+                    .with(b -> b.action(() -> config.router.push(config.to)))
+                    .render(env);
+        }
+        // The tap's real effect is the declared navigation intent (`.push`), which the
+        // host routes via navigateActions before tapActions; the button action is a
+        // no-op placeholder (Button requires one).
+        return Button.children(label)
+                .with(b -> b.action(() -> {}))
+                .modifiers(NavigationIntent.push(config.to))
+                .render(env);
     }
 }

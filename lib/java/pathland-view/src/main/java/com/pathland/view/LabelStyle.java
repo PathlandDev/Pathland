@@ -7,9 +7,10 @@ package com.pathland.view;
  *
  * <p>DSL-only control flow: the style shapes the emitted child tree, which <em>is</em>
  * the wire surface; there is never a style property. Scoped down a subtree with
- * {@link LabelStyleMod} via the generic environment ({@link Environment#LABEL_STYLE}),
- * nearest-wins (spec DSL.md §5.7). Built-ins: {@link DefaultLabelStyle} (title + icon),
- * {@link TitleOnlyLabelStyle}, {@link IconOnlyLabelStyle}.
+ * the style value itself as a modifier ({@code .modifiers(LabelStyle)}) via the generic
+ * environment ({@link Environment#LABEL_STYLE}), nearest-wins (spec DSL.md §5.7).
+ * Built-ins: {@link DefaultLabelStyle} (title + icon), {@link TitleOnlyLabelStyle},
+ * {@link IconOnlyLabelStyle}.
  */
 public interface LabelStyle extends Style {
 
@@ -19,7 +20,7 @@ public interface LabelStyle extends Style {
     /** Scopes this style down the wrapped subtree ({@code .modifiers(LabelStyle)}). */
     @Override
     default View body(View content) {
-        return content.environment(Environment.LABEL_STYLE, this);
+        return new EnvironmentView(content, (EnvironmentKey<Object>) (EnvironmentKey<?>) Environment.LABEL_STYLE, this);
     }
 
     /**

@@ -3,10 +3,11 @@ package com.pathland.view.router;
 import com.pathland.view.BorderedButtonStyle;
 import com.pathland.view.Button;
 import com.pathland.view.ButtonStyle;
-import com.pathland.view.ButtonStyleMod;
 import com.pathland.view.Categories;
 import com.pathland.view.Commands;
 import com.pathland.view.Environment;
+import com.pathland.view.EnvironmentBinding;
+import com.pathland.view.PathChange;
 import com.pathland.view.PlainButtonStyle;
 import com.pathland.view.Properties;
 import com.pathland.view.Text;
@@ -83,11 +84,11 @@ class RouterTest {
 
     private static RouteTable table() {
         return RouteTable.builder()
-                .route("/", params -> ViewStack.of(Text.of("Home")))
-                .route("/users", params -> ViewStack.of(Text.of("Users")))
-                .route("/users/:id", params -> Text.of("User " + params.get("id")))
-                .route("/admin", params -> false, "/", params -> ViewStack.of(Text.of("Admin")))
-                .fallback(params -> Text.of("Not Found"))
+                .route("/", params -> ViewStack.of(Text.with(t -> t.text("Home"))))
+                .route("/users", params -> ViewStack.of(Text.with(t -> t.text("Users"))))
+                .route("/users/:id", params -> Text.with(t -> t.text("User " + params.get("id"))))
+                .route("/admin", params -> false, "/", params -> ViewStack.of(Text.with(t -> t.text("Admin"))))
+                .fallback(params -> Text.with(t -> t.text("Not Found")))
                 .build();
     }
 
@@ -110,7 +111,7 @@ class RouterTest {
     void mountRendersInitialDestinationAndEmitsRoute() {
         Router router = new Router(table());
         FrameOpcodeSink sink = sink();
-        RenderResult result = new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        RenderResult result = new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         ProtocolFrame frame = sink.frame();
         Opcode route = frame.opcodes().stream()
@@ -128,7 +129,7 @@ class RouterTest {
         // On SSR the host seeds the router with the request URL before mount, so the
         // first frame renders the right destination with no spurious navigation.
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(seeded("/users")), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(seeded("/users"))), Environment.DEFAULT);
 
         ProtocolFrame frame = sink.frame();
         assertEquals("Users", lastText(frame), "the host-seeded initial route rendered");
@@ -146,7 +147,7 @@ class RouterTest {
         // its redirect BEFORE mount — the first frame shows the redirect target, not the
         // guarded destination.
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(seeded("/admin")), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(seeded("/admin"))), Environment.DEFAULT);
 
         ProtocolFrame frame = sink.frame();
         assertEquals("Home", lastText(frame), "a failing guard on the initial URL redirects");
@@ -162,7 +163,7 @@ class RouterTest {
     void navigateSwapsDestinationAndEmitsTheRouteProperty() {
         Router router = new Router(table());
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         router.navigate("/users");
         ProtocolFrame delta = sink.frame();
@@ -185,12 +186,12 @@ class RouterTest {
     @Test
     void navigateToDifferentComponentEmitsTreeDeltas() {
         RouteTable table = RouteTable.builder()
-                .route("/", params -> ViewStack.of(Text.of("Home")))
-                .route("/plain", params -> Text.of("Plain"))
+                .route("/", params -> ViewStack.of(Text.with(t -> t.text("Home"))))
+                .route("/plain", params -> Text.with(t -> t.text("Plain")))
                 .build();
         Router router = new Router(table);
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         router.navigate("/plain"); // VSTACK destination -> TEXT destination
         ProtocolFrame delta = sink.frame();
@@ -204,7 +205,7 @@ class RouterTest {
     void pushAndPopManageTheBackStack() {
         Router router = new Router(table());
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         router.push("/users");
         router.push("/users/42");
@@ -222,7 +223,7 @@ class RouterTest {
     void navDepthTracksTheBackStack() {
         Router router = new Router(table());
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         assertEquals(1, lastNavDepth(sink.frame()), "initial navigate is depth 1");
         assertEquals(ValueTypes.U32,
@@ -247,12 +248,12 @@ class RouterTest {
     void chromeModeIsEmittedOnceAtMount() {
         FrameOpcodeSink defaultSink = sink();
         new Emitter(defaultSink).mount(
-                NavigationContainer.of(new Router(table())), Environment.DEFAULT);
+                NavigationContainer.with(n -> n.router(new Router(table()))), Environment.DEFAULT);
         assertEquals(0f, lastNavChrome(defaultSink.frame()), "default chrome → PlatformDefault (0)");
 
         FrameOpcodeSink customSink = sink();
         new Emitter(customSink).mount(
-                NavigationContainer.of(new Router(table()), Chrome.CUSTOM), Environment.DEFAULT);
+                NavigationContainer.with(n -> n.router(new Router(table())).chrome(Chrome.CUSTOM)), Environment.DEFAULT);
         assertEquals(1f, lastNavChrome(customSink.frame()), "Chrome.CUSTOM → Custom (1)");
     }
 
@@ -260,7 +261,7 @@ class RouterTest {
     void routeParamsReachTheDestination() {
         Router router = new Router(table());
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         router.navigate("/users/42");
         ProtocolFrame delta = sink.frame();
@@ -277,7 +278,7 @@ class RouterTest {
     @Test
     void guardRedirectsInsteadOfMounting() {
         Router router = new Router(table());
-        new Emitter(sink()).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        new Emitter(sink()).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         router.navigate("/admin"); // guard always fails -> redirect "/"
         assertEquals("/", router.current().path(), "a failing guard replaces to the redirect target");
@@ -287,7 +288,7 @@ class RouterTest {
     void fallbackServesUnknownPaths() {
         Router router = new Router(table());
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         router.navigate("/no-such-path");
         ProtocolFrame delta = sink.frame();
@@ -305,7 +306,7 @@ class RouterTest {
     void navigateEventRoutesIntoTheRouter() {
         Router router = new Router(table());
         FrameOpcodeSink sink = sink();
-        RenderResult result = new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        RenderResult result = new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         assertNotNull(result.navigateHandler(), "NAVIGATE sink exposed on RenderResult");
 
@@ -327,8 +328,8 @@ class RouterTest {
             public com.pathland.view.emit.PathlandNode render(Environment env) {
                 com.pathland.view.emit.PathlandNode node =
                         new com.pathland.view.emit.PathlandNode(com.pathland.view.Components.VSTACK);
-                node.children.add(NavigationLink.of("Users", router, "/users").render(env));
-                node.children.add(NavigationContainer.of(router).render(env));
+                node.children.add(NavigationLink.with(l -> l.label("Users").to("/users").router(router)).render(env));
+                node.children.add(NavigationContainer.with(n -> n.router(router)).render(env));
                 return node;
             }
         };
@@ -343,7 +344,7 @@ class RouterTest {
     void navigatingToTheCurrentPathIsEqualitySuppressed() {
         Router router = new Router(table());
         FrameOpcodeSink sink = sink();
-        new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
         int frames = sink.framesProduced();
 
         router.navigate("/");
@@ -361,11 +362,12 @@ class RouterTest {
         // to the enclosing NavigationContainer's router and exposes it in
         // RenderResult.navigateActions — no router is threaded by hand (spec DSL.md §4.5).
         Router router = new Router(RouteTable.builder()
-                .route("/", p -> Button.of("Go", () -> {}).navigate("/users"))
-                .route("/users", p -> Text.of("Users"))
+                .route("/", p -> Button.with(b -> b.title("Go").action(() -> {}))
+                        .modifiers(NavigationIntent.navigate("/users")))
+                .route("/users", p -> Text.with(t -> t.text("Users")))
                 .build());
         FrameOpcodeSink sink = sink();
-        RenderResult result = new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        RenderResult result = new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         assertTrue(result.navigateActions().size() >= 1, "the declarative intent is registered");
         result.navigateActions().values().iterator().next().run();
@@ -375,12 +377,14 @@ class RouterTest {
     @Test
     void declarativePushGrowsTheBackStackAndReplaceDoesNot() {
         Router router = new Router(RouteTable.builder()
-                .route("/", p -> Button.of("P", () -> {}).push("/users"))
-                .route("/users", p -> Button.of("R", () -> {}).replace("/users/42"))
-                .route("/users/42", p -> Text.of("User 42"))
+                .route("/", p -> Button.with(b -> b.title("P").action(() -> {}))
+                        .modifiers(NavigationIntent.push("/users")))
+                .route("/users", p -> Button.with(b -> b.title("R").action(() -> {}))
+                        .modifiers(NavigationIntent.replace("/users/42")))
+                .route("/users/42", p -> Text.with(t -> t.text("User 42")))
                 .build());
         FrameOpcodeSink sink = sink();
-        RenderResult result = new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        RenderResult result = new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         // PUSH first: pushes the root, moves to /users (depth 2).
         result.navigateActions().values().iterator().next().run();
@@ -398,11 +402,11 @@ class RouterTest {
         // NavigationLink.of(label, to) without a Router is a PUSH intent resolved to the
         // nearest enclosing router (the existing explicit-router overloads still work).
         Router router = new Router(RouteTable.builder()
-                .route("/", p -> NavigationLink.of("Users", "/users"))
-                .route("/users", p -> Text.of("Users"))
+                .route("/", p -> NavigationLink.with(l -> l.label("Users").to("/users")))
+                .route("/users", p -> Text.with(t -> t.text("Users")))
                 .build());
         FrameOpcodeSink sink = sink();
-        RenderResult result = new Emitter(sink).mount(NavigationContainer.of(router), Environment.DEFAULT);
+        RenderResult result = new Emitter(sink).mount(NavigationContainer.with(n -> n.router(router)), Environment.DEFAULT);
 
         assertTrue(result.navigateActions().size() >= 1, "the router-agnostic link registers a nav intent");
         result.navigateActions().values().iterator().next().run();
@@ -415,14 +419,14 @@ class RouterTest {
         // Navigation.navigator collapses the route table + router + seeding (spec DSL.md §4.5).
         int[] seenId = {-1};
         Router router = Navigation.navigator("/kitchen")
-                .route("/", Text.of("Home"))
-                .route("/kitchen", Text.of("Kitchen"))
-                .route("/settings", Text.of("Settings"))
+                .route("/", Text.with(t -> t.text("Home")))
+                .route("/kitchen", Text.with(t -> t.text("Kitchen")))
+                .route("/settings", Text.with(t -> t.text("Settings")))
                 .route("/users/:id", params -> {
                     seenId[0] = params.intValue("id");
-                    return Text.of("User " + params.intValue("id"));
+                    return Text.with(t -> t.text("User " + params.intValue("id")));
                 })
-                .fallback(Text.of("Not Found"))
+                .fallback(Text.with(t -> t.text("Not Found")))
                 .build();
 
         assertEquals("/kitchen", router.path(), "the initial path is seeded before mount");
@@ -451,8 +455,8 @@ class RouterTest {
     @Test
     void navigationIsActiveTracksTheRouteSignal() {
         Router router = Navigation.navigator("/home")
-                .route("/home", Text.of("Home"))
-                .route("/settings", Text.of("Settings"))
+                .route("/home", Text.with(t -> t.text("Home")))
+                .route("/settings", Text.with(t -> t.text("Settings")))
                 .build();
         com.pathland.view.signal.Signal<Boolean> onHome = Navigation.isActive(router, "/home");
         com.pathland.view.signal.Signal<Boolean> onSettings = Navigation.isActive(router, "/settings");
@@ -467,7 +471,7 @@ class RouterTest {
 
     @Test
     void environmentScopingIsHierarchicalAndScoped() {
-        // A scoped `.environment(key, value)` is active only for its subtree; the
+        // A scoped EnvironmentBinding is active only for its subtree; the
         // innermost binding wins, and the value is restored after render.
         com.pathland.view.EnvironmentKey<String> key = com.pathland.view.EnvironmentKey.of("k");
         java.util.List<String> seen = new java.util.ArrayList<>();
@@ -480,9 +484,10 @@ class RouterTest {
             }
         };
 
-        // innermost first: `.environment(k, "inner")` applied innermost → nearest wins.
-        View innerWins = probe.environment(key, "inner").environment(key, "outer");
-        View outerOnly = probe.environment(key, "outer");
+        // innermost first: `.with(EnvironmentBinding.inner)` applied innermost → nearest wins.
+        View innerWins = probe.with(EnvironmentBinding.with(e -> e.key(key).value("inner")))
+                .with(EnvironmentBinding.with(e -> e.key(key).value("outer")));
+        View outerOnly = probe.with(EnvironmentBinding.with(e -> e.key(key).value("outer")));
 
         // Render twice: the scope must not leak between renders (restore).
         new Emitter(sink()).mount(innerWins, Environment.DEFAULT);
@@ -514,8 +519,8 @@ class RouterTest {
             }
         };
         View root = probe
-                .environment(plainKey, "hello")
-                .environment(sigKey, host);
+                .with(EnvironmentBinding.with(e -> e.key(plainKey).value("hello")))
+                .with(EnvironmentBinding.with(e -> e.key(sigKey).value(host)));
 
         new Emitter(sink()).mount(root, Environment.DEFAULT);
         assertEquals("hello", plainSeen.get(0), "a plain value is wrapped and readable via .get()");
@@ -537,18 +542,20 @@ class RouterTest {
     @Test
     void environmentValueReadsInsideBody() {
         // A composite reads the injected router in body(), via Environment.value(.get()).
-        Router router = Navigation.navigator().route("/", Text.of("x")).build();
+        Router router = Navigation.navigator().route("/", Text.with(t -> t.text("x"))).build();
         java.util.List<Router> seen = new java.util.ArrayList<>();
 
         View composite = new View() {
             @Override
             public View body() {
                 seen.add(com.pathland.view.Environment.value(Navigation.ROUTER).get());
-                return Text.of("x");
+                return Text.with(t -> t.text("x"));
             }
         };
 
-        new Emitter(sink()).mount(composite.environment(Navigation.ROUTER, router), Environment.DEFAULT);
+        new Emitter(sink()).mount(
+                composite.with(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router))),
+                Environment.DEFAULT);
         assertEquals(1, seen.size());
         assertEquals(router, seen.get(0), "the env value is visible through the signal read");
 
@@ -562,9 +569,9 @@ class RouterTest {
     @Test
     void environmentValueFieldResolvesLazilyAtRenderTime() {
         // The @Environment field style: Environment.value is read in a field initializer,
-        // BEFORE the enclosing `.environment(...)` scope is pushed, so it returns a lazy
+        // BEFORE the enclosing EnvironmentBinding scope is pushed, so it returns a lazy
         // signal that captures the binding when .get() runs inside body(), during render.
-        Router router = Navigation.navigator().route("/", Text.of("x")).build();
+        Router router = Navigation.navigator().route("/", Text.with(t -> t.text("x"))).build();
         java.util.List<Router> seen = new java.util.ArrayList<>();
 
         class SidebarLike implements View {
@@ -574,18 +581,22 @@ class RouterTest {
             @Override
             public View body() {
                 seen.add(routerField.get());
-                return Text.of("x");
+                return Text.with(t -> t.text("x"));
             }
         }
 
-        new Emitter(sink()).mount(new SidebarLike().environment(Navigation.ROUTER, router), Environment.DEFAULT);
+        new Emitter(sink()).mount(
+                new SidebarLike().with(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router))),
+                Environment.DEFAULT);
         assertEquals(1, seen.size());
         assertEquals(router, seen.get(0), "a field read before the scope resolves at render time");
 
         // Reuse the same view instance: the lazy signal re-captures on the next render.
         seen.clear();
-        Router other = Navigation.navigator().route("/", Text.of("y")).build();
-        new Emitter(sink()).mount(new SidebarLike().environment(Navigation.ROUTER, other), Environment.DEFAULT);
+        Router other = Navigation.navigator().route("/", Text.with(t -> t.text("y"))).build();
+        new Emitter(sink()).mount(
+                new SidebarLike().with(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(other))),
+                Environment.DEFAULT);
         assertEquals(1, seen.size());
         assertEquals(other, seen.get(0), "a fresh render under a different binding resolves it");
 
@@ -612,7 +623,7 @@ class RouterTest {
         };
 
         new Emitter(sink()).mount(
-                probe.with(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE)),
+                probe.with(BorderedButtonStyle.INSTANCE),
                 Environment.DEFAULT);
         assertEquals(BorderedButtonStyle.INSTANCE, seen.get(0), "buttonStyle() reads the scoped style");
         assertEquals(BorderedButtonStyle.INSTANCE, seen.get(1), "Environment.value(BUTTON_STYLE) returns it");
@@ -636,7 +647,7 @@ class RouterTest {
                 .route("/two", p -> probeButton(seen, "Two"))
                 .build();
         new Emitter(sink()).mount(
-                NavigationContainer.of(router).with(ButtonStyleMod.of(BorderedButtonStyle.INSTANCE)),
+                NavigationContainer.with(n -> n.router(router)).modifiers(BorderedButtonStyle.INSTANCE),
                 Environment.DEFAULT);
 
         seen.clear(); // mount renders the initial destination (once or twice); only the swap matters
@@ -652,7 +663,7 @@ class RouterTest {
             @Override
             public com.pathland.view.emit.PathlandNode render(Environment env) {
                 seen.add(env.buttonStyle());
-                return Button.of(label, () -> { }).render(env);
+                return Button.with(b -> b.title(label).action(() -> { })).render(env);
             }
         };
     }
@@ -664,9 +675,9 @@ class RouterTest {
         com.pathland.view.signal.WritableSignal<String> activePath =
                 com.pathland.view.signal.Signals.signal("/");
         Router router = Navigation.navigator()
-                .route("/", Text.of("Home"))
-                .route("/users", Text.of("Users"))
-                .route("/admin", p -> false, "/", Text.of("Admin")) // guard always redirects home
+                .route("/", Text.with(t -> t.text("Home")))
+                .route("/users", Text.with(t -> t.text("Users")))
+                .route("/admin", p -> false, "/", Text.with(t -> t.text("Admin"))) // guard always redirects home
                 .build(activePath);
 
         assertEquals("/", router.path(), "initial signal value drives the first route");
@@ -684,9 +695,9 @@ class RouterTest {
         com.pathland.view.signal.WritableSignal<String> activePath =
                 com.pathland.view.signal.Signals.signal("/");
         Router router = Navigation.navigator()
-                .route("/", Text.of("Home"))
-                .route("/users", Text.of("Users"))
-                .route("/users/42", Text.of("User 42"))
+                .route("/", Text.with(t -> t.text("Home")))
+                .route("/users", Text.with(t -> t.text("Users")))
+                .route("/users/42", Text.with(t -> t.text("User 42")))
                 .build(activePath);
 
         router.push("/users"); // app-initiated navigation
@@ -703,10 +714,12 @@ class RouterTest {
         com.pathland.view.signal.WritableSignal<String> activePath =
                 com.pathland.view.signal.Signals.signal("/");
         java.util.List<String> seen = new java.util.ArrayList<>();
-        View root = Text.of("x").onPathChange(seen::add);
+        View root = Text.with(t -> t.text("x"))
+                .modifiers(PathChange.with(p -> p.listener(seen::add)));
 
         new Emitter(sink()).mount(
-                root.environment(com.pathland.view.Platform.ACTIVE_PATH, activePath),
+                root.with(EnvironmentBinding.with(
+                        e -> e.key(com.pathland.view.Platform.ACTIVE_PATH).value(activePath))),
                 Environment.DEFAULT);
         assertEquals(java.util.List.of("/"), seen, "fires initially with the current path");
 

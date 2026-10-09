@@ -85,7 +85,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                VStack.with(v -> v.spacing(spacing)).children(Text.of("a")),
+                VStack.with(v -> v.spacing(spacing)).children(Text.with(t -> t.text("a"))),
                 Environment.DEFAULT);
 
         spacing.set(12f);

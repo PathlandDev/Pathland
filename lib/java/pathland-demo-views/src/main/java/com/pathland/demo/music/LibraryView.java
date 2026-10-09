@@ -40,19 +40,19 @@ public final class LibraryView implements View {
             rows.add(new TrackRowView(MusicPlayerView.TRACKS.get(i), i, trackIndex, position, playing, seekRequest));
         }
         // A trailing spacer absorbs the leftover vertical space.
-        rows.add(Spacer.of());
+        rows.add(Spacer.modifiers());
 
-        return VStack.of(
-                Text.of("Library").with(FontSize.of(26), FontWeightMod.of(FontWeight.BOLD))
-                        .with(AccessibilityRole.of(Roles.HEADER)),
-                Text.of(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums")
-                        .with(ForegroundStyle.of(MusicPlayerView.SECONDARY_FG)),
-                Divider.of().with(Padding.of(0, 0, 0, 10)),
-                ScrollView.of(
-                    VStack.of(rows)
+        return VStack.children(
+                Text.with(t -> t.text("Library")).modifiers(FontSize.with(s -> s.size(26)), FontWeight.BOLD)
+                        .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                Text.with(t -> t.text(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums"))
+                        .modifiers(ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
+                Divider.modifiers(Padding.with(p -> p.edges(0, 0, 0, 10))),
+                ScrollView.children(
+                    VStack.children(rows.toArray(new View[0]))
                 )
         )
-        .with(Padding.of(24))
-        .with(Frame.of(Commands.Size.FILL, Commands.Size.FILL));
+        .modifiers(Padding.with(p -> p.uniform(24)))
+        .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)));
     }
 }

@@ -8,7 +8,7 @@ import static com.pathland.view.signal.Signals.*;
 
 public class Sidebar implements View {
     // Environment.value returns a lazy signal when the key isn't bound yet — this
-    // field is initialized before SplitNavDemo's `.environment(ROUTER, router)` scope
+    // field is initialized before SplitNavDemo's EnvironmentBinding(ROUTER, router) scope
     // is pushed, so it resolves on .get() inside body(), at render time.
     private final Signal<Router> router = Environment.value(Navigation.ROUTER);
     private static final Color SIDEBAR_BG = Color.rgb(0xF2, 0xF3, 0xF7);
@@ -19,27 +19,27 @@ public class Sidebar implements View {
     @Override
     public View body() {
         // The router signal resolves here, inside SplitNavDemo's pushed
-        // .environment(Navigation.ROUTER, router) scope.
-        return VStack.of(HorizontalAlignment.LEADING, 8,
-                        Text.of("Pathland").with(
-                                FontSize.of(18), FontWeightMod.of(FontWeight.BOLD)),
+        // EnvironmentBinding(Navigation.ROUTER, router) scope.
+        return VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(8)).children(
+                        Text.with(t -> t.text("Pathland")).modifiers(
+                                FontSize.with(s -> s.size(18)), FontWeight.BOLD),
                         menuRow("/home", "Home", IconName.HOME),
                         menuRow("/kitchen", "Kitchen sink", IconName.GRID),
                         menuRow("/settings", "Settings", IconName.SETTINGS),
-                        Spacer.of()
-                ).with(Padding.of(16))
+                        Spacer.modifiers()
+                ).modifiers(Padding.with(p -> p.uniform(16)))
                 // Fixed-width sidebar with no height hint: as a flex child of the split
                 // HStack it stretches to the row's full height (align-items: stretch).
                 // Alignment is omitted so the stack's own FILL child-alignment (stretch
                 // the menu rows) is preserved.
-                .with(Frame.ofWidth(200f))
-                .with(Background.of(SIDEBAR_BG))
-                .with(Border.of(SIDEBAR_BORDER, 1f))
+                .modifiers(Frame.ofWidth(200f))
+                .modifiers(Background.with(b -> b.color(SIDEBAR_BG)))
+                .modifiers(Border.with(b -> b.color(SIDEBAR_BORDER).width(1f)))
                 // The sidebar is the app's primary navigation region → a `<nav>` landmark.
-                .with(AccessibilityRole.of(Roles.NAVIGATION))
+                .modifiers(AccessibilityRole.with(a -> a.role(Roles.NAVIGATION)))
                 // Custom-looking buttons: real `Button`s styled with a `ButtonStyle`
                 // (control semantics are intrinsic to the component, not a `ROLE`).
-                .with(ButtonStyleMod.of(PlainButtonStyle.INSTANCE));
+                .modifiers(PlainButtonStyle.INSTANCE);
     }
 
     /** A sidebar menu row (a {@link Label}): navigates the router (direct selection — no
@@ -58,11 +58,10 @@ public class Sidebar implements View {
         // The label is FILL-width so the native button's centered content box is
         // neutralized and the label's own leading alignment positions the row
         // (spec DSL.md §5.7: main-axis alignment is the content's own layout).
-        return Button.of(
-                Label.of(label, Icon.of(icon))
-                        .with(Background.of(bg), ForegroundStyle.of(fg))
-                        .with(Frame.ofWidth(Commands.Size.FILL)),
-                () -> router.navigate(path)
+        return Button.with(b -> b.action(() -> router.navigate(path))).children(
+                Label.with(l -> l.title(label).icon(Icon.with(i -> i.name(icon))))
+                        .modifiers(Background.with(b -> b.color(bg)), ForegroundStyle.with(f -> f.color(fg)))
+                        .modifiers(Frame.ofWidth(Commands.Size.FILL))
         );
     }
 }

@@ -12,13 +12,13 @@ import com.pathland.view.emit.PathlandNode;
  * {@code RenderResult.navigateActions} for the host to route a tap. No router is
  * threaded by hand.
  */
-final class NavigationModView implements View {
+final class NavigationIntentView implements View {
 
     private final View content;
     private final String to;
     private final NavOp op;
 
-    NavigationModView(View content, String to, NavOp op) {
+    NavigationIntentView(View content, String to, NavOp op) {
         this.content = content;
         this.to = to;
         this.op = op;

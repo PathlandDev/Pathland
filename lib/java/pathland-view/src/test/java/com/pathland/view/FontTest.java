@@ -6,10 +6,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** The {@code font} modifier: predefined typographies and custom fonts. */
-class FontModTest {
+class FontTest {
 
     private static PathlandNode render(Font font) {
-        return FontMod.of(font).body(Text.of("x")).render(Environment.DEFAULT);
+        return Text.with(t -> t.text("x")).modifiers(font).render(Environment.DEFAULT);
     }
 
     @Test

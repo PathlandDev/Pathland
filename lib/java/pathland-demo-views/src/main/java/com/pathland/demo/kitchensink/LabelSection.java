@@ -6,7 +6,6 @@ import com.pathland.view.Icon;
 import com.pathland.view.IconName;
 import com.pathland.view.IconOnlyLabelStyle;
 import com.pathland.view.Label;
-import com.pathland.view.LabelStyleMod;
 import com.pathland.view.Padding;
 import com.pathland.view.TitleOnlyLabelStyle;
 import com.pathland.view.VStack;
@@ -26,17 +25,17 @@ public final class LabelSection implements View {
     @Override
     public View body() {
         return new SectionCard("Label · title + icon, three labelStyles",
-                VStack.of(
-                        Label.of("Settings", Icon.of(IconName.SETTINGS)),
-                        Label.of("Save changes", Icon.of(IconName.SAVE))
-                                .with(LabelStyleMod.of(TitleOnlyLabelStyle.INSTANCE)),
-                        Label.of("Wi-Fi").with(LabelStyleMod.of(IconOnlyLabelStyle.INSTANCE)),
-                        Label.of("Cloud", Icon.of(IconName.CLOUD))
-                                .with(LabelStyleMod.of(DefaultLabelStyle.INSTANCE)),
-                        Label.of(status.signal(), Icon.of(IconName.INFO)),
-                        Button.of("Toggle status",
-                                () -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready"))
-                ).with(Padding.of(4))
+                VStack.children(
+                        Label.with(l -> l.title("Settings").icon(Icon.with(i -> i.name(IconName.SETTINGS)))),
+                        Label.with(l -> l.title("Save changes").icon(Icon.with(i -> i.name(IconName.SAVE))))
+                                .modifiers(TitleOnlyLabelStyle.INSTANCE),
+                        Label.with(l -> l.title("Wi-Fi")).modifiers(IconOnlyLabelStyle.INSTANCE),
+                        Label.with(l -> l.title("Cloud").icon(Icon.with(i -> i.name(IconName.CLOUD))))
+                                .modifiers(DefaultLabelStyle.INSTANCE),
+                        Label.with(l -> l.title(status.signal()).icon(Icon.with(i -> i.name(IconName.INFO)))),
+                        Button.with(b -> b.title("Toggle status")
+                                .action(() -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready")))
+                ).modifiers(Padding.with(p -> p.uniform(4)))
         );
     }
 }

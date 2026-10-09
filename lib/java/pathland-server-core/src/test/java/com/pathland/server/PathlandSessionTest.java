@@ -41,7 +41,7 @@ class PathlandSessionTest {
     @Test
     void mountsAndDispatchesTaps() {
         AtomicInteger taps = new AtomicInteger();
-        PathlandApp app = () -> Button.of("Tap", taps::incrementAndGet);
+        PathlandApp app = () -> Button.with(b -> b.title("Tap").action(taps::incrementAndGet));
         PathlandSession session = new PathlandSession("s1", STORE, app, EnvironmentData.of("/"));
 
         // The root Button is node id 1; a POINTER_UP routed to it runs its action.
@@ -58,7 +58,7 @@ class PathlandSessionTest {
 
     @Test
     void applyEnvironmentAndResyncDoNotThrow() {
-        PathlandApp app = () -> Button.of("Tap", () -> {});
+        PathlandApp app = () -> Button.with(b -> b.title("Tap").action(() -> {}));
         PathlandSession session = new PathlandSession("s1", STORE, app, EnvironmentData.of("/"));
 
         session.applyEnvironment(EnvironmentData.of("/kitchen"));
@@ -69,7 +69,7 @@ class PathlandSessionTest {
 
     @Test
     void dropsFailedConnectionAndRecoversOnReconnect() {
-        PathlandApp app = () -> Button.of("Tap", () -> {});
+        PathlandApp app = () -> Button.with(b -> b.title("Tap").action(() -> {}));
         PathlandSession session = new PathlandSession("s2", STORE, app, EnvironmentData.of("/"));
 
         // A send failure must drop the connection (the client then reconnects +
@@ -93,7 +93,7 @@ class PathlandSessionTest {
 
     @Test
     void registryRendersHtmlAndTearsDown() {
-        PathlandRegistry registry = new PathlandRegistry(() -> Button.of("Tap", () -> {}), STORE);
+        PathlandRegistry registry = new PathlandRegistry(() -> Button.with(b -> b.title("Tap").action(() -> {})), STORE);
         String html = registry.renderHtml("/");
         assertNotNull(html);
 
@@ -113,7 +113,7 @@ class PathlandSessionTest {
         PathlandApp app = () -> new View() {
             @Override
             public PathlandNode render(Environment env) {
-                return Text.of(env.state().signal("greeting", "hi")).render(env);
+                return Text.with(t -> t.text(env.state().signal("greeting", "hi"))).render(env);
             }
         };
         PathlandRegistry registry = new PathlandRegistry(app, store);
@@ -133,7 +133,7 @@ class PathlandSessionTest {
     @Test
     void debugHtmlSessionEmitsNodeCommentsWhenRendererAvailable() {
         PathlandSession session = new PathlandSession(
-                "s1", STORE, () -> Button.of("Tap", () -> {}), EnvironmentData.of("/"), true);
+                "s1", STORE, () -> Button.with(b -> b.title("Tap").action(() -> {})), EnvironmentData.of("/"), true);
         String html = session.renderHtml();
         if (html.contains("Pathland renderer unavailable")) {
             return; // dylib not on java.library.path in this test JVM — nothing to assert
@@ -143,7 +143,7 @@ class PathlandSessionTest {
 
         // Default (property off) leaves the SSR output comment-free.
         PathlandSession plain = new PathlandSession(
-                "s1", STORE, () -> Button.of("Tap", () -> {}), EnvironmentData.of("/"));
+                "s1", STORE, () -> Button.with(b -> b.title("Tap").action(() -> {})), EnvironmentData.of("/"));
         String plainHtml = plain.renderHtml();
         if (!plainHtml.contains("Pathland renderer unavailable")) {
             assertTrue(!plainHtml.contains("<!--"), "debug comments are opt-in: " + plainHtml);
@@ -153,7 +153,7 @@ class PathlandSessionTest {
 
     @Test
     void registryPropagatesDebugHtmlFlag() {
-        PathlandRegistry debug = new PathlandRegistry(() -> Button.of("Tap", () -> {}), STORE, true);
+        PathlandRegistry debug = new PathlandRegistry(() -> Button.with(b -> b.title("Tap").action(() -> {})), STORE, true);
         String html = debug.renderHtml("/");
         if (!html.contains("Pathland renderer unavailable")) {
             assertTrue(html.contains("<!-- #1 Button"), "registry flag reaches SSR: " + html);
@@ -168,7 +168,8 @@ class PathlandSessionTest {
         // uiId, not the shared window id.
         PathlandApp app = () -> {
             WritableSignal<String> signal = Signals.signal("no");
-            return Button.of(Text.of(signal), () -> signal.set("yes"));
+            return Button.with(b -> b.action(() -> signal.set("yes")))
+                    .children(Text.with(t -> t.text(signal)));
         };
         PathlandRegistry registry = new PathlandRegistry(app, STORE);
         RecordingConnection windowA = new RecordingConnection();
@@ -196,7 +197,7 @@ class PathlandSessionTest {
         PathlandApp app = () -> new View() {
             @Override
             public PathlandNode render(Environment env) {
-                return Text.of(Environment.value(Platform.ACTIVE_PATH)).render(env);
+                return Text.with(t -> t.text(Environment.value(Platform.ACTIVE_PATH))).render(env);
             }
         };
         PathlandRegistry registry = new PathlandRegistry("/app2", app, STORE, false);
