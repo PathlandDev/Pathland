@@ -3,7 +3,7 @@
   "checkpoint_id": "01M4G0NZ3CY9HTCD3BEA32CQ4W",
   "strategy": "manual-commit",
   "branch": "spec/dsl-v2-authoring-surface",
-  "checkpoints_count": 4,
+  "checkpoints_count": 5,
   "files_touched": [
     "lib/java/pathland-view/src/main/java/com/pathland/view/ChildrenView.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Configurable.java",
@@ -26,6 +26,13 @@
       "transcript": "/1/full.jsonl",
       "compact_transcript": "/1/transcript.jsonl",
       "content_hash": "/1/content_hash.txt",
+      "prompt": ""
+    },
+    {
+      "metadata": "/2/metadata.json",
+      "transcript": "/2/full.jsonl",
+      "compact_transcript": "/2/transcript.jsonl",
+      "content_hash": "/2/content_hash.txt",
       "prompt": ""
     }
   ],
