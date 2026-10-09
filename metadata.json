@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4FS8M6F445GBGTEDP7EZ6TY",
+  "strategy": "manual-commit",
+  "branch": "spec/dsl-v2-authoring-surface",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "lib/rust/crates/pathland-render-gtk-demo/src/main.rs",
+    "lib/rust/crates/pathland-render-gtk/src/host.rs",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-view/src/lib.rs",
+    "lib/rust/crates/pathland-view/status.md",
+    "spec/DSL.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 188872,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 28434944,
+    "output_tokens": 50613,
+    "api_call_count": 87
+  }
+}
