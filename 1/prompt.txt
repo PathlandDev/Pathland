@@ -1,0 +1,37 @@
+You are migrating Java TEST files in the Pathland repo to the v2 authoring surface. You may ONLY edit files matching:
+- `lib/java/pathland-render-html/src/test/**`
+- `lib/java/pathland-server-core/src/test/**`
+- `lib/java/pathland-demo-views/src/test/**`
+
+Do NOT edit main sources or anything else.
+
+The v2 DSL surface (already implemented in `lib/java/pathland-view`):
+- Views: `Text.with(t -> t.text("x"))`, `VStack.with(v -> v.alignment(...).spacing(8f)).children(a, b)`, `Grid.with(g -> g.columns(2)).children(a, b)`, `Button.with(b -> b.title("t").action(...))` or `Button.with(b -> b.action(...)).children(label)`, `Slider.with(s -> s.value(sig).in(0f, 100f))`, `Toggle.with(t -> t.isOn(sig))`, etc. All retourn a `ViewBuilder` which IS a `View`.
+- `.modifiers(mod, mod2, ...)` — apply modifier values, chainable in any order with `with(...)`/`children(...)`.
+- Modifier factories: `Padding.with(p -> p.uniform(16))`, `FontSize.with(s -> s.size(18))`, `ForegroundStyle.with(f -> f.color(color))`, `Background.with(b -> b.color(color))`, `Frame.with(f -> f.width(w).height(h))`, `Border.with(b -> b.color(c).width(w).radius(r))`, `Opacity.with(o -> o.value(v))`, etc. Single-value enum/Font/Style types are modifiers directly: `FontWeight.BOLD`, `Font.system(18f)`, `Font.title2()`, `TextAlignment.CENTER`.
+
+REPLACE these usages in the tests:
+1. `view.font(Font.x())` → `view.modifiers(Font.x())`
+2. `view.environment(EnvironmentKey, value)` → `view.modifiers(EnvironmentBinding.with(e -> e.key(key).value(value)))` (import `com.pathland.view.EnvironmentBinding`)
+3. `view.onPathChange(listener)` → `view.modifiers(PathChange.with(p -> p.listener(listener)))` (import `com.pathland.view.PathChange`)
+4. `view.navigate(path)` → `view.modifiers(NavigationIntent.navigate(path))`; `.push`/`.replace` similarly (import `com.pathland.view.router.NavigationIntent`)
+5. `view.with(ButtonStyleMod.of(style))` → `view.modifiers(style)`
+6. `X.of(...)` for views → `X.with(...)` per the same rules as the main migration (e.g. `Text.of("x")` → `Text.with(t -> t.text("x"))`, `VStack.of(align, spacing, a, b)` → `VStack.with(...).children(a, b)`, `Button.of(title, action)` → `Button.with(b -> b.title(title).action(action))`, `NavigationContainer.of(router)` → `NavigationContainer.with(n -> n.router(router))`, `Slider.of(sig, min, max)` → `Slider.with(s -> s.value(sig).in(min, max))`).
+7. `FontWeightMod.of(...)` → the enum value directly; any other `*Mod.of(...)` → the wrapped value.
+
+Import changes needed:
+- `com.pathland.view.ButtonStyleMod` → remove; use `BorderedButtonStyle.INSTANCE`/`PlainButtonStyle.INSTANCE` directly as modifier values.
+
+Rules:
+- Preserve test *intent* and assertions exactly — only authoring syntax changes. Do not change expected values, count assertions, or rendered-HTML string expectations.
+- If a test variable was typed as the concrete class (e.g. `VStack`) but now holds a `ViewBuilder`, change the variable's declared type to `View` (or `var`).
+- `View.with(ViewModifier...)` instance method still exists and works on plain `View` values, but PREFER `.modifiers(...)` on builders. When chaining on a plain `View` (not a builder), keep `.with(...)`.
+- Do NOT reformat unrelated code.
+- Consult `lib/java/pathland-view/src/main/java/com/pathland/view/` class files to confirm config setter names whenever unsure. Never guess.
+
+## Compile verification
+`cd lib/java && mvn -o -q -pl pathland-render-html,pathland-server-core,pathland-demo-views -am test-compile`
+Fix errors until it compiles. Then run `mvn -o -q -pl pathland-server-core,pathland-render-html,pathland-demo-views test` and ensure all tests pass (note: pathland-render-html tests may require a Rust dylib — if it fails for a missing native lib, report that separately but the compile must be clean).
+If any failures are unrelated to your migration (pre-existing), report them.
+
+Report: files changed, any residue you could not migrate, and the test result.
