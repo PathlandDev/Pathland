@@ -1358,9 +1358,10 @@ signals in a shared `no_std` runtime (`Signal<T>`/`WritableSignal<T>`,
 **two-way control bindings** (input sinks collected with
 `collect_input_handlers`) and **actions** (`Button::action`), plus
 **styles + environment** (a subtree `Environment` threaded through
-`View::build_env`, `ButtonStyle` applied with `ViewExt::button_style`). It is
-still without navigation/conditional. Both are per-project implementation status
-tracked in each project's `status.md`.
+`View::build_env`, `ButtonStyle` applied with `ViewExt::button_style`), and
+**structural reactivity + navigation** (`Conditional::when`, `RouteTable`,
+`Router`, `NavigationContainer`, `NavigationLink`). Both are per-project
+implementation status tracked in each project's `status.md`.
 
 ---
 

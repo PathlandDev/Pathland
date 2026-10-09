@@ -80,6 +80,13 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   supplies a button's content (Composite Override Mode), applied with
   `ViewExt::button_style(style)`. Built-ins `PlainButtonStyle` (native path) and
   `BorderedButtonStyle`; custom styles implement the trait.
+- **Structural reactivity + navigation (Phase 4)**: `Conditional::when(signal,
+  then, else)` builds the selected branch (the host rebuilds + re-emits; the
+  engine reconciles into `TREE` deltas). Navigation: `Params` + `RouteTable`
+  (`/users/:id` matching + fallback), `Router` (path signal + back-stack:
+  `navigate`/`push`/`pop`/`replace`), `NavigationContainer` (builds the current
+  destination and carries `ROUTE`/`NAV_DEPTH`/`NAV_CHROME` on a container slot),
+  and `NavigationLink` (a button that changes the route via a router).
 
 ## Not implemented / gaps
 
@@ -90,9 +97,9 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 - **Styles**: only `ButtonStyle` (there is no `Label`/`Audio`/`Video` view in the
   Rust DSL, so `LabelStyle`/`AudioStyle`/`VideoStyle` have no target). The
   environment carries only the button-style slot (no arbitrary typed keys).
-- **Navigation / conditional**: `Router`/`RouteTable`/`NavigationContainer`/
-  `NavigationLink`/`Conditional` are absent (Phase 4); `Label`/`GridRow` are
-  absent.
+- **Navigation**: links hold a router explicitly (no nearest-enclosing-router
+  resolution / `NavigationIntent`); `NAVIGATE` event routing is app-side; no
+  `Label`/`GridRow` components.
 - **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED)** is
   **authored** (`SizeThatFits::new(Vec<Fit>)` + `Fit::new(view, minWidth)` /
   `Fit::any`) emitting the slot + its single selected child + the `FIT_QUERY`

@@ -2636,6 +2636,279 @@ impl Configurable for ColorPicker {
 view_statics!(ColorPicker);
 
 // ---------------------------------------------------------------------------
+// Structural reactivity + navigation
+// ---------------------------------------------------------------------------
+
+/// A **structural container**: builds `then` or `else` from a boolean selector
+/// signal. Structural reactivity is the Rust DSL's rebuild model — the host
+/// re-builds the tree and re-emits, and the engine reconciles the change into
+/// `TREE` deltas (identical structure emits zero opcodes).
+pub struct Conditional {
+    selector: Signal<bool>,
+    then_branch: Box<dyn View>,
+    else_branch: Box<dyn View>,
+}
+
+impl Conditional {
+    /// `if selector { then } else { else }`.
+    pub fn when(
+        selector: Signal<bool>,
+        then_branch: impl View + 'static,
+        else_branch: impl View + 'static,
+    ) -> Self {
+        Self {
+            selector,
+            then_branch: Box::new(then_branch),
+            else_branch: Box::new(else_branch),
+        }
+    }
+}
+
+impl View for Conditional {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        if self.selector.get().unwrap_or(false) {
+            self.then_branch.build_env(env)
+        } else {
+            self.else_branch.build_env(env)
+        }
+    }
+}
+
+/// Path parameters captured from a route pattern (`/users/:id`).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Params {
+    values: BTreeMap<String, String>,
+}
+
+impl Params {
+    /// A parameter by name.
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.values.get(key).map(String::as_str)
+    }
+
+    /// An `i64` parameter.
+    pub fn int_value(&self, key: &str) -> Option<i64> {
+        self.get(key).and_then(|s| s.parse().ok())
+    }
+}
+
+/// A destination factory.
+type RouteFactory = Rc<dyn Fn(&Params) -> Box<dyn View>>;
+
+/// Maps path patterns to destination factories.
+#[derive(Default)]
+pub struct RouteTable {
+    routes: Vec<(String, RouteFactory)>,
+    fallback: Option<RouteFactory>,
+}
+
+impl RouteTable {
+    /// An empty route table.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a route (`/users/:id`).
+    pub fn route(
+        mut self,
+        pattern: &str,
+        factory: impl Fn(&Params) -> Box<dyn View> + 'static,
+    ) -> Self {
+        self.routes.push((String::from(pattern), Rc::new(factory)));
+        self
+    }
+
+    /// Set the fallback (404) destination.
+    pub fn fallback(mut self, factory: impl Fn(&Params) -> Box<dyn View> + 'static) -> Self {
+        self.fallback = Some(Rc::new(factory));
+        self
+    }
+
+    /// Build the destination for `path` (the fallback if nothing matches).
+    pub fn build(&self, path: &str) -> Box<dyn View> {
+        for (pattern, factory) in &self.routes {
+            if let Some(params) = match_path(pattern, path) {
+                return factory(&params);
+            }
+        }
+        if let Some(fallback) = &self.fallback {
+            return fallback(&Params::default());
+        }
+        Box::new(Spacer)
+    }
+}
+
+/// Match a `path` against a `/a/:b` pattern, capturing params.
+fn match_path(pattern: &str, path: &str) -> Option<Params> {
+    let pat: Vec<&str> = pattern.trim_matches('/').split('/').collect();
+    let got: Vec<&str> = path.trim_matches('/').split('/').collect();
+    if pat.len() != got.len() {
+        return None;
+    }
+    let mut params = Params::default();
+    for (p, g) in pat.iter().zip(got.iter()) {
+        if let Some(name) = p.strip_prefix(':') {
+            params.values.insert(String::from(name), String::from(*g));
+        } else if p != g {
+            return None;
+        }
+    }
+    Some(params)
+}
+
+/// The navigation operation a link performs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NavOp {
+    /// Direct selection (no back-stack entry).
+    Navigate,
+    /// Drill-down (push the current path).
+    Push,
+    /// Replace the current path (no back-stack change).
+    Replace,
+}
+
+/// App-owned navigation state: the current-path signal plus a back-stack.
+pub struct Router {
+    path: WritableSignal<String>,
+    back: Rc<RefCell<Vec<String>>>,
+}
+
+impl Router {
+    /// A router over a current-path signal.
+    pub fn new(path: WritableSignal<String>) -> Self {
+        Self {
+            path,
+            back: Rc::new(RefCell::new(Vec::new())),
+        }
+    }
+
+    /// The current path.
+    pub fn path(&self) -> String {
+        self.path.get().unwrap_or_default()
+    }
+
+    /// The back-stack depth.
+    pub fn depth(&self) -> u32 {
+        self.back.borrow().len() as u32
+    }
+
+    /// Select `to` (no back-stack entry).
+    pub fn navigate(&self, to: impl Into<String>) {
+        self.path.set(to.into());
+    }
+
+    /// Drill down to `to`, pushing the current path.
+    pub fn push(&self, to: impl Into<String>) {
+        self.back.borrow_mut().push(self.path());
+        self.path.set(to.into());
+    }
+
+    /// Replace the current path (no back-stack change).
+    pub fn replace(&self, to: impl Into<String>) {
+        self.path.set(to.into());
+    }
+
+    /// Go back one step (pop the back-stack).
+    pub fn pop(&self) {
+        if let Some(previous) = self.back.borrow_mut().pop() {
+            self.path.set(previous);
+        }
+    }
+
+    /// The current-path signal (for host URL sync).
+    pub fn signal(&self) -> WritableSignal<String> {
+        self.path.clone()
+    }
+}
+
+/// A navigation slot: builds the current destination and carries `ROUTE` /
+/// `NAV_DEPTH` / `NAV_CHROME` on its container node. A slot carrying `ROUTE`
+/// is the structural trigger a renderer may promote onto native navigation.
+pub struct NavigationContainer {
+    router: Rc<Router>,
+    table: RouteTable,
+    chrome: u8,
+}
+
+impl NavigationContainer {
+    /// A navigation slot over `router` with `table`.
+    pub fn new(router: Rc<Router>, table: RouteTable) -> Self {
+        Self {
+            router,
+            table,
+            chrome: 0,
+        }
+    }
+
+    /// Set the `NAV_CHROME` mode token (0 = platform default, 1 = custom).
+    pub fn chrome(mut self, chrome: u8) -> Self {
+        self.chrome = chrome;
+        self
+    }
+}
+
+impl View for NavigationContainer {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let path = self.router.path();
+        let destination = self.table.build(&path).build_env(env);
+        let mut node = plain_node(Component::VStack, vec![destination], BTreeMap::new());
+        node.string_properties.insert(property_id::ROUTE, path);
+        node.properties
+            .insert(property_id::NAV_DEPTH, self.router.depth());
+        node.properties
+            .insert(property_id::NAV_CHROME, (self.chrome as f32).to_bits());
+        node
+    }
+}
+
+/// A button that changes the route through a router.
+pub struct NavigationLink {
+    label: String,
+    router: Rc<Router>,
+    to: String,
+    op: NavOp,
+}
+
+impl NavigationLink {
+    /// A push link (`label` → `to`).
+    pub fn of(label: &str, router: Rc<Router>, to: &str) -> Self {
+        Self {
+            label: String::from(label),
+            router,
+            to: String::from(to),
+            op: NavOp::Push,
+        }
+    }
+
+    /// A link with an explicit operation.
+    pub fn with_op(label: &str, router: Rc<Router>, to: &str, op: NavOp) -> Self {
+        Self {
+            label: String::from(label),
+            router,
+            to: String::from(to),
+            op,
+        }
+    }
+}
+
+impl View for NavigationLink {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let router = self.router.clone();
+        let to = self.to.clone();
+        let op = self.op;
+        Button::with(|b| {
+            b.label(self.label.clone());
+            b.action(move || match op {
+                NavOp::Navigate => router.navigate(to.clone()),
+                NavOp::Push => router.push(to.clone()),
+                NavOp::Replace => router.replace(to.clone()),
+            });
+        })
+        .build_env(env)
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Core component macros + free functions
 // ---------------------------------------------------------------------------
 
@@ -3420,6 +3693,102 @@ mod tests {
             node.children[0].component,
             Component::Text { text: "[Go]".into() }
         );
+    }
+
+    #[test]
+    fn conditional_selects_branch() {
+        let engine = Engine::new();
+        let show = engine.signal(true);
+        let cond = Conditional::when(show.as_readonly(), Text::new("A"), Text::new("B"));
+        assert_eq!(cond.build().component, Component::Text { text: "A".into() });
+        show.set(false);
+        assert_eq!(cond.build().component, Component::Text { text: "B".into() });
+    }
+
+    #[test]
+    fn route_table_captures_params() {
+        let table = RouteTable::new()
+            .route("/", |_| Box::new(Text::new("home")))
+            .route("/users/:id", |p| {
+                Box::new(Text::with(|t| {
+                    t.text(alloc::format!("user {}", p.get("id").unwrap()));
+                }))
+            })
+            .fallback(|_| Box::new(Text::new("404")));
+        assert_eq!(
+            table.build("/").build().component,
+            Component::Text { text: "home".into() }
+        );
+        assert_eq!(
+            table.build("/users/42").build().component,
+            Component::Text { text: "user 42".into() }
+        );
+        assert_eq!(
+            table.build("/nope").build().component,
+            Component::Text { text: "404".into() }
+        );
+    }
+
+    #[test]
+    fn router_push_pop_navigate_replace() {
+        let engine = Engine::new();
+        let path = engine.signal(String::from("/"));
+        let router = Router::new(path);
+        assert_eq!(router.path(), "/");
+        router.push("/a");
+        assert_eq!(router.path(), "/a");
+        assert_eq!(router.depth(), 1);
+        router.push("/b");
+        assert_eq!(router.depth(), 2);
+        router.pop();
+        assert_eq!(router.path(), "/a");
+        router.navigate("/c");
+        assert_eq!(router.path(), "/c");
+        router.replace("/d");
+        assert_eq!(router.path(), "/d");
+        assert_eq!(router.depth(), 1, "replace leaves the back-stack");
+    }
+
+    #[test]
+    fn navigation_container_builds_destination_and_route() {
+        let engine = Engine::new();
+        let path = engine.signal(String::from("/a"));
+        let router = Rc::new(Router::new(path));
+        let table = RouteTable::new()
+            .route("/a", |_| Box::new(Text::new("A")))
+            .route("/b", |_| Box::new(Text::new("B")));
+        let container = NavigationContainer::new(router.clone(), table);
+        let node = container.build();
+        assert_eq!(
+            node.string_properties.get(&property_id::ROUTE).map(String::as_str),
+            Some("/a")
+        );
+        assert_eq!(node.children[0].component, Component::Text { text: "A".into() });
+
+        router.push("/b");
+        let node = container.build();
+        assert_eq!(
+            node.string_properties.get(&property_id::ROUTE).map(String::as_str),
+            Some("/b")
+        );
+        assert_eq!(node.children[0].component, Component::Text { text: "B".into() });
+        assert_eq!(
+            node.properties.get(&property_id::NAV_DEPTH),
+            Some(&1u32)
+        );
+    }
+
+    #[test]
+    fn navigation_link_pushes_on_tap() {
+        let engine = Engine::new();
+        let path = engine.signal(String::from("/"));
+        let router = Rc::new(Router::new(path));
+        let node = NavigationLink::of("Go", router.clone(), "/next").build();
+        let mut taps = BTreeMap::new();
+        collect_tap_handlers(&node, &mut taps);
+        (taps.get(&0).unwrap().borrow_mut())();
+        assert_eq!(router.path(), "/next");
+        assert_eq!(router.depth(), 1);
     }
 
     #[test]
