@@ -1,5 +1,7 @@
 package com.pathland.view;
 
+import java.util.function.Consumer;
+
 /**
  * the accessibility role ({@code ROLE} semantic enum code).
  *
@@ -9,6 +11,18 @@ package com.pathland.view;
  * {@link ButtonStyle}.
  */
 public final class AccessibilityRole implements ViewModifier {
+
+    /** {@link AccessibilityRole} values. */
+    public static final class Config {
+
+        private Integer role;
+
+        /** Set the semantic role code (see {@link Roles}). */
+        public Config role(int role) {
+            this.role = role;
+            return this;
+        }
+    }
 
     private final float value;
 
@@ -30,6 +44,16 @@ public final class AccessibilityRole implements ViewModifier {
                             + "Button + ButtonStyle)");
         }
         return new AccessibilityRole((float) value);
+    }
+
+    /** Configure the accessibility role. */
+    public static AccessibilityRole with(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        if (config.role == null || !Roles.isDefined(config.role)) {
+            throw new IllegalArgumentException("not a semantic role: " + config.role);
+        }
+        return new AccessibilityRole((float) config.role);
     }
 
     @Override

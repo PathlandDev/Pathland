@@ -86,6 +86,11 @@ public final class Frame implements ViewModifier {
         return builder.build();
     }
 
+    /** Configure a frame with {@code .modifiers(Frame.with(f -> f.width(w).height(h)))}. */
+    public static Frame with(Consumer<Builder> configure) {
+        return of(configure);
+    }
+
     @Override
     public View body(View content) {
         List<Modified.Prop> props = new ArrayList<>();

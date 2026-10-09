@@ -16,6 +16,12 @@ public interface LabelStyle extends Style {
     /** Build the styled label content for {@code config}. */
     View makeBody(Configuration config);
 
+    /** Scopes this style down the wrapped subtree ({@code .modifiers(LabelStyle)}). */
+    @Override
+    default View body(View content) {
+        return content.environment(Environment.LABEL_STYLE, this);
+    }
+
     /**
      * The parts of the label being styled. A part is {@code null} when it is absent
      * (no title text / no icon) — the built-in styles omit an absent part, and a custom

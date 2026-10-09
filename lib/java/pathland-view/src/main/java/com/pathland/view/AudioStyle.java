@@ -19,6 +19,12 @@ public interface AudioStyle extends Style {
     /** Build the styled content for {@code config}. */
     View makeBody(Configuration config);
 
+    /** Scopes this style down the wrapped subtree ({@code .modifiers(AudioStyle)}). */
+    @Override
+    default View body(View content) {
+        return content.environment(Environment.AUDIO_STYLE, this);
+    }
+
     /**
      * The media configuration of the audio being styled: the playback signals a
      * custom control UI binds to. The source rides the {@code Audio} view itself.

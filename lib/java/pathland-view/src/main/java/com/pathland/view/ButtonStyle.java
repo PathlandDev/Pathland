@@ -12,6 +12,12 @@ public interface ButtonStyle extends Style {
     /** Build the styled button content for {@code config}. */
     View makeBody(Configuration config);
 
+    /** Scopes this style down the wrapped subtree ({@code .modifiers(ButtonStyle)}). */
+    @Override
+    default View body(View content) {
+        return content.environment(Environment.BUTTON_STYLE, this);
+    }
+
     /**
      * The configuration of the button being styled: its label. The {@link Button}
      * control attaches the returned content as the button node's child, and wires the

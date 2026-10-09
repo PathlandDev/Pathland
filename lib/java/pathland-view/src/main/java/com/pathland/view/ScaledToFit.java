@@ -10,6 +10,11 @@ public final class ScaledToFit implements ViewModifier {
         return new ScaledToFit();
     }
 
+    /** Fit. */
+    public static ScaledToFit with() {
+        return new ScaledToFit();
+    }
+
     @Override
     public View body(View content) {
         return Modified.props(content, Modified.prop(Properties.CONTENT_MODE, (float) ContentMode.FIT.wire()));

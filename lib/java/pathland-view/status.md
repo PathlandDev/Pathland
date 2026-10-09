@@ -1,6 +1,6 @@
 # pathland-view (Java) — implementation status
 
-**Last updated:** September 14, 2026
+**Last updated:** October 9, 2026
 
 The hand-written, framework-agnostic Java 17+ DSL (`com.pathland.view`):
 declarative views, Angular-style signals, fine-grained emitter, `PLPL` wire
@@ -24,7 +24,23 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   controls slot under the root row) keeps its candidate instead of resetting to
   compact (a reset would strand the DOM client, which never re-reports an
   unchanged width).
-- **Construction is `.of()` only**: every concrete view/control exposes a
+- **v2 authoring surface (migration in progress)**: every concrete view exposes
+  the three operations — values via static `View.with(Consumer<Config>)`,
+  `.modifiers(ViewModifier...)`, and (content-bearing views) `.children(View...)`
+  — on the returned generic `ViewBuilder<V, C>` (any order; `View.Config`,
+  `Configurable<C>`, `ChildrenView`; `View` keeps only `body()`/`render()` —
+  Java's static-vs-instance rule means the statics sit on the view classes and
+  the chain lives on the builder). Modifiers are built with `Modifier.with(c -> …)`
+  (`Padding.with(p -> p.uniform(16))`, `Frame.with(f -> f.width(100).height(24))`,
+  `ForegroundStyle.with(f -> f.color(c))`); **single-value modifiers are the value
+  itself** (`FontWeight.BOLD`, `TextAlignment.CENTER`, `Truncation.TAIL`,
+  `TextCase.UPPERCASE`, `ControlSize.LARGE`, `FontStyle.ITALIC`,
+  `FontDesign.SERIF`, `Font.system(18)` — the enums + `Font` implement
+  `ViewModifier`), and `Style extends ViewModifier`, so `.modifiers(MyButtonStyle)`
+  scopes the matching environment key. The legacy `.of(...)` factories and
+  `View.with(ViewModifier...)` remain temporarily as a **bridge** until every
+  consumer (demo views, starters, renderers) is migrated, then are removed.
+- **Construction `.of()` (legacy bridge)**: every concrete view/control exposes a
   static `<ViewName>.of(...)` factory (`Text.of`, `VStack.of`,
   `Button.of(label, action)`, `Slider.of(binding, min, max)`,
   `DatePicker.of(mode, days)`, …); constructors are private and the former
@@ -46,9 +62,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   alignment.
   GTK falls back to natural sizing (see render-gtk status).
 - **One modifier mechanism — no sugar on `View`**: core modifiers are
-  `ViewModifier` values (`Padding.of(16)`, `ForegroundStyle.of(color)`,
-  `Border.of(color, width)`, …) applied via `.with(...)` (one or several,
-  innermost-first); sizing is the `Frame` modifier value — the static factories
+  `ViewModifier` values built via `Modifier.with(c -> …)`
+  (`Padding.with(p -> p.uniform(16))`, `ForegroundStyle.with(f -> f.color(c))`,
+  `Border.with(b -> b.color(c).width(w))`, …) or passed as the bare value when the
+  value *is* the modifier (`FontWeight.BOLD`, `Font.headline()`, `MyButtonStyle`),
+  applied via `.modifiers(...)` (one or several,
+  innermost-first); the legacy `Modifier.of(...)` factories and
+  `View.with(ViewModifier...)` remain as a temporary bridge. sizing is the `Frame` modifier value — the static factories
   `Frame.of(w, h)`, `Frame.of(w, h, alignment)`, `Frame.of(w, alignment)`,
   `Frame.ofWidth(w)`, `Frame.ofHeight(h)`, and the lambda configurator
   `Frame.of(c -> c.minWidth(..).maxWidth(..).alignment(..))` (the fluent
@@ -186,7 +206,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `Label.of(title, Icon)` (and the signal-title variant) composes the icon part;
   a reactive name re-emits only `ICON_NAME`. Size/tint follow `FONT_SIZE` /
   `COLOR`; `LABEL` makes the icon presentable.
-- **`Font` + `FontMod` + `View.font(_:)`** — the `Font` spec: a
+- **`Font` (is itself the modifier) + `View.font(_:)`** — the `Font` spec: a
   predefined typography (`Font.title2()` → `TEXT_STYLE`, heading styles imply a
   heading element), a custom family + size (`Font.custom(name, size)` →
   `FONT_FAMILY` + `FONT_SIZE`), a fully-custom typography
@@ -345,5 +365,7 @@ values** (`View.environment` + `Environment.value` hierarchy/restore), and the
 **universal active path** (a bound router re-routing guard-aware on external
 signal writes + mirroring its own navigation; `onPathChange` firing on changes));
 the JNA ring
-test runs when `libpathland_core` is on `java.library.path`. CI proves every
-LTS from 17 (Temurin 17/21/25).
+test runs when `libpathland_core` is on `java.library.path`. The v2 authoring
+surface is covered by `ViewBuilderTest` (with/modifiers/children any-order) and
+`ModifierWithTest` (modifier `with(...)`, enum/`Font` value-is-modifier,
+`Frame.with` builder). CI proves every LTS from 17 (Temurin 17/21/25).

@@ -1,9 +1,23 @@
 package com.pathland.view;
 
+import java.util.function.Consumer;
+
 /**
  * layout priority for stretching/shrinking.
  */
 public final class LayoutPriority implements ViewModifier {
+
+    /** {@link LayoutPriority} values. */
+    public static final class Config {
+
+        private float value;
+
+        /** Set the layout priority. */
+        public Config value(float value) {
+            this.value = value;
+            return this;
+        }
+    }
 
     private final float value;
 
@@ -13,6 +27,13 @@ public final class LayoutPriority implements ViewModifier {
 
     public static LayoutPriority of(float value) {
         return new LayoutPriority(value);
+    }
+
+    /** Configure the layout priority. */
+    public static LayoutPriority with(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new LayoutPriority(config.value);
     }
 
     @Override

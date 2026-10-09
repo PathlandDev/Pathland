@@ -6,6 +6,8 @@ import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
 import com.pathland.view.signal.WritableSignal;
 
+import java.util.function.Consumer;
+
 /**
  * An audio playback node. Playback is **renderer-native by default** (the web
  * renderer emits {@code <audio controls>}); a custom {@link AudioStyle} supplies
@@ -13,91 +15,156 @@ import com.pathland.view.signal.WritableSignal;
  * properties ({@code PLAYBACK_STATE}/{@code MEDIA_POSITION}/{@code MEDIA_VOLUME})
  * bound to the playback signals, and the renderer reports playback events back
  * into them (spec/EVENTS.md Media).
- *
- * <p>Bind a control signal with {@link #playing(WritableSignal)},
- * {@link #position(WritableSignal)}, {@link #volume(WritableSignal)}; the seek
- * slider's maximum is {@link #duration(float)}. A media node with bound controls
- * and a custom style is fully app-driven.
  */
-public final class Audio implements View {
+public final class Audio implements View, Configurable<Audio.Config> {
 
-    private final Signal<String> sourceSignal;
-    private final WritableSignal<Boolean> playing;
-    private final WritableSignal<Float> position;
-    private final WritableSignal<Float> volume;
-    private final WritableSignal<Float> reportPosition;
-    private final WritableSignal<Float> reportVolume;
-    private final float duration;
-    private final Runnable onEnded;
+    /** {@link Audio} values. */
+    public static final class Config implements View.Config {
 
-    private Audio(Signal<String> sourceSignal, WritableSignal<Boolean> playing,
-                  WritableSignal<Float> position, WritableSignal<Float> volume,
-                  WritableSignal<Float> reportPosition, WritableSignal<Float> reportVolume,
-                  float duration, Runnable onEnded) {
-        this.sourceSignal = sourceSignal;
-        this.playing = playing;
-        this.position = position;
-        this.volume = volume;
-        this.reportPosition = reportPosition;
-        this.reportVolume = reportVolume;
-        this.duration = duration;
-        this.onEnded = onEnded;
+        private Signal<String> source;
+        private WritableSignal<Boolean> playing;
+        private WritableSignal<Float> position;
+        private WritableSignal<Float> volume;
+        private WritableSignal<Float> reportPosition;
+        private WritableSignal<Float> reportVolume;
+        private float duration;
+        private Runnable onEnded;
+
+        /** Set a static source (resource name, file path, or URL). */
+        public Config source(String source) {
+            this.source = source == null ? null : Signals.constant(source);
+            return this;
+        }
+
+        /** Bind the source to a reactive signal. */
+        public Config source(Signal<String> source) {
+            this.source = source;
+            return this;
+        }
+
+        /** Bind the play/pause state (a {@code MEDIA_PLAY_STATE_CHANGED} echoes back into it). */
+        public Config playing(WritableSignal<Boolean> playing) {
+            this.playing = playing;
+            return this;
+        }
+
+        /** Bind the play position in seconds (a change seeks; {@code MEDIA_TIME_UPDATED} echoes back
+         *  unless {@link #onPositionReport} redirects the report). */
+        public Config position(WritableSignal<Float> position) {
+            this.position = position;
+            return this;
+        }
+
+        /** Bind the volume 0..1 ({@code MEDIA_VOLUME_CHANGED} echoes back unless {@link #onVolumeReport}). */
+        public Config volume(WritableSignal<Float> volume) {
+            this.volume = volume;
+            return this;
+        }
+
+        /** Where {@code MEDIA_TIME_UPDATED} position reports flow (decoupled from the seek command). */
+        public Config onPositionReport(WritableSignal<Float> display) {
+            this.reportPosition = display;
+            return this;
+        }
+
+        /** Where {@code MEDIA_VOLUME_CHANGED} volume reports flow (decoupled from the volume command). */
+        public Config onVolumeReport(WritableSignal<Float> display) {
+            this.reportVolume = display;
+            return this;
+        }
+
+        /** The media length in seconds (a custom seek control's maximum). */
+        public Config duration(float seconds) {
+            this.duration = seconds;
+            return this;
+        }
+
+        /** Advance (e.g. to the next track) when the media ends ({@code MEDIA_ENDED}). */
+        public Config onEnded(Runnable onEnded) {
+            this.onEnded = onEnded;
+            return this;
+        }
+    }
+
+    private final Config config;
+
+    private Audio(Config config) {
+        this.config = config;
     }
 
     /** An audio node with no source (the renderer's default visual). */
     public static Audio of() {
-        return new Audio(null, null, null, null, null, null, 0f, null);
+        return new Audio(new Config());
     }
 
     /** An audio node with a static source (resource name, file path, or URL). */
     public static Audio of(String source) {
-        return new Audio(Signals.constant(source), null, null, null, null, null, 0f, null);
+        return new Audio(new Config().source(source));
     }
 
     /** An audio node whose source is bound to a reactive signal. */
     public static Audio of(Signal<String> source) {
-        return new Audio(source, null, null, null, null, null, 0f, null);
+        return new Audio(new Config().source(source));
+    }
+
+    /** Configure the audio node's values. */
+    public static ViewBuilder<Audio, Config> with(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new ViewBuilder<>(new Audio(config));
+    }
+
+    /** Apply modifiers to a source-less audio node. */
+    public static ViewBuilder<Audio, Config> modifiers(ViewModifier... modifiers) {
+        return new ViewBuilder<>(new Audio(new Config())).modifiers(modifiers);
     }
 
     /** Bind the play/pause state (a {@code MEDIA_PLAY_STATE_CHANGED} echoes back into it). */
     public Audio playing(WritableSignal<Boolean> playing) {
-        return new Audio(sourceSignal, playing, position, volume, reportPosition, reportVolume, duration, onEnded);
+        config.playing(playing);
+        return this;
     }
 
     /** Bind the play position in seconds (a change seeks; {@code MEDIA_TIME_UPDATED} echoes back into it
      *  unless {@link #onPositionReport} redirects the report). */
     public Audio position(WritableSignal<Float> position) {
-        return new Audio(sourceSignal, playing, position, volume, reportPosition, reportVolume, duration, onEnded);
+        config.position(position);
+        return this;
     }
 
     /** Bind the volume 0..1 ({@code MEDIA_VOLUME_CHANGED} echoes back into it unless {@link #onVolumeReport}). */
     public Audio volume(WritableSignal<Float> volume) {
-        return new Audio(sourceSignal, playing, position, volume, reportPosition, reportVolume, duration, onEnded);
+        config.volume(volume);
+        return this;
     }
 
-    /** Where {@code MEDIA_TIME_UPDATED} position reports flow (the seek-bar
-     *  display), decoupled from the {@link #position seek command} — so a report
-     *  never echoes back as a {@code MEDIA_POSITION} seek (spec/EVENTS.md Media).
-     *  Defaults to the {@link #position} signal when unset. */
+    /** Where {@code MEDIA_TIME_UPDATED} position reports flow (the seek-bar display). */
     public Audio onPositionReport(WritableSignal<Float> display) {
-        return new Audio(sourceSignal, playing, position, volume, display, reportVolume, duration, onEnded);
+        config.onPositionReport(display);
+        return this;
     }
 
-    /** Where {@code MEDIA_VOLUME_CHANGED} volume reports flow (the volume-slider
-     *  display), decoupled from the {@link #volume command}. Defaults to the
-     *  {@link #volume} signal when unset. */
+    /** Where {@code MEDIA_VOLUME_CHANGED} volume reports flow (the volume-slider display). */
     public Audio onVolumeReport(WritableSignal<Float> display) {
-        return new Audio(sourceSignal, playing, position, volume, reportPosition, display, duration, onEnded);
+        config.onVolumeReport(display);
+        return this;
     }
 
     /** The media length in seconds (a custom seek control's maximum). */
     public Audio duration(float seconds) {
-        return new Audio(sourceSignal, playing, position, volume, reportPosition, reportVolume, seconds, onEnded);
+        config.duration(seconds);
+        return this;
     }
 
     /** Advance (e.g. to the next track) when the media ends ({@code MEDIA_ENDED}). */
     public Audio onEnded(Runnable onEnded) {
-        return new Audio(sourceSignal, playing, position, volume, reportPosition, reportVolume, duration, onEnded);
+        config.onEnded(onEnded);
+        return this;
+    }
+
+    @Override
+    public Config config() {
+        return config;
     }
 
     @Override
@@ -108,33 +175,34 @@ public final class Audio implements View {
         // and the renderer shows native media controls.
         PathlandNode node = new PathlandNode(Components.AUDIO);
         AudioStyle style = env.audioStyle();
-        View content = style.makeBody(new AudioStyle.Configuration(playing, position, volume, duration));
+        View content = style.makeBody(
+                new AudioStyle.Configuration(config.playing, config.position, config.volume, config.duration));
         if (content != null && content != EmptyContent.INSTANCE) {
             node.children.add(content.render(env));
         }
 
-        if (sourceSignal != null) {
-            node.properties.put(Properties.AUDIO_SOURCE, sourceSignal.get());
-            node.propertyBindings.put(Properties.AUDIO_SOURCE, sourceSignal);
+        if (config.source != null) {
+            node.properties.put(Properties.AUDIO_SOURCE, config.source.get());
+            node.propertyBindings.put(Properties.AUDIO_SOURCE, config.source);
         }
-        if (playing != null) {
-            node.properties.put(Properties.PLAYBACK_STATE, playing.get() ? 1 : 0);
-            node.propertyBindings.put(Properties.PLAYBACK_STATE, playing);
+        if (config.playing != null) {
+            node.properties.put(Properties.PLAYBACK_STATE, config.playing.get() ? 1 : 0);
+            node.propertyBindings.put(Properties.PLAYBACK_STATE, config.playing);
         }
-        if (position != null) {
-            node.properties.put(Properties.MEDIA_POSITION, position.get());
-            node.propertyBindings.put(Properties.MEDIA_POSITION, position);
+        if (config.position != null) {
+            node.properties.put(Properties.MEDIA_POSITION, config.position.get());
+            node.propertyBindings.put(Properties.MEDIA_POSITION, config.position);
         }
-        if (volume != null) {
-            node.properties.put(Properties.MEDIA_VOLUME, volume.get());
-            node.propertyBindings.put(Properties.MEDIA_VOLUME, volume);
+        if (config.volume != null) {
+            node.properties.put(Properties.MEDIA_VOLUME, config.volume.get());
+            node.propertyBindings.put(Properties.MEDIA_VOLUME, config.volume);
         }
-        if (playing != null || position != null || volume != null || onEnded != null) {
+        if (config.playing != null || config.position != null || config.volume != null || config.onEnded != null) {
             node.mediaInput = new MediaInput() {
                 @Override
                 public void onPlayStateChanged(boolean value) {
-                    if (playing != null) {
-                        playing.set(value);
+                    if (config.playing != null) {
+                        config.playing.set(value);
                     }
                 }
 
@@ -143,7 +211,8 @@ public final class Audio implements View {
                     // Position REPORTS flow to the display (reportPosition when
                     // decoupled, else the position signal) — never echoed back as
                     // a MEDIA_POSITION seek command (spec/EVENTS.md Media).
-                    WritableSignal<Float> sink = reportPosition != null ? reportPosition : position;
+                    WritableSignal<Float> sink =
+                            config.reportPosition != null ? config.reportPosition : config.position;
                     if (sink != null) {
                         sink.set(seconds);
                     }
@@ -151,14 +220,15 @@ public final class Audio implements View {
 
                 @Override
                 public void onEnded() {
-                    if (Audio.this.onEnded != null) {
-                        Audio.this.onEnded.run();
+                    if (config.onEnded != null) {
+                        config.onEnded.run();
                     }
                 }
 
                 @Override
                 public void onVolumeChanged(float value) {
-                    WritableSignal<Float> sink = reportVolume != null ? reportVolume : volume;
+                    WritableSignal<Float> sink =
+                            config.reportVolume != null ? config.reportVolume : config.volume;
                     if (sink != null) {
                         sink.set(value);
                     }

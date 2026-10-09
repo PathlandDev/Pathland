@@ -1,9 +1,23 @@
 package com.pathland.view;
 
+import java.util.function.Consumer;
+
 /**
  * uniform letter spacing in points.
  */
 public final class Tracking implements ViewModifier {
+
+    /** {@link Tracking} values. */
+    public static final class Config {
+
+        private float value;
+
+        /** Set the tracking. */
+        public Config value(float value) {
+            this.value = value;
+            return this;
+        }
+    }
 
     private final float value;
 
@@ -13,6 +27,13 @@ public final class Tracking implements ViewModifier {
 
     public static Tracking of(float value) {
         return new Tracking(value);
+    }
+
+    /** Configure the tracking. */
+    public static Tracking with(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new Tracking(config.value);
     }
 
     @Override
