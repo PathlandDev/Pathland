@@ -3,8 +3,9 @@
   "checkpoint_id": "01M4G8944HC2F7G0Z8YD0NR3VP",
   "strategy": "manual-commit",
   "branch": "spec/dsl-v2-authoring-surface",
-  "checkpoints_count": 3,
+  "checkpoints_count": 6,
   "files_touched": [
+    "AGENTS.md",
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/SplitNavDemo.java",
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterControls.java",
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/counter/CounterView.java",
@@ -34,6 +35,7 @@
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/settings/SettingsView.java",
     "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/sidebar/Sidebar.java",
     "lib/java/pathland-demo-views/src/test/java/com/pathland/demo/SplitNavDemoTest.java",
+    "lib/java/pathland-demo-views/status.md",
     "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java",
     "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java",
     "lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandAssetsTest.java",
@@ -41,15 +43,37 @@
     "lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandSessionTest.java",
     "lib/java/pathland-server-core/src/test/java/com/pathland/server/PathlandTelemetryTest.java",
     "lib/java/pathland-server-core/src/test/java/com/pathland/server/RegistryConcurrencyTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/AudioStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/AudioStyleMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/BorderedButtonStyle.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Button.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ButtonStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ButtonStyleMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/ControlSizeMod.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/DefaultLabelStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Environment.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/EnvironmentBinding.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/EnvironmentMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/EnvironmentValues.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/FontDesignMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/FontMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/FontStyleMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/FontWeightMod.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/IconOnlyLabelStyle.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Label.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/LabelStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/LabelStyleMod.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/PathChange.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/PathChangeMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Platform.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/TextAlignmentMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/TextCaseMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/TextStyle.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/TitleOnlyLabelStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/TruncationMod.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/VideoStyle.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/VideoStyleMod.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/View.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/router/Navigation.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/router/NavigationContainer.java",
@@ -61,6 +85,7 @@
     "lib/java/pathland-view/src/test/java/com/pathland/view/ConditionalTest.java",
     "lib/java/pathland-view/src/test/java/com/pathland/view/EmitterTest.java",
     "lib/java/pathland-view/src/test/java/com/pathland/view/FontModTest.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/FontTest.java",
     "lib/java/pathland-view/src/test/java/com/pathland/view/FrameTest.java",
     "lib/java/pathland-view/src/test/java/com/pathland/view/IconTest.java",
     "lib/java/pathland-view/src/test/java/com/pathland/view/LabelTest.java",
@@ -68,7 +93,8 @@
     "lib/java/pathland-view/src/test/java/com/pathland/view/SizeThatFitsTest.java",
     "lib/java/pathland-view/src/test/java/com/pathland/view/ViewBuilderTest.java",
     "lib/java/pathland-view/src/test/java/com/pathland/view/ffm/RingOpcodeSinkTest.java",
-    "lib/java/pathland-view/src/test/java/com/pathland/view/router/RouterTest.java"
+    "lib/java/pathland-view/src/test/java/com/pathland/view/router/RouterTest.java",
+    "lib/java/pathland-view/status.md"
   ],
   "sessions": [
     {
@@ -91,13 +117,20 @@
       "compact_transcript": "/2/transcript.jsonl",
       "content_hash": "/2/content_hash.txt",
       "prompt": "/2/prompt.txt"
+    },
+    {
+      "metadata": "/3/metadata.json",
+      "transcript": "/3/full.jsonl",
+      "compact_transcript": "/3/transcript.jsonl",
+      "content_hash": "/3/content_hash.txt",
+      "prompt": "/3/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 523312,
+    "input_tokens": 2051320,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 28113920,
-    "output_tokens": 68347,
-    "api_call_count": 238
+    "cache_read_tokens": 74186240,
+    "output_tokens": 243791,
+    "api_call_count": 447
   }
 }
