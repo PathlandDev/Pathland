@@ -1,1 +1,1 @@
-I want to focus on DSL simplification. Every view should have 2 methods for defining modifiers and value. On top of that can container view have a method for content. The methods should be called with (values), modifiers (modifiers) and children (sub views). modifiers() and children() can be a variable number of modifiers or views. For values I am wondering if it should be a lambda with a config builder pattern and that the configuration defined there can be related (the same) as the one given to custom styles for views (fx. buttonstyle)
+commit
