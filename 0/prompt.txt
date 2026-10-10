@@ -1,0 +1,55 @@
+You are refactoring the Pathland Java DSL library at `lib/java/pathland-view/src/main/java/com/pathland/view/` (plus `router/`). This is a precise mechanical change. The goal: (A) add single-value `with(...)` shortcuts to eligible types, and (B) REMOVE every view/modifier construction `.of(...)` factory. A helper already exists:
+
+`com.pathland.view.Configurators` (package-private):
+```java
+static <V extends View & Configurable<C>, C extends View.Config> ViewBuilder<V, C> view(Supplier<C> config, Function<C, V> ctor, Consumer<C> setter)
+static <M, C> M modifier(Supplier<C> config, Function<C, M> ctor, Consumer<C> setter)
+```
+Use it: `public static ViewBuilder<Text, Config> with(String text) { return Configurators.view(Config::new, Text::new, c -> c.text(text)); }`. For modifiers: `public static Padding with(float uniform) { return Configurators.modifier(Config::new, Padding::new, c -> c.uniform(uniform)); }`.
+
+## A. Add shortcuts (raw + Signal overloads where the Config has both). Keep the existing `with(Consumer<Config>)` and `modifiers(...)` methods unchanged.
+
+Eligible — **single-value views** (primary member → shortcut):
+- `Text`: `with(String)`, `with(Signal<String>)` (primary `text`)
+- `Image`: `with()` (no-arg, source-less — replaces `of()`), `with(String)`, `with(Signal<String>)` (primary `source`)
+- `Icon`: `with(IconName)`, `with(String)`, `with(Signal<String>)` (primary `name`); KEEP `labeled(...)`
+- `Label`: `with(String)`, `with(Signal<String>)` (primary `title`; icon combos use the lambda only)
+- `ProgressView`: `with(float)`, `with(Signal<Float>)` (primary `value`); KEEP `indeterminate()`; remove the `progress(float)` alias
+- `RoundedRectangle`: `with(float)` (primary `cornerRadius`)
+- `Audio`: `with()` (no-arg), `with(String)`, `with(Signal<String>)` (primary `source`)
+- `Video`: `with()` (no-arg), `with(String)`, `with(Signal<String>)` (primary `source`)
+- `Shape`: `with(ShapeKind)` (primary `kind`)
+
+Eligible — **single-value modifiers** (return the modifier; raw + Signal where both exist):
+`Padding`(uniform), `FontSize`(size), `ForegroundStyle`(color), `Background`(color), `Tint`(color), `CornerRadius`(radius), `Opacity`(value), `Blur`(radius), `Rotation`(degrees), `ScaleEffect`(value), `LineLimit`(value int + Signal<Integer>), `Kerning`(value), `Tracking`(value), `BaselineOffset`(value), `LineSpacing`(value), `FontWidth`(value), `FontFamily`(family), `MinimumScaleFactor`(value), `LayoutPriority`(value), `ZIndex`(value), `ColorMultiply`(color), `ClipShape`(shape), `HueRotation`(degrees), `Saturation`(value), `Contrast`(value), `Brightness`(value), `Grayscale`(value), `AccessibilityLabel`(text), `AccessibilityRole`(role int + Signal<Integer>), `AccessibilityState`(state), `ImageSource`(source), `Visible`(visible), `Disabled`(disabled), `AllowsHitTesting`(allowed), `Underline`(enabled), `Strikethrough`(enabled), `PointerEvents`(mask), `TapGesture`(action Runnable), `Shadow`(radius).
+
+Note `AccessibilityRole.of(int)` currently validates reserved codes (throws `IllegalArgumentException` for non-semantic codes). Move that validation into `AccessibilityRole.with(int)` (the shortcut) so `with(20)` still throws; the `with(Consumer)` path is unchanged.
+
+## B. REMOVE `.of(...)` from EVERY view and modifier class (and all its overloads). Config-less types get an empty `with()` instead:
+- `Rectangle`, `Circle`, `Capsule`, `Ellipse`, `Divider`, `Spacer`: remove `of()`; ADD `public static ViewBuilder<X, Config> with() { return new ViewBuilder<>(new X(new Config())); }` (Rectangle/Circle/Capsule/Ellipse may need a `Config` — they already implement `Configurable<Config>`).
+- Config-less modifiers `Clipped`, `ColorInvert`, `Hidden`, `Italic`, `ScaledToFit`, `ScaledToFill`: remove `of()`; they already have `with()`.
+- Multi-arg / structural: remove ALL `of(...)` overloads (no replacement method — callers use `.with(Consumer).children(...)` or the shortcut / lambda): `VStack`, `HStack`, `ZStack`, `Grid`, `GridRow`, `Group`, `ScrollView`, `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `Button`, `TextField`, `TextEditor`, `Toggle`, `Slider`, `Stepper`, `DatePicker`, `Picker`, `Menu`, `ColorPicker`, `Border`, `Offset`, `Position`, `AspectRatio`, `FixedSize` (remove `of()`, `of(boolean,boolean)`), and the multi-arg `of` on `Padding` (edges), `Shadow` (full), `Label`, `Audio`, `Video`, `Image`, `Text`, `Icon`, `ProgressView`, `AccessibilityRole`.
+- `Frame`: remove `of(float)`, `of(float,float)`, `of(float,Alignment)`, `of(float,float,Alignment)`, `of(Consumer)`, `ofWidth`, `ofHeight`. KEEP only `with(Consumer<Frame.Config>)`. (Frame's config already has `width`/`height`/`min*`/`max*`/`alignment` setters.)
+- `SizeThatFits` (in a file `SizeThatFits.java`, class has **no** `with(Consumer)` — it's a structural slot): rename `of(View...)` → `with(View...)` and `of(Fit...)` → `with(Fit...)` (both overloads). KEEP `Fit.of(...)`.
+
+## KEEP these (they are data/branch factories, NOT builder-surface construction):
+`Color.of(int)` + `Color.rgb/argb/token`, `Conditional.when`, `Case.of`, `Case.otherwise`, `Fit.of`, `Signals.*`, `EnvironmentKey.of`, `Route.of`, `Params.of`. `EnvironmentView.of` is an internal helper — keep.
+
+## Migration of in-library call sites
+Search the `pathland-view/src/main` tree for uses of any removed factory and rewrite:
+- `X.of(value)` → `X.with(value)` (shortcut) where eligible; else the lambda.
+- structural `VStack.of(a,b)` → `VStack.children(a,b)`; `VStack.of(align, spacing, a, b)` → `VStack.with(v -> v.alignment(align).spacing(spacing)).children(a,b)`.
+- `Frame.ofWidth(w)` → `Frame.with(f -> f.width(w))`; `Frame.ofHeight(h)` → `Frame.with(f -> f.height(h))`.
+- `AccessibilityRole.of(x)` → `AccessibilityRole.with(x)`.
+- `PlayerControlsStyle` is NOT in this module (ignore).
+- `Theme.java` uses `Color.of` — keep.
+Only edit files under `lib/java/pathland-view/src/main/`. Do NOT edit tests, demos, or other modules.
+
+## Rules
+- Do NOT change emission/behavior — only the authoring API + call sites. Constructors stay `private`.
+- Keep method ordering readable; add the shortcut overloads right where the `of` methods were.
+- Use `Configurators.view(...)` / `Configurators.modifier(...)` for every shortcut (do not hand-roll).
+- Do NOT reformat unrelated code.
+
+## Verify
+Run `cd lib/java && mvn -o -q -pl pathland-view -am install -DskipTests` then `mvn -o -q -pl pathland-view compile`. The MODULE MAIN sources must compile. (Tests in that module and consumers will be migrated separately — it's OK if `test-compile` fails due to test files still using `.of`; report those test call sites you see.) Report: files changed, any library main call sites you could not migrate, and the compile result.
