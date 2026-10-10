@@ -36,18 +36,18 @@ public final class Image implements View, Configurable<Image.Config> {
     }
 
     /** An image with no source (the renderer's default visual). */
-    public static Image of() {
-        return new Image(new Config());
+    public static ViewBuilder<Image, Config> with() {
+        return new ViewBuilder<>(new Image(new Config()));
     }
 
     /** An image with a static source (resource name, file path, or absolute URL). */
-    public static Image of(String source) {
-        return new Image(new Config().source(source));
+    public static ViewBuilder<Image, Config> with(String source) {
+        return Configurators.view(Config::new, Image::new, c -> c.source(source));
     }
 
     /** An image whose source is bound to a reactive signal. */
-    public static Image of(Signal<String> source) {
-        return new Image(new Config().source(source));
+    public static ViewBuilder<Image, Config> with(Signal<String> source) {
+        return Configurators.view(Config::new, Image::new, c -> c.source(source));
     }
 
     /** Configure the image's values. */

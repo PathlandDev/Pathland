@@ -15,8 +15,8 @@ public final class Spacer implements View, Configurable<Spacer.Config> {
     }
 
     /** A flexible expanding spacer. */
-    public static Spacer of() {
-        return new Spacer();
+    public static ViewBuilder<Spacer, Config> with() {
+        return new ViewBuilder<>(new Spacer());
     }
 
     /** Apply modifiers to a spacer. */

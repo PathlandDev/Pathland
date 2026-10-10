@@ -100,7 +100,12 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
         // COMMANDS, so a report never echoes back as a command (spec/EVENTS.md Media).
         return Audio
                 .modifiers(
-                        PlayerControlsStyle.of(config.trackIndex, config.position, config.seekRequest, config.volume, config.volumeRequest),
+                        PlayerControlsStyle.with(s -> s
+                                .trackIndex(config.trackIndex)
+                                .position(config.position)
+                                .seekRequest(config.seekRequest)
+                                .volume(config.volume)
+                                .volumeRequest(config.volumeRequest)),
                         Background.with(b -> b.color(MusicPlayerView.BAR_BG)),
                         Frame.with(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)))
                 .with(a -> a

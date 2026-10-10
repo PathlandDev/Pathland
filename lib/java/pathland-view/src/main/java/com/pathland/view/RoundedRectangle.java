@@ -29,8 +29,8 @@ public final class RoundedRectangle implements View, Configurable<RoundedRectang
     }
 
     /** A rounded rectangle with a corner radius. */
-    public static RoundedRectangle of(float cornerRadius) {
-        return new RoundedRectangle(new Config().cornerRadius(cornerRadius));
+    public static ViewBuilder<RoundedRectangle, Config> with(float cornerRadius) {
+        return Configurators.view(Config::new, RoundedRectangle::new, c -> c.cornerRadius(cornerRadius));
     }
 
     /** Configure the shape's values. */

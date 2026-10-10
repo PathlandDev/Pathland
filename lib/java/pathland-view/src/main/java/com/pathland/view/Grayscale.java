@@ -34,8 +34,12 @@ public final class Grayscale implements ViewModifier {
         this.config = config;
     }
 
-    public static Grayscale of(float value) {
-        return new Grayscale(new Config().value(value));
+    public static Grayscale with(float value) {
+        return Configurators.modifier(Config::new, Grayscale::new, c -> c.value(value));
+    }
+
+    public static Grayscale with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, Grayscale::new, c -> c.value(value));
     }
 
     /** Configure the grayscale. */

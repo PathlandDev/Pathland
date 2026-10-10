@@ -46,11 +46,6 @@ public final class TextField implements View, Configurable<TextField.Config> {
         this.config = config;
     }
 
-    /** A single-line text input bound to {@code binding}. */
-    public static TextField of(String placeholder, WritableSignal<String> binding) {
-        return new TextField(new Config().placeholder(placeholder).text(binding));
-    }
-
     /** Configure the text field's values. */
     public static ViewBuilder<TextField, Config> with(Consumer<Config> configure) {
         Config config = new Config();

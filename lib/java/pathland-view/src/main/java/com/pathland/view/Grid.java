@@ -94,62 +94,6 @@ public final class Grid implements View, Configurable<Grid.Config>, ChildrenView
         this.children = children;
     }
 
-    private static Grid build(Config config, View... children) {
-        return new Grid(config, List.of(children));
-    }
-
-    /** A static 2D matrix grid; children are cells, row-major. */
-    public static Grid of(View... children) {
-        return build(new Config(), children);
-    }
-
-    /** A static 2D matrix grid with a fixed column count (equal {@code 1fr} tracks). */
-    public static Grid of(int columns, View... children) {
-        return build(new Config().columns(columns), children);
-    }
-
-    /** A static 2D matrix grid with fixed column and row counts (equal {@code 1fr} tracks). */
-    public static Grid of(int columns, int rows, View... children) {
-        return build(new Config().columns(columns).rows(rows), children);
-    }
-
-    /** A static 2D matrix grid with constructor layout properties. */
-    public static Grid of(Alignment alignment, float spacing, View... children) {
-        return build(new Config().alignment(alignment).spacing(spacing), children);
-    }
-
-    /** A static 2D matrix grid with a fixed column count + constructor layout properties. */
-    public static Grid of(int columns, Alignment alignment, float spacing, View... children) {
-        return build(new Config().columns(columns).alignment(alignment).spacing(spacing), children);
-    }
-
-    /** A static 2D matrix grid with fixed column and row counts + constructor layout properties. */
-    public static Grid of(int columns, int rows, Alignment alignment, float spacing, View... children) {
-        return build(new Config().columns(columns).rows(rows).alignment(alignment).spacing(spacing), children);
-    }
-
-    /** A static 2D matrix grid with constructor layout properties. */
-    public static Grid of(Alignment alignment, Float spacing, List<View> children) {
-        Config config = new Config();
-        if (alignment != null) {
-            config.alignment(alignment);
-        }
-        if (spacing != null) {
-            config.spacing(spacing);
-        }
-        return new Grid(config, List.copyOf(children));
-    }
-
-    /** A static 2D matrix grid with per-track sizes ({@code GridItem}). */
-    public static Grid of(List<GridItem> tracks, View... children) {
-        return build(new Config().tracks(tracks), children);
-    }
-
-    /** A static 2D matrix grid with per-track sizes + constructor layout properties. */
-    public static Grid of(List<GridItem> tracks, Alignment alignment, float spacing, View... children) {
-        return build(new Config().tracks(tracks).alignment(alignment).spacing(spacing), children);
-    }
-
     /** Configure the grid's values. */
     public static ViewBuilder<Grid, Config> with(Consumer<Config> configure) {
         Config config = new Config();

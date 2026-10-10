@@ -67,13 +67,13 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   - `SettingsView` — a switch + volume slider on local signals (`/settings`).
   - A `fallback` ("Not Found") for any other path.
 
-- **Semantic accessibility roles** (`AccessibilityRole.of(Roles.*)`,
+- **Semantic accessibility roles** (`AccessibilityRole.with(Roles.*)`,
   `com.pathland.view.Roles`): the demo root views carry the `MAIN` landmark
   (`HomeView`/`SettingsView`/`KitchenSinkView`/`CounterView`), the sidebar is
   `NAVIGATION`, and `SectionCard` titles are `HEADER` headings — the web
   renderer reflects these as native semantic elements (`<nav>`, `<main>`,
   `<h2>`). Sidebar menu rows are **real `Button`s styled with
-  `PlainButtonStyle`** (`Button.of(Label, action)`) — control semantics are
+  `PlainButtonStyle`** (`Button.with(b -> b.action(..)).children(label)`) — control semantics are
   intrinsic to the component, not a `ROLE`; a custom-looking button is a
   `Button` + `ButtonStyle`.
 - **Real asset refs**: the demo's non-icon assets are served from the reserved
@@ -81,7 +81,7 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   relative-path bug on deep routes). The old hand-made
   `icons/home|kitchen|settings|save|cloud|status.svg` assets were **removed** —
   the sidebar, player controls, and label section now use the semantic
-  **`Icon`** primitive (`Icon.of(IconName.…)`, spec/ICONS.md) that every
+  **`Icon`** primitive (`Icon.with(IconName.…)`, spec/ICONS.md) that every
   renderer maps to its native symbol set.
 - **`MediaSection`** (kitchensink): a `Video` + `Audio` node with remote sample
   URLs — playback interaction is renderer-native (`controls`); the app supplies

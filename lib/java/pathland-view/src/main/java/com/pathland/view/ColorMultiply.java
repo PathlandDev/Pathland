@@ -34,8 +34,12 @@ public final class ColorMultiply implements ViewModifier {
         this.config = config;
     }
 
-    public static ColorMultiply of(Color color) {
-        return new ColorMultiply(new Config().color(color));
+    public static ColorMultiply with(Color color) {
+        return Configurators.modifier(Config::new, ColorMultiply::new, c -> c.color(color));
+    }
+
+    public static ColorMultiply with(Signal<Color> color) {
+        return Configurators.modifier(Config::new, ColorMultiply::new, c -> c.color(color));
     }
 
     /** Configure the color multiply. */

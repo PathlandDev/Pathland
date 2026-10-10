@@ -45,11 +45,6 @@ public final class Stepper implements View, Configurable<Stepper.Config> {
         this.config = config;
     }
 
-    /** A discrete increment/decrement control bound to {@code binding}. */
-    public static Stepper of(WritableSignal<Float> binding, float min, float max, float step) {
-        return new Stepper(new Config().value(binding).in(min, max).step(step));
-    }
-
     /** Configure the stepper's values. */
     public static ViewBuilder<Stepper, Config> with(Consumer<Config> configure) {
         Config config = new Config();

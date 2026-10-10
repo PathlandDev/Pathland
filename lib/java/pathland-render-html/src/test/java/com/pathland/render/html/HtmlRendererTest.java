@@ -163,7 +163,7 @@ class HtmlRendererTest {
     void rejectsControlRoles() {
         // Interactive/control roles are NOT roles — they are intrinsic to the
         // control components, so the DSL rejects them.
-        assertThrows(IllegalArgumentException.class, () -> AccessibilityRole.of(20), "reserved code rejected");
+        assertThrows(IllegalArgumentException.class, () -> AccessibilityRole.with(20), "reserved code rejected");
     }
 
     @Test

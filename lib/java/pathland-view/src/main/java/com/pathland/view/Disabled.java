@@ -40,8 +40,13 @@ public final class Disabled implements ViewModifier {
     }
 
     /** Disable/enable ({@code disabled} = disabled). */
-    public static Disabled of(boolean disabled) {
-        return new Disabled(new Config().disabled(disabled));
+    public static Disabled with(boolean disabled) {
+        return Configurators.modifier(Config::new, Disabled::new, c -> c.disabled(disabled));
+    }
+
+    /** Disable/enable ({@code disabled} = disabled), reactive. */
+    public static Disabled with(Signal<Boolean> disabled) {
+        return Configurators.modifier(Config::new, Disabled::new, c -> c.disabled(disabled));
     }
 
     /** Configure the disabled state. */

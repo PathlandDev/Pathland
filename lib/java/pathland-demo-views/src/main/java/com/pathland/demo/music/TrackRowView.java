@@ -101,7 +101,7 @@ public final class TrackRowView implements View, Configurable<TrackRowView.Confi
                         // Full-width row: the layout contract's cross-axis default is hug
                         // (LAYOUT.md), so a row that should span the library column must
                         // explicitly FILL its width.
-                        Frame.ofWidth(Commands.Size.FILL))
+                        Frame.with(f -> f.width(Commands.Size.FILL)))
                 .with(b -> b.action(() -> {
                     config.trackIndex.set(config.index);
                     config.position.set(0f);

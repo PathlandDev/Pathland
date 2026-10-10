@@ -16,11 +16,11 @@ import java.util.function.Supplier;
  * import static com.pathland.view.Conditional.when;
  * import static com.pathland.view.Conditional.Case;
  *
- * when(showLogin, LoginView.of(), HomeView.of());              // if / else
+ * when(showLogin, LoginView.with(), HomeView.with());          // if / else
  * when(mode,
- *     Case.of(RouteMode.HOME, HomeView.of()),
- *     Case.of(RouteMode.USERS, UsersView.of()),
- *     Case.otherwise(NotFoundView.of()));                      // switch + default
+ *     Case.of(RouteMode.HOME, HomeView.with()),
+ *     Case.of(RouteMode.USERS, UsersView.with()),
+ *     Case.otherwise(NotFoundView.with()));                    // switch + default
  * }</pre>
  *
  * <p>The names {@code if}, {@code switch}, {@code case}, and {@code else} are Java

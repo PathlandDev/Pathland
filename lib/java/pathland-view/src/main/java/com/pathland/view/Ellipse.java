@@ -15,8 +15,8 @@ public final class Ellipse implements View, Configurable<Ellipse.Config> {
     }
 
     /** An ellipse. */
-    public static Ellipse of() {
-        return new Ellipse();
+    public static ViewBuilder<Ellipse, Config> with() {
+        return new ViewBuilder<>(new Ellipse());
     }
 
     /** Apply modifiers to an ellipse. */

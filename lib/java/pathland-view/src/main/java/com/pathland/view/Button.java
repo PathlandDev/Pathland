@@ -51,16 +51,6 @@ public final class Button implements View, Configurable<Button.Config>, Children
         this.children = children;
     }
 
-    /** A button with a plain text title. */
-    public static Button of(String title, Runnable action) {
-        return new Button(new Config().title(title).action(action), List.of());
-    }
-
-    /** A button with an arbitrary child view as its label. */
-    public static Button of(View label, Runnable action) {
-        return new Button(new Config().action(action), List.of(label));
-    }
-
     /** Configure the button's values. */
     public static ViewBuilder<Button, Config> with(Consumer<Config> configure) {
         Config config = new Config();

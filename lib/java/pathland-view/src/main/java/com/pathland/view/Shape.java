@@ -25,9 +25,9 @@ public final class Shape implements View, Configurable<Shape.Config> {
         this.config = config;
     }
 
-    /** A shape of the given kind (e.g. {@code Shape.of(ShapeKind.PATH)}). */
-    public static Shape of(ShapeKind kind) {
-        return new Shape(new Config().kind(kind));
+    /** A shape of the given kind (e.g. {@code Shape.with(ShapeKind.PATH)}). */
+    public static ViewBuilder<Shape, Config> with(ShapeKind kind) {
+        return Configurators.view(Config::new, Shape::new, c -> c.kind(kind));
     }
 
     /** Configure the shape's values. */

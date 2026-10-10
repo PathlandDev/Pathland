@@ -34,8 +34,12 @@ public final class Opacity implements ViewModifier {
         this.config = config;
     }
 
-    public static Opacity of(float value) {
-        return new Opacity(new Config().value(value));
+    public static Opacity with(float value) {
+        return Configurators.modifier(Config::new, Opacity::new, c -> c.value(value));
+    }
+
+    public static Opacity with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, Opacity::new, c -> c.value(value));
     }
 
     /** Configure the opacity. */

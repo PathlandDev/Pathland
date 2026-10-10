@@ -34,8 +34,12 @@ public final class Rotation implements ViewModifier {
         this.config = config;
     }
 
-    public static Rotation of(float value) {
-        return new Rotation(new Config().degrees(value));
+    public static Rotation with(float value) {
+        return Configurators.modifier(Config::new, Rotation::new, c -> c.degrees(value));
+    }
+
+    public static Rotation with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, Rotation::new, c -> c.degrees(value));
     }
 
     /** Configure the rotation. */

@@ -81,52 +81,6 @@ public final class LazyVGrid implements View, Configurable<LazyVGrid.Config>, Ch
         this.children = children;
     }
 
-    private static LazyVGrid build(Config config, View... children) {
-        return new LazyVGrid(config, List.of(children));
-    }
-
-    /** A virtualized vertical grid; children are cells. */
-    public static LazyVGrid of(View... children) {
-        return build(new Config(), children);
-    }
-
-    /** A virtualized vertical grid with a fixed column count (equal {@code 1fr} tracks). */
-    public static LazyVGrid of(int columns, View... children) {
-        return build(new Config().columns(columns), children);
-    }
-
-    /** A virtualized vertical grid with constructor layout properties. */
-    public static LazyVGrid of(Alignment alignment, float spacing, View... children) {
-        return build(new Config().alignment(alignment).spacing(spacing), children);
-    }
-
-    /** A virtualized vertical grid with a fixed column count + constructor layout properties. */
-    public static LazyVGrid of(int columns, Alignment alignment, float spacing, View... children) {
-        return build(new Config().columns(columns).alignment(alignment).spacing(spacing), children);
-    }
-
-    /** A virtualized vertical grid with constructor layout properties. */
-    public static LazyVGrid of(Alignment alignment, Float spacing, List<View> children) {
-        Config config = new Config();
-        if (alignment != null) {
-            config.alignment(alignment);
-        }
-        if (spacing != null) {
-            config.spacing(spacing);
-        }
-        return new LazyVGrid(config, List.copyOf(children));
-    }
-
-    /** A virtualized vertical grid with per-track sizes ({@code GridItem}). */
-    public static LazyVGrid of(List<GridItem> tracks, View... children) {
-        return build(new Config().tracks(tracks), children);
-    }
-
-    /** A virtualized vertical grid with per-track sizes + constructor layout properties. */
-    public static LazyVGrid of(List<GridItem> tracks, Alignment alignment, float spacing, View... children) {
-        return build(new Config().tracks(tracks).alignment(alignment).spacing(spacing), children);
-    }
-
     /** Configure the grid's values. */
     public static ViewBuilder<LazyVGrid, Config> with(Consumer<Config> configure) {
         Config config = new Config();

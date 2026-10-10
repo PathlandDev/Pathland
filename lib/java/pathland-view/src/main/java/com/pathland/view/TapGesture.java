@@ -25,8 +25,8 @@ public final class TapGesture implements ViewModifier {
         this.action = action;
     }
 
-    public static TapGesture of(Runnable action) {
-        return new TapGesture(action);
+    public static TapGesture with(Runnable action) {
+        return Configurators.modifier(Config::new, c -> new TapGesture(c.action), c -> c.action(action));
     }
 
     /** Configure the tap gesture. */

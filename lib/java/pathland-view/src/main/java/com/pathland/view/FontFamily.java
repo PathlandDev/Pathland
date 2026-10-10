@@ -34,8 +34,12 @@ public final class FontFamily implements ViewModifier {
         this.config = config;
     }
 
-    public static FontFamily of(String value) {
-        return new FontFamily(new Config().family(value));
+    public static FontFamily with(String value) {
+        return Configurators.modifier(Config::new, FontFamily::new, c -> c.family(value));
+    }
+
+    public static FontFamily with(Signal<String> value) {
+        return Configurators.modifier(Config::new, FontFamily::new, c -> c.family(value));
     }
 
     /** Configure the font family. */

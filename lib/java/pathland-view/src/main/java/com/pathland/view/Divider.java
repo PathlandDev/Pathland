@@ -15,8 +15,8 @@ public final class Divider implements View, Configurable<Divider.Config> {
     }
 
     /** An axis-aligned separator. */
-    public static Divider of() {
-        return new Divider();
+    public static ViewBuilder<Divider, Config> with() {
+        return new ViewBuilder<>(new Divider());
     }
 
     /** Apply modifiers to a divider. */

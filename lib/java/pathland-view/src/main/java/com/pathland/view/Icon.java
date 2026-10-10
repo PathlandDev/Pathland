@@ -56,18 +56,18 @@ public final class Icon implements View, Configurable<Icon.Config> {
     }
 
     /** A static canonical icon. */
-    public static Icon of(IconName name) {
-        return new Icon(new Config().name(name));
+    public static ViewBuilder<Icon, Config> with(IconName name) {
+        return Configurators.view(Config::new, Icon::new, c -> c.name(name));
     }
 
     /** A static canonical icon by canonical name (for names outside the enum). */
-    public static Icon of(String canonicalName) {
-        return new Icon(new Config().name(canonicalName));
+    public static ViewBuilder<Icon, Config> with(String canonicalName) {
+        return Configurators.view(Config::new, Icon::new, c -> c.name(canonicalName));
     }
 
     /** A reactive icon bound to a canonical-name signal. */
-    public static Icon of(Signal<String> canonicalName) {
-        return new Icon(new Config().name(canonicalName));
+    public static ViewBuilder<Icon, Config> with(Signal<String> canonicalName) {
+        return Configurators.view(Config::new, Icon::new, c -> c.name(canonicalName));
     }
 
     /** A static canonical icon with an accessibility label. */

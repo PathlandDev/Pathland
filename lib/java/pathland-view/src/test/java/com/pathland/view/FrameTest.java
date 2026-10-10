@@ -7,14 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * The {@code Frame} view-modifier surface: the convenience factories
- * ({@code Frame.of(w, h)}, {@code Frame.of(w, h, alignment)},
- * {@code Frame.of(w, alignment)}, {@code Frame.ofWidth(w)}, {@code Frame.ofHeight(h)})
- * and the {@code Frame.of(c -> …)} lambda configurator, applied via {@code .with(...)}.
- * The wire is unchanged — every form emits the same F32 properties
- * (WIDTH/HEIGHT, ALIGNMENT, MIN/IDEAL/MAX bounds) with the same sentinels the legacy
- * {@code FrameMod} produced; each convenience case below mirrors the old
- * {@code FrameModTest} assertion 1:1.
+ * The {@code Frame} view-modifier surface: the {@code Frame.with(f -> …)} lambda
+ * configurator ({@code width}/{@code height}/{@code alignment} + min/ideal/max
+ * bounds), applied via {@code .modifiers(...)}. The wire is unchanged — every form
+ * emits the same F32 properties (WIDTH/HEIGHT, ALIGNMENT, MIN/IDEAL/MAX bounds)
+ * with the same sentinels the legacy {@code FrameMod} produced.
  */
 class FrameTest {
 
@@ -22,43 +19,43 @@ class FrameTest {
         return Text.with(t -> t.text("x")).modifiers(frame).render(Environment.DEFAULT);
     }
 
-    // -- convenience factories --------------------------------------------------
+    // -- fixed axes --------------------------------------------------------------
 
     @Test
-    void ofWidthEmitsWidthAndNoAlignment() {
-        PathlandNode node = render(Frame.ofWidth(200f));
+    void widthEmitsWidthAndNoAlignment() {
+        PathlandNode node = render(Frame.with(f -> f.width(200f)));
         assertEquals(200f, node.properties.get(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT));
         assertFalse(node.properties.containsKey(Properties.ALIGNMENT), "alignment must not be forced");
     }
 
     @Test
-    void ofHeightEmitsHeightOnly() {
-        PathlandNode node = render(Frame.ofHeight(24f));
+    void heightEmitsHeightOnly() {
+        PathlandNode node = render(Frame.with(f -> f.height(24f)));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));
         assertFalse(node.properties.containsKey(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.ALIGNMENT));
     }
 
     @Test
-    void ofWidthHeightEmitsBothAxesAndNoAlignment() {
-        PathlandNode node = render(Frame.of(100, 24));
+    void widthHeightEmitsBothAxesAndNoAlignment() {
+        PathlandNode node = render(Frame.with(f -> f.width(100).height(24)));
         assertEquals(100f, node.properties.get(Properties.WIDTH));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));
         assertFalse(node.properties.containsKey(Properties.ALIGNMENT));
     }
 
     @Test
-    void ofWithAlignmentStillEmitted() {
-        PathlandNode node = render(Frame.of(100, 24, Alignment.CENTER));
+    void withAlignmentStillEmitted() {
+        PathlandNode node = render(Frame.with(f -> f.width(100).height(24).alignment(Alignment.CENTER)));
         assertEquals(100f, node.properties.get(Properties.WIDTH));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));
         assertEquals((float) Alignment.CENTER.wire(), node.properties.get(Properties.ALIGNMENT));
     }
 
     @Test
-    void ofWidthWithAlignmentStillEmitted() {
-        PathlandNode node = render(Frame.of(200f, Alignment.TOP_LEADING));
+    void widthWithAlignmentStillEmitted() {
+        PathlandNode node = render(Frame.with(f -> f.width(200f).alignment(Alignment.TOP_LEADING)));
         assertEquals(200f, node.properties.get(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT));
         assertEquals((float) Alignment.TOP_LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
@@ -66,15 +63,17 @@ class FrameTest {
 
     @Test
     void infiniteWidthNormalizesToFill() {
-        PathlandNode node = render(Frame.ofWidth(Float.POSITIVE_INFINITY));
+        PathlandNode node = render(Frame.with(f -> f.width(Float.POSITIVE_INFINITY)));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT));
     }
 
     @Test
     void infiniteAxesNormalizeToFillWithAlignment() {
-        PathlandNode node = render(Frame.of(
-                Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Alignment.TOP_LEADING));
+        PathlandNode node = render(Frame.with(f -> f
+                .width(Float.POSITIVE_INFINITY)
+                .height(Float.POSITIVE_INFINITY)
+                .alignment(Alignment.TOP_LEADING)));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.HEIGHT));
         assertEquals((float) Alignment.TOP_LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
@@ -82,24 +81,24 @@ class FrameTest {
 
     @Test
     void negativeInfinityAlsoNormalizesToFill() {
-        PathlandNode node = render(Frame.of(Float.NEGATIVE_INFINITY, 24f));
+        PathlandNode node = render(Frame.with(f -> f.width(Float.NEGATIVE_INFINITY).height(24f)));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));
     }
 
     @Test
     void nanAxisIsOmitted() {
-        PathlandNode node = render(Frame.of(260f, Float.NaN, Alignment.CENTER));
+        PathlandNode node = render(Frame.with(f -> f.width(260f).height(Float.NaN).alignment(Alignment.CENTER)));
         assertEquals(260f, node.properties.get(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT), "a NaN axis is not emitted");
         assertEquals((float) Alignment.CENTER.wire(), node.properties.get(Properties.ALIGNMENT));
     }
 
-    // -- the lambda configurator -------------------------------------------------
+    // -- min/ideal/max bounds ----------------------------------------------------
 
     @Test
     void builderEmitsMinIdealMaxOnRequestedAxes() {
-        PathlandNode node = render(Frame.of(c -> c
+        PathlandNode node = render(Frame.with(f -> f
                 .minWidth(100)
                 .idealWidth(200)
                 .maxWidth(300)
@@ -115,16 +114,8 @@ class FrameTest {
     }
 
     @Test
-    void builderWidthHeightEmitFixedAxes() {
-        PathlandNode node = render(Frame.of(c -> c.width(120).height(60)));
-        assertEquals(120f, node.properties.get(Properties.WIDTH));
-        assertEquals(60f, node.properties.get(Properties.HEIGHT));
-        assertFalse(node.properties.containsKey(Properties.MIN_WIDTH), "no bounds implied by fixed axes");
-    }
-
-    @Test
     void builderCombinesFixedAxesWithBounds() {
-        PathlandNode node = render(Frame.of(c -> c
+        PathlandNode node = render(Frame.with(f -> f
                 .width(200)
                 .minWidth(100)
                 .maxWidth(300)
@@ -138,13 +129,13 @@ class FrameTest {
 
     @Test
     void builderInfinityAxesNormalizeToFill() {
-        PathlandNode node = render(Frame.of(c -> c.width(Float.POSITIVE_INFINITY)));
+        PathlandNode node = render(Frame.with(f -> f.width(Float.POSITIVE_INFINITY)));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
     }
 
     @Test
     void builderInfiniteBoundsAreOmitted() {
-        PathlandNode node = render(Frame.of(c -> c
+        PathlandNode node = render(Frame.with(f -> f
                 .maxWidth(Float.POSITIVE_INFINITY)
                 .idealHeight(0f)
                 .maxHeight(Float.NEGATIVE_INFINITY)));
@@ -155,7 +146,7 @@ class FrameTest {
 
     @Test
     void emptyBuilderEmitsNoFrameProperties() {
-        PathlandNode node = render(Frame.of(c -> {}));
+        PathlandNode node = render(Frame.with(f -> {}));
         assertFalse(node.properties.containsKey(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT));
         assertFalse(node.properties.containsKey(Properties.MIN_WIDTH));

@@ -119,7 +119,7 @@ public final class MusicPlayerView implements View {
         View compactRow = HStack
                 .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(mainArea);
-        return SizeThatFits.of(
+        return SizeThatFits.with(
                 Fit.of(wideRow, 1024f),
                 Fit.of(compactRow))
                 .with(

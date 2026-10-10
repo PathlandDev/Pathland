@@ -23,11 +23,6 @@ public final class Group implements View, Configurable<Group.Config>, ChildrenVi
         this.children = children;
     }
 
-    /** A group of child views. */
-    public static Group of(View... children) {
-        return new Group(List.of(children));
-    }
-
     /** Supply the group's children. */
     public static ViewBuilder<Group, Config> children(View... children) {
         return new ViewBuilder<>(new Group(List.of())).children(children);

@@ -49,10 +49,6 @@ public final class AspectRatio implements ViewModifier {
         this.mode = config.mode != null ? config.mode : Signals.constant(ContentMode.FIT);
     }
 
-    public static AspectRatio of(float ratio, ContentMode mode) {
-        return new AspectRatio(new Config().ratio(ratio).contentMode(mode));
-    }
-
     /** Configure the aspect ratio. */
     public static AspectRatio with(Consumer<Config> configure) {
         Config config = new Config();

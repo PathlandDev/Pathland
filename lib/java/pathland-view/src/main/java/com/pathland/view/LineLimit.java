@@ -35,8 +35,13 @@ public final class LineLimit implements ViewModifier {
     }
 
     /** Line limit ({@code 0} = unlimited). */
-    public static LineLimit of(int lines) {
-        return new LineLimit(new Config().value(lines));
+    public static LineLimit with(int lines) {
+        return Configurators.modifier(Config::new, LineLimit::new, c -> c.value(lines));
+    }
+
+    /** Line limit bound to a reactive signal ({@code 0} = unlimited). */
+    public static LineLimit with(Signal<Integer> value) {
+        return Configurators.modifier(Config::new, LineLimit::new, c -> c.value(value));
     }
 
     /** Configure the line limit. */

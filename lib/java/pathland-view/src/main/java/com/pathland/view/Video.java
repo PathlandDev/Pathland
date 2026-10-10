@@ -76,18 +76,18 @@ public final class Video implements View, Configurable<Video.Config> {
     }
 
     /** A video node with no source (the renderer's default visual). */
-    public static Video of() {
-        return new Video(new Config());
+    public static ViewBuilder<Video, Config> with() {
+        return new ViewBuilder<>(new Video(new Config()));
     }
 
     /** A video node with a static source (resource name, file path, or URL). */
-    public static Video of(String source) {
-        return new Video(new Config().source(source));
+    public static ViewBuilder<Video, Config> with(String source) {
+        return Configurators.view(Config::new, Video::new, c -> c.source(source));
     }
 
     /** A video node whose source is bound to a reactive signal. */
-    public static Video of(Signal<String> source) {
-        return new Video(new Config().source(source));
+    public static ViewBuilder<Video, Config> with(Signal<String> source) {
+        return Configurators.view(Config::new, Video::new, c -> c.source(source));
     }
 
     /** Configure the video node's values. */

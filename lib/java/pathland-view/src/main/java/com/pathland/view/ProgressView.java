@@ -48,19 +48,13 @@ public final class ProgressView implements View, Configurable<ProgressView.Confi
     }
 
     /** A determinate progress bar ({@code value} in {@code 0..1}). */
-    public static ProgressView of(float value) {
-        Config config = new Config();
-        if (value < 0f) {
-            config.indeterminate();
-        } else {
-            config.value(value);
-        }
-        return new ProgressView(config);
+    public static ViewBuilder<ProgressView, Config> with(float value) {
+        return Configurators.view(Config::new, ProgressView::new, c -> c.value(value));
     }
 
-    /** A determinate progress bar ({@code value} in {@code 0..1}). */
-    public static ProgressView progress(float value) {
-        return of(value);
+    /** A determinate progress bar bound to a reactive signal ({@code 0..1}). */
+    public static ViewBuilder<ProgressView, Config> with(Signal<Float> value) {
+        return Configurators.view(Config::new, ProgressView::new, c -> c.value(value));
     }
 
     /** An indeterminate activity indicator (renderer-animated). */

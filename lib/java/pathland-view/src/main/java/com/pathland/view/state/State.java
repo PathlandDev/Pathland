@@ -45,7 +45,7 @@ public final class State<T> {
         this.signal = state.signal(key != null ? key : fieldName, initial);
     }
 
-    /** The underlying signal (for {@code TextField}, {@code Text.of(Signal)}, …). */
+    /** The underlying signal (for {@code TextField}, {@code Text.with(Signal)}, …). */
     public WritableSignal<T> signal() {
         return signal;
     }

@@ -15,8 +15,8 @@ public final class Circle implements View, Configurable<Circle.Config> {
     }
 
     /** A circle. */
-    public static Circle of() {
-        return new Circle();
+    public static ViewBuilder<Circle, Config> with() {
+        return new ViewBuilder<>(new Circle());
     }
 
     /** Apply modifiers to a circle. */

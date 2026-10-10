@@ -53,33 +53,6 @@ public final class HStack implements View, Configurable<HStack.Config>, Children
         this.children = children;
     }
 
-    /** A horizontal stack. */
-    public static HStack of(View... children) {
-        return new HStack(new Config(), List.of(children));
-    }
-
-    /** A horizontal stack. */
-    public static HStack of(List<View> children) {
-        return new HStack(new Config(), List.copyOf(children));
-    }
-
-    /** A horizontal stack with constructor layout properties. */
-    public static HStack of(VerticalAlignment alignment, float spacing, View... children) {
-        return new HStack(new Config().alignment(alignment).spacing(spacing), List.of(children));
-    }
-
-    /** A horizontal stack with constructor layout properties. */
-    public static HStack of(VerticalAlignment alignment, Float spacing, List<View> children) {
-        Config config = new Config();
-        if (alignment != null) {
-            config.alignment(alignment);
-        }
-        if (spacing != null) {
-            config.spacing(spacing);
-        }
-        return new HStack(config, List.copyOf(children));
-    }
-
     /** Configure the stack's values. */
     public static ViewBuilder<HStack, Config> with(Consumer<Config> configure) {
         Config config = new Config();

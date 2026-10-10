@@ -179,7 +179,7 @@ class EmitterTest {
     void constantPropertyEmitsAtMountButRegistersNoReemit() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        // A constant-bound property (Background.of(Color) ≡ a constant signal)
+        // A constant-bound property (Background.with(c -> c.color(C)) ≡ a constant signal)
         // and a reactive text: changing the text re-emits ONLY the text.
         WritableSignal<String> text = Signals.signal("a");
         View root = VStack.children(

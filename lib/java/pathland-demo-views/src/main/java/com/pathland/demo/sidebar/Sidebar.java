@@ -32,7 +32,7 @@ public class Sidebar implements View {
                 // HStack it stretches to the row's full height (align-items: stretch).
                 // Alignment is omitted so the stack's own FILL child-alignment (stretch
                 // the menu rows) is preserved.
-                .modifiers(Frame.ofWidth(200f))
+                .modifiers(Frame.with(f -> f.width(200f)))
                 .modifiers(Background.with(b -> b.color(SIDEBAR_BG)))
                 .modifiers(Border.with(b -> b.color(SIDEBAR_BORDER).width(1f)))
                 // The sidebar is the app's primary navigation region → a `<nav>` landmark.
@@ -61,7 +61,7 @@ public class Sidebar implements View {
         return Button.with(b -> b.action(() -> router.navigate(path))).children(
                 Label.with(l -> l.title(label).icon(Icon.with(i -> i.name(icon))))
                         .modifiers(Background.with(b -> b.color(bg)), ForegroundStyle.with(f -> f.color(fg)))
-                        .modifiers(Frame.ofWidth(Commands.Size.FILL))
+                        .modifiers(Frame.with(f -> f.width(Commands.Size.FILL)))
         );
     }
 }

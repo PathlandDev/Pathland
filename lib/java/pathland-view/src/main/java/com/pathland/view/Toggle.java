@@ -58,21 +58,6 @@ public final class Toggle implements View, Configurable<Toggle.Config> {
         this.config = config;
     }
 
-    /** A toggle with a style token, a binding, and a label. */
-    public static Toggle of(ToggleStyle style, WritableSignal<Boolean> binding, String label) {
-        return new Toggle(new Config().style(style).isOn(binding).label(label));
-    }
-
-    /** A {@code Switch}-style toggle with no label. */
-    public static Toggle of(WritableSignal<Boolean> binding) {
-        return new Toggle(new Config().isOn(binding));
-    }
-
-    /** A {@code Switch}-style toggle with a label ({@code Toggle("label", isOn:)}). */
-    public static Toggle of(String label, WritableSignal<Boolean> binding) {
-        return new Toggle(new Config().isOn(binding).label(label));
-    }
-
     /** Configure the toggle's values. */
     public static ViewBuilder<Toggle, Config> with(Consumer<Config> configure) {
         Config config = new Config();

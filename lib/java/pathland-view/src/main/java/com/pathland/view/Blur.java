@@ -34,8 +34,12 @@ public final class Blur implements ViewModifier {
         this.config = config;
     }
 
-    public static Blur of(float value) {
-        return new Blur(new Config().radius(value));
+    public static Blur with(float value) {
+        return Configurators.modifier(Config::new, Blur::new, c -> c.radius(value));
+    }
+
+    public static Blur with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, Blur::new, c -> c.radius(value));
     }
 
     /** Configure the blur. */

@@ -34,8 +34,12 @@ public final class Contrast implements ViewModifier {
         this.config = config;
     }
 
-    public static Contrast of(float value) {
-        return new Contrast(new Config().value(value));
+    public static Contrast with(float value) {
+        return Configurators.modifier(Config::new, Contrast::new, c -> c.value(value));
+    }
+
+    public static Contrast with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, Contrast::new, c -> c.value(value));
     }
 
     /** Configure the contrast. */

@@ -18,11 +18,6 @@ public final class ScrollView implements View, Configurable<ScrollView.Config>, 
         this.children = children;
     }
 
-    /** A scrollable content container. */
-    public static ScrollView of(View... children) {
-        return new ScrollView(List.of(children));
-    }
-
     /** Supply the scrollable content. */
     public static ViewBuilder<ScrollView, Config> children(View... children) {
         return new ViewBuilder<>(new ScrollView(List.of())).children(children);

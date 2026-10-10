@@ -47,23 +47,6 @@ public final class Slider implements View, Configurable<Slider.Config> {
         this.config = config;
     }
 
-    /** A continuous numeric range control bound to {@code binding} ({@code Slider(value:in:)}). */
-    public static Slider of(WritableSignal<Float> binding, float min, float max) {
-        return of(binding, min, max, null);
-    }
-
-    /** A slider that also reports {@code EDITING_CHANGED} drag start/end to
-     *  {@code onEditingChanged} (the renderers send the boundaries only when the
-     *  {@code EDITING} listener bit is set, spec/EVENTS.md bit 6). */
-    public static Slider of(WritableSignal<Float> binding, float min, float max,
-                            Consumer<Boolean> onEditingChanged) {
-        Config config = new Config().value(binding).in(min, max);
-        if (onEditingChanged != null) {
-            config.onEditingChanged(onEditingChanged);
-        }
-        return new Slider(config);
-    }
-
     /** Configure the slider's values. */
     public static ViewBuilder<Slider, Config> with(Consumer<Config> configure) {
         Config config = new Config();

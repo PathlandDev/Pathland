@@ -95,7 +95,7 @@ public final class SectionCard implements View, Configurable<SectionCard.Config>
                         Background.with(b -> b.color(Color.WHITE)),
                         Border.with(b -> b.color(BORDER).width(1).radius(10)),
                         CornerRadius.with(c -> c.radius(10)),
-                        Frame.ofWidth(Commands.Size.FILL))
+                        Frame.with(f -> f.width(Commands.Size.FILL)))
                 .children(
                         // A section title is a heading → `<h2>`.
                         Text.with(t -> t.text(config.title)).modifiers(

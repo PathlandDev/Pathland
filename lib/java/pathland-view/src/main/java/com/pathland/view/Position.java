@@ -47,10 +47,6 @@ public final class Position implements ViewModifier {
         this.config = config;
     }
 
-    public static Position of(float x, float y) {
-        return new Position(new Config().x(x).y(y));
-    }
-
     /** Configure the position. */
     public static Position with(Consumer<Config> configure) {
         Config config = new Config();

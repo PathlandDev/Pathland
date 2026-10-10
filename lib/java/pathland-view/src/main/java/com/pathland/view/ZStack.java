@@ -39,26 +39,6 @@ public final class ZStack implements View, Configurable<ZStack.Config>, Children
         this.children = children;
     }
 
-    /** An overlapping stack. */
-    public static ZStack of(View... children) {
-        return new ZStack(new Config(), List.of(children));
-    }
-
-    /** An overlapping stack. */
-    public static ZStack of(List<View> children) {
-        return new ZStack(new Config(), List.copyOf(children));
-    }
-
-    /** An overlapping stack with a 2D alignment (positions children on both axes). */
-    public static ZStack of(Alignment alignment, View... children) {
-        return new ZStack(new Config().alignment(alignment), List.of(children));
-    }
-
-    /** An overlapping stack with a 2D alignment (positions children on both axes). */
-    public static ZStack of(Alignment alignment, List<View> children) {
-        return new ZStack(new Config().alignment(alignment), List.copyOf(children));
-    }
-
     /** Configure the stack's values. */
     public static ViewBuilder<ZStack, Config> with(Consumer<Config> configure) {
         Config config = new Config();

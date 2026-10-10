@@ -53,33 +53,6 @@ public final class VStack implements View, Configurable<VStack.Config>, Children
         this.children = children;
     }
 
-    /** A vertical stack. */
-    public static VStack of(View... children) {
-        return new VStack(new Config(), List.of(children));
-    }
-
-    /** A vertical stack. */
-    public static VStack of(List<View> children) {
-        return new VStack(new Config(), List.copyOf(children));
-    }
-
-    /** A vertical stack with constructor layout values. */
-    public static VStack of(HorizontalAlignment alignment, float spacing, View... children) {
-        return new VStack(new Config().alignment(alignment).spacing(spacing), List.of(children));
-    }
-
-    /** A vertical stack with constructor layout values. */
-    public static VStack of(HorizontalAlignment alignment, Float spacing, List<View> children) {
-        Config config = new Config();
-        if (alignment != null) {
-            config.alignment(alignment);
-        }
-        if (spacing != null) {
-            config.spacing(spacing);
-        }
-        return new VStack(config, List.copyOf(children));
-    }
-
     /** Configure the stack's values. */
     public static ViewBuilder<VStack, Config> with(Consumer<Config> configure) {
         Config config = new Config();

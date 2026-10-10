@@ -229,16 +229,20 @@ apps. Components and modifiers:
 - `View` is an **open interface** — the library ships `Text`/`Image`/`Color`/
   `Rectangle`, `VStack`/`HStack`/`ZStack`, `Spacer`, `Button`, `TextField(placeholder, WritableSignal<String>)`, and
   application code (Quarkus/Spring/desktop) defines its own views by implementing `View`.
-- **Custom views use the configurator** (spec DSL.md §2): an app-authored `View`
-  with values implements `Configurable<View.Config>`, holds a **`private`
-  constructor**, and exposes `static ViewBuilder<View, Config> with(Consumer<Config>)`
-  — creation goes through the configurator, never a parameterized constructor.
-  The `pathland-view-processor` `ViewAuthoringProcessor` **errors** on
-  public/protected constructors **with parameters** in custom `View`
-  implementations (no-arg roots and abstract views are exempt), so the
+- **Custom views and styles use the configurator** (spec DSL.md §2): an
+  app-authored `View` with values implements `Configurable<View.Config>`, holds a
+  **`private` constructor**, and exposes
+  `static ViewBuilder<View, Config> with(Consumer<Config>)`; a style
+  (`ButtonStyle`/`LabelStyle`/`AudioStyle`/`VideoStyle`) expose
+  `static X with(Consumer<Config>)` returning the style value (e.g.
+  `BorderedButtonStyle.with(b -> b.padding(..).background(..)…)`). Creation goes
+  through the configurator, never a parameterized constructor. The
+  `pathland-view-processor` `ViewAuthoringProcessor` **errors** on
+  public/protected constructors **with parameters** in custom `View` **and**
+  `Style` implementations (no-arg roots and abstract types are exempt), so the
   convention is compile-enforced where the processor is wired
-  (`annotationProcessorPaths`). The library's own views follow the same shape
-  (`Audio`, `Text`, …).
+  (`annotationProcessorPaths`). The library's own views/styles follow the same
+  shape (`Audio`, `Text`, `BorderedButtonStyle`, …).
 - **SwiftUI-style `body()`**: composite views declare `View body()` (their subtree);
   the library's primitives override `render(Environment)` to materialize a
   `PathlandNode`. `body()` is evaluated **once at mount** — reactive values come from
@@ -258,16 +262,24 @@ apps. Components and modifiers:
   `.modifiers(PathChange.with(p -> p.listener(…)))`), and the `*Mod` shims
   (`EnvironmentMod`→`EnvironmentBinding`, `router/NavigationMod`→`NavigationIntent`,
   `PathChangeMod`→`PathChange`, `FontWeightMod`→`FontWeight`, …) are **removed**.
+- **Single-value shortcuts (spec DSL.md §2)**: a view/modifier whose config has a
+  designated primary member also exposes `with(value)` / `with(Signal<T>)` overloads
+  that are pure sugar for the lambda — `Text.with("hi")`, `Padding.with(16)`,
+  `FontSize.with(sizeSignal)`. Multi-member configs (`Padding.edges`, `Offset`,
+  `Gauge`, `Border`, …) have **no** shortcut — use the lambda. The shortcut delegates
+  to the same `with(Consumer<Config>)` factory via the package-private
+  `Configurators` helper (one construction path). The former `.of(...)` construction
+  factories are **removed** — a shortcut (or the lambda / `.children(...)` / empty
+  `with()` for config-less views) replaces every one. Only data/branch factories keep
+  `of`: `Color.of/rgb/argb/token`, `Case.of`, `Fit.of`, `EnvironmentKey.of`,
+  `Route.of`, `Params.of`, `Signals.*`.
   Sizing is the `Frame` modifier value
-  (`Frame.with(f -> f.width(w).height(h).alignment(..))`, standalone
-  `Frame.ofWidth(w)` / `Frame.ofHeight(h)`, and the lambda
+  (`Frame.with(f -> f.width(w).height(h).alignment(..))` and the lambda
   configurator `Frame.with(f -> f.minWidth(..).maxWidth(..).alignment(..))`
   (min/ideal/max bounds)); all
   compile to the same `WIDTH`/`HEIGHT`/`ALIGNMENT`/min-max `SET_PROPERTY`s.
   Typed enums
-  (`Alignment`/`TextAlignment`/`FontWeight`/`Truncation`), not raw ints. The
-  `.of(...)` construction convenience factories remain as an alternate spelling
-  (spec conformance — same bytes), but consumers are all on the v2 surface.
+  (`Alignment`/`TextAlignment`/`FontWeight`/`Truncation`), not raw ints.
 - **Environment scoping via a `ThreadLocal`** (Java 17+): a `ButtonStyle` modifier
   injects a style down the whole child tree; `ButtonStyle.makeBody(Configuration)`
   with built-in `PlainButtonStyle` / `BorderedButtonStyle`. Custom wrappers via

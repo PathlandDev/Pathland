@@ -34,8 +34,12 @@ public final class ZIndex implements ViewModifier {
         this.config = config;
     }
 
-    public static ZIndex of(float value) {
-        return new ZIndex(new Config().value(value));
+    public static ZIndex with(float value) {
+        return Configurators.modifier(Config::new, ZIndex::new, c -> c.value(value));
+    }
+
+    public static ZIndex with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, ZIndex::new, c -> c.value(value));
     }
 
     /** Configure the z-index. */

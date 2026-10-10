@@ -15,8 +15,8 @@ public final class Rectangle implements View, Configurable<Rectangle.Config> {
     }
 
     /** A rectangle shape. */
-    public static Rectangle of() {
-        return new Rectangle();
+    public static ViewBuilder<Rectangle, Config> with() {
+        return new ViewBuilder<>(new Rectangle());
     }
 
     /** Apply modifiers to a rectangle. */

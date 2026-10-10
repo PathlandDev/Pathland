@@ -42,13 +42,13 @@ public final class Text implements View, Configurable<Text.Config> {
     }
 
     /** Static text. */
-    public static Text of(String text) {
-        return new Text(new Config().text(text));
+    public static ViewBuilder<Text, Config> with(String text) {
+        return Configurators.view(Config::new, Text::new, c -> c.text(text));
     }
 
     /** Reactive text (the current value is read at render time). */
-    public static Text of(Signal<String> binding) {
-        return new Text(new Config().text(binding));
+    public static ViewBuilder<Text, Config> with(Signal<String> binding) {
+        return Configurators.view(Config::new, Text::new, c -> c.text(binding));
     }
 
     /** Configure the text's value. */

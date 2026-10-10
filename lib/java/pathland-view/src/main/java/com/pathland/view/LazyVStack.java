@@ -49,28 +49,6 @@ public final class LazyVStack implements View, Configurable<LazyVStack.Config>, 
         this.children = children;
     }
 
-    /** A virtualized vertical stack. */
-    public static LazyVStack of(View... children) {
-        return new LazyVStack(new Config(), List.of(children));
-    }
-
-    /** A virtualized vertical stack with constructor layout properties. */
-    public static LazyVStack of(HorizontalAlignment alignment, float spacing, View... children) {
-        return new LazyVStack(new Config().alignment(alignment).spacing(spacing), List.of(children));
-    }
-
-    /** A virtualized vertical stack with constructor layout properties. */
-    public static LazyVStack of(HorizontalAlignment alignment, Float spacing, List<View> children) {
-        Config config = new Config();
-        if (alignment != null) {
-            config.alignment(alignment);
-        }
-        if (spacing != null) {
-            config.spacing(spacing);
-        }
-        return new LazyVStack(config, List.copyOf(children));
-    }
-
     /** Configure the stack's values. */
     public static ViewBuilder<LazyVStack, Config> with(Consumer<Config> configure) {
         Config config = new Config();

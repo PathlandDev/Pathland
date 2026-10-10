@@ -34,8 +34,12 @@ public final class LayoutPriority implements ViewModifier {
         this.config = config;
     }
 
-    public static LayoutPriority of(float value) {
-        return new LayoutPriority(new Config().value(value));
+    public static LayoutPriority with(float value) {
+        return Configurators.modifier(Config::new, LayoutPriority::new, c -> c.value(value));
+    }
+
+    public static LayoutPriority with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, LayoutPriority::new, c -> c.value(value));
     }
 
     /** Configure the layout priority. */

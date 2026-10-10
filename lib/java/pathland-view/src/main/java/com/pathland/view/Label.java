@@ -61,43 +61,13 @@ public final class Label implements View, Configurable<Label.Config> {
     }
 
     /** A title-only label (no icon). */
-    public static Label of(String title) {
-        return new Label(new Config().title(title));
-    }
-
-    /** A label with a title and an icon. */
-    public static Label of(String title, String icon) {
-        return new Label(new Config().title(title).icon(icon));
-    }
-
-    /** A label with a title and a semantic {@link Icon}. */
-    public static Label of(String title, Icon icon) {
-        return new Label(new Config().title(title).icon(icon));
-    }
-
-    /** A label whose title is bound to a signal, with a semantic {@link Icon}. */
-    public static Label of(Signal<String> title, Icon icon) {
-        return new Label(new Config().title(title).icon(icon));
+    public static ViewBuilder<Label, Config> with(String title) {
+        return Configurators.view(Config::new, Label::new, c -> c.title(title));
     }
 
     /** A title-only label whose title is bound to a reactive signal. */
-    public static Label of(Signal<String> title) {
-        return new Label(new Config().title(title));
-    }
-
-    /** A label with a reactive title and a static icon. */
-    public static Label of(Signal<String> title, String icon) {
-        return new Label(new Config().title(title).icon(icon));
-    }
-
-    /** A label with a static title and a reactive icon. */
-    public static Label of(String title, Signal<String> icon) {
-        return new Label(new Config().title(title).icon(icon));
-    }
-
-    /** A label whose title and icon are both bound to reactive signals. */
-    public static Label of(Signal<String> title, Signal<String> icon) {
-        return new Label(new Config().title(title).icon(icon));
+    public static ViewBuilder<Label, Config> with(Signal<String> title) {
+        return Configurators.view(Config::new, Label::new, c -> c.title(title));
     }
 
     /** Configure the label's values. */

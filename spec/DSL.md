@@ -204,6 +204,42 @@ builder/view type. Other languages map the operations to their idioms
 (extension methods, associated functions + traits, package constructors +
 methods, kwargs) — see [§9.3](#93-language-adaptation-rules).
 
+**Single-value shortcuts.** A view or modifier whose config designates a
+**primary value member** MAY also expose `with(value)` / `with(Signal<T>)`
+overloads that are pure sugar for the config-builder lambda:
+
+```
+Text.with("hi")            ≡  Text.with(t -> t.text("hi"))
+Padding.with(16)           ≡  Padding.with(p -> p.uniform(16))
+FontSize.with(sizeSignal)  ≡  FontSize.with(s -> s.size(sizeSignal))
+```
+
+A shortcut emits **byte-identical** opcodes and carries no extra semantics
+(source-surface only — [§Conformance](#conformance)). The config-lambda form
+(`with(c -> …)`) remains canonical and always sufficient.
+
+- **Only a designated primary member** gets a shortcut. A config with **several
+  equivalent members** (`Padding` edges, `Offset`/`Position` x+y, `Gauge`
+  value/min/max, `Border` color+width(+radius), `FixedSize` horizontal+vertical,
+  `AspectRatio` ratio+mode, a control's value+range) has **no** shortcut — use the
+  lambda. `Padding` is the exception that proves it: its single-value primary is
+  `uniform`, and per-edge padding is the lambda.
+- **Both forms exist where the member has both**: a raw value and a
+  `Signal<T>` (same rule as the config setters above). A two-way control value is
+  never a shortcut — it stays a `WritableSignal` config member.
+- The Java realization declares the overloads per type (Java statics are not
+  inherited); they delegate to the existing `with(Consumer<Config>)` factory, so
+  there is exactly one construction path. The former `.of(...)` factories are
+  **removed** — a shortcut (or the lambda / `.children(...)` / empty `with()` for
+  config-less views) replaces every one.
+
+Eligible members (non-exhaustive; the companion tables list the surface):
+
+| Kind | Shortcut |
+|------|----------|
+| Views | `Text(text)`, `Image(source)`, `Icon(name)`, `Label(title)`, `ProgressView(value)`, `RoundedRectangle(cornerRadius)`, `Audio(source)`, `Video(source)`, `Shape(kind)` |
+| Modifiers | `Padding(uniform)`, `FontSize(size)`, `ForegroundStyle(color)`, `Background(color)`, `Tint(color)`, `CornerRadius(radius)`, `Opacity(value)`, `Blur(radius)`, `Rotation(degrees)`, `ScaleEffect(value)`, `LineLimit(value)`, `Kerning`/`Tracking`/`BaselineOffset`/`LineSpacing`/`FontWidth`/`MinimumScaleFactor`/`LayoutPriority`/`ZIndex`(value), `FontFamily(family)`, `HueRotation(degrees)`, `Saturation`/`Contrast`/`Brightness`/`Grayscale`(value), `ColorMultiply(color)`, `ClipShape(shape)`, `AccessibilityLabel(text)`, `AccessibilityRole(role)`, `AccessibilityState(state)`, `Shadow(radius)`, `ImageSource(source)`, `Visible`/`Disabled`/`AllowsHitTesting`(bool), `Underline`/`Strikethrough`(bool), `PointerEvents(mask)`, `TapGesture(action)` |
+
 Per-language adaptation summary:
 
 | Language | Case | Composition mechanism | Example |
@@ -320,9 +356,9 @@ The names `if`, `switch`, `case`, and `else` are Java reserved keywords, so
 name, and `Case.of(...)` / `Case.otherwise(...)` carry the branches. A boolean
 signal takes the two-branch overload (`then`, `else`); an enum/int/string
 signal takes keyed `Case` branches typed to the signal's value type, with an
-optional `Case.otherwise` default. (`Conditional` / `Case` are the one place
-`.of(...)` survives — they are not views or modifiers but statically-imported
-branch factories.)
+optional `Case.otherwise` default. (`Conditional` / `Case` are statically-imported
+**branch factories**, not views or modifiers — `Case.of(...)` is not a
+view/modifier construction factory, so it is outside the `.of(...)` removal.)
 
 **Emission contract** (the body-once exception, formalized):
 
@@ -1301,6 +1337,7 @@ language's idioms. The canonical (Java/SwiftUI-shaped) spelling is
 | Aspect | Java | C# | Rust | Go | Python |
 |--------|------|----|------|----|--------|
 | configure values | `with(c -> …)` | `With(c => …)` | `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
+| single-value shortcut | `with(value)` / `with(signal)` (sugar for the lambda) | `With(value)` | `Type::new(value)` / `Type(sig)` | `Type(val)` | `Type(val=…)` / `Type(sig)` |
 | apply modifiers | `.modifiers(…)` | `.Modifiers(…)` | `.modifiers(…)` (single or tuple) | `.Modifiers(…)` | `.modifiers(…)` |
 | supply children | `.children(…)` | `.Children(…)` | `.children(vec![…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
 | creation + chaining | static on the view; chain on the returned builder | static on the view; chain via **extension methods** | associated fn `Type::with`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
@@ -1413,6 +1450,7 @@ per-project implementation status tracked in each project's `status.md`.
   types: [MODIFIERS.md](./MODIFIERS.md); event ids and listener bits:
   [EVENTS.md](./EVENTS.md). These specs are the single source of truth.
 - The v2 authoring surface (`with` / `modifiers` / `children`, shared
-  config-with-styles, no `Mod` suffix) is a **source-surface** change only: it
-  emits the **same bytes** as the prior `.of(...)` / `.with(...)` surface for an
-  equivalent tree — no component/property/event/opcode change.
+  config-with-styles, no `Mod` suffix, single-value `with(value)` shortcuts) is a
+  **source-surface** change only: it emits the **same bytes** as the prior
+  `.of(...)` / `.with(...)` surface for an equivalent tree — no
+  component/property/event/opcode change.

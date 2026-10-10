@@ -47,10 +47,6 @@ public final class Offset implements ViewModifier {
         this.config = config;
     }
 
-    public static Offset of(float x, float y) {
-        return new Offset(new Config().x(x).y(y));
-    }
-
     /** Configure the offset. */
     public static Offset with(Consumer<Config> configure) {
         Config config = new Config();

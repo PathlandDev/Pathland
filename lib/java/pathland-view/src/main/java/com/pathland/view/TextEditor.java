@@ -29,11 +29,6 @@ public final class TextEditor implements View, Configurable<TextEditor.Config> {
         this.config = config;
     }
 
-    /** A multi-line text editing area bound to {@code binding}. */
-    public static TextEditor of(WritableSignal<String> binding) {
-        return new TextEditor(new Config().text(binding));
-    }
-
     /** Configure the editor's values. */
     public static ViewBuilder<TextEditor, Config> with(Consumer<Config> configure) {
         Config config = new Config();
