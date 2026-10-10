@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 3.482959733999998,
+    "cost": 3.487815119999998,
     "tokens": {
-      "input": 11690377,
-      "output": 659028,
+      "input": 11691672,
+      "output": 660106,
       "reasoning": 370254,
       "cache": {
-        "read": 370611328,
+        "read": 371949440,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791618194569
+      "updated": 1791618229355
     }
   },
   "messages": [
@@ -240143,21 +240143,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.002520816,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 670031,
+          "input": 668,
+          "output": 691,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 668672
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791618194623
+          "created": 1791618194623,
+          "completed": 1791618220911
         },
+        "finish": "tool-calls",
         "id": "msg_124c41cbf00275nyZxx9jqb04m",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -240196,20 +240199,115 @@
           "tool": "bash",
           "callID": "call_286d2c37163743fab44bc40b",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nfeat(view-java): single-value with(...) shortcuts; retire .of(...) factories\n\nSpec DSL.md §2 \"Single-value shortcuts\": a view/modifier whose config has a\ndesignated primary member exposes with(value)/with(Signal<T>) overloads that\nare pure sugar for the config lambda — Text.with(\"hi\"), Padding.with(16),\nFontSize.with(sizeSignal). Multi-member configs (Padding edges, Offset, Gauge,\nBorder, FixedSize, AspectRatio, control ranges) keep the lambda only.\n\nImplementation: package-private Configurators helper (one construction path);\nevery eligible view/modifier declares the raw + signal overloads delegating\nthrough it.\n\nRetire every view/modifier .of(...) construction factory (option c):\n- single-value -> with(value) shortcut\n- config-less no-arg -> empty with()\n- multi-arg / structural -> lambda / .children(...) / shortcut\n- styles: BorderedButtonStyle.of -> with(Consumer<Config>) (Config + private\n  ctor, INSTANCE kept); PlayerControlsStyle.of -> with(...)\n- Frame.of*/ofWidth/ofHeight -> Frame.with(f -> ...)\n- SizeThatFits.of -> SizeThatFits.with\nKeep only data/branch factories: Color.of/rgb/argb/token, Case.of, Fit.of,\nEnvironmentKey.of, Route.of, Params.of. AccessibilityRole reserved-code\nvalidation moves into AccessibilityRole.with(int).\n\nViewAuthoringProcessor now also enforces the configurator convention on Style\nimplementations (ButtonStyle/LabelStyle/AudioStyle/VideoStyle): error on\npublic/protected parameterized constructors (verified via probe).\n\nCall sites + tests migrated; spec/AGENTS/status docs updated. Shortcut\nconformance tests added (Text/Padding/FontSize/Image shortcuts ≡ lambda;\nreactive binds; AccessibilityRole.with(20) rejects). Java reactor green.\nEOF\n)\" && git log --oneline -1"
             },
+            "output": "8ea5e91a feat(view-java): single-value with(...) shortcuts; retire .of(...) factories\n",
+            "metadata": {
+              "output": "8ea5e91a feat(view-java): single-value with(...) shortcuts; retire .of(...) factories\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nfeat(view-java): single-value with(...) shortcuts; retire .of(...) factories\n\nSpec DSL.md §2 \"Single-value shortcuts\": a view/modifier whose config has a\ndesignated primary member exposes with(value)/with(Signal<T>) overloads that\nare pure sugar for the config lambda — Text.with(\"hi\"), Padding.with(16),\nFontSize.with(sizeSignal). Multi-member configs (Padding edges, Offset, Gauge,\nBorder, FixedSize, AspectRatio, control ranges) keep the lambda only.\n\nImplementation: package-private Configurators helper (one construction path);\nevery eligible view/modifier declares the raw + signal overloads delegating\nthrough it.\n\nRetire every view/modifier .of(...) construction factory (option c):\n- single-value -> with(value) shortcut\n- config-less no-arg -> empty with()\n- multi-arg / structural -> lambda / .children(...) / shortcut\n- styles: BorderedButtonStyle.of -> with(Consumer<Config>) (Config + private\n  ctor, INSTANCE kept); PlayerControlsStyle.of -> with(...)\n- Frame.of*/ofWidth/ofHeight -> Frame.with(f -> ...)\n- SizeThatFits.of -> SizeThatFits.with\nKeep only data/branch factories: Color.of/rgb/argb/token, Case.of, Fit.of,\nEnvironmentKey.of, Route.of, Params.of. AccessibilityRole reserved-code\nvalidation moves into AccessibilityRole.with(int).\n\nViewAuthoringProcessor now also enforces the configurator convention on Style\nimplementations (ButtonStyle/LabelStyle/AudioStyle/VideoStyle): error on\npublic/protected parameterized constructors (verified via probe).\n\nCall sites + tests migrated; spec/AGENTS/status docs updated. Shortcut\nconformance tests added (Text/Padding/FontSize/Image shortcuts ≡ lambda;\nreactive binds; AccessibilityRole.with(20) rejects). Java reactor green.\nEOF\n)\" && git log --oneline -1",
             "time": {
-              "start": 1791618205808
+              "start": 1791618205808,
+              "end": 1791618220803
             }
           },
           "id": "prt_124c43532001tDNVusLpxtCP9o",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_124c41cbf00275nyZxx9jqb04m"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "5d57bb80502d6ad3da0a77eff36b7b93513e59bd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 670031,
+            "input": 668,
+            "output": 691,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 668672
+            }
+          },
+          "cost": 0.002520816,
+          "id": "prt_124c48339001WvL4pVlLYAiQxA",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_124c41cbf00275nyZxx9jqb04m"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_124ab3712001LeB1elEw6p8X3R",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00233457,
+        "tokens": {
+          "total": 670454,
+          "input": 627,
+          "output": 387,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 669440
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791618221004,
+          "completed": 1791618229316
+        },
+        "finish": "stop",
+        "id": "msg_124c483cc002y72ibawlys7wr0",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "5d57bb80502d6ad3da0a77eff36b7b93513e59bd",
+          "type": "step-start",
+          "id": "prt_124c48da90017WIExEW908zN6N",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_124c483cc002y72ibawlys7wr0"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `8ea5e91a`.\n\n## Summary\n\n**Shortcuts** (`spec/DSL.md` §2, new \"Single-value shortcuts\"): eligible views/modifiers expose `with(value)`/`with(Signal<T>)` sugar via the package-private `Configurators` helper — `Text.with(\"hi\")`, `Padding.with(16)`, `FontSize.with(sizeSignal)`. Multi-member configs (edges, `Offset`, `Gauge`, `Border`, control ranges) stay lambda-only.\n\n**Retired `.of(...)`** (option c) across all ~70 view/modifier classes: single-value → shortcut; config-less no-arg → empty `with()`; multi-arg/structural → lambda/`.children(...)`/shortcut. Styles pruned: `BorderedButtonStyle.of → with(Consumer<Config>)` (kept `INSTANCE`), `PlayerControlsStyle.of → with(...)`; `Frame.of* → Frame.with(f -> …)`; `SizeThatFits.of → with`. Kept only data/branch factories (`Color.of`, `Case.of`, `Fit.of`, `EnvironmentKey.of`, `Route.of`, `Params.of`); `AccessibilityRole.with(int)` now owns reserved-code validation.\n\n**Enforcement**: `ViewAuthoringProcessor` now also rejects parameterized public/protected constructors in `Style` implementations (probe-verified for both views and styles).\n\n**Verification**: view module 148 tests + new `ShortcutTest` (shortcut ≡ lambda, reactive binds, validation); full Java reactor BUILD SUCCESS; call sites migrated across demos/starters/render-html tests; no removed-`.of` code references remain. Docs updated (`spec/DSL.md`, `AGENTS.md`, `pathland-view-processor` pom).",
+          "time": {
+            "start": 1791618223606,
+            "end": 1791618229200
+          },
+          "id": "prt_124c48df6001SOuYiRxw00fSfF",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_124c483cc002y72ibawlys7wr0"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "5d57bb80502d6ad3da0a77eff36b7b93513e59bd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 670454,
+            "input": 627,
+            "output": 387,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 669440
+            }
+          },
+          "cost": 0.00233457,
+          "id": "prt_124c4a40f001jRoxkjoZJv1rIX",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_124c483cc002y72ibawlys7wr0"
         }
       ]
     }
