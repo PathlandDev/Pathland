@@ -3,8 +3,25 @@
   "checkpoint_id": "01M4JC8JBWCM5NC6NWY1HNW94H",
   "strategy": "manual-commit",
   "branch": "feat/with-shortcuts-retire-of",
-  "checkpoints_count": 1,
+  "checkpoints_count": 8,
   "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/SplitNavDemo.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/kitchensink/SectionCard.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/MusicPlayerView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PlayerBar.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/PlayerControlsStyle.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/music/TrackRowView.java",
+    "lib/java/pathland-demo-views/src/main/java/com/pathland/demo/sidebar/Sidebar.java",
+    "lib/java/pathland-demo-views/status.md",
+    "lib/java/pathland-quarkus-starter/src/test/java/com/pathland/quarkus/CounterApp.java",
+    "lib/java/pathland-render-html/src/test/java/com/pathland/render/html/HtmlRendererTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/MultiSessionWebSocketTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/PathlandAutoConfigurationTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/PathlandDebugHtmlTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/com/pathland/spring/PathlandObservabilityTest.java",
+    "lib/java/pathland-view-processor/pom.xml",
+    "lib/java/pathland-view-processor/src/main/java/com/pathland/processor/ViewAuthoringProcessor.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/AccessibilityLabel.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/AccessibilityRole.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/AccessibilityState.java",
@@ -15,6 +32,7 @@
     "lib/java/pathland-view/src/main/java/com/pathland/view/BaselineOffset.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Blur.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Border.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/BorderedButtonStyle.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Brightness.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Button.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Capsule.java",
@@ -25,6 +43,7 @@
     "lib/java/pathland-view/src/main/java/com/pathland/view/ColorMultiply.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/ColorPicker.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Conditional.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/Configurators.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/Contrast.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/CornerRadius.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/DatePicker.java",
@@ -97,7 +116,13 @@
     "lib/java/pathland-view/src/main/java/com/pathland/view/ZIndex.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/ZStack.java",
     "lib/java/pathland-view/src/main/java/com/pathland/view/signal/Signals.java",
-    "lib/java/pathland-view/src/main/java/com/pathland/view/state/State.java"
+    "lib/java/pathland-view/src/main/java/com/pathland/view/state/State.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/EmitterTest.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/FrameTest.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/ShortcutTest.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/SizeThatFitsTest.java",
+    "lib/java/pathland-view/status.md",
+    "spec/DSL.md"
   ],
   "sessions": [
     {
@@ -106,13 +131,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 120154,
+    "input_tokens": 3131891,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 6148352,
-    "output_tokens": 31226,
-    "api_call_count": 58
+    "cache_read_tokens": 68475264,
+    "output_tokens": 76193,
+    "api_call_count": 164
   }
 }
