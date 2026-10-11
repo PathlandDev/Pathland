@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 4.043705177999997,
+    "cost": 4.048635413999997,
     "tokens": {
-      "input": 13818135,
-      "output": 713302,
+      "input": 13818337,
+      "output": 713978,
       "reasoning": 370254,
       "cache": {
-        "read": 440283776,
+        "read": 441781888,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791735665064
+      "updated": 1791735700731
     }
   },
   "messages": [
@@ -254119,21 +254119,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.0024819,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 749317,
+          "input": 166,
+          "output": 351,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 748800
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791735665118
+          "created": 1791735665118,
+          "completed": 1791735692170
         },
+        "finish": "tool-calls",
         "id": "msg_12bc491de002YztOkcMcghpeok",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -254150,20 +254153,115 @@
           "tool": "bash",
           "callID": "call_435aee8d83824f938d25ed99",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nstyle(demo): use with(value) shortcuts across demo-views main\n\nApply the single-value with(...) shortcuts (spec DSL.md §2) throughout\npathland-demo-views: every single-primary config lambda becomes the shortcut\nform (Text.with(\"hi\"), Padding.with(16), FontSize.with(18f),\nForegroundStyle.with(color), AccessibilityRole.with(role), Icon.with(name),\nImage/Audio/Video.with(source), Keerna/Tracking/LineLimit/CornerRadius/\nOpacity/Rotation/ScaleEffect/ZIndex/Shadow.with(value), etc. — raw or\nSignal<T> as appropriate).\n\nSectionCard (demo custom view) gains SectionCard.with(String)/\nwith(Signal<String>) shortcuts for its sole primary (title), so the\n13 `SectionCard.with(s -> s.title(..)).children(..)` sites become\n`SectionCard.with(..).children(..)`.\n\nMulti-member and control configs stay lambda: Padding.edges, Border, Shadow\nfull, Offset, Gauge, Frame, Slider/Stepper/Toggle/TextField/DatePicker/\nPicker/Menu/TextEditor, Button actions. Behavior unchanged (shortcut ≡\nlambda, byte-identical). Demo tests 31 green; full Java reactor 492 green.\nEOF\n)\" && git log --oneline -1"
             },
+            "output": "ac1c8224 style(demo): use with(value) shortcuts across demo-views main\n",
+            "metadata": {
+              "output": "ac1c8224 style(demo): use with(value) shortcuts across demo-views main\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nstyle(demo): use with(value) shortcuts across demo-views main\n\nApply the single-value with(...) shortcuts (spec DSL.md §2) throughout\npathland-demo-views: every single-primary config lambda becomes the shortcut\nform (Text.with(\"hi\"), Padding.with(16), FontSize.with(18f),\nForegroundStyle.with(color), AccessibilityRole.with(role), Icon.with(name),\nImage/Audio/Video.with(source), Keerna/Tracking/LineLimit/CornerRadius/\nOpacity/Rotation/ScaleEffect/ZIndex/Shadow.with(value), etc. — raw or\nSignal<T> as appropriate).\n\nSectionCard (demo custom view) gains SectionCard.with(String)/\nwith(Signal<String>) shortcuts for its sole primary (title), so the\n13 `SectionCard.with(s -> s.title(..)).children(..)` sites become\n`SectionCard.with(..).children(..)`.\n\nMulti-member and control configs stay lambda: Padding.edges, Border, Shadow\nfull, Offset, Gauge, Frame, Slider/Stepper/Toggle/TextField/DatePicker/\nPicker/Menu/TextEditor, Button actions. Behavior unchanged (shortcut ≡\nlambda, byte-identical). Demo tests 31 green; full Java reactor 492 green.\nEOF\n)\" && git log --oneline -1",
             "time": {
-              "start": 1791735677019
+              "start": 1791735677019,
+              "end": 1791735692060
             }
           },
           "id": "prt_12bc49d68001Q631vX4TJW7bVu",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_12bc491de002YztOkcMcghpeok"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "589989139dcecbec794fa2984cfd5b4fea9e6c90",
+          "type": "step-finish",
+          "tokens": {
+            "total": 749317,
+            "input": 166,
+            "output": 351,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 748800
+            }
+          },
+          "cost": 0.0024819,
+          "id": "prt_12bc4fb56001OVw0jootaHtoEH",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_12bc491de002YztOkcMcghpeok"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_12b7792410014oTX3cMArQSkpj",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002448336,
+        "tokens": {
+          "total": 749673,
+          "input": 36,
+          "output": 325,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 749312
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791735692263,
+          "completed": 1791735700698
+        },
+        "finish": "stop",
+        "id": "msg_12bc4fbe70025IHIhPCyvMKTYW",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "589989139dcecbec794fa2984cfd5b4fea9e6c90",
+          "type": "step-start",
+          "id": "prt_12bc507d2001sDA0GBZ3DvPkQs",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_12bc4fbe70025IHIhPCyvMKTYW"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `ac1c8224`.\n\n## Summary\n\nApplied the single-value `with(value)` shortcuts throughout `pathland-demo-views` main (~28 files, 236/226 churn):\n\n- **Converted:** `Text.with(...)`, `Padding.with(...)`, `FontSize.with(...)`, `ForegroundStyle.with(...)`, `Background.with(...)`, `CornerRadius.with(...)`, `Opacity/ScaleEffect/ZIndex/Kerning/Tracking/LineLimit.with(...)`, `Rotation.with(...)`, `Shadow.with(...)`, `AllowsHitTesting.with(...)`, `AccessibilityRole.with(...)`, `Icon.with(...)`, `Image/Audio/Video.with(...)` — raw or `Signal<T>` as appropriate.\n- **`SectionCard`** gained `with(String)`/`with(Signal<String>)` (its sole primary is `title`), so all 13 `SectionCard.with(s -> s.title(…))` sites became `SectionCard.with(…)`.\n- **Kept as lambda** (multi-member/control): `Padding.edges`, `Border`, full `Shadow`, `Offset`, `Gauge`, `Frame`, `Slider`/`Stepper`/`Toggle`/`TextField`/`DatePicker`/`Picker`/`Menu`/`TextEditor`, `Button` actions.\n\n**Verification:** demo-views 31 tests green; full Java reactor **492 tests green** — behavior unchanged (shortcuts ≡ lambdas, byte-identical).",
+          "time": {
+            "start": 1791735696544,
+            "end": 1791735700575
+          },
+          "id": "prt_12bc50ca0001QjdXfnv3nUExjK",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_12bc4fbe70025IHIhPCyvMKTYW"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "589989139dcecbec794fa2984cfd5b4fea9e6c90",
+          "type": "step-finish",
+          "tokens": {
+            "total": 749673,
+            "input": 36,
+            "output": 325,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 749312
+            }
+          },
+          "cost": 0.002448336,
+          "id": "prt_12bc51c9e00139cX4r4nhkxEOh",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_12bc4fbe70025IHIhPCyvMKTYW"
         }
       ]
     }
