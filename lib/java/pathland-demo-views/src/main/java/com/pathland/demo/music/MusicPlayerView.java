@@ -99,7 +99,7 @@ public final class MusicPlayerView implements View {
                                 .playing(playing.signal())
                                 .seekRequest(seekRequest.signal())),
                         HStack
-                                .modifiers(Padding.with(p -> p.uniform(16)))
+                                .modifiers(Padding.with(16))
                                 .children(PlayerBar.with(p -> p
                                         .trackIndex(trackIndex.signal())
                                         .position(position.signal())
@@ -109,7 +109,7 @@ public final class MusicPlayerView implements View {
                                         .volumeRequest(volumeRequest.signal()))
                                         .with(
                                                 Border.with(b -> b.color(MusicPlayerView.BAR_BORDER).width(1).radius(500)),
-                                                Shadow.with(s -> s.radius(10)))),
+                                                Shadow.with(10))),
                         subtitlePill(block, previous, current));
         View wideRow = HStack
                 .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
@@ -124,7 +124,7 @@ public final class MusicPlayerView implements View {
                 Fit.of(compactRow))
                 .with(
                         Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)),
-                        AccessibilityRole.with(a -> a.role(Roles.MAIN)));
+                        AccessibilityRole.with(Roles.MAIN));
     }
 
     /** The karaoke lyric pill just above the floating player bar: always two
@@ -134,32 +134,32 @@ public final class MusicPlayerView implements View {
     private static View subtitlePill(Signal<List<String>> block, Signal<String> previous,
                                      Signal<Integer> current) {
         View currentLine = Text
-                .with(t -> t.text(computed(() -> {
+                .with(computed(() -> {
                     String p = previous.get();
                     return p.isEmpty() ? lineAt(block.get(), current.get()) : p;
-                })))
+                }))
                 .modifiers(
-                        FontSize.with(s -> s.size(13)),
+                        FontSize.with(13),
                         FontStyle.ITALIC,
-                        ForegroundStyle.with(f -> f.color(Color.WHITE)));
+                        ForegroundStyle.with(Color.WHITE));
         View nextLine = Text
-                .with(t -> t.text(computed(() -> {
+                .with(computed(() -> {
                     String p = previous.get();
                     return p.isEmpty() ? "" : lineAt(block.get(), current.get());
-                })))
+                }))
                 .modifiers(
-                        FontSize.with(s -> s.size(13)),
+                        FontSize.with(13),
                         FontStyle.ITALIC,
-                        ForegroundStyle.with(f -> f.color(Color.argb(170, 255, 255, 255))));
+                        ForegroundStyle.with(Color.argb(170, 255, 255, 255)));
         return VStack
                 .modifiers(
                         Padding.with(p -> p.edges(6, 12, 6, 12)),
-                        CornerRadius.with(c -> c.radius(8)),
+                        CornerRadius.with(8),
                         Offset.with(o -> o.x(0).y(-(BAR_HEIGHT + 24))),
-                        AllowsHitTesting.with(a -> a.allowed(false)),
-                        Background.with(b -> b.color(computed(() -> block.get().isEmpty() || current.get() < 0
+                        AllowsHitTesting.with(false),
+                        Background.with(computed(() -> block.get().isEmpty() || current.get() < 0
                                 ? Color.CLEAR
-                                : Color.argb(128, 0, 0, 0)))))
+                                : Color.argb(128, 0, 0, 0))))
                 .with(v -> v.alignment(HorizontalAlignment.CENTER).spacing(2))
                 .children(currentLine, nextLine);
     }

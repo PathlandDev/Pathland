@@ -22,6 +22,6 @@ public final class NameField implements View {
         return VStack
                 .children(
                         TextField.with(t -> t.placeholder("Your name").text(name.signal())),
-                        Text.with(t -> t.text(nameLabel)));
+                        Text.with(nameLabel));
     }
 }

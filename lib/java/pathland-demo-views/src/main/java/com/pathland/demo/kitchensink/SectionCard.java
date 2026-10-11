@@ -64,6 +64,16 @@ public final class SectionCard implements View, Configurable<SectionCard.Config>
         this.config = config;
     }
 
+    /** A section card with a static title ({@code SectionCard.with("…")}). */
+    public static ViewBuilder<SectionCard, Config> with(String title) {
+        return with(c -> c.title(title));
+    }
+
+    /** A section card with a reactive title. */
+    public static ViewBuilder<SectionCard, Config> with(Signal<String> title) {
+        return with(c -> c.title(title));
+    }
+
     /** Configure the section card's values. */
     public static ViewBuilder<SectionCard, Config> with(Consumer<Config> configure) {
         Config config = new Config();
@@ -91,17 +101,17 @@ public final class SectionCard implements View, Configurable<SectionCard.Config>
         View content = children.isEmpty() ? null : children.get(0);
         return VStack
                 .modifiers(
-                        Padding.with(p -> p.uniform(16)),
-                        Background.with(b -> b.color(Color.WHITE)),
+                        Padding.with(16),
+                        Background.with(Color.WHITE),
                         Border.with(b -> b.color(BORDER).width(1).radius(10)),
-                        CornerRadius.with(c -> c.radius(10)),
+                        CornerRadius.with(10),
                         Frame.with(f -> f.width(Commands.Size.FILL)))
                 .children(
                         // A section title is a heading → `<h2>`.
-                        Text.with(t -> t.text(config.title)).modifiers(
-                                FontSize.with(s -> s.size(14)), FontWeight.SEMIBOLD,
-                                ForegroundStyle.with(f -> f.color(TITLE_COLOR)),
-                                AccessibilityRole.with(a -> a.role(Roles.HEADER))),
+                        Text.with(config.title).modifiers(
+                                FontSize.with(14), FontWeight.SEMIBOLD,
+                                ForegroundStyle.with(TITLE_COLOR),
+                                AccessibilityRole.with(Roles.HEADER)),
                         Divider.modifiers(Padding.with(p -> p.edges(0, 0, 8, 0))),
                         content);
     }

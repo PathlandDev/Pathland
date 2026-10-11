@@ -106,7 +106,7 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
                                 .seekRequest(config.seekRequest)
                                 .volume(config.volume)
                                 .volumeRequest(config.volumeRequest)),
-                        Background.with(b -> b.color(MusicPlayerView.BAR_BG)),
+                        Background.with(MusicPlayerView.BAR_BG),
                         Frame.with(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)))
                 .with(a -> a
                         .source(computed(() -> current.get().audio()))

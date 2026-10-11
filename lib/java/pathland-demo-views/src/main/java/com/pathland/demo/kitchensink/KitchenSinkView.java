@@ -15,19 +15,19 @@ public final class KitchenSinkView implements View {
         return ScrollView
                 // The demo's main content region → `<main>`.
                 .modifiers(
-                        AccessibilityRole.with(a -> a.role(Roles.MAIN)),
-                        Padding.with(p -> p.uniform(24)))
+                        AccessibilityRole.with(Roles.MAIN),
+                        Padding.with(24))
                 .children(
                         VStack
                                 .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(10))
                                 .children(
                                         // The kitchen-sink title is a heading → `<h2>`.
-                                        Text.with(t -> t.text("Pathland Kitchensink")).modifiers(
-                                                FontSize.with(s -> s.size(24)), FontWeight.BOLD,
+                                        Text.with("Pathland Kitchensink").modifiers(
+                                                FontSize.with(24), FontWeight.BOLD,
                                                 Padding.with(p -> p.edges(8, 0, 8, 0)),
-                                                AccessibilityRole.with(a -> a.role(Roles.HEADER))),
-                                        Text.with(t -> t.text("Every protocol primitive, control, modifier, and state binding"))
-                                                .modifiers(ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88)))),
+                                                AccessibilityRole.with(Roles.HEADER)),
+                                        Text.with("Every protocol primitive, control, modifier, and state binding")
+                                                .modifiers(ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))),
                                         new CounterSection(),
                                         new TextFieldSection(),
                                         new ToggleSection(),
@@ -41,9 +41,9 @@ public final class KitchenSinkView implements View {
                                         new LabelSection(),
                                         new MediaSection(),
                                         new AppearanceSection(),
-                                        Text.with(t -> t.text("Pathland · per-session · 16-byte deltas"))
+                                        Text.with("Pathland · per-session · 16-byte deltas")
                                                 .modifiers(
-                                                        ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88))),
-                                                        Padding.with(p -> p.uniform(16)))));
+                                                        ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88)),
+                                                        Padding.with(16))));
     }
 }

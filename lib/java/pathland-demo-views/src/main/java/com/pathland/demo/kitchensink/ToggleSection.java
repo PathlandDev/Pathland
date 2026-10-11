@@ -26,13 +26,13 @@ public final class ToggleSection implements View {
         var summary = computed(() ->
                 "Dark: " + dark.get() + " · Notify: " + notify.get() + " · Bold: " + bold.get());
         View content = VStack
-                .modifiers(Padding.with(p -> p.uniform(4)))
+                .modifiers(Padding.with(4))
                 .children(
                         Toggle.with(t -> t.style(ToggleStyle.SWITCH).isOn(dark.signal()).label("Dark mode")),
                         Toggle.with(t -> t.style(ToggleStyle.CHECKBOX).isOn(notify.signal()).label("Notify me")),
                         Toggle.with(t -> t.style(ToggleStyle.BUTTON).isOn(bold.signal()).label("Bold toggle")),
-                        Text.with(t -> t.text(summary)).modifiers(
-                                Padding.with(p -> p.uniform(4))));
-        return SectionCard.with(s -> s.title("Toggle · Switch / Checkbox / Button")).children(content);
+                        Text.with(summary).modifiers(
+                                Padding.with(4)));
+        return SectionCard.with("Toggle · Switch / Checkbox / Button").children(content);
     }
 }

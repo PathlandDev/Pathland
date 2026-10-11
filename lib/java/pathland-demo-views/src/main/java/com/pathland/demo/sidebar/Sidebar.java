@@ -21,22 +21,22 @@ public class Sidebar implements View {
         // The router signal resolves here, inside SplitNavDemo's pushed
         // EnvironmentBinding(Navigation.ROUTER, router) scope.
         return VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(8)).children(
-                        Text.with(t -> t.text("Pathland")).modifiers(
-                                FontSize.with(s -> s.size(18)), FontWeight.BOLD),
+                        Text.with("Pathland").modifiers(
+                                FontSize.with(18), FontWeight.BOLD),
                         menuRow("/home", "Home", IconName.HOME),
                         menuRow("/kitchen", "Kitchen sink", IconName.GRID),
                         menuRow("/settings", "Settings", IconName.SETTINGS),
                         Spacer.modifiers()
-                ).modifiers(Padding.with(p -> p.uniform(16)))
+                ).modifiers(Padding.with(16))
                 // Fixed-width sidebar with no height hint: as a flex child of the split
                 // HStack it stretches to the row's full height (align-items: stretch).
                 // Alignment is omitted so the stack's own FILL child-alignment (stretch
                 // the menu rows) is preserved.
                 .modifiers(Frame.with(f -> f.width(200f)))
-                .modifiers(Background.with(b -> b.color(SIDEBAR_BG)))
+                .modifiers(Background.with(SIDEBAR_BG))
                 .modifiers(Border.with(b -> b.color(SIDEBAR_BORDER).width(1f)))
                 // The sidebar is the app's primary navigation region → a `<nav>` landmark.
-                .modifiers(AccessibilityRole.with(a -> a.role(Roles.NAVIGATION)))
+                .modifiers(AccessibilityRole.with(Roles.NAVIGATION))
                 // Custom-looking buttons: real `Button`s styled with a `ButtonStyle`
                 // (control semantics are intrinsic to the component, not a `ROLE`).
                 .modifiers(PlainButtonStyle.INSTANCE);
@@ -59,8 +59,8 @@ public class Sidebar implements View {
         // neutralized and the label's own leading alignment positions the row
         // (spec DSL.md §5.7: main-axis alignment is the content's own layout).
         return Button.with(b -> b.action(() -> router.navigate(path))).children(
-                Label.with(l -> l.title(label).icon(Icon.with(i -> i.name(icon))))
-                        .modifiers(Background.with(b -> b.color(bg)), ForegroundStyle.with(f -> f.color(fg)))
+                Label.with(l -> l.title(label).icon(Icon.with(icon)))
+                        .modifiers(Background.with(bg), ForegroundStyle.with(fg))
                         .modifiers(Frame.with(f -> f.width(Commands.Size.FILL)))
         );
     }

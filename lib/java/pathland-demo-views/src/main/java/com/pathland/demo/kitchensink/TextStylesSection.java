@@ -29,25 +29,25 @@ public final class TextStylesSection implements View {
     @Override
     public View body() {
         View content = VStack
-                .modifiers(Padding.with(p -> p.uniform(4)))
+                .modifiers(Padding.with(4))
                 .children(
-                        Text.with(t -> t.text("Regular")).modifiers(FontWeight.REGULAR),
-                        Text.with(t -> t.text("Bold")).modifiers(FontWeight.BOLD),
-                        Text.with(t -> t.text("Italic")).modifiers(Italic.with()),
-                        Text.with(t -> t.text("Underline")).modifiers(Underline.with()),
-                        Text.with(t -> t.text("Strikethrough")).modifiers(Strikethrough.with()),
-                        Text.with(t -> t.text("UPPERCASE")).modifiers(TextCase.UPPERCASE),
-                        Text.with(t -> t.text("Monospaced")).modifiers(FontDesign.MONOSPACED),
-                        Text.with(t -> t.text("Serif")).modifiers(FontDesign.SERIF),
-                        Text.with(t -> t.text("K e r n e d")).modifiers(Kerning.with(k -> k.value(2))),
-                        Text.with(t -> t.text("Tracking")).modifiers(Tracking.with(tr -> tr.value(3))),
-                        Text.with(t -> t.text("A very long line of text that must be truncated to a single line.")).modifiers(
-                                LineLimit.with(l -> l.value(1)),
+                        Text.with("Regular").modifiers(FontWeight.REGULAR),
+                        Text.with("Bold").modifiers(FontWeight.BOLD),
+                        Text.with("Italic").modifiers(Italic.with()),
+                        Text.with("Underline").modifiers(Underline.with()),
+                        Text.with("Strikethrough").modifiers(Strikethrough.with()),
+                        Text.with("UPPERCASE").modifiers(TextCase.UPPERCASE),
+                        Text.with("Monospaced").modifiers(FontDesign.MONOSPACED),
+                        Text.with("Serif").modifiers(FontDesign.SERIF),
+                        Text.with("K e r n e d").modifiers(Kerning.with(2)),
+                        Text.with("Tracking").modifiers(Tracking.with(3)),
+                        Text.with("A very long line of text that must be truncated to a single line.").modifiers(
+                                LineLimit.with(1),
                                 Truncation.TAIL,
                                 Frame.with(f -> f.width(280).alignment(Alignment.CENTER))),
-                        Text.with(t -> t.text("Centered")).modifiers(
+                        Text.with("Centered").modifiers(
                                 TextAlignment.CENTER,
                                 Frame.with(f -> f.width(180).alignment(Alignment.CENTER))));
-        return SectionCard.with(s -> s.title("Text styles · text modifiers")).children(content);
+        return SectionCard.with("Text styles · text modifiers").children(content);
     }
 }

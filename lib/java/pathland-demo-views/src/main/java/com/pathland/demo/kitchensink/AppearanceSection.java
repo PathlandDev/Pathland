@@ -34,36 +34,36 @@ public final class AppearanceSection implements View {
     @Override
     public View body() {
         View content = VStack
-                .modifiers(Padding.with(p -> p.uniform(4)))
+                .modifiers(Padding.with(4))
                 .children(
-                        Text.with(t -> t.text("Card with shadow")).modifiers(
-                                Padding.with(p -> p.uniform(20)),
-                                Background.with(b -> b.color(Color.WHITE)),
+                        Text.with("Card with shadow").modifiers(
+                                Padding.with(20),
+                                Background.with(Color.WHITE),
                                 Border.with(b -> b.color(BLUE_200).width(2).radius(12)),
-                                CornerRadius.with(c -> c.radius(12)),
+                                CornerRadius.with(12),
                                 Shadow.with(s -> s.color(Color.rgb(0, 0, 0)).radius(6).x(2).y(4))),
-                        Text.with(t -> t.text("Rotated 6°")).modifiers(
-                                Rotation.with(r -> r.degrees(6)),
-                                Padding.with(p -> p.uniform(8)),
-                                Background.with(b -> b.color(RED_50)),
-                                CornerRadius.with(c -> c.radius(6))),
-                        Text.with(t -> t.text("Scaled 1.2×")).modifiers(
-                                ScaleEffect.with(s -> s.value(1.2f)),
-                                Padding.with(p -> p.uniform(8)),
-                                Background.with(b -> b.color(GREEN_50)),
-                                CornerRadius.with(c -> c.radius(6))),
-                        Text.with(t -> t.text("This text is hidden")).modifiers(Hidden.with()),
+                        Text.with("Rotated 6°").modifiers(
+                                Rotation.with(6),
+                                Padding.with(8),
+                                Background.with(RED_50),
+                                CornerRadius.with(6)),
+                        Text.with("Scaled 1.2×").modifiers(
+                                ScaleEffect.with(1.2f),
+                                Padding.with(8),
+                                Background.with(GREEN_50),
+                                CornerRadius.with(6)),
+                        Text.with("This text is hidden").modifiers(Hidden.with()),
                         HStack
-                                .modifiers(Padding.with(p -> p.uniform(4)))
+                                .modifiers(Padding.with(4))
                                 .children(
                                         Rectangle.modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
-                                                .modifiers(Background.with(b -> b.color(Color.RED)),
-                                                        ClipShape.with(c -> c.shape(ShapeKind.CIRCLE))),
+                                                .modifiers(Background.with(Color.RED),
+                                                        ClipShape.with(ShapeKind.CIRCLE)),
                                         Rectangle.modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
                                                 .modifiers(
-                                                        Background.with(b -> b.color(Color.BLUE)),
-                                                        CornerRadius.with(c -> c.radius(12)))),
-                        Text.with(t -> t.text("zIndex above")).modifiers(ZIndex.with(z -> z.value(3))));
-        return SectionCard.with(s -> s.title("Appearance · border / shadow / opacity / transform")).children(content);
+                                                        Background.with(Color.BLUE),
+                                                        CornerRadius.with(12))),
+                        Text.with("zIndex above").modifiers(ZIndex.with(3)));
+        return SectionCard.with("Appearance · border / shadow / opacity / transform").children(content);
     }
 }

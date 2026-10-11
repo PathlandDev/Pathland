@@ -95,9 +95,9 @@ public final class TrackRowView implements View, Configurable<TrackRowView.Confi
         var fg = computed(() -> isCurrent.get() ? MusicPlayerView.ACTIVE_ROW_FG : Color.BLACK);
         return Button
                 .modifiers(
-                        Background.with(b -> b.color(bg)),
-                        ForegroundStyle.with(f -> f.color(fg)),
-                        Padding.with(p -> p.uniform(6)),
+                        Background.with(bg),
+                        ForegroundStyle.with(fg),
+                        Padding.with(6),
                         // Full-width row: the layout contract's cross-axis default is hug
                         // (LAYOUT.md), so a row that should span the library column must
                         // explicitly FILL its width.
@@ -112,21 +112,21 @@ public final class TrackRowView implements View, Configurable<TrackRowView.Confi
                         HStack
                                 .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(12f))
                                 .children(
-                                        Image.with(i -> i.source(config.track.cover())).modifiers(
+                                        Image.with(config.track.cover()).modifiers(
                                                 Frame.with(f -> f.width(44).height(44)),
                                                 ScaledToFit.with()),
                                         VStack
                                                 .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
                                                 .children(
-                                                        Text.with(t -> t.text(config.track.title())).modifiers(FontWeight.SEMIBOLD),
-                                                        Text.with(t -> t.text(config.track.artist() + " · " + config.track.album()))
+                                                        Text.with(config.track.title()).modifiers(FontWeight.SEMIBOLD),
+                                                        Text.with(config.track.artist() + " · " + config.track.album())
                                                                 .modifiers(
-                                                                        FontSize.with(s -> s.size(13)),
-                                                                        ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG)))),
+                                                                        FontSize.with(13),
+                                                                        ForegroundStyle.with(MusicPlayerView.SECONDARY_FG))),
                                         Spacer.modifiers(),
-                                        Text.with(t -> t.text(MusicPlayerView.fmt(config.track.duration())))
+                                        Text.with(MusicPlayerView.fmt(config.track.duration()))
                                                 .modifiers(
-                                                        FontSize.with(s -> s.size(13)),
-                                                        ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG)))));
+                                                        FontSize.with(13),
+                                                        ForegroundStyle.with(MusicPlayerView.SECONDARY_FG))));
     }
 }

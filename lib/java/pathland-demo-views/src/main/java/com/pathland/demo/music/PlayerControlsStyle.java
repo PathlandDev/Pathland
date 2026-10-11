@@ -87,55 +87,55 @@ public final class PlayerControlsStyle implements AudioStyle {
                 .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         Button
-                                .modifiers(FontSize.with(s -> s.size(20)))
+                                .modifiers(FontSize.with(20))
                                 .with(b -> b.action(() -> { prev(); restartSeek(); }))
-                                .children(Icon.with(i -> i.name(IconName.SKIP_BACK))),
+                                .children(Icon.with(IconName.SKIP_BACK)),
                         Button
-                                .modifiers(FontSize.with(s -> s.size(28)))
+                                .modifiers(FontSize.with(28))
                                 .with(b -> b.action(() -> configuration.playing().update(v -> !v)))
-                                .children(Icon.with(i -> i.name(transportIcon))),
+                                .children(Icon.with(transportIcon)),
                         Button
-                                .modifiers(FontSize.with(s -> s.size(20)))
+                                .modifiers(FontSize.with(20))
                                 .with(b -> b.action(() -> { next(); restartSeek(); }))
-                                .children(Icon.with(i -> i.name(IconName.SKIP_FORWARD))));
+                                .children(Icon.with(IconName.SKIP_FORWARD)));
         var trackInfo = HStack
                 .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Image.with(i -> i.source(computed(() -> current.get().cover()))).modifiers(
+                        Image.with(computed(() -> current.get().cover())).modifiers(
                                 Frame.with(f -> f.width(36).height(36)),
                                 ScaledToFit.with()),
                         VStack
                                 .modifiers(Frame.with(f -> f.width(160f)))
                                 .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
                                 .children(
-                                        Text.with(t -> t.text(computed(() -> current.get().title())))
-                                                .modifiers(FontWeight.SEMIBOLD, LineLimit.with(l -> l.value(1))),
-                                        Text.with(t -> t.text(computed(() -> current.get().artist())))
+                                        Text.with(computed(() -> current.get().title()))
+                                                .modifiers(FontWeight.SEMIBOLD, LineLimit.with(1)),
+                                        Text.with(computed(() -> current.get().artist()))
                                                 .modifiers(
-                                                        FontSize.with(s -> s.size(13)),
-                                                        ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG)),
-                                                        LineLimit.with(l -> l.value(1)))));
+                                                        FontSize.with(13),
+                                                        ForegroundStyle.with(MusicPlayerView.SECONDARY_FG),
+                                                        LineLimit.with(1))));
 
         var volumeView = HStack
                 .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Icon.with(i -> i.name(IconName.VOLUME)).modifiers(FontSize.with(s -> s.size(16))),
+                        Icon.with(IconName.VOLUME).modifiers(FontSize.with(16)),
                         Slider.with(s -> s.value(volumeControl).in(0f, 1f)));
 
         var compactControls = HStack
                 .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         playControl,
-                        Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
+                        Text.with("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
                         trackInfo);
 
         var controls = HStack
                 .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         playControl,
-                        Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
+                        Text.with("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
                         trackInfo,
-                        Text.with(t -> t.text("|")).modifiers(FontSize.with(s -> s.size(18)), ForegroundStyle.with(f -> f.color(MusicPlayerView.SECONDARY_FG))),
+                        Text.with("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
                         volumeView);
 
         var groups = SizeThatFits.with(

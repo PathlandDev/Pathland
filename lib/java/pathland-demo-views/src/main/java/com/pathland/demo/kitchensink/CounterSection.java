@@ -31,20 +31,20 @@ public final class CounterSection implements View {
     public View body() {
         var countLabel = computed(() -> "Count: " + count.get());
         View content = VStack
-                .modifiers(Padding.with(p -> p.uniform(4)))
+                .modifiers(Padding.with(4))
                 .children(
-                        Text.with(t -> t.text(countLabel)).modifiers(
-                                FontSize.with(s -> s.size(28)), FontWeight.BOLD),
+                        Text.with(countLabel).modifiers(
+                                FontSize.with(28), FontWeight.BOLD),
                         HStack
-                                .modifiers(Padding.with(p -> p.uniform(4)))
+                                .modifiers(Padding.with(4))
                                 .with(h -> h.alignment(VerticalAlignment.TOP).spacing(4))
                                 .children(
                                         Button.with(b -> b.title("−").action(() -> count.update(v -> v - step.get().intValue()))),
                                         Button.with(b -> b.title("+").action(() -> count.update(v -> v + step.get().intValue()))),
                                         Button.with(b -> b.title("Reset").action(() -> count.set(0)))),
-                        Text.with(t -> t.text("Step size")).modifiers(
-                                ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88)))),
+                        Text.with("Step size").modifiers(
+                                ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))),
                         Stepper.with(s -> s.value(step.signal()).in(1, 10).step(1)));
-        return SectionCard.with(s -> s.title("Counter · State + Button + Stepper")).children(content);
+        return SectionCard.with("Counter · State + Button + Stepper").children(content);
     }
 }

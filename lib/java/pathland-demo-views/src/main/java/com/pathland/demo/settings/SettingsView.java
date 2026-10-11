@@ -28,16 +28,16 @@ public final class SettingsView implements View {
         return VStack
                 // The destination content region → `<main>`.
                 .modifiers(
-                        AccessibilityRole.with(a -> a.role(Roles.MAIN)),
-                        Padding.with(p -> p.uniform(24)))
+                        AccessibilityRole.with(Roles.MAIN),
+                        Padding.with(24))
                 .children(
                         // The destination title is a heading → `<h2>`.
-                        Text.with(t -> t.text("Settings")).modifiers(
-                                FontSize.with(s -> s.size(24)), FontWeight.BOLD, AccessibilityRole.with(a -> a.role(Roles.HEADER))),
-                        Text.with(t -> t.text("A few controls bound to plain signals — the content area is "
-                                + "just another destination view.")).modifiers(Padding.with(p -> p.uniform(8))),
+                        Text.with("Settings").modifiers(
+                                FontSize.with(24), FontWeight.BOLD, AccessibilityRole.with(Roles.HEADER)),
+                        Text.with("A few controls bound to plain signals — the content area is "
+                                + "just another destination view.").modifiers(Padding.with(8)),
                         Toggle.with(t -> t.style(ToggleStyle.SWITCH).isOn(dark).label("Dark mode")),
-                        Text.with(t -> t.text(volumeLabel)).modifiers(Padding.with(p -> p.uniform(8))),
+                        Text.with(volumeLabel).modifiers(Padding.with(8)),
                         Slider.with(s -> s.value(volume).in(0f, 100f)));
     }
 }

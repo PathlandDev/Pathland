@@ -31,17 +31,17 @@ public final class ColorSection implements View {
             return String.format("Accent #%06x", rgb);
         });
         View content = VStack
-                .modifiers(Padding.with(p -> p.uniform(4)))
+                .modifiers(Padding.with(4))
                 .children(
                         ColorPicker.with(c -> c.selection(accent.signal())),
                         HStack
-                                .modifiers(Padding.with(p -> p.uniform(4)))
+                                .modifiers(Padding.with(4))
                                 .children(
                                         accent.get().with(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER))),
                                         Rectangle.modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
-                                                .modifiers(Background.with(b -> b.color(accent.signal())))),
-                        Text.with(t -> t.text(accentLabel)).modifiers(
-                                Padding.with(p -> p.uniform(4))));
-        return SectionCard.with(s -> s.title("Color · ColorPicker + Color view + Rectangle")).children(content);
+                                                .modifiers(Background.with(accent.signal()))),
+                        Text.with(accentLabel).modifiers(
+                                Padding.with(4)));
+        return SectionCard.with("Color · ColorPicker + Color view + Rectangle").children(content);
     }
 }

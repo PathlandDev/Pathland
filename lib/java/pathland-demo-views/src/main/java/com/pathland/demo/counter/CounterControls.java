@@ -22,9 +22,9 @@ public final class CounterControls implements View {
     public View body() {
         var countLabel = computed(() -> "Count: " + count.get());
         return HStack
-                .modifiers(Padding.with(p -> p.uniform(16)))
+                .modifiers(Padding.with(16))
                 .children(
-                        Text.with(t -> t.text(countLabel)),
+                        Text.with(countLabel),
                         Button.with(b -> b.title("Increment").action(() -> count.update(v -> v + 1))));
     }
 }

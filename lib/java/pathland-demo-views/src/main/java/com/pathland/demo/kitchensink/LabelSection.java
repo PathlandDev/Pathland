@@ -25,17 +25,17 @@ public final class LabelSection implements View {
     @Override
     public View body() {
         View content = VStack
-                .modifiers(Padding.with(p -> p.uniform(4)))
+                .modifiers(Padding.with(4))
                 .children(
-                        Label.with(l -> l.title("Settings").icon(Icon.with(i -> i.name(IconName.SETTINGS)))),
-                        Label.with(l -> l.title("Save changes").icon(Icon.with(i -> i.name(IconName.SAVE))))
+                        Label.with(l -> l.title("Settings").icon(Icon.with(IconName.SETTINGS))),
+                        Label.with(l -> l.title("Save changes").icon(Icon.with(IconName.SAVE)))
                                 .modifiers(TitleOnlyLabelStyle.INSTANCE),
                         Label.with(l -> l.title("Wi-Fi")).modifiers(IconOnlyLabelStyle.INSTANCE),
-                        Label.with(l -> l.title("Cloud").icon(Icon.with(i -> i.name(IconName.CLOUD))))
+                        Label.with(l -> l.title("Cloud").icon(Icon.with(IconName.CLOUD)))
                                 .modifiers(DefaultLabelStyle.INSTANCE),
-                        Label.with(l -> l.title(status.signal()).icon(Icon.with(i -> i.name(IconName.INFO)))),
+                        Label.with(l -> l.title(status.signal()).icon(Icon.with(IconName.INFO))),
                         Button.with(b -> b.title("Toggle status")
                                 .action(() -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready"))));
-        return SectionCard.with(s -> s.title("Label · title + icon, three labelStyles")).children(content);
+        return SectionCard.with("Label · title + icon, three labelStyles").children(content);
     }
 }

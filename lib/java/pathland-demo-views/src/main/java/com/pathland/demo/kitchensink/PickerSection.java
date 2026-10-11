@@ -27,20 +27,20 @@ public final class PickerSection implements View {
     public View body() {
         var choiceLabel = computed(() -> "Choice: " + choice.get());
         View content = VStack
-                .modifiers(Padding.with(p -> p.uniform(4)))
+                .modifiers(Padding.with(4))
                 .children(
-                        Text.with(t -> t.text(choiceLabel)).modifiers(
-                                Padding.with(p -> p.uniform(4))),
+                        Text.with(choiceLabel).modifiers(
+                                Padding.with(4)),
                         Picker.with(p -> p.style(PickerStyle.SEGMENTED).selection(choice.signal())).children(
-                                Text.with(t -> t.text("One")), Text.with(t -> t.text("Two")), Text.with(t -> t.text("Three"))),
+                                Text.with("One"), Text.with("Two"), Text.with("Three")),
                         Picker.with(p -> p.style(PickerStyle.MENU).selection(choice.signal())).children(
-                                Text.with(t -> t.text("One")), Text.with(t -> t.text("Two")), Text.with(t -> t.text("Three"))),
+                                Text.with("One"), Text.with("Two"), Text.with("Three")),
                         Menu.children(
                                 Button.with(b -> b.title("Actions ▾").action(() -> { })),
                                 Button.with(b -> b.title("Item 1").action(() -> { })),
                                 Button.with(b -> b.title("Item 2").action(() -> { }))),
-                        Text.with(t -> t.text("Menu action items are Buttons; choices route via VALUE_CHANGED"))
-                                .modifiers(ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88)))));
-        return SectionCard.with(s -> s.title("Picker + Menu")).children(content);
+                        Text.with("Menu action items are Buttons; choices route via VALUE_CHANGED")
+                                .modifiers(ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))));
+        return SectionCard.with("Picker + Menu").children(content);
     }
 }
