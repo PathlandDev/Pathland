@@ -11,10 +11,10 @@ import com.pathland.view.emit.PathlandNode;
  * {@code View} directly.
  *
  * <p>{@link #body()} is evaluated once at mount — reactivity comes from signals
- * ({@code Text.with(t -> t.text(Signal))}, {@code Signals.computed}), not from body
+ * ({@code Text.make(t -> t.text(Signal))}, {@code Signals.computed}), not from body
  * re-evaluation.
  *
- * <p>Modifiers are {@link ViewModifier} values applied with {@link #with(ViewModifier...)}
+ * <p>Modifiers are {@link ViewModifier} values applied with {@link #modifiers(ViewModifier...)}
  * — built-in and application-authored modifiers share one mechanism (spec DSL.md
  * §5.6), applied innermost-first. There is no per-modifier factory sugar on this
  * interface. Constructor (structural/layout) properties are passed to the view
@@ -24,7 +24,7 @@ public interface View {
 
     /**
      * The base marker for a view's **value config** ({@code V.Config}). The
-     * config is populated by the static {@code View.with(Consumer<Config>)}
+     * config is populated by the static {@code View.make(Consumer<Config>)}
      * factory and is the same type a style's {@code makeBody(Config)} reads
      * (spec DSL.md §5.7).
      */
@@ -60,10 +60,12 @@ public interface View {
 
     /**
      * Wrap this view in one or more modifiers ({@code .modifier}), applied
-     * innermost-first: {@code with(A, B, C)} ≡ {@code with(A).with(B).with(C)}. A
-     * single modifier is the common case; an empty call returns {@code this}.
+     * innermost-first: {@code modifiers(A, B, C)} ≡ {@code modifiers(A).modifiers(B).modifiers(C)}.
+     * A single modifier is the common case; an empty call returns {@code this}.
+     * {@code with(...)} is for values only — modifiers always go through this
+     * {@code modifiers(...)} operation.
      */
-    default View with(ViewModifier... modifiers) {
+    default View modifiers(ViewModifier... modifiers) {
         View result = this;
         for (ViewModifier modifier : modifiers) {
             result = Modified.apply(result, modifier);

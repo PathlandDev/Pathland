@@ -91,38 +91,37 @@ public final class MusicPlayerView implements View {
         // swap only inserts/removes the now-playing sidebar subtree — a handful
         // of TREE deltas instead of rebuilding the whole main area.
         View mainArea = ZStack
-                .with(z -> z.alignment(Alignment.BOTTOM_CENTER))
+                .make(z -> z.alignment(Alignment.BOTTOM_CENTER))
                 .children(
-                        LibraryView.with(l -> l
+                        LibraryView.make(l -> l
                                 .trackIndex(trackIndex.signal())
                                 .position(position.signal())
                                 .playing(playing.signal())
                                 .seekRequest(seekRequest.signal())),
-                        HStack
-                                .modifiers(Padding.with(16))
-                                .children(PlayerBar.with(p -> p
+                        HStack.make() .modifiers(Padding.with(16))
+                                .children(PlayerBar.make(p -> p
                                         .trackIndex(trackIndex.signal())
                                         .position(position.signal())
                                         .playing(playing.signal())
                                         .volume(volume.signal())
                                         .seekRequest(seekRequest.signal())
                                         .volumeRequest(volumeRequest.signal()))
-                                        .with(
+                                        .modifiers(
                                                 Border.with(b -> b.color(MusicPlayerView.BAR_BORDER).width(1).radius(500)),
                                                 Shadow.with(10))),
                         subtitlePill(block, previous, current));
-        View wideRow = HStack
+        View wideRow = HStack.make()
                 .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(
                         mainArea,
-                        NowPlayingSidebar.with(s -> s.trackIndex(trackIndex.signal())).with(Clipped.with()));
-        View compactRow = HStack
+                        NowPlayingSidebar.make(s -> s.trackIndex(trackIndex.signal())).modifiers(Clipped.with()));
+        View compactRow = HStack.make()
                 .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(mainArea);
-        return SizeThatFits.with(
+        return SizeThatFits.make(
                 Fit.of(wideRow, 1024f),
                 Fit.of(compactRow))
-                .with(
+                .modifiers(
                         Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)),
                         AccessibilityRole.with(Roles.MAIN));
     }
@@ -134,7 +133,7 @@ public final class MusicPlayerView implements View {
     private static View subtitlePill(Signal<List<String>> block, Signal<String> previous,
                                      Signal<Integer> current) {
         View currentLine = Text
-                .with(computed(() -> {
+                .make(computed(() -> {
                     String p = previous.get();
                     return p.isEmpty() ? lineAt(block.get(), current.get()) : p;
                 }))
@@ -143,7 +142,7 @@ public final class MusicPlayerView implements View {
                         FontStyle.ITALIC,
                         ForegroundStyle.with(Color.WHITE));
         View nextLine = Text
-                .with(computed(() -> {
+                .make(computed(() -> {
                     String p = previous.get();
                     return p.isEmpty() ? "" : lineAt(block.get(), current.get());
                 }))
@@ -151,7 +150,7 @@ public final class MusicPlayerView implements View {
                         FontSize.with(13),
                         FontStyle.ITALIC,
                         ForegroundStyle.with(Color.argb(170, 255, 255, 255)));
-        return VStack
+        return VStack.make(v -> v.alignment(HorizontalAlignment.CENTER).spacing(2))
                 .modifiers(
                         Padding.with(p -> p.edges(6, 12, 6, 12)),
                         CornerRadius.with(8),
@@ -160,7 +159,6 @@ public final class MusicPlayerView implements View {
                         Background.with(computed(() -> block.get().isEmpty() || current.get() < 0
                                 ? Color.CLEAR
                                 : Color.argb(128, 0, 0, 0))))
-                .with(v -> v.alignment(HorizontalAlignment.CENTER).spacing(2))
                 .children(currentLine, nextLine);
     }
 

@@ -48,12 +48,12 @@ public final class ProgressView implements View, Configurable<ProgressView.Confi
     }
 
     /** A determinate progress bar ({@code value} in {@code 0..1}). */
-    public static ViewBuilder<ProgressView, Config> with(float value) {
+    public static ViewBuilder<ProgressView, Config> make(float value) {
         return Configurators.view(Config::new, ProgressView::new, c -> c.value(value));
     }
 
     /** A determinate progress bar bound to a reactive signal ({@code 0..1}). */
-    public static ViewBuilder<ProgressView, Config> with(Signal<Float> value) {
+    public static ViewBuilder<ProgressView, Config> make(Signal<Float> value) {
         return Configurators.view(Config::new, ProgressView::new, c -> c.value(value));
     }
 
@@ -63,15 +63,15 @@ public final class ProgressView implements View, Configurable<ProgressView.Confi
     }
 
     /** Configure the progress view's values. */
-    public static ViewBuilder<ProgressView, Config> with(Consumer<Config> configure) {
+/** An empty ProgressView (no values). */
+    public static ViewBuilder<ProgressView, Config> make() {
+        return new ViewBuilder<>(new ProgressView(new Config()));
+    }
+
+    public static ViewBuilder<ProgressView, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new ProgressView(config));
-    }
-
-    /** Apply modifiers to a bare progress view. */
-    public static ViewBuilder<ProgressView, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new ProgressView(new Config())).modifiers(modifiers);
     }
 
     @Override

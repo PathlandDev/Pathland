@@ -46,15 +46,15 @@ public final class Stepper implements View, Configurable<Stepper.Config> {
     }
 
     /** Configure the stepper's values. */
-    public static ViewBuilder<Stepper, Config> with(Consumer<Config> configure) {
+/** An empty Stepper (no values). */
+    public static ViewBuilder<Stepper, Config> make() {
+        return new ViewBuilder<>(new Stepper(new Config()));
+    }
+
+    public static ViewBuilder<Stepper, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Stepper(config));
-    }
-
-    /** Apply modifiers to a bare stepper. */
-    public static ViewBuilder<Stepper, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Stepper(new Config())).modifiers(modifiers);
     }
 
     @Override

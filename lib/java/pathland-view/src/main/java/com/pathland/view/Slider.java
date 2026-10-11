@@ -48,15 +48,15 @@ public final class Slider implements View, Configurable<Slider.Config> {
     }
 
     /** Configure the slider's values. */
-    public static ViewBuilder<Slider, Config> with(Consumer<Config> configure) {
+/** An empty Slider (no values). */
+    public static ViewBuilder<Slider, Config> make() {
+        return new ViewBuilder<>(new Slider(new Config()));
+    }
+
+    public static ViewBuilder<Slider, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Slider(config));
-    }
-
-    /** Apply modifiers to a bare slider. */
-    public static ViewBuilder<Slider, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Slider(new Config())).modifiers(modifiers);
     }
 
     @Override

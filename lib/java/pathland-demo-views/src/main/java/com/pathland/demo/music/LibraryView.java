@@ -12,7 +12,7 @@ import java.util.function.Consumer;
  * {@link TrackRowView}; selecting one starts that track through the app-owned
  * player state (owned by the root view).
  *
- * <p>Configured with {@code LibraryView.with(l -> l.trackIndex(...).position(...)...)}
+ * <p>Configured with {@code LibraryView.make(l -> l.trackIndex(...).position(...)...)}
  * — a private constructor keeps creation on the configurator (spec DSL.md §2).
  */
 public final class LibraryView implements View, Configurable<LibraryView.Config> {
@@ -58,15 +58,10 @@ public final class LibraryView implements View, Configurable<LibraryView.Config>
     }
 
     /** Configure the library pane's values. */
-    public static ViewBuilder<LibraryView, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<LibraryView, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new LibraryView(config));
-    }
-
-    /** Apply modifiers to a bare library pane. */
-    public static ViewBuilder<LibraryView, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new LibraryView(new Config())).modifiers(modifiers);
     }
 
     @Override
@@ -79,7 +74,7 @@ public final class LibraryView implements View, Configurable<LibraryView.Config>
         List<View> rows = new ArrayList<>();
         for (int i = 0; i < MusicPlayerView.TRACKS.size(); i++) {
             int index = i;
-            rows.add(TrackRowView.with(r -> r
+            rows.add(TrackRowView.make(r -> r
                     .track(MusicPlayerView.TRACKS.get(index))
                     .index(index)
                     .trackIndex(config.trackIndex)
@@ -88,18 +83,18 @@ public final class LibraryView implements View, Configurable<LibraryView.Config>
                     .seekRequest(config.seekRequest)));
         }
         // A trailing spacer absorbs the leftover vertical space.
-        rows.add(Spacer.modifiers());
+        rows.add(Spacer.make().modifiers());
 
-        return VStack
+        return VStack.make()
                 .modifiers(
                         Padding.with(24),
                         Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(
-                        Text.with("Library").modifiers(
+                        Text.make("Library").modifiers(
                                 FontSize.with(26), FontWeight.BOLD, AccessibilityRole.with(Roles.HEADER)),
-                        Text.with(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums")
+                        Text.make(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums")
                                 .modifiers(ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
-                        Divider.modifiers(Padding.with(p -> p.edges(0, 0, 0, 10))),
+Divider.make().modifiers(Padding.with(p -> p.edges(0, 0, 0, 10))),
                         ScrollView.children(VStack.children(rows.toArray(new View[0]))));
     }
 }

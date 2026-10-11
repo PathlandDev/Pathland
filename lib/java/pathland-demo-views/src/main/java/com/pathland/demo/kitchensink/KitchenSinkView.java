@@ -12,21 +12,21 @@ public final class KitchenSinkView implements View {
 
     @Override
     public View body() {
-        return ScrollView
+        return ScrollView.make()
                 // The demo's main content region → `<main>`.
                 .modifiers(
                         AccessibilityRole.with(Roles.MAIN),
                         Padding.with(24))
                 .children(
                         VStack
-                                .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(10))
+                                .make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(10))
                                 .children(
                                         // The kitchen-sink title is a heading → `<h2>`.
-                                        Text.with("Pathland Kitchensink").modifiers(
+                                        Text.make("Pathland Kitchensink").modifiers(
                                                 FontSize.with(24), FontWeight.BOLD,
                                                 Padding.with(p -> p.edges(8, 0, 8, 0)),
                                                 AccessibilityRole.with(Roles.HEADER)),
-                                        Text.with("Every protocol primitive, control, modifier, and state binding")
+                                        Text.make("Every protocol primitive, control, modifier, and state binding")
                                                 .modifiers(ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))),
                                         new CounterSection(),
                                         new TextFieldSection(),
@@ -41,7 +41,7 @@ public final class KitchenSinkView implements View {
                                         new LabelSection(),
                                         new MediaSection(),
                                         new AppearanceSection(),
-                                        Text.with("Pathland · per-session · 16-byte deltas")
+                                        Text.make("Pathland · per-session · 16-byte deltas")
                                                 .modifiers(
                                                         ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88)),
                                                         Padding.with(16))));

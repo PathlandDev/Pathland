@@ -14,23 +14,22 @@ public final class HomeView implements View {
 
     @Override
     public View body() {
-        return VStack
+        return VStack.make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(24))
                 // The destination content region → `<main>`.
                 .modifiers(
                         AccessibilityRole.with(Roles.MAIN),
                         Padding.with(24))
-                .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(24))
                 .children(
                         VStack
-                                .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
+                                .make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
                                 .children(
                                         // The destination title is a heading → `<h2>`.
-                                        Text.with("Home").modifiers(
+                                        Text.make("Home").modifiers(
                                                 FontSize.with(24), FontWeight.BOLD, AccessibilityRole.with(Roles.HEADER)),
-                                        Text.with("A master-detail (split) navigation demo: the menu on the left "
+                                        Text.make("A master-detail (split) navigation demo: the menu on the left "
                                                 + "drives the content area on the right.")),
                         // Declarative route-change: resolves to the nearest enclosing router.
-                        Button.with(b -> b.title("Open kitchen sink").action(() -> {}))
+                        Button.make(b -> b.title("Open kitchen sink").action(() -> {}))
                                 .modifiers(NavigationIntent.navigate("/kitchen")));
     }
 }

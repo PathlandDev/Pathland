@@ -28,26 +28,26 @@ public final class TextStylesSection implements View {
 
     @Override
     public View body() {
-        View content = VStack
+        View content = VStack.make()
                 .modifiers(Padding.with(4))
                 .children(
-                        Text.with("Regular").modifiers(FontWeight.REGULAR),
-                        Text.with("Bold").modifiers(FontWeight.BOLD),
-                        Text.with("Italic").modifiers(Italic.with()),
-                        Text.with("Underline").modifiers(Underline.with()),
-                        Text.with("Strikethrough").modifiers(Strikethrough.with()),
-                        Text.with("UPPERCASE").modifiers(TextCase.UPPERCASE),
-                        Text.with("Monospaced").modifiers(FontDesign.MONOSPACED),
-                        Text.with("Serif").modifiers(FontDesign.SERIF),
-                        Text.with("K e r n e d").modifiers(Kerning.with(2)),
-                        Text.with("Tracking").modifiers(Tracking.with(3)),
-                        Text.with("A very long line of text that must be truncated to a single line.").modifiers(
+                        Text.make("Regular").modifiers(FontWeight.REGULAR),
+                        Text.make("Bold").modifiers(FontWeight.BOLD),
+                        Text.make("Italic").modifiers(Italic.with()),
+                        Text.make("Underline").modifiers(Underline.with()),
+                        Text.make("Strikethrough").modifiers(Strikethrough.with()),
+                        Text.make("UPPERCASE").modifiers(TextCase.UPPERCASE),
+                        Text.make("Monospaced").modifiers(FontDesign.MONOSPACED),
+                        Text.make("Serif").modifiers(FontDesign.SERIF),
+                        Text.make("K e r n e d").modifiers(Kerning.with(2)),
+                        Text.make("Tracking").modifiers(Tracking.with(3)),
+                        Text.make("A very long line of text that must be truncated to a single line.").modifiers(
                                 LineLimit.with(1),
                                 Truncation.TAIL,
                                 Frame.with(f -> f.width(280).alignment(Alignment.CENTER))),
-                        Text.with("Centered").modifiers(
+                        Text.make("Centered").modifiers(
                                 TextAlignment.CENTER,
                                 Frame.with(f -> f.width(180).alignment(Alignment.CENTER))));
-        return SectionCard.with("Text styles · text modifiers").children(content);
+        return SectionCard.make("Text styles · text modifiers").children(content);
     }
 }

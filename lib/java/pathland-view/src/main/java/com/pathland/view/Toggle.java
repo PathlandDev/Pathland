@@ -59,15 +59,15 @@ public final class Toggle implements View, Configurable<Toggle.Config> {
     }
 
     /** Configure the toggle's values. */
-    public static ViewBuilder<Toggle, Config> with(Consumer<Config> configure) {
+/** An empty Toggle (no values). */
+    public static ViewBuilder<Toggle, Config> make() {
+        return new ViewBuilder<>(new Toggle(new Config()));
+    }
+
+    public static ViewBuilder<Toggle, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Toggle(config));
-    }
-
-    /** Apply modifiers to a bare toggle. */
-    public static ViewBuilder<Toggle, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Toggle(new Config())).modifiers(modifiers);
     }
 
     @Override

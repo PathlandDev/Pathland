@@ -20,13 +20,13 @@ public class Sidebar implements View {
     public View body() {
         // The router signal resolves here, inside SplitNavDemo's pushed
         // EnvironmentBinding(Navigation.ROUTER, router) scope.
-        return VStack.with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(8)).children(
-                        Text.with("Pathland").modifiers(
+        return VStack.make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(8)).children(
+                        Text.make("Pathland").modifiers(
                                 FontSize.with(18), FontWeight.BOLD),
                         menuRow("/home", "Home", IconName.HOME),
                         menuRow("/kitchen", "Kitchen sink", IconName.GRID),
                         menuRow("/settings", "Settings", IconName.SETTINGS),
-                        Spacer.modifiers()
+Spacer.make().modifiers()
                 ).modifiers(Padding.with(16))
                 // Fixed-width sidebar with no height hint: as a flex child of the split
                 // HStack it stretches to the row's full height (align-items: stretch).
@@ -58,8 +58,8 @@ public class Sidebar implements View {
         // The label is FILL-width so the native button's centered content box is
         // neutralized and the label's own leading alignment positions the row
         // (spec DSL.md §5.7: main-axis alignment is the content's own layout).
-        return Button.with(b -> b.action(() -> router.navigate(path))).children(
-                Label.with(l -> l.title(label).icon(Icon.with(icon)))
+        return Button.make(b -> b.action(() -> router.navigate(path))).children(
+                Label.make(l -> l.title(label).icon(Icon.make(icon)))
                         .modifiers(Background.with(bg), ForegroundStyle.with(fg))
                         .modifiers(Frame.with(f -> f.width(Commands.Size.FILL)))
         );

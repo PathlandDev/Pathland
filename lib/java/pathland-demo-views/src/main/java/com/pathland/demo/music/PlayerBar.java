@@ -15,7 +15,7 @@ import static com.pathland.view.signal.Signals.computed;
  * bound media state, and playback events (time/ended/volume) flow back into the
  * same state.
  *
- * <p>Configured with {@code PlayerBar.with(p -> p.trackIndex(...).position(...)...)} —
+ * <p>Configured with {@code PlayerBar.make(p -> p.trackIndex(...).position(...)...)} —
  * a private constructor keeps creation on the configurator (spec DSL.md §2).
  */
 public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
@@ -74,15 +74,10 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
     }
 
     /** Configure the player bar's values. */
-    public static ViewBuilder<PlayerBar, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<PlayerBar, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new PlayerBar(config));
-    }
-
-    /** Apply modifiers to a bare player bar. */
-    public static ViewBuilder<PlayerBar, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new PlayerBar(new Config())).modifiers(modifiers);
     }
 
     @Override
@@ -98,7 +93,14 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
         // The position/volume REPORTS flow to the DISPLAY signals (onPositionReport/
         // onVolumeReport); MEDIA_POSITION/MEDIA_VOLUME are bound to the seek/volume
         // COMMANDS, so a report never echoes back as a command (spec/EVENTS.md Media).
-        return Audio
+        return Audio.make(a -> a
+                        .source(computed(() -> current.get().audio()))
+                        .playing(config.playing)
+                        .position(config.seekRequest)
+                        .onPositionReport(config.position)
+                        .volume(config.volumeRequest)
+                        .onVolumeReport(config.volume)
+                        .onEnded(this::ended))
                 .modifiers(
                         PlayerControlsStyle.with(s -> s
                                 .trackIndex(config.trackIndex)
@@ -107,15 +109,7 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
                                 .volume(config.volume)
                                 .volumeRequest(config.volumeRequest)),
                         Background.with(MusicPlayerView.BAR_BG),
-                        Frame.with(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)))
-                .with(a -> a
-                        .source(computed(() -> current.get().audio()))
-                        .playing(config.playing)
-                        .position(config.seekRequest)
-                        .onPositionReport(config.position)
-                        .volume(config.volumeRequest)
-                        .onVolumeReport(config.volume)
-                        .onEnded(this::ended));
+                        Frame.with(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)));
     }
 
     /** The media ended: advance to the next track and restart from the top. The

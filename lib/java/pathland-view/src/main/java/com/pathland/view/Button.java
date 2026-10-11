@@ -52,7 +52,12 @@ public final class Button implements View, Configurable<Button.Config>, Children
     }
 
     /** Configure the button's values. */
-    public static ViewBuilder<Button, Config> with(Consumer<Config> configure) {
+/** An empty Button (no values). */
+    public static ViewBuilder<Button, Config> make() {
+        return new ViewBuilder<>(new Button(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<Button, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Button(config, List.of()));
@@ -61,11 +66,6 @@ public final class Button implements View, Configurable<Button.Config>, Children
     /** Supply the button's label. */
     public static ViewBuilder<Button, Config> children(View... children) {
         return new ViewBuilder<>(new Button(new Config(), List.of())).children(children);
-    }
-
-    /** Apply modifiers to an action-less button. */
-    public static ViewBuilder<Button, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Button(new Config(), List.of())).modifiers(modifiers);
     }
 
     @Override
@@ -85,7 +85,7 @@ public final class Button implements View, Configurable<Button.Config>, Children
         // own component(s) and layout (Composite Override Mode, PRIMITIVES.md §2).
         View label = !children.isEmpty()
                 ? children.get(0)
-                : (config.title != null ? Text.with(t -> t.text(config.title)) : null);
+                : (config.title != null ? Text.make(t -> t.text(config.title)) : null);
 
         PathlandNode node = new PathlandNode(Components.BUTTON);
         ButtonStyle style = env.buttonStyle();

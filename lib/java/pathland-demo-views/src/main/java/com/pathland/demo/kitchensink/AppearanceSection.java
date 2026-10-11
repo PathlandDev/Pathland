@@ -33,37 +33,36 @@ public final class AppearanceSection implements View {
 
     @Override
     public View body() {
-        View content = VStack
+        View content = VStack.make()
                 .modifiers(Padding.with(4))
                 .children(
-                        Text.with("Card with shadow").modifiers(
+                        Text.make("Card with shadow").modifiers(
                                 Padding.with(20),
                                 Background.with(Color.WHITE),
                                 Border.with(b -> b.color(BLUE_200).width(2).radius(12)),
                                 CornerRadius.with(12),
                                 Shadow.with(s -> s.color(Color.rgb(0, 0, 0)).radius(6).x(2).y(4))),
-                        Text.with("Rotated 6°").modifiers(
+                        Text.make("Rotated 6°").modifiers(
                                 Rotation.with(6),
                                 Padding.with(8),
                                 Background.with(RED_50),
                                 CornerRadius.with(6)),
-                        Text.with("Scaled 1.2×").modifiers(
+                        Text.make("Scaled 1.2×").modifiers(
                                 ScaleEffect.with(1.2f),
                                 Padding.with(8),
                                 Background.with(GREEN_50),
                                 CornerRadius.with(6)),
-                        Text.with("This text is hidden").modifiers(Hidden.with()),
-                        HStack
-                                .modifiers(Padding.with(4))
+                        Text.make("This text is hidden").modifiers(Hidden.with()),
+                        HStack.make() .modifiers(Padding.with(4))
                                 .children(
-                                        Rectangle.modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
+Rectangle.make().modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
                                                 .modifiers(Background.with(Color.RED),
                                                         ClipShape.with(ShapeKind.CIRCLE)),
-                                        Rectangle.modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
+Rectangle.make().modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
                                                 .modifiers(
                                                         Background.with(Color.BLUE),
                                                         CornerRadius.with(12))),
-                        Text.with("zIndex above").modifiers(ZIndex.with(3)));
-        return SectionCard.with("Appearance · border / shadow / opacity / transform").children(content);
+                        Text.make("zIndex above").modifiers(ZIndex.with(3)));
+        return SectionCard.make("Appearance · border / shadow / opacity / transform").children(content);
     }
 }

@@ -35,7 +35,12 @@ public final class Menu implements View, Configurable<Menu.Config>, ChildrenView
     }
 
     /** Configure the menu's values. */
-    public static ViewBuilder<Menu, Config> with(Consumer<Config> configure) {
+/** An empty Menu (no values). */
+    public static ViewBuilder<Menu, Config> make() {
+        return new ViewBuilder<>(new Menu(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<Menu, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Menu(config, List.of()));
@@ -44,11 +49,6 @@ public final class Menu implements View, Configurable<Menu.Config>, ChildrenView
     /** Supply the trigger (first) and action items. */
     public static ViewBuilder<Menu, Config> children(View... children) {
         return new ViewBuilder<>(new Menu(new Config(), List.of())).children(children);
-    }
-
-    /** Apply modifiers to an empty menu. */
-    public static ViewBuilder<Menu, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Menu(new Config(), List.of())).modifiers(modifiers);
     }
 
     @Override

@@ -135,7 +135,7 @@ public final class Environment {
      *
      * <pre>{@code
      * Router router = Environment.value(Navigation.ROUTER).get();  // one-off read
-     * Text.with(t -> t.text(Environment.value(Platform.ACTIVE_PATH)));  // reactive binding
+     * Text.make(t -> t.text(Environment.value(Platform.ACTIVE_PATH)));  // reactive binding
      * // field style (resolved at render time, inside the pushed scope):
      * private final Signal<Router> router = Environment.value(Navigation.ROUTER);
      * }</pre>

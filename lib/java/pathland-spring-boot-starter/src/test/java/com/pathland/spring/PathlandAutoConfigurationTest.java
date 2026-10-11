@@ -24,7 +24,7 @@ class PathlandAutoConfigurationTest {
     static class TestApp {
         @Bean
         PathlandApp pathlandApp() {
-            return () -> Text.with("Hello Pathland");
+            return () -> Text.make("Hello Pathland");
         }
     }
 

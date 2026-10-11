@@ -55,15 +55,15 @@ public final class NavigationContainer implements View, Configurable<NavigationC
     }
 
     /** Configure the navigation slot ({@code NavigationContainer.with(n -> n.router(router))}). */
-    public static ViewBuilder<NavigationContainer, Config> with(Consumer<Config> configure) {
+/** An empty NavigationContainer (no values). */
+    public static ViewBuilder<NavigationContainer, Config> make() {
+        return new ViewBuilder<>(new NavigationContainer(new Config()));
+    }
+
+    public static ViewBuilder<NavigationContainer, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new NavigationContainer(config));
-    }
-
-    /** Apply modifiers to a bare navigation slot. */
-    public static ViewBuilder<NavigationContainer, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new NavigationContainer(new Config())).modifiers(modifiers);
     }
 
     @Override

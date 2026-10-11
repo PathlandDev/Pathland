@@ -5,7 +5,7 @@ package com.pathland.view;
  * any view with custom styling logic:
  *
  * <pre>{@code
- * View card = content.with(new CardStyle());
+ * View card = content.modifiers(new CardStyle());
  * }</pre>
  */
 @FunctionalInterface

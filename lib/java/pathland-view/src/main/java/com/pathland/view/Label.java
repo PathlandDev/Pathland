@@ -61,25 +61,25 @@ public final class Label implements View, Configurable<Label.Config> {
     }
 
     /** A title-only label (no icon). */
-    public static ViewBuilder<Label, Config> with(String title) {
+    public static ViewBuilder<Label, Config> make(String title) {
         return Configurators.view(Config::new, Label::new, c -> c.title(title));
     }
 
     /** A title-only label whose title is bound to a reactive signal. */
-    public static ViewBuilder<Label, Config> with(Signal<String> title) {
+    public static ViewBuilder<Label, Config> make(Signal<String> title) {
         return Configurators.view(Config::new, Label::new, c -> c.title(title));
     }
 
     /** Configure the label's values. */
-    public static ViewBuilder<Label, Config> with(Consumer<Config> configure) {
+/** An empty Label (no values). */
+    public static ViewBuilder<Label, Config> make() {
+        return new ViewBuilder<>(new Label(new Config()));
+    }
+
+    public static ViewBuilder<Label, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Label(config));
-    }
-
-    /** Apply modifiers to a bare label. */
-    public static ViewBuilder<Label, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Label(new Config())).modifiers(modifiers);
     }
 
     @Override
@@ -96,17 +96,17 @@ public final class Label implements View, Configurable<Label.Config> {
         String title = config.title != null ? config.title.get() : null;
         String icon = config.icon != null ? config.icon.get() : null;
 
-        View titleView = nonBlank(title) ? Text.with(t -> t.text(config.title)).modifiers(LineLimit.with(l -> l.value(1))) : null;
+        View titleView = nonBlank(title) ? Text.make(t -> t.text(config.title)).modifiers(LineLimit.with(l -> l.value(1))) : null;
         View iconPart = config.iconView != null
                 ? config.iconView
-                : (nonBlank(icon) ? Image.with(i -> i.source(config.icon)) : null);
+                : (nonBlank(icon) ? Image.make(i -> i.source(config.icon)) : null);
 
         View content = style.makeBody(new LabelStyle.Configuration(titleView, iconPart));
         if (content == null) {
             content = Group.children();
         }
         if (nonBlank(title)) {
-            content = content.with(AccessibilityLabel.with(a -> a.text(config.title)));
+            content = content.modifiers(AccessibilityLabel.with(a -> a.text(config.title)));
         }
         return content;
     }

@@ -18,14 +18,14 @@ public final class ScrollView implements View, Configurable<ScrollView.Config>, 
         this.children = children;
     }
 
+    /** An empty scroll view. */
+    public static ViewBuilder<ScrollView, Config> make() {
+        return new ViewBuilder<>(new ScrollView(List.of()));
+    }
+
     /** Supply the scrollable content. */
     public static ViewBuilder<ScrollView, Config> children(View... children) {
         return new ViewBuilder<>(new ScrollView(List.of())).children(children);
-    }
-
-    /** Apply modifiers to an empty scroll view. */
-    public static ViewBuilder<ScrollView, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new ScrollView(List.of())).modifiers(modifiers);
     }
 
     @Override

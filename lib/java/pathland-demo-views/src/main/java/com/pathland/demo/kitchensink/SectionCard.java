@@ -31,7 +31,7 @@ import java.util.function.Consumer;
  * hosts one section's controls. Demonstrates composition — a custom {@code View}
  * wrapping arbitrary content with style modifiers.
  *
- * <p>Configured with {@code SectionCard.with(s -> s.title(...)).children(content)}
+ * <p>Configured with {@code SectionCard.make(s -> s.title(...)).children(content)}
  * — a private constructor keeps creation on the configurator (spec DSL.md §2).
  */
 public final class SectionCard implements View, Configurable<SectionCard.Config>, ChildrenView {
@@ -64,26 +64,21 @@ public final class SectionCard implements View, Configurable<SectionCard.Config>
         this.config = config;
     }
 
-    /** A section card with a static title ({@code SectionCard.with("…")}). */
-    public static ViewBuilder<SectionCard, Config> with(String title) {
-        return with(c -> c.title(title));
+    /** A section card with a static title ({@code SectionCard.make("…")}). */
+    public static ViewBuilder<SectionCard, Config> make(String title) {
+        return make(c -> c.title(title));
     }
 
     /** A section card with a reactive title. */
-    public static ViewBuilder<SectionCard, Config> with(Signal<String> title) {
-        return with(c -> c.title(title));
+    public static ViewBuilder<SectionCard, Config> make(Signal<String> title) {
+        return make(c -> c.title(title));
     }
 
     /** Configure the section card's values. */
-    public static ViewBuilder<SectionCard, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<SectionCard, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new SectionCard(config));
-    }
-
-    /** Apply modifiers to a bare section card. */
-    public static ViewBuilder<SectionCard, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new SectionCard(new Config())).modifiers(modifiers);
     }
 
     @Override
@@ -99,7 +94,7 @@ public final class SectionCard implements View, Configurable<SectionCard.Config>
     @Override
     public View body() {
         View content = children.isEmpty() ? null : children.get(0);
-        return VStack
+        return VStack.make()
                 .modifiers(
                         Padding.with(16),
                         Background.with(Color.WHITE),
@@ -108,11 +103,11 @@ public final class SectionCard implements View, Configurable<SectionCard.Config>
                         Frame.with(f -> f.width(Commands.Size.FILL)))
                 .children(
                         // A section title is a heading → `<h2>`.
-                        Text.with(config.title).modifiers(
+                        Text.make(config.title).modifiers(
                                 FontSize.with(14), FontWeight.SEMIBOLD,
                                 ForegroundStyle.with(TITLE_COLOR),
                                 AccessibilityRole.with(Roles.HEADER)),
-                        Divider.modifiers(Padding.with(p -> p.edges(0, 0, 8, 0))),
+Divider.make().modifiers(Padding.with(p -> p.edges(0, 0, 8, 0))),
                         content);
     }
 }

@@ -10,7 +10,7 @@ public class ModifierWithTest {
 
     @Test
     void parameterizedModifierUsesWith() {
-        PathlandNode node = Text.with(t -> t.text("hi"))
+        PathlandNode node = Text.make(t -> t.text("hi"))
                 .modifiers(Padding.with(p -> p.uniform(12)))
                 .render(Environment.DEFAULT);
         assertEquals(12f, node.properties.get(Properties.PADDING));
@@ -18,7 +18,7 @@ public class ModifierWithTest {
 
     @Test
     void perEdgePaddingUsesWith() {
-        PathlandNode node = Text.with(t -> t.text("hi"))
+        PathlandNode node = Text.make(t -> t.text("hi"))
                 .modifiers(Padding.with(p -> p.edges(1, 2, 3, 4)))
                 .render(Environment.DEFAULT);
         assertEquals(1f, node.properties.get(Properties.PADDING_TOP));
@@ -29,7 +29,7 @@ public class ModifierWithTest {
 
     @Test
     void foregroundStyleWith() {
-        PathlandNode node = Text.with(t -> t.text("hi"))
+        PathlandNode node = Text.make(t -> t.text("hi"))
                 .modifiers(ForegroundStyle.with(f -> f.color(Color.WHITE)))
                 .render(Environment.DEFAULT);
         assertEquals(Color.WHITE, node.properties.get(Properties.COLOR));
@@ -37,7 +37,7 @@ public class ModifierWithTest {
 
     @Test
     void enumIsItsOwnModifier() {
-        PathlandNode node = Text.with(t -> t.text("hi"))
+        PathlandNode node = Text.make(t -> t.text("hi"))
                 .modifiers(FontWeight.BOLD)
                 .render(Environment.DEFAULT);
         assertEquals(700f, node.properties.get(Properties.FONT_WEIGHT));
@@ -45,7 +45,7 @@ public class ModifierWithTest {
 
     @Test
     void fontValueIsItsOwnModifier() {
-        PathlandNode node = Text.with(t -> t.text("hi"))
+        PathlandNode node = Text.make(t -> t.text("hi"))
                 .modifiers(Font.system(18f))
                 .render(Environment.DEFAULT);
         assertEquals(18f, node.properties.get(Properties.FONT_SIZE));
@@ -53,7 +53,7 @@ public class ModifierWithTest {
 
     @Test
     void frameWithBuilder() {
-        PathlandNode node = Text.with(t -> t.text("hi"))
+        PathlandNode node = Text.make(t -> t.text("hi"))
                 .modifiers(Frame.with(f -> f.width(100).height(24)))
                 .render(Environment.DEFAULT);
         assertEquals(100f, node.properties.get(Properties.WIDTH));

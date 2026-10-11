@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 class FrameTest {
 
     private static PathlandNode render(Frame frame) {
-        return Text.with(t -> t.text("x")).modifiers(frame).render(Environment.DEFAULT);
+        return Text.make(t -> t.text("x")).modifiers(frame).render(Environment.DEFAULT);
     }
 
     // -- fixed axes --------------------------------------------------------------

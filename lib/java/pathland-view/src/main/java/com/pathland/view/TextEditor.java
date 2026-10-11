@@ -30,15 +30,15 @@ public final class TextEditor implements View, Configurable<TextEditor.Config> {
     }
 
     /** Configure the editor's values. */
-    public static ViewBuilder<TextEditor, Config> with(Consumer<Config> configure) {
+/** An empty TextEditor (no values). */
+    public static ViewBuilder<TextEditor, Config> make() {
+        return new ViewBuilder<>(new TextEditor(new Config()));
+    }
+
+    public static ViewBuilder<TextEditor, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new TextEditor(config));
-    }
-
-    /** Apply modifiers to a bare editor. */
-    public static ViewBuilder<TextEditor, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new TextEditor(new Config())).modifiers(modifiers);
     }
 
     @Override

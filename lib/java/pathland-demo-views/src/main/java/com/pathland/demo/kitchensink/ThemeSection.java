@@ -25,24 +25,23 @@ public final class ThemeSection implements View {
 
     @Override
     public View body() {
-        View content = VStack
+        View content = VStack.make()
                 .modifiers(Padding.with(4))
                 .children(
-                        Text.with("color.primary — accent text")
+                        Text.make("color.primary — accent text")
                                 .modifiers(ForegroundStyle.with(Color.token("color.primary"))),
-                        Text.with("control.accent — control accent")
+                        Text.make("control.accent — control accent")
                                 .modifiers(ForegroundStyle.with(Color.token("control.accent"))),
-                        HStack
-                                .modifiers(Padding.with(4))
+                        HStack.make() .modifiers(Padding.with(4))
                                 .children(
-                                        Rectangle.modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+Rectangle.make().modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
                                                 .modifiers(Background.with(Color.token("color.surface"))),
-                                        Rectangle.modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+Rectangle.make().modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
                                                 .modifiers(Background.with(Color.token("dark.color.surface")))),
-                        Text.with("control.background — a token-referenced control fill")
+                        Text.make("control.background — a token-referenced control fill")
                                 .modifiers(
                                         Padding.with(8),
                                         Background.with(Color.token("control.background"))));
-        return SectionCard.with("Theme · design tokens + SET_DESIGN_TOKEN overrides").children(content);
+        return SectionCard.make("Theme · design tokens + SET_DESIGN_TOKEN overrides").children(content);
     }
 }

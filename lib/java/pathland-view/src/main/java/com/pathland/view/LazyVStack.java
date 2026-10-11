@@ -50,15 +50,15 @@ public final class LazyVStack implements View, Configurable<LazyVStack.Config>, 
     }
 
     /** Configure the stack's values. */
-    public static ViewBuilder<LazyVStack, Config> with(Consumer<Config> configure) {
+/** An empty LazyVStack (no values). */
+    public static ViewBuilder<LazyVStack, Config> make() {
+        return new ViewBuilder<>(new LazyVStack(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<LazyVStack, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new LazyVStack(config, List.of()));
-    }
-
-    /** Apply modifiers to an empty stack. */
-    public static ViewBuilder<LazyVStack, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new LazyVStack(new Config(), List.of())).modifiers(modifiers);
     }
 
     /** Supply the stack's children. */

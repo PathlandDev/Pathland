@@ -147,9 +147,10 @@ agnostic. Conventions used:
 
 ### The three operations
 
-Every concrete view exposes the same three operations. They form one fluent
-**builder**: any of the three may be the first call, and they may be chained in
-any order. A later call overrides an earlier value for the same property.
+Every concrete view exposes the same three operations — **construction**
+(`make`), **modifiers** (`.modifiers`), and **children** (`.children`). In the
+Java realization `make(...)` **is the only static of the three**; a later call
+overrides an earlier value for the same property.
 
 | Operation | Purpose | Canonical (SwiftUI-shaped) |
 |-----------|---------|----------------------------|
@@ -161,30 +162,40 @@ The **canonical builder spelling** (the recommended form; per-language spellings
 are in [§9.3](#93-language-adaptation-rules)) is:
 
 ```
-ViewName.with { values }              // values   — a config-builder lambda
+ViewName.make(values)              // values   — a config-builder lambda (Java views)
       .modifiers(modifier, ...)       // modifiers — varargs
       .children(view, ...)            // children  — varargs, content-bearing views only
 ```
 
-Any of the three may start the chain, e.g. all of these are equivalent:
+In the Java realization a view's values entry is the static `make(...)` (the
+construction factory; empty `make()` for config-less or value-less starts).
+`modifiers(...)` is an **instance** operation available on the builder and on any
+`View` value (the interface default), so it (and `children(...)`) chain on the
+builder in any order:
 
 ```
-VStack.with { v in v.spacing(8) }.children(a, b).modifiers(m)
-VStack.children(a, b).with { v in v.spacing(8) }.modifiers(m)
-VStack.modifiers(m).children(a, b).with { v in v.spacing(8) }
+VStack.make(v -> v.spacing(8)).children(a, b).modifiers(m)
+VStack.make(v -> v.spacing(8)).modifiers(m).children(a, b)
+VStack.make().modifiers(m).children(a, b)
 ```
 
-**Values are a config-builder lambda.** `with { c in … }` populates a per-view
+The old static `X.modifiers(...)` first-call entry points are **removed** —
+`modifiers(...)` is an **instance** operation (interface default for bare `View`
+values, covariant override on the builder). Static `X.children(...)` is **kept**
+as a value-less first-call convenience (`HStack.children(a, b)` ≡
+`HStack.make().children(a, b)`); `make(...)` is the only values static.
+
+**Values are a config-builder lambda.** `make { c in … }` populates a per-view
 fluent **config** (`VStack.Config`, `Text.Config`, …). It is the *same type* a
 style's `makeBody(Config)` receives ([§5.7](#57-styleable-controls-the-style-contract)).
 The builder is **fluent and mutable**: setters return the config. Config-less
-views (`Divider`, `Spacer`) take an empty `with()`.
+views (`Divider`, `Spacer`) take an empty `make()`.
 
 **Every value member is reactive-capable (MUST).** A config member that carries a
 value exposes **two forms** — a raw value and a `Signal<T>`:
 
 ```
-Text.with(t -> t.text("hi"))            ≡  Text.with(t -> t.text(constant("hi")))
+Text.make(t -> t.text("hi"))            ≡  Text.make(t -> t.text(constant("hi")))
 Visible.with(v -> v.visible(flagSignal))      // reactive visibility
 Frame.with(f -> f.width(widthSignal))         // reactive sizing, layout included
 ```
@@ -198,25 +209,29 @@ in the protocol can animate. A control's two-way *value* takes a
 `WritableSignal<T>`; every other member takes a one-way `Signal<T>`.
 
 **Per-language realization.** Java cannot declare a static and an instance
-method with the same signature, so the Java realization holds the three
-statically on the view class and exposes the chainable forms on the returned
-builder/view type. Other languages map the operations to their idioms
-(extension methods, associated functions + traits, package constructors +
-methods, kwargs) — see [§9.3](#93-language-adaptation-rules).
+method with the same signature, so the Java realization holds the values entry
+**statically** (`make(...)`) and exposes the chainable forms on the returned
+builder/view type — `.modifiers(...)` is an instance operation (a `View`
+interface default, covariantly overridden on the builder), and static
+`X.children(...)` is retained as a value-less first-call convenience. Other
+languages map the operations to their idioms (extension methods, associated
+functions + traits, package constructors + methods, kwargs) — see [§9.3](#93-language-adaptation-rules).
 
 **Single-value shortcuts.** A view or modifier whose config designates a
-**primary value member** MAY also expose `with(value)` / `with(Signal<T>)`
-overloads that are pure sugar for the config-builder lambda:
+**primary value member** MAY also expose a single-value construction overload that
+is pure sugar for the config-builder lambda (views construct with `make(value)`,
+modifiers with `with(value)`):
 
 ```
-Text.with("hi")            ≡  Text.with(t -> t.text("hi"))
+Text.make("hi")            ≡  Text.make(t -> t.text("hi"))
 Padding.with(16)           ≡  Padding.with(p -> p.uniform(16))
 FontSize.with(sizeSignal)  ≡  FontSize.with(s -> s.size(sizeSignal))
 ```
 
 A shortcut emits **byte-identical** opcodes and carries no extra semantics
 (source-surface only — [§Conformance](#conformance)). The config-lambda form
-(`with(c -> …)`) remains canonical and always sufficient.
+(`make(c -> …)` for views, `with(c -> …)` for modifiers) remains canonical and
+always sufficient.
 
 - **Only a designated primary member** gets a shortcut. A config with **several
   equivalent members** (`Padding` edges, `Offset`/`Position` x+y, `Gauge`
@@ -228,9 +243,10 @@ A shortcut emits **byte-identical** opcodes and carries no extra semantics
   `Signal<T>` (same rule as the config setters above). A two-way control value is
   never a shortcut — it stays a `WritableSignal` config member.
 - The Java realization declares the overloads per type (Java statics are not
-  inherited); they delegate to the existing `with(Consumer<Config>)` factory, so
+  inherited); they delegate to the existing `make(Consumer<Config>)` (views) /
+  `with(Consumer<Config>)` (modifiers, styles) factory, so
   there is exactly one construction path. The former `.of(...)` factories are
-  **removed** — a shortcut (or the lambda / `.children(...)` / empty `with()` for
+  **removed** — a shortcut (or the lambda / `.children(...)` / empty `make()` for
   config-less views) replaces every one.
 
 Eligible members (non-exhaustive; the companion tables list the surface):
@@ -245,7 +261,7 @@ Per-language adaptation summary:
 | Language | Case | Composition mechanism | Example |
 |----------|------|-----------------------|---------|
 | SwiftUI | `camelCase` | trailing closures + result builder | `VStack(alignment: .center, spacing: 8) { Text("x").padding(16) }` |
-| Java (`com.pathland.view`) | `camelCase` | `with(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.with(v -> v.spacing(8)).children(Text.with(t -> t.text("x")).modifiers(Padding.with(p -> p.uniform(16))))` |
+| Java (`com.pathland.view`) | `camelCase` | `make(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.make(v -> v.spacing(8)).children(Text.make(t -> t.text("x")).modifiers(Padding.with(p -> p.uniform(16))))` |
 | Rust (`pathland-view`) | `snake_case` | assoc fn + `ViewExt` trait + macros | `vstack![text("x").modifiers(Padding(16.0))]` |
 
 ---
@@ -285,9 +301,9 @@ two-way binding also satisfies a one-way member.
 ### 3.2 Two-way binding
 
 A control's value is **a `WritableSignal<T>` supplied as a config value**:
-`TextField.with(t -> t.placeholder("…").text(writable))`,
-`Toggle.with(t -> t.isOn(writable))`,
-`Slider.with(s -> s.value(writable).min(0).max(100))`. The flow:
+`TextField.make(t -> t.placeholder("…").text(writable))`,
+`Toggle.make(t -> t.isOn(writable))`,
+`Slider.make(s -> s.value(writable).min(0).max(100))`. The flow:
 
 1. At **mount**, the DSL control records a **value input** (a sink on the
    retained node) for the signal, and the emitter exposes routing registries to
@@ -299,7 +315,7 @@ A control's value is **a `WritableSignal<T>` supplied as a config value**:
    `SET_PROPERTY`, `SET_DATE`) back through the emitter.
 
 Reading is equally fine-grained: a node's text or a property value can be
-**bound to a signal** — `Text.with(t -> t.text(signal))`,
+**bound to a signal** — `Text.make(t -> t.text(signal))`,
 `.modifiers(ForegroundStyle.with(f -> f.color(colorSignal)), FontSize.with(s -> s.size(sizeSignal)))`
 — so a change re-emits only the bound node.
 
@@ -398,16 +414,16 @@ the three operations of [§2](#2-canonical-signature-notation): `values` via
 
 | View | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
 |------|---------------------------|----------|---------------|
-| `Text` | `Text("…")` / `Text(Signal<String>)` | `Text.with(t -> t.text(String))` / `Text.with(t -> t.text(Signal<String>))` | `TEXT` 0x01; content `SET_TEXT` |
-| `Image` | `Image("name")` / `Image(systemName:)` | `Image.with(i -> i.source(String))` / `Image.with(i -> i.systemName(String))` | `IMAGE` 0x02; `IMAGE_SOURCE` 0x1002 |
-| `Icon` | — (semantic symbol; SwiftUI `Image(systemName:)`) | `Icon.with(i -> i.name(IconName))` / `Icon.with(i -> i.name(String))` / `Icon.with(i -> i.name(Signal<String>))` / `Icon.labeled(IconName, String)` | `ICON` 0x0B; `ICON_NAME` 0x1038 (spec/ICONS.md) |
-| `Color` | `Color(.sRGB, red:green:blue:)` (a View) | `Color.with(c -> c.rgb(int,int,int))` (implements `View`); `Color.token(path)` as data | `COLOR` 0x03; `COLOR` 0x100A |
-| `Shape` | `Rectangle()`, `Circle()`, `Capsule()`, `RoundedRectangle(cornerRadius:)` | `Rectangle.with()` / `Circle.with()` / `Capsule.with()` / `Ellipse.with()` / `RoundedRectangle.with(r -> r.cornerRadius(float))` / generic `Shape.with(s -> s.kind(ShapeKind))` | `SHAPE` 0x04; `SHAPE_KIND` 0x0006 |
-| `Divider` | `Divider()` | `Divider.with()` | `DIVIDER` 0x05 |
-| `Spacer` | `Spacer()` | `Spacer.with()` | `SPACER` 0x06 |
-| `ProgressView` | `ProgressView(value:)` / `ProgressView()` | `ProgressView.with(p -> p.value(float))` / `ProgressView.with()` | `PROGRESS_VIEW` 0x07; `PROGRESS` 0x200E / `IS_INDETERMINATE` 0x200F |
-| `Gauge` | `Gauge(value:in:)` | `Gauge.with(g -> g.value(float).min(float).max(float))` | `GAUGE` 0x08; `VALUE`/`MIN_VALUE`/`MAX_VALUE` |
-| `Label` | `Label("title", systemImage:)` (composite) | `Label.with(l -> l.title(String).icon(String))` / `Label.with(l -> l.title(Signal<String>).icon(Icon))` — title-only, icon-only, or reactive parts; content supplied by the scoped `labelStyle` | a composite `HSTACK` + `IMAGE` (or `ICON`) + `TEXT` (PRIMITIVES.md "Composite views") — no component ID |
+| `Text` | `Text("…")` / `Text(Signal<String>)` | `Text.make(t -> t.text(String))` / `Text.make(t -> t.text(Signal<String>))` | `TEXT` 0x01; content `SET_TEXT` |
+| `Image` | `Image("name")` / `Image(systemName:)` | `Image.make(i -> i.source(String))` / `Image.make(i -> i.systemName(String))` | `IMAGE` 0x02; `IMAGE_SOURCE` 0x1002 |
+| `Icon` | — (semantic symbol; SwiftUI `Image(systemName:)`) | `Icon.make(i -> i.name(IconName))` / `Icon.make(i -> i.name(String))` / `Icon.make(i -> i.name(Signal<String>))` / `Icon.labeled(IconName, String)` | `ICON` 0x0B; `ICON_NAME` 0x1038 (spec/ICONS.md) |
+| `Color` | `Color(.sRGB, red:green:blue:)` (a View) | `Color.make(c -> c.rgb(int,int,int))` (implements `View`); `Color.token(path)` as data | `COLOR` 0x03; `COLOR` 0x100A |
+| `Shape` | `Rectangle()`, `Circle()`, `Capsule()`, `RoundedRectangle(cornerRadius:)` | `Rectangle.make()` / `Circle.make()` / `Capsule.make()` / `Ellipse.make()` / `RoundedRectangle.make(r -> r.cornerRadius(float))` / generic `Shape.make(s -> s.kind(ShapeKind))` | `SHAPE` 0x04; `SHAPE_KIND` 0x0006 |
+| `Divider` | `Divider()` | `Divider.make()` | `DIVIDER` 0x05 |
+| `Spacer` | `Spacer()` | `Spacer.make()` | `SPACER` 0x06 |
+| `ProgressView` | `ProgressView(value:)` / `ProgressView()` | `ProgressView.make(p -> p.value(float))` / `ProgressView.make()` | `PROGRESS_VIEW` 0x07; `PROGRESS` 0x200E / `IS_INDETERMINATE` 0x200F |
+| `Gauge` | `Gauge(value:in:)` | `Gauge.make(g -> g.value(float).min(float).max(float))` | `GAUGE` 0x08; `VALUE`/`MIN_VALUE`/`MAX_VALUE` |
+| `Label` | `Label("title", systemImage:)` (composite) | `Label.make(l -> l.title(String).icon(String))` / `Label.make(l -> l.title(Signal<String>).icon(Icon))` — title-only, icon-only, or reactive parts; content supplied by the scoped `labelStyle` | a composite `HSTACK` + `IMAGE` (or `ICON`) + `TEXT` (PRIMITIVES.md "Composite views") — no component ID |
 
 **`with()` for values.** Primitives are constructed by `with(...)`; a
 config-less primitive (`Divider`, `Spacer`) takes an empty `with()`. `Label` is
@@ -415,7 +431,7 @@ a **composite** whose content is produced by the scoped `labelStyle`
 ([§5.7](#57-styleable-controls-the-style-contract)): `DefaultLabelStyle` renders
 an `HStack` of an optional `IMAGE` and an optional `TEXT`,
 `TitleOnlyLabelStyle`/`IconOnlyLabelStyle` render one part; the title always
-drives the accessibility label. `Color` keeps its dual identity: `Color.with(c
+drives the accessibility label. `Color` keeps its dual identity: `Color.make(c
 -> c.rgb(..))` is a layout-greedy fill view, `Color.token(path)` is a data
 value passed to style-taking modifiers ([§7](#7-theme-management)).
 
@@ -425,17 +441,17 @@ Containers are **content-bearing**: they expose `children(...)`.
 
 | View | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
 |------|---------------------------|----------|---------------|
-| `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.with(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
-| `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.with(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `HSTACK` 0x11 |
-| `ZStack` | `ZStack(alignment:) { … }` | `ZStack.with(z -> z.alignment(Alignment)).children(View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
-| `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.with(g -> g.columns(int).rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
-| `GridRow` | `GridRow { … }` | `GridRow.with().children(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
-| `ScrollView` | `ScrollView { … }` | `ScrollView.with().children(View...)` | `SCROLLVIEW` 0x14 |
-| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.with(g -> g.columns(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS` |
-| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.with(g -> g.rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
-| `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.with(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `LAZY_VSTACK` 0x1B |
-| `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.with(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `LAZY_HSTACK` 0x1C |
-| `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.with(s -> s.axis(Axis)).children(Fit.with(f -> f.view(View).minWidth(float))...)` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
+| `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.make(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
+| `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.make(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `HSTACK` 0x11 |
+| `ZStack` | `ZStack(alignment:) { … }` | `ZStack.make(z -> z.alignment(Alignment)).children(View...)` | `ZSTACK` 0x12; `ALIGNMENT` |
+| `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.make(g -> g.columns(int).rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
+| `GridRow` | `GridRow { … }` | `GridRow.make().children(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
+| `ScrollView` | `ScrollView { … }` | `ScrollView.make().children(View...)` | `SCROLLVIEW` 0x14 |
+| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.make(g -> g.columns(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS` |
+| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.make(g -> g.rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
+| `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.make(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `LAZY_VSTACK` 0x1B |
+| `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.make(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `LAZY_HSTACK` 0x1C |
+| `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.make(s -> s.axis(Axis)).children(Fit.with(f -> f.view(View).minWidth(float))...)` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
 
 Alignment is **position-only** (SwiftUI/Compose parity): `VStack` takes a
 `HorizontalAlignment` (leading/center/trailing), `HStack` a `VerticalAlignment`
@@ -468,17 +484,17 @@ content (their style turns it into the control's child, [§5.7](#57-styleable-co
 
 | Control | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
 |---------|---------------------------|----------|---------------|
-| `Button` | `Button("title", action)` / `Button(action:label:)` | **content-bearing** — `Button.with(b -> b.title(String).action(Runnable))` and/or `.children(View)`; the title string is handed to the active `ButtonStyle`, an explicit child takes precedence ([§5.7](#57-styleable-controls-the-style-contract)) | `BUTTON` 0x20 (control node); tap = composed `POINTER_DOWN`+`POINTER_UP` |
-| `TextField` | `TextField("placeholder", text: writable)` | `TextField.with(t -> t.placeholder(String).text(WritableSignal<String>))` | `TEXT_FIELD` 0x21; `TEXT_CHANGED` → text input |
-| `SecureField` | `SecureField("…", text: writable)` | `TextField.with(t -> t.placeholder(String).text(writable).secure(true))` | `TEXT_FIELD` 0x21 + `IS_SECURE` 0x200D |
-| `TextEditor` | `TextEditor(text: writable)` | `TextEditor.with(t -> t.text(WritableSignal<String>))` | `TEXT_EDITOR` 0x22 |
-| `Toggle` | `Toggle("label", isOn: writable)` | `Toggle.with(t -> t.style(ToggleStyle).label(String).isOn(WritableSignal<Boolean>))` | `TOGGLE` 0x24; `VALUE_CHANGED` → value input; `TOGGLE_STYLE` 0x2018 |
-| `Slider` | `Slider(value: writable, in: min...max)` | `Slider.with(s -> s.value(WritableSignal<Float>).min(float).max(float).onEditingChanged(Consumer<Boolean>))` | `SLIDER` 0x25; `VALUE_CHANGED` → value input |
-| `Stepper` | `Stepper("label", value: writable, in: min...max, step:)` | `Stepper.with(s -> s.value(WritableSignal<Float>).min(float).max(float).step(float).label(String))` | `STEPPER` 0x26; `VALUE_CHANGED` → value input |
-| `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.with(d -> d.mode(DatePickerMode).selection(WritableSignal<Integer>))` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `PARAMETER::SET_DATE` |
-| `Picker` | `Picker("label", selection: writable) { options }` | **content-bearing** — `Picker.with(p -> p.style(PickerStyle).selection(WritableSignal<Integer>)).children(View... options)` | `PICKER` 0x28; `VALUE_CHANGED` (index) → value input |
-| `Menu` | `Menu { actions } label: { trigger }` | **content-bearing** — `Menu.with(m -> m.trigger(View).selection(WritableSignal<Integer>)).children(View... actions)` | `MENU` 0x29; `VALUE_CHANGED` (item index) → value input |
-| `ColorPicker` | `ColorPicker("label", selection: writable)` | `ColorPicker.with(c -> c.selection(WritableSignal<Color>))` | `COLOR_PICKER` 0x2A; `VALUE_CHANGED` (packed `0xAARRGGBB` as f32) → value input |
+| `Button` | `Button("title", action)` / `Button(action:label:)` | **content-bearing** — `Button.make(b -> b.title(String).action(Runnable))` and/or `.children(View)`; the title string is handed to the active `ButtonStyle`, an explicit child takes precedence ([§5.7](#57-styleable-controls-the-style-contract)) | `BUTTON` 0x20 (control node); tap = composed `POINTER_DOWN`+`POINTER_UP` |
+| `TextField` | `TextField("placeholder", text: writable)` | `TextField.make(t -> t.placeholder(String).text(WritableSignal<String>))` | `TEXT_FIELD` 0x21; `TEXT_CHANGED` → text input |
+| `SecureField` | `SecureField("…", text: writable)` | `TextField.make(t -> t.placeholder(String).text(writable).secure(true))` | `TEXT_FIELD` 0x21 + `IS_SECURE` 0x200D |
+| `TextEditor` | `TextEditor(text: writable)` | `TextEditor.make(t -> t.text(WritableSignal<String>))` | `TEXT_EDITOR` 0x22 |
+| `Toggle` | `Toggle("label", isOn: writable)` | `Toggle.make(t -> t.style(ToggleStyle).label(String).isOn(WritableSignal<Boolean>))` | `TOGGLE` 0x24; `VALUE_CHANGED` → value input; `TOGGLE_STYLE` 0x2018 |
+| `Slider` | `Slider(value: writable, in: min...max)` | `Slider.make(s -> s.value(WritableSignal<Float>).min(float).max(float).onEditingChanged(Consumer<Boolean>))` | `SLIDER` 0x25; `VALUE_CHANGED` → value input |
+| `Stepper` | `Stepper("label", value: writable, in: min...max, step:)` | `Stepper.make(s -> s.value(WritableSignal<Float>).min(float).max(float).step(float).label(String))` | `STEPPER` 0x26; `VALUE_CHANGED` → value input |
+| `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.make(d -> d.mode(DatePickerMode).selection(WritableSignal<Integer>))` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `PARAMETER::SET_DATE` |
+| `Picker` | `Picker("label", selection: writable) { options }` | **content-bearing** — `Picker.make(p -> p.style(PickerStyle).selection(WritableSignal<Integer>)).children(View... options)` | `PICKER` 0x28; `VALUE_CHANGED` (index) → value input |
+| `Menu` | `Menu { actions } label: { trigger }` | **content-bearing** — `Menu.make(m -> m.trigger(View).selection(WritableSignal<Integer>)).children(View... actions)` | `MENU` 0x29; `VALUE_CHANGED` (item index) → value input |
+| `ColorPicker` | `ColorPicker("label", selection: writable)` | `ColorPicker.make(c -> c.selection(WritableSignal<Color>))` | `COLOR_PICKER` 0x2A; `VALUE_CHANGED` (packed `0xAARRGGBB` as f32) → value input |
 
 **Value bindings.** The value binding is a **config value** — the DSL reads the
 initial value from the signal (the single source of truth) instead of SwiftUI's
@@ -531,18 +547,18 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
 - `PlatformDefault` (default): the **renderer** supplies the chrome — the
   platform's native navigation container where one exists, and a renderer-drawn
   back affordance where none exists.
-  `NavigationContainer.with(n -> n.router(router))`.
+  `NavigationContainer.make(n -> n.router(router))`.
 - `Custom`: the **developer owns all navigation UI** — they draw their own
   back buttons / bars in the destinations and call `router.back()` /
   `navigate(...)` directly; the renderer adds no chrome (no native header-bar
   back button, no DOM back button).
-  `NavigationContainer.with(n -> n.router(router).chrome(Chrome.CUSTOM))`.
+  `NavigationContainer.make(n -> n.router(router).chrome(Chrome.CUSTOM))`.
   Renderers treat a missing `NAV_CHROME` as `PlatformDefault`.
 
 | View | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits / Binds |
 |------|----------------------------|----------|----------|---------------|
-| `NavigationContainer` | `NavigationStack(path:) { destination(for:) }` | `NavigationContainer.with(n -> n.router(Router).chrome(Chrome))` | `NavigationContainer::with(|n| n.router(router))` | a `Group` slot + `ROUTE` `0x2019`, `NAV_DEPTH` `0x201A`, `NAV_CHROME` `0x201B`, `TRANSITION` `0x1031`; destination swap = `TREE` deltas |
-| `NavigationLink` | `NavigationLink("label", value:)` | `NavigationLink.with(l -> l.label(String).router(Router).to(String))` / `NavigationLink.with(l -> l.label(String).to(String))` (router-agnostic) | `navigation_link(...)` | a `BUTTON` whose tap pushes `to` (via the router, or resolved to the nearest enclosing router when router-agnostic) |
+| `NavigationContainer` | `NavigationStack(path:) { destination(for:) }` | `NavigationContainer.make(n -> n.router(Router).chrome(Chrome))` | `NavigationContainer::with(|n| n.router(router))` | a `Group` slot + `ROUTE` `0x2019`, `NAV_DEPTH` `0x201A`, `NAV_CHROME` `0x201B`, `TRANSITION` `0x1031`; destination swap = `TREE` deltas |
+| `NavigationLink` | `NavigationLink("label", value:)` | `NavigationLink.make(l -> l.label(String).router(Router).to(String))` / `NavigationLink.make(l -> l.label(String).to(String))` (router-agnostic) | `navigation_link(...)` | a `BUTTON` whose tap pushes `to` (via the router, or resolved to the nearest enclosing router when router-agnostic) |
 | `RouteTable` | — | `RouteTable` (builder), or `Navigation.navigator(...)` (the ergonomic facade) | `RouteTable::new(...)` | none (app-side matching) |
 
 **Router state** — app-owned (never renderer state):
@@ -601,7 +617,7 @@ Router router = Navigation.navigator("/kitchen")     // seeds the initial path
     .fallback(new NotFoundView())
     .build();
 
-View shell = Navigation.container(router);           // == NavigationContainer.with(n -> n.router(router))
+View shell = Navigation.container(router);           // == NavigationContainer.make(n -> n.router(router))
 Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
 ```
 
@@ -630,7 +646,7 @@ Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
   the scope when they re-render their destination.
 - **Environment reads always return a signal** (`Environment.value(key)` →
   `Signal<T>`): a value injected as a `Signal` comes back as the same instance, so a
-  node bound to it (e.g. `Text.with(t -> t.text(Environment.value(key)))`) re-emits
+  node bound to it (e.g. `Text.make(t -> t.text(Environment.value(key)))`) re-emits
   when it changes; a plain value is wrapped in a constant signal (`.get()` gives the
   value). Inject a reactive value with the `EnvironmentBinding` modifier. A read
   made **before the key is bound** (e.g. in a field initializer, before the
@@ -673,13 +689,13 @@ component anywhere *inside* a `NavigationContainer` can change the route without
 threading a `Router` by hand, using the `NavigationIntent` modifier:
 
 ```java
-Button.with(b -> b.title("Go to kitchen").action(...))
+Button.make(b -> b.title("Go to kitchen").action(...))
       .modifiers(NavigationIntent.navigate("/kitchen"));   // direct selection
-Button.with(b -> b.title("Open item").action(...))
+Button.make(b -> b.title("Open item").action(...))
       .modifiers(NavigationIntent.push("/item/1"));        // drill-down (back-stack)
-Button.with(b -> b.title("Swap").action(...))
+Button.make(b -> b.title("Swap").action(...))
       .modifiers(NavigationIntent.replace("/settings"));   // guard redirect / replace
-NavigationLink.with(l -> l.label("Users").to("/users"));   // router-agnostic (pushes)
+NavigationLink.make(l -> l.label("Users").to("/users"));   // router-agnostic (pushes)
 ```
 
 - The intent (`navigateTo` + a `NavOp` — `NAVIGATE`/`PUSH`/`REPLACE`) is
@@ -768,7 +784,7 @@ value, applied through the shared `modifiers(...)` operation:
 - A modifier's type is **never** suffixed with `Mod` (§1).
 
 ```java
-Text.with(t -> t.text("hi")).modifiers(
+Text.make(t -> t.text("hi")).modifiers(
         Padding.with(p -> p.uniform(16)),
         Frame.with(f -> f.width(100).height(24)),
         FontWeight.BOLD,
@@ -1019,12 +1035,12 @@ enum MyButtonStyle implements ButtonStyle { INSTANCE;
         return c.content().modifiers(Padding.with(p -> p.uniform(12)), Background.with(b -> b.color(BLUE)));
     }
 }
-Button.with(b -> b.title("Save").action(this::save)).modifiers(MyButtonStyle.INSTANCE);
+Button.make(b -> b.title("Save").action(this::save)).modifiers(MyButtonStyle.INSTANCE);
 
 // Label: the style decides which parts render (nullable parts = absent).
 enum BadgeLabelStyle implements LabelStyle { INSTANCE;
     @Override public View makeBody(Label.Config c) {
-        return HStack.with().children(
+        return HStack.make().children(
                 c.icon().modifiers(Frame.with(f -> f.width(18).height(18))),
                 c.title());
     }
@@ -1196,12 +1212,12 @@ contract is [§4](#4-view-surface) and [§5](#5-modifier-surface).
 
 | Canonical | Java (adopted) | Optional / remaining |
 |-----------|----------------|----------------------|
-| `Text("…")` | `Text.with(t -> t.text("…"))` (String or `Signal<String>`) | — |
-| `Button("…", action)` / `Button(action:label:)` | `Button.with(b -> b.title("…").action(action))` and/or `.children(label)` | — |
-| `Toggle("label", isOn: writable)` | `Toggle.with(t -> t.label("…").isOn(writable))` | — |
-| `Slider(value: in:)` | `Slider.with(s -> s.value(writable).min(..).max(..))` (binding in config) | — |
+| `Text("…")` | `Text.make(t -> t.text("…"))` (String or `Signal<String>`) | — |
+| `Button("…", action)` / `Button(action:label:)` | `Button.make(b -> b.title("…").action(action))` and/or `.children(label)` | — |
+| `Toggle("label", isOn: writable)` | `Toggle.make(t -> t.label("…").isOn(writable))` | — |
+| `Slider(value: in:)` | `Slider.make(s -> s.value(writable).min(..).max(..))` (binding in config) | — |
 | `.border(color, width)` | `Border.with(b -> b.color(..).width(..))` via `.modifiers(...)` | radius convenience on the same builder |
-| `DatePicker(selection:)` | `DatePicker.with(d -> d.mode(..).selection(days))` | *optional* `Date`-shaped config encoding days + millis-of-day per `SET_DATE`/`DATE_CHANGED` |
+| `DatePicker(selection:)` | `DatePicker.make(d -> d.mode(..).selection(days))` | *optional* `Date`-shaped config encoding days + millis-of-day per `SET_DATE`/`DATE_CHANGED` |
 
 Adopted conventions:
 
@@ -1218,7 +1234,7 @@ Adopted conventions:
   `progressView`, `gauge`, `divider`, `grid`, `scrollView`, `lazyVStack`,
   `lazyHStack`, `lazyVGrid`, `lazyHGrid`, `picker`, `menu`, `colorPicker`,
   `datePicker`, `group`) is deleted from `View.java`.
-- **`Group` is a first-class view.** `Group.with().children(View...)` is a
+- **`Group` is a first-class view.** `Group.children(View...)` is a
   transparent container view (SwiftUI `Group`).
 - **Core and custom modifiers share one mechanism.** Core modifiers are
   `ViewModifier` values (`Padding.with(p -> p.uniform(16))`,
@@ -1232,9 +1248,9 @@ Adopted conventions:
   is the precedent; the remaining `*Mod` types are renamed accordingly
   (`FontWeightMod → FontWeight`, `ButtonStyleMod → ButtonStyle`, …;
   `EnvironmentMod → EnvironmentBinding`, `router/NavigationMod → NavigationIntent`).
-- **Full `ShapeKind` coverage.** `Circle.with()`, `Capsule.with()`,
-  `Ellipse.with()`, `RoundedRectangle.with(r -> r.cornerRadius(..))`, generic
-  `Shape.with(s -> s.kind(ShapeKind))` (for `Path`).
+- **Full `ShapeKind` coverage.** `Circle.make()`, `Capsule.make()`,
+  `Ellipse.make()`, `RoundedRectangle.make(r -> r.cornerRadius(..))`, generic
+  `Shape.make(s -> s.kind(ShapeKind))` (for `Path`).
 - Implementation status: `lib/java/pathland-view/status.md`.
 
 ---
@@ -1393,13 +1409,13 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 
 | SwiftUI | Canonical DSL | Java DSL | Rust DSL |
 |---------|---------------|----------|----------|
-| `Text("Hi")` | `Text("Hi")` | `Text.with(t -> t.text("Hi"))` | `text("Hi")` |
-| `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.with(v -> v.alignment(Alignment.CENTER).spacing(8)).children(…)` | `VStack::with(\|v\| { v.spacing(8.0); }).children(vec![…])` |
-| `Button("+") { inc() }` | `Button("+", action)` | `Button.with(b -> b.title("+").action(() -> inc()))` | `button("+")` (no action yet) |
-| `TextField("Name", text: $name)` | `TextField("Name", text: writable)` | `TextField.with(t -> t.placeholder("Name").text(name))` | `TextField::new` (no binding yet) |
-| `Toggle("On", isOn: $on)` | `Toggle("On", isOn: writable)` | `Toggle.with(t -> t.label("On").isOn(binding))` | `Toggle(style)` (no binding yet) |
-| `Slider(value: $v, in: 0...100)` | `Slider(value: writable, in: min...max)` | `Slider.with(s -> s.value(vSig).min(0).max(100))` | `Slider::new` (no binding yet) |
-| `DatePicker("D", selection: $d)` | `DatePicker("D", selection: writable)` | `DatePicker.with(d -> d.mode(DatePickerMode.DATE).selection(days))` | `DatePicker` (bare) |
+| `Text("Hi")` | `Text("Hi")` | `Text.make(t -> t.text("Hi"))` | `text("Hi")` |
+| `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.make(v -> v.alignment(Alignment.CENTER).spacing(8)).children(…)` | `VStack::with(\|v\| { v.spacing(8.0); }).children(vec![…])` |
+| `Button("+") { inc() }` | `Button("+", action)` | `Button.make(b -> b.title("+").action(() -> inc()))` | `button("+")` (no action yet) |
+| `TextField("Name", text: $name)` | `TextField("Name", text: writable)` | `TextField.make(t -> t.placeholder("Name").text(name))` | `TextField::new` (no binding yet) |
+| `Toggle("On", isOn: $on)` | `Toggle("On", isOn: writable)` | `Toggle.make(t -> t.label("On").isOn(binding))` | `Toggle(style)` (no binding yet) |
+| `Slider(value: $v, in: 0...100)` | `Slider(value: writable, in: min...max)` | `Slider.make(s -> s.value(vSig).min(0).max(100))` | `Slider::new` (no binding yet) |
+| `DatePicker("D", selection: $d)` | `DatePicker("D", selection: writable)` | `DatePicker.make(d -> d.mode(DatePickerMode.DATE).selection(days))` | `DatePicker` (bare) |
 | `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.modifiers(ForegroundStyle.with(f -> f.color(Color)))` | `.modifiers(ForegroundStyle(Color::argb(0xFF0000FF)))` |
 | `.background(.gray)` | `.background(Color)` | `.modifiers(Background.with(b -> b.color(Color)))` | `.modifiers(Background(Color::argb(0xFFEEEEEE)))` |
 | `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.modifiers(Border.with(b -> b.color(Color).width(2)))` | `.modifiers(Border::new(Color::argb(…), 2.0))` |
@@ -1412,8 +1428,8 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 | `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.modifiers(Shadow.with(s -> s.color(Color).radius(r).x(x).y(y)))` | (not yet) |
 | `.onTapGesture { go() }` | `.onTapGesture(action)` | `.modifiers(TapGesture.with(g -> g.action(() -> go())))` | `.modifiers(TapGesture::new(\|\| go()))` |
 | `if showLogin { LoginView() } else { HomeView() }` | `if/else` in a result builder | `Conditional.when(showLogin, new LoginView(), new HomeView())` | `if`/`match` in `build()` |
-| `NavigationStack { … }` | `Router` + `NavigationContainer` | `NavigationContainer.with(n -> n.router(router))` | `NavigationContainer::with(\|n\| n.router(router))` |
-| `NavigationLink("Users", value:)` | `NavigationLink("label", router, to)` | `NavigationLink.with(l -> l.label("Users").router(router).to("/users"))` | `navigation_link(...)` |
+| `NavigationStack { … }` | `Router` + `NavigationContainer` | `NavigationContainer.make(n -> n.router(router))` | `NavigationContainer::with(\|n\| n.router(router))` |
+| `NavigationLink("Users", value:)` | `NavigationLink("label", router, to)` | `NavigationLink.make(l -> l.label("Users").router(router).to("/users"))` | `navigation_link(...)` |
 | `content.modifier(Card())` | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` | `.modifiers(Card)` |
 
 The three operations (`with` / `modifiers` / `children`) are the one mechanism

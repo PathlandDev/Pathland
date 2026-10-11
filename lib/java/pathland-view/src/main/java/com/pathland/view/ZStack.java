@@ -40,15 +40,15 @@ public final class ZStack implements View, Configurable<ZStack.Config>, Children
     }
 
     /** Configure the stack's values. */
-    public static ViewBuilder<ZStack, Config> with(Consumer<Config> configure) {
+/** An empty ZStack (no values). */
+    public static ViewBuilder<ZStack, Config> make() {
+        return new ViewBuilder<>(new ZStack(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<ZStack, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new ZStack(config, List.of()));
-    }
-
-    /** Apply modifiers to an empty stack. */
-    public static ViewBuilder<ZStack, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new ZStack(new Config(), List.of())).modifiers(modifiers);
     }
 
     /** Supply the stack's children. */

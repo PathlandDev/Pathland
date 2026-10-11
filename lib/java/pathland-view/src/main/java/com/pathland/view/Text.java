@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 /**
  * A text leaf. Content is a single {@link Signal<String>} — a bound text re-emits
  * only this node's {@code SET_TEXT} when the signal changes. Static text is sugar
- * for a constant signal. Values are configured with {@code Text.with(t -> t.text(…))}.
+ * for a constant signal. Values are configured with {@code Text.make(t -> t.text(...))}.
  */
 public final class Text implements View, Configurable<Text.Config> {
 
@@ -42,25 +42,25 @@ public final class Text implements View, Configurable<Text.Config> {
     }
 
     /** Static text. */
-    public static ViewBuilder<Text, Config> with(String text) {
+    public static ViewBuilder<Text, Config> make(String text) {
         return Configurators.view(Config::new, Text::new, c -> c.text(text));
     }
 
     /** Reactive text (the current value is read at render time). */
-    public static ViewBuilder<Text, Config> with(Signal<String> binding) {
+    public static ViewBuilder<Text, Config> make(Signal<String> binding) {
         return Configurators.view(Config::new, Text::new, c -> c.text(binding));
     }
 
     /** Configure the text's value. */
-    public static ViewBuilder<Text, Config> with(Consumer<Config> configure) {
+/** An empty Text (no values). */
+    public static ViewBuilder<Text, Config> make() {
+        return new ViewBuilder<>(new Text(new Config()));
+    }
+
+    public static ViewBuilder<Text, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Text(config));
-    }
-
-    /** Apply modifiers to an empty text. */
-    public static ViewBuilder<Text, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Text(new Config())).modifiers(modifiers);
     }
 
     @Override

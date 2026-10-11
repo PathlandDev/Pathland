@@ -15,13 +15,8 @@ public final class Rectangle implements View, Configurable<Rectangle.Config> {
     }
 
     /** A rectangle shape. */
-    public static ViewBuilder<Rectangle, Config> with() {
+    public static ViewBuilder<Rectangle, Config> make() {
         return new ViewBuilder<>(new Rectangle());
-    }
-
-    /** Apply modifiers to a rectangle. */
-    public static ViewBuilder<Rectangle, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Rectangle()).modifiers(modifiers);
     }
 
     @Override

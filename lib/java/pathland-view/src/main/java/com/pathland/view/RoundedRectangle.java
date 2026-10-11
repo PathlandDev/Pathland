@@ -29,20 +29,20 @@ public final class RoundedRectangle implements View, Configurable<RoundedRectang
     }
 
     /** A rounded rectangle with a corner radius. */
-    public static ViewBuilder<RoundedRectangle, Config> with(float cornerRadius) {
+    public static ViewBuilder<RoundedRectangle, Config> make(float cornerRadius) {
         return Configurators.view(Config::new, RoundedRectangle::new, c -> c.cornerRadius(cornerRadius));
     }
 
     /** Configure the shape's values. */
-    public static ViewBuilder<RoundedRectangle, Config> with(Consumer<Config> configure) {
+/** An empty RoundedRectangle (no values). */
+    public static ViewBuilder<RoundedRectangle, Config> make() {
+        return new ViewBuilder<>(new RoundedRectangle(new Config()));
+    }
+
+    public static ViewBuilder<RoundedRectangle, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new RoundedRectangle(config));
-    }
-
-    /** Apply modifiers to a radius-less rounded rectangle. */
-    public static ViewBuilder<RoundedRectangle, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new RoundedRectangle(new Config())).modifiers(modifiers);
     }
 
     @Override

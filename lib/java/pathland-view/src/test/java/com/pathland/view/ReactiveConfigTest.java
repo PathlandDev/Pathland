@@ -34,7 +34,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.with(t -> t.text("hi")).modifiers(Visible.with(v -> v.visible(visible))),
+                Text.make(t -> t.text("hi")).modifiers(Visible.with(v -> v.visible(visible))),
                 Environment.DEFAULT);
 
         visible.set(false);
@@ -51,7 +51,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.with(t -> t.text("hi")).modifiers(Opacity.with(o -> o.value(opacity))),
+                Text.make(t -> t.text("hi")).modifiers(Opacity.with(o -> o.value(opacity))),
                 Environment.DEFAULT);
 
         opacity.set(0.5f);
@@ -68,7 +68,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.with(t -> t.text("hi")).modifiers(ClipShape.with(c -> c.shape(shape))),
+                Text.make(t -> t.text("hi")).modifiers(ClipShape.with(c -> c.shape(shape))),
                 Environment.DEFAULT);
 
         shape.set(ShapeKind.RECTANGLE);
@@ -85,7 +85,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                VStack.with(v -> v.spacing(spacing)).children(Text.with(t -> t.text("a"))),
+                VStack.make(v -> v.spacing(spacing)).children(Text.make(t -> t.text("a"))),
                 Environment.DEFAULT);
 
         spacing.set(12f);
@@ -102,7 +102,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.with(t -> t.text("x"))
+                Text.make(t -> t.text("x"))
                         .modifiers(AccessibilityLabel.with(a -> a.text(label))),
                 Environment.DEFAULT);
 
@@ -129,7 +129,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.with(t -> t.text("hi")).modifiers(Opacity.with(o -> o.value(opacity))),
+                Text.make(t -> t.text("hi")).modifiers(Opacity.with(o -> o.value(opacity))),
                 Environment.DEFAULT);
         int frames = sink.framesProduced();
 

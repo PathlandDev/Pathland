@@ -36,30 +36,25 @@ public final class Image implements View, Configurable<Image.Config> {
     }
 
     /** An image with no source (the renderer's default visual). */
-    public static ViewBuilder<Image, Config> with() {
+    public static ViewBuilder<Image, Config> make() {
         return new ViewBuilder<>(new Image(new Config()));
     }
 
     /** An image with a static source (resource name, file path, or absolute URL). */
-    public static ViewBuilder<Image, Config> with(String source) {
+    public static ViewBuilder<Image, Config> make(String source) {
         return Configurators.view(Config::new, Image::new, c -> c.source(source));
     }
 
     /** An image whose source is bound to a reactive signal. */
-    public static ViewBuilder<Image, Config> with(Signal<String> source) {
+    public static ViewBuilder<Image, Config> make(Signal<String> source) {
         return Configurators.view(Config::new, Image::new, c -> c.source(source));
     }
 
     /** Configure the image's values. */
-    public static ViewBuilder<Image, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<Image, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Image(config));
-    }
-
-    /** Apply modifiers to a source-less image. */
-    public static ViewBuilder<Image, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Image(new Config())).modifiers(modifiers);
     }
 
     @Override

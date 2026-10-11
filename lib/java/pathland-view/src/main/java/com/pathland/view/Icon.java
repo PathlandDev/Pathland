@@ -56,17 +56,17 @@ public final class Icon implements View, Configurable<Icon.Config> {
     }
 
     /** A static canonical icon. */
-    public static ViewBuilder<Icon, Config> with(IconName name) {
+    public static ViewBuilder<Icon, Config> make(IconName name) {
         return Configurators.view(Config::new, Icon::new, c -> c.name(name));
     }
 
     /** A static canonical icon by canonical name (for names outside the enum). */
-    public static ViewBuilder<Icon, Config> with(String canonicalName) {
+    public static ViewBuilder<Icon, Config> make(String canonicalName) {
         return Configurators.view(Config::new, Icon::new, c -> c.name(canonicalName));
     }
 
     /** A reactive icon bound to a canonical-name signal. */
-    public static ViewBuilder<Icon, Config> with(Signal<String> canonicalName) {
+    public static ViewBuilder<Icon, Config> make(Signal<String> canonicalName) {
         return Configurators.view(Config::new, Icon::new, c -> c.name(canonicalName));
     }
 
@@ -76,15 +76,15 @@ public final class Icon implements View, Configurable<Icon.Config> {
     }
 
     /** Configure the icon's values. */
-    public static ViewBuilder<Icon, Config> with(Consumer<Config> configure) {
+/** An empty Icon (no values). */
+    public static ViewBuilder<Icon, Config> make() {
+        return new ViewBuilder<>(new Icon(new Config()));
+    }
+
+    public static ViewBuilder<Icon, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Icon(config));
-    }
-
-    /** Apply modifiers to a name-less icon. */
-    public static ViewBuilder<Icon, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Icon(new Config())).modifiers(modifiers);
     }
 
     @Override

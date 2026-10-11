@@ -60,15 +60,15 @@ public final class Gauge implements View, Configurable<Gauge.Config> {
     }
 
     /** Configure the gauge's values. */
-    public static ViewBuilder<Gauge, Config> with(Consumer<Config> configure) {
+/** An empty Gauge (no values). */
+    public static ViewBuilder<Gauge, Config> make() {
+        return new ViewBuilder<>(new Gauge(new Config()));
+    }
+
+    public static ViewBuilder<Gauge, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Gauge(config));
-    }
-
-    /** Apply modifiers to a bare gauge. */
-    public static ViewBuilder<Gauge, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Gauge(new Config())).modifiers(modifiers);
     }
 
     @Override

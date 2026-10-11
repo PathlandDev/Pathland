@@ -30,18 +30,17 @@ public final class ColorSection implements View {
             int rgb = accent.get().argb() & 0xFFFFFF;
             return String.format("Accent #%06x", rgb);
         });
-        View content = VStack
+        View content = VStack.make()
                 .modifiers(Padding.with(4))
                 .children(
-                        ColorPicker.with(c -> c.selection(accent.signal())),
-                        HStack
-                                .modifiers(Padding.with(4))
+                        ColorPicker.make(c -> c.selection(accent.signal())),
+                        HStack.make() .modifiers(Padding.with(4))
                                 .children(
-                                        accent.get().with(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER))),
-                                        Rectangle.modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                        accent.get().modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER))),
+Rectangle.make().modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
                                                 .modifiers(Background.with(accent.signal()))),
-                        Text.with(accentLabel).modifiers(
+                        Text.make(accentLabel).modifiers(
                                 Padding.with(4)));
-        return SectionCard.with("Color · ColorPicker + Color view + Rectangle").children(content);
+        return SectionCard.make("Color · ColorPicker + Color view + Rectangle").children(content);
     }
 }

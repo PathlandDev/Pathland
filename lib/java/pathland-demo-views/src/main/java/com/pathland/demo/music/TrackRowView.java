@@ -12,7 +12,7 @@ import static com.pathland.view.signal.Signals.computed;
  * Selecting it starts that track through the app-owned player state, and the
  * current row is highlighted reactively via a computed background/foreground.
  *
- * <p>Configured with {@code TrackRowView.with(r -> r.track(...).index(...)...)} -
+ * <p>Configured with {@code TrackRowView.make(r -> r.track(...).index(...)...)} -
  * a private constructor keeps creation on the configurator (spec DSL.md §2).
  */
 public final class TrackRowView implements View, Configurable<TrackRowView.Config> {
@@ -72,15 +72,10 @@ public final class TrackRowView implements View, Configurable<TrackRowView.Confi
     }
 
     /** Configure the track row's values. */
-    public static ViewBuilder<TrackRowView, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<TrackRowView, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new TrackRowView(config));
-    }
-
-    /** Apply modifiers to a bare track row. */
-    public static ViewBuilder<TrackRowView, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new TrackRowView(new Config())).modifiers(modifiers);
     }
 
     @Override
@@ -93,7 +88,12 @@ public final class TrackRowView implements View, Configurable<TrackRowView.Confi
         var isCurrent = computed(() -> MusicPlayerView.at(config.trackIndex.get()) == config.track);
         var bg = computed(() -> isCurrent.get() ? MusicPlayerView.ACTIVE_ROW_BG : Color.CLEAR);
         var fg = computed(() -> isCurrent.get() ? MusicPlayerView.ACTIVE_ROW_FG : Color.BLACK);
-        return Button
+        return Button.make(b -> b.action(() -> {
+                    config.trackIndex.set(config.index);
+                    config.position.set(0f);
+                    config.seekRequest.set(0f);
+                    config.playing.set(true);
+                }))
                 .modifiers(
                         Background.with(bg),
                         ForegroundStyle.with(fg),
@@ -102,29 +102,23 @@ public final class TrackRowView implements View, Configurable<TrackRowView.Confi
                         // (LAYOUT.md), so a row that should span the library column must
                         // explicitly FILL its width.
                         Frame.with(f -> f.width(Commands.Size.FILL)))
-                .with(b -> b.action(() -> {
-                    config.trackIndex.set(config.index);
-                    config.position.set(0f);
-                    config.seekRequest.set(0f);
-                    config.playing.set(true);
-                }))
                 .children(
                         HStack
-                                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(12f))
+                                .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(12f))
                                 .children(
-                                        Image.with(config.track.cover()).modifiers(
+                                        Image.make(config.track.cover()).modifiers(
                                                 Frame.with(f -> f.width(44).height(44)),
                                                 ScaledToFit.with()),
                                         VStack
-                                                .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
+                                                .make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
                                                 .children(
-                                                        Text.with(config.track.title()).modifiers(FontWeight.SEMIBOLD),
-                                                        Text.with(config.track.artist() + " · " + config.track.album())
+                                                        Text.make(config.track.title()).modifiers(FontWeight.SEMIBOLD),
+                                                        Text.make(config.track.artist() + " · " + config.track.album())
                                                                 .modifiers(
                                                                         FontSize.with(13),
                                                                         ForegroundStyle.with(MusicPlayerView.SECONDARY_FG))),
-                                        Spacer.modifiers(),
-                                        Text.with(MusicPlayerView.fmt(config.track.duration()))
+Spacer.make().modifiers(),
+                                        Text.make(MusicPlayerView.fmt(config.track.duration()))
                                                 .modifiers(
                                                         FontSize.with(13),
                                                         ForegroundStyle.with(MusicPlayerView.SECONDARY_FG))));

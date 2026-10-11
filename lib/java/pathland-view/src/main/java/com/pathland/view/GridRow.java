@@ -21,14 +21,14 @@ public final class GridRow implements View, Configurable<GridRow.Config>, Childr
         this.children = children;
     }
 
+    /** An empty row. */
+    public static ViewBuilder<GridRow, Config> make() {
+        return new ViewBuilder<>(new GridRow(List.of()));
+    }
+
     /** Supply the row's cells. */
     public static ViewBuilder<GridRow, Config> children(View... children) {
         return new ViewBuilder<>(new GridRow(List.of())).children(children);
-    }
-
-    /** Apply modifiers to an empty row. */
-    public static ViewBuilder<GridRow, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new GridRow(List.of())).modifiers(modifiers);
     }
 
     @Override

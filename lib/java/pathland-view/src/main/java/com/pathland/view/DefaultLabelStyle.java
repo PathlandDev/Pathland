@@ -20,7 +20,7 @@ public enum DefaultLabelStyle implements LabelStyle {
         if (config.hasTitle()) {
             parts.add(config.title());
         }
-        return HStack.with(h -> h.alignment(VerticalAlignment.CENTER).spacing(2f))
+        return HStack.make(h -> h.alignment(VerticalAlignment.CENTER).spacing(2f))
                 .children(parts.toArray(new View[0]));
     }
 }

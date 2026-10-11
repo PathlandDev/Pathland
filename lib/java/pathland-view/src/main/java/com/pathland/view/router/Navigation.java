@@ -50,7 +50,7 @@ public final class Navigation {
     /** The navigation container over {@code router} with an explicit chrome mode. */
     public static ViewBuilder<NavigationContainer, NavigationContainer.Config> container(
             Router router, Chrome chrome) {
-        return NavigationContainer.with(n -> n.router(router).chrome(chrome));
+        return NavigationContainer.make(n -> n.router(router).chrome(chrome));
     }
 
     /** A route list builder for a router seeded at {@code /}. */

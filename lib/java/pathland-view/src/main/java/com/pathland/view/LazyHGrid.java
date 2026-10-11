@@ -82,15 +82,15 @@ public final class LazyHGrid implements View, Configurable<LazyHGrid.Config>, Ch
     }
 
     /** Configure the grid's values. */
-    public static ViewBuilder<LazyHGrid, Config> with(Consumer<Config> configure) {
+/** An empty LazyHGrid (no values). */
+    public static ViewBuilder<LazyHGrid, Config> make() {
+        return new ViewBuilder<>(new LazyHGrid(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<LazyHGrid, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new LazyHGrid(config, List.of()));
-    }
-
-    /** Apply modifiers to an empty grid. */
-    public static ViewBuilder<LazyHGrid, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new LazyHGrid(new Config(), List.of())).modifiers(modifiers);
     }
 
     /** Supply the grid's cells. */

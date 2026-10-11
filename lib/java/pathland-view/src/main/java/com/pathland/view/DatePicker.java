@@ -45,15 +45,15 @@ public final class DatePicker implements View, Configurable<DatePicker.Config> {
     }
 
     /** Configure the date picker's values. */
-    public static ViewBuilder<DatePicker, Config> with(Consumer<Config> configure) {
+/** An empty DatePicker (no values). */
+    public static ViewBuilder<DatePicker, Config> make() {
+        return new ViewBuilder<>(new DatePicker(new Config()));
+    }
+
+    public static ViewBuilder<DatePicker, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new DatePicker(config));
-    }
-
-    /** Apply modifiers to a bare date picker. */
-    public static ViewBuilder<DatePicker, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new DatePicker(new Config())).modifiers(modifiers);
     }
 
     @Override

@@ -84,73 +84,65 @@ public final class PlayerControlsStyle implements AudioStyle {
         var volumeControl = new VolumeControl(config.volume, config.volumeRequest);
 
         var playControl = HStack
-                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Button
-                                .modifiers(FontSize.with(20))
-                                .with(b -> b.action(() -> { prev(); restartSeek(); }))
-                                .children(Icon.with(IconName.SKIP_BACK)),
-                        Button
-                                .modifiers(FontSize.with(28))
-                                .with(b -> b.action(() -> configuration.playing().update(v -> !v)))
-                                .children(Icon.with(transportIcon)),
-                        Button
-                                .modifiers(FontSize.with(20))
-                                .with(b -> b.action(() -> { next(); restartSeek(); }))
-                                .children(Icon.with(IconName.SKIP_FORWARD)));
+                        Button.make(b -> b.action(() -> { prev(); restartSeek(); })).modifiers(FontSize.with(20))
+                                        .children(Icon.make(IconName.SKIP_BACK)),
+                        Button.make(b -> b.action(() -> configuration.playing().update(v -> !v))).modifiers(FontSize.with(28))
+                                        .children(Icon.make(transportIcon)),
+                        Button.make(b -> b.action(() -> { next(); restartSeek(); })).modifiers(FontSize.with(20))
+                                        .children(Icon.make(IconName.SKIP_FORWARD)));
         var trackInfo = HStack
-                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Image.with(computed(() -> current.get().cover())).modifiers(
+                        Image.make(computed(() -> current.get().cover())).modifiers(
                                 Frame.with(f -> f.width(36).height(36)),
                                 ScaledToFit.with()),
-                        VStack
-                                .modifiers(Frame.with(f -> f.width(160f)))
-                                .with(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
+                        VStack.make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2)).modifiers(Frame.with(f -> f.width(160f)))
                                 .children(
-                                        Text.with(computed(() -> current.get().title()))
+                                        Text.make(computed(() -> current.get().title()))
                                                 .modifiers(FontWeight.SEMIBOLD, LineLimit.with(1)),
-                                        Text.with(computed(() -> current.get().artist()))
+                                        Text.make(computed(() -> current.get().artist()))
                                                 .modifiers(
                                                         FontSize.with(13),
                                                         ForegroundStyle.with(MusicPlayerView.SECONDARY_FG),
                                                         LineLimit.with(1))));
 
         var volumeView = HStack
-                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Icon.with(IconName.VOLUME).modifiers(FontSize.with(16)),
-                        Slider.with(s -> s.value(volumeControl).in(0f, 1f)));
+                        Icon.make(IconName.VOLUME).modifiers(FontSize.with(16)),
+                        Slider.make(s -> s.value(volumeControl).in(0f, 1f)));
 
         var compactControls = HStack
-                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         playControl,
-                        Text.with("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
+                        Text.make("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
                         trackInfo);
 
         var controls = HStack
-                .with(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
+                .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         playControl,
-                        Text.with("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
+                        Text.make("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
                         trackInfo,
-                        Text.with("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
+                        Text.make("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
                         volumeView);
 
-        var groups = SizeThatFits.with(
+        var groups = SizeThatFits.make(
                 Fit.of(controls, 600),
                 Fit.of(compactControls)
         );
 
         return VStack
-                .with(v -> v.alignment(HorizontalAlignment.CENTER).spacing(0))
+                .make(v -> v.alignment(HorizontalAlignment.CENTER).spacing(0))
                 .children(
                         // Centered groups over a full-width seek bar (the slider's FILL
                         // width spans the bar via fill propagation; the groups stay
                         // centered above it).
                         groups,
-                        Slider.with(s -> s.value(new PercentSeek(seek,
+                        Slider.make(s -> s.value(new PercentSeek(seek,
                                         () -> MusicPlayerView.at(config.trackIndex.get()).duration()))
                                 .in(0f, 100f).onEditingChanged(seek::onEditingChanged))
                                 .modifiers(

@@ -95,15 +95,15 @@ public final class Grid implements View, Configurable<Grid.Config>, ChildrenView
     }
 
     /** Configure the grid's values. */
-    public static ViewBuilder<Grid, Config> with(Consumer<Config> configure) {
+/** An empty Grid (no values). */
+    public static ViewBuilder<Grid, Config> make() {
+        return new ViewBuilder<>(new Grid(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<Grid, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Grid(config, List.of()));
-    }
-
-    /** Apply modifiers to an empty grid. */
-    public static ViewBuilder<Grid, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Grid(new Config(), List.of())).modifiers(modifiers);
     }
 
     /** Supply the grid's cells (row-major). */

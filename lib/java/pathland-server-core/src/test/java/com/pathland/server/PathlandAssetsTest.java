@@ -94,7 +94,7 @@ class PathlandAssetsTest {
     }
 
     private static String newPathlandSessionHtml() {
-        PathlandApp app = () -> Button.with(b -> b.title("t").action(() -> {}));
+        PathlandApp app = () -> Button.make(b -> b.title("t").action(() -> {}));
         PathlandSession session = new PathlandSession(
                 "s", new InMemoryStateStore(), app,
                 EnvironmentData.of("/"));

@@ -19,7 +19,7 @@ public final class CounterView implements View {
 
     @Override
     public View body() {
-        return VStack
+        return VStack.make()
                 // The app's main content region → `<main>`.
                 .modifiers(
                         AccessibilityRole.with(Roles.MAIN),
@@ -27,7 +27,7 @@ public final class CounterView implements View {
                 .children(
                         new CounterControls(),
                         new NameField(),
-                        Text.with("Pathland · per-session · 16-byte deltas")
+                        Text.make("Pathland · per-session · 16-byte deltas")
                                 .modifiers(ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))));
     }
 }

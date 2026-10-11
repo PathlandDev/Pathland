@@ -31,8 +31,8 @@ class MultiSessionWebSocketTest {
         PathlandApp pathlandApp() {
             return () -> {
                 WritableSignal<Integer> count = Signals.signal(0);
-                return Button.with(b -> b.action(() -> count.update(i -> i + 1)))
-                        .children(Text.with(Signals.computed(() -> "n=" + count.get())));
+                return Button.make(b -> b.action(() -> count.update(i -> i + 1)))
+                        .children(Text.make(Signals.computed(() -> "n=" + count.get())));
             };
         }
     }

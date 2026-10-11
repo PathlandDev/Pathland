@@ -26,21 +26,21 @@ public final class PickerSection implements View {
     @Override
     public View body() {
         var choiceLabel = computed(() -> "Choice: " + choice.get());
-        View content = VStack
+        View content = VStack.make()
                 .modifiers(Padding.with(4))
                 .children(
-                        Text.with(choiceLabel).modifiers(
+                        Text.make(choiceLabel).modifiers(
                                 Padding.with(4)),
-                        Picker.with(p -> p.style(PickerStyle.SEGMENTED).selection(choice.signal())).children(
-                                Text.with("One"), Text.with("Two"), Text.with("Three")),
-                        Picker.with(p -> p.style(PickerStyle.MENU).selection(choice.signal())).children(
-                                Text.with("One"), Text.with("Two"), Text.with("Three")),
+                        Picker.make(p -> p.style(PickerStyle.SEGMENTED).selection(choice.signal())).children(
+                                Text.make("One"), Text.make("Two"), Text.make("Three")),
+                        Picker.make(p -> p.style(PickerStyle.MENU).selection(choice.signal())).children(
+                                Text.make("One"), Text.make("Two"), Text.make("Three")),
                         Menu.children(
-                                Button.with(b -> b.title("Actions ▾").action(() -> { })),
-                                Button.with(b -> b.title("Item 1").action(() -> { })),
-                                Button.with(b -> b.title("Item 2").action(() -> { }))),
-                        Text.with("Menu action items are Buttons; choices route via VALUE_CHANGED")
+                                Button.make(b -> b.title("Actions ▾").action(() -> { })),
+                                Button.make(b -> b.title("Item 1").action(() -> { })),
+                                Button.make(b -> b.title("Item 2").action(() -> { }))),
+                        Text.make("Menu action items are Buttons; choices route via VALUE_CHANGED")
                                 .modifiers(ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))));
-        return SectionCard.with("Picker + Menu").children(content);
+        return SectionCard.make("Picker + Menu").children(content);
     }
 }

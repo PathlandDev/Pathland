@@ -42,19 +42,18 @@ public final class SplitNavDemo implements View {
                 .route("/home", new HomeView())
                 .route("/kitchen", new KitchenSinkView())
                 .route("/settings", new SettingsView())
-                .fallback(Text.with("Not Found"))
+                .fallback(Text.make("Not Found"))
                 .build(Environment.value(Platform.ACTIVE_PATH));
         // The split: a fixed sidebar column + the structural navigation slot (detail).
         // onPathChange demonstrates observing the active platform path without a router.
-        return HStack
+        return HStack.make()
                 .modifiers(
                         Frame.with(f -> f.width(Float.POSITIVE_INFINITY)),
                         PathChange.with(p -> p.listener(path -> System.out.println("[split] active path: " + path))),
                         EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router)))
                 .children(
                         new Sidebar(),
-                        ScrollView
-                                .modifiers(Frame.with(f -> f.width(Float.POSITIVE_INFINITY)))
+                        ScrollView.make() .modifiers(Frame.with(f -> f.width(Float.POSITIVE_INFINITY)))
                                 .children(Navigation.container(router)));
     }
 

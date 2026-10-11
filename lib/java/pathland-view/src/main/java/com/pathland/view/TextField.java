@@ -47,15 +47,15 @@ public final class TextField implements View, Configurable<TextField.Config> {
     }
 
     /** Configure the text field's values. */
-    public static ViewBuilder<TextField, Config> with(Consumer<Config> configure) {
+/** An empty TextField (no values). */
+    public static ViewBuilder<TextField, Config> make() {
+        return new ViewBuilder<>(new TextField(new Config()));
+    }
+
+    public static ViewBuilder<TextField, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new TextField(config));
-    }
-
-    /** Apply modifiers to a bare text field. */
-    public static ViewBuilder<TextField, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new TextField(new Config())).modifiers(modifiers);
     }
 
     @Override

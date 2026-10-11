@@ -6,21 +6,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.pathland.view.emit.PathlandNode;
 import org.junit.jupiter.api.Test;
 
-/** The v2 authoring surface: {@code with} / {@code modifiers} / {@code children}. */
+/** The v2 authoring surface: {@code make} / {@code modifiers} / {@code children}. */
 public class ViewBuilderTest {
 
     @Test
-    void withConfiguresText() {
-        PathlandNode node = Text.with(t -> t.text("hi")).render(Environment.DEFAULT);
+    void makeConfiguresText() {
+        PathlandNode node = Text.make(t -> t.text("hi")).render(Environment.DEFAULT);
         assertEquals("hi", node.text);
     }
 
     @Test
-    void operationsMayBeUsedInAnyOrder() {
-        View a = VStack.with(v -> v.spacing(8)).children(Text.with(t -> t.text("a")))
+    void modifiersAndChildrenMayBeUsedInAnyOrder() {
+        View a = VStack.make(v -> v.spacing(8)).children(Text.make(t -> t.text("a")))
                 .modifiers(Padding.with(p -> p.uniform(4)));
-        View b = VStack.children(Text.with(t -> t.text("a")))
-                .modifiers(Padding.with(p -> p.uniform(4))).with(v -> v.spacing(8));
+        View b = VStack.make(v -> v.spacing(8))
+                .modifiers(Padding.with(p -> p.uniform(4))).children(Text.make(t -> t.text("a")));
 
         PathlandNode na = a.render(Environment.DEFAULT);
         PathlandNode nb = b.render(Environment.DEFAULT);
@@ -33,10 +33,10 @@ public class ViewBuilderTest {
     }
 
     @Test
-    void staticModifiersEntryStartsTheChain() {
+    void makeStartsTheChain() {
         PathlandNode node =
-                VStack.modifiers(Padding.with(p -> p.uniform(16)))
-                        .children(Text.with(t -> t.text("x"))).render(Environment.DEFAULT);
+                VStack.make().modifiers(Padding.with(p -> p.uniform(16)))
+                        .children(Text.make(t -> t.text("x"))).render(Environment.DEFAULT);
         assertEquals(16f, node.properties.get(Properties.PADDING));
         assertTrue(node.children.size() == 1);
     }

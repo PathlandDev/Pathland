@@ -63,7 +63,7 @@ public final class BorderedButtonStyle implements ButtonStyle {
 
     @Override
     public View makeBody(Configuration config) {
-        return config.label().with(
+        return config.label().modifiers(
                         ForegroundStyle.with(f -> f.color(Color.WHITE)),
                         Padding.with(p -> p.uniform(this.config.padding)),
                         Background.with(b -> b.color(this.config.background)),

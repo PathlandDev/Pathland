@@ -18,13 +18,13 @@ public final class MediaSection implements View {
 
     @Override
     public View body() {
-        View content = VStack
+        View content = VStack.make()
                 .modifiers(Padding.with(4))
                 .children(
-                        Video.with("https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4")
+                        Video.make("https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4")
                                 .modifiers(Frame.with(f -> f.width(320).height(180).alignment(Alignment.CENTER))),
-                        Audio.with("https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3"),
-                        Text.with("Playback controls are native — the app only supplies the source."));
-        return SectionCard.with("Media · video + audio (renderer-native controls)").children(content);
+                        Audio.make("https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3"),
+                        Text.make("Playback controls are native — the app only supplies the source."));
+        return SectionCard.make("Media · video + audio (renderer-native controls)").children(content);
     }
 }

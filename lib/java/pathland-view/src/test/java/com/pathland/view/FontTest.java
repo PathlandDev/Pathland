@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class FontTest {
 
     private static PathlandNode render(Font font) {
-        return Text.with(t -> t.text("x")).modifiers(font).render(Environment.DEFAULT);
+        return Text.make(t -> t.text("x")).modifiers(font).render(Environment.DEFAULT);
     }
 
     @Test
