@@ -24,18 +24,18 @@ public final class LabelSection implements View {
 
     @Override
     public View body() {
-        return new SectionCard("Label · title + icon, three labelStyles",
-                VStack.children(
-                        Label.with(l -> l.title("Settings").icon(Icon.with(i -> i.name(IconName.SETTINGS)))),
-                        Label.with(l -> l.title("Save changes").icon(Icon.with(i -> i.name(IconName.SAVE))))
+        View content = VStack.make()
+                .modifiers(Padding.with(4))
+                .children(
+                        Label.make(l -> l.title("Settings").icon(Icon.make(IconName.SETTINGS))),
+                        Label.make(l -> l.title("Save changes").icon(Icon.make(IconName.SAVE)))
                                 .modifiers(TitleOnlyLabelStyle.INSTANCE),
-                        Label.with(l -> l.title("Wi-Fi")).modifiers(IconOnlyLabelStyle.INSTANCE),
-                        Label.with(l -> l.title("Cloud").icon(Icon.with(i -> i.name(IconName.CLOUD))))
+                        Label.make(l -> l.title("Wi-Fi")).modifiers(IconOnlyLabelStyle.INSTANCE),
+                        Label.make(l -> l.title("Cloud").icon(Icon.make(IconName.CLOUD)))
                                 .modifiers(DefaultLabelStyle.INSTANCE),
-                        Label.with(l -> l.title(status.signal()).icon(Icon.with(i -> i.name(IconName.INFO)))),
-                        Button.with(b -> b.title("Toggle status")
-                                .action(() -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready")))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+                        Label.make(l -> l.title(status.signal()).icon(Icon.make(IconName.INFO))),
+                        Button.make(b -> b.title("Toggle status")
+                                .action(() -> status.set(status.get().equals("Ready") ? "Saving…" : "Ready"))));
+        return SectionCard.make("Label · title + icon, three labelStyles").children(content);
     }
 }

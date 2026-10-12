@@ -46,21 +46,16 @@ public final class TextField implements View, Configurable<TextField.Config> {
         this.config = config;
     }
 
-    /** A single-line text input bound to {@code binding}. */
-    public static TextField of(String placeholder, WritableSignal<String> binding) {
-        return new TextField(new Config().placeholder(placeholder).text(binding));
+    /** Configure the text field's values. */
+/** An empty TextField (no values). */
+    public static ViewBuilder<TextField, Config> make() {
+        return new ViewBuilder<>(new TextField(new Config()));
     }
 
-    /** Configure the text field's values. */
-    public static ViewBuilder<TextField, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<TextField, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new TextField(config));
-    }
-
-    /** Apply modifiers to a bare text field. */
-    public static ViewBuilder<TextField, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new TextField(new Config())).modifiers(modifiers);
     }
 
     @Override

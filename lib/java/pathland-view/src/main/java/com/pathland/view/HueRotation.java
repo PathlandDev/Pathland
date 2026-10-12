@@ -34,8 +34,12 @@ public final class HueRotation implements ViewModifier {
         this.config = config;
     }
 
-    public static HueRotation of(float value) {
-        return new HueRotation(new Config().degrees(value));
+    public static HueRotation with(float value) {
+        return Configurators.modifier(Config::new, HueRotation::new, c -> c.degrees(value));
+    }
+
+    public static HueRotation with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, HueRotation::new, c -> c.degrees(value));
     }
 
     /** Configure the hue rotation. */

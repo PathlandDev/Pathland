@@ -34,24 +34,13 @@ public final class Menu implements View, Configurable<Menu.Config>, ChildrenView
         this.children = children;
     }
 
-    /** A menu with a custom trigger and action items. */
-    public static Menu of(View trigger, View... actions) {
-        List<View> all = new java.util.ArrayList<>(1 + actions.length);
-        all.add(trigger);
-        all.addAll(List.of(actions));
-        return new Menu(new Config(), List.copyOf(all));
-    }
-
-    /** A menu reporting the chosen action item index via {@code VALUE_CHANGED}. */
-    public static Menu of(View trigger, WritableSignal<Integer> selection, View... actions) {
-        List<View> all = new java.util.ArrayList<>(1 + actions.length);
-        all.add(trigger);
-        all.addAll(List.of(actions));
-        return new Menu(new Config().selection(selection), List.copyOf(all));
-    }
-
     /** Configure the menu's values. */
-    public static ViewBuilder<Menu, Config> with(Consumer<Config> configure) {
+/** An empty Menu (no values). */
+    public static ViewBuilder<Menu, Config> make() {
+        return new ViewBuilder<>(new Menu(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<Menu, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Menu(config, List.of()));
@@ -60,11 +49,6 @@ public final class Menu implements View, Configurable<Menu.Config>, ChildrenView
     /** Supply the trigger (first) and action items. */
     public static ViewBuilder<Menu, Config> children(View... children) {
         return new ViewBuilder<>(new Menu(new Config(), List.of())).children(children);
-    }
-
-    /** Apply modifiers to an empty menu. */
-    public static ViewBuilder<Menu, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Menu(new Config(), List.of())).modifiers(modifiers);
     }
 
     @Override

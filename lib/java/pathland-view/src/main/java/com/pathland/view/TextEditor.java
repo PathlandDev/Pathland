@@ -29,21 +29,16 @@ public final class TextEditor implements View, Configurable<TextEditor.Config> {
         this.config = config;
     }
 
-    /** A multi-line text editing area bound to {@code binding}. */
-    public static TextEditor of(WritableSignal<String> binding) {
-        return new TextEditor(new Config().text(binding));
+    /** Configure the editor's values. */
+/** An empty TextEditor (no values). */
+    public static ViewBuilder<TextEditor, Config> make() {
+        return new ViewBuilder<>(new TextEditor(new Config()));
     }
 
-    /** Configure the editor's values. */
-    public static ViewBuilder<TextEditor, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<TextEditor, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new TextEditor(config));
-    }
-
-    /** Apply modifiers to a bare editor. */
-    public static ViewBuilder<TextEditor, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new TextEditor(new Config())).modifiers(modifiers);
     }
 
     @Override

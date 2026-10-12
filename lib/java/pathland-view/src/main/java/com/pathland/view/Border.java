@@ -60,16 +60,6 @@ public final class Border implements ViewModifier {
         this.config = config;
     }
 
-    /** A border of {@code color} and {@code width} ({@code .border(_:width:)}). */
-    public static Border of(Color color, float width) {
-        return new Border(new Config().color(color).width(width));
-    }
-
-    /** A border of {@code color}, {@code width}, and {@code radius}. */
-    public static Border of(Color color, float width, float radius) {
-        return new Border(new Config().color(color).width(width).radius(radius));
-    }
-
     /** Configure the border. */
     public static Border with(Consumer<Config> configure) {
         Config config = new Config();

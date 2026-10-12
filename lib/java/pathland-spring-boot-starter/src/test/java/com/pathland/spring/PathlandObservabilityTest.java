@@ -35,7 +35,7 @@ class PathlandObservabilityTest {
     static class TestApp {
         @Bean
         PathlandApp pathlandApp() {
-            return () -> Text.of("Hello Pathland");
+            return () -> Text.make("Hello Pathland");
         }
     }
 

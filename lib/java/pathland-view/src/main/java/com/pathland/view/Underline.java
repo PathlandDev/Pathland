@@ -34,14 +34,14 @@ public final class Underline implements ViewModifier {
         this.config = config;
     }
 
-    /** Underline. */
-    public static Underline of() {
-        return new Underline(new Config().enabled(true));
+    /** Underline ({@code on} = underline). */
+    public static Underline with(boolean on) {
+        return Configurators.modifier(Config::new, Underline::new, c -> c.enabled(on));
     }
 
-    /** Underline ({@code on} = underline). */
-    public static Underline of(boolean on) {
-        return new Underline(new Config().enabled(on));
+    /** Underline ({@code on} = underline), reactive. */
+    public static Underline with(Signal<Boolean> on) {
+        return Configurators.modifier(Config::new, Underline::new, c -> c.enabled(on));
     }
 
     /** Underline (enabled). */

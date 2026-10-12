@@ -2,7 +2,7 @@ package com.pathland.view;
 
 import com.pathland.view.emit.PathlandNode;
 
-/** A view wrapped by {@code PointerEvents.of(mask)}: ORs the listener bits into {@code EVENT_LISTENERS}. */
+/** A view wrapped by {@code PointerEvents.with(mask)}: ORs the listener bits into {@code EVENT_LISTENERS}. */
 final class PointerEventsView implements View {
 
     private final View content;

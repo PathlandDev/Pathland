@@ -44,21 +44,16 @@ public final class DatePicker implements View, Configurable<DatePicker.Config> {
         this.config = config;
     }
 
-    /** A date & time picker bound to days-since-epoch. */
-    public static DatePicker of(DatePickerMode mode, WritableSignal<Integer> days) {
-        return new DatePicker(new Config().mode(mode).selection(days));
+    /** Configure the date picker's values. */
+/** An empty DatePicker (no values). */
+    public static ViewBuilder<DatePicker, Config> make() {
+        return new ViewBuilder<>(new DatePicker(new Config()));
     }
 
-    /** Configure the date picker's values. */
-    public static ViewBuilder<DatePicker, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<DatePicker, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new DatePicker(config));
-    }
-
-    /** Apply modifiers to a bare date picker. */
-    public static ViewBuilder<DatePicker, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new DatePicker(new Config())).modifiers(modifiers);
     }
 
     @Override

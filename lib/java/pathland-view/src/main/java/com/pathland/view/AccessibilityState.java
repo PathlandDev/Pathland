@@ -34,8 +34,12 @@ public final class AccessibilityState implements ViewModifier {
         this.config = config;
     }
 
-    public static AccessibilityState of(int value) {
-        return new AccessibilityState(new Config().state(value));
+    public static AccessibilityState with(int value) {
+        return Configurators.modifier(Config::new, AccessibilityState::new, c -> c.state(value));
+    }
+
+    public static AccessibilityState with(Signal<Integer> state) {
+        return Configurators.modifier(Config::new, AccessibilityState::new, c -> c.state(state));
     }
 
     /** Configure the accessibility state. */

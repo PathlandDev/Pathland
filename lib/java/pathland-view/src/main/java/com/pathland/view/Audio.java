@@ -93,30 +93,25 @@ public final class Audio implements View, Configurable<Audio.Config> {
     }
 
     /** An audio node with no source (the renderer's default visual). */
-    public static Audio of() {
-        return new Audio(new Config());
+    public static ViewBuilder<Audio, Config> make() {
+        return new ViewBuilder<>(new Audio(new Config()));
     }
 
     /** An audio node with a static source (resource name, file path, or URL). */
-    public static Audio of(String source) {
-        return new Audio(new Config().source(source));
+    public static ViewBuilder<Audio, Config> make(String source) {
+        return Configurators.view(Config::new, Audio::new, c -> c.source(source));
     }
 
     /** An audio node whose source is bound to a reactive signal. */
-    public static Audio of(Signal<String> source) {
-        return new Audio(new Config().source(source));
+    public static ViewBuilder<Audio, Config> make(Signal<String> source) {
+        return Configurators.view(Config::new, Audio::new, c -> c.source(source));
     }
 
     /** Configure the audio node's values. */
-    public static ViewBuilder<Audio, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<Audio, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Audio(config));
-    }
-
-    /** Apply modifiers to a source-less audio node. */
-    public static ViewBuilder<Audio, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Audio(new Config())).modifiers(modifiers);
     }
 
     /** Bind the play/pause state (a {@code MEDIA_PLAY_STATE_CHANGED} echoes back into it). */

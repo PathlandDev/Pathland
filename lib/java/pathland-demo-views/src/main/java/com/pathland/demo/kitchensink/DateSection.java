@@ -23,11 +23,12 @@ public final class DateSection implements View {
     public View body() {
         var dateLabel = computed(() ->
                 java.time.LocalDate.ofEpochDay(days.get()).toString());
-        return new SectionCard("DatePicker · PARAMETER::SET_DATE",
-                VStack.children(
-                        DatePicker.with(d -> d.mode(DatePickerMode.DATE).selection(days.signal())),
-                        Text.with(t -> t.text(dateLabel)).modifiers(Padding.with(p -> p.uniform(4)))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+        View content = VStack.make()
+                .modifiers(Padding.with(4))
+                .children(
+                        DatePicker.make(d -> d.mode(DatePickerMode.DATE).selection(days.signal())),
+                        Text.make(dateLabel).modifiers(
+                                Padding.with(4)));
+        return SectionCard.make("DatePicker · PARAMETER::SET_DATE").children(content);
     }
 }

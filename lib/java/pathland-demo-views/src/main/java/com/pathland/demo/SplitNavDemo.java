@@ -20,7 +20,7 @@ import com.pathland.view.router.Router;
  * a 404 fallback. Built with the {@link Navigation} facade — {@code Navigation.navigator}
  * collapses the route table + router + seeding. The active menu row is highlighted
  * reactively via {@code Navigation.isActive(router, path)} → a computed signal that
- * drives {@code Background.of(Signal<Color>)} / {@code ForegroundStyle.of(Signal<Color>)}.
+ * drives {@code Background.with(b -> b.color(Signal<Color>))} / {@code ForegroundStyle.with(f -> f.color(Signal<Color>))}.
  *
  * <p>The host mounts this view directly with the active platform path provided as an
  * environment value ({@code Platform.ACTIVE_PATH}); {@link #body()} reads it and builds
@@ -42,16 +42,19 @@ public final class SplitNavDemo implements View {
                 .route("/home", new HomeView())
                 .route("/kitchen", new KitchenSinkView())
                 .route("/settings", new SettingsView())
-                .fallback(Text.with(t -> t.text("Not Found")))
+                .fallback(Text.make("Not Found"))
                 .build(Environment.value(Platform.ACTIVE_PATH));
         // The split: a fixed sidebar column + the structural navigation slot (detail).
         // onPathChange demonstrates observing the active platform path without a router.
-        return HStack.children(new Sidebar(),
-                        ScrollView.children(Navigation.container(router)).modifiers(Frame.ofWidth(Float.POSITIVE_INFINITY))
-                )
-                .modifiers(Frame.ofWidth(Float.POSITIVE_INFINITY))
-                .modifiers(PathChange.with(p -> p.listener(path -> System.out.println("[split] active path: " + path))))
-                .modifiers(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router)));
+        return HStack.make()
+                .modifiers(
+                        Frame.with(f -> f.width(Float.POSITIVE_INFINITY)),
+                        PathChange.with(p -> p.listener(path -> System.out.println("[split] active path: " + path))),
+                        EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router)))
+                .children(
+                        new Sidebar(),
+                        ScrollView.make() .modifiers(Frame.with(f -> f.width(Float.POSITIVE_INFINITY)))
+                                .children(Navigation.container(router)));
     }
 
 }

@@ -27,7 +27,7 @@ import java.util.Objects;
  * <pre>{@code
  * import static com.pathland.view.SizeThatFits.fit;
  *
- * SizeThatFits.of(
+ * SizeThatFits.make(
  *     Fit.of(wideLayout, 640f),   // shown when the slot is ≥ 640 wide
  *     Fit.of(compactLayout));     // minWidth 0 — the always-valid fallback
  * }</pre>
@@ -38,7 +38,7 @@ public final class SizeThatFits {
 
     /** A slot over one-layout-per-candidate `View`s (each implicitly minWidth 0 —
      *  order in the argument list is the fit order, index 0 first). */
-    public static View of(View... candidates) {
+    public static View make(View... candidates) {
         Objects.requireNonNull(candidates, "candidates");
         Fit[] fits = new Fit[candidates.length];
         for (int i = 0; i < candidates.length; i++) {
@@ -48,7 +48,7 @@ public final class SizeThatFits {
     }
 
     /** A slot over width-keyed candidates. */
-    public static View of(Fit... fits) {
+    public static View make(Fit... fits) {
         Objects.requireNonNull(fits, "fits");
         return slot(fits);
     }

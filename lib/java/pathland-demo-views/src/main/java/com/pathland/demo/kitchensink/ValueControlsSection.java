@@ -26,14 +26,15 @@ public final class ValueControlsSection implements View {
     @Override
     public View body() {
         var valueLabel = computed(() -> "Value: " + value.get());
-        return new SectionCard("Value controls · Slider / Stepper / Gauge / Progress",
-                VStack.children(
-                        Text.with(t -> t.text(valueLabel)).modifiers(FontSize.with(s -> s.size(22)), FontWeight.BOLD),
-                        Slider.with(s -> s.value(value.signal()).in(0f, 100f)),
-                        Stepper.with(s -> s.value(value.signal()).in(0f, 100f).step(5f)),
-                        Gauge.with(g -> g.value(value.get()).minValue(0f).maxValue(100f)),
-                        ProgressView.with(p -> p.value(value.get() / 100f))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+        View content = VStack.make()
+                .modifiers(Padding.with(4))
+                .children(
+                        Text.make(valueLabel).modifiers(
+                                FontSize.with(22), FontWeight.BOLD),
+                        Slider.make(s -> s.value(value.signal()).in(0f, 100f)),
+                        Stepper.make(s -> s.value(value.signal()).in(0f, 100f).step(5f)),
+                        Gauge.make(g -> g.value(value.get()).minValue(0f).maxValue(100f)),
+                        ProgressView.make(value.get() / 100f));
+        return SectionCard.make("Value controls · Slider / Stepper / Gauge / Progress").children(content);
     }
 }

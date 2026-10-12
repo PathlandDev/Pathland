@@ -34,8 +34,12 @@ public final class ImageSource implements ViewModifier {
         this.config = config;
     }
 
-    public static ImageSource of(String value) {
-        return new ImageSource(new Config().source(value));
+    public static ImageSource with(String value) {
+        return Configurators.modifier(Config::new, ImageSource::new, c -> c.source(value));
+    }
+
+    public static ImageSource with(Signal<String> value) {
+        return Configurators.modifier(Config::new, ImageSource::new, c -> c.source(value));
     }
 
     /** Configure the image source. */

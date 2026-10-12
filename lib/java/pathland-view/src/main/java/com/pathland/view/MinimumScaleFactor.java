@@ -34,8 +34,12 @@ public final class MinimumScaleFactor implements ViewModifier {
         this.config = config;
     }
 
-    public static MinimumScaleFactor of(float value) {
-        return new MinimumScaleFactor(new Config().value(value));
+    public static MinimumScaleFactor with(float value) {
+        return Configurators.modifier(Config::new, MinimumScaleFactor::new, c -> c.value(value));
+    }
+
+    public static MinimumScaleFactor with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, MinimumScaleFactor::new, c -> c.value(value));
     }
 
     /** Configure the minimum scale factor. */

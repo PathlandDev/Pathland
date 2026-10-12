@@ -35,8 +35,13 @@ public final class Tint implements ViewModifier {
     }
 
     /** The accent/tint color. */
-    public static Tint of(Color color) {
-        return new Tint(new Config().color(color));
+    public static Tint with(Color color) {
+        return Configurators.modifier(Config::new, Tint::new, c -> c.color(color));
+    }
+
+    /** The accent/tint color (reactive). */
+    public static Tint with(Signal<Color> color) {
+        return Configurators.modifier(Config::new, Tint::new, c -> c.color(color));
     }
 
     /** Configure the tint. */

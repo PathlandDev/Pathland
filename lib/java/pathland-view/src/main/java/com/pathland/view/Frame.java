@@ -136,46 +136,11 @@ public final class Frame implements ViewModifier {
         this.config = config;
     }
 
-    /** A frame of a fixed {@code width} with no height hint. */
-    public static Frame of(float width) {
-        return new Frame(new Config().width(width));
-    }
-
-    /** A frame of {@code width} x {@code height}. */
-    public static Frame of(float width, float height) {
-        return new Frame(new Config().width(width).height(height));
-    }
-
-    /** A frame of a fixed {@code width} at {@code alignment}. */
-    public static Frame of(float width, Alignment alignment) {
-        return new Frame(new Config().width(width).alignment(alignment));
-    }
-
-    /** A frame of {@code width} x {@code height} at {@code alignment}. */
-    public static Frame of(float width, float height, Alignment alignment) {
-        return new Frame(new Config().width(width).height(height).alignment(alignment));
-    }
-
-    /** A frame of a fixed {@code width} (SwiftUI's {@code frame(width:)}). */
-    public static Frame ofWidth(float width) {
-        return new Frame(new Config().width(width));
-    }
-
-    /** A frame of a fixed {@code height} (SwiftUI's {@code frame(height:)}). */
-    public static Frame ofHeight(float height) {
-        return new Frame(new Config().height(height));
-    }
-
     /** Configure a frame with {@code .modifiers(Frame.with(f -> …))}. */
-    public static Frame of(Consumer<Config> config) {
-        Config c = new Config();
-        config.accept(c);
-        return new Frame(c);
-    }
-
-    /** Configure a frame. */
     public static Frame with(Consumer<Config> configure) {
-        return of(configure);
+        Config config = new Config();
+        configure.accept(config);
+        return new Frame(config);
     }
 
     @Override

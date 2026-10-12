@@ -9,7 +9,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 
 ## Implemented
 
-- **`SizeThatFits` fit slot** (`SizeThatFits.of(Fit...)` + `Fit.of(view, minWidth)`):
+- **`SizeThatFits` fit slot** (`SizeThatFits.make(Fit...)` + `Fit.of(view, minWidth)`):
   a structural slot (`SIZE_THAT_FITS` 0x17) emitting `FIT_QUERY` (LIST, ascending
   thresholds) + the single selected child — unselected candidates never transmit.
   The host routes `FIT_CHANGED` into the slot's fit sink
@@ -25,12 +25,19 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   compact (a reset would strand the DOM client, which never re-reports an
   unchanged width).
 - **v2 authoring surface (complete)**: every concrete view exposes
-  the three operations — values via static `View.with(Consumer<Config>)`,
-  `.modifiers(ViewModifier...)`, and (content-bearing views) `.children(View...)`
-  — on the returned generic `ViewBuilder<V, C>` (any order; `View.Config`,
-  `Configurable<C>`, `ChildrenView`; `View` keeps only `body()`/`render()` —
-  Java's static-vs-instance rule means the statics sit on the view classes and
-  the chain lives on the builder). Modifiers are built with `Modifier.with(c -> …)`
+  the three operations — values via the static `View.make(...)`
+  (`make(Consumer<Config>)`, `make(value)` shortcuts, empty `make()`),
+  `.modifiers(ViewModifier...)` (an **instance** operation — the `View` interface
+  ships a `default View.modifiers(ViewModifier...)` so a bare `View` value
+  (a style's `config.label()`, a `Color`, a `FitSlot`) applies modifiers too, and
+  `ViewBuilder` overrides it covariantly), and (content-bearing views) `.children(View...)`
+  (static first-call retained as a value-less convenience). Values are configured
+  via `make(c -> …)`, the chain lives on the returned generic
+  `ViewBuilder<V, C>` (`View.Config`, `Configurable<C>`, `ChildrenView`; `View`
+  keeps only `body()`/`render()`/`modifiers(...)` — Java's static-vs-instance rule
+  means `make(...)` is the only static of the three; the former static
+  `X.modifiers(...)` first-call entry points are **removed**). Modifiers are built
+  with `Modifier.with(c -> …)`
   (`Padding.with(p -> p.uniform(16))`, `Frame.with(f -> f.width(100).height(24))`,
   `ForegroundStyle.with(f -> f.color(c))`); **single-value modifiers are the value
   itself** (`FontWeight.BOLD`, `TextAlignment.CENTER`, `Truncation.TAIL`,
@@ -38,14 +45,20 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `FontDesign.SERIF`, `Font.system(18)` — the enums + `Font` implement
   `ViewModifier`), and `Style extends ViewModifier`, so `.modifiers(MyButtonStyle)`
   scopes the matching environment key. The `View` per-modifier sugar
-  (`font`/`navigate`/`environment`/`onPathChange`), the `View.with(ViewModifier...)`
-  general modifier chain in favor of `.modifiers(...)`, and the `*Mod` shims
+  (`font`/`navigate`/`environment`/`onPathChange`), the former
+  `View.with(ViewModifier...)` general modifier chain, and the `*Mod` shims
   (`EnvironmentMod`→`EnvironmentBinding`, `NavigationMod`→`NavigationIntent`,
   `PathChangeMod`→`PathChange`, `FontWeightMod`→`FontWeight`, …) are **removed** —
   every consumer (demo views, starters, renderers) is on the v2 surface. The
-  `.of(...)` construction convenience factories remain as an alternate spelling
-  (spec conformance — the v2 surface emits the same bytes), but no consumer or
-  test uses them anymore. The `View` interface carries no per-modifier factory
+  former `.of(...)` **construction factories are removed**: a **single-value
+  construction overload** replaces them where the config has
+  a designated primary member (views `make(value)` — `Text.make("hi")`;
+  modifiers `with(value)` — `Padding.with(16)`,
+  `FontSize.with(sizeSignal)` — pure sugar for the lambda, via the package-private
+  `Configurators` helper), and the lambda / `.children(...)` / empty `make()` (for
+  config-less or value-less views) covers the rest. Only data/branch factories keep
+  `of` (`Color.of/rgb/argb/token`, `Case.of`, `Fit.of`, `EnvironmentKey.of`, `Route.of`,
+  `Params.of`). The `View` interface carries no per-modifier factory
   methods (spec `DSL.md` §5.6).
 - **Signals-first configs (spec DSL.md §2)**: **every value member** exposes a raw
   setter (sugar for `Signals.constant`) and a `Signal<T>` setter — layout included
@@ -59,14 +72,15 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (`ValueTypes.forProperty`) and maps `WireValue` enums to their numeric code.
   `State`/`Signals` are unchanged.
 - **Construction**: every concrete view/control is
-  built with <View>.with(c -> …) / .children(...) / .modifiers(...)
-  (`Text.with(t -> t.text("x"))`, `VStack.with(v -> v.spacing(8)).children(a, b)`,
-  `Button.with(b -> b.action(...)).children(label)`,
-  `Slider.with(s -> s.value(binding).in(min, max))`,
-  `DatePicker.with(d -> d.selection(days))`, …). `Slider`/`Stepper` are
+  built with <View>.make(c -> …) / .children(...) / .modifiers(...)
+  (`Text.make(t -> t.text("x"))` or the shortcut `Text.make("x")`,
+  `VStack.make(v -> v.spacing(8)).children(a, b)`,
+  `Button.make(b -> b.action(...)).children(label)`,
+  `Slider.make(s -> s.value(binding).in(min, max))`,
+  `DatePicker.make(d -> d.selection(days))`, …). `Slider`/`Stepper` are
   binding-first (initial value read from the signal). Grids take
-  their track counts as config values: `Grid.with(g -> g.columns(int[, rows]), …)`,
-  `LazyVGrid.with(g -> g.columns(int), …)`, `LazyHGrid.with(g -> g.rows(int), …)` — absent = auto-fit
+  their track counts as config values: `Grid.make(g -> g.columns(int[, rows]), …)`,
+  `LazyVGrid.make(g -> g.columns(int), …)`, `LazyHGrid.make(g -> g.rows(int), …)` — absent = auto-fit
   (spec/PRIMITIVES.md §grid model); the counts emit `GRID_COLUMNS`/`GRID_ROWS`,
   never a pixel `WIDTH`/`HEIGHT`. **Per-track sizes** via a `List<GridItem>`
   overload (`GridItem.flexible()` / `.fixed(pts)` / `.adaptive(min)`) emit the
@@ -85,12 +99,11 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `Border.with(b -> b.color(c).width(w))`, …) or passed as the bare value when the
   value *is* the modifier (`FontWeight.BOLD`, `Font.headline()`, `MyButtonStyle`),
   applied via `.modifiers(...)` (one or several,
-  innermost-first); sizing is the `Frame` modifier value — the static factories
-  `Frame.of(w, h)`, `Frame.of(w, h, alignment)`, `Frame.of(w, alignment)`,
-  `Frame.ofWidth(w)`, `Frame.ofHeight(h)`, and the lambda configurator
-  `Frame.of(c -> c.minWidth(..).maxWidth(..).alignment(..))` (the fluent
+  innermost-first); sizing is the `Frame` modifier value — the lambda
+  configurator `Frame.with(f -> f.width(w).height(h).alignment(..))` /
+  `Frame.with(f -> f.minWidth(..).maxWidth(..).alignment(..))` (the fluent
   `Frame.Config`: min/ideal/max bounds + optional fixed axes + alignment, all
-  freely combinable). The width/height overloads leave `ALIGNMENT` unset
+  freely combinable). The width/height setters leave `ALIGNMENT` unset
   (alignment optional, so a stack's own cross-axis alignment is preserved);
   `±∞` width/height is normalized to `Commands.Size.FILL` and `NaN` omits the
   axis; an infinite min/ideal/max bound is omitted (no limit).
@@ -126,7 +139,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `Audio`, `Video`,
   `Color` (dual identity: a `COLOR` view *and* a value passed into style
   modifiers), shapes (`Rectangle`, `Circle`, `Capsule`, `Ellipse`,
-  `RoundedRectangle`, generic `Shape.of(ShapeKind)` — all `SHAPE` nodes),
+  `RoundedRectangle`, generic `Shape.make(ShapeKind)` — all `SHAPE` nodes),
   `Button`, `TextField`, `Spacer`, `TextEditor`, `Toggle`, `Slider`, `Stepper`,
   `ProgressView`, `Gauge`, `Divider`, `Grid`, `GridRow`, `ScrollView`, `LazyVStack`,
   `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `Picker`, `Menu`, `ColorPicker`,
@@ -167,8 +180,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   emitter's value-input registry; `TextEditor` mirrors `TextField`.
   `DatePicker` emits `PARAMETER::SET_DATE` (and re-emits it on signal change via a
   node-level date binding) and routes `DATE_CHANGED` through a dedicated
-  date-input registry (`RenderResult.dateInputs`). `Slider.of(binding, min, max,
-  onEditingChanged)` sets the **`EDITING`** listener bit and routes
+  date-input registry (`RenderResult.dateInputs`).
+  `Slider.with(s -> s.value(binding).in(min, max).onEditingChanged(..))` sets the
+  **`EDITING`** listener bit and routes
   **`EDITING_CHANGED`** drag boundaries into the callback through a dedicated
   editing-input registry (`RenderResult.editingInputs`, `InputDispatcher`) — the
   spec/EVENTS.md `onEditingChanged` hook for seek-on-release etc.
@@ -192,9 +206,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   chainable on any view): `Padding`, `ForegroundStyle(Color)` (no `.color()`),
   `Background(Color)`, `Tint`, `Opacity`, `FontSize`, `FontWeight`, `Border`
   (`Border.with(b -> b.color(color).width(w))` canonical + `radius`),
-  `Visible`/`Hidden`, `frame` (`Frame` — factories `Frame.of(w, h[, alignment])`/
-  `Frame.of(w, alignment)` + `Frame.ofWidth`/`Frame.ofHeight` + the
-  `Frame.with(f -> …)` configurator), `Offset`, `Position`,
+  `Visible`/`Hidden`, `frame` (`Frame` — the `Frame.with(f -> …)`
+  configurator: `width`/`height`/`alignment` + min/ideal/max bounds; the former
+  `Frame.of*`/`ofWidth`/`ofHeight` factories are removed), `Offset`, `Position`,
   `FixedSize`, `LayoutPriority`, `ZIndex`, `AspectRatio`/`ScaledToFit`/
   `ScaledToFill`, `MinimumScaleFactor`, `FontStyle`/`Italic`/`FontDesign`/
   `FontWidth`/`Kerning`/`Tracking`/`BaselineOffset`/`LineSpacing`/`LineLimit`/
@@ -215,7 +229,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   dense 0–13): `HEADER`, `PARAGRAPH`, `LIST`, `LIST_ITEM`, `SUMMARY`, `BANNER`,
   `NAVIGATION`, `MAIN`, `CONTENT_INFO`, `COMPLEMENTARY`, `ARTICLE`, `SECTION`,
   `SEARCH`. Interactive/control roles are NOT roles — they are intrinsic to the
-  control components, so `AccessibilityRole.of(int)` **throws** for codes
+  control components, so `AccessibilityRole.with(int)` **throws** for codes
   outside the semantic catalog (a custom button uses `Button` + `ButtonStyle`).
 - **`Icon` + `IconName`** (the `ICON` primitive, spec/ICONS.md): a canonical
   `IconName` written once and mapped by each renderer to its native symbol

@@ -59,21 +59,16 @@ public final class Gauge implements View, Configurable<Gauge.Config> {
         this.config = config;
     }
 
-    /** A read-only range meter. */
-    public static Gauge of(float value, float min, float max) {
-        return new Gauge(new Config().value(value).minValue(min).maxValue(max));
+    /** Configure the gauge's values. */
+/** An empty Gauge (no values). */
+    public static ViewBuilder<Gauge, Config> make() {
+        return new ViewBuilder<>(new Gauge(new Config()));
     }
 
-    /** Configure the gauge's values. */
-    public static ViewBuilder<Gauge, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<Gauge, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Gauge(config));
-    }
-
-    /** Apply modifiers to a bare gauge. */
-    public static ViewBuilder<Gauge, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Gauge(new Config())).modifiers(modifiers);
     }
 
     @Override

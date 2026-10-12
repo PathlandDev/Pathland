@@ -30,21 +30,16 @@ public final class ColorPicker implements View, Configurable<ColorPicker.Config>
         this.config = config;
     }
 
-    /** A native color picker bound to {@code binding}. */
-    public static ColorPicker of(WritableSignal<Color> binding) {
-        return new ColorPicker(new Config().selection(binding));
+    /** Configure the color picker's values. */
+/** An empty ColorPicker (no values). */
+    public static ViewBuilder<ColorPicker, Config> make() {
+        return new ViewBuilder<>(new ColorPicker(new Config()));
     }
 
-    /** Configure the color picker's values. */
-    public static ViewBuilder<ColorPicker, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<ColorPicker, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new ColorPicker(config));
-    }
-
-    /** Apply modifiers to a bare color picker. */
-    public static ViewBuilder<ColorPicker, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new ColorPicker(new Config())).modifiers(modifiers);
     }
 
     @Override

@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 
 /**
  * A vertical stack. {@code alignment} and {@code spacing} are **values**
- * (configured with {@code VStack.with(v -> v.spacing(8))}); the content is
+ * (configured with {@code VStack.make(v -> v.spacing(8))}); the content is
  * supplied with {@code .children(...)}.
  */
 public final class VStack implements View, Configurable<VStack.Config>, ChildrenView {
@@ -53,43 +53,16 @@ public final class VStack implements View, Configurable<VStack.Config>, Children
         this.children = children;
     }
 
-    /** A vertical stack. */
-    public static VStack of(View... children) {
-        return new VStack(new Config(), List.of(children));
-    }
-
-    /** A vertical stack. */
-    public static VStack of(List<View> children) {
-        return new VStack(new Config(), List.copyOf(children));
-    }
-
-    /** A vertical stack with constructor layout values. */
-    public static VStack of(HorizontalAlignment alignment, float spacing, View... children) {
-        return new VStack(new Config().alignment(alignment).spacing(spacing), List.of(children));
-    }
-
-    /** A vertical stack with constructor layout values. */
-    public static VStack of(HorizontalAlignment alignment, Float spacing, List<View> children) {
-        Config config = new Config();
-        if (alignment != null) {
-            config.alignment(alignment);
-        }
-        if (spacing != null) {
-            config.spacing(spacing);
-        }
-        return new VStack(config, List.copyOf(children));
-    }
-
     /** Configure the stack's values. */
-    public static ViewBuilder<VStack, Config> with(Consumer<Config> configure) {
+/** An empty VStack (no values). */
+    public static ViewBuilder<VStack, Config> make() {
+        return new ViewBuilder<>(new VStack(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<VStack, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new VStack(config, List.of()));
-    }
-
-    /** Apply modifiers to an empty stack. */
-    public static ViewBuilder<VStack, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new VStack(new Config(), List.of())).modifiers(modifiers);
     }
 
     /** Supply the stack's children. */

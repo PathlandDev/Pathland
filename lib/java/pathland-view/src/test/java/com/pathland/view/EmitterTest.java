@@ -38,8 +38,8 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
 
         View root = VStack.children(
-                Text.with(t -> t.text("Hello")),
-                Button.with(b -> b.title("Tap").action(() -> { })));
+                Text.make(t -> t.text("Hello")),
+                Button.make(b -> b.title("Tap").action(() -> { })));
 
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
@@ -59,8 +59,8 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
 
-        emitter.mount(Grid.with(g -> g.columns(2).rows(3))
-                .children(Text.with(t -> t.text("a")), Text.with(t -> t.text("b"))), Environment.DEFAULT);
+        emitter.mount(Grid.make(g -> g.columns(2).rows(3))
+                .children(Text.make(t -> t.text("a")), Text.make(t -> t.text("b"))), Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
         List<Float> columns = frame.opcodes().stream()
@@ -83,8 +83,8 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
 
-        emitter.mount(Grid.with(g -> g.tracks(List.of(GridItem.flexible(), GridItem.fixed(80f), GridItem.adaptive(50f))))
-                .children(Text.with(t -> t.text("a"))), Environment.DEFAULT);
+        emitter.mount(Grid.make(g -> g.tracks(List.of(GridItem.flexible(), GridItem.fixed(80f), GridItem.adaptive(50f))))
+                .children(Text.make(t -> t.text("a"))), Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
         Opcode tracks = frame.opcodes().stream()
@@ -103,8 +103,8 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
 
         emitter.mount(Grid.children(
-                GridRow.children(Text.with(t -> t.text("a")), Text.with(t -> t.text("b"))),
-                Text.with(t -> t.text("c"))), Environment.DEFAULT);
+                GridRow.children(Text.make(t -> t.text("a")), Text.make(t -> t.text("b"))),
+                Text.make(t -> t.text("c"))), Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
         Opcode gridRow = frame.opcodes().stream()
@@ -127,7 +127,7 @@ class EmitterTest {
 
         WritableSignal<Integer> count = Signals.signal(0);
         Signal<String> label = Signals.computed(() -> "Count: " + count.get());
-        View root = VStack.children(Text.with(t -> t.text("Static")), Text.with(t -> t.text(label)));
+        View root = VStack.children(Text.make(t -> t.text("Static")), Text.make(t -> t.text(label)));
         emitter.mount(root, Environment.DEFAULT);
 
         // The label's text node is id 3 (root=1, static text=2, reactive text=3).
@@ -149,7 +149,7 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<String> text = Signals.signal("same");
-        emitter.mount(VStack.children(Text.with(t -> t.text(text))), Environment.DEFAULT);
+        emitter.mount(VStack.children(Text.make(t -> t.text(text))), Environment.DEFAULT);
 
         text.set("same"); // equality-suppressed: nothing happens
         assertEquals(1, sink.framesProduced(), "unchanged signal must not produce a new frame");
@@ -162,7 +162,7 @@ class EmitterTest {
         WritableSignal<Integer> count = Signals.signal(0);
         Signal<Color> color = Signals.computed(() -> count.get() % 2 == 0 ? Color.RED : Color.BLUE);
         emitter.mount(VStack.children(
-                Text.with(t -> t.text("x")).modifiers(ForegroundStyle.with(f -> f.color(color)))),
+                Text.make(t -> t.text("x")).modifiers(ForegroundStyle.with(f -> f.color(color)))),
                 Environment.DEFAULT);
 
         count.set(1);
@@ -179,12 +179,12 @@ class EmitterTest {
     void constantPropertyEmitsAtMountButRegistersNoReemit() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        // A constant-bound property (Background.of(Color) ≡ a constant signal)
+        // A constant-bound property (Background.with(c -> c.color(C)) ≡ a constant signal)
         // and a reactive text: changing the text re-emits ONLY the text.
         WritableSignal<String> text = Signals.signal("a");
         View root = VStack.children(
-                Text.with(t -> t.text("x")).modifiers(Background.with(b -> b.color(Color.RED))),
-                Text.with(t -> t.text(text)));
+                Text.make(t -> t.text("x")).modifiers(Background.with(b -> b.color(Color.RED))),
+                Text.make(t -> t.text(text)));
         emitter.mount(root, Environment.DEFAULT);
 
         ProtocolFrame initial = sink.frame();
@@ -204,7 +204,7 @@ class EmitterTest {
     void newModifiersEmitSpecValueTypes() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        View root = Text.with(t -> t.text("x"))
+        View root = Text.make(t -> t.text("x"))
                 .modifiers(Visible.with(v -> v.visible(false)))          // U8, low byte 0
                 .modifiers(Disabled.with(d -> d.disabled(true)))         // U8, low byte 0 (disabled -> ENABLED=0)
                 .modifiers(FontFamily.with(f -> f.family("Georgia")))    // STRING
@@ -245,7 +245,7 @@ class EmitterTest {
     void tokenColorEmitsDesignTokenValueTypeWithPath() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        View root = Text.with(t -> t.text("x"))
+        View root = Text.make(t -> t.text("x"))
                 .modifiers(ForegroundStyle.with(f -> f.color(Color.token("color.primary"))))
                 .modifiers(Background.with(b -> b.color(Color.token("dark.color.surface"))));
         emitter.mount(root, Environment.DEFAULT);
@@ -278,7 +278,7 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         View root = VStack.children(
-                        Button.with(b -> b.title("Increment").action(() -> { })))
+                        Button.make(b -> b.title("Increment").action(() -> { })))
                 .modifiers(BorderedButtonStyle.INSTANCE);
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
@@ -295,7 +295,7 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<String> name = Signals.signal("");
         RenderResult result = emitter.mount(
-                TextField.with(t -> t.placeholder("Your name").text(name)), Environment.DEFAULT);
+                TextField.make(t -> t.placeholder("Your name").text(name)), Environment.DEFAULT);
 
         assertEquals(1, result.textInputs().size(), "the text field exposes one input sink");
         assertEquals(0, result.valueInputs().size(), "a text field has no value input");
@@ -329,7 +329,7 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         List<Boolean> edits = new java.util.ArrayList<>();
-        View slider = Slider.with(s -> s.value(Signals.signal(0f)).in(0f, 1f).onEditingChanged(edits::add));
+        View slider = Slider.make(s -> s.value(Signals.signal(0f)).in(0f, 1f).onEditingChanged(edits::add));
         RenderResult result = emitter.mount(slider, Environment.DEFAULT);
 
         assertEquals(1, result.editingInputs().size(),
@@ -375,7 +375,7 @@ class EmitterTest {
     void frameCodecRoundTrips() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        emitter.mount(VStack.children(Text.with(t -> t.text("Hello Pathland"))), Environment.DEFAULT);
+        emitter.mount(VStack.children(Text.make(t -> t.text("Hello Pathland"))), Environment.DEFAULT);
 
         byte[] wire = FrameCodec.encodeFrame(sink.frame());
         ProtocolFrame decoded = FrameCodec.decodeFrame(wire);
@@ -410,7 +410,7 @@ class EmitterTest {
         assertTrue(FrameCodec.isResync(wire), "META::RESYNC batch is detected");
 
         FrameOpcodeSink sink = new FrameOpcodeSink();
-        new Emitter(sink).mount(VStack.children(Text.with(t -> t.text("Hi"))), Environment.DEFAULT);
+        new Emitter(sink).mount(VStack.children(Text.make(t -> t.text("Hi"))), Environment.DEFAULT);
         assertFalse(FrameCodec.isResync(FrameCodec.encodeFrame(sink.frame())),
                 "a normal frame is not a resync request");
     }
@@ -420,8 +420,8 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(VStack.children(
-                Text.with(t -> t.text("Hello")),
-                Button.with(b -> b.title("Go").action(() -> { }))), Environment.DEFAULT);
+                Text.make(t -> t.text("Hello")),
+                Button.make(b -> b.title("Go").action(() -> { }))), Environment.DEFAULT);
 
         long structural = sink.frame().opcodes().stream()
                 .filter(op -> op.category() == Categories.TREE)
@@ -444,7 +444,7 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> days = Signals.signal(20487);
-        emitter.mount(DatePicker.with(d -> d.mode(DatePickerMode.DATE).selection(days)), Environment.DEFAULT);
+        emitter.mount(DatePicker.make(d -> d.mode(DatePickerMode.DATE).selection(days)), Environment.DEFAULT);
 
         ProtocolFrame initial = sink.frame();
         boolean sawSetDate = false;
@@ -471,7 +471,7 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<Float> value = Signals.signal(0.5f);
-        RenderResult result = emitter.mount(Slider.with(s -> s.value(value).in(0f, 1f)), Environment.DEFAULT);
+        RenderResult result = emitter.mount(Slider.make(s -> s.value(value).in(0f, 1f)), Environment.DEFAULT);
 
         assertEquals(1, result.valueInputs().size(), "the slider exposes one value input");
         result.valueInputs().values().iterator().next().accept(0.75f);
@@ -484,7 +484,7 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> days = Signals.signal(20487);
         RenderResult result = emitter.mount(
-                DatePicker.with(d -> d.mode(DatePickerMode.DATE).selection(days)), Environment.DEFAULT);
+                DatePicker.make(d -> d.mode(DatePickerMode.DATE).selection(days)), Environment.DEFAULT);
 
         assertEquals(1, result.dateInputs().size(), "the date picker exposes one date input");
         assertEquals(0, result.valueInputs().size(), "a date picker has no value input");
@@ -498,7 +498,7 @@ class EmitterTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> on = Signals.signal(false);
         RenderResult result = emitter.mount(
-                Toggle.with(t -> t.style(ToggleStyle.CHECKBOX).isOn(on).label("Go")), Environment.DEFAULT);
+                Toggle.make(t -> t.style(ToggleStyle.CHECKBOX).isOn(on).label("Go")), Environment.DEFAULT);
 
         result.valueInputs().values().iterator().next().accept(1f);
         assertEquals(Boolean.TRUE, on.get(), "VALUE_CHANGED 0/1 writes into the boolean binding");
@@ -546,7 +546,7 @@ class EmitterTest {
     void frameCodecCarriesDesignTokenRef() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        emitter.mount(Text.with(t -> t.text("x"))
+        emitter.mount(Text.make(t -> t.text("x"))
                 .modifiers(ForegroundStyle.with(f -> f.color(Color.token("color.primary")))),
                 Environment.DEFAULT);
 

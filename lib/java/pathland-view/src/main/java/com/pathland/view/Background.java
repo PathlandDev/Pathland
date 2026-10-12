@@ -35,12 +35,12 @@ public final class Background implements ViewModifier {
         this.signal = signal;
     }
 
-    public static Background of(Color value) {
-        return new Background(Signals.constant(value));
+    public static Background with(Color value) {
+        return Configurators.modifier(Config::new, c -> new Background(c.signal), c -> c.color(value));
     }
 
-    public static Background of(Signal<Color> signal) {
-        return new Background(signal);
+    public static Background with(Signal<Color> signal) {
+        return Configurators.modifier(Config::new, c -> new Background(c.signal), c -> c.color(signal));
     }
 
     /** Configure the background. */

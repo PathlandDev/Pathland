@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 
 /**
  * A horizontal stack. {@code alignment} and {@code spacing} are **values**
- * (configured with {@code HStack.with(h -> h.spacing(8))}); the content is
+ * (configured with {@code HStack.make(h -> h.spacing(8))}); the content is
  * supplied with {@code .children(...)}.
  */
 public final class HStack implements View, Configurable<HStack.Config>, ChildrenView {
@@ -53,43 +53,16 @@ public final class HStack implements View, Configurable<HStack.Config>, Children
         this.children = children;
     }
 
-    /** A horizontal stack. */
-    public static HStack of(View... children) {
-        return new HStack(new Config(), List.of(children));
-    }
-
-    /** A horizontal stack. */
-    public static HStack of(List<View> children) {
-        return new HStack(new Config(), List.copyOf(children));
-    }
-
-    /** A horizontal stack with constructor layout properties. */
-    public static HStack of(VerticalAlignment alignment, float spacing, View... children) {
-        return new HStack(new Config().alignment(alignment).spacing(spacing), List.of(children));
-    }
-
-    /** A horizontal stack with constructor layout properties. */
-    public static HStack of(VerticalAlignment alignment, Float spacing, List<View> children) {
-        Config config = new Config();
-        if (alignment != null) {
-            config.alignment(alignment);
-        }
-        if (spacing != null) {
-            config.spacing(spacing);
-        }
-        return new HStack(config, List.copyOf(children));
-    }
-
     /** Configure the stack's values. */
-    public static ViewBuilder<HStack, Config> with(Consumer<Config> configure) {
+/** An empty HStack (no values). */
+    public static ViewBuilder<HStack, Config> make() {
+        return new ViewBuilder<>(new HStack(new Config(), List.of()));
+    }
+
+    public static ViewBuilder<HStack, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new HStack(config, List.of()));
-    }
-
-    /** Apply modifiers to an empty stack. */
-    public static ViewBuilder<HStack, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new HStack(new Config(), List.of())).modifiers(modifiers);
     }
 
     /** Supply the stack's children. */

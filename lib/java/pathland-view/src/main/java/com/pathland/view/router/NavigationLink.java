@@ -64,18 +64,16 @@ public final class NavigationLink implements View, Configurable<NavigationLink.C
         this.config = config;
     }
 
-    /** Configure the link ({@code NavigationLink.with(l -> l.label(...).to(...))}). */
-    public static ViewBuilder<NavigationLink, Config> with(Consumer<Config> configure) {
+    /** Configure the link ({@code NavigationLink.make(l -> l.label(...).to(...))}). */
+/** An empty NavigationLink (no values). */
+    public static ViewBuilder<NavigationLink, Config> make() {
+        return new ViewBuilder<>(new NavigationLink(new Config()));
+    }
+
+    public static ViewBuilder<NavigationLink, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new NavigationLink(config));
-    }
-
-    /** Apply modifiers to a bare link. */
-    public static ViewBuilder<NavigationLink, Config> modifiers(ViewModifier... modifiers) {
-        Config config = new Config();
-        config.to("");
-        return new ViewBuilder<>(new NavigationLink(config)).modifiers(modifiers);
     }
 
     @Override
@@ -88,17 +86,17 @@ public final class NavigationLink implements View, Configurable<NavigationLink.C
         Objects.requireNonNull(config.to, "to");
         View label = config.labelView != null
                 ? config.labelView
-                : Text.with(t -> t.text(config.label == null ? "" : config.label));
+                : Text.make(t -> t.text(config.label == null ? "" : config.label));
         if (config.router != null) {
-            return Button.children(label)
-                    .with(b -> b.action(() -> config.router.push(config.to)))
+            return Button.make(b -> b.action(() -> config.router.push(config.to)))
+                    .children(label)
                     .render(env);
         }
         // The tap's real effect is the declared navigation intent (`.push`), which the
         // host routes via navigateActions before tapActions; the button action is a
         // no-op placeholder (Button requires one).
-        return Button.children(label)
-                .with(b -> b.action(() -> {}))
+        return Button.make(b -> b.action(() -> {}))
+                .children(label)
                 .modifiers(NavigationIntent.push(config.to))
                 .render(env);
     }

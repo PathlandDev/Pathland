@@ -25,8 +25,8 @@ public final class PointerEvents implements ViewModifier {
         this.mask = mask;
     }
 
-    public static PointerEvents of(int mask) {
-        return new PointerEvents(mask);
+    public static PointerEvents with(int mask) {
+        return Configurators.modifier(Config::new, c -> new PointerEvents(c.mask), c -> c.mask(mask));
     }
 
     /** Configure the listener mask. */

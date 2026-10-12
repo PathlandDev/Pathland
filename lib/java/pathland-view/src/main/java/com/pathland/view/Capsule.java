@@ -15,13 +15,8 @@ public final class Capsule implements View, Configurable<Capsule.Config> {
     }
 
     /** A capsule. */
-    public static Capsule of() {
-        return new Capsule();
-    }
-
-    /** Apply modifiers to a capsule. */
-    public static ViewBuilder<Capsule, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Capsule()).modifiers(modifiers);
+    public static ViewBuilder<Capsule, Config> make() {
+        return new ViewBuilder<>(new Capsule());
     }
 
     @Override

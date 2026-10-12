@@ -49,7 +49,7 @@ class SplitNavDemoTest {
     private static Mount mount(FrameOpcodeSink sink, String initialPath) {
         var activePath = signal(initialPath);
         RenderResult result = new Emitter(sink).mount(
-                new SplitNavDemo().with(
+                new SplitNavDemo().modifiers(
                         EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))), env());
         return new Mount(result, activePath);
     }

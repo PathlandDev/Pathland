@@ -73,14 +73,14 @@ public final class Shadow implements ViewModifier {
         this.config = config;
     }
 
-    /** A shadow with color, radius, and offset. */
-    public static Shadow of(Color color, float radius, float x, float y) {
-        return new Shadow(new Config().color(color).radius(radius).x(x).y(y));
+    /** A shadow with just a radius (renderer-token color). */
+    public static Shadow with(float radius) {
+        return Configurators.modifier(Config::new, Shadow::new, c -> c.radius(radius));
     }
 
-    /** A shadow with just a radius (renderer-token color). */
-    public static Shadow of(float radius) {
-        return new Shadow(new Config().radius(radius));
+    /** A shadow with just a radius (renderer-token color), reactive. */
+    public static Shadow with(Signal<Float> radius) {
+        return Configurators.modifier(Config::new, Shadow::new, c -> c.radius(radius));
     }
 
     /** Configure the shadow. */

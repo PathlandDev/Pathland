@@ -229,17 +229,34 @@ apps. Components and modifiers:
 - `View` is an **open interface** — the library ships `Text`/`Image`/`Color`/
   `Rectangle`, `VStack`/`HStack`/`ZStack`, `Spacer`, `Button`, `TextField(placeholder, WritableSignal<String>)`, and
   application code (Quarkus/Spring/desktop) defines its own views by implementing `View`.
+- **Custom views and styles use the configurator** (spec DSL.md §2): an
+  app-authored `View` with values implements `Configurable<View.Config>`, holds a
+  **`private` constructor**, and exposes
+  `static ViewBuilder<View, Config> with(Consumer<Config>)`; a style
+  (`ButtonStyle`/`LabelStyle`/`AudioStyle`/`VideoStyle`) expose
+  `static X with(Consumer<Config>)` returning the style value (e.g.
+  `BorderedButtonStyle.with(b -> b.padding(..).background(..)…)`). Creation goes
+  through the configurator, never a parameterized constructor. The
+  `pathland-view-processor` `ViewAuthoringProcessor` **errors** on
+  public/protected constructors **with parameters** in custom `View` **and**
+  `Style` implementations (no-arg roots and abstract types are exempt), so the
+  convention is compile-enforced where the processor is wired
+  (`annotationProcessorPaths`). The library's own views/styles follow the same
+  shape (`Audio`, `Text`, `BorderedButtonStyle`, …).
 - **SwiftUI-style `body()`**: composite views declare `View body()` (their subtree);
   the library's primitives override `render(Environment)` to materialize a
   `PathlandNode`. `body()` is evaluated **once at mount** — reactive values come from
-  signals (`Text.with(t -> t.text(Signal))`, `Signals.computed`), not from body
+  signals (`Text.make(t -> t.text(Signal))`, `Signals.computed`), not from body
   re-evaluation, so the emitter keeps its fine-grained `SET_TEXT`/`SET_PROPERTY` deltas.
 - **The three operations (spec DSL.md §2)**: every concrete view exposes
-  `with(Consumer<Config>)` (values) / `.modifiers(ViewModifier...)` / `.children(View...)`
-  chainable in **any order** on a returned `ViewBuilder` (Java's static-vs-instance
-  rule: the statics sit on the view class, the chain on the builder). Values are a
-  fluent per-view `Config` (`VStack.with(v -> v.alignment(...).spacing(8))`,
-  `Text.with(t -> t.text("hi"))`); modifiers are `ViewModifier` values
+  `make(...)` (values — the only static; `make(Consumer<Config>)`, `make(value)`,
+  `make()`), and the instance operations `.modifiers(ViewModifier...)` and
+  `.children(View...)` chain on the returned builder. Java's static-vs-instance
+  rule means the statics sit on the view class, the chain on the builder; a bare
+  `View` value applies modifiers through the interface default
+  `View.modifiers(...)`. Values are a
+  fluent per-view `Config` (`VStack.make(v -> v.alignment(...).spacing(8))`,
+  `Text.make(t -> t.text("hi"))`); modifiers are `ViewModifier` values
   (`Padding.with(p -> p.uniform(16))`) or — for single values — the value itself
   (`FontWeight.BOLD`, `Font.headline()`, a `ButtonStyle`). The `View` interface has
   **no per-modifier sugar** (`font`/`navigate`/`environment`/`onPathChange` were
@@ -248,16 +265,26 @@ apps. Components and modifiers:
   `.modifiers(PathChange.with(p -> p.listener(…)))`), and the `*Mod` shims
   (`EnvironmentMod`→`EnvironmentBinding`, `router/NavigationMod`→`NavigationIntent`,
   `PathChangeMod`→`PathChange`, `FontWeightMod`→`FontWeight`, …) are **removed**.
+- **Single-value shortcuts (spec DSL.md §2)**: a view/modifier whose config has a
+  designated primary member also exposes a single-value construction overload that
+  is pure sugar for the lambda — views construct with `make(value)` / `make(Signal<T>)`
+  (`Text.make("hi")`), modifiers with `with(value)` (`Padding.with(16)`,
+  `FontSize.with(sizeSignal)`). Multi-member configs (`Padding.edges`, `Offset`,
+  `Gauge`, `Border`, …) have **no** shortcut — use the lambda. The shortcut delegates
+  to the same `make(Consumer<Config>)` (views) / `with(Consumer<Config>)` (modifiers)
+  factory via the package-private
+  `Configurators` helper (one construction path). The former `.of(...)` construction
+  factories are **removed** — a shortcut (or the lambda / `.children(...)` / empty
+  `make()` for config-less views) replaces every one. Only data/branch factories keep
+  `of`: `Color.of/rgb/argb/token`, `Case.of`, `Fit.of`, `EnvironmentKey.of`,
+  `Route.of`, `Params.of`, `Signals.*`.
   Sizing is the `Frame` modifier value
-  (`Frame.with(f -> f.width(w).height(h).alignment(..))`, standalone
-  `Frame.ofWidth(w)` / `Frame.ofHeight(h)`, and the lambda
+  (`Frame.with(f -> f.width(w).height(h).alignment(..))` and the lambda
   configurator `Frame.with(f -> f.minWidth(..).maxWidth(..).alignment(..))`
   (min/ideal/max bounds)); all
   compile to the same `WIDTH`/`HEIGHT`/`ALIGNMENT`/min-max `SET_PROPERTY`s.
   Typed enums
-  (`Alignment`/`TextAlignment`/`FontWeight`/`Truncation`), not raw ints. The
-  `.of(...)` construction convenience factories remain as an alternate spelling
-  (spec conformance — same bytes), but consumers are all on the v2 surface.
+  (`Alignment`/`TextAlignment`/`FontWeight`/`Truncation`), not raw ints.
 - **Environment scoping via a `ThreadLocal`** (Java 17+): a `ButtonStyle` modifier
   injects a style down the whole child tree; `ButtonStyle.makeBody(Configuration)`
   with built-in `PlainButtonStyle` / `BorderedButtonStyle`. Custom wrappers via
@@ -292,8 +319,8 @@ tests (golden byte layout + round-trips), replacing the old codegen assert pass.
   field** for a reactive value — never a raw field *plus* a signal field for the
   same value. Static values are authored through the raw config setter (or the
   `.of(T)` convenience), which
-  wraps them in `Signals.constant(...)` (e.g. `Text.with(t -> t.text("Hello"))` ≡
-  `Text.with(t -> t.text(Signals.constant("Hello")))`); the emitter treats a
+  wraps them in `Signals.constant(...)` (e.g. `Text.make(t -> t.text("Hello"))` ≡
+  `Text.make(t -> t.text(Signals.constant("Hello")))`); the emitter treats a
   `ConstantSignal` as
   a plain, non-reactive property (no binding/effect), so statics carry zero
   binding overhead. Controls' config fields for *distinct* properties

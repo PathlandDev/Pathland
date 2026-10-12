@@ -42,12 +42,17 @@ public final class AccessibilityRole implements ViewModifier {
      * A semantic role (see {@link Roles}). Throws if {@code value} is not a
      * defined semantic role.
      */
-    public static AccessibilityRole of(int value) {
+    public static AccessibilityRole with(int value) {
         if (!Roles.isDefined(value)) {
             throw new IllegalArgumentException(
                     "not a semantic role: " + value + " (ROLE is semantic structure only)");
         }
-        return new AccessibilityRole(new Config().role(value));
+        return Configurators.modifier(Config::new, AccessibilityRole::new, c -> c.role(value));
+    }
+
+    /** A reactive semantic role: a change re-emits only this node's {@code ROLE}. */
+    public static AccessibilityRole with(Signal<Integer> role) {
+        return Configurators.modifier(Config::new, AccessibilityRole::new, c -> c.role(role));
     }
 
     /** Configure the accessibility role. */

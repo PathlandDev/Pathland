@@ -32,6 +32,26 @@ That makes Pathland **language- and renderer-agnostic**:
 getting-started path — **not the whole story**. It's the on-ramp that's useful
 today; the protocol underneath is where the portability comes from.
 
+## See it in action
+
+The same shared demo views, rendered by two of Pathland's surfaces — server-side
+HTML in the browser and native GTK4 widgets on the desktop:
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshot_browser.png" alt="Pathland demo in the browser — SSR + live WebSocket deltas" width="420"><br/>
+      <b>Browser</b> — SSR + live WebSocket deltas
+    </td>
+    <td align="center">
+      <img src="docs/screenshot_gtk.png" alt="Pathland demo in the native GTK4 desktop renderer" width="420"><br/>
+      <b>Desktop</b> — native GTK4 renderer
+    </td>
+  </tr>
+</table>
+
+Try the hosted Quarkus demo live: **[pathland.onrender.com](https://pathland.onrender.com)**.
+
 ## The flagship path today: SSR
 
 The fastest way to replace a BFF + JavaScript-frontend stack. You write the **whole
@@ -97,10 +117,11 @@ public final class MyHomeView implements View {
 
     @Override
     public View body() {
-        return VStack.of(
-                Text.of(Signals.computed(() -> "Clicked " + count.get() + " times")),
-                Button.of("Click me", () -> count.update(v -> v + 1))
-        ).with(Padding.of(24));
+        return VStack.make(v -> v.alignment(HorizontalAlignment.CENTER).spacing(8))
+                .modifiers(Padding.with(24))
+                .children(
+                        Text.make(Signals.computed(() -> "Clicked " + count.get() + " times")),
+                        Button.make(b -> b.title("Click me").action(() -> count.update(v -> v + 1))));
     }
 }
 ```
@@ -143,26 +164,6 @@ resources. It's shipped, not maintained — all the real logic lives in your bac
 
 Two surfaces, one protocol — the demos' shared views run under both without a
 rewrite.
-
-## See it in action
-
-The same shared demo views, rendered by two of Pathland's surfaces — server-side
-HTML in the browser and native GTK4 widgets on the desktop:
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshot_browser.png" alt="Pathland demo in the browser — SSR + live WebSocket deltas" width="420"><br/>
-      <b>Browser</b> — SSR + live WebSocket deltas
-    </td>
-    <td align="center">
-      <img src="docs/screenshot_gtk.png" alt="Pathland demo in the native GTK4 desktop renderer" width="420"><br/>
-      <b>Desktop</b> — native GTK4 renderer
-    </td>
-  </tr>
-</table>
-
-Try the hosted Quarkus demo live: **[pathland.onrender.com](https://pathland.onrender.com)**.
 
 ## Where it's headed
 

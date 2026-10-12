@@ -4,20 +4,19 @@ import com.pathland.view.emit.PathlandNode;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
- * The chainable result of a view's static {@code with(...)} / {@code modifiers(...)}
- * / {@code children(...)} entry points (spec DSL.md §2). The three operations may
- * be used in **any order**; a later call overrides an earlier value for the same
- * property.
+ * The chainable result of a view's static {@code make(...)} entry point (spec
+ * DSL.md §2). Values are fixed at {@code make(...)}; {@code modifiers(...)} and
+ * {@code children(...)} then chain in any order; a later call overrides an earlier
+ * value for the same property.
  *
  * <p>Java cannot declare a static and an instance method with the same signature,
- * so the view classes hold the three operations **statically** and the chainable
- * forms live here, on a distinct builder type implementing {@link View}.
+ * so the view classes hold the values entry **statically** (`make(...)`) and the
+ * chainable forms live here, on a distinct builder type implementing {@link View}.
+ * A bare {@link View} value applies modifiers through the interface default
+ * {@link View#modifiers(ViewModifier...)}.
  *
- * @param <V> the concrete view
- * @param <C> its value config
  */
 public final class ViewBuilder<V extends View & Configurable<C>, C extends View.Config>
         implements View {
@@ -28,12 +27,6 @@ public final class ViewBuilder<V extends View & Configurable<C>, C extends View.
 
     public ViewBuilder(V view) {
         this.view = view;
-    }
-
-    /** Configure the view's values. */
-    public ViewBuilder<V, C> with(Consumer<C> configure) {
-        configure.accept(view.config());
-        return this;
     }
 
     /** Apply modifiers (innermost-first). */

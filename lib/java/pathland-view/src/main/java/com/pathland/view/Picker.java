@@ -48,13 +48,13 @@ public final class Picker implements View, Configurable<Picker.Config>, Children
         this.children = children;
     }
 
-    /** A selection control; the options are the children. */
-    public static Picker of(PickerStyle style, WritableSignal<Integer> selection, View... options) {
-        return new Picker(new Config().style(style).selection(selection), List.of(options));
+    /** Configure the picker's values. */
+/** An empty Picker (no values). */
+    public static ViewBuilder<Picker, Config> make() {
+        return new ViewBuilder<>(new Picker(new Config(), List.of()));
     }
 
-    /** Configure the picker's values. */
-    public static ViewBuilder<Picker, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<Picker, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Picker(config, List.of()));
@@ -63,11 +63,6 @@ public final class Picker implements View, Configurable<Picker.Config>, Children
     /** Supply the picker's options. */
     public static ViewBuilder<Picker, Config> children(View... options) {
         return new ViewBuilder<>(new Picker(new Config(), List.of())).children(options);
-    }
-
-    /** Apply modifiers to a bare picker. */
-    public static ViewBuilder<Picker, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Picker(new Config(), List.of())).modifiers(modifiers);
     }
 
     @Override

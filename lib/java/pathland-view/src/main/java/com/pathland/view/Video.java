@@ -76,30 +76,25 @@ public final class Video implements View, Configurable<Video.Config> {
     }
 
     /** A video node with no source (the renderer's default visual). */
-    public static Video of() {
-        return new Video(new Config());
+    public static ViewBuilder<Video, Config> make() {
+        return new ViewBuilder<>(new Video(new Config()));
     }
 
     /** A video node with a static source (resource name, file path, or URL). */
-    public static Video of(String source) {
-        return new Video(new Config().source(source));
+    public static ViewBuilder<Video, Config> make(String source) {
+        return Configurators.view(Config::new, Video::new, c -> c.source(source));
     }
 
     /** A video node whose source is bound to a reactive signal. */
-    public static Video of(Signal<String> source) {
-        return new Video(new Config().source(source));
+    public static ViewBuilder<Video, Config> make(Signal<String> source) {
+        return Configurators.view(Config::new, Video::new, c -> c.source(source));
     }
 
     /** Configure the video node's values. */
-    public static ViewBuilder<Video, Config> with(Consumer<Config> configure) {
+    public static ViewBuilder<Video, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Video(config));
-    }
-
-    /** Apply modifiers to a source-less video node. */
-    public static ViewBuilder<Video, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Video(new Config())).modifiers(modifiers);
     }
 
     /** Bind the play/pause state (a {@code MEDIA_PLAY_STATE_CHANGED} echoes back into it). */

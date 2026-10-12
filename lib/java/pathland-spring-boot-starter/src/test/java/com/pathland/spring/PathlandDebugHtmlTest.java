@@ -26,7 +26,7 @@ class PathlandDebugHtmlTest {
     static class TestApp {
         @Bean
         PathlandApp pathlandApp() {
-            return () -> Text.of("Hello Pathland");
+            return () -> Text.make("Hello Pathland");
         }
     }
 
@@ -41,6 +41,6 @@ class PathlandDebugHtmlTest {
     @Test
     void defaultRegistryHasDebugOff() {
         assertFalse(new com.pathland.server.PathlandRegistry(
-                () -> Text.of("x"), new com.pathland.view.state.InMemoryStateStore()).isDebugHtml());
+                () -> Text.make("x"), new com.pathland.view.state.InMemoryStateStore()).isDebugHtml());
     }
 }

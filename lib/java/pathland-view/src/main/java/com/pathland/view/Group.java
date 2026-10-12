@@ -23,19 +23,14 @@ public final class Group implements View, Configurable<Group.Config>, ChildrenVi
         this.children = children;
     }
 
-    /** A group of child views. */
-    public static Group of(View... children) {
-        return new Group(List.of(children));
+    /** An empty group. */
+    public static ViewBuilder<Group, Config> make() {
+        return new ViewBuilder<>(new Group(List.of()));
     }
 
     /** Supply the group's children. */
     public static ViewBuilder<Group, Config> children(View... children) {
         return new ViewBuilder<>(new Group(List.of())).children(children);
-    }
-
-    /** Apply modifiers to an empty group. */
-    public static ViewBuilder<Group, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Group(List.of())).modifiers(modifiers);
     }
 
     @Override

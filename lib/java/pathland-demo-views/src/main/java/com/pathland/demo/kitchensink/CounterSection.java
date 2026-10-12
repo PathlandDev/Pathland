@@ -30,17 +30,19 @@ public final class CounterSection implements View {
     @Override
     public View body() {
         var countLabel = computed(() -> "Count: " + count.get());
-        return new SectionCard("Counter · State + Button + Stepper",
-                VStack.children(
-                        Text.with(t -> t.text(countLabel)).modifiers(FontSize.with(s -> s.size(28)), FontWeight.BOLD),
-                        HStack.with(h -> h.alignment(VerticalAlignment.TOP).spacing(4)).children(
-                                Button.with(b -> b.title("−").action(() -> count.update(v -> v - step.get().intValue()))),
-                                Button.with(b -> b.title("+").action(() -> count.update(v -> v + step.get().intValue()))),
-                                Button.with(b -> b.title("Reset").action(() -> count.set(0)))
-                        ).modifiers(Padding.with(p -> p.uniform(4))),
-                        Text.with(t -> t.text("Step size")).modifiers(ForegroundStyle.with(f -> f.color(Color.rgb(0x88, 0x88, 0x88)))),
-                        Stepper.with(s -> s.value(step.signal()).in(1, 10).step(1))
-                ).modifiers(Padding.with(p -> p.uniform(4)))
-        );
+        View content = VStack.make()
+                .modifiers(Padding.with(4))
+                .children(
+                        Text.make(countLabel).modifiers(
+                                FontSize.with(28), FontWeight.BOLD),
+                        HStack.make(h -> h.alignment(VerticalAlignment.TOP).spacing(4)).modifiers(Padding.with(4))
+                                .children(
+                                        Button.make(b -> b.title("−").action(() -> count.update(v -> v - step.get().intValue()))),
+                                        Button.make(b -> b.title("+").action(() -> count.update(v -> v + step.get().intValue()))),
+                                        Button.make(b -> b.title("Reset").action(() -> count.set(0)))),
+                        Text.make("Step size").modifiers(
+                                ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))),
+                        Stepper.make(s -> s.value(step.signal()).in(1, 10).step(1)));
+        return SectionCard.make("Counter · State + Button + Stepper").children(content);
     }
 }

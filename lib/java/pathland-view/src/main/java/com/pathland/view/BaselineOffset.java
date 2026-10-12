@@ -34,8 +34,12 @@ public final class BaselineOffset implements ViewModifier {
         this.config = config;
     }
 
-    public static BaselineOffset of(float value) {
-        return new BaselineOffset(new Config().value(value));
+    public static BaselineOffset with(float value) {
+        return Configurators.modifier(Config::new, BaselineOffset::new, c -> c.value(value));
+    }
+
+    public static BaselineOffset with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, BaselineOffset::new, c -> c.value(value));
     }
 
     /** Configure the baseline offset. */

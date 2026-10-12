@@ -25,21 +25,21 @@ public final class Shape implements View, Configurable<Shape.Config> {
         this.config = config;
     }
 
-    /** A shape of the given kind (e.g. {@code Shape.of(ShapeKind.PATH)}). */
-    public static Shape of(ShapeKind kind) {
-        return new Shape(new Config().kind(kind));
+    /** A shape of the given kind (e.g. {@code Shape.make(ShapeKind.PATH)}). */
+    public static ViewBuilder<Shape, Config> make(ShapeKind kind) {
+        return Configurators.view(Config::new, Shape::new, c -> c.kind(kind));
     }
 
     /** Configure the shape's values. */
-    public static ViewBuilder<Shape, Config> with(Consumer<Config> configure) {
+/** An empty Shape (no values). */
+    public static ViewBuilder<Shape, Config> make() {
+        return new ViewBuilder<>(new Shape(new Config()));
+    }
+
+    public static ViewBuilder<Shape, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ViewBuilder<>(new Shape(config));
-    }
-
-    /** Apply modifiers to a kind-less shape. */
-    public static ViewBuilder<Shape, Config> modifiers(ViewModifier... modifiers) {
-        return new ViewBuilder<>(new Shape(new Config())).modifiers(modifiers);
     }
 
     @Override

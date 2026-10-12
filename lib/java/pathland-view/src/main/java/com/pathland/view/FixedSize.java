@@ -50,16 +50,6 @@ public final class FixedSize implements ViewModifier {
     }
 
     /** Fix both axes. */
-    public static FixedSize of() {
-        return new FixedSize(new Config());
-    }
-
-    /** Fix per axis. */
-    public static FixedSize of(boolean horizontal, boolean vertical) {
-        return new FixedSize(new Config().horizontal(horizontal).vertical(vertical));
-    }
-
-    /** Fix both axes. */
     public static FixedSize with() {
         return new FixedSize(new Config());
     }

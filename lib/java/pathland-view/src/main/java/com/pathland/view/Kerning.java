@@ -34,8 +34,12 @@ public final class Kerning implements ViewModifier {
         this.config = config;
     }
 
-    public static Kerning of(float value) {
-        return new Kerning(new Config().value(value));
+    public static Kerning with(float value) {
+        return Configurators.modifier(Config::new, Kerning::new, c -> c.value(value));
+    }
+
+    public static Kerning with(Signal<Float> value) {
+        return Configurators.modifier(Config::new, Kerning::new, c -> c.value(value));
     }
 
     /** Configure the kerning. */
