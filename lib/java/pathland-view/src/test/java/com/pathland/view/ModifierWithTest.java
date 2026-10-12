@@ -4,14 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.pathland.view.emit.PathlandNode;
 import org.junit.jupiter.api.Test;
+import static com.pathland.view.Modifiers.*;
 
-/** The v2 modifier surface: {@code Modifier.with(...)} and value-is-modifier. */
+/** The modifier surface: the {@code Modifiers.*} lowercase functions and value-is-modifier. */
 public class ModifierWithTest {
 
     @Test
     void parameterizedModifierUsesWith() {
         PathlandNode node = Text.make(t -> t.text("hi"))
-                .modifiers(Padding.with(p -> p.uniform(12)))
+                .modifiers(padding(p -> p.uniform(12)))
                 .render(Environment.DEFAULT);
         assertEquals(12f, node.properties.get(Properties.PADDING));
     }
@@ -19,7 +20,7 @@ public class ModifierWithTest {
     @Test
     void perEdgePaddingUsesWith() {
         PathlandNode node = Text.make(t -> t.text("hi"))
-                .modifiers(Padding.with(p -> p.edges(1, 2, 3, 4)))
+                .modifiers(padding(p -> p.edges(1, 2, 3, 4)))
                 .render(Environment.DEFAULT);
         assertEquals(1f, node.properties.get(Properties.PADDING_TOP));
         assertEquals(2f, node.properties.get(Properties.PADDING_RIGHT));
@@ -30,7 +31,7 @@ public class ModifierWithTest {
     @Test
     void foregroundStyleWith() {
         PathlandNode node = Text.make(t -> t.text("hi"))
-                .modifiers(ForegroundStyle.with(f -> f.color(Color.WHITE)))
+                .modifiers(foregroundStyle(f -> f.color(Color.WHITE)))
                 .render(Environment.DEFAULT);
         assertEquals(Color.WHITE, node.properties.get(Properties.COLOR));
     }
@@ -54,7 +55,7 @@ public class ModifierWithTest {
     @Test
     void frameWithBuilder() {
         PathlandNode node = Text.make(t -> t.text("hi"))
-                .modifiers(Frame.with(f -> f.width(100).height(24)))
+                .modifiers(frame(f -> f.width(100).height(24)))
                 .render(Environment.DEFAULT);
         assertEquals(100f, node.properties.get(Properties.WIDTH));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));

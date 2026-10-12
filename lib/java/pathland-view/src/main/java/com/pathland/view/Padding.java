@@ -57,17 +57,17 @@ public final class Padding implements ViewModifier {
     }
 
     /** Uniform padding. */
-    public static Padding with(float value) {
+    static Padding with(float value) {
         return Configurators.modifier(Config::new, Padding::new, c -> c.uniform(value));
     }
 
     /** Uniform padding (reactive). */
-    public static Padding with(Signal<Float> value) {
+    static Padding with(Signal<Float> value) {
         return Configurators.modifier(Config::new, Padding::new, c -> c.uniform(value));
     }
 
     /** Configure the padding. */
-    public static Padding with(Consumer<Config> configure) {
+    static Padding with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Padding(config);

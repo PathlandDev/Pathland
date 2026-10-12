@@ -2,6 +2,8 @@ package com.pathland.demo.music;
 
 import com.pathland.view.*;
 import com.pathland.view.signal.WritableSignal;
+import static com.pathland.view.Modifiers.*;
+import static com.pathland.demo.music.PlayerControlsStyle.playerControlsStyle;
 
 import java.util.function.Consumer;
 
@@ -102,14 +104,14 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
                         .onVolumeReport(config.volume)
                         .onEnded(this::ended))
                 .modifiers(
-                        PlayerControlsStyle.with(s -> s
+                        playerControlsStyle(s -> s
                                 .trackIndex(config.trackIndex)
                                 .position(config.position)
                                 .seekRequest(config.seekRequest)
                                 .volume(config.volume)
                                 .volumeRequest(config.volumeRequest)),
-                        Background.with(MusicPlayerView.BAR_BG),
-                        Frame.with(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)));
+                        background(MusicPlayerView.BAR_BG),
+                        frame(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)));
     }
 
     /** The media ended: advance to the next track and restart from the top. The

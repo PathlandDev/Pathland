@@ -48,7 +48,7 @@ public final class Offset implements ViewModifier {
     }
 
     /** Configure the offset. */
-    public static Offset with(Consumer<Config> configure) {
+    static Offset with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Offset(config);

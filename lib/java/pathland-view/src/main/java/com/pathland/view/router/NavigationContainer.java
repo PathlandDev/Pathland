@@ -21,7 +21,7 @@ import java.util.function.Consumer;
  * {@code history.pushState}). The slot materializes as a {@code Group} (a bare
  * {@code VSTACK} node with no spacing/alignment).
  *
- * <p>{@code NavigationContainer.with(n -> n.router(router))} (see {@link Chrome} for
+ * <p>{@code NavigationContainer.make(n -> n.router(router))} (see {@link Chrome} for
  * the chrome-mode choice). The container also registers its router's {@code NAVIGATE}
  * handler, which the emitter surfaces on {@code RenderResult.navigateHandler} so a
  * host can forward raw {@code NAVIGATE} events (native back, browser {@code popstate})
@@ -54,7 +54,7 @@ public final class NavigationContainer implements View, Configurable<NavigationC
         this.config = config;
     }
 
-    /** Configure the navigation slot ({@code NavigationContainer.with(n -> n.router(router))}). */
+    /** Configure the navigation slot ({@code NavigationContainer.make(n -> n.router(router))}). */
 /** An empty NavigationContainer (no values). */
     public static ViewBuilder<NavigationContainer, Config> make() {
         return new ViewBuilder<>(new NavigationContainer(new Config()));

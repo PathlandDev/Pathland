@@ -2,6 +2,7 @@ package com.pathland.demo.music;
 
 import com.pathland.view.*;
 import com.pathland.view.signal.WritableSignal;
+import static com.pathland.view.Modifiers.*;
 
 import java.util.function.Consumer;
 
@@ -95,32 +96,32 @@ public final class TrackRowView implements View, Configurable<TrackRowView.Confi
                     config.playing.set(true);
                 }))
                 .modifiers(
-                        Background.with(bg),
-                        ForegroundStyle.with(fg),
-                        Padding.with(6),
+                        background(bg),
+                        foregroundStyle(fg),
+                        padding(6),
                         // Full-width row: the layout contract's cross-axis default is hug
                         // (LAYOUT.md), so a row that should span the library column must
                         // explicitly FILL its width.
-                        Frame.with(f -> f.width(Commands.Size.FILL)))
+                        frame(f -> f.width(Commands.Size.FILL)))
                 .children(
                         HStack
                                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(12f))
                                 .children(
                                         Image.make(config.track.cover()).modifiers(
-                                                Frame.with(f -> f.width(44).height(44)),
-                                                ScaledToFit.with()),
+                                                frame(f -> f.width(44).height(44)),
+                                                scaledToFit()),
                                         VStack
                                                 .make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
                                                 .children(
                                                         Text.make(config.track.title()).modifiers(FontWeight.SEMIBOLD),
                                                         Text.make(config.track.artist() + " · " + config.track.album())
                                                                 .modifiers(
-                                                                        FontSize.with(13),
-                                                                        ForegroundStyle.with(MusicPlayerView.SECONDARY_FG))),
+                                                                        fontSize(13),
+                                                                        foregroundStyle(MusicPlayerView.SECONDARY_FG))),
 Spacer.make().modifiers(),
                                         Text.make(MusicPlayerView.fmt(config.track.duration()))
                                                 .modifiers(
-                                                        FontSize.with(13),
-                                                        ForegroundStyle.with(MusicPlayerView.SECONDARY_FG))));
+                                                        fontSize(13),
+                                                        foregroundStyle(MusicPlayerView.SECONDARY_FG))));
     }
 }

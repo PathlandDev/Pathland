@@ -11,6 +11,7 @@ import com.pathland.view.TitleOnlyLabelStyle;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
 import com.pathland.view.state.State;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -25,7 +26,7 @@ public final class LabelSection implements View {
     @Override
     public View body() {
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         Label.make(l -> l.title("Settings").icon(Icon.make(IconName.SETTINGS))),
                         Label.make(l -> l.title("Save changes").icon(Icon.make(IconName.SAVE)))

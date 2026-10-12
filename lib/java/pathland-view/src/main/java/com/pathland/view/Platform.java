@@ -12,11 +12,11 @@ package com.pathland.view;
  * // host (always):
  * WritableSignal<String> activePath = Signals.signal(env.route());
  * emitter.mount(
- *         root.modifiers(EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
+ *         root.modifiers(environmentBinding(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
  *         env);
  *
  * // app — with or without navigation:
- * view.modifiers(PathChange.with(p -> p.listener(path -> handlePlatformPath(path))));
+ * view.modifiers(pathChange(p -> p.listener(path -> handlePlatformPath(path))));
  * }</pre>
  */
 public final class Platform {

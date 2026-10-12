@@ -34,16 +34,16 @@ public final class Brightness implements ViewModifier {
         this.config = config;
     }
 
-    public static Brightness with(float value) {
+    static Brightness with(float value) {
         return Configurators.modifier(Config::new, Brightness::new, c -> c.value(value));
     }
 
-    public static Brightness with(Signal<Float> value) {
+    static Brightness with(Signal<Float> value) {
         return Configurators.modifier(Config::new, Brightness::new, c -> c.value(value));
     }
 
     /** Configure the brightness. */
-    public static Brightness with(Consumer<Config> configure) {
+    static Brightness with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Brightness(config);

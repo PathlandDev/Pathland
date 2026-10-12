@@ -2,6 +2,7 @@ package com.pathland.demo.music;
 
 import com.pathland.view.*;
 import com.pathland.view.signal.WritableSignal;
+import static com.pathland.view.Modifiers.*;
 
 import java.util.function.Consumer;
 
@@ -51,22 +52,22 @@ public final class NowPlayingSidebar implements View, Configurable<NowPlayingSid
     public View body() {
         return VStack.make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(14))
                 .modifiers(
-                        Padding.with(24),
-                        Background.with(MusicPlayerView.SIDEBAR_BG),
-                        Frame.with(f -> f.width(MusicPlayerView.SIDEBAR_WIDTH).height(Commands.Size.FILL)))
+                        padding(24),
+                        background(MusicPlayerView.SIDEBAR_BG),
+                        frame(f -> f.width(MusicPlayerView.SIDEBAR_WIDTH).height(Commands.Size.FILL)))
                 .children(
                         Text.make("Now Playing").modifiers(
-                                FontSize.with(18), FontWeight.BOLD, AccessibilityRole.with(Roles.HEADER)),
+                                fontSize(18), FontWeight.BOLD, accessibilityRole(Roles.HEADER)),
                         Image.make(computed(() -> MusicPlayerView.at(config.trackIndex.get()).cover())).modifiers(
-                                Frame.with(f -> f.width(220).height(220)),
-                                ScaledToFill.with(),
-                                Border.with(b -> b.color(Color.BLACK).width(1).radius(8))),
+                                frame(f -> f.width(220).height(220)),
+                                scaledToFill(),
+                                border(b -> b.color(Color.BLACK).width(1).radius(8))),
                         Text.make(computed(() -> MusicPlayerView.at(config.trackIndex.get()).title()))
-                                .modifiers(FontSize.with(20), FontWeight.BOLD),
+                                .modifiers(fontSize(20), FontWeight.BOLD),
                         Text.make(computed(() -> MusicPlayerView.at(config.trackIndex.get()).artist()
                                 + " · " + MusicPlayerView.at(config.trackIndex.get()).album()))
-                                .modifiers(ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
-Divider.make().modifiers(Padding.with(p -> p.edges(0, 0, 0, 10))),
+                                .modifiers(foregroundStyle(MusicPlayerView.SECONDARY_FG)),
+Divider.make().modifiers(padding(p -> p.edges(0, 0, 0, 10))),
                         Text.make("Up Next").modifiers(FontWeight.SEMIBOLD),
                         upNextRow(1),
                         upNextRow(2));
@@ -77,6 +78,6 @@ Divider.make().modifiers(Padding.with(p -> p.edges(0, 0, 0, 10))),
         return Text.make(computed(() -> {
             Track track = MusicPlayerView.at(config.trackIndex.get() + offset);
             return (offset == 1 ? "Up next · " : "Then · ") + track.title() + " — " + track.artist();
-        })).modifiers(FontSize.with(13), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG));
+        })).modifiers(fontSize(13), foregroundStyle(MusicPlayerView.SECONDARY_FG));
     }
 }

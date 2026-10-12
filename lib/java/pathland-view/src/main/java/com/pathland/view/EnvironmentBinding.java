@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 
 /**
  * Scopes an {@link EnvironmentKey} → value binding down a wrapped subtree
- * ({@code .modifiers(EnvironmentBinding.with(e -> e.key(...).value(...)))}): the value
+ * ({@code .modifiers(environmentBinding(e -> e.key(...).value(...)))}): the value
  * is active only while that subtree renders, and an outer binding is restored
  * afterward — nearest wins (spec DSL.md §5.5). Read it with
  * {@code Environment.value(key)}, which **always returns a signal**: a plain value is
@@ -48,8 +48,8 @@ public final class EnvironmentBinding implements ViewModifier {
         this.value = config.value;
     }
 
-    /** Configure the binding ({@code EnvironmentBinding.with(e -> e.key(...).value(...))}). */
-    public static EnvironmentBinding with(Consumer<Config> configure) {
+    /** Configure the binding ({@code environmentBinding(e -> e.key(...).value(...))}). */
+    static EnvironmentBinding with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new EnvironmentBinding(config);

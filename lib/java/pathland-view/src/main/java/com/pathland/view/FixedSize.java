@@ -50,12 +50,12 @@ public final class FixedSize implements ViewModifier {
     }
 
     /** Fix both axes. */
-    public static FixedSize with() {
+    static FixedSize with() {
         return new FixedSize(new Config());
     }
 
     /** Configure the fixed axes. */
-    public static FixedSize with(Consumer<Config> configure) {
+    static FixedSize with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new FixedSize(config);

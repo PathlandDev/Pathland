@@ -39,7 +39,7 @@ public final class BindingId implements ViewModifier {
     }
 
     /** Configure the binding id. */
-    public static BindingId with(Consumer<Config> configure) {
+    static BindingId with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new BindingId(config);

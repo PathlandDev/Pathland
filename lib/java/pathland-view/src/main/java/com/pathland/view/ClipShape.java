@@ -34,16 +34,16 @@ public final class ClipShape implements ViewModifier {
         this.config = config;
     }
 
-    public static ClipShape with(ShapeKind kind) {
+    static ClipShape with(ShapeKind kind) {
         return Configurators.modifier(Config::new, ClipShape::new, c -> c.shape(kind));
     }
 
-    public static ClipShape with(Signal<ShapeKind> kind) {
+    static ClipShape with(Signal<ShapeKind> kind) {
         return Configurators.modifier(Config::new, ClipShape::new, c -> c.shape(kind));
     }
 
     /** Configure the clip shape. */
-    public static ClipShape with(Consumer<Config> configure) {
+    static ClipShape with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ClipShape(config);

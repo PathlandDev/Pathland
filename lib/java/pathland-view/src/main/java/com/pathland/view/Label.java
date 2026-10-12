@@ -1,5 +1,8 @@
 package com.pathland.view;
 
+import static com.pathland.view.Modifiers.accessibilityLabel;
+import static com.pathland.view.Modifiers.lineLimit;
+
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
 
@@ -96,7 +99,7 @@ public final class Label implements View, Configurable<Label.Config> {
         String title = config.title != null ? config.title.get() : null;
         String icon = config.icon != null ? config.icon.get() : null;
 
-        View titleView = nonBlank(title) ? Text.make(t -> t.text(config.title)).modifiers(LineLimit.with(l -> l.value(1))) : null;
+        View titleView = nonBlank(title) ? Text.make(t -> t.text(config.title)).modifiers(lineLimit(l -> l.value(1))) : null;
         View iconPart = config.iconView != null
                 ? config.iconView
                 : (nonBlank(icon) ? Image.make(i -> i.source(config.icon)) : null);
@@ -106,7 +109,7 @@ public final class Label implements View, Configurable<Label.Config> {
             content = Group.children();
         }
         if (nonBlank(title)) {
-            content = content.modifiers(AccessibilityLabel.with(a -> a.text(config.title)));
+            content = content.modifiers(accessibilityLabel(a -> a.text(config.title)));
         }
         return content;
     }

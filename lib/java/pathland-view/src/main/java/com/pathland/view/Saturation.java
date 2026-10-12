@@ -34,16 +34,16 @@ public final class Saturation implements ViewModifier {
         this.config = config;
     }
 
-    public static Saturation with(float value) {
+    static Saturation with(float value) {
         return Configurators.modifier(Config::new, Saturation::new, c -> c.value(value));
     }
 
-    public static Saturation with(Signal<Float> value) {
+    static Saturation with(Signal<Float> value) {
         return Configurators.modifier(Config::new, Saturation::new, c -> c.value(value));
     }
 
     /** Configure the saturation. */
-    public static Saturation with(Consumer<Config> configure) {
+    static Saturation with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Saturation(config);

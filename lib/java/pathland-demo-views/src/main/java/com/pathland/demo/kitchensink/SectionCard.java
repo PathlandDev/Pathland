@@ -22,6 +22,7 @@ import com.pathland.view.ViewBuilder;
 import com.pathland.view.ViewModifier;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.signal.Signals;
+import static com.pathland.view.Modifiers.*;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -96,18 +97,18 @@ public final class SectionCard implements View, Configurable<SectionCard.Config>
         View content = children.isEmpty() ? null : children.get(0);
         return VStack.make()
                 .modifiers(
-                        Padding.with(16),
-                        Background.with(Color.WHITE),
-                        Border.with(b -> b.color(BORDER).width(1).radius(10)),
-                        CornerRadius.with(10),
-                        Frame.with(f -> f.width(Commands.Size.FILL)))
+                        padding(16),
+                        background(Color.WHITE),
+                        border(b -> b.color(BORDER).width(1).radius(10)),
+                        cornerRadius(10),
+                        frame(f -> f.width(Commands.Size.FILL)))
                 .children(
                         // A section title is a heading → `<h2>`.
                         Text.make(config.title).modifiers(
-                                FontSize.with(14), FontWeight.SEMIBOLD,
-                                ForegroundStyle.with(TITLE_COLOR),
-                                AccessibilityRole.with(Roles.HEADER)),
-Divider.make().modifiers(Padding.with(p -> p.edges(0, 0, 8, 0))),
+                                fontSize(14), FontWeight.SEMIBOLD,
+                                foregroundStyle(TITLE_COLOR),
+                                accessibilityRole(Roles.HEADER)),
+Divider.make().modifiers(padding(p -> p.edges(0, 0, 8, 0))),
                         content);
     }
 }

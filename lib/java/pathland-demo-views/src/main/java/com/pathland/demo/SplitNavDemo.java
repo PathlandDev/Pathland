@@ -7,6 +7,7 @@ import com.pathland.demo.sidebar.Sidebar;
 import com.pathland.view.*;
 import com.pathland.view.router.Navigation;
 import com.pathland.view.router.Router;
+import static com.pathland.view.Modifiers.*;
 
 /**
  * A master-detail (split) navigation demo (spec PRIMITIVES.md: `NavigationSplitView` →
@@ -20,7 +21,7 @@ import com.pathland.view.router.Router;
  * a 404 fallback. Built with the {@link Navigation} facade — {@code Navigation.navigator}
  * collapses the route table + router + seeding. The active menu row is highlighted
  * reactively via {@code Navigation.isActive(router, path)} → a computed signal that
- * drives {@code Background.with(b -> b.color(Signal<Color>))} / {@code ForegroundStyle.with(f -> f.color(Signal<Color>))}.
+ * drives {@code background(b -> b.color(Signal<Color>))} / {@code foregroundStyle(f -> f.color(Signal<Color>))}.
  *
  * <p>The host mounts this view directly with the active platform path provided as an
  * environment value ({@code Platform.ACTIVE_PATH}); {@link #body()} reads it and builds
@@ -48,12 +49,12 @@ public final class SplitNavDemo implements View {
         // onPathChange demonstrates observing the active platform path without a router.
         return HStack.make()
                 .modifiers(
-                        Frame.with(f -> f.width(Float.POSITIVE_INFINITY)),
-                        PathChange.with(p -> p.listener(path -> System.out.println("[split] active path: " + path))),
-                        EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router)))
+                        frame(f -> f.width(Float.POSITIVE_INFINITY)),
+                        pathChange(p -> p.listener(path -> System.out.println("[split] active path: " + path))),
+                        environmentBinding(e -> e.key(Navigation.ROUTER).value(router)))
                 .children(
                         new Sidebar(),
-                        ScrollView.make() .modifiers(Frame.with(f -> f.width(Float.POSITIVE_INFINITY)))
+                        ScrollView.make() .modifiers(frame(f -> f.width(Float.POSITIVE_INFINITY)))
                                 .children(Navigation.container(router)));
     }
 

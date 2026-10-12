@@ -34,16 +34,16 @@ public final class Kerning implements ViewModifier {
         this.config = config;
     }
 
-    public static Kerning with(float value) {
+    static Kerning with(float value) {
         return Configurators.modifier(Config::new, Kerning::new, c -> c.value(value));
     }
 
-    public static Kerning with(Signal<Float> value) {
+    static Kerning with(Signal<Float> value) {
         return Configurators.modifier(Config::new, Kerning::new, c -> c.value(value));
     }
 
     /** Configure the kerning. */
-    public static Kerning with(Consumer<Config> configure) {
+    static Kerning with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Kerning(config);

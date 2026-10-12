@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 /**
  * A tappable link that changes the route (spec DSL.md §4.5). With an explicit
  * {@link Router} it {@link Router#push(String) pushes} onto that router's
- * back-stack; the router-agnostic call ({@code NavigationLink.with(l -> l.to("/users"))})
+ * back-stack; the router-agnostic call ({@code NavigationLink.make(l -> l.to("/users"))})
  * declares a {@link NavOp#PUSH} intent that the emitter resolves to the **nearest
  * enclosing** {@link Router} — no router is threaded by hand. Renders through the
  * active {@code ButtonStyle} as a native {@code BUTTON}; its tap action is routed

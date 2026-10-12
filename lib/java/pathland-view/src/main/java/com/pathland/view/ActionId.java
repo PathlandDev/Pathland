@@ -39,7 +39,7 @@ public final class ActionId implements ViewModifier {
     }
 
     /** Configure the action id. */
-    public static ActionId with(Consumer<Config> configure) {
+    static ActionId with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ActionId(config);

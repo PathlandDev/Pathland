@@ -118,7 +118,7 @@ public final class MyHomeView implements View {
     @Override
     public View body() {
         return VStack.make(v -> v.alignment(HorizontalAlignment.CENTER).spacing(8))
-                .modifiers(Padding.with(24))
+                .modifiers(padding(24))
                 .children(
                         Text.make(Signals.computed(() -> "Clicked " + count.get() + " times")),
                         Button.make(b -> b.title("Click me").action(() -> count.update(v -> v + 1))));
@@ -127,7 +127,8 @@ public final class MyHomeView implements View {
 ```
 
 That's it — SSR at any path, live updates over `/ws`, per-session state.
-*(Imports omitted: `com.pathland.server.PathlandApp`, `com.pathland.view.*`.)*
+*(Imports omitted: `com.pathland.server.PathlandApp`, `com.pathland.view.*`,
+and `import static com.pathland.view.Modifiers.*;` for the modifier function.)*
 
 ## What it removes
 

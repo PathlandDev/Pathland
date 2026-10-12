@@ -8,6 +8,7 @@ import com.pathland.view.View;
 import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.Padding;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -26,13 +27,13 @@ public final class ToggleSection implements View {
         var summary = computed(() ->
                 "Dark: " + dark.get() + " · Notify: " + notify.get() + " · Bold: " + bold.get());
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         Toggle.make(t -> t.style(ToggleStyle.SWITCH).isOn(dark.signal()).label("Dark mode")),
                         Toggle.make(t -> t.style(ToggleStyle.CHECKBOX).isOn(notify.signal()).label("Notify me")),
                         Toggle.make(t -> t.style(ToggleStyle.BUTTON).isOn(bold.signal()).label("Bold toggle")),
                         Text.make(summary).modifiers(
-                                Padding.with(4)));
+                                padding(4)));
         return SectionCard.make("Toggle · Switch / Checkbox / Button").children(content);
     }
 }

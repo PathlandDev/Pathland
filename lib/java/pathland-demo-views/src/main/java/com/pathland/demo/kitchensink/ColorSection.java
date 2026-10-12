@@ -13,6 +13,7 @@ import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.Background;
 import com.pathland.view.Padding;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -31,16 +32,16 @@ public final class ColorSection implements View {
             return String.format("Accent #%06x", rgb);
         });
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         ColorPicker.make(c -> c.selection(accent.signal())),
-                        HStack.make() .modifiers(Padding.with(4))
+                        HStack.make() .modifiers(padding(4))
                                 .children(
-                                        accent.get().modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER))),
-Rectangle.make().modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
-                                                .modifiers(Background.with(accent.signal()))),
+                                        accent.get().modifiers(frame(f -> f.width(120).height(60).alignment(Alignment.CENTER))),
+Rectangle.make().modifiers(frame(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(background(accent.signal()))),
                         Text.make(accentLabel).modifiers(
-                                Padding.with(4)));
+                                padding(4)));
         return SectionCard.make("Color · ColorPicker + Color view + Rectangle").children(content);
     }
 }

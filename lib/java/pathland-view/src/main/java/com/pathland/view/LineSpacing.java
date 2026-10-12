@@ -34,16 +34,16 @@ public final class LineSpacing implements ViewModifier {
         this.config = config;
     }
 
-    public static LineSpacing with(float value) {
+    static LineSpacing with(float value) {
         return Configurators.modifier(Config::new, LineSpacing::new, c -> c.value(value));
     }
 
-    public static LineSpacing with(Signal<Float> value) {
+    static LineSpacing with(Signal<Float> value) {
         return Configurators.modifier(Config::new, LineSpacing::new, c -> c.value(value));
     }
 
     /** Configure the line spacing. */
-    public static LineSpacing with(Consumer<Config> configure) {
+    static LineSpacing with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new LineSpacing(config);

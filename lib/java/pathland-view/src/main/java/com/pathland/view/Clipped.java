@@ -6,7 +6,7 @@ package com.pathland.view;
 public final class Clipped implements ViewModifier {
 
     /** Clip. */
-    public static Clipped with() {
+    static Clipped with() {
         return new Clipped();
     }
 

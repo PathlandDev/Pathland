@@ -34,16 +34,16 @@ public final class ZIndex implements ViewModifier {
         this.config = config;
     }
 
-    public static ZIndex with(float value) {
+    static ZIndex with(float value) {
         return Configurators.modifier(Config::new, ZIndex::new, c -> c.value(value));
     }
 
-    public static ZIndex with(Signal<Float> value) {
+    static ZIndex with(Signal<Float> value) {
         return Configurators.modifier(Config::new, ZIndex::new, c -> c.value(value));
     }
 
     /** Configure the z-index. */
-    public static ZIndex with(Consumer<Config> configure) {
+    static ZIndex with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ZIndex(config);

@@ -15,6 +15,7 @@ import com.pathland.view.state.State;
 import com.pathland.view.FontSize;
 import com.pathland.view.ForegroundStyle;
 import com.pathland.view.Padding;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -31,17 +32,17 @@ public final class CounterSection implements View {
     public View body() {
         var countLabel = computed(() -> "Count: " + count.get());
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         Text.make(countLabel).modifiers(
-                                FontSize.with(28), FontWeight.BOLD),
-                        HStack.make(h -> h.alignment(VerticalAlignment.TOP).spacing(4)).modifiers(Padding.with(4))
+                                fontSize(28), FontWeight.BOLD),
+                        HStack.make(h -> h.alignment(VerticalAlignment.TOP).spacing(4)).modifiers(padding(4))
                                 .children(
                                         Button.make(b -> b.title("−").action(() -> count.update(v -> v - step.get().intValue()))),
                                         Button.make(b -> b.title("+").action(() -> count.update(v -> v + step.get().intValue()))),
                                         Button.make(b -> b.title("Reset").action(() -> count.set(0)))),
                         Text.make("Step size").modifiers(
-                                ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))),
+                                foregroundStyle(Color.rgb(0x88, 0x88, 0x88))),
                         Stepper.make(s -> s.value(step.signal()).in(1, 10).step(1)));
         return SectionCard.make("Counter · State + Button + Stepper").children(content);
     }

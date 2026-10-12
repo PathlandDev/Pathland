@@ -11,6 +11,7 @@ import com.pathland.view.Toggle;
 import com.pathland.view.ToggleStyle;
 import com.pathland.view.VStack;
 import com.pathland.view.View;
+import static com.pathland.view.Modifiers.*;
 import static com.pathland.view.signal.Signals.*;
 
 /**
@@ -28,16 +29,16 @@ public final class SettingsView implements View {
         return VStack.make()
                 // The destination content region → `<main>`.
                 .modifiers(
-                        AccessibilityRole.with(Roles.MAIN),
-                        Padding.with(24))
+                        accessibilityRole(Roles.MAIN),
+                        padding(24))
                 .children(
                         // The destination title is a heading → `<h2>`.
                         Text.make("Settings").modifiers(
-                                FontSize.with(24), FontWeight.BOLD, AccessibilityRole.with(Roles.HEADER)),
+                                fontSize(24), FontWeight.BOLD, accessibilityRole(Roles.HEADER)),
                         Text.make("A few controls bound to plain signals — the content area is "
-                                + "just another destination view.").modifiers(Padding.with(8)),
+                                + "just another destination view.").modifiers(padding(8)),
                         Toggle.make(t -> t.style(ToggleStyle.SWITCH).isOn(dark).label("Dark mode")),
-                        Text.make(volumeLabel).modifiers(Padding.with(8)),
+                        Text.make(volumeLabel).modifiers(padding(8)),
                         Slider.make(s -> s.value(volume).in(0f, 100f)));
     }
 }

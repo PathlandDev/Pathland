@@ -34,16 +34,16 @@ public final class CornerRadius implements ViewModifier {
         this.config = config;
     }
 
-    public static CornerRadius with(float value) {
+    static CornerRadius with(float value) {
         return Configurators.modifier(Config::new, CornerRadius::new, c -> c.radius(value));
     }
 
-    public static CornerRadius with(Signal<Float> value) {
+    static CornerRadius with(Signal<Float> value) {
         return Configurators.modifier(Config::new, CornerRadius::new, c -> c.radius(value));
     }
 
     /** Configure the corner radius. */
-    public static CornerRadius with(Consumer<Config> configure) {
+    static CornerRadius with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new CornerRadius(config);

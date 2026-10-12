@@ -61,7 +61,7 @@ public final class Border implements ViewModifier {
     }
 
     /** Configure the border. */
-    public static Border with(Consumer<Config> configure) {
+    static Border with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Border(config);

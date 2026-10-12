@@ -6,7 +6,7 @@ package com.pathland.view;
 public final class ColorInvert implements ViewModifier {
 
     /** Invert. */
-    public static ColorInvert with() {
+    static ColorInvert with() {
         return new ColorInvert();
     }
 

@@ -35,17 +35,17 @@ public final class Visible implements ViewModifier {
     }
 
     /** Show ({@code visible} = shown). */
-    public static Visible with(boolean visible) {
+    static Visible with(boolean visible) {
         return Configurators.modifier(Config::new, Visible::new, c -> c.visible(visible));
     }
 
     /** Show ({@code visible} = shown), reactive. */
-    public static Visible with(Signal<Boolean> visible) {
+    static Visible with(Signal<Boolean> visible) {
         return Configurators.modifier(Config::new, Visible::new, c -> c.visible(visible));
     }
 
     /** Configure the visibility. */
-    public static Visible with(Consumer<Config> configure) {
+    static Visible with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Visible(config);

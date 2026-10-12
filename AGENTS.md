@@ -232,10 +232,12 @@ apps. Components and modifiers:
 - **Custom views and styles use the configurator** (spec DSL.md §2): an
   app-authored `View` with values implements `Configurable<View.Config>`, holds a
   **`private` constructor**, and exposes
-  `static ViewBuilder<View, Config> with(Consumer<Config>)`; a style
-  (`ButtonStyle`/`LabelStyle`/`AudioStyle`/`VideoStyle`) expose
-  `static X with(Consumer<Config>)` returning the style value (e.g.
-  `BorderedButtonStyle.with(b -> b.padding(..).background(..)…)`). Creation goes
+  `static ViewBuilder<View, Config> make(Consumer<Config>)`; a style
+  (`ButtonStyle`/`LabelStyle`/`AudioStyle`/`VideoStyle`) expose a
+  **lowercase static factory** on their own type returning the style value
+  (`PlayerControlsStyle.playerControlsStyle(s -> s…)`), mirroring the library's
+  `Modifiers.*` lowercase functions (e.g.
+  `borderedButtonStyle(b -> b.padding(..).background(..)…)`). Creation goes
   through the configurator, never a parameterized constructor. The
   `pathland-view-processor` `ViewAuthoringProcessor` **errors** on
   public/protected constructors **with parameters** in custom `View` **and**
@@ -256,31 +258,34 @@ apps. Components and modifiers:
   `View` value applies modifiers through the interface default
   `View.modifiers(...)`. Values are a
   fluent per-view `Config` (`VStack.make(v -> v.alignment(...).spacing(8))`,
-  `Text.make(t -> t.text("hi"))`); modifiers are `ViewModifier` values
-  (`Padding.with(p -> p.uniform(16))`) or — for single values — the value itself
+  `Text.make(t -> t.text("hi"))`); modifiers are `ViewModifier` values built by
+  the **`Modifiers` facade's lowercase functions** — one
+  `import static com.pathland.view.Modifiers.*;` brings the whole modifier
+  vocabulary (`padding(p -> p.uniform(16))`, `frame(f -> f.width(100))`,
+  `borderedButtonStyle(b -> …)`) — or, for single values, the value itself
   (`FontWeight.BOLD`, `Font.headline()`, a `ButtonStyle`). The `View` interface has
   **no per-modifier sugar** (`font`/`navigate`/`environment`/`onPathChange` were
   removed — use `.modifiers(Font…)`, `.modifiers(NavigationIntent.navigate(…))`,
-  `.modifiers(EnvironmentBinding.with(e -> e.key(…).value(…)))`,
-  `.modifiers(PathChange.with(p -> p.listener(…)))`), and the `*Mod` shims
+  `.modifiers(environmentBinding(e -> e.key(…).value(…)))`,
+  `.modifiers(pathChange(p -> p.listener(…)))`), and the `*Mod` shims
   (`EnvironmentMod`→`EnvironmentBinding`, `router/NavigationMod`→`NavigationIntent`,
   `PathChangeMod`→`PathChange`, `FontWeightMod`→`FontWeight`, …) are **removed**.
 - **Single-value shortcuts (spec DSL.md §2)**: a view/modifier whose config has a
   designated primary member also exposes a single-value construction overload that
   is pure sugar for the lambda — views construct with `make(value)` / `make(Signal<T>)`
-  (`Text.make("hi")`), modifiers with `with(value)` (`Padding.with(16)`,
-  `FontSize.with(sizeSignal)`). Multi-member configs (`Padding.edges`, `Offset`,
+  (`Text.make("hi")`), modifiers with the lowercase function's value form
+  (`padding(16)`, `fontSize(sizeSignal)`). Multi-member configs (`Padding.edges`, `Offset`,
   `Gauge`, `Border`, …) have **no** shortcut — use the lambda. The shortcut delegates
-  to the same `make(Consumer<Config>)` (views) / `with(Consumer<Config>)` (modifiers)
-  factory via the package-private
+  to the same `make(Consumer<Config>)` (views) / `Modifiers` facade
+  (modifiers) factory via the package-private
   `Configurators` helper (one construction path). The former `.of(...)` construction
   factories are **removed** — a shortcut (or the lambda / `.children(...)` / empty
   `make()` for config-less views) replaces every one. Only data/branch factories keep
   `of`: `Color.of/rgb/argb/token`, `Case.of`, `Fit.of`, `EnvironmentKey.of`,
   `Route.of`, `Params.of`, `Signals.*`.
   Sizing is the `Frame` modifier value
-  (`Frame.with(f -> f.width(w).height(h).alignment(..))` and the lambda
-  configurator `Frame.with(f -> f.minWidth(..).maxWidth(..).alignment(..))`
+  (`frame(f -> f.width(w).height(h).alignment(..))` and the lambda
+  configurator `frame(f -> f.minWidth(..).maxWidth(..).alignment(..))`
   (min/ideal/max bounds)); all
   compile to the same `WIDTH`/`HEIGHT`/`ALIGNMENT`/min-max `SET_PROPERTY`s.
   Typed enums

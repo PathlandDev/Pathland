@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 
 /**
  * The SwiftUI-like {@code frame} sizing modifier — a {@link ViewModifier} value
- * applied with {@code .modifiers(Frame.with(f -> …))}: a fixed {@code width}/
+ * applied with {@code .modifiers(frame(f -> …))}: a fixed {@code width}/
  * {@code height} ({@code ±∞} normalized to {@code Commands.Size.FILL}), an
  * {@code ALIGNMENT}, and the min/ideal/max bounds. Every value member is
  * signal-capable (spec DSL.md §2).
@@ -136,8 +136,8 @@ public final class Frame implements ViewModifier {
         this.config = config;
     }
 
-    /** Configure a frame with {@code .modifiers(Frame.with(f -> …))}. */
-    public static Frame with(Consumer<Config> configure) {
+    /** Configure a frame with {@code .modifiers(frame(f -> …))}. */
+    static Frame with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Frame(config);

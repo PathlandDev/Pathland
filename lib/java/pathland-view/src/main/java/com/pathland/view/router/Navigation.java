@@ -30,7 +30,7 @@ import java.util.function.Predicate;
  *
  * <p>The active router is also available as a scoped environment value
  * ({@link #ROUTER}): provide it at the app root via
- * {@code root.modifiers(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router)))}
+ * {@code root.modifiers(environmentBinding(e -> e.key(Navigation.ROUTER).value(router)))}
  * (or a {@code NavigationContainer} scopes it to its destination subtree), and any
  * component reads {@code Environment.value(ROUTER)} during render — no constructor
  * threading.

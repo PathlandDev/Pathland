@@ -25,6 +25,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static com.pathland.view.Modifiers.*;
 
 /**
  * The split navigation demo (spec PRIMITIVES.md — `NavigationSplitView` → `HStack`
@@ -50,7 +51,7 @@ class SplitNavDemoTest {
         var activePath = signal(initialPath);
         RenderResult result = new Emitter(sink).mount(
                 new SplitNavDemo().modifiers(
-                        EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))), env());
+                        environmentBinding(e -> e.key(Platform.ACTIVE_PATH).value(activePath))), env());
         return new Mount(result, activePath);
     }
 

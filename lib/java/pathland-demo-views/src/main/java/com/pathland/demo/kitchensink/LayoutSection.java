@@ -18,6 +18,7 @@ import com.pathland.view.CornerRadius;
 import com.pathland.view.FontSize;
 import com.pathland.view.Offset;
 import com.pathland.view.Padding;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -29,41 +30,41 @@ public final class LayoutSection implements View {
     @Override
     public View body() {
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         Grid.children(
                                 cell("1"), cell("2"), cell("3"),
                                 cell("4"), cell("5"), cell("6")),
-                        LazyVStack.make() .modifiers(Padding.with(4))
+                        LazyVStack.make() .modifiers(padding(4))
                                 .children(
                                         Text.make("Lazy row A"),
                                         Text.make("Lazy row B"),
                                         Text.make("Lazy row C")),
-                        HStack.make() .modifiers(Frame.with(f -> f.width(260).alignment(Alignment.CENTER)))
+                        HStack.make() .modifiers(frame(f -> f.width(260).alignment(Alignment.CENTER)))
                                 .children(
                                         Text.make("Left"),
 Spacer.make().modifiers(),
                                         Text.make("Right")),
-                        ZStack.make() .modifiers(Padding.with(4))
+                        ZStack.make() .modifiers(padding(4))
                                 .children(
-Rectangle.make().modifiers(Frame.with(f -> f.width(180).height(80).alignment(Alignment.CENTER)))
+Rectangle.make().modifiers(frame(f -> f.width(180).height(80).alignment(Alignment.CENTER)))
                                                 .modifiers(
-                                                        Background.with(Color.rgb(0xE3, 0xF2, 0xFD)),
-                                                        CornerRadius.with(8)),
+                                                        background(Color.rgb(0xE3, 0xF2, 0xFD)),
+                                                        cornerRadius(8)),
                                         Text.make("badge").modifiers(
-                                                FontSize.with(12),
-                                                Padding.with(4),
-                                                Background.with(Color.rgb(0xFF, 0xC1, 0x07)),
-                                                CornerRadius.with(4),
-                                                Offset.with(o -> o.x(0).y(28)))),
+                                                fontSize(12),
+                                                padding(4),
+                                                background(Color.rgb(0xFF, 0xC1, 0x07)),
+                                                cornerRadius(4),
+                                                offset(o -> o.x(0).y(28)))),
 Divider.make().modifiers());
         return SectionCard.make("Layout · Grid / Lazy / HStack+Spacer / ZStack / Divider").children(content);
     }
 
     private static View cell(String label) {
         return Text.make(label).modifiers(
-                Padding.with(12),
-                Background.with(Color.rgb(0xF3, 0xF4, 0xF6)),
-                CornerRadius.with(6));
+                padding(12),
+                background(Color.rgb(0xF3, 0xF4, 0xF6)),
+                cornerRadius(6));
     }
 }

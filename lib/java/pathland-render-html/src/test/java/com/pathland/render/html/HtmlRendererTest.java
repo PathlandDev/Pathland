@@ -30,6 +30,8 @@ import com.pathland.view.signal.Signals;
 import com.pathland.view.signal.WritableSignal;
 import com.pathland.view.Font;
 
+import static com.pathland.view.Modifiers.*;
+
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -137,14 +139,14 @@ Divider.make().modifiers(),
         // A generic stack with a NAVIGATION role renders as a <nav> landmark; the
         // element conveys the role, so no redundant ARIA attribute is emitted.
         View nav = VStack.children(Text.make(t -> t.text("Menu")))
-                .modifiers(AccessibilityRole.with(a -> a.role(Roles.NAVIGATION)));
+                .modifiers(accessibilityRole(a -> a.role(Roles.NAVIGATION)));
         String navHtml = renderer().renderFragment(frameOf(nav), 1);
         assertTrue(navHtml.contains("<nav "), "navigation role -> <nav>");
         assertFalse(navHtml.contains("role=\"navigation\""), "nav conveys the role (no ARIA attr)");
 
         // A generic Text with a HEADER (heading) role renders as <h2>.
         View heading = Text.make(t -> t.text("Title"))
-                .modifiers(AccessibilityRole.with(a -> a.role(Roles.HEADER)));
+                .modifiers(accessibilityRole(a -> a.role(Roles.HEADER)));
         String headingHtml = renderer().renderFragment(frameOf(heading), 1);
         assertTrue(headingHtml.contains("<h2 "), "header role -> <h2>");
 
@@ -163,7 +165,7 @@ Divider.make().modifiers(),
     void rejectsControlRoles() {
         // Interactive/control roles are NOT roles — they are intrinsic to the
         // control components, so the DSL rejects them.
-        assertThrows(IllegalArgumentException.class, () -> AccessibilityRole.with(20), "reserved code rejected");
+        assertThrows(IllegalArgumentException.class, () -> accessibilityRole(20), "reserved code rejected");
     }
 
     @Test
@@ -174,8 +176,8 @@ Divider.make().modifiers(),
                 Video.make(v -> v.source("https://example.com/sample.mp4")),
                 Audio.make(a -> a.source("https://example.com/sample.mp3")),
                 Image.make(i -> i.source("/_pathland/assets/icons/home.svg"))
-                        .modifiers(AccessibilityLabel.with(l -> l.text("Home")))
-                        .modifiers(ScaledToFill.with())
+                        .modifiers(accessibilityLabel(l -> l.text("Home")))
+                        .modifiers(scaledToFill())
         );
         String html = renderer().renderFragment(frameOf(root), 1);
         assertTrue(html.contains("<video"), "video element");

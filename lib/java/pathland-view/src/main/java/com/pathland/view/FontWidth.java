@@ -34,16 +34,16 @@ public final class FontWidth implements ViewModifier {
         this.config = config;
     }
 
-    public static FontWidth with(float value) {
+    static FontWidth with(float value) {
         return Configurators.modifier(Config::new, FontWidth::new, c -> c.value(value));
     }
 
-    public static FontWidth with(Signal<Float> value) {
+    static FontWidth with(Signal<Float> value) {
         return Configurators.modifier(Config::new, FontWidth::new, c -> c.value(value));
     }
 
     /** Configure the font width. */
-    public static FontWidth with(Consumer<Config> configure) {
+    static FontWidth with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new FontWidth(config);

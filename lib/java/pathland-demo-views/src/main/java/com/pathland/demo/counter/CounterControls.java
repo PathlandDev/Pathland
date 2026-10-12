@@ -7,6 +7,7 @@ import com.pathland.view.View;
 import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.Padding;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -22,7 +23,7 @@ public final class CounterControls implements View {
     public View body() {
         var countLabel = computed(() -> "Count: " + count.get());
         return HStack.make()
-                .modifiers(Padding.with(16))
+                .modifiers(padding(16))
                 .children(
                         Text.make(countLabel),
                         Button.make(b -> b.title("Increment").action(() -> count.update(v -> v + 1))));

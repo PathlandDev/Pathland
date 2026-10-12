@@ -6,7 +6,7 @@ package com.pathland.view;
 public final class ScaledToFit implements ViewModifier {
 
     /** Fit. */
-    public static ScaledToFit with() {
+    static ScaledToFit with() {
         return new ScaledToFit();
     }
 

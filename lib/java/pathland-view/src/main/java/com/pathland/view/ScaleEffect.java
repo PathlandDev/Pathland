@@ -34,16 +34,16 @@ public final class ScaleEffect implements ViewModifier {
         this.config = config;
     }
 
-    public static ScaleEffect with(float value) {
+    static ScaleEffect with(float value) {
         return Configurators.modifier(Config::new, ScaleEffect::new, c -> c.value(value));
     }
 
-    public static ScaleEffect with(Signal<Float> value) {
+    static ScaleEffect with(Signal<Float> value) {
         return Configurators.modifier(Config::new, ScaleEffect::new, c -> c.value(value));
     }
 
     /** Configure the scale. */
-    public static ScaleEffect with(Consumer<Config> configure) {
+    static ScaleEffect with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ScaleEffect(config);

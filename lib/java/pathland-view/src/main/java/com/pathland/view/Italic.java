@@ -6,7 +6,7 @@ package com.pathland.view;
 public final class Italic implements ViewModifier {
 
     /** Italic. */
-    public static Italic with() {
+    static Italic with() {
         return new Italic();
     }
 

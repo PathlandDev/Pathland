@@ -3,6 +3,7 @@ package com.pathland.demo.music;
 import com.pathland.view.*;
 import com.pathland.view.signal.Signal;
 import com.pathland.view.state.State;
+import static com.pathland.view.Modifiers.*;
 
 import static com.pathland.view.signal.Signals.computed;
 
@@ -98,7 +99,7 @@ public final class MusicPlayerView implements View {
                                 .position(position.signal())
                                 .playing(playing.signal())
                                 .seekRequest(seekRequest.signal())),
-                        HStack.make() .modifiers(Padding.with(16))
+                        HStack.make() .modifiers(padding(16))
                                 .children(PlayerBar.make(p -> p
                                         .trackIndex(trackIndex.signal())
                                         .position(position.signal())
@@ -107,23 +108,23 @@ public final class MusicPlayerView implements View {
                                         .seekRequest(seekRequest.signal())
                                         .volumeRequest(volumeRequest.signal()))
                                         .modifiers(
-                                                Border.with(b -> b.color(MusicPlayerView.BAR_BORDER).width(1).radius(500)),
-                                                Shadow.with(10))),
+                                                border(b -> b.color(MusicPlayerView.BAR_BORDER).width(1).radius(500)),
+                                                shadow(10))),
                         subtitlePill(block, previous, current));
         View wideRow = HStack.make()
-                .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
+                .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(
                         mainArea,
-                        NowPlayingSidebar.make(s -> s.trackIndex(trackIndex.signal())).modifiers(Clipped.with()));
+                        NowPlayingSidebar.make(s -> s.trackIndex(trackIndex.signal())).modifiers(clipped()));
         View compactRow = HStack.make()
-                .modifiers(Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
+                .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(mainArea);
         return SizeThatFits.make(
                 Fit.of(wideRow, 1024f),
                 Fit.of(compactRow))
                 .modifiers(
-                        Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)),
-                        AccessibilityRole.with(Roles.MAIN));
+                        frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)),
+                        accessibilityRole(Roles.MAIN));
     }
 
     /** The karaoke lyric pill just above the floating player bar: always two
@@ -138,25 +139,25 @@ public final class MusicPlayerView implements View {
                     return p.isEmpty() ? lineAt(block.get(), current.get()) : p;
                 }))
                 .modifiers(
-                        FontSize.with(13),
+                        fontSize(13),
                         FontStyle.ITALIC,
-                        ForegroundStyle.with(Color.WHITE));
+                        foregroundStyle(Color.WHITE));
         View nextLine = Text
                 .make(computed(() -> {
                     String p = previous.get();
                     return p.isEmpty() ? "" : lineAt(block.get(), current.get());
                 }))
                 .modifiers(
-                        FontSize.with(13),
+                        fontSize(13),
                         FontStyle.ITALIC,
-                        ForegroundStyle.with(Color.argb(170, 255, 255, 255)));
+                        foregroundStyle(Color.argb(170, 255, 255, 255)));
         return VStack.make(v -> v.alignment(HorizontalAlignment.CENTER).spacing(2))
                 .modifiers(
-                        Padding.with(p -> p.edges(6, 12, 6, 12)),
-                        CornerRadius.with(8),
-                        Offset.with(o -> o.x(0).y(-(BAR_HEIGHT + 24))),
-                        AllowsHitTesting.with(false),
-                        Background.with(computed(() -> block.get().isEmpty() || current.get() < 0
+                        padding(p -> p.edges(6, 12, 6, 12)),
+                        cornerRadius(8),
+                        offset(o -> o.x(0).y(-(BAR_HEIGHT + 24))),
+                        allowsHitTesting(false),
+                        background(computed(() -> block.get().isEmpty() || current.get() < 0
                                 ? Color.CLEAR
                                 : Color.argb(128, 0, 0, 0))))
                 .children(currentLine, nextLine);

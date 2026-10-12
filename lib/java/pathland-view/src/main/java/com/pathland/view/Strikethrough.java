@@ -35,22 +35,22 @@ public final class Strikethrough implements ViewModifier {
     }
 
     /** Strikethrough ({@code on} = strikethrough). */
-    public static Strikethrough with(boolean on) {
+    static Strikethrough with(boolean on) {
         return Configurators.modifier(Config::new, Strikethrough::new, c -> c.enabled(on));
     }
 
     /** Strikethrough ({@code on} = strikethrough), reactive. */
-    public static Strikethrough with(Signal<Boolean> on) {
+    static Strikethrough with(Signal<Boolean> on) {
         return Configurators.modifier(Config::new, Strikethrough::new, c -> c.enabled(on));
     }
 
     /** Strikethrough (enabled). */
-    public static Strikethrough with() {
+    static Strikethrough with() {
         return new Strikethrough(new Config().enabled(true));
     }
 
     /** Configure the strikethrough. */
-    public static Strikethrough with(Consumer<Config> configure) {
+    static Strikethrough with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Strikethrough(config);
