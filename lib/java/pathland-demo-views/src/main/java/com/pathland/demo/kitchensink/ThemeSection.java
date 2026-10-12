@@ -12,6 +12,7 @@ import com.pathland.view.View;
 import com.pathland.view.Background;
 import com.pathland.view.Padding;
 import com.pathland.view.ForegroundStyle;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -26,22 +27,22 @@ public final class ThemeSection implements View {
     @Override
     public View body() {
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         Text.make("color.primary — accent text")
-                                .modifiers(ForegroundStyle.with(Color.token("color.primary"))),
+                                .modifiers(foregroundStyle(Color.token("color.primary"))),
                         Text.make("control.accent — control accent")
-                                .modifiers(ForegroundStyle.with(Color.token("control.accent"))),
-                        HStack.make() .modifiers(Padding.with(4))
+                                .modifiers(foregroundStyle(Color.token("control.accent"))),
+                        HStack.make() .modifiers(padding(4))
                                 .children(
-Rectangle.make().modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
-                                                .modifiers(Background.with(Color.token("color.surface"))),
-Rectangle.make().modifiers(Frame.with(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
-                                                .modifiers(Background.with(Color.token("dark.color.surface")))),
+Rectangle.make().modifiers(frame(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(background(Color.token("color.surface"))),
+Rectangle.make().modifiers(frame(f -> f.width(120).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(background(Color.token("dark.color.surface")))),
                         Text.make("control.background — a token-referenced control fill")
                                 .modifiers(
-                                        Padding.with(8),
-                                        Background.with(Color.token("control.background"))));
+                                        padding(8),
+                                        background(Color.token("control.background"))));
         return SectionCard.make("Theme · design tokens + SET_DESIGN_TOKEN overrides").children(content);
     }
 }

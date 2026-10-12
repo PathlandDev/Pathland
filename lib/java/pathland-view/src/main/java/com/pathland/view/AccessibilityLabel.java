@@ -35,17 +35,17 @@ public final class AccessibilityLabel implements ViewModifier {
         this.signal = signal;
     }
 
-    public static AccessibilityLabel with(String value) {
+    static AccessibilityLabel with(String value) {
         return Configurators.modifier(Config::new, c -> new AccessibilityLabel(c.signal), c -> c.text(value));
     }
 
     /** A reactive label: a change re-emits only this node's {@code LABEL}. */
-    public static AccessibilityLabel with(Signal<String> signal) {
+    static AccessibilityLabel with(Signal<String> signal) {
         return Configurators.modifier(Config::new, c -> new AccessibilityLabel(c.signal), c -> c.text(signal));
     }
 
     /** Configure the accessibility label. */
-    public static AccessibilityLabel with(Consumer<Config> configure) {
+    static AccessibilityLabel with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new AccessibilityLabel(config.signal);

@@ -2,6 +2,7 @@ package com.pathland.demo.home;
 
 import com.pathland.view.*;
 import com.pathland.view.router.NavigationIntent;
+import static com.pathland.view.Modifiers.*;
 
 /**
  * The Home content area of the {@code SplitNavDemo}: a titled welcome pane with a short
@@ -17,15 +18,15 @@ public final class HomeView implements View {
         return VStack.make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(24))
                 // The destination content region → `<main>`.
                 .modifiers(
-                        AccessibilityRole.with(Roles.MAIN),
-                        Padding.with(24))
+                        accessibilityRole(Roles.MAIN),
+                        padding(24))
                 .children(
                         VStack
                                 .make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2))
                                 .children(
                                         // The destination title is a heading → `<h2>`.
                                         Text.make("Home").modifiers(
-                                                FontSize.with(24), FontWeight.BOLD, AccessibilityRole.with(Roles.HEADER)),
+                                                fontSize(24), FontWeight.BOLD, accessibilityRole(Roles.HEADER)),
                                         Text.make("A master-detail (split) navigation demo: the menu on the left "
                                                 + "drives the content area on the right.")),
                         // Declarative route-change: resolves to the nearest enclosing router.

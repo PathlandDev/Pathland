@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static com.pathland.view.Modifiers.*;
 
 /** Full pipeline: view tree -> emitter -> opcodes -> codec -> HTML-ready frame. */
 class EmitterTest {
@@ -162,7 +163,7 @@ class EmitterTest {
         WritableSignal<Integer> count = Signals.signal(0);
         Signal<Color> color = Signals.computed(() -> count.get() % 2 == 0 ? Color.RED : Color.BLUE);
         emitter.mount(VStack.children(
-                Text.make(t -> t.text("x")).modifiers(ForegroundStyle.with(f -> f.color(color)))),
+                Text.make(t -> t.text("x")).modifiers(foregroundStyle(f -> f.color(color)))),
                 Environment.DEFAULT);
 
         count.set(1);
@@ -179,11 +180,11 @@ class EmitterTest {
     void constantPropertyEmitsAtMountButRegistersNoReemit() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
-        // A constant-bound property (Background.with(c -> c.color(C)) ≡ a constant signal)
+        // A constant-bound property (background(c -> c.color(C)) ≡ a constant signal)
         // and a reactive text: changing the text re-emits ONLY the text.
         WritableSignal<String> text = Signals.signal("a");
         View root = VStack.children(
-                Text.make(t -> t.text("x")).modifiers(Background.with(b -> b.color(Color.RED))),
+                Text.make(t -> t.text("x")).modifiers(background(b -> b.color(Color.RED))),
                 Text.make(t -> t.text(text)));
         emitter.mount(root, Environment.DEFAULT);
 
@@ -205,11 +206,11 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         View root = Text.make(t -> t.text("x"))
-                .modifiers(Visible.with(v -> v.visible(false)))          // U8, low byte 0
-                .modifiers(Disabled.with(d -> d.disabled(true)))         // U8, low byte 0 (disabled -> ENABLED=0)
-                .modifiers(FontFamily.with(f -> f.family("Georgia")))    // STRING
-                .modifiers(LineLimit.with(l -> l.value(2)))              // U32
-                .modifiers(ScaledToFit.with());                          // CONTENT_MODE enum code as F32
+                .modifiers(visible(v -> v.visible(false)))          // U8, low byte 0
+                .modifiers(disabled(d -> d.disabled(true)))         // U8, low byte 0 (disabled -> ENABLED=0)
+                .modifiers(fontFamily(f -> f.family("Georgia")))    // STRING
+                .modifiers(lineLimit(l -> l.value(2)))              // U32
+                .modifiers(scaledToFit());                          // CONTENT_MODE enum code as F32
         emitter.mount(root, Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
@@ -246,8 +247,8 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         View root = Text.make(t -> t.text("x"))
-                .modifiers(ForegroundStyle.with(f -> f.color(Color.token("color.primary"))))
-                .modifiers(Background.with(b -> b.color(Color.token("dark.color.surface"))));
+                .modifiers(foregroundStyle(f -> f.color(Color.token("color.primary"))))
+                .modifiers(background(b -> b.color(Color.token("dark.color.surface"))));
         emitter.mount(root, Environment.DEFAULT);
         ProtocolFrame frame = sink.frame();
 
@@ -547,7 +548,7 @@ class EmitterTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(Text.make(t -> t.text("x"))
-                .modifiers(ForegroundStyle.with(f -> f.color(Color.token("color.primary")))),
+                .modifiers(foregroundStyle(f -> f.color(Color.token("color.primary")))),
                 Environment.DEFAULT);
 
         byte[] wire = FrameCodec.encodeFrame(sink.frame());

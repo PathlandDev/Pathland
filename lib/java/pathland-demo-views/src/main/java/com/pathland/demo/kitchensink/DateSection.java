@@ -8,6 +8,7 @@ import com.pathland.view.View;
 import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.Padding;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -24,11 +25,11 @@ public final class DateSection implements View {
         var dateLabel = computed(() ->
                 java.time.LocalDate.ofEpochDay(days.get()).toString());
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         DatePicker.make(d -> d.mode(DatePickerMode.DATE).selection(days.signal())),
                         Text.make(dateLabel).modifiers(
-                                Padding.with(4)));
+                                padding(4)));
         return SectionCard.make("DatePicker · PARAMETER::SET_DATE").children(content);
     }
 }

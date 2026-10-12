@@ -46,10 +46,10 @@ however they own the mapping does, and the vocabulary can grow.
 
 ## Semantics
 
-- **Authoring**: `Icon.with(i -> i.name(IconName.PLAY))` /
-  `Icon.with(i -> i.name("play"))` (a canonical string, or an app-extension
-  name), `Label.with(l -> l.title(title).icon(icon))`,
-  `Button.with(b -> b.action(action)).children(Icon.with(i -> i.name(…)))`.
+- **Authoring**: `Icon.make(i -> i.name(IconName.PLAY))` /
+  `Icon.make(i -> i.name("play"))` (a canonical string, or an app-extension
+  name), `Label.make(l -> l.title(title).icon(icon))`,
+  `Button.make(b -> b.action(action)).children(Icon.make(i -> i.name(…)))`.
 - **Size / tint**: `FONT_SIZE` / `COLOR` as on text. Sized like a symbol (the
   renderer owns its default size); tinted for the active scheme.
 - **Reactivity**: the name is a single `Signal<String>` — a change re-emits only

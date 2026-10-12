@@ -8,6 +8,7 @@ import com.pathland.view.VStack;
 import com.pathland.view.View;
 import com.pathland.view.ForegroundStyle;
 import com.pathland.view.Padding;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -22,12 +23,12 @@ public final class CounterView implements View {
         return VStack.make()
                 // The app's main content region → `<main>`.
                 .modifiers(
-                        AccessibilityRole.with(Roles.MAIN),
-                        Padding.with(24))
+                        accessibilityRole(Roles.MAIN),
+                        padding(24))
                 .children(
                         new CounterControls(),
                         new NameField(),
                         Text.make("Pathland · per-session · 16-byte deltas")
-                                .modifiers(ForegroundStyle.with(Color.rgb(0x88, 0x88, 0x88))));
+                                .modifiers(foregroundStyle(Color.rgb(0x88, 0x88, 0x88))));
     }
 }

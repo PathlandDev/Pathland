@@ -35,17 +35,17 @@ public final class AllowsHitTesting implements ViewModifier {
     }
 
     /** Hit-testing on ({@code on} = participates). */
-    public static AllowsHitTesting with(boolean on) {
+    static AllowsHitTesting with(boolean on) {
         return Configurators.modifier(Config::new, AllowsHitTesting::new, c -> c.allowed(on));
     }
 
     /** Hit-testing on ({@code on} = participates), reactive. */
-    public static AllowsHitTesting with(Signal<Boolean> on) {
+    static AllowsHitTesting with(Signal<Boolean> on) {
         return Configurators.modifier(Config::new, AllowsHitTesting::new, c -> c.allowed(on));
     }
 
     /** Configure hit testing. */
-    public static AllowsHitTesting with(Consumer<Config> configure) {
+    static AllowsHitTesting with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new AllowsHitTesting(config);

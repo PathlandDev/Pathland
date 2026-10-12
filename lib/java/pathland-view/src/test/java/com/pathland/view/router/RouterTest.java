@@ -13,6 +13,8 @@ import com.pathland.view.Properties;
 import com.pathland.view.Text;
 import com.pathland.view.ValueTypes;
 import com.pathland.view.View;
+
+import static com.pathland.view.Modifiers.*;
 import com.pathland.view.emit.Emitter;
 import com.pathland.view.emit.ProtocolFrame;
 import com.pathland.view.emit.FrameOpcodeSink;
@@ -485,9 +487,9 @@ class RouterTest {
         };
 
         // innermost first: `.modifiers(EnvironmentBinding.inner)` applied innermost → nearest wins.
-        View innerWins = probe.modifiers(EnvironmentBinding.with(e -> e.key(key).value("inner")))
-                .modifiers(EnvironmentBinding.with(e -> e.key(key).value("outer")));
-        View outerOnly = probe.modifiers(EnvironmentBinding.with(e -> e.key(key).value("outer")));
+        View innerWins = probe.modifiers(environmentBinding(e -> e.key(key).value("inner")))
+                .modifiers(environmentBinding(e -> e.key(key).value("outer")));
+        View outerOnly = probe.modifiers(environmentBinding(e -> e.key(key).value("outer")));
 
         // Render twice: the scope must not leak between renders (restore).
         new Emitter(sink()).mount(innerWins, Environment.DEFAULT);
@@ -519,8 +521,8 @@ class RouterTest {
             }
         };
         View root = probe
-                .modifiers(EnvironmentBinding.with(e -> e.key(plainKey).value("hello")))
-                .modifiers(EnvironmentBinding.with(e -> e.key(sigKey).value(host)));
+                .modifiers(environmentBinding(e -> e.key(plainKey).value("hello")))
+                .modifiers(environmentBinding(e -> e.key(sigKey).value(host)));
 
         new Emitter(sink()).mount(root, Environment.DEFAULT);
         assertEquals("hello", plainSeen.get(0), "a plain value is wrapped and readable via .get()");
@@ -554,7 +556,7 @@ class RouterTest {
         };
 
         new Emitter(sink()).mount(
-                composite.modifiers(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router))),
+                composite.modifiers(environmentBinding(e -> e.key(Navigation.ROUTER).value(router))),
                 Environment.DEFAULT);
         assertEquals(1, seen.size());
         assertEquals(router, seen.get(0), "the env value is visible through the signal read");
@@ -586,7 +588,7 @@ class RouterTest {
         }
 
         new Emitter(sink()).mount(
-                new SidebarLike().modifiers(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(router))),
+                new SidebarLike().modifiers(environmentBinding(e -> e.key(Navigation.ROUTER).value(router))),
                 Environment.DEFAULT);
         assertEquals(1, seen.size());
         assertEquals(router, seen.get(0), "a field read before the scope resolves at render time");
@@ -595,7 +597,7 @@ class RouterTest {
         seen.clear();
         Router other = Navigation.navigator().route("/", Text.make(t -> t.text("y"))).build();
         new Emitter(sink()).mount(
-                new SidebarLike().modifiers(EnvironmentBinding.with(e -> e.key(Navigation.ROUTER).value(other))),
+                new SidebarLike().modifiers(environmentBinding(e -> e.key(Navigation.ROUTER).value(other))),
                 Environment.DEFAULT);
         assertEquals(1, seen.size());
         assertEquals(other, seen.get(0), "a fresh render under a different binding resolves it");
@@ -715,10 +717,10 @@ class RouterTest {
                 com.pathland.view.signal.Signals.signal("/");
         java.util.List<String> seen = new java.util.ArrayList<>();
         View root = Text.make(t -> t.text("x"))
-                .modifiers(PathChange.with(p -> p.listener(seen::add)));
+                .modifiers(pathChange(p -> p.listener(seen::add)));
 
         new Emitter(sink()).mount(
-                root.modifiers(EnvironmentBinding.with(
+                root.modifiers(environmentBinding(
                         e -> e.key(com.pathland.view.Platform.ACTIVE_PATH).value(activePath))),
                 Environment.DEFAULT);
         assertEquals(java.util.List.of("/"), seen, "fires initially with the current path");

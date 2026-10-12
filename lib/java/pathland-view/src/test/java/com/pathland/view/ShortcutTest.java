@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static com.pathland.view.Modifiers.*;
 
 /**
  * The single-value {@code with(value)} shortcuts (spec DSL.md §2) are pure sugar
@@ -25,16 +26,16 @@ class ShortcutTest {
 
     @Test
     void paddingShortcutEqualsLambda() {
-        PathlandNode shortcut = Text.make("x").modifiers(Padding.with(16)).render(Environment.DEFAULT);
-        PathlandNode lambda = Text.make("x").modifiers(Padding.with(p -> p.uniform(16))).render(Environment.DEFAULT);
+        PathlandNode shortcut = Text.make("x").modifiers(padding(16)).render(Environment.DEFAULT);
+        PathlandNode lambda = Text.make("x").modifiers(padding(p -> p.uniform(16))).render(Environment.DEFAULT);
         assertEquals(lambda.properties.get(Properties.PADDING), shortcut.properties.get(Properties.PADDING));
         assertEquals(16f, shortcut.properties.get(Properties.PADDING));
     }
 
     @Test
     void fontSizeShortcutEqualsLambda() {
-        PathlandNode shortcut = Text.make("x").modifiers(FontSize.with(18f)).render(Environment.DEFAULT);
-        PathlandNode lambda = Text.make("x").modifiers(FontSize.with(s -> s.size(18f))).render(Environment.DEFAULT);
+        PathlandNode shortcut = Text.make("x").modifiers(fontSize(18f)).render(Environment.DEFAULT);
+        PathlandNode lambda = Text.make("x").modifiers(fontSize(s -> s.size(18f))).render(Environment.DEFAULT);
         assertEquals(lambda.properties.get(Properties.FONT_SIZE), shortcut.properties.get(Properties.FONT_SIZE));
     }
 
@@ -49,8 +50,8 @@ class ShortcutTest {
     @Test
     void accessibilityRoleShortcutValidates() {
         // A non-semantic code is rejected on the shortcut path too.
-        assertThrows(IllegalArgumentException.class, () -> AccessibilityRole.with(20));
-        assertNotNull(AccessibilityRole.with(Roles.HEADER));
+        assertThrows(IllegalArgumentException.class, () -> accessibilityRole(20));
+        assertNotNull(accessibilityRole(Roles.HEADER));
     }
 
     @Test

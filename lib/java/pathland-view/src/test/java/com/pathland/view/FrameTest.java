@@ -5,9 +5,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static com.pathland.view.Modifiers.*;
 
 /**
- * The {@code Frame} view-modifier surface: the {@code Frame.with(f -> …)} lambda
+ * The {@code frame(...)} modifier surface: the {@code frame(f -> …)} lambda
  * configurator ({@code width}/{@code height}/{@code alignment} + min/ideal/max
  * bounds), applied via {@code .modifiers(...)}. The wire is unchanged — every form
  * emits the same F32 properties (WIDTH/HEIGHT, ALIGNMENT, MIN/IDEAL/MAX bounds)
@@ -23,7 +24,7 @@ class FrameTest {
 
     @Test
     void widthEmitsWidthAndNoAlignment() {
-        PathlandNode node = render(Frame.with(f -> f.width(200f)));
+        PathlandNode node = render(frame(f -> f.width(200f)));
         assertEquals(200f, node.properties.get(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT));
         assertFalse(node.properties.containsKey(Properties.ALIGNMENT), "alignment must not be forced");
@@ -31,7 +32,7 @@ class FrameTest {
 
     @Test
     void heightEmitsHeightOnly() {
-        PathlandNode node = render(Frame.with(f -> f.height(24f)));
+        PathlandNode node = render(frame(f -> f.height(24f)));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));
         assertFalse(node.properties.containsKey(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.ALIGNMENT));
@@ -39,7 +40,7 @@ class FrameTest {
 
     @Test
     void widthHeightEmitsBothAxesAndNoAlignment() {
-        PathlandNode node = render(Frame.with(f -> f.width(100).height(24)));
+        PathlandNode node = render(frame(f -> f.width(100).height(24)));
         assertEquals(100f, node.properties.get(Properties.WIDTH));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));
         assertFalse(node.properties.containsKey(Properties.ALIGNMENT));
@@ -47,7 +48,7 @@ class FrameTest {
 
     @Test
     void withAlignmentStillEmitted() {
-        PathlandNode node = render(Frame.with(f -> f.width(100).height(24).alignment(Alignment.CENTER)));
+        PathlandNode node = render(frame(f -> f.width(100).height(24).alignment(Alignment.CENTER)));
         assertEquals(100f, node.properties.get(Properties.WIDTH));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));
         assertEquals((float) Alignment.CENTER.wire(), node.properties.get(Properties.ALIGNMENT));
@@ -55,7 +56,7 @@ class FrameTest {
 
     @Test
     void widthWithAlignmentStillEmitted() {
-        PathlandNode node = render(Frame.with(f -> f.width(200f).alignment(Alignment.TOP_LEADING)));
+        PathlandNode node = render(frame(f -> f.width(200f).alignment(Alignment.TOP_LEADING)));
         assertEquals(200f, node.properties.get(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT));
         assertEquals((float) Alignment.TOP_LEADING.wire(), node.properties.get(Properties.ALIGNMENT));
@@ -63,14 +64,14 @@ class FrameTest {
 
     @Test
     void infiniteWidthNormalizesToFill() {
-        PathlandNode node = render(Frame.with(f -> f.width(Float.POSITIVE_INFINITY)));
+        PathlandNode node = render(frame(f -> f.width(Float.POSITIVE_INFINITY)));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT));
     }
 
     @Test
     void infiniteAxesNormalizeToFillWithAlignment() {
-        PathlandNode node = render(Frame.with(f -> f
+        PathlandNode node = render(frame(f -> f
                 .width(Float.POSITIVE_INFINITY)
                 .height(Float.POSITIVE_INFINITY)
                 .alignment(Alignment.TOP_LEADING)));
@@ -81,14 +82,14 @@ class FrameTest {
 
     @Test
     void negativeInfinityAlsoNormalizesToFill() {
-        PathlandNode node = render(Frame.with(f -> f.width(Float.NEGATIVE_INFINITY).height(24f)));
+        PathlandNode node = render(frame(f -> f.width(Float.NEGATIVE_INFINITY).height(24f)));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
         assertEquals(24f, node.properties.get(Properties.HEIGHT));
     }
 
     @Test
     void nanAxisIsOmitted() {
-        PathlandNode node = render(Frame.with(f -> f.width(260f).height(Float.NaN).alignment(Alignment.CENTER)));
+        PathlandNode node = render(frame(f -> f.width(260f).height(Float.NaN).alignment(Alignment.CENTER)));
         assertEquals(260f, node.properties.get(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT), "a NaN axis is not emitted");
         assertEquals((float) Alignment.CENTER.wire(), node.properties.get(Properties.ALIGNMENT));
@@ -98,7 +99,7 @@ class FrameTest {
 
     @Test
     void builderEmitsMinIdealMaxOnRequestedAxes() {
-        PathlandNode node = render(Frame.with(f -> f
+        PathlandNode node = render(frame(f -> f
                 .minWidth(100)
                 .idealWidth(200)
                 .maxWidth(300)
@@ -115,7 +116,7 @@ class FrameTest {
 
     @Test
     void builderCombinesFixedAxesWithBounds() {
-        PathlandNode node = render(Frame.with(f -> f
+        PathlandNode node = render(frame(f -> f
                 .width(200)
                 .minWidth(100)
                 .maxWidth(300)
@@ -129,13 +130,13 @@ class FrameTest {
 
     @Test
     void builderInfinityAxesNormalizeToFill() {
-        PathlandNode node = render(Frame.with(f -> f.width(Float.POSITIVE_INFINITY)));
+        PathlandNode node = render(frame(f -> f.width(Float.POSITIVE_INFINITY)));
         assertEquals(Commands.Size.FILL, node.properties.get(Properties.WIDTH));
     }
 
     @Test
     void builderInfiniteBoundsAreOmitted() {
-        PathlandNode node = render(Frame.with(f -> f
+        PathlandNode node = render(frame(f -> f
                 .maxWidth(Float.POSITIVE_INFINITY)
                 .idealHeight(0f)
                 .maxHeight(Float.NEGATIVE_INFINITY)));
@@ -146,7 +147,7 @@ class FrameTest {
 
     @Test
     void emptyBuilderEmitsNoFrameProperties() {
-        PathlandNode node = render(Frame.with(f -> {}));
+        PathlandNode node = render(frame(f -> {}));
         assertFalse(node.properties.containsKey(Properties.WIDTH));
         assertFalse(node.properties.containsKey(Properties.HEIGHT));
         assertFalse(node.properties.containsKey(Properties.MIN_WIDTH));

@@ -2,6 +2,7 @@ package com.pathland.demo.music;
 
 import com.pathland.view.*;
 import com.pathland.view.signal.WritableSignal;
+import static com.pathland.view.Modifiers.*;
 
 import java.util.function.Consumer;
 
@@ -17,8 +18,9 @@ import static com.pathland.view.signal.Signals.computed;
  * emits a hidden media element alongside these app-defined controls (real
  * playback, app-driven).
  *
- * <p>Configured via {@code PlayerControlsStyle.with(s -> s.trackIndex(...)…)} —
- * a private constructor keeps creation on the configurator (spec DSL.md §2).
+ * <p>Configured via {@code playerControlsStyle(s -> s.trackIndex(...)…)} — an
+ * app-authored style exposes a lowercase static factory on its own type (spec
+ * DSL.md §5.6); a private constructor keeps creation on the configurator.
  */
 public final class PlayerControlsStyle implements AudioStyle {
 
@@ -70,7 +72,7 @@ public final class PlayerControlsStyle implements AudioStyle {
     }
 
     /** Configure the player-controls style's signals. */
-    public static PlayerControlsStyle with(Consumer<Config> configure) {
+    public static PlayerControlsStyle playerControlsStyle(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new PlayerControlsStyle(config);
@@ -86,48 +88,48 @@ public final class PlayerControlsStyle implements AudioStyle {
         var playControl = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Button.make(b -> b.action(() -> { prev(); restartSeek(); })).modifiers(FontSize.with(20))
+                        Button.make(b -> b.action(() -> { prev(); restartSeek(); })).modifiers(fontSize(20))
                                         .children(Icon.make(IconName.SKIP_BACK)),
-                        Button.make(b -> b.action(() -> configuration.playing().update(v -> !v))).modifiers(FontSize.with(28))
+                        Button.make(b -> b.action(() -> configuration.playing().update(v -> !v))).modifiers(fontSize(28))
                                         .children(Icon.make(transportIcon)),
-                        Button.make(b -> b.action(() -> { next(); restartSeek(); })).modifiers(FontSize.with(20))
+                        Button.make(b -> b.action(() -> { next(); restartSeek(); })).modifiers(fontSize(20))
                                         .children(Icon.make(IconName.SKIP_FORWARD)));
         var trackInfo = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         Image.make(computed(() -> current.get().cover())).modifiers(
-                                Frame.with(f -> f.width(36).height(36)),
-                                ScaledToFit.with()),
-                        VStack.make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2)).modifiers(Frame.with(f -> f.width(160f)))
+                                frame(f -> f.width(36).height(36)),
+                                scaledToFit()),
+                        VStack.make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(2)).modifiers(frame(f -> f.width(160f)))
                                 .children(
                                         Text.make(computed(() -> current.get().title()))
-                                                .modifiers(FontWeight.SEMIBOLD, LineLimit.with(1)),
+                                                .modifiers(FontWeight.SEMIBOLD, lineLimit(1)),
                                         Text.make(computed(() -> current.get().artist()))
                                                 .modifiers(
-                                                        FontSize.with(13),
-                                                        ForegroundStyle.with(MusicPlayerView.SECONDARY_FG),
-                                                        LineLimit.with(1))));
+                                                        fontSize(13),
+                                                        foregroundStyle(MusicPlayerView.SECONDARY_FG),
+                                                        lineLimit(1))));
 
         var volumeView = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Icon.make(IconName.VOLUME).modifiers(FontSize.with(16)),
+                        Icon.make(IconName.VOLUME).modifiers(fontSize(16)),
                         Slider.make(s -> s.value(volumeControl).in(0f, 1f)));
 
         var compactControls = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         playControl,
-                        Text.make("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
+                        Text.make("|").modifiers(fontSize(18), foregroundStyle(MusicPlayerView.SECONDARY_FG)),
                         trackInfo);
 
         var controls = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         playControl,
-                        Text.make("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
+                        Text.make("|").modifiers(fontSize(18), foregroundStyle(MusicPlayerView.SECONDARY_FG)),
                         trackInfo,
-                        Text.make("|").modifiers(FontSize.with(18), ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
+                        Text.make("|").modifiers(fontSize(18), foregroundStyle(MusicPlayerView.SECONDARY_FG)),
                         volumeView);
 
         var groups = SizeThatFits.make(
@@ -146,8 +148,8 @@ public final class PlayerControlsStyle implements AudioStyle {
                                         () -> MusicPlayerView.at(config.trackIndex.get()).duration()))
                                 .in(0f, 100f).onEditingChanged(seek::onEditingChanged))
                                 .modifiers(
-                                        Frame.with(f -> f.width(Float.POSITIVE_INFINITY)),
-                                        Padding.with(p -> p.edges(0, 16, 0, 16))));
+                                        frame(f -> f.width(Float.POSITIVE_INFINITY)),
+                                        padding(p -> p.edges(0, 16, 0, 16))));
     }
 
     /** Previous track (wraps around); the seek restarts via the command binding. */

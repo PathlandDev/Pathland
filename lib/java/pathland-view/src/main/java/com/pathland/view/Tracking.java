@@ -34,16 +34,16 @@ public final class Tracking implements ViewModifier {
         this.config = config;
     }
 
-    public static Tracking with(float value) {
+    static Tracking with(float value) {
         return Configurators.modifier(Config::new, Tracking::new, c -> c.value(value));
     }
 
-    public static Tracking with(Signal<Float> value) {
+    static Tracking with(Signal<Float> value) {
         return Configurators.modifier(Config::new, Tracking::new, c -> c.value(value));
     }
 
     /** Configure the tracking. */
-    public static Tracking with(Consumer<Config> configure) {
+    static Tracking with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Tracking(config);

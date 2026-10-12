@@ -25,12 +25,12 @@ public final class PointerEvents implements ViewModifier {
         this.mask = mask;
     }
 
-    public static PointerEvents with(int mask) {
+    static PointerEvents with(int mask) {
         return Configurators.modifier(Config::new, c -> new PointerEvents(c.mask), c -> c.mask(mask));
     }
 
     /** Configure the listener mask. */
-    public static PointerEvents with(Consumer<Config> configure) {
+    static PointerEvents with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new PointerEvents(config.mask);

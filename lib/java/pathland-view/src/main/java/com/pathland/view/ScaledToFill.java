@@ -6,7 +6,7 @@ package com.pathland.view;
 public final class ScaledToFill implements ViewModifier {
 
     /** Fill. */
-    public static ScaledToFill with() {
+    static ScaledToFill with() {
         return new ScaledToFill();
     }
 

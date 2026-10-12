@@ -40,7 +40,7 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   `NavigationContainer` content area on the right that swaps on selection
   (`router.navigate` — direct selection, no back-stack growth). Mounted directly
   by both demos' `SessionApp` with the active platform path provided as an
-  environment value — **`new SplitNavDemo().with(EnvironmentBinding.with(e ->
+  environment value — **`new SplitNavDemo().modifiers(environmentBinding(e ->
   e.key(Platform.ACTIVE_PATH).value(activePath)))`**; `SplitNavDemo.body()` reads it
   and builds a **bound** router
   (`Navigation.navigator()...build(activePath)`) — external path changes are
@@ -51,12 +51,12 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   first message on the WebSocket), so deep links render correctly on the first
   frame; env re-routing sets `activePath`, `NAVIGATE`-with-URL sets `activePath`,
   and `NAVIGATE`-back forwards into `RenderResult.navigateHandler`. The view also
-  demonstrates **`PathChange.with(p -> p.listener(...))`** (logging the active
+  demonstrates **`pathChange(p -> p.listener(...))`** (logging the active
   path). The
   active menu row is highlighted **reactively** via `Navigation.isActive(router,
   path)` → a computed signal that drives
-  `Background.with(b -> b.color(Signal<Color>))` /
-  `ForegroundStyle.with(f -> f.color(Signal<Color>))`, so a selection re-emits only
+  `background(b -> b.color(Signal<Color>))` /
+  `foregroundStyle(f -> f.color(Signal<Color>))`, so a selection re-emits only
   that row's color properties. Content areas are router-free, self-contained views
   instantiated inline in the route table:
   - `HomeView` — titled welcome pane with a declarative
@@ -67,13 +67,13 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   - `SettingsView` — a switch + volume slider on local signals (`/settings`).
   - A `fallback` ("Not Found") for any other path.
 
-- **Semantic accessibility roles** (`AccessibilityRole.with(Roles.*)`,
+- **Semantic accessibility roles** (`accessibilityRole(Roles.*)`,
   `com.pathland.view.Roles`): the demo root views carry the `MAIN` landmark
   (`HomeView`/`SettingsView`/`KitchenSinkView`/`CounterView`), the sidebar is
   `NAVIGATION`, and `SectionCard` titles are `HEADER` headings — the web
   renderer reflects these as native semantic elements (`<nav>`, `<main>`,
   `<h2>`). Sidebar menu rows are **real `Button`s styled with
-  `PlainButtonStyle`** (`Button.with(b -> b.action(..)).children(label)`) — control semantics are
+  `PlainButtonStyle`** (`Button.make(b -> b.action(..)).children(label)`) — control semantics are
   intrinsic to the component, not a `ROLE`; a custom-looking button is a
   `Button` + `ButtonStyle`.
 - **Real asset refs**: the demo's non-icon assets are served from the reserved
@@ -81,7 +81,7 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   relative-path bug on deep routes). The old hand-made
   `icons/home|kitchen|settings|save|cloud|status.svg` assets were **removed** —
   the sidebar, player controls, and label section now use the semantic
-  **`Icon`** primitive (`Icon.with(IconName.…)`, spec/ICONS.md) that every
+  **`Icon`** primitive (`Icon.make(IconName.…)`, spec/ICONS.md) that every
   renderer maps to its native symbol set.
 - **`MediaSection`** (kitchensink): a `Video` + `Audio` node with remote sample
   URLs — playback interaction is renderer-native (`controls`); the app supplies

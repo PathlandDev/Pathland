@@ -35,16 +35,16 @@ public final class ForegroundStyle implements ViewModifier {
         this.signal = signal;
     }
 
-    public static ForegroundStyle with(Color value) {
+    static ForegroundStyle with(Color value) {
         return Configurators.modifier(Config::new, c -> new ForegroundStyle(c.signal), c -> c.color(value));
     }
 
-    public static ForegroundStyle with(Signal<Color> signal) {
+    static ForegroundStyle with(Signal<Color> signal) {
         return Configurators.modifier(Config::new, c -> new ForegroundStyle(c.signal), c -> c.color(signal));
     }
 
     /** Configure the foreground style. */
-    public static ForegroundStyle with(Consumer<Config> configure) {
+    static ForegroundStyle with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new ForegroundStyle(config.signal);

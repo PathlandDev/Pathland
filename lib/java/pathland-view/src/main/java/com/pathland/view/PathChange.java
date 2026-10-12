@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 /**
  * Registers a listener for the active platform path (spec DSL.md §4.5) — the
  * {@code onOpenURL} idea generalized across platforms. Applied as a modifier value:
- * {@code .modifiers(PathChange.with(p -> p.listener(path -> …)))}. The listener fires
+ * {@code .modifiers(pathChange(p -> p.listener(path -> …)))}. The listener fires
  * whenever the {@link Platform#ACTIVE_PATH} signal changes (including its initial
  * value); a {@code Router}, when present, binds to the same signal.
  */
@@ -29,8 +29,8 @@ public final class PathChange implements ViewModifier {
         this.listener = config.listener;
     }
 
-    /** Configure the path-change listener ({@code PathChange.with(p -> p.listener(...))}). */
-    public static PathChange with(Consumer<Config> configure) {
+    /** Configure the path-change listener ({@code pathChange(p -> p.listener(...))}). */
+    static PathChange with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new PathChange(config);

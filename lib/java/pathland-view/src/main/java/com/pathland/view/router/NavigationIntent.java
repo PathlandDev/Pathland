@@ -11,11 +11,11 @@ import com.pathland.view.ViewModifier;
  * threaded by hand:
  *
  * <pre>{@code
- * Button.with(b -> b.title("Go to kitchen").action(...))
+ * Button.make(b -> b.title("Go to kitchen").action(...))
  *       .modifiers(NavigationIntent.navigate("/kitchen"));   // direct selection
- * Button.with(b -> b.title("Open item").action(...))
+ * Button.make(b -> b.title("Open item").action(...))
  *       .modifiers(NavigationIntent.push("/item/1"));        // drill-down (back-stack)
- * Button.with(b -> b.title("Swap").action(...))
+ * Button.make(b -> b.title("Swap").action(...))
  *       .modifiers(NavigationIntent.replace("/settings"));   // guard redirect / replace
  * }</pre>
  */

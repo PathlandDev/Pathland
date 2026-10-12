@@ -67,8 +67,8 @@ DSL must be *shaped* by them:
 - **Declarative structure, never positions.** The DSL expresses `WHAT` — a
   `VStack`, a `HStack`, a `Text` — and constraint properties (spacing, padding,
   alignment, size hints). It never computes bounds and never emits rects.
-- **Exactly three authoring operations.** Every view exposes the same three
-  operations — **configure values** (§5.0 `with`), **apply modifiers**
+- **Exactly three authoring operations.** Views expose the same three
+  operations — **configure values** (§5.0 `make`, §2), **apply modifiers**
   (`modifiers`), and, for content-bearing views, **supply children**
   (`children`). The three are a single fluent builder: any of them may be the
   first call and they may be chained in **any order** (see
@@ -94,7 +94,7 @@ DSL must be *shaped* by them:
   **not** a separate syntax: they are `ViewModifier` values the library ships,
   composed into a view through the shared `modifiers(...)` operation. There is
   **no per-modifier sugar on the view type** — `Padding` applied via
-  `.modifiers(Padding.with(p -> p.uniform(16)))`. Core and application-authored
+  `.modifiers(padding(p -> p.uniform(16)))`. Core and application-authored
   modifiers share the same surface.
 - **A modifier's type is named for the modifier it applies — never with a
   `Mod` suffix.** Where a modifier applies a single value (a font, a font
@@ -111,8 +111,9 @@ DSL must be *shaped* by them:
   styles (`ToggleStyle`, `PickerStyle`, `TextStyle`) are the same surface.
 - **Values vs modifiers.** Structural/layout parameters and a control's bound
   value (`alignment`, `spacing`, `text`, `isOn`, `selection`) are **values**
-  configured through `with(...)`. Everything decorative (padding, color, font,
-  frame, border, …) is a **modifier** applied through `modifiers(...)`.
+  configured through a view's `make(...)`. Everything decorative (padding, color, font,
+  frame, border, …) is a **modifier** applied through `modifiers(...)` (constructed
+  by a lowercase function — `padding(...)`, `frame(...)`).
 - **`Color` is never a modifier.** `Color` has SwiftUI's dual identity: it is a
   **View** (a layout-greedy solid-color fill) and a **Data Type** (passed into
   style-taking modifiers: `.foregroundStyle`, `.background`, `.border`,
@@ -196,8 +197,8 @@ value exposes **two forms** — a raw value and a `Signal<T>`:
 
 ```
 Text.make(t -> t.text("hi"))            ≡  Text.make(t -> t.text(constant("hi")))
-Visible.with(v -> v.visible(flagSignal))      // reactive visibility
-Frame.with(f -> f.width(widthSignal))         // reactive sizing, layout included
+visible(v -> v.visible(flagSignal))      // reactive visibility
+frame(f -> f.width(widthSignal))         // reactive sizing, layout included
 ```
 
 The **raw form is sugar for a constant signal**; a **non-constant** signal
@@ -220,18 +221,18 @@ functions + traits, package constructors + methods, kwargs) — see [§9.3](#93-
 **Single-value shortcuts.** A view or modifier whose config designates a
 **primary value member** MAY also expose a single-value construction overload that
 is pure sugar for the config-builder lambda (views construct with `make(value)`,
-modifiers with `with(value)`):
+modifiers with the lowercase function's value form):
 
 ```
 Text.make("hi")            ≡  Text.make(t -> t.text("hi"))
-Padding.with(16)           ≡  Padding.with(p -> p.uniform(16))
-FontSize.with(sizeSignal)  ≡  FontSize.with(s -> s.size(sizeSignal))
+padding(16)           ≡  padding(p -> p.uniform(16))
+fontSize(sizeSignal)  ≡  fontSize(s -> s.size(sizeSignal))
 ```
 
 A shortcut emits **byte-identical** opcodes and carries no extra semantics
 (source-surface only — [§Conformance](#conformance)). The config-lambda form
-(`make(c -> …)` for views, `with(c -> …)` for modifiers) remains canonical and
-always sufficient.
+(`make(c -> …)` for views, `modifierName(c -> …)` for modifiers) remains
+canonical and always sufficient.
 
 - **Only a designated primary member** gets a shortcut. A config with **several
   equivalent members** (`Padding` edges, `Offset`/`Position` x+y, `Gauge`
@@ -242,12 +243,13 @@ always sufficient.
 - **Both forms exist where the member has both**: a raw value and a
   `Signal<T>` (same rule as the config setters above). A two-way control value is
   never a shortcut — it stays a `WritableSignal` config member.
-- The Java realization declares the overloads per type (Java statics are not
-  inherited); they delegate to the existing `make(Consumer<Config>)` (views) /
-  `with(Consumer<Config>)` (modifiers, styles) factory, so
-  there is exactly one construction path. The former `.of(...)` factories are
-  **removed** — a shortcut (or the lambda / `.children(...)` / empty `make()` for
-  config-less views) replaces every one.
+- The Java realization factors both forms through the **single `Modifiers`
+  facade**: one `import static com.pathland.view.Modifiers.*;` brings in every
+  lowercase modifier/style function, and each delegates to the same construction
+  path (spec §5.6). There is exactly one construction path; the former `.of(...)`
+  factories and the former per-type `with(...)` overloads are **removed** — a
+  shortcut (or the lambda / `.children(...)` / empty `make()` for config-less
+  views) replaces every one.
 
 Eligible members (non-exhaustive; the companion tables list the surface):
 
@@ -261,7 +263,7 @@ Per-language adaptation summary:
 | Language | Case | Composition mechanism | Example |
 |----------|------|-----------------------|---------|
 | SwiftUI | `camelCase` | trailing closures + result builder | `VStack(alignment: .center, spacing: 8) { Text("x").padding(16) }` |
-| Java (`com.pathland.view`) | `camelCase` | `make(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.make(v -> v.spacing(8)).children(Text.make(t -> t.text("x")).modifiers(Padding.with(p -> p.uniform(16))))` |
+| Java (`com.pathland.view`) | `camelCase` | `make(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.make(v -> v.spacing(8)).children(Text.make(t -> t.text("x")).modifiers(padding(p -> p.uniform(16))))` |
 | Rust (`pathland-view`) | `snake_case` | assoc fn + `ViewExt` trait + macros | `vstack![text("x").modifiers(Padding(16.0))]` |
 
 ---
@@ -316,7 +318,7 @@ A control's value is **a `WritableSignal<T>` supplied as a config value**:
 
 Reading is equally fine-grained: a node's text or a property value can be
 **bound to a signal** — `Text.make(t -> t.text(signal))`,
-`.modifiers(ForegroundStyle.with(f -> f.color(colorSignal)), FontSize.with(s -> s.size(sizeSignal)))`
+`.modifiers(foregroundStyle(f -> f.color(colorSignal)), fontSize(s -> s.size(sizeSignal)))`
 — so a change re-emits only the bound node.
 
 ### 3.3 Persisted state (`State<T>`)
@@ -408,7 +410,7 @@ Component ids and wire behavior come from
 [PRIMITIVES.md](./PRIMITIVES.md); the tables here give the **DSL signature**.
 The `Java DSL` column is the reference realization shape. Every view exposes
 the three operations of [§2](#2-canonical-signature-notation): `values` via
-`with(...)`, `modifiers(...)`, and — where noted — `children(...)`.
+`make(...)`, `modifiers(...)`, and — where noted — `children(...)`.
 
 ### 4.1 Primitive drawing & visual nodes
 
@@ -425,8 +427,8 @@ the three operations of [§2](#2-canonical-signature-notation): `values` via
 | `Gauge` | `Gauge(value:in:)` | `Gauge.make(g -> g.value(float).min(float).max(float))` | `GAUGE` 0x08; `VALUE`/`MIN_VALUE`/`MAX_VALUE` |
 | `Label` | `Label("title", systemImage:)` (composite) | `Label.make(l -> l.title(String).icon(String))` / `Label.make(l -> l.title(Signal<String>).icon(Icon))` — title-only, icon-only, or reactive parts; content supplied by the scoped `labelStyle` | a composite `HSTACK` + `IMAGE` (or `ICON`) + `TEXT` (PRIMITIVES.md "Composite views") — no component ID |
 
-**`with()` for values.** Primitives are constructed by `with(...)`; a
-config-less primitive (`Divider`, `Spacer`) takes an empty `with()`. `Label` is
+**`make()` for values.** Primitives are constructed by `make(...)`; a
+config-less primitive (`Divider`, `Spacer`) takes an empty `make()`. `Label` is
 a **composite** whose content is produced by the scoped `labelStyle`
 ([§5.7](#57-styleable-controls-the-style-contract)): `DefaultLabelStyle` renders
 an `HStack` of an optional `IMAGE` and an optional `TEXT`,
@@ -451,7 +453,7 @@ Containers are **content-bearing**: they expose `children(...)`.
 | `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.make(g -> g.rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
 | `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.make(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `LAZY_VSTACK` 0x1B |
 | `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.make(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `LAZY_HSTACK` 0x1C |
-| `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.make(s -> s.axis(Axis)).children(Fit.with(f -> f.view(View).minWidth(float))...)` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
+| `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.make(s -> s.axis(Axis)).children(Fit.of(view, minWidth))...` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
 
 Alignment is **position-only** (SwiftUI/Compose parity): `VStack` takes a
 `HorizontalAlignment` (leading/center/trailing), `HStack` a `VerticalAlignment`
@@ -517,8 +519,8 @@ bitmask (transport-aware event guards) — see [EVENTS.md](./EVENTS.md).
 
 | Gesture | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL |
 |---------|---------------------------|----------|----------|
-| tap | `.onTapGesture { action }` | `.modifiers(TapGesture.with(g -> g.action(Runnable)))` | `.modifiers(TapGesture::new(f))` |
-| raw pointer | `.gesture` composition from raw inputs | `.modifiers(PointerEvents.with(p -> p.mask(int)))` | `.pointer_events(u32 mask)` |
+| tap | `.onTapGesture { action }` | `.modifiers(tapGesture(g -> g.action(Runnable)))` | `.modifiers(TapGesture::new(f))` |
+| raw pointer | `.gesture` composition from raw inputs | `.modifiers(pointerEvents(p -> p.mask(int)))` | `.pointer_events(u32 mask)` |
 
 Tap is **not** a protocol event: it is composed app-side from `POINTER_DOWN`
 then `POINTER_UP` on the same target (`EVENT_LISTENERS` bits 0|2). The
@@ -665,7 +667,7 @@ or without navigation), like SwiftUI's `onOpenURL` generalized across platforms:
 // host (always):
 WritableSignal<String> activePath = Signals.signal(env.route());
 RenderResult result = emitter.mount(
-        root.modifiers(EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
+        root.modifiers(environmentBinding(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
         new Environment(state));
 // re-route on deep-link/popstate:
 activePath.set(env.route());   // or from a NAVIGATE event URL
@@ -678,7 +680,7 @@ activePath.set(env.route());   // or from a NAVIGATE event URL
   writable (the host's `Platform.ACTIVE_PATH` always is). The initial value is
   guard-processed.
 - **An app without navigation** just observes the signal — read it, or register
-  a `PathChange` modifier listener (`PathChange.with(p -> p.listener(path -> …))`)
+  a `PathChange` modifier listener (`pathChange(p -> p.listener(path -> …))`)
   (fires on every change, including the initial value).
 - `NAVIGATE` events: a URL updates `activePath` (→ bound router re-routes guard-aware,
   `PathChange` listeners fire); a back (no URL) goes to `RenderResult.navigateHandler`
@@ -775,9 +777,9 @@ property** (`.frame` → `WIDTH` + `HEIGHT` + `ALIGNMENT`; `.border` →
 **One mechanism for every modifier.** Each entry below is a `ViewModifier`
 value, applied through the shared `modifiers(...)` operation:
 
-- **Parameterized modifiers** are created with `Modifier.with(c -> …)` (a fluent
-  config builder), e.g. `Padding.with(p -> p.uniform(16))`,
-  `Frame.with(f -> f.width(100).height(24))`.
+- **Parameterized modifiers** are created with `modifierName(c -> …)` (a fluent
+  config builder), e.g. `padding(p -> p.uniform(16))`,
+  `frame(f -> f.width(100).height(24))`.
 - **Single-value modifiers** — a font, a font weight, an alignment, a style —
   may pass the value directly, because the value type *is* the modifier: `FontWeight.BOLD`,
   `TextAlignment.CENTER`, `Font.headline()`, `MyButtonStyle`.
@@ -785,15 +787,15 @@ value, applied through the shared `modifiers(...)` operation:
 
 ```java
 Text.make(t -> t.text("hi")).modifiers(
-        Padding.with(p -> p.uniform(16)),
-        Frame.with(f -> f.width(100).height(24)),
+        padding(p -> p.uniform(16)),
+        frame(f -> f.width(100).height(24)),
         FontWeight.BOLD,
-        ForegroundStyle.with(f -> f.color(Color.WHITE)));
+        foregroundStyle(f -> f.color(Color.WHITE)));
 ```
 
 **Every value member above also accepts a `Signal<T>`**
-(`Padding.with(p -> p.uniform(padSignal))`, `Frame.with(f -> f.width(widthSignal))`,
-`ForegroundStyle.with(f -> f.color(colorSignal))`) — see
+(`padding(p -> p.uniform(padSignal))`, `frame(f -> f.width(widthSignal))`,
+`foregroundStyle(f -> f.color(colorSignal))`) — see
 [§2](#2-canonical-signature-notation). Because `Signal<T>` is a
 `@FunctionalInterface`, a bare lambda would also type-check but would register a
 (harmless) reactive binding; **literals MUST use the raw overload**, which wraps
@@ -803,18 +805,18 @@ a `ConstantSignal` (no binding overhead).
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
-| `frame` | `.frame(width:height:alignment:)` | `.modifiers(Frame.with(f -> f.width(w).height(h).alignment(a)))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
-| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.modifiers(Frame.with(f -> f.minWidth(..).idealWidth(..).maxWidth(..).minHeight(..).idealHeight(..).maxHeight(..)))` (the `Frame.Builder`; unset bounds are omitted — NaN/∞ = no limit) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
-| `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.modifiers(Padding.with(p -> p.uniform(float)))` / `.modifiers(Padding.with(p -> p.edges(t, r, b, l)))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
-| `offset` | `.offset(x:y:)` | `.modifiers(Offset.with(o -> o.x(float).y(float)))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
-| `position` | `.position(x:y:)` | `.modifiers(Position.with(p -> p.x(float).y(float)))` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 |
-| `fixedSize` | `.fixedSize()` / `.fixedSize(horizontal:vertical:)` | `.modifiers(FixedSize.with())` / `.modifiers(FixedSize.with(f -> f.horizontal(boolean).vertical(boolean)))` | `FIXED_SIZE_HORIZONTAL` 0x0018, `FIXED_SIZE_VERTICAL` 0x0019 |
-| `layoutPriority` | `.layoutPriority(_:)` | `.modifiers(LayoutPriority.with(l -> l.value(float)))` | `LAYOUT_PRIORITY` 0x001A |
-| `zIndex` | `.zIndex(_:)` | `.modifiers(ZIndex.with(z -> z.value(float)))` | `Z_INDEX` 0x100F |
-| `aspectRatio` | `.aspectRatio(_:contentMode:)` | `.modifiers(AspectRatio.with(a -> a.ratio(float).contentMode(ContentMode)))` | `ASPECT_RATIO` 0x001B, `CONTENT_MODE` 0x001C |
-| `scaledToFit` | `.scaledToFit()` | `.modifiers(ScaledToFit.with())` | `CONTENT_MODE` 0x001C (Fit) |
-| `scaledToFill` | `.scaledToFill()` | `.modifiers(ScaledToFill.with())` | `CONTENT_MODE` 0x001C (Fill) |
-| `minimumScaleFactor` | `.minimumScaleFactor(_:)` | `.modifiers(MinimumScaleFactor.with(m -> m.value(float)))` | `MINIMUM_SCALE_FACTOR` 0x001D |
+| `frame` | `.frame(width:height:alignment:)` | `.modifiers(frame(f -> f.width(w).height(h).alignment(a)))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
+| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.modifiers(frame(f -> f.minWidth(..).idealWidth(..).maxWidth(..).minHeight(..).idealHeight(..).maxHeight(..)))` (the `Frame.Builder`; unset bounds are omitted — NaN/∞ = no limit) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
+| `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.modifiers(padding(p -> p.uniform(float)))` / `.modifiers(padding(p -> p.edges(t, r, b, l)))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
+| `offset` | `.offset(x:y:)` | `.modifiers(offset(o -> o.x(float).y(float)))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
+| `position` | `.position(x:y:)` | `.modifiers(position(p -> p.x(float).y(float)))` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 |
+| `fixedSize` | `.fixedSize()` / `.fixedSize(horizontal:vertical:)` | `.modifiers(fixedSize())` / `.modifiers(fixedSize(f -> f.horizontal(boolean).vertical(boolean)))` | `FIXED_SIZE_HORIZONTAL` 0x0018, `FIXED_SIZE_VERTICAL` 0x0019 |
+| `layoutPriority` | `.layoutPriority(_:)` | `.modifiers(layoutPriority(l -> l.value(float)))` | `LAYOUT_PRIORITY` 0x001A |
+| `zIndex` | `.zIndex(_:)` | `.modifiers(zIndex(z -> z.value(float)))` | `Z_INDEX` 0x100F |
+| `aspectRatio` | `.aspectRatio(_:contentMode:)` | `.modifiers(aspectRatio(a -> a.ratio(float).contentMode(ContentMode)))` | `ASPECT_RATIO` 0x001B, `CONTENT_MODE` 0x001C |
+| `scaledToFit` | `.scaledToFit()` | `.modifiers(scaledToFit())` | `CONTENT_MODE` 0x001C (Fit) |
+| `scaledToFill` | `.scaledToFill()` | `.modifiers(scaledToFill())` | `CONTENT_MODE` 0x001C (Fill) |
+| `minimumScaleFactor` | `.minimumScaleFactor(_:)` | `.modifiers(minimumScaleFactor(m -> m.value(float)))` | `MINIMUM_SCALE_FACTOR` 0x001D |
 
 **Semantics**: `WIDTH`/`HEIGHT` use the sentinels `FILL` (−1.0 = expand) and
 `HUG_CONTENT` (−2.0 = intrinsic); omitting an axis leaves it to the native
@@ -829,24 +831,24 @@ absolute placement within the parent.
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
-| `font` | `.font(.system(size:))` | `.modifiers(Font.with(f -> f.system(float)))` / `Font.with(f -> f.system(size, weight, design))` | `FONT_SIZE` 0x1007 (+ `FONT_WEIGHT`/`FONT_DESIGN` when given) |
+| `font` | `.font(.system(size:))` | `.modifiers(Font.system(float))` / `Font.system(size, weight, design)` | `FONT_SIZE` 0x1007 (+ `FONT_WEIGHT`/`FONT_DESIGN` when given) |
 | `font` (predefined) | `.font(.largeTitle)` | `.modifiers(Font.headline())` (the `Font` value *is* the modifier) | `TEXT_STYLE` 0x1032 |
 | `fontWeight` | `.fontWeight(_:)` | `.modifiers(FontWeight.BOLD)` (the enum *is* the modifier) | `FONT_WEIGHT` 0x1008 (100–900) |
-| `font` (custom) | `.font(.custom(name:size:))` | `.modifiers(Font.with(f -> f.custom("Georgia", 20)))` | `FONT_FAMILY` 0x1009 |
-| `fontStyle` | `.italic()` / `.fontDesign(_:)` | `.modifiers(Italic.with())` / `.modifiers(FontStyle.ITALIC)` / `.modifiers(FontDesign.SERIF)` | `FONT_STYLE` 0x1017, `FONT_DESIGN` 0x1018 |
-| `fontWidth` | `.fontWidth(_:)` | `.modifiers(FontWidth.with(w -> w.value(float)))` | `FONT_WIDTH` 0x1019 |
-| `kerning` | `.kerning(_:)` | `.modifiers(Kerning.with(k -> k.value(float)))` | `KERNING` 0x101A |
-| `tracking` | `.tracking(_:)` | `.modifiers(Tracking.with(t -> t.value(float)))` | `TRACKING` 0x101B |
-| `baselineOffset` | `.baselineOffset(_:)` | `.modifiers(BaselineOffset.with(b -> b.value(float)))` | `BASELINE_OFFSET` 0x101C |
-| `lineSpacing` | `.lineSpacing(_:)` | `.modifiers(LineSpacing.with(l -> l.value(float)))` | `LINE_SPACING` 0x101D |
-| `lineLimit` | `.lineLimit(_:)` | `.modifiers(LineLimit.with(l -> l.value(int)))` | `LINE_LIMIT` 0x000B (0 = unlimited) |
+| `font` (custom) | `.font(.custom(name:size:))` | `.modifiers(Font.custom("Georgia", 20))` | `FONT_FAMILY` 0x1009 |
+| `fontStyle` | `.italic()` / `.fontDesign(_:)` | `.modifiers(italic())` / `.modifiers(FontStyle.ITALIC)` / `.modifiers(FontDesign.SERIF)` | `FONT_STYLE` 0x1017, `FONT_DESIGN` 0x1018 |
+| `fontWidth` | `.fontWidth(_:)` | `.modifiers(fontWidth(w -> w.value(float)))` | `FONT_WIDTH` 0x1019 |
+| `kerning` | `.kerning(_:)` | `.modifiers(kerning(k -> k.value(float)))` | `KERNING` 0x101A |
+| `tracking` | `.tracking(_:)` | `.modifiers(tracking(t -> t.value(float)))` | `TRACKING` 0x101B |
+| `baselineOffset` | `.baselineOffset(_:)` | `.modifiers(baselineOffset(b -> b.value(float)))` | `BASELINE_OFFSET` 0x101C |
+| `lineSpacing` | `.lineSpacing(_:)` | `.modifiers(lineSpacing(l -> l.value(float)))` | `LINE_SPACING` 0x101D |
+| `lineLimit` | `.lineLimit(_:)` | `.modifiers(lineLimit(l -> l.value(int)))` | `LINE_LIMIT` 0x000B (0 = unlimited) |
 | `multilineTextAlignment` | `.multilineTextAlignment(_:)` | `.modifiers(TextAlignment.CENTER)` (the enum *is* the modifier) | `TEXT_ALIGNMENT` 0x000C |
 | `truncationMode` | `.truncationMode(_:)` | `.modifiers(Truncation.TAIL)` (the enum *is* the modifier) | `TRUNCATION_MODE` 0x000D |
 | `textCase` | `.textCase(_:)` | `.modifiers(TextCase.UPPERCASE)` (the enum *is* the modifier) | `TEXT_CASE` 0x101E |
-| `underline` | `.underline()` | `.modifiers(Underline.with())` / `.modifiers(Underline.with(u -> u.enabled(boolean)))` | `UNDERLINE` 0x101F |
-| `strikethrough` | `.strikethrough()` | `.modifiers(Strikethrough.with())` / `.modifiers(Strikethrough.with(s -> s.enabled(boolean)))` | `STRIKETHROUGH` 0x1020 |
-| `foregroundStyle` | `.foregroundStyle(_:)` | `.modifiers(ForegroundStyle.with(f -> f.color(Color)))` / `.modifiers(ForegroundStyle.with(f -> f.color(Signal<Color>)))` | `COLOR` 0x100A |
-| `tint` | `.tint(_:)` | `.modifiers(Tint.with(t -> t.color(Color)))` | `TINT` 0x1030 |
+| `underline` | `.underline()` | `.modifiers(underline())` / `.modifiers(underline(u -> u.enabled(boolean)))` | `UNDERLINE` 0x101F |
+| `strikethrough` | `.strikethrough()` | `.modifiers(strikethrough())` / `.modifiers(strikethrough(s -> s.enabled(boolean)))` | `STRIKETHROUGH` 0x1020 |
+| `foregroundStyle` | `.foregroundStyle(_:)` | `.modifiers(foregroundStyle(f -> f.color(Color)))` / `.modifiers(foregroundStyle(f -> f.color(Signal<Color>)))` | `COLOR` 0x100A |
+| `tint` | `.tint(_:)` | `.modifiers(tint(t -> t.color(Color)))` | `TINT` 0x1030 |
 
 > **`Color` is never a modifier** — there is no `.color()` and
 > `.foregroundColor(_:)` is deprecated. Foreground styling is
@@ -856,22 +858,22 @@ absolute placement within the parent.
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
-| `background` | `.background(_:)` | `.modifiers(Background.with(b -> b.color(Color)))` / `.modifiers(Background.with(b -> b.color(Signal<Color>)))` | `BACKGROUND_COLOR` 0x1001 |
-| `border` | `.border(_:width:)` | `.modifiers(Border.with(b -> b.color(Color).width(float).radius(float)))` | `BORDER_COLOR` 0x1004, `BORDER_WIDTH` 0x1003, `BORDER_RADIUS` 0x1005 |
+| `background` | `.background(_:)` | `.modifiers(background(b -> b.color(Color)))` / `.modifiers(background(b -> b.color(Signal<Color>)))` | `BACKGROUND_COLOR` 0x1001 |
+| `border` | `.border(_:width:)` | `.modifiers(border(b -> b.color(Color).width(float).radius(float)))` | `BORDER_COLOR` 0x1004, `BORDER_WIDTH` 0x1003, `BORDER_RADIUS` 0x1005 |
 | `border` (edges) | `.border(_:width:edges:)` | (not exposed) | + `BORDER_EDGES` 0x1016 (u32 bitmask: `TOP`=1, `LEADING`=2, `BOTTOM`=4, `TRAILING`=8) |
-| `cornerRadius` | `.cornerRadius(_:)` | `.modifiers(CornerRadius.with(c -> c.radius(float)))` | `BORDER_RADIUS` 0x1005 |
-| `shadow` | `.shadow(color:radius:x:y:)` | `.modifiers(Shadow.with(s -> s.color(Color).radius(float).x(float).y(float)))` / `.modifiers(Shadow.with(s -> s.radius(float)))` | `SHADOW_COLOR` 0x1021, `SHADOW_RADIUS` 0x1022, `SHADOW_X` 0x1023, `SHADOW_Y` 0x1024 |
-| `opacity` | `.opacity(_:)` | `.modifiers(Opacity.with(o -> o.value(float)))` | `OPACITY` 0x100D |
-| `blur` | `.blur(radius:)` | `.modifiers(Blur.with(b -> b.radius(float)))` | `BLUR_RADIUS` 0x1025 |
-| `saturation` | `.saturation(_:)` | `.modifiers(Saturation.with(s -> s.value(float)))` | `SATURATION` 0x1026 |
-| `contrast` | `.contrast(_:)` | `.modifiers(Contrast.with(c -> c.value(float)))` | `CONTRAST` 0x1027 |
-| `brightness` | `.brightness(_:)` | `.modifiers(Brightness.with(b -> b.value(float)))` | `BRIGHTNESS` 0x1028 |
-| `grayscale` | `.grayscale(_:)` | `.modifiers(Grayscale.with(g -> g.value(float)))` | `GRAYSCALE` 0x1029 |
-| `hueRotation` | `.hueRotation(_:)` | `.modifiers(HueRotation.with(h -> h.degrees(float)))` | `HUE_ROTATION` 0x102A |
-| `colorMultiply` | `.colorMultiply(_:)` | `.modifiers(ColorMultiply.with(c -> c.color(Color)))` | `COLOR_MULTIPLY` 0x102B |
-| `colorInvert` | `.colorInvert()` | `.modifiers(ColorInvert.with())` | `COLOR_INVERT` 0x102C |
-| `clipped` | `.clipped()` | `.modifiers(Clipped.with())` | `CLIPS_TO_BOUNDS` 0x1010 |
-| `clipShape` | `.clipShape(_:)` | `.modifiers(ClipShape.with(c -> c.shape(ShapeKind)))` | `CLIPS_TO_BOUNDS` 0x1010 + `SHAPE_KIND` 0x0006 |
+| `cornerRadius` | `.cornerRadius(_:)` | `.modifiers(cornerRadius(c -> c.radius(float)))` | `BORDER_RADIUS` 0x1005 |
+| `shadow` | `.shadow(color:radius:x:y:)` | `.modifiers(shadow(s -> s.color(Color).radius(float).x(float).y(float)))` / `.modifiers(shadow(s -> s.radius(float)))` | `SHADOW_COLOR` 0x1021, `SHADOW_RADIUS` 0x1022, `SHADOW_X` 0x1023, `SHADOW_Y` 0x1024 |
+| `opacity` | `.opacity(_:)` | `.modifiers(opacity(o -> o.value(float)))` | `OPACITY` 0x100D |
+| `blur` | `.blur(radius:)` | `.modifiers(blur(b -> b.radius(float)))` | `BLUR_RADIUS` 0x1025 |
+| `saturation` | `.saturation(_:)` | `.modifiers(saturation(s -> s.value(float)))` | `SATURATION` 0x1026 |
+| `contrast` | `.contrast(_:)` | `.modifiers(contrast(c -> c.value(float)))` | `CONTRAST` 0x1027 |
+| `brightness` | `.brightness(_:)` | `.modifiers(brightness(b -> b.value(float)))` | `BRIGHTNESS` 0x1028 |
+| `grayscale` | `.grayscale(_:)` | `.modifiers(grayscale(g -> g.value(float)))` | `GRAYSCALE` 0x1029 |
+| `hueRotation` | `.hueRotation(_:)` | `.modifiers(hueRotation(h -> h.degrees(float)))` | `HUE_ROTATION` 0x102A |
+| `colorMultiply` | `.colorMultiply(_:)` | `.modifiers(colorMultiply(c -> c.color(Color)))` | `COLOR_MULTIPLY` 0x102B |
+| `colorInvert` | `.colorInvert()` | `.modifiers(colorInvert())` | `COLOR_INVERT` 0x102C |
+| `clipped` | `.clipped()` | `.modifiers(clipped())` | `CLIPS_TO_BOUNDS` 0x1010 |
+| `clipShape` | `.clipShape(_:)` | `.modifiers(clipShape(c -> c.shape(ShapeKind)))` | `CLIPS_TO_BOUNDS` 0x1010 + `SHAPE_KIND` 0x0006 |
 
 **Border** canonical order is color-then-width; corner radius is a separate
 `CornerRadius` modifier.
@@ -880,8 +882,8 @@ absolute placement within the parent.
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
-| `rotationEffect` | `.rotationEffect(_:anchor:)` | `.modifiers(Rotation.with(r -> r.degrees(float)))` | `ROTATION_DEGREES` 0x102D |
-| `scaleEffect` | `.scaleEffect(_:anchor:)` | `.modifiers(ScaleEffect.with(s -> s.value(float)))` | `SCALE` 0x102E |
+| `rotationEffect` | `.rotationEffect(_:anchor:)` | `.modifiers(rotation(r -> r.degrees(float)))` | `ROTATION_DEGREES` 0x102D |
+| `scaleEffect` | `.scaleEffect(_:anchor:)` | `.modifiers(scaleEffect(s -> s.value(float)))` | `SCALE` 0x102E |
 
 Anchor is renderer-token-owned (center default); the protocol does not transmit
 anchors. Transforms do not affect layout.
@@ -890,21 +892,21 @@ anchors. Transforms do not affect layout.
 
 | Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
-| `hidden` | `.hidden()` | `.modifiers(Hidden.with())` / `.modifiers(Visible.with(v -> v.visible(boolean)))` | `VISIBLE` 0x100E |
-| `disabled` | `.disabled(_:)` | `.modifiers(Disabled.with(d -> d.disabled(boolean)))` | `ENABLED` 0x2003 (inverse: 1 = interactive) |
-| `allowsHitTesting` | `.allowsHitTesting(_:)` | `.modifiers(AllowsHitTesting.with(a -> a.allowed(boolean)))` | `ALLOWS_HIT_TESTING` 0x102F |
+| `hidden` | `.hidden()` | `.modifiers(hidden())` / `.modifiers(visible(v -> v.visible(boolean)))` | `VISIBLE` 0x100E |
+| `disabled` | `.disabled(_:)` | `.modifiers(disabled(d -> d.disabled(boolean)))` | `ENABLED` 0x2003 (inverse: 1 = interactive) |
+| `allowsHitTesting` | `.allowsHitTesting(_:)` | `.modifiers(allowsHitTesting(a -> a.allowed(boolean)))` | `ALLOWS_HIT_TESTING` 0x102F |
 | `controlSize` | `.controlSize(_:)` | `.modifiers(ControlSize.LARGE)` (the enum *is* the modifier) | `CONTROL_SIZE` 0x200C |
-| `accessibilityLabel` | `.accessibilityLabel(_:)` | `.modifiers(AccessibilityLabel.with(a -> a.text(String)))` | `LABEL` 0x200A |
-| `accessibilityRole` | `.accessibilityRole(_:)` | `.modifiers(AccessibilityRole.with(a -> a.role(int)))` | `ROLE` 0x2001 |
-| `accessibilityState` | `.accessibilityState(_:)` | `.modifiers(AccessibilityState.with(a -> a.state(int)))` | `STATE` 0x2002 |
+| `accessibilityLabel` | `.accessibilityLabel(_:)` | `.modifiers(accessibilityLabel(a -> a.text(String)))` | `LABEL` 0x200A |
+| `accessibilityRole` | `.accessibilityRole(_:)` | `.modifiers(accessibilityRole(a -> a.role(int)))` | `ROLE` 0x2001 |
+| `accessibilityState` | `.accessibilityState(_:)` | `.modifiers(accessibilityState(a -> a.state(int)))` | `STATE` 0x2002 |
 | `modifier` (custom) | `.modifier(_:)` | `.modifiers(ViewModifier)` | composes core modifiers |
 | `buttonStyle` | `.buttonStyle(_:)` | `.modifiers(ButtonStyle)` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins); the style supplies the button's content ([§5.7](#57-styleable-controls-the-style-contract)) |
 | `labelStyle` | `.labelStyle(_:)` | `.modifiers(LabelStyle)` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
 | `audioStyle` | `.audioStyle(_:)` | `.modifiers(AudioStyle)` | environment-scoped (`Environment.AUDIO_STYLE` key, nearest-wins); the style supplies the `AUDIO` node's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
 | `videoStyle` | `.videoStyle(_:)` | `.modifiers(VideoStyle)` | environment-scoped (`Environment.VIDEO_STYLE` key, nearest-wins); the style supplies the `VIDEO` node's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
-| `environment` | `.environment(_:_:)` | `.modifiers(EnvironmentBinding.with(e -> e.key(EnvironmentKey).value(value)))` | environment-scoped (a typed `EnvironmentKey`, nearest-wins); no wire property |
+| `environment` | `.environment(_:_:)` | `.modifiers(environmentBinding(e -> e.key(EnvironmentKey).value(value)))` | environment-scoped (a typed `EnvironmentKey`, nearest-wins); no wire property |
 | `focusable` | `.focusable(_:)` | (via the `PointerEvents` modifier) | **no property** — declares `FOCUS` listener bit 5; observe `FOCUS_CHANGED` |
-| raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifiers(PointerEvents.with(p -> p.mask(int)))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
+| raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifiers(pointerEvents(p -> p.mask(int)))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
 
 **Notes**: `visible(boolean)` is a Pathland extra (SwiftUI only has
 `.hidden()` — `Visible`/`Hidden`). `accessibilityRole`/`accessibilityState`
@@ -926,14 +928,14 @@ every conformant DSL: modifiers are never hard-bound to a view type.
 - **One mechanism.** Core and application-authored modifiers are the **same
   surface**: a `ViewModifier` value applied via `.modifiers(...)`. There is
   **no per-modifier sugar on the view type**; a parameterized modifier is
-  constructed with `Modifier.with(...)` and single-value modifiers pass the
-  value directly ([§5.0](#50-authoring-a-modifier)).
+  constructed by a lowercase static function named for the modifier ([§5.0](#50-authoring-a-modifier))
+  and single-value modifiers pass the value directly.
 
 | | Canonical | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view`) |
 |-|-----------|-------------------------------|----------------------------|
 | authoring | `struct Card: ViewModifier { func body(content: Content) -> some View }` | `@FunctionalInterface ViewModifier { View body(View content) }` | `trait ViewModifier { fn apply(&mut Node) }` |
-| applying | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` / `content.modifiers(A, B)` | `content.modifiers(Card)` |
-| single-value | `.modifier(Padding(16))` | `content.modifiers(Padding.with(p -> p.uniform(16)))` | `content.modifiers(Padding(16.0))` |
+| applying | `content.modifier(Card())` | `content.modifiers(card(c -> …))` / `content.modifiers(A, B)` | `content.modifiers(Card)` |
+| single-value | `.modifier(Padding(16))` | `content.modifiers(padding(p -> p.uniform(16)))` | `content.modifiers(Padding(16.0))` |
 
 **Composition**: a custom modifier composes core modifiers **or** wraps
 `content` with additional structure (a background, an overlay, a frame) and
@@ -980,7 +982,7 @@ author-facing shape of the protocol's **Composite Override Mode**
   **Composite Override Mode**.
 - **The style consumes the control's config.** The `Config` a style's
   `makeBody(Config)` receives is the **same type** the view configured through
-  `with(...)` ([§2](#2-canonical-signature-notation)): `ButtonStyle.makeBody(Button.Config)`,
+  `make(...)` ([§2](#2-canonical-signature-notation)): `ButtonStyle.makeBody(Button.Config)`,
   `LabelStyle.makeBody(Label.Config)`, `AudioStyle.makeBody(Audio.Config)`,
   `VideoStyle.makeBody(Video.Config)`. The style **reads** the config (the
   control's values: content, action, label, media state); it does not mutate it.
@@ -1010,7 +1012,7 @@ author-facing shape of the protocol's **Composite Override Mode**
 - **Main-axis alignment is the content's own layout — no protocol property.**
   A control's content box centers its child by default; to left-align a
   composite label (e.g. a navigation row), make the label full-width
-  (`Frame.with(f -> f.width(FILL))`) and let its own `ALIGNMENT` place its
+  (`frame(f -> f.width(FILL))`) and let its own `ALIGNMENT` place its
   content. There is deliberately no main-axis/justification property (the engine
   describes WHAT, never WHERE — [§1](#1-design-principles-dsl-flavored)).
 - **Closed-variant ("token") styles are the same surface, not a wrapper.** Some
@@ -1032,7 +1034,7 @@ Canonical signatures (SwiftUI-shaped) and the realization:
 // Button: the control wires the action; the style decorates the label/content.
 enum MyButtonStyle implements ButtonStyle { INSTANCE;
     @Override public View makeBody(Button.Config c) {
-        return c.content().modifiers(Padding.with(p -> p.uniform(12)), Background.with(b -> b.color(BLUE)));
+        return c.content().modifiers(padding(p -> p.uniform(12)), background(b -> b.color(BLUE)));
     }
 }
 Button.make(b -> b.title("Save").action(this::save)).modifiers(MyButtonStyle.INSTANCE);
@@ -1041,7 +1043,7 @@ Button.make(b -> b.title("Save").action(this::save)).modifiers(MyButtonStyle.INS
 enum BadgeLabelStyle implements LabelStyle { INSTANCE;
     @Override public View makeBody(Label.Config c) {
         return HStack.make().children(
-                c.icon().modifiers(Frame.with(f -> f.width(18).height(18))),
+                c.icon().modifiers(frame(f -> f.width(18).height(18))),
                 c.title());
     }
 }
@@ -1070,8 +1072,9 @@ A conformant DSL follows these conventions:
    `.shadow(color, radius, x, y)`. Compound modifiers expand to one property
    per argument.
 3. **Values vs modifiers**: structural/layout values and a control's bound value
-   are configured through `with(...)`; everything else is a chainable
-   `modifiers(...)` value. The three operations may be chained in any order.
+   are configured through a view's `make(...)` (modifiers through lowercase
+   functions); everything else is a chainable `modifiers(...)` value. The three
+   operations may be chained in any order.
 4. **Typed enums**: `HorizontalAlignment` (leading/center/trailing, for
    `VStack`), `VerticalAlignment` (top/center/bottom, for `HStack`), `Alignment`
    (2D — topLeading … bottomTrailing — for `ZStack`/grids and the `frame`
@@ -1117,7 +1120,7 @@ Pathland theming is **application-owned over a renderer-owned token system**
 §Design Token System). The DSL gives the author two distinct surfaces:
 
 1. **Token references in style modifiers** — semantic intent instead of a
-   literal: `ForegroundStyle.with(f -> f.color(Color.token("color.primary")))`
+   literal: `foregroundStyle(f -> f.color(Color.token("color.primary")))`
    emits a `DESIGN_TOKEN` reference the renderer resolves against the current
    scheme. No opcode is re-emitted when a token or the scheme changes.
 2. **Global theme overrides** — a batch of `PARAMETER::SET_DESIGN_TOKEN` commands
@@ -1168,12 +1171,12 @@ theming.
 
 | Canonical (SwiftUI-shaped) | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view` / `pathland-engine`) | Emits |
 |----------------------------|--------------------------------|-----------------------------------------------|-------|
-| `Theme()` — one-scheme override batch | `Theme.with()` / `ThemeData` | `Theme::new()` | one `PARAMETER::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
+| `Theme()` — one-scheme override batch | `new Theme().color(...)...` | `Theme::new()` | one `PARAMETER::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
 | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `COLOR`-typed override (sRGB `0xAARRGGBB`) |
 | `.f32("space.base", 4.0)` | `.f32("space.base", 4.0f)` | `.f32("space.base", 4.0)` | `F32`-typed override (lengths in device pixels) |
 | `.u32("…", v)` / `.u8("…", v)` | `.u32(path, int)` / `.u8(path, int)` | `.u32(path, v)` / `.u8(path, v)` | `U32` / `U8`-typed override |
 | `.string("font.body.family", "Inter")` | `.string(path, String)` | `.string(path, "Inter")` | `STRING`-typed override (arena) |
-| `AdaptiveTheme(light, dark)` | `AdaptiveTheme.with(light, dark)` | `AdaptiveTheme::new(light, dark)` | light overrides as base tokens; dark overrides `dark.`-prefixed |
+| `AdaptiveTheme(light, dark)` | `new AdaptiveTheme(light, dark)` | `AdaptiveTheme::new(light, dark)` | light overrides as base tokens; dark overrides `dark.`-prefixed |
 
 Emission contract:
 
@@ -1216,7 +1219,7 @@ contract is [§4](#4-view-surface) and [§5](#5-modifier-surface).
 | `Button("…", action)` / `Button(action:label:)` | `Button.make(b -> b.title("…").action(action))` and/or `.children(label)` | — |
 | `Toggle("label", isOn: writable)` | `Toggle.make(t -> t.label("…").isOn(writable))` | — |
 | `Slider(value: in:)` | `Slider.make(s -> s.value(writable).min(..).max(..))` (binding in config) | — |
-| `.border(color, width)` | `Border.with(b -> b.color(..).width(..))` via `.modifiers(...)` | radius convenience on the same builder |
+| `.border(color, width)` | `border(b -> b.color(..).width(..))` via `.modifiers(...)` | radius convenience on the same builder |
 | `DatePicker(selection:)` | `DatePicker.make(d -> d.mode(..).selection(days))` | *optional* `Date`-shaped config encoding days + millis-of-day per `SET_DATE`/`DATE_CHANGED` |
 
 Adopted conventions:
@@ -1225,7 +1228,7 @@ Adopted conventions:
   concrete view/control exposes these three operations; `.of(...)` is gone.
   They are available **at creation or chained, in any order**
   ([§2](#2-canonical-signature-notation)).
-- **`with(config)` is a fluent config builder.** The config holds the view's
+- **`make(config)` is a fluent config builder.** The config holds the view's
   values and is the same type a style's `makeBody(Config)` reads
   ([§5.7](#57-styleable-controls-the-style-contract)).
 - **The `View.*` static-factory surface is removed.** The entire factory block
@@ -1237,8 +1240,8 @@ Adopted conventions:
 - **`Group` is a first-class view.** `Group.children(View...)` is a
   transparent container view (SwiftUI `Group`).
 - **Core and custom modifiers share one mechanism.** Core modifiers are
-  `ViewModifier` values (`Padding.with(p -> p.uniform(16))`,
-  `ForegroundStyle.with(f -> f.color(color))`) applied via `.modifiers(...)` —
+  `ViewModifier` values (`padding(p -> p.uniform(16))`,
+  `foregroundStyle(f -> f.color(color))`) applied via `.modifiers(...)` —
   there is **no sugar on `View`**; several modifiers at once use
   `.modifiers(...)`, innermost-first. Single-value modifiers pass the value
   directly (`FontWeight.BOLD`).
@@ -1282,7 +1285,7 @@ are the companion specs.
   **any** view; **core modifiers are implemented through the same mechanism**,
   never a separate syntax ([§5.6](#56-custom-modifiers-developer-authored)).
 - [ ] **Shared config with styles** — a style's `makeBody(Config)` receives the
-  same config type the control configured via `with(...)`
+  same config type the control configured via `make(...)`
   ([§5.7](#57-styleable-controls-the-style-contract)).
 - [ ] **Signals** — `signal`, `computed`, `effect`, `untracked`,
   `get`/`set`/`update`/`asReadonly`, with equality suppression, synchronous
@@ -1347,16 +1350,17 @@ are the companion specs.
 **The three operations are normative; their spellings are not.** A conformant
 DSL MUST expose *configure values*, *apply modifiers*, and *supply children*,
 each available at creation or by chaining (any order), mapped to the host
-language's idioms. The canonical (Java/SwiftUI-shaped) spelling is
-`with` / `modifiers` / `children`.
+language's idioms. The canonical (SwiftUI-shaped) spelling is
+`Text("x").padding(16)`; Java spells values `make(...)` (views) / lowercase
+functions (modifiers) and chains `modifiers(...)` / `children(...)`.
 
 | Aspect | Java | C# | Rust | Go | Python |
 |--------|------|----|------|----|--------|
-| configure values | `with(c -> …)` | `With(c => …)` | `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
-| single-value shortcut | `with(value)` / `with(signal)` (sugar for the lambda) | `With(value)` | `Type::new(value)` / `Type(sig)` | `Type(val)` | `Type(val=…)` / `Type(sig)` |
+| configure values | `make(c -> …)` (views) / `padding(c -> …)` (modifiers) | `Make(c => …)` | `Type::new(config)` / `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
+| single-value shortcut | `make(value)` / `padding(value)` (sugar for the lambda) | `Make(value)` | `Type::new(value)` / `Type(sig)` | `Type(val)` | `Type(val=…)` / `Type(sig)` |
 | apply modifiers | `.modifiers(…)` | `.Modifiers(…)` | `.modifiers(…)` (single or tuple) | `.Modifiers(…)` | `.modifiers(…)` |
 | supply children | `.children(…)` | `.Children(…)` | `.children(vec![…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
-| creation + chaining | static on the view; chain on the returned builder | static on the view; chain via **extension methods** | associated fn `Type::with`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
+| creation + chaining | static on the view; chain on the returned builder | static on the view; chain via **extension methods** | associated fn `Type::new`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
 | same-name static + chain | **builder split** (static on class, chain on builder) | extension methods (separate static class) | assoc fn + trait method | package func + method (not type-scoped) | **not expressible** (methods are last-wins) |
 | `with` name legal | yes | yes (`With`; lowercase `with` is the record keyword) | yes | yes | **no** — `with` is a keyword → kwargs / `configure` |
 | varargs children | yes | `params` | no — slices/arrays or macros | `...` | `*args` |
@@ -1416,23 +1420,23 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 | `Toggle("On", isOn: $on)` | `Toggle("On", isOn: writable)` | `Toggle.make(t -> t.label("On").isOn(binding))` | `Toggle(style)` (no binding yet) |
 | `Slider(value: $v, in: 0...100)` | `Slider(value: writable, in: min...max)` | `Slider.make(s -> s.value(vSig).min(0).max(100))` | `Slider::new` (no binding yet) |
 | `DatePicker("D", selection: $d)` | `DatePicker("D", selection: writable)` | `DatePicker.make(d -> d.mode(DatePickerMode.DATE).selection(days))` | `DatePicker` (bare) |
-| `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.modifiers(ForegroundStyle.with(f -> f.color(Color)))` | `.modifiers(ForegroundStyle(Color::argb(0xFF0000FF)))` |
-| `.background(.gray)` | `.background(Color)` | `.modifiers(Background.with(b -> b.color(Color)))` | `.modifiers(Background(Color::argb(0xFFEEEEEE)))` |
-| `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.modifiers(Border.with(b -> b.color(Color).width(2)))` | `.modifiers(Border::new(Color::argb(…), 2.0))` |
-| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.modifiers(Frame.with(f -> f.width(100).height(24)))` | `.modifiers(Frame::new(Some(100.0), Some(24.0), None))` |
-| `.padding(16)` | `.padding(16)` | `.modifiers(Padding.with(p -> p.uniform(16)))` | `.modifiers(Padding(16.0))` |
-| `.font(.system(size: 28))` | `.font(size: 28)` | `.modifiers(Font.with(f -> f.system(28)))` | `.modifiers(FontSize(28.0))` |
+| `.foregroundStyle(.red)` | `.foregroundStyle(Color)` | `.modifiers(foregroundStyle(f -> f.color(Color)))` | `.modifiers(ForegroundStyle(Color::argb(0xFF0000FF)))` |
+| `.background(.gray)` | `.background(Color)` | `.modifiers(background(b -> b.color(Color)))` | `.modifiers(Background(Color::argb(0xFFEEEEEE)))` |
+| `.border(.blue, width: 2)` | `.border(Color, width: 2)` | `.modifiers(border(b -> b.color(Color).width(2)))` | `.modifiers(Border::new(Color::argb(…), 2.0))` |
+| `.frame(width: 100, height: 24)` | `.frame(width:height:alignment:)` | `.modifiers(frame(f -> f.width(100).height(24)))` | `.modifiers(Frame::new(Some(100.0), Some(24.0), None))` |
+| `.padding(16)` | `.padding(16)` | `.modifiers(padding(p -> p.uniform(16)))` | `.modifiers(Padding(16.0))` |
+| `.font(.system(size: 28))` | `.font(size: 28)` | `.modifiers(Font.system(28))` | `.modifiers(FontSize(28.0))` |
 | `.font(.largeTitle)` | `.font(Font.largeTitle())` | `.modifiers(Font.largeTitle())` | `.modifiers(Font::large_title())` |
-| `.font(.custom("Georgia", size: 20))` | `.font(Font.custom("Georgia", 20))` | `.modifiers(Font.with(f -> f.custom("Georgia", 20)))` | `.modifiers(Font::custom("Georgia", 20.0))` |
+| `.font(.custom("Georgia", size: 20))` | `.font(Font.custom("Georgia", 20))` | `.modifiers(Font.custom("Georgia", 20))` | `.modifiers(Font::custom("Georgia", 20.0))` |
 | `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.modifiers(FontWeight.BOLD)` | `.modifiers(FontWeight(700.0))` |
-| `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.modifiers(Shadow.with(s -> s.color(Color).radius(r).x(x).y(y)))` | (not yet) |
-| `.onTapGesture { go() }` | `.onTapGesture(action)` | `.modifiers(TapGesture.with(g -> g.action(() -> go())))` | `.modifiers(TapGesture::new(\|\| go()))` |
+| `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.modifiers(shadow(s -> s.color(Color).radius(r).x(x).y(y)))` | (not yet) |
+| `.onTapGesture { go() }` | `.onTapGesture(action)` | `.modifiers(tapGesture(g -> g.action(() -> go())))` | `.modifiers(TapGesture::new(\|\| go()))` |
 | `if showLogin { LoginView() } else { HomeView() }` | `if/else` in a result builder | `Conditional.when(showLogin, new LoginView(), new HomeView())` | `if`/`match` in `build()` |
 | `NavigationStack { … }` | `Router` + `NavigationContainer` | `NavigationContainer.make(n -> n.router(router))` | `NavigationContainer::with(\|n\| n.router(router))` |
 | `NavigationLink("Users", value:)` | `NavigationLink("label", router, to)` | `NavigationLink.make(l -> l.label("Users").router(router).to("/users"))` | `navigation_link(...)` |
-| `content.modifier(Card())` | `content.modifier(Card())` | `content.modifiers(Card.with(c -> …))` | `.modifiers(Card)` |
+| `content.modifier(Card())` | `content.modifier(Card())` | `content.modifiers(card(c -> …))` | `.modifiers(Card)` |
 
-The three operations (`with` / `modifiers` / `children`) are the one mechanism
+The three operations (`make` / `modifiers` / `children`) are the one mechanism
 for construction and modification alike
 ([§2](#2-canonical-signature-notation),
 [§5.6](#56-custom-modifiers-developer-authored)); built-in and
@@ -1465,8 +1469,8 @@ per-project implementation status tracked in each project's `status.md`.
 - Component ids: [PRIMITIVES.md](./PRIMITIVES.md); property ids and value
   types: [MODIFIERS.md](./MODIFIERS.md); event ids and listener bits:
   [EVENTS.md](./EVENTS.md). These specs are the single source of truth.
-- The v2 authoring surface (`with` / `modifiers` / `children`, shared
-  config-with-styles, no `Mod` suffix, single-value `with(value)` shortcuts) is a
+- The v3 authoring surface (`make` + lowercase modifier functions,
+  config-with-styles, no `Mod` suffix, single-value shortcuts) is a
   **source-surface** change only: it emits the **same bytes** as the prior
-  `.of(...)` / `.with(...)` surface for an equivalent tree — no
+  v2 `.of(...)` / `with(...)` surface for an equivalent tree — no
   component/property/event/opcode change.

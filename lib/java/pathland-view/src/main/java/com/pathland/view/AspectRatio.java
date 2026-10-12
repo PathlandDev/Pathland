@@ -50,7 +50,7 @@ public final class AspectRatio implements ViewModifier {
     }
 
     /** Configure the aspect ratio. */
-    public static AspectRatio with(Consumer<Config> configure) {
+    static AspectRatio with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new AspectRatio(config);

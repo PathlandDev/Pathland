@@ -27,7 +27,8 @@ import java.util.Set;
  * </ul>
  *
  * <p>Both are configured through a static {@code make(Consumer<Config>)} factory
- * (views) / {@code with(Consumer<Config>)} factory (styles),
+ * (views) / a lowercase static factory on the style's own type (styles,
+ * e.g. {@code playerControlsStyle(...)}),
  * never a parameterized constructor. Any non-abstract class assignable to
  * {@code View} or {@code Style} that exposes a {@code public}/{@code protected}
  * constructor **with ≥ 1 parameter** is a compile error — creation must go
@@ -89,7 +90,7 @@ public final class ViewAuthoringProcessor extends AbstractProcessor {
                             type.getSimpleName() + " exposes a " + accessibilityOf(constructor)
                                     + " constructor with parameters: " + constructor
                                     + " — a custom " + surface + " must be configured via its static "
-                                    + type.getSimpleName() + (isStyle ? ".with" : ".make")
+                                    + type.getSimpleName() + (isStyle ? " lowercased factory" : ".make")
                                     + "(Consumer<Config>) factory (spec DSL.md §2);"
                                     + " keep the constructor private and expose the values on the nested Config.",
                             constructor);

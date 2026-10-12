@@ -48,7 +48,7 @@ public final class Position implements ViewModifier {
     }
 
     /** Configure the position. */
-    public static Position with(Consumer<Config> configure) {
+    static Position with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new Position(config);

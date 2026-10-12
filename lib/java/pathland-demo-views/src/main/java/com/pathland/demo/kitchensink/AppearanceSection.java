@@ -19,6 +19,7 @@ import com.pathland.view.Rotation;
 import com.pathland.view.ScaleEffect;
 import com.pathland.view.Shadow;
 import com.pathland.view.ZIndex;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -34,35 +35,35 @@ public final class AppearanceSection implements View {
     @Override
     public View body() {
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         Text.make("Card with shadow").modifiers(
-                                Padding.with(20),
-                                Background.with(Color.WHITE),
-                                Border.with(b -> b.color(BLUE_200).width(2).radius(12)),
-                                CornerRadius.with(12),
-                                Shadow.with(s -> s.color(Color.rgb(0, 0, 0)).radius(6).x(2).y(4))),
+                                padding(20),
+                                background(Color.WHITE),
+                                border(b -> b.color(BLUE_200).width(2).radius(12)),
+                                cornerRadius(12),
+                                shadow(s -> s.color(Color.rgb(0, 0, 0)).radius(6).x(2).y(4))),
                         Text.make("Rotated 6°").modifiers(
-                                Rotation.with(6),
-                                Padding.with(8),
-                                Background.with(RED_50),
-                                CornerRadius.with(6)),
+                                rotation(6),
+                                padding(8),
+                                background(RED_50),
+                                cornerRadius(6)),
                         Text.make("Scaled 1.2×").modifiers(
-                                ScaleEffect.with(1.2f),
-                                Padding.with(8),
-                                Background.with(GREEN_50),
-                                CornerRadius.with(6)),
-                        Text.make("This text is hidden").modifiers(Hidden.with()),
-                        HStack.make() .modifiers(Padding.with(4))
+                                scaleEffect(1.2f),
+                                padding(8),
+                                background(GREEN_50),
+                                cornerRadius(6)),
+                        Text.make("This text is hidden").modifiers(hidden()),
+                        HStack.make() .modifiers(padding(4))
                                 .children(
-Rectangle.make().modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
-                                                .modifiers(Background.with(Color.RED),
-                                                        ClipShape.with(ShapeKind.CIRCLE)),
-Rectangle.make().modifiers(Frame.with(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
+Rectangle.make().modifiers(frame(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
+                                                .modifiers(background(Color.RED),
+                                                        clipShape(ShapeKind.CIRCLE)),
+Rectangle.make().modifiers(frame(f -> f.width(90).height(60).alignment(Alignment.CENTER)))
                                                 .modifiers(
-                                                        Background.with(Color.BLUE),
-                                                        CornerRadius.with(12))),
-                        Text.make("zIndex above").modifiers(ZIndex.with(3)));
+                                                        background(Color.BLUE),
+                                                        cornerRadius(12))),
+                        Text.make("zIndex above").modifiers(zIndex(3)));
         return SectionCard.make("Appearance · border / shadow / opacity / transform").children(content);
     }
 }

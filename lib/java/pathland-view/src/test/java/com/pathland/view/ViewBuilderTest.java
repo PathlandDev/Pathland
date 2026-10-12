@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.pathland.view.emit.PathlandNode;
 import org.junit.jupiter.api.Test;
+import static com.pathland.view.Modifiers.*;
 
 /** The v2 authoring surface: {@code make} / {@code modifiers} / {@code children}. */
 public class ViewBuilderTest {
@@ -18,9 +19,9 @@ public class ViewBuilderTest {
     @Test
     void modifiersAndChildrenMayBeUsedInAnyOrder() {
         View a = VStack.make(v -> v.spacing(8)).children(Text.make(t -> t.text("a")))
-                .modifiers(Padding.with(p -> p.uniform(4)));
+                .modifiers(padding(p -> p.uniform(4)));
         View b = VStack.make(v -> v.spacing(8))
-                .modifiers(Padding.with(p -> p.uniform(4))).children(Text.make(t -> t.text("a")));
+                .modifiers(padding(p -> p.uniform(4))).children(Text.make(t -> t.text("a")));
 
         PathlandNode na = a.render(Environment.DEFAULT);
         PathlandNode nb = b.render(Environment.DEFAULT);
@@ -35,7 +36,7 @@ public class ViewBuilderTest {
     @Test
     void makeStartsTheChain() {
         PathlandNode node =
-                VStack.make().modifiers(Padding.with(p -> p.uniform(16)))
+                VStack.make().modifiers(padding(p -> p.uniform(16)))
                         .children(Text.make(t -> t.text("x"))).render(Environment.DEFAULT);
         assertEquals(16f, node.properties.get(Properties.PADDING));
         assertTrue(node.children.size() == 1);

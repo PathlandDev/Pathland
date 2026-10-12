@@ -13,6 +13,7 @@ import com.pathland.view.signal.WritableSignal;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import static com.pathland.view.Modifiers.*;
 
 /** Signals-first configs: a non-constant value member re-emits only its property. */
 public class ReactiveConfigTest {
@@ -34,7 +35,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.make(t -> t.text("hi")).modifiers(Visible.with(v -> v.visible(visible))),
+                Text.make(t -> t.text("hi")).modifiers(visible(v -> v.visible(visible))),
                 Environment.DEFAULT);
 
         visible.set(false);
@@ -51,7 +52,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.make(t -> t.text("hi")).modifiers(Opacity.with(o -> o.value(opacity))),
+                Text.make(t -> t.text("hi")).modifiers(opacity(o -> o.value(opacity))),
                 Environment.DEFAULT);
 
         opacity.set(0.5f);
@@ -68,7 +69,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.make(t -> t.text("hi")).modifiers(ClipShape.with(c -> c.shape(shape))),
+                Text.make(t -> t.text("hi")).modifiers(clipShape(c -> c.shape(shape))),
                 Environment.DEFAULT);
 
         shape.set(ShapeKind.RECTANGLE);
@@ -103,7 +104,7 @@ public class ReactiveConfigTest {
         Emitter emitter = new Emitter(sink);
         emitter.mount(
                 Text.make(t -> t.text("x"))
-                        .modifiers(AccessibilityLabel.with(a -> a.text(label))),
+                        .modifiers(accessibilityLabel(a -> a.text(label))),
                 Environment.DEFAULT);
 
         label.set("b");
@@ -129,7 +130,7 @@ public class ReactiveConfigTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.mount(
-                Text.make(t -> t.text("hi")).modifiers(Opacity.with(o -> o.value(opacity))),
+                Text.make(t -> t.text("hi")).modifiers(opacity(o -> o.value(opacity))),
                 Environment.DEFAULT);
         int frames = sink.framesProduced();
 

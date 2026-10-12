@@ -35,16 +35,16 @@ public final class FontSize implements ViewModifier {
         this.signal = signal;
     }
 
-    public static FontSize with(float size) {
+    static FontSize with(float size) {
         return Configurators.modifier(Config::new, c -> new FontSize(c.signal), c -> c.size(size));
     }
 
-    public static FontSize with(Signal<Float> signal) {
+    static FontSize with(Signal<Float> signal) {
         return Configurators.modifier(Config::new, c -> new FontSize(c.signal), c -> c.size(signal));
     }
 
     /** Configure the font size. */
-    public static FontSize with(Consumer<Config> configure) {
+    static FontSize with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new FontSize(config.signal);

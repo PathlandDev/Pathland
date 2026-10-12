@@ -6,7 +6,7 @@ package com.pathland.view;
 public final class Hidden implements ViewModifier {
 
     /** Hidden. */
-    public static Hidden with() {
+    static Hidden with() {
         return new Hidden();
     }
 

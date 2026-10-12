@@ -2,6 +2,7 @@ package com.pathland.demo.music;
 
 import com.pathland.view.*;
 import com.pathland.view.signal.WritableSignal;
+import static com.pathland.view.Modifiers.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,14 +88,14 @@ public final class LibraryView implements View, Configurable<LibraryView.Config>
 
         return VStack.make()
                 .modifiers(
-                        Padding.with(24),
-                        Frame.with(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
+                        padding(24),
+                        frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(
                         Text.make("Library").modifiers(
-                                FontSize.with(26), FontWeight.BOLD, AccessibilityRole.with(Roles.HEADER)),
+                                fontSize(26), FontWeight.BOLD, accessibilityRole(Roles.HEADER)),
                         Text.make(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums")
-                                .modifiers(ForegroundStyle.with(MusicPlayerView.SECONDARY_FG)),
-Divider.make().modifiers(Padding.with(p -> p.edges(0, 0, 0, 10))),
+                                .modifiers(foregroundStyle(MusicPlayerView.SECONDARY_FG)),
+Divider.make().modifiers(padding(p -> p.edges(0, 0, 0, 10))),
                         ScrollView.children(VStack.children(rows.toArray(new View[0]))));
     }
 }

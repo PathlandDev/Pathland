@@ -1,5 +1,10 @@
 package com.pathland.view;
 
+import static com.pathland.view.Modifiers.border;
+import static com.pathland.view.Modifiers.background;
+import static com.pathland.view.Modifiers.foregroundStyle;
+import static com.pathland.view.Modifiers.padding;
+
 import java.util.function.Consumer;
 
 /**
@@ -7,7 +12,8 @@ import java.util.function.Consumer;
  * rounded border. The {@link Button} control wires the action on the native button
  * node, so this style only decorates the content.
  *
- * <p>Configured via {@code BorderedButtonStyle.with(b -> b.padding(...).background(...)...)};
+ * <p>Constructed via {@code borderedButtonStyle(b -> b.padding(...).background(...)...)}
+ * (the {@code Modifiers} facade);
  * {@link #INSTANCE} is the default. A private constructor keeps creation on the
  * configurator (spec DSL.md §2).
  */
@@ -54,8 +60,8 @@ public final class BorderedButtonStyle implements ButtonStyle {
         this.config = config;
     }
 
-    /** Configure a bordered style ({@code BorderedButtonStyle.with(b -> …)}). */
-    public static BorderedButtonStyle with(Consumer<Config> configure) {
+    /** Configure a bordered style ({@code borderedButtonStyle(b -> …)}). */
+    static BorderedButtonStyle with(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
         return new BorderedButtonStyle(config);
@@ -64,9 +70,9 @@ public final class BorderedButtonStyle implements ButtonStyle {
     @Override
     public View makeBody(Configuration config) {
         return config.label().modifiers(
-                        ForegroundStyle.with(f -> f.color(Color.WHITE)),
-                        Padding.with(p -> p.uniform(this.config.padding)),
-                        Background.with(b -> b.color(this.config.background)),
-                        Border.with(b -> b.color(this.config.borderColor).width(1f).radius(this.config.radius)));
+                        foregroundStyle(f -> f.color(Color.WHITE)),
+                        padding(p -> p.uniform(this.config.padding)),
+                        background(b -> b.color(this.config.background)),
+                        border(b -> b.color(this.config.borderColor).width(1f).radius(this.config.radius)));
     }
 }

@@ -10,6 +10,7 @@ import com.pathland.view.View;
 import static com.pathland.view.signal.Signals.*;
 import com.pathland.view.state.State;
 import com.pathland.view.Padding;
+import static com.pathland.view.Modifiers.*;
 
 
 /**
@@ -26,13 +27,13 @@ public final class TextFieldSection implements View {
         var greeting = computed(() ->
                 "Hello, " + (name.get().isEmpty() ? "stranger" : name.get()) + "!");
         View content = VStack.make()
-                .modifiers(Padding.with(4))
+                .modifiers(padding(4))
                 .children(
                         TextField.make(t -> t.placeholder("Your name").text(name.signal())),
                         TextEditor.make(t -> t.text(name.signal())).modifiers(
-                                Frame.with(f -> f.width(240).height(64).alignment(Alignment.CENTER))),
+                                frame(f -> f.width(240).height(64).alignment(Alignment.CENTER))),
                         Text.make(greeting).modifiers(
-                                Padding.with(4)));
+                                padding(4)));
         return SectionCard.make("Text · TextField + TextEditor").children(content);
     }
 }

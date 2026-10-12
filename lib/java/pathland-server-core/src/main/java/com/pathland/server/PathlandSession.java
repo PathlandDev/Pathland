@@ -16,6 +16,7 @@ import com.pathland.view.state.StateStore;
 import com.pathland.view.transport.EnvironmentData;
 import com.pathland.view.transport.Event;
 import com.pathland.view.transport.FrameCodec;
+import static com.pathland.view.Modifiers.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,7 +130,7 @@ public final class PathlandSession {
         // active path is injected as a scoped environment value; any root works (with or
         // without navigation).
         RenderResult result = emitter.mount(
-                app.newRoot().modifiers(EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
+                app.newRoot().modifiers(environmentBinding(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
                 new Environment(state));
         this.inputDispatcher = new InputDispatcher(result, activePath);
         this.rootId = result.rootId();
