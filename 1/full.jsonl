@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 9.936807347999974,
+    "cost": 9.955402103999974,
     "tokens": {
-      "input": 40088610,
-      "output": 1604084,
-      "reasoning": 673527,
+      "input": 40163608,
+      "output": 1605669,
+      "reasoning": 673618,
       "cache": {
-        "read": 852316416,
+        "read": 854429568,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791902375023
+      "updated": 1791902439967
     }
   },
   "messages": [
@@ -436761,21 +436761,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001845978,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 546626,
+          "input": 139,
+          "output": 267,
+          "reasoning": 44,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 546176
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791902375178
+          "created": 1791902375178,
+          "completed": 1791902413489
         },
+        "finish": "tool-calls",
         "id": "msg_135b45d0a002DOUZ9VYoZ7GmUH",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -436803,20 +436806,347 @@
           "tool": "bash",
           "callID": "chatcmpl-tool-9b9316b9b3413d63",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nci(release): drive the version from the release tag\n\nThe release tag now sets the published version instead of being checked against\nthe code, so a release needs no pre-bump commit:\n\n- `version` job resolves and validates `v<major>.<minor>.<patch>` (optional\n  pre-release suffix) and derives X.Y.Z;\n- `rust` job runs `cargo set-version --workspace X.Y.Z` (updates the workspace\n  version + the intra-workspace path-dep pins + lockfile) before publishing;\n- `java` job runs `mvn versions:set -DnewVersion=X.Y.Z -DprocessAllModules`\n  before deploying;\n- `bump` job commits the version back to main so it tracks the latest release.\n\nUpdate RELEASING.md for the tag-driven model.\nEOF\n)\" && git push -u origin feat/tag-driven-release 2>&1 | tail -3"
             },
+            "output": "To https://github.com/PathlandDev/Pathland.git\n * [new branch]        feat/tag-driven-release -> feat/tag-driven-release\nbranch 'feat/tag-driven-release' set up to track 'origin/feat/tag-driven-release'.\n",
+            "metadata": {
+              "output": "To https://github.com/PathlandDev/Pathland.git\n * [new branch]        feat/tag-driven-release -> feat/tag-driven-release\nbranch 'feat/tag-driven-release' set up to track 'origin/feat/tag-driven-release'.\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nci(release): drive the version from the release tag\n\nThe release tag now sets the published version instead of being checked against\nthe code, so a release needs no pre-bump commit:\n\n- `version` job resolves and validates `v<major>.<minor>.<patch>` (optional\n  pre-release suffix) and derives X.Y.Z;\n- `rust` job runs `cargo set-version --workspace X.Y.Z` (updates the workspace\n  version + the intra-workspace path-dep pins + lockfile) before publishing;\n- `java` job runs `mvn versions:set -DnewVersion=X.Y.Z -DprocessAllModules`\n  before deploying;\n- `bump` job commits the version back to main so it tracks the latest release.\n\nUpdate RELEASING.md for the tag-driven model.\nEOF\n)\" && git push -u origin feat/tag-driven-release 2>&1 | tail -3",
             "time": {
-              "start": 1791902380179
+              "start": 1791902380179,
+              "end": 1791902413364
             }
           },
           "id": "prt_135b46a8a001h4vUZMK7vLEvCH",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_135b45d0a002DOUZ9VYoZ7GmUH"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "0c535ab5ff79f5ab4d84eb7e03661b721060fa6d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 546626,
+            "input": 139,
+            "output": 267,
+            "reasoning": 44,
+            "cache": {
+              "write": 0,
+              "read": 546176
+            }
+          },
+          "cost": 0.001845978,
+          "id": "prt_135b4f2710017ZrTa8Lnxrwl5R",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b45d0a002DOUZ9VYoZ7GmUH"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_135b1351f001n4v53QwPpRDvl1",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.012997392,
+        "tokens": {
+          "total": 547337,
+          "input": 74628,
+          "output": 645,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 472064
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791902414053,
+          "completed": 1791902426826
+        },
+        "finish": "tool-calls",
+        "id": "msg_135b4f4e5002dqgcus7dTRuNcZ",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "0c535ab5ff79f5ab4d84eb7e03661b721060fa6d",
+          "type": "step-start",
+          "id": "prt_135b5077f001TbcL0nH44yjfuw",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b4f4e5002dqgcus7dTRuNcZ"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-b442b5dc00fabd52",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr create --base main --head feat/tag-driven-release --title \"ci(release): drive the version from the release tag\" --body \"$(cat <<'EOF'\nMakes the release tag **set** the published version instead of being rejected on a mismatch, so creating a Release needs no pre-bump commit.\n\n## Changes\n- **`version` job** (replaces `version-check`): resolves the tag (`release.tag_name` / `inputs.tag` / `ref_name`) and validates it is `v<major>.<minor>.<patch>` (optional pre-release suffix); derives `X.Y.Z`. It no longer compares against the code.\n- **`rust` job**: `cargo set-version --workspace X.Y.Z` after checkout — updates `[workspace.package] version`, the intra-workspace path-dep `version` pins, and `Cargo.lock` — then tests/publishes/packages.\n- **`java` job**: `mvn versions:set -DnewVersion=X.Y.Z -DgenerateBackupPoms=false -DprocessAllModules=true` after checkout, then stages natives and `mvn -P release deploy`.\n- **`bump` job**: checks out `main`, applies the same version set, and commits `chore(release): vX.Y.Z` back to `main`.\n- **`java-natives`** / **`release-assets`**: unchanged.\n- **`RELEASING.md`**: documents the tag-driven model + commit-back.\n\n## Verified locally\n- `cargo set-version --workspace 0.1.1` updates the workspace version **and** the path-dep pins (engine/view/render-html/core-transport) + `Cargo.lock`.\n- `mvn versions:set -DnewVersion=0.1.1 -DprocessAllModules` cascades to every module's `<parent><version>`.\n- The tag regex accepts `v0.1.1`, `v1.2.3`, `v0.1.1-rc1`; rejects `v0.1`, `0.1.1`, `v1.2.3.4`.\n\n## Notes\n- The tag points at the pre-bump commit (inherent — it exists before the workflow runs); the `bump` job is what makes `main` track the release.\n- `bump` needs `main` to be pushable by the workflow's `GITHUB_TOKEN` (unprotected, or the Actions bot allowed).\n- After merge: re-run the `v0.1.1` release (`workflow_dispatch`, tag `v0.1.1`) to publish Rust + Java at `0.1.1`.\nEOF\n)\" 2>&1 | tail -3"
+            },
+            "output": "https://github.com/PathlandDev/Pathland/pull/147\n",
+            "metadata": {
+              "output": "https://github.com/PathlandDev/Pathland/pull/147\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr create --base main --head feat/tag-driven-release --title \"ci(release): drive the version from the release tag\" --body \"$(cat <<'EOF'\nMakes the release tag **set** the published version instead of being rejected on a mismatch, so creating a Release needs no pre-bump commit.\n\n## Changes\n- **`version` job** (replaces `version-check`): resolves the tag (`release.tag_name` / `inputs.tag` / `ref_name`) and validates it is `v<major>.<minor>.<patch>` (optional pre-release suffix); derives `X.Y.Z`. It no longer compares against the code.\n- **`rust` job**: `cargo set-version --workspace X.Y.Z` after checkout — updates `[workspace.package] version`, the intra-workspace path-dep `version` pins, and `Cargo.lock` — then tests/publishes/packages.\n- **`java` job**: `mvn versions:set -DnewVersion=X.Y.Z -DgenerateBackupPoms=false -DprocessAllModules=true` after checkout, then stages natives and `mvn -P release deploy`.\n- **`bump` job**: checks out `main`, applies the same version set, and commits `chore(release): vX.Y.Z` back to `main`.\n- **`java-natives`** / **`release-assets`**: unchanged.\n- **`RELEASING.md`**: documents the tag-driven model + commit-back.\n\n## Verified locally\n- `cargo set-version --workspace 0.1.1` updates the workspace version **and** the path-dep pins (engine/view/render-html/core-transport) + `Cargo.lock`.\n- `mvn versions:set -DnewVersion=0.1.1 -DprocessAllModules` cascades to every module's `<parent><version>`.\n- The tag regex accepts `v0.1.1`, `v1.2.3`, `v0.1.1-rc1`; rejects `v0.1`, `0.1.1`, `v1.2.3.4`.\n\n## Notes\n- The tag points at the pre-bump commit (inherent — it exists before the workflow runs); the `bump` job is what makes `main` track the release.\n- `bump` needs `main` to be pushable by the workflow's `GITHUB_TOKEN` (unprotected, or the Actions bot allowed).\n- After merge: re-run the `v0.1.1` release (`workflow_dispatch`, tag `v0.1.1`) to publish Rust + Java at `0.1.1`.\nEOF\n)\" 2>&1 | tail -3",
+            "time": {
+              "start": 1791902423393,
+              "end": 1791902426706
+            }
+          },
+          "id": "prt_135b50b800018e6H4DeIPoNObT",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b4f4e5002dqgcus7dTRuNcZ"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "0c535ab5ff79f5ab4d84eb7e03661b721060fa6d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 547337,
+            "input": 74628,
+            "output": 645,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 472064
+            }
+          },
+          "cost": 0.012997392,
+          "id": "prt_135b52694001MTOA1jWpktoDZB",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b4f4e5002dqgcus7dTRuNcZ"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_135b1351f001n4v53QwPpRDvl1",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001784184,
+        "tokens": {
+          "total": 547592,
+          "input": 36,
+          "output": 181,
+          "reasoning": 47,
+          "cache": {
+            "write": 0,
+            "read": 547328
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791902427021,
+          "completed": 1791902432860
+        },
+        "finish": "tool-calls",
+        "id": "msg_135b5278d002noFf0qTxHFdOmu",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "0c535ab5ff79f5ab4d84eb7e03661b721060fa6d",
+          "type": "step-start",
+          "id": "prt_135b5364d001C2mAKTJ8WHePel",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b5278d002noFf0qTxHFdOmu"
+        },
+        {
+          "type": "reasoning",
+          "text": "PR #147 created.\n\nLet me update todos and summarize.\n\nLet me mark todos complete.\n\nThen summarize + next steps.\n\nLet me also mention the `v0.1.1` re-run after merge.\n\nLet me finalize.",
+          "time": {
+            "start": 1791902430799,
+            "end": 1791902431820
+          },
+          "id": "prt_135b5364f001O8LlIfVyDkHgio",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b5278d002noFf0qTxHFdOmu"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "chatcmpl-tool-8c9659e865dd9383",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "Verify cargo set-version updates path-dep pins",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Rewrite release.yml: version job + set-version in rust/java + bump job",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Update RELEASING.md (tag-driven + commit-back)",
+                  "priority": "medium",
+                  "status": "completed"
+                },
+                {
+                  "content": "Verify workflow YAML + mvn versions:set cascade",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Commit, push, open PR",
+                  "priority": "medium",
+                  "status": "completed"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"Verify cargo set-version updates path-dep pins\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Rewrite release.yml: version job + set-version in rust/java + bump job\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Update RELEASING.md (tag-driven + commit-back)\",\n    \"status\": \"completed\",\n    \"priority\": \"medium\"\n  },\n  {\n    \"content\": \"Verify workflow YAML + mvn versions:set cascade\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Commit, push, open PR\",\n    \"status\": \"completed\",\n    \"priority\": \"medium\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "Verify cargo set-version updates path-dep pins",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Rewrite release.yml: version job + set-version in rust/java + bump job",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Update RELEASING.md (tag-driven + commit-back)",
+                  "status": "completed",
+                  "priority": "medium"
+                },
+                {
+                  "content": "Verify workflow YAML + mvn versions:set cascade",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Commit, push, open PR",
+                  "status": "completed",
+                  "priority": "medium"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "0 todos",
+            "time": {
+              "start": 1791902432750,
+              "end": 1791902432753
+            }
+          },
+          "id": "prt_135b53a4f0016Nlbc9pCVMNyyZ",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b5278d002noFf0qTxHFdOmu"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "0c535ab5ff79f5ab4d84eb7e03661b721060fa6d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 547592,
+            "input": 36,
+            "output": 181,
+            "reasoning": 47,
+            "cache": {
+              "write": 0,
+              "read": 547328
+            }
+          },
+          "cost": 0.001784184,
+          "id": "prt_135b53e270018f2AjT6VXvfHT9",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b5278d002noFf0qTxHFdOmu"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_135b1351f001n4v53QwPpRDvl1",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001967202,
+        "tokens": {
+          "total": 548271,
+          "input": 195,
+          "output": 492,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 547584
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791902433051,
+          "completed": 1791902439934
+        },
+        "finish": "stop",
+        "id": "msg_135b53f1b002Q13ymWdhgZb037",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "0c535ab5ff79f5ab4d84eb7e03661b721060fa6d",
+          "type": "step-start",
+          "id": "prt_135b54a2b0019atFlNgxtUe50N",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b53f1b002Q13ymWdhgZb037"
+        },
+        {
+          "type": "text",
+          "text": "Done → **PR #147**: https://github.com/PathlandDev/Pathland/pull/147\n\n**What it does**\n- **`version` job** — resolves the tag and validates `v<major>.<minor>.<patch>` (optional pre-release suffix); no longer compares against the code.\n- **`rust`** — `cargo set-version --workspace X.Y.Z` (updates the workspace version, the intra-workspace path-dep pins, and `Cargo.lock`), then test/publish/package.\n- **`java`** — `mvn versions:set -DnewVersion=X.Y.Z -DprocessAllModules=true`, then stage natives + `mvn -P release deploy`.\n- **`bump`** — commits `chore(release): vX.Y.Z` back to `main`.\n- **`RELEASING.md`** — tag-driven model + commit-back.\n\n**Verified locally**\n- `cargo set-version --workspace 0.1.1` touched the workspace version **and** all path-dep pins + lockfile.\n- `mvn versions:set -DnewVersion=0.1.1 -DprocessAllModules` cascaded to every module's `<parent><version>`.\n- Tag regex accepts `v0.1.1`/`v1.2.3`/`v0.1.1-rc1`, rejects `v0.1`/`0.1.1`/`v1.2.3.4`.\n- Reverted both test edits; repo stays at `0.1.0`.\n\n**After you merge #147:** re-run the `v0.1.1` release via **Actions → Release → Run workflow** with tag `v0.1.1`. It'll set `0.1.1`, publish Rust + Java at `0.1.1`, attach the assets, and commit `0.1.1` back to `main`.\n\nOne prerequisite for the `bump` job: `main` must be pushable by the workflow's `GITHUB_TOKEN` (unprotected, or allow the Actions bot) — otherwise the commit-back step fails *after* a successful publish. Want me to note that in the PR or is `main` already fine?",
+          "time": {
+            "start": 1791902435886,
+            "end": 1791902439824
+          },
+          "id": "prt_135b54a2e001Ye01IR6udfw3io",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b53f1b002Q13ymWdhgZb037"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "0c535ab5ff79f5ab4d84eb7e03661b721060fa6d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 548271,
+            "input": 195,
+            "output": 492,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 547584
+            }
+          },
+          "cost": 0.001967202,
+          "id": "prt_135b559c8001EbBsGKIxlaFmiO",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_135b53f1b002Q13ymWdhgZb037"
         }
       ]
     }
