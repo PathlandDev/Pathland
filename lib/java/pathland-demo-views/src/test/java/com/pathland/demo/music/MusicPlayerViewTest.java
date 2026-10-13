@@ -53,6 +53,16 @@ class MusicPlayerViewTest {
         return new Mounted(result, sink, store);
     }
 
+    private static Mounted mountSnapshot() {
+        StateStore store = new InMemoryStateStore();
+        PersistentState state = new PersistentState(store, "session-1");
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        emitter.snapshotEmission(true);
+        RenderResult result = emitter.mount(new MusicPlayerView(), new Environment(state));
+        return new Mounted(result, sink, store);
+    }
+
     @Test
     void libraryRendersTracksAndAlbumArt() {
         Mounted m = mount();
@@ -140,6 +150,23 @@ class MusicPlayerViewTest {
     }
 
     @Test
+    void snapshotEmissionCarriesBothCandidatesWithTheWideSidebarSubtree() {
+        // The web SSR first document (issue #141): the root fit slot carries BOTH
+        // candidates so CSS container queries gate the first paint. The wide
+        // candidate's subtree (the now-playing sidebar) must be present — a
+        // regression here is the "wide candidate renders empty → white page" bug.
+        Mounted m = mountSnapshot();
+        ProtocolFrame frame = m.sink.frame();
+
+        assertTrue(anySetText(frame, "Library"), "the shared main area renders in the snapshot");
+        assertTrue(anySetText(frame, "Now Playing"),
+                "the WIDE candidate's sidebar subtree rides the snapshot (not empty)");
+        int rootSlot = slotIdByMaxThreshold(frame, 1024f);
+        assertEquals(2, childCount(frame, rootSlot),
+                "the root fit slot carries both candidates");
+    }
+
+    @Test
     void interactionDrivesPersistedPlayerState() {
         Mounted m = mount();
         // Run every tap (hosts drive taps exactly like this); whichever button fires,
@@ -211,6 +238,17 @@ class MusicPlayerViewTest {
         int n = 0;
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    private static int childCount(ProtocolFrame frame, int parentId) {
+        int n = 0;
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.TREE && op.command() == Commands.Tree.INSERT_CHILD
+                    && op.a() == parentId) {
                 n++;
             }
         }

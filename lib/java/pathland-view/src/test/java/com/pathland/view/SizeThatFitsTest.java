@@ -72,6 +72,66 @@ class SizeThatFitsTest {
     }
 
     @Test
+    void snapshotEmissionMountsAllCandidatesThenDowngradesToOneOnFirstFitChanged() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        // The full-snapshot (web SSR) emission mode (issue #141): the slot carries
+        // EVERY candidate so the SRR renders all branches gated by CSS container
+        // queries. The authoring DSL is unchanged — only the emitter's mode flag.
+        emitter.snapshotEmission(true);
+        View root = VStack.children(SizeThatFits.make(Fit.of(Text.make(t -> t.text("wide")), 640f),
+                Fit.of(Text.make(t -> t.text("compact")))));
+        RenderResult result = emitter.mount(root, Environment.DEFAULT);
+
+        ProtocolFrame initial = sink.frame();
+        // Both candidates transmit in snapshot mode.
+        assertTrue(containsText(initial, "wide"), "snapshot carries every candidate");
+        assertTrue(containsText(initial, "compact"), "snapshot carries every candidate");
+        // The slot's child list has both candidates + FIT_QUERY intact.
+        assertTrue(initial.opcodes().stream().anyMatch(o ->
+                o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE
+                        && o.b() == Components.SIZE_THAT_FITS), "slot created");
+        // The first FIT_CHANGED (even an index equal to the fallback) collapses
+        // N→1: the retained tree becomes the ordinary single-selected-child form.
+        Consumer<Integer> fit = result.fitInputs().get(slotId(result));
+        fit.accept(1);
+        ProtocolFrame downgrade = sink.frame();
+        assertTrue(countOps(downgrade, Categories.TREE, Commands.Tree.REMOVE_CHILD) >= 1, "extra candidate removed");
+        // The SELECTED candidate's subtree is RETAINED (zero churn): the downgrade
+        // removes the unselected candidate only and never re-creates the winner —
+        // a positional morph would relocate the winner into the SSR's loser wrapper.
+        assertFalse(containsText(downgrade, "wide"), "the selected candidate is retained, not re-emitted");
+        assertFalse(containsText(downgrade, "compact"), "the other candidate is downgraded away");
+        assertEquals(0, countOps(downgrade, Categories.TREE, Commands.Tree.CREATE_NODE),
+                "the selected candidate is kept, not re-created");
+
+        // A subsequent mount frame (resync) emits the single selected child only.
+        emitter.renderFull();
+        ProtocolFrame resync = sink.frame();
+        assertTrue(containsText(resync, "wide"), "resync re-emits the selected child");
+        assertFalse(containsText(resync, "compact"), "the dowgraded tree no longer carries the other candidate");
+    }
+
+    @Test
+    void resyncBeforeFirstFitChangedReemitsTheSnapshotForm() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        emitter.snapshotEmission(true);
+        View root = VStack.children(SizeThatFits.make(Fit.of(Text.make(t -> t.text("wide")), 640f),
+                Fit.of(Text.make(t -> t.text("compact")))));
+        emitter.mount(root, Environment.DEFAULT);
+
+        // No FIT_CHANGED yet: the retained tree is still the snapshot form, so a
+        // resync re-emits BOTH candidates. The client reuses its SSR gate (the
+        // candidate wrappers + `@container` band rules) and keeps showing the
+        // width-correct candidate — a resync must NOT collapse the slot.
+        emitter.renderFull();
+        ProtocolFrame resync = sink.frame();
+        assertTrue(containsText(resync, "compact"), "resync carries the fallback candidate");
+        assertTrue(containsText(resync, "wide"), "resync carries the other candidate too (snapshot form)");
+    }
+
+    @Test
     void fitChangeSwapsTheChildAndAnUnchangedIndexEmitsZeroOpcodes() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);

@@ -125,6 +125,11 @@ public final class PathlandSession {
         };
         this.batcher = new DeltaBatcher(this::sendBatch, this.telemetry, this.mount);
         this.emitter = new Emitter(sink, app.theme());
+        // SSR full-snapshot emission: fit slots carry ALL candidates so the web
+        // renderer shows every branch (CSS container queries gate the first paint —
+        // issue #141). The live reconcile path still emits one selected child after
+        // the first FIT_CHANGED; this stays invisible to DSL authors.
+        this.emitter.snapshotEmission(true);
 
         // Mount wires State fields, then renders and emits the structural frame. The
         // active path is injected as a scoped environment value; any root works (with or

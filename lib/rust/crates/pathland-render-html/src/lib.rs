@@ -60,7 +60,7 @@ fn font_design_family(code: u8) -> Option<&'static str> {
 }
 
 /// A decoded node in the retained description.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     /// Protocol component type id (see `pathland_core::component_type`).
     pub component: u16,
@@ -76,6 +76,75 @@ pub struct Node {
     pub date: Option<(i32, u32)>,
     /// Child node ids in insertion order.
     pub children: Vec<u32>,
+    /// A `FIT_QUERY` threshold table, decoded numerically (ascending f32s) — the
+    /// candidate `minWidth`s the web renderer turns into `@container` band rules
+    /// for the SSR first paint (issue #141).
+    pub fit_thresholds: Vec<f32>,
+}
+
+/// Whether a `SIZE_THAT_FITS` node satisfies the **candidate-identity contract**
+/// (spec/PRIMITIVES.md §SizeThatFits): a full-snapshot slot has MORE THAN ONE
+/// child, exactly one ascending `FIT_QUERY` threshold per child (so child `i` ⇔
+/// candidate `i`). A frame that violates this (table length ≠ child count, or a
+/// non-ascending table) cannot be CSS-gated and is rendered as the threshold-0
+/// fallback child only — never as ungated overlapping candidates.
+fn fit_candidates_valid(node: &Node) -> bool {
+    node.children.len() > 1
+        && node.fit_thresholds.len() == node.children.len()
+        && node.fit_thresholds.windows(2).all(|w| w[0] <= w[1])
+}
+
+/// The `@container` band rules for every multi-candidate fit slot, rendered into
+/// a `<style data-pathland-fit>` element in the document head (issue #141). For
+/// each distinct threshold `T_i` (ascending) the rule is **self-contained**: at
+/// `width >= T_i` show candidate `i` and hide every OTHER candidate of this slot,
+/// so exactly one candidate is visible at any container width — mirroring
+/// `pathland_core::fit::fit_index` (equal thresholds pick the lower index, so
+/// later duplicates never get a rule).
+///
+/// Bands use `min-width`, so at a width past several thresholds every matching
+/// rule applies; all selectors are one attribute deep (equal specificity) and
+/// `!important`, and the bands are emitted **ascending**, so the highest matching
+/// band wins the cascade. Below the first threshold no rule matches → candidate 0
+/// keeps its default `display:contents` (fallback) and candidates ≥ 1 keep
+/// `display:none`.
+///
+/// The child at position `i` is candidate `i` (spec/PRIMITIVES.md §SizeThatFits
+/// candidate-identity contract): the slot's child order equals the `FIT_QUERY`
+/// order, so the band index and the child index are the same.
+fn fit_band_styles(nodes: &BTreeMap<u32, Node>) -> String {
+    let mut rules = String::new();
+    for (id, node) in nodes {
+        if node.component != component_type::SIZE_THAT_FITS || !fit_candidates_valid(node) {
+            continue;
+        }
+        let n = node.children.len();
+        let mut seen = f32::NEG_INFINITY;
+        for (i, &t) in node.fit_thresholds.iter().enumerate() {
+            if i == 0 {
+                seen = t;
+                continue; // candidate 0 is the default-visible fallback
+            }
+            if t <= seen {
+                continue; // equal threshold → lower index already owns the band
+            }
+            seen = t;
+            let mut band = format!("@container pf-{id} (min-width: {t}px) {{");
+            for j in 0..n {
+                if j == i {
+                    continue; // never hide the winner
+                }
+                band.push_str(&format!(
+                    " [data-pathland-id=\"{id}\"] > [data-pathland-fit-cand=\"{j}\"] {{ display: none !important; }}"
+                ));
+            }
+            band.push_str(&format!(
+                " [data-pathland-id=\"{id}\"] > [data-pathland-fit-cand=\"{i}\"] {{ display: contents !important; }} }} \n"
+            ));
+            rules.push_str(&band);
+        }
+    }
+    rules
 }
 
 impl Node {
@@ -88,6 +157,7 @@ impl Node {
             token_refs: BTreeMap::new(),
             date: None,
             children: Vec::new(),
+            fit_thresholds: Vec::new(),
         }
     }
 
@@ -835,6 +905,28 @@ fn list_csv(strings: &[u8], offset: u32) -> Option<String> {
     Some(parts.join(","))
 }
 
+/// Read a length-prefixed f32 array (`[u32 count][f32 × count]`) from the arena —
+/// the numeric form of a `LIST`-typed value (today the `FIT_QUERY` threshold table).
+fn list_f32(strings: &[u8], offset: u32) -> Option<Vec<f32>> {
+    let offset = offset as usize;
+    if offset + 4 > strings.len() {
+        return None;
+    }
+    let count = u32::from_le_bytes(strings[offset..offset + 4].try_into().ok()?) as usize;
+    let start = offset + 4;
+    if start + count * 4 > strings.len() {
+        return None;
+    }
+    let mut values = Vec::with_capacity(count);
+    for i in 0..count {
+        let bits = u32::from_le_bytes(
+            strings[start + i * 4..start + i * 4 + 4].try_into().ok()?,
+        );
+        values.push(f32::from_bits(bits));
+    }
+    Some(values)
+}
+
 // --- Design tokens (spec/TOKENS.md) ---
 
 /// `SET_DESIGN_TOKEN` overrides collected from a snapshot batch. `base` holds
@@ -1014,9 +1106,13 @@ fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings
                 } else if vt == value_type::LIST {
                     // A length-prefixed f32 array — today a `FIT_QUERY` threshold
                     // table; stored as its CSV form so the SSR shell can mirror it
-                    // in a `data-pathland-fit` attribute for the DOM client.
+                    // in a `data-pathland-fit` attribute for the DOM client, and as
+                    // the numeric table for the `@container` band rules.
                     if let Some(csv) = list_csv(strings, op.c()) {
                         node.strings.insert(property, csv);
+                    }
+                    if let Some(values) = list_f32(strings, op.c()) {
+                        node.fit_thresholds = values;
                     }
                 } else {
                     node.properties.insert(property, op.c());
@@ -1085,13 +1181,24 @@ impl HtmlRenderer {
         } else {
             format!("<style data-pathland-tokens>{token_rules}</style>\n")
         };
+        // Multi-candidate fit slots (issue #141) get their `@container` band rules
+        // in a dedicated `data-pathland-fit` element (the SSR visibility contract;
+        // the DOM client drops them on hydration). None in live/single-child
+        // frames → no element.
+        let fit_rules = fit_band_styles(&nodes);
+        let fit_style = if fit_rules.is_empty() {
+            String::new()
+        } else {
+            format!("<style data-pathland-fit>{fit_rules}</style>\n")
+        };
         format!(
             "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n\
              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
              <title>Pathland</title>\n\
-             {}{}\n</head>\n<body>{body}</body>\n</html>\n",
+             {}{}{}\n</head>\n<body>{body}</body>\n</html>\n",
             css::STYLE,
-            token_style
+            token_style,
+            fit_style
         )
     }
 
@@ -1196,31 +1303,71 @@ impl HtmlRenderer {
             component_type::SIZE_THAT_FITS => {
                 // A fit slot (spec/PRIMITIVES.md §SizeThatFits): size-taking — it
                 // fills the parent's proposal, and that measured width is the unit
-                // of fitting. The single (selected) child is all that transmits;
-                // `data-pathland-fit` mirrors the FIT_QUERY threshold table so the
-                // DOM client can derive the fit locally (and only report FIT_CHANGED
-                // on transitions).
+                // of fitting. `data-pathland-fit` mirrors the FIT_QUERY threshold
+                // table so the DOM client can derive the fit locally (and only
+                // report FIT_CHANGED on transitions).
+                //
+                // A SINGLE child (the live form) renders exactly as before. When the
+                // slot carries MULTIPLE children it is the SSR full-snapshot form
+                // (issue #141): EVERY candidate is laid out and gated by CSS
+                // container queries, so a no-JS first paint already shows the
+                // candidate matching the slot's width.
                 //
                 // The slot is a LAYOUT-TRANSPARENT container: it forwards the
                 // parent flex container's flex-direction/align-items/justify-content
-                // (`inherit`) to its own box, so its sole child is laid out exactly
+                // (`inherit`) to its own box, so its child is laid out exactly
                 // as if it sat directly in the parent — e.g. a `VStack(CENTER)` keeps
                 // centering a candidate the slot wraps, instead of the slot's
-                // `align-self:stretch` box pinning the child to the start (a
-                // regression when the player bar moved its centered groups behind a
-                // fit slot). Under a non-flex parent `inherit` degrades to the CSS
-                // initial values (`row`/`normal`), which matches the plain-box
-                // behavior the slot had before. `align-self:stretch` + `flex:1 1
-                // auto` stay so the slot still fills/measures the proposal, and
-                // `min-width/height:0` lets flexbox shrink below content.
+                // `align-self:stretch` box pinning the child to the start. Under a
+                // non-flex parent `inherit` degrades to the CSS initial values.
+                // `align-self:stretch` + `flex:1 1 auto` keep the slot filling/
+                // measuring the proposal. In the snapshot form the slot also becomes
+                // the `@container` for the band rules and wraps each candidate in a
+                // `display:none`-by-default wrapper carrying the candidate's id + a
+                // `data-pathland-fit-cand` index; the head `<style data-pathland-fit>`
+                // (built by `fit_band_style`) flips the matching band to
+                // `display:contents`.
                 let fit_attr = node
                     .strings
                     .get(&property_id::FIT_QUERY)
                     .map(|csv| format!(" data-pathland-fit=\"{}\"", escape(csv)))
                     .unwrap_or_default();
-                format!(
-                    "<div{data_id} class=\"pathland-ftf\"{fit_attr}{event}{aria} style=\"display:flex;flex-direction:inherit;align-items:inherit;justify-content:inherit;flex:1 1 auto;align-self:stretch;min-width:0;min-height:0;{css}{derived}\">{children}</div>"
-                )
+                if fit_candidates_valid(node) {
+                    let fit_cands = format!(" data-pathland-fit-cands=\"{}\"", node.children.len());
+                    let mut boxed = String::new();
+                    for (i, &child) in node.children.iter().enumerate() {
+                        // Candidate content keeps its own id (the DOM client's byId
+                        // maps property deltas to the correct element); the wrapper is
+                        // a pure CSS gate — no id — hidden by default except the
+                        // threshold-0 fallback (candidate 0). The head
+                        // `<style data-pathland-fit>` `@container` rules (built by
+                        // `fit_band_styles`) swap which band is visible.
+                        let inner = self.render_node(nodes, child, Some(node.component));
+                        let default = if i == 0 { "display:contents" } else { "display:none" };
+                        boxed.push_str(&format!(
+                            "<div data-pathland-fit-cand=\"{i}\" data-pathland-fit-cand-id=\"{child}\" style=\"{default}\">{inner}</div>"
+                        ));
+                    }
+                    let slot_base = format!(
+                        "display:flex;flex-direction:inherit;align-items:inherit;justify-content:inherit;flex:1 1 auto;align-self:stretch;min-width:0;min-height:0;container-type:inline-size;container-name:pf-{id};{css}{derived}"
+                    );
+                    format!(
+                        "<div{data_id} class=\"pathland-ftf\"{fit_attr}{fit_cands}{event}{aria} style=\"{slot_base}\">{boxed}</div>"
+                    )
+                } else if node.children.len() > 1 {
+                    // A multi-child slot whose FIT_QUERY table does not satisfy the
+                    // candidate-identity contract (length mismatch / non-ascending)
+                    // cannot be gated: degrade to the threshold-0 fallback child
+                    // only, never render ungated overlapping candidates.
+                    let only = self.render_node(nodes, node.children[0], Some(node.component));
+                    format!(
+                        "<div{data_id} class=\"pathland-ftf\"{fit_attr}{event}{aria} style=\"display:flex;flex-direction:inherit;align-items:inherit;justify-content:inherit;flex:1 1 auto;align-self:stretch;min-width:0;min-height:0;{css}{derived}\">{only}</div>"
+                    )
+                } else {
+                    format!(
+                        "<div{data_id} class=\"pathland-ftf\"{fit_attr}{event}{aria} style=\"display:flex;flex-direction:inherit;align-items:inherit;justify-content:inherit;flex:1 1 auto;align-self:stretch;min-width:0;min-height:0;{css}{derived}\">{children}</div>"
+                    )
+                }
             }
             component_type::TEXT => {
                 // A TEXT's tag is resolved by typography + role: a heading
@@ -3157,6 +3304,148 @@ mod tests {
         );
         assert!(!snippet.contains("align-items:stretch;"), "forwarded, not stretch-only: {snippet}");
         assert!(html.contains("display:flex;flex-direction:row;"), "the candidate HSTACK stays a row");
+    }
+
+    #[test]
+    fn snapshot_fit_slot_renders_all_candidates_with_container_query_rules() {
+        use pathland_core::value_type;
+
+        // The SSR full-snapshot form (issue #141): a `SIZE_THAT_FITS` carrying
+        // MULTIPLE children (every candidate) renders each branch in a
+        // `data-pathland-fit-cand`-gated wrapper, makes the slot a `@container`,
+        // and emits the band rules in a `<style data-pathland-fit>` element — so a
+        // no-JS first paint shows the candidate matching the slot's width. The
+        // child at position `i` is candidate `i` (child order = FIT_QUERY order).
+        // The single-child (live) form stays a plain `pathland-ftf` (tested above).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SIZE_THAT_FITS as u32, 0));
+        // FIT_QUERY (LIST) → `[count=2][0][640]` → `data-pathland-fit="0,640"`.
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&2u32.to_le_bytes());
+        strings.extend_from_slice(&0.0f32.to_le_bytes());
+        strings.extend_from_slice(&640.0f32.to_le_bytes());
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::LIST as u32) << 16) | property_id::FIT_QUERY as u32,
+            0,
+        ));
+        // Two candidate branches: HSTACK(2) "wide" and VSTACK(3) "compact".
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::HSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, 1));
+
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &strings, 1);
+        // The slot becomes a container with a unique name.
+        assert!(html.contains("container-type:inline-size;"), "slot is a container: {}", html);
+        assert!(html.contains("container-name:pf-1;"), "slot has a unique container name: {}", html);
+        // Both candidates ride the snapshot (gated, mirroring the fit table + count).
+        assert!(html.contains("data-pathland-fit-cands=\"2\""), "candidate count mirrors: {}", html);
+        assert!(html.contains("data-pathland-fit-cand=\"0\""), "candidate 0 wrapper: {}", html);
+        assert!(html.contains("data-pathland-fit-cand=\"1\""), "candidate 1 wrapper: {}", html);
+        assert!(html.contains("data-pathland-fit-cand-id=\"2\""), "wrapper carries candidate id 2: {}", html);
+        assert!(html.contains("data-pathland-fit-cand-id=\"3\""), "wrapper carries candidate id 3: {}", html);
+        // Candidate 0 (threshold 0) is the default-visible fallback; candidate 1 hidden.
+        assert!(html.contains("data-pathland-fit-cand=\"0\" data-pathland-fit-cand-id=\"2\" style=\"display:contents\""));
+        assert!(html.contains("data-pathland-fit-cand=\"1\" data-pathland-fit-cand-id=\"3\" style=\"display:none\""));
+        // The candidate content keeps its own id (property deltas land correctly).
+        assert!(html.contains("<div data-pathland-id=\"2\" class=") || html.contains("<div data-pathland-id=\"2\""),
+            "candidate content keeps its id: {}", html);
+        // The band rules live in a dedicated head element.
+        let fit_style = html.find("<style data-pathland-fit>").expect("band rules style element");
+        let style_close = html[fit_style..].find("</style>").unwrap() + fit_style;
+        let rules = &html[fit_style..style_close];
+        assert!(rules.contains("@container pf-1 (min-width: 640px)"), "band rule for candidate 1: {rules}");
+        // The winner's band hides the OTHER candidates only (never the winner).
+        assert!(rules.contains("[data-pathland-id=\"1\"] > [data-pathland-fit-cand=\"0\"] { display: none !important; }"), "{rules}");
+        assert!(rules.contains("[data-pathland-id=\"1\"] > [data-pathland-fit-cand=\"1\"] { display: contents !important; }"), "{rules}");
+        assert!(!rules.contains("[data-pathland-fit-cand] { display: none"), "the hide selector never targets all candidates: {rules}");
+        // The live/single-child form still produces NO band rules.
+        let mut single = Vec::new();
+        single.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SIZE_THAT_FITS as u32, 0));
+        single.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, 0));
+        single.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::VSTACK as u32, 0));
+        let html_single = renderer.render_document(&single, &strings, 1);
+        assert!(!html_single.contains("data-pathland-fit-cands"), "single-child form unchanged: {}", html_single);
+        assert!(!html_single.contains("data-pathland-fit-cand"), "single-child form unchanged: {}", html_single);
+        assert!(!html_single.contains("<style data-pathland-fit>"), "no band rules for a single child");
+    }
+
+    #[test]
+    fn snapshot_fit_slot_three_candidates_one_visible_ascending_bands() {
+        use pathland_core::value_type;
+
+        // Three candidates with thresholds [0, 600, 900] (ascending): exactly one
+        // band per distinct non-fallback threshold, each showing its candidate and
+        // hiding the other two; no band for T_0 (the inline fallback).
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SIZE_THAT_FITS as u32, 0));
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&3u32.to_le_bytes());
+        strings.extend_from_slice(&0.0f32.to_le_bytes());
+        strings.extend_from_slice(&600.0f32.to_le_bytes());
+        strings.extend_from_slice(&900.0f32.to_le_bytes());
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1, ((value_type::LIST as u32) << 16) | property_id::FIT_QUERY as u32, 0));
+        for (child, idx) in [(2u32, 0u32), (3, 1), (4, 2)] {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::VSTACK as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, idx));
+        }
+
+        let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
+        // Wrapper order = FIT_QUERY order; only candidate 0 is default-visible.
+        assert!(html.contains("data-pathland-fit-cands=\"3\""), "{html}");
+        assert!(html.contains("data-pathland-fit-cand=\"0\" data-pathland-fit-cand-id=\"2\" style=\"display:contents\""), "{html}");
+        assert!(html.contains("data-pathland-fit-cand=\"1\" data-pathland-fit-cand-id=\"3\" style=\"display:none\""), "{html}");
+        assert!(html.contains("data-pathland-fit-cand=\"2\" data-pathland-fit-cand-id=\"4\" style=\"display:none\""), "{html}");
+
+        let fit_style = html.find("<style data-pathland-fit>").expect("band style element");
+        let close = html[fit_style..].find("</style>").unwrap() + fit_style;
+        let rules = &html[fit_style..close];
+        assert!(rules.contains("@container pf-1 (min-width: 600px)"), "{rules}");
+        assert!(rules.contains("@container pf-1 (min-width: 900px)"), "{rules}");
+        assert!(!rules.contains("min-width: 0px"), "no band for T_0: {rules}");
+        assert!(
+            rules.find("min-width: 600px").unwrap() < rules.find("min-width: 900px").unwrap(),
+            "bands ascending: {rules}"
+        );
+        // Band 600: show candidate 1, hide 0 and 2.
+        assert!(rules.contains("[data-pathland-id=\"1\"] > [data-pathland-fit-cand=\"1\"] { display: contents !important; }"), "{rules}");
+        assert!(rules.contains("[data-pathland-id=\"1\"] > [data-pathland-fit-cand=\"0\"] { display: none !important; }"), "{rules}");
+        assert!(rules.contains("[data-pathland-id=\"1\"] > [data-pathland-fit-cand=\"2\"] { display: none !important; }"), "{rules}");
+        // Band 900: show candidate 2, hide 0 and 1.
+        assert!(rules.contains("[data-pathland-id=\"1\"] > [data-pathland-fit-cand=\"2\"] { display: contents !important; }"), "{rules}");
+        assert!(!rules.contains("[data-pathland-fit-cand] { display: none"), "never a hide-all selector: {rules}");
+    }
+
+    #[test]
+    fn snapshot_fit_slot_invalid_table_degrades_to_fallback_child() {
+        use pathland_core::value_type;
+
+        // A multi-child slot whose FIT_QUERY table violates the candidate-identity
+        // contract (here: one threshold for two children) cannot be gated. The
+        // renderer must NOT emit wrappers/bands and must render the threshold-0
+        // fallback child only — never ungated overlapping candidates.
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SIZE_THAT_FITS as u32, 0));
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&1u32.to_le_bytes());
+        strings.extend_from_slice(&0.0f32.to_le_bytes());
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_PROPERTY, 0, 1, ((value_type::LIST as u32) << 16) | property_id::FIT_QUERY as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, 1));
+
+        let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
+        assert!(!html.contains("data-pathland-fit-cands"), "no gating: {html}");
+        assert!(!html.contains("data-pathland-fit-cand"), "no wrappers: {html}");
+        assert!(!html.contains("<style data-pathland-fit>"), "no bands: {html}");
+        assert!(html.contains("data-pathland-id=\"2\""), "fallback child renders: {html}");
+        assert!(!html.contains("data-pathland-id=\"3\""), "invalid candidates are not rendered ungated: {html}");
     }
 
     #[test]

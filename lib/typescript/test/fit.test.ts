@@ -6,8 +6,11 @@ import {
   CAT_EVENT,
   CAT_PARAMETER,
   CAT_TREE,
+  CMD_CREATE_NODE,
   CMD_DELETE_NODE,
   CMD_FIT_CHANGED,
+  CMD_INSERT_CHILD,
+  CMD_REMOVE_CHILD,
   CMD_SET_PROPERTY,
   PROP_FIT_QUERY,
   VAL_LIST,
@@ -187,6 +190,214 @@ describe("SizeThatFits · FIT_QUERY + local fit → FIT_CHANGED", () => {
     expect(sent).toHaveLength(1);
     expect(decode(sent[0]!).command).toBe(CMD_FIT_CHANGED);
     expect(decode(sent[0]!).a).toBe(7);
+  });
+
+  it("collapses an SSR snapshot fit slot (N candidates → single child) on the first structural op", () => {
+    // The web SSR rendered the full snapshot form (issue #141): a fit slot
+    // carrying EVERY candidate, each behind a `data-pathland-fit-cand` wrapper,
+    // gated by a `@container` band-rule `<style data-pathland-fit>`. The first
+    // live structural op is the FIT_CHANGED-driven downgrade to one child; the
+    // client must unwrap the gated wrappers and strip container-name/cands +
+    // the slot's band rules so the N→1 deltas apply to plain children.
+    const style = document.createElement("style");
+    style.setAttribute("data-pathland-fit", "");
+    style.textContent = [
+      "@container pf-2 (min-width: 640px) { [data-pathland-id=\"2\"] > [data-pathland-fit-cand=\"0\"] { display: none !important; } [data-pathland-id=\"2\"] > [data-pathland-fit-cand=\"1\"] { display: contents !important; } }",
+      "@container pf-20 (min-width: 600px) { /* another slot — must survive (id boundary) */ }",
+    ].join("\n");
+    document.head.appendChild(style);
+
+    const slot = document.createElement("div");
+    slot.setAttribute("data-pathland-id", "2");
+    slot.setAttribute("data-pathland-fit-cands", "2");
+    slot.className = "pathland-ftf";
+    slot.style.cssText = "display:flex;container-type:inline-size;container-name:pf-2;";
+    // Candidate 2 (wide) hidden by default; candidate 3 (compact) = the fallback.
+    const c0 = document.createElement("div");
+    c0.setAttribute("data-pathland-fit-cand", "0");
+    c0.innerHTML = '<div data-pathland-id="3"><span data-pathland-id="4">compact</span></div>';
+    const c1 = document.createElement("div");
+    c1.setAttribute("data-pathland-fit-cand", "1");
+    c1.innerHTML = '<div data-pathland-id="5">wide</div>';
+    slot.append(c0, c1);
+    document.body.appendChild(slot);
+
+    const r: DomRenderer = { byId: new Map() };
+    r.byId.set(2, slot);
+    r.byId.set(3, c0.firstElementChild as Element);
+    r.byId.set(4, (c0.firstElementChild as Element).firstElementChild as Element);
+    r.byId.set(5, c1.firstElementChild as Element);
+
+    // The downgrade: remove candidate 5 (wide was never selected), then insert a
+    // fresh single child under the slot.
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_DELETE_NODE, 0, 5],
+          [CAT_TREE, CMD_DELETE_NODE, 0, 4],
+        ]),
+      ),
+      r,
+    );
+
+    // The snapshot wrappers are unwrapped (no gated divs left under the slot),
+    // and the slot is back to the plain single-child form.
+    expect(slot.querySelector("[data-pathland-fit-cand]")).toBeNull();
+    expect(slot.hasAttribute("data-pathland-fit-cands")).toBe(false);
+    expect(slot.style.containerType).toBe("");
+    expect(slot.style.containerName).toBe("");
+    // The `data-pathland-fit-cands` marker survives on the retained candidate.
+    expect(c0.querySelector('[data-pathland-id="4"]')).toBeNull(); // deleted
+    // The slot keeps its surviving child and its fit observer (the JS fallback).
+    expect(slot.children.length).toBe(1);
+    // The touched slot's band rules are dropped; another slot's rules survive —
+    // including a multi-digit id (`pf-20`) that shares the `pf-2` prefix.
+    const kept = style.textContent ?? "";
+    expect(kept).not.toContain("min-width: 640px");
+    expect(kept).toContain("pf-20 (min-width: 600px)");
+  });
+
+  it("collapses a same-component snapshot downgrade, retaining the selected candidate", () => {
+    // The server's clean N→1 (issue #141): the slot carried two candidates (both
+    // the SAME component, like the demo's compact/wide rows); on the first
+    // FIT_CHANGED it removes the unselected candidate (2) and KEEPS the selected
+    // one (115, at its FIT_QUERY position). The client must tear down the gate and
+    // leave the retained candidate as the slot's single child.
+    const slot = document.createElement("div");
+    slot.setAttribute("data-pathland-id", "1");
+    slot.setAttribute("data-pathland-fit", "0,1024");
+    slot.setAttribute("data-pathland-fit-cands", "2");
+    slot.style.cssText = "display:flex;container-type:inline-size;container-name:pf-1;";
+    const c0 = document.createElement("div");
+    c0.setAttribute("data-pathland-fit-cand", "0");
+    c0.setAttribute("data-pathland-fit-cand-id", "2");
+    c0.style.display = "contents";
+    c0.innerHTML = '<div data-pathland-id="2" style="display:flex;flex-direction:row;"><div data-pathland-id="3">main</div></div>';
+    const c1 = document.createElement("div");
+    c1.setAttribute("data-pathland-fit-cand", "1");
+    c1.setAttribute("data-pathland-fit-cand-id", "115");
+    c1.style.display = "none";
+    c1.innerHTML = '<div data-pathland-id="115" style="display:flex;flex-direction:row;"><div data-pathland-id="116">main</div><div data-pathland-id="228">side</div></div>';
+    slot.append(c0, c1);
+    document.body.appendChild(slot);
+
+    const r = renderer();
+    r.byId.set(1, slot);
+    r.byId.set(2, c0.firstElementChild as Element);
+    r.byId.set(3, (c0.firstElementChild as Element).firstElementChild as Element);
+    r.byId.set(115, c1.firstElementChild as Element);
+    r.byId.set(116, (c1.firstElementChild as Element).children[0] as Element);
+    r.byId.set(228, (c1.firstElementChild as Element).children[1] as Element);
+
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_REMOVE_CHILD, 0, 1, 2],
+          [CAT_TREE, CMD_DELETE_NODE, 0, 2],
+        ]),
+      ),
+      r,
+    );
+
+    expect(slot.querySelector("[data-pathland-fit-cand]")).toBeNull();
+    expect(slot.hasAttribute("data-pathland-fit-cands")).toBe(false);
+    expect(slot.style.containerName).toBe("");
+    expect(slot.children.length).toBe(1);
+    expect((slot.children[0] as HTMLElement).getAttribute("data-pathland-id")).toBe("115");
+  });
+
+  it("also tears down the gate on a same-component positional-morph downgrade", () => {
+    // Defensive: even if a server relocated the winner into the loser's wrapper
+    // (a positional id-reuse morph), the client must still tear the gate down.
+    const slot = document.createElement("div");
+    slot.setAttribute("data-pathland-id", "1");
+    slot.setAttribute("data-pathland-fit", "0,1024");
+    slot.setAttribute("data-pathland-fit-cands", "2");
+    slot.style.cssText = "display:flex;container-type:inline-size;container-name:pf-1;";
+    const c0 = document.createElement("div");
+    c0.setAttribute("data-pathland-fit-cand", "0");
+    c0.setAttribute("data-pathland-fit-cand-id", "2");
+    c0.style.display = "contents";
+    c0.innerHTML = '<div data-pathland-id="2" style="display:flex;flex-direction:row;"><div data-pathland-id="3">main</div></div>';
+    const c1 = document.createElement("div");
+    c1.setAttribute("data-pathland-fit-cand", "1");
+    c1.setAttribute("data-pathland-fit-cand-id", "115");
+    c1.style.display = "none";
+    c1.innerHTML = '<div data-pathland-id="115" style="display:flex;flex-direction:row;"><div data-pathland-id="116">main</div><div data-pathland-id="228">side</div></div>';
+    slot.append(c0, c1);
+    document.body.appendChild(slot);
+
+    const r = renderer();
+    r.byId.set(1, slot);
+    r.byId.set(2, c0.firstElementChild as Element);
+    r.byId.set(3, (c0.firstElementChild as Element).firstElementChild as Element);
+    r.byId.set(115, c1.firstElementChild as Element);
+    r.byId.set(116, (c1.firstElementChild as Element).children[0] as Element);
+    r.byId.set(228, (c1.firstElementChild as Element).children[1] as Element);
+
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 263, 0x10],
+          [CAT_TREE, CMD_INSERT_CHILD, 0, 2, 263, 1],
+          [CAT_TREE, CMD_REMOVE_CHILD, 0, 1, 115],
+          [CAT_TREE, CMD_DELETE_NODE, 0, 115],
+        ]),
+      ),
+      r,
+    );
+
+    expect(slot.querySelector("[data-pathland-fit-cand]")).toBeNull();
+    expect(slot.hasAttribute("data-pathland-fit-cands")).toBe(false);
+  });
+
+  it("keeps the gate on a resync replay (INSERT_CHILD of an existing candidate)", () => {
+    // A META::RESYNC replays the whole tree as opcodes. For a snapshot slot the
+    // client already holds the SSR gate (wrappers + bands); the replay's
+    // CREATE/INSERT must leave it intact so the CSS band keeps showing the
+    // width-correct candidate (slim window → candidate 0; wide → candidate 1).
+    const slot = document.createElement("div");
+    slot.setAttribute("data-pathland-id", "1");
+    slot.setAttribute("data-pathland-fit", "0,1024");
+    slot.setAttribute("data-pathland-fit-cands", "2");
+    slot.style.cssText = "display:flex;container-type:inline-size;container-name:pf-1;";
+    const c0 = document.createElement("div");
+    c0.setAttribute("data-pathland-fit-cand", "0");
+    c0.setAttribute("data-pathland-fit-cand-id", "2");
+    c0.style.display = "contents";
+    c0.innerHTML = '<div data-pathland-id="2" style="display:flex;flex-direction:row;"><div data-pathland-id="3">main</div></div>';
+    const c1 = document.createElement("div");
+    c1.setAttribute("data-pathland-fit-cand", "1");
+    c1.setAttribute("data-pathland-fit-cand-id", "115");
+    c1.style.display = "none";
+    c1.innerHTML = '<div data-pathland-id="115" style="display:flex;flex-direction:row;"><div data-pathland-id="116">main</div><div data-pathland-id="228">side</div></div>';
+    slot.append(c0, c1);
+    document.body.appendChild(slot);
+
+    const r = renderer();
+    r.byId.set(1, slot);
+    r.byId.set(2, c0.firstElementChild as Element);
+    r.byId.set(3, (c0.firstElementChild as Element).firstElementChild as Element);
+    r.byId.set(115, c1.firstElementChild as Element);
+    r.byId.set(116, (c1.firstElementChild as Element).children[0] as Element);
+    r.byId.set(228, (c1.firstElementChild as Element).children[1] as Element);
+
+    // A resync replay: CREATE the (already-present) slot + insert an existing
+    // candidate. Neither is the downgrade — the gate must survive.
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 1, 0x17],
+          [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2, 0],
+          [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 115, 1],
+        ]),
+      ),
+      r,
+    );
+
+    expect(slot.hasAttribute("data-pathland-fit-cands")).toBe(true);
+    expect(slot.style.containerName).toBe("pf-1");
+    expect(Array.from(slot.children).filter((c) => c.hasAttribute("data-pathland-fit-cand")).length).toBe(2);
   });
 });
 

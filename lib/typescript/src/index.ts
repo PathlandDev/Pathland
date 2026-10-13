@@ -192,7 +192,11 @@ function boot(): void {
   // Hydrate fitted slots from the SSR HTML (they carry `data-pathland-fit`): an
   // initial measure reports the first derived index once; subsequent reports
   // arrive only on band crossings. The slot's own ResizeObserver detects width
-  // changes locally (spec/PRIMITIVES.md).
+  // changes locally (spec/PRIMITIVES.md). A slot with `data-pathland-fit-cands`
+  // is the SSR full-snapshot form (issue #141): ALL candidates are present and
+  // CSS `@container` band rules already gate the visible one, so no JS toggle is
+  // needed for the first paint — the observer still reports FIT_CHANGED so the
+  // live tree can downgrade to a single selected child (the N→1 reconcile).
   for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-fit]")) {
     hydrateFitElement(el, renderer);
   }

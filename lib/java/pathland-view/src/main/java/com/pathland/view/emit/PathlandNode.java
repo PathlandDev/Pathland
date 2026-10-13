@@ -98,6 +98,25 @@ public final class PathlandNode {
     public Consumer<Integer> fitInput;
 
     /**
+     * Whether a `SIZE_THAT_FITS` slot has received its **first** `FIT_CHANGED`
+     * (the slot's fit-input consumer sets it before applying the reported index).
+     * A full-snapshot slot (all candidates present, web SSR container-query form)
+     * stays full until this flips — the mount-time structural effect must not
+     * collapse the multi-candidate presentation before the renderer reports.
+     */
+    public boolean fitReported;
+
+    /**
+     * Internal, set by the emitter while rendering a **full/snapshot emission**
+     * (mount + resync): a {@code SIZE_THAT_FITS} slot emits every candidate so the
+     * web SSR renders all branches gated by CSS container queries (issue #141).
+     * Outside snapshot emissions the slot keeps emitting its single selected
+     * <em>structuralContent</em> child — the authored DSL is unchanged. Only the
+     * emitter writes this; {@code SizeThatFits.FitSlot} reads it.
+     */
+    public static final ThreadLocal<Boolean> SNAPSHOT_EMISSION = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    /**
      * Structural slot: when non-null this node's single child subtree is selected by
      * a signal and **reconciled** by the emitter on selector change (spec DSL.md §3.4).
      * The emitter re-evaluates the supplier (which reads the selector signal) and

@@ -92,16 +92,34 @@ public final class SizeThatFits {
             // selection is recorded on the node (`fitSelection`) so a parent-subtree
             // re-render can carry it across the reconcile (a nested fit slot must
             // not reset to compact when an outer slot re-renders its candidate).
+            // `fitReported` is set first: a full-snapshot slot (all candidates
+            // present) stays full until the renderer reports, then the structural
+            // reconcile collapses it to the single selected child.
             node.fitInput = index -> {
                 if (index != null && index >= 0 && index < fits.size()) {
+                    node.fitReported = true;
                     node.fitSelection = index;
                     fitIndex.set(index);
                 }
             };
             node.fitSelection = fitIndex.get();
-            View selected = selectedView();
-            if (selected != null) {
-                node.children.add(selected.render(env));
+            // In a full/snapshot emission (web SSR, issue #141) the slot carries
+            // EVERY candidate as a child, in FIT_QUERY order, so the SSR renders all
+            // branches gated by CSS container queries (correct first paint). The
+            // live form keeps the single `structuralContent` selection below (only
+            // changes travel). The authored DSL is identical either way.
+            if (PathlandNode.SNAPSHOT_EMISSION.get()) {
+                for (Fit fit : fits) {
+                    View candidate = fit.view();
+                    if (candidate != null) {
+                        node.children.add(candidate.render(env));
+                    }
+                }
+            } else {
+                View selected = selectedView();
+                if (selected != null) {
+                    node.children.add(selected.render(env));
+                }
             }
             return node;
         }
