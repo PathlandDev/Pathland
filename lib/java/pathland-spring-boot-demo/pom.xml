@@ -13,6 +13,12 @@
     <artifactId>pathland-spring-boot-demo</artifactId>
     <packaging>jar</packaging>
 
+    <!-- Demo application — not published to Maven Central. -->
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
+
     <name>Pathland Spring Boot Demo</name>
     <description>
         Spring Boot demonstration app consuming the Pathland libraries: SSR via

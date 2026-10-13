@@ -7,7 +7,7 @@ attaches the built files to the Release:
 | Ecosystem | Artifacts | Registry |
 |-----------|-----------|----------|
 | Rust | `pathland-core`, `pathland-engine`, `pathland-view`, `pathland-core-transport`, `pathland-render-html` | crates.io |
-| Java | `org.pathland:*` libraries | Maven Central |
+| Java | `org.pathland:*` libraries (incl. the renderer's native libs for windows-x86_64, linux-x86_64, linux-aarch64, macos-aarch64) | Maven Central |
 
 Both ecosystems share one version (`0.1.0` today), so a release uses a single
 `vX.Y.Z` tag. Releases are immutable per version — bump before re-releasing.
@@ -28,9 +28,11 @@ Repository secrets (Settings → Secrets and variables → Actions):
 
 - `CARGO_REGISTRY_TOKEN` — a crates.io API token with publish scope
   (https://crates.io/settings/tokens).
-- *(Phase 2)* `GPG_PRIVATE_KEY`, `GPG_PASSPHRASE` — the signing key.
-- *(Phase 2)* `CENTRAL_USERNAME`, `CENTRAL_PASSWORD` — the Sonatype Central
-  Portal user token.
+- `GPG_PRIVATE_KEY` — an armored GPG private key whose public key is on a
+  keyserver (Central verifies the signatures).
+- `GPG_PASSPHRASE` — that key's passphrase.
+- `CENTRAL_USERNAME` / `CENTRAL_PASSWORD` — a Sonatype Central Portal **user
+  token** (https://central.sonatype.com/account).
 
 ## Release
 
@@ -40,16 +42,36 @@ Repository secrets (Settings → Secrets and variables → Actions):
 3. The workflow runs:
    - `version-check` — tag == Rust version == Java version.
    - `rust` — tests the publishable crates, publishes them to crates.io in
-     dependency order, and uploads the `.crate` files as a build artifact.
-   - *(Phase 2)* `java-natives` — builds `libpathland_render_html` for
-     `windows-x86_64`, `linux-x86_64`, `linux-aarch64`, `macos-aarch64`;
-     `java` — `mvn -P release deploy` to Maven Central.
-   - `release-assets` — attaches the `.crate` files (+ the Java jars and native
-     libs, in Phase 2) to the GitHub Release.
+     dependency order, and uploads the `.crate` files.
+   - `java-natives` — builds `libpathland_render_html` for windows-x86_64,
+     linux-x86_64, linux-aarch64, macos-aarch64.
+   - `java` — stages the natives into the renderer jar and runs
+     `mvn -P release deploy` to Maven Central (auto-published after validation).
+   - `release-assets` — attaches the `.crate` files, the Java main jars, and the
+     four native libs to the GitHub Release.
 
 The publish steps are **idempotent**: a crate+version already on crates.io is
 skipped, so re-running a partially failed release is safe (re-run the workflow
-via `workflow_dispatch`, passing the `tag`).
+via `workflow_dispatch`, passing the `tag`). Maven Central rejects a re-deploy of
+an existing version, so a Java re-run only helps if the Java deploy did not
+complete.
+
+## Local pre-flight
+
+Rust — `cargo publish --dry-run -p pathland-core` validates the leaf crate (the
+dependent crates can only be dry-run once their dependencies are on crates.io,
+so the ordered CI publish validates them).
+
+Java — `mvn -P release verify` builds and signs the sources/javadoc jars without
+uploading. It needs GPG installed and a `central` server in `~/.m2/settings.xml`:
+
+```xml
+<server>
+  <id>central</id>
+  <username>TOKEN_USERNAME</username>
+  <password>TOKEN_PASSWORD</password>
+</server>
+```
 
 ## Publishable crates (dependency order)
 
@@ -61,6 +83,11 @@ pathland-core → pathland-engine → pathland-view → pathland-core-transport 
 `pathland-render-gtk-demo`, `pathland-html-golden`, `pathland-ts-codegen` are
 **not** published — C-ABI cdylibs, the GTK renderer, and dev tools.)
 
-`cargo publish --dry-run -p pathland-core` validates the leaf crate locally; the
-dependent crates can only be dry-run once their dependencies are on crates.io, so
-the ordered CI publish validates them.
+## Published Java modules
+
+`pathland-view`, `pathland-view-processor`, `pathland-render-html`,
+`pathland-state-redis`, `pathland-server-core`, `pathland-observability`,
+`pathland-test-kit`, `pathland-spring-boot-starter`, `pathland-quarkus-starter`
+(plus the `pathland-parent` POM). The demo modules
+(`pathland-demo-views`, `pathland-gtk-demo`, `pathland-quarkus-demo`,
+`pathland-spring-boot-demo`) set `maven.deploy.skip`.

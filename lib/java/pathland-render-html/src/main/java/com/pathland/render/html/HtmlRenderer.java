@@ -138,26 +138,65 @@ public final class HtmlRenderer {
     /** Extract the jar-embedded dylib to a temp dir; returns its path or null. */
     private static String extractEmbedded() {
         String fileName = "libpathland_render_html" + platformLibraryExtension();
-        try (var stream = HtmlRenderer.class.getResourceAsStream("/META-INF/native/" + fileName)) {
-            if (stream == null) {
+        // The published jar embeds one dylib per platform under
+        // `META-INF/native/<os>-<arch>/`; a local dev build uses the legacy flat
+        // `META-INF/native/` layout. Try the platform dir first, then the flat one.
+        String platform = platformKey();
+        String[] candidates = platform == null
+                ? new String[] { "/META-INF/native/" + fileName }
+                : new String[] {
+                    "/META-INF/native/" + platform + "/" + fileName,
+                    "/META-INF/native/" + fileName,
+                };
+        for (String resource : candidates) {
+            try (var stream = HtmlRenderer.class.getResourceAsStream(resource)) {
+                if (stream == null) {
+                    continue;
+                }
+                java.io.File dir = new java.io.File(System.getProperty("java.io.tmpdir"),
+                        "pathland-native-" + HtmlRenderer.class.getSimpleName() + "-" + System.nanoTime());
+                if (!dir.mkdirs()) {
+                    return null;
+                }
+                java.io.File out = new java.io.File(dir, fileName);
+                try (var copy = new java.io.FileOutputStream(out)) {
+                    stream.transferTo(copy);
+                }
+                if (!out.setExecutable(true, false)) {
+                    // non-fatal: some platforms lack POSIX perms
+                }
+                return out.getAbsolutePath();
+            } catch (IOException e) {
                 return null;
             }
-            java.io.File dir = new java.io.File(System.getProperty("java.io.tmpdir"),
-                    "pathland-native-" + HtmlRenderer.class.getSimpleName() + "-" + System.nanoTime());
-            if (!dir.mkdirs()) {
-                return null;
-            }
-            java.io.File out = new java.io.File(dir, fileName);
-            try (var copy = new java.io.FileOutputStream(out)) {
-                stream.transferTo(copy);
-            }
-            if (!out.setExecutable(true, false)) {
-                // non-fatal: some platforms lack POSIX perms
-            }
-            return out.getAbsolutePath();
-        } catch (IOException e) {
-            return null;
         }
+        return null;
+    }
+
+    /**
+     * The jar's platform directory key (`<os>-<arch>`), matching the release
+     * build matrix: `windows-x86_64`, `linux-x86_64`, `linux-aarch64`,
+     * `macos-aarch64`. Returns {@code null} for a platform the project doesn't
+     * ship (the caller then falls back to the legacy flat layout / the host).
+     */
+    private static String platformKey() {
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        String arch = System.getProperty("os.arch", "").toLowerCase(java.util.Locale.ROOT);
+        String archKey = switch (arch) {
+            case "aarch64", "arm64" -> "aarch64";
+            case "x86_64", "amd64" -> "x86_64";
+            default -> arch;
+        };
+        if (os.contains("win")) {
+            return "windows-" + archKey;
+        }
+        if (os.contains("mac")) {
+            return "macos-" + archKey;
+        }
+        if (os.contains("linux") || os.contains("nux")) {
+            return "linux-" + archKey;
+        }
+        return null;
     }
 
     private static String platformLibraryExtension() {

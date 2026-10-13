@@ -78,13 +78,35 @@
                                 </condition>
                                 <property name="pathland.native.ext" value="" />
 
-                                <property name="native.src" value="${project.basedir}/../../rust/target/debug/libpathland_render_html${pathland.native.ext}" />
-                                <available file="${native.src}" property="native.present" />
-                                <fail unless="native.present"
-                                      message="libpathland_render_html dylib not found at ${native.src}. The renderer jar must embed the Rust cdylib: build it first (locally: cargo build -p pathland-render-html in lib/rust)." />
+                                <!-- Release builds stage one lib per platform under
+                                     target/native/<os>-<arch>/ (the CI matrix) and
+                                     this copies each into META-INF/native/<os>-<arch>/.
+                                     A local build has no staging dir and instead
+                                     embeds the host Rust debug build in the flat
+                                     META-INF/native/ layout. -->
+                                <property name="pathland.native.staging" value="${project.basedir}/target/native" />
+                                <available file="${pathland.native.staging}" type="dir" property="pathland.native.staged" />
+                                <property name="pathland.native.host" value="${project.basedir}/../../rust/target/debug/libpathland_render_html${pathland.native.ext}" />
+                                <available file="${pathland.native.host}" property="pathland.native.host.present" />
+
+                                <fail message="No Rust renderer library to embed: neither per-platform libs at ${pathland.native.staging}/&lt;os&gt;-&lt;arch&gt;/ (release) nor the host build at ${pathland.native.host} (local). Build it first: cargo build -p pathland-render-html (in lib/rust).">
+                                    <condition>
+                                        <and>
+                                            <not><isset property="pathland.native.staged" /></not>
+                                            <not><isset property="pathland.native.host.present" /></not>
+                                        </and>
+                                    </condition>
+                                </fail>
+
                                 <mkdir dir="${project.build.outputDirectory}/META-INF/native" />
-                                <copy file="${native.src}"
-                                      tofile="${project.build.outputDirectory}/META-INF/native/libpathland_render_html${pathland.native.ext}" />
+                                <!-- Release: copy each staged platform dir verbatim. -->
+                                <copy todir="${project.build.outputDirectory}/META-INF/native">
+                                    <fileset dir="${pathland.native.staging}" includes="*/*" erroronmissingdir="false" />
+                                </copy>
+                                <!-- Local dev: embed the host lib in the flat layout. -->
+                                <copy file="${pathland.native.host}"
+                                      tofile="${project.build.outputDirectory}/META-INF/native/libpathland_render_html${pathland.native.ext}"
+                                      failonerror="false" />
                             </target>
                         </configuration>
                         <goals>
