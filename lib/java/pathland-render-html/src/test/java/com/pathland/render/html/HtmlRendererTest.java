@@ -212,12 +212,14 @@ Divider.make().modifiers(),
 
     @Test
     void embeddedNativeLibraryIsExtractedAndLoads() {
-        // The renderer dylib is embedded in the jar (META-INF/native/) and extracted
-        // via JNA. Assert the resource is on the classpath (platform extension) and
-        // that instance() links it.
-        String lib = "/META-INF/native/libpathland_render_html" + platformExtension();
+        // The renderer dylib is embedded in the jar — META-INF/native/<os>-<arch>/
+        // in a release build, or the flat META-INF/native/ in a local build — and
+        // extracted via JNA. Assert this platform's resource is on the classpath
+        // and that instance() links it.
+        String lib = HtmlRenderer.embeddedResourcePath();
+        assertTrue(lib != null, "renderer dylib is embedded for this platform");
         assertTrue(HtmlRenderer.class.getResourceAsStream(lib) != null,
-                "renderer dylib is embedded in the jar resources: " + lib);
+                "embedded resource is on the classpath: " + lib);
         assertTrue(HtmlRenderer.isAvailable(), "native renderer links (embedded extraction)");
         assertTrue(HtmlRenderer.tryInstance() != null, "tryInstance resolves the renderer");
     }
@@ -243,16 +245,5 @@ Divider.make().modifiers(),
 
         // A null argument is the only null result.
         assertTrue(renderer.iconSvg(null) == null);
-    }
-
-    private static String platformExtension() {
-        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
-        if (os.contains("mac")) {
-            return ".dylib";
-        }
-        if (os.contains("win")) {
-            return ".dll";
-        }
-        return ".so";
     }
 }
