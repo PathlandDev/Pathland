@@ -1,0 +1,14 @@
+Explore the Pathland codebase to understand how SizeThatFits (the view that picks one child based on available size) is implemented across the stack. I'm planning the "Improve SizeThatFits for first presentation" change (issue #141) which wants SSR/HTML to render all children and use CSS container queries to show only the matching one, then hydrate to delta changes.
+
+Please find and report:
+
+1. The spec documentation for SizeThatFits / Fit in spec/DSL.md (search for "SizeThatFits", "FIT_QUERY", "FIT_CHANGED", "Fit"). Quote the relevant rows/tables.
+2. The Rust protocol layer: search lib/rust/crates/pathland-core for FIT_QUERY / FIT_CHANGED constants and any SizeThatFits/SIZE_THAT_FITS logic. How is FIT_QUERY encoded (opcode/property)? What does FIT_CHANGED carry?
+3. The Rust HTML renderer: lib/rust/crates/pathland-render-html/ — how does it currently render SIZE_THAT_FITS nodes? Search for "size_that_fits", "SizeThatFits", "fit_query", "Fit". Report file path + how the DOM is produced for this node type.
+4. The Rust view DSL: lib/rust/crates/pathland-view — how is SizeThatFits / Fit authored in Rust? Search for "SizeThatFits", "Fit", "FIT_QUERY". Report the API shape.
+5. The Java DSL: lib/java/pathland-view — the SizeThatFits.java and Fit.java classes (in com/pathland/view/). Report their full API surface (constructors, config setters, how Fit stores view + minWidth, how it renders).
+6. The TypeScript DOM renderer: lib/typescript/ — how does it handle SIZE_THAT_FITS / FIT_CHANGED? Search for "fit", "FIT_QUERY", "FIT_CHANGED", "sizeThatFits". Report file paths + current behavior.
+7. How events flow: FIT_CHANGED 0x13 — who emits it (host renderer -> guest)? Search lib/rust for FIT_CHANGED and report which crate emits it and what payload.
+8. Any existing tests for SizeThatFits in Rust (crates/pathland-render-html, pathland-core) and Java (SizeThatFitsTest). Report file paths and what they assert.
+
+Be thorough. Report concrete file paths, line numbers, constant values, and code snippets for the key pieces (especially the HTML renderer's handling of SIZE_THAT_FITS and the FIT_QUERY property). Do NOT modify any files.
