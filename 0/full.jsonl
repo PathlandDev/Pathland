@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 10.761796787999979,
+    "cost": 10.771584407999976,
     "tokens": {
-      "input": 43937098,
-      "output": 1632211,
-      "reasoning": 760430,
+      "input": 43938528,
+      "output": 1633557,
+      "reasoning": 760860,
       "cache": {
-        "read": 911882496,
+        "read": 914718336,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791914679774
+      "updated": 1791914744171
     }
   },
   "messages": [
@@ -450436,21 +450436,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.002301156,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 708911,
+          "input": 354,
+          "output": 205,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 708352
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791914680002
+          "created": 1791914680002,
+          "completed": 1791914716469
         },
+        "finish": "tool-calls",
         "id": "msg_136701ec2002WNl7FEbKmAOYBq",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -450467,20 +450470,329 @@
           "tool": "bash",
           "callID": "chatcmpl-tool-bcde7f4190822eaa",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nbuild(java): use the verified dev.pathland Maven groupId\n\nThe Central Portal rejects publishing under an unverified namespace\n(\"Namespace 'org.pathland' is not allowed\"). The verified namespace is\ndev.pathland, so switch the reactor's groupId (parent + every module + the\nintra-module dependency coordinates) from org.pathland to dev.pathland.\n\nThe Java packages (com.pathland.*) and the GTK app id (org.pathland.GtkDemo)\nare unrelated and unchanged. Update AGENTS.md / RELEASING.md / the Rust README.\nEOF\n)\" && git push 2>&1 | tail -3"
             },
+            "output": "remote: \nTo https://github.com/PathlandDev/Pathland.git\n * [new branch]        fix/release-maven-pin-and-exclude-demos -> fix/release-maven-pin-and-exclude-demos\n",
+            "metadata": {
+              "output": "remote: \nTo https://github.com/PathlandDev/Pathland.git\n * [new branch]        fix/release-maven-pin-and-exclude-demos -> fix/release-maven-pin-and-exclude-demos\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nbuild(java): use the verified dev.pathland Maven groupId\n\nThe Central Portal rejects publishing under an unverified namespace\n(\"Namespace 'org.pathland' is not allowed\"). The verified namespace is\ndev.pathland, so switch the reactor's groupId (parent + every module + the\nintra-module dependency coordinates) from org.pathland to dev.pathland.\n\nThe Java packages (com.pathland.*) and the GTK app id (org.pathland.GtkDemo)\nare unrelated and unchanged. Update AGENTS.md / RELEASING.md / the Rust README.\nEOF\n)\" && git push 2>&1 | tail -3",
             "time": {
-              "start": 1791914683870
+              "start": 1791914683870,
+              "end": 1791914716362
             }
           },
           "id": "prt_136702d75001gQXXRuwOYTJTNd",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_136701ec2002WNl7FEbKmAOYBq"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "914e0e283d74c8173c24a9e596f9d6ebab4af224",
+          "type": "step-finish",
+          "tokens": {
+            "total": 708911,
+            "input": 354,
+            "output": 205,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 708352
+            }
+          },
+          "cost": 0.002301156,
+          "id": "prt_13670ad02001iSe4WVUZoBZnsk",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_136701ec2002WNl7FEbKmAOYBq"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1366decae001Ro117WQvcnhsWu",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002289042,
+        "tokens": {
+          "total": 709215,
+          "input": 107,
+          "output": 95,
+          "reasoning": 149,
+          "cache": {
+            "write": 0,
+            "read": 708864
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791914716747,
+          "completed": 1791914722545
+        },
+        "finish": "tool-calls",
+        "id": "msg_13670ae4b002HPk9BkyVNwhOB6",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "914e0e283d74c8173c24a9e596f9d6ebab4af224",
+          "type": "step-start",
+          "id": "prt_13670bc43001kCHcp7HMDIjvmt",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670ae4b002HPk9BkyVNwhOB6"
+        },
+        {
+          "type": "reasoning",
+          "text": "Hmm — the push output says \"new branch\" — but the branch already existed (I pushed it earlier). Hmm — maybe the first push (before the commit) created it, and this push... hmm. Let me verify the branch is up to date.\n\nActually — the earlier push created the branch with the Maven-pin commit. Now this push added the groupId commit. The \"new branch\" message is odd. Let me check `git status` / `git log origin/...`.\n\nHmm — let me verify.\n\nLet me run `git log --oneline -3` and `git status`.\n\nHmm — maybe the push output was truncated/misleading. Let me check.\n\nLet me run.",
+          "time": {
+            "start": 1791914720329,
+            "end": 1791914721888
+          },
+          "id": "prt_13670bc49001RRB53aIeN6Cdio",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670ae4b002HPk9BkyVNwhOB6"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-877f4c24f7caf73b",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && git log --oneline -3 && echo \"--- remote ---\" && git rev-parse HEAD origin/fix/release-maven-pin-and-exclude-demos && git status -sb | head -1"
+            },
+            "output": "9d0064b1 build(java): use the verified dev.pathland Maven groupId\n53470a87 ci(release): pin Maven 3.9.9 and exclude the demos from the Central deploy\n4361a035 Merge pull request #149 from PathlandDev/fix/release-cargo-allow-dirty\n--- remote ---\n9d0064b16650d96155ef82bd7fb4ce6bfc271ce4\n9d0064b16650d96155ef82bd7fb4ce6bfc271ce4\n## fix/release-maven-pin-and-exclude-demos...origin/fix/release-maven-pin-and-exclude-demos\n",
+            "metadata": {
+              "output": "9d0064b1 build(java): use the verified dev.pathland Maven groupId\n53470a87 ci(release): pin Maven 3.9.9 and exclude the demos from the Central deploy\n4361a035 Merge pull request #149 from PathlandDev/fix/release-cargo-allow-dirty\n--- remote ---\n9d0064b16650d96155ef82bd7fb4ce6bfc271ce4\n9d0064b16650d96155ef82bd7fb4ce6bfc271ce4\n## fix/release-maven-pin-and-exclude-demos...origin/fix/release-maven-pin-and-exclude-demos\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git log --oneline -3 && echo \"--- remote ---\" && git rev-parse HEAD origin/fix/release-maven-pin-and-exclude-demos && git status -sb | head -1",
+            "time": {
+              "start": 1791914722381,
+              "end": 1791914722430
+            }
+          },
+          "id": "prt_13670c262001ptATiId2sdUt6F",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670ae4b002HPk9BkyVNwhOB6"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "914e0e283d74c8173c24a9e596f9d6ebab4af224",
+          "type": "step-finish",
+          "tokens": {
+            "total": 709215,
+            "input": 107,
+            "output": 95,
+            "reasoning": 149,
+            "cache": {
+              "write": 0,
+              "read": 708864
+            }
+          },
+          "cost": 0.002289042,
+          "id": "prt_13670c4ba001DGFswtDAFBCx0Z",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670ae4b002HPk9BkyVNwhOB6"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1366decae001Ro117WQvcnhsWu",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00265101,
+        "tokens": {
+          "total": 710187,
+          "input": 259,
+          "output": 681,
+          "reasoning": 127,
+          "cache": {
+            "write": 0,
+            "read": 709120
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791914722800,
+          "completed": 1791914734248
+        },
+        "finish": "tool-calls",
+        "id": "msg_13670c5f00025gNqQ6dlpmbVp6",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "914e0e283d74c8173c24a9e596f9d6ebab4af224",
+          "type": "step-start",
+          "id": "prt_13670cf32001HyTKjg7ibwJL1x",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670c5f00025gNqQ6dlpmbVp6"
+        },
+        {
+          "type": "reasoning",
+          "text": "The branch is pushed and in sync (HEAD == origin). The \"new branch\" message was odd but the state is correct.\n\nNow let me update PR #150's title/body to include the groupId change.\n\nLet me use `gh pr edit 150 --title ... --body ...`.\n\nLet me update the title to reflect both fixes, and add the groupId note.\n\nLet me run.\n\nNew title: `ci(release): fix the Central deploy (Maven 3.9.9 pin, exclude demos, dev.pathland groupId)`\n\nBody: add the groupId section.\n\nLet me edit.",
+          "time": {
+            "start": 1791914725172,
+            "end": 1791914726108
+          },
+          "id": "prt_13670cf34001gVLYgvNJbEn2x3",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670c5f00025gNqQ6dlpmbVp6"
+        },
+        {
+          "type": "text",
+          "text": "Branch pushed. Let me update PR #150 to include the groupId change.\n\n",
+          "time": {
+            "start": 1791914726110,
+            "end": 1791914731711
+          },
+          "id": "prt_13670d2de0017omNd3EHDpqKK8",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670c5f00025gNqQ6dlpmbVp6"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-bd7c04ca577ef084",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr edit 150 --title \"ci(release): fix the Central deploy (Maven 3.9.9 pin, exclude demos, dev.pathland groupId)\" --body \"$(cat <<'EOF'\nGets the Maven Central deployment passing. Three fixes, all verified locally.\n\n## 1. Pin Maven 3.9.9 (bundle validation)\nThe runner image `20261004` moved `ubuntu-latest` to **Maven 3.10.0**, which writes a **`maven-metadata-local.xml`** beside each artifact in the Central staging. `central-publishing-maven-plugin` bundles it and the Portal rejects it (*\"content that does NOT have a .pom file: org/pathland/…\"*, all 14 artifacts). Reproduced locally: 3.9.9 clean, 3.10.0 has the stray file; no plugin version (0.6.0→0.11.0 or the `io.github.mavenplugins` fork), install-plugin pin, install-skip, or antrun delete removes it. → the `java` job pins **Maven 3.9.9** (self-contained download).\n\n## 2. Exclude the demos from the release reactor\n`central-publishing-maven-plugin` collects **every** reactor module (ignoring `maven.deploy.skip`), so the demos were bundled. → deploy with `-pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'` (keep `maven.deploy.skip` as belt-and-suspenders).\n\n## 3. Use the verified `dev.pathland` groupId\nThe Portal rejected publishing under an unverified namespace (*\"Namespace 'org.pathland' is not allowed\"*). The verified namespace is `dev.pathland`. → switch the reactor groupId `org.pathland` → `dev.pathland` (parent + every module + intra-module dependency coordinates). Java packages (`com.pathland.*`) and the GTK app id (`org.pathland.GtkDemo`) are unrelated and unchanged.\n\n## Verified locally\n- `mvn -q validate` clean.\n- Maven 3.9.9 + the exclusions → reactor is 10 modules (demos gone), `central-staging/dev/pathland/` has only the 9 publishable modules + parent, and **no** `maven-metadata-local.xml`.\n\n## After merge\nRe-run the `v0.1.3` release (`workflow_dispatch`, tag `v0.1.3`): Rust skips (already on crates.io), Java deploys `dev.pathland:*:0.1.3`, assets attach, `bump` commits `0.1.3`.\nEOF\n)\" 2>&1 | tail -2"
+            },
+            "output": "https://github.com/PathlandDev/Pathland/pull/150\n",
+            "metadata": {
+              "output": "https://github.com/PathlandDev/Pathland/pull/150\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr edit 150 --title \"ci(release): fix the Central deploy (Maven 3.9.9 pin, exclude demos, dev.pathland groupId)\" --body \"$(cat <<'EOF'\nGets the Maven Central deployment passing. Three fixes, all verified locally.\n\n## 1. Pin Maven 3.9.9 (bundle validation)\nThe runner image `20261004` moved `ubuntu-latest` to **Maven 3.10.0**, which writes a **`maven-metadata-local.xml`** beside each artifact in the Central staging. `central-publishing-maven-plugin` bundles it and the Portal rejects it (*\"content that does NOT have a .pom file: org/pathland/…\"*, all 14 artifacts). Reproduced locally: 3.9.9 clean, 3.10.0 has the stray file; no plugin version (0.6.0→0.11.0 or the `io.github.mavenplugins` fork), install-plugin pin, install-skip, or antrun delete removes it. → the `java` job pins **Maven 3.9.9** (self-contained download).\n\n## 2. Exclude the demos from the release reactor\n`central-publishing-maven-plugin` collects **every** reactor module (ignoring `maven.deploy.skip`), so the demos were bundled. → deploy with `-pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'` (keep `maven.deploy.skip` as belt-and-suspenders).\n\n## 3. Use the verified `dev.pathland` groupId\nThe Portal rejected publishing under an unverified namespace (*\"Namespace 'org.pathland' is not allowed\"*). The verified namespace is `dev.pathland`. → switch the reactor groupId `org.pathland` → `dev.pathland` (parent + every module + intra-module dependency coordinates). Java packages (`com.pathland.*`) and the GTK app id (`org.pathland.GtkDemo`) are unrelated and unchanged.\n\n## Verified locally\n- `mvn -q validate` clean.\n- Maven 3.9.9 + the exclusions → reactor is 10 modules (demos gone), `central-staging/dev/pathland/` has only the 9 publishable modules + parent, and **no** `maven-metadata-local.xml`.\n\n## After merge\nRe-run the `v0.1.3` release (`workflow_dispatch`, tag `v0.1.3`): Rust skips (already on crates.io), Java deploys `dev.pathland:*:0.1.3`, assets attach, `bump` commits `0.1.3`.\nEOF\n)\" 2>&1 | tail -2",
+            "time": {
+              "start": 1791914731707,
+              "end": 1791914734132
+            }
+          },
+          "id": "prt_13670d395001M9K6kToE3APAJg",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670c5f00025gNqQ6dlpmbVp6"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "914e0e283d74c8173c24a9e596f9d6ebab4af224",
+          "type": "step-finish",
+          "tokens": {
+            "total": 710187,
+            "input": 259,
+            "output": 681,
+            "reasoning": 127,
+            "cache": {
+              "write": 0,
+              "read": 709120
+            }
+          },
+          "cost": 0.00265101,
+          "id": "prt_13670f271001MqtF0IfhDy0kTC",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670c5f00025gNqQ6dlpmbVp6"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1366decae001Ro117WQvcnhsWu",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002546412,
+        "tokens": {
+          "total": 710733,
+          "input": 710,
+          "output": 365,
+          "reasoning": 154,
+          "cache": {
+            "write": 0,
+            "read": 709504
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791914734515,
+          "completed": 1791914744140
+        },
+        "finish": "stop",
+        "id": "msg_13670f3b3002jr3qnYJntN8Dqz",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "914e0e283d74c8173c24a9e596f9d6ebab4af224",
+          "type": "step-start",
+          "id": "prt_136710567001CwkcxkS02yPoNd",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670f3b3002jr3qnYJntN8Dqz"
+        },
+        {
+          "type": "reasoning",
+          "text": "PR #150 updated.\n\nLet me summarize.\n\nLet me give a concise summary + next steps.\n\nLet me also note: the user's local `~/.m2/repository/org/pathland` has the old artifacts (harmless). And the new `dev.pathland` ones would be installed on the next build. Fine.\n\nLet me summarize.\n\nHmm — also, I should mention that the previous `org.pathland` namespace in the Portal won't be used. And that the groupId change means the artifacts will publish under `dev.pathland`. Good.\n\nLet me write the summary.\n\nAlso — the user's message was cheerful (\"Ohoho... :)\"). Let me match the tone lightly but stay professional/concise.\n\nLet me finalize.",
+          "time": {
+            "start": 1791914739049,
+            "end": 1791914740935
+          },
+          "id": "prt_136710569001h5mbzFUUzDSuFh",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670f3b3002jr3qnYJntN8Dqz"
+        },
+        {
+          "type": "text",
+          "text": "**PR #150** now covers all three fixes: https://github.com/PathlandDev/Pathland/pull/150\n\n- **Maven 3.9.9 pin** — kills the `maven-metadata-local.xml` bundle-validation failure.\n- **Demos excluded** from the release reactor — they were being bundled (the Central plugin ignores `maven.deploy.skip`).\n- **`dev.pathland` groupId** — the Portal rejected `org.pathland` as an unverified namespace; switched the reactor groupId (`org.pathland` → `dev.pathland`) across the parent + all module POMs + intra-module dependency coordinates. Java packages (`com.pathland.*`) and the GTK app id stay.\n\nVerified locally: `mvn -q validate` clean, and the release diagnostic stages only `dev/pathland/…` for the 10 (non-demo) modules with **no** stray metadata.\n\n**After you merge #150:** re-run the `v0.1.3` release (**Actions → Release → Run workflow**, tag `v0.1.3`). Expected: Rust skips, `java-natives` builds, `java` deploys `dev.pathland:*:0.1.3` to Central, assets attach, `bump` commits `0.1.3`.\n\nOne heads-up: once `dev.pathland` publishes, update any consumers/docs that referenced `org.pathland:*` (I already updated `AGENTS.md`, `RELEASING.md`, and the Rust README). And if `main` is protected, the `bump` job may fail *after* a successful publish — ping me and I'll switch it to a PR.",
+          "time": {
+            "start": 1791914740936,
+            "end": 1791914744027
+          },
+          "id": "prt_136710cc8001JgA9IcIm25gCxp",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670f3b3002jr3qnYJntN8Dqz"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "914e0e283d74c8173c24a9e596f9d6ebab4af224",
+          "type": "step-finish",
+          "tokens": {
+            "total": 710733,
+            "input": 710,
+            "output": 365,
+            "reasoning": 154,
+            "cache": {
+              "write": 0,
+              "read": 709504
+            }
+          },
+          "cost": 0.002546412,
+          "id": "prt_136711916001BSLPp3AfQ6ReBt",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13670f3b3002jr3qnYJntN8Dqz"
         }
       ]
     }
