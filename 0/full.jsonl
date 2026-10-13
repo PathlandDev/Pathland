@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 10.522542857999978,
+    "cost": 10.529954381999978,
     "tokens": {
-      "input": 42512567,
-      "output": 1629147,
-      "reasoning": 755939,
+      "input": 42513941,
+      "output": 1630493,
+      "reasoning": 756147,
       "cache": {
-        "read": 904868736,
+        "read": 906959744,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791913835388
+      "updated": 1791913897107
     }
   },
   "messages": [
@@ -448333,21 +448333,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.002496042,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 697331,
+          "input": 783,
+          "output": 321,
+          "reasoning": 163,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 696064
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791913835656
+          "created": 1791913835656,
+          "completed": 1791913879624
         },
+        "finish": "tool-calls",
         "id": "msg_136633c88002PEoNQ4p0G5bwZU",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -448386,20 +448389,211 @@
           "tool": "bash",
           "callID": "chatcmpl-tool-beba0b3d9efbbd77",
           "state": {
-            "metadata": {
-              "output": " M .github/workflows/release.yml\n M RELEASING.md\n"
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git status --short && git add -A && git commit -q -m \"$(cat <<'EOF'\nci(release): pin Maven 3.9.9 and exclude the demos from the Central deploy\n\nThe Central deploy failed validation (\"Bundle has content that does NOT have a\n.pom file\") because Maven 3.10 — the runner default since 2026-10-04 — writes a\n`maven-metadata-local.xml` beside each artifact in the staging, which\ncentral-publishing-maven-plugin bundles and the Portal rejects. 3.9.x does not.\n\n- java job: pin Maven 3.9.9 (self-contained download) before the Maven steps.\n- java job: deploy with `-pl '!pathland-demo-views,!pathland-gtk-demo,\n  !pathland-quarkus-demo,!pathland-spring-boot-demo'` — the plugin bundles every\n  reactor module (ignoring maven.deploy.skip), and the demos must not publish.\n- RELEASING.md: document both.\nEOF\n)\" && git push -u origin fix/release-maven-pin-and-exclude-demos 2>&1 | tail -3"
             },
+            "output": " M .github/workflows/release.yml\n M RELEASING.md\nTo https://github.com/PathlandDev/Pathland.git\n * [new branch]        fix/release-maven-pin-and-exclude-demos -> fix/release-maven-pin-and-exclude-demos\nbranch 'fix/release-maven-pin-and-exclude-demos' set up to track 'origin/fix/release-maven-pin-and-exclude-demos'.\n",
+            "metadata": {
+              "output": " M .github/workflows/release.yml\n M RELEASING.md\nTo https://github.com/PathlandDev/Pathland.git\n * [new branch]        fix/release-maven-pin-and-exclude-demos -> fix/release-maven-pin-and-exclude-demos\nbranch 'fix/release-maven-pin-and-exclude-demos' set up to track 'origin/fix/release-maven-pin-and-exclude-demos'.\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git status --short && git add -A && git commit -q -m \"$(cat <<'EOF'\nci(release): pin Maven 3.9.9 and exclude the demos from the Central deploy\n\nThe Central deploy failed validation (\"Bundle has content that does NOT have a\n.pom file\") because Maven 3.10 — the runner default since 2026-10-04 — writes a\n`maven-metadata-local.xml` beside each artifact in the staging, which\ncentral-publishing-maven-plugin bundles and the Portal rejects. 3.9.x does not.\n\n- java job: pin Maven 3.9.9 (self-contained download) before the Maven steps.\n- java job: deploy with `-pl '!pathland-demo-views,!pathland-gtk-demo,\n  !pathland-quarkus-demo,!pathland-spring-boot-demo'` — the plugin bundles every\n  reactor module (ignoring maven.deploy.skip), and the demos must not publish.\n- RELEASING.md: document both.\nEOF\n)\" && git push -u origin fix/release-maven-pin-and-exclude-demos 2>&1 | tail -3",
             "time": {
-              "start": 1791913844282
+              "start": 1791913844282,
+              "end": 1791913879490
             }
           },
           "id": "prt_1366353ea001k5hLbH42psq30U",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_136633c88002PEoNQ4p0G5bwZU"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d349757fa0fe1b20024ca3e5608867bdcac16261",
+          "type": "step-finish",
+          "tokens": {
+            "total": 697331,
+            "input": 783,
+            "output": 321,
+            "reasoning": 163,
+            "cache": {
+              "write": 0,
+              "read": 696064
+            }
+          },
+          "cost": 0.002496042,
+          "id": "prt_13663e80c001vybHYXsaiiAVrs",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_136633c88002PEoNQ4p0G5bwZU"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13661ca2a001F5RAtDFJR7jl4e",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00253968,
+        "tokens": {
+          "total": 698068,
+          "input": 480,
+          "output": 628,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 696960
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791913880213,
+          "completed": 1791913889849
+        },
+        "finish": "tool-calls",
+        "id": "msg_13663ea95002r0C3gYiHMSvBEY",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "d349757fa0fe1b20024ca3e5608867bdcac16261",
+          "type": "step-start",
+          "id": "prt_13663f38d001cklH3B8yclyqpp",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13663ea95002r0C3gYiHMSvBEY"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-b551c82965734f9f",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr create --base main --head fix/release-maven-pin-and-exclude-demos --title \"ci(release): pin Maven 3.9.9 and exclude the demos from the Central deploy\" --body \"$(cat <<'EOF'\nFixes the Maven Central deployment validation failure.\n\n## Root cause\nThe runner image `20261004` moved `ubuntu-latest` to **Maven 3.10.0**, which writes a **`maven-metadata-local.xml`** beside each artifact in the Central staging (`org/pathland/<artifact>/maven-metadata-local.xml`). `central-publishing-maven-plugin` bundles it, and the Portal rejects the bundle: *\"content that does NOT have a .pom file: org/pathland/…\"* (all 14 artifacts, including `pathland-parent`, whose only artifact is its POM). Reproduced locally: with Maven 3.9.9 the staging is clean; with 3.10.0 the metadata appears. No plugin version (0.6.0→0.11.0, or the `io.github.mavenplugins` fork 1.3.1), install-plugin pin, install-skip, or antrun delete removes it.\n\nSeparately, the demos were being bundled — `central-publishing-maven-plugin` collects **every** reactor module, ignoring `maven.deploy.skip`.\n\n## Fix\n- **Pin Maven 3.9.9** in the release `java` job (self-contained download, no third-party action).\n- **Exclude the demos** from the release reactor: `mvn -B -P release deploy -pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'`. `maven.deploy.skip` stays on the demo POMs as belt-and-suspenders.\n- `RELEASING.md` updated.\n\n## Verified locally\n- Maven 3.9.9 + the `-pl '!…'` exclusions → reactor is 10 modules (demos gone), `central-staging/org/pathland/` has only the 9 publishable modules + parent, and **no** `maven-metadata-local.xml`.\n\n## After merge\nRe-run the `v0.1.3` release (`workflow_dispatch`, tag `v0.1.3`): Rust skips (all five already on crates.io), Java deploys `0.1.3`, assets attach, `bump` commits `0.1.3` to `main`.\nEOF\n)\" 2>&1 | tail -3"
+            },
+            "output": "https://github.com/PathlandDev/Pathland/pull/150\n",
+            "metadata": {
+              "output": "https://github.com/PathlandDev/Pathland/pull/150\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr create --base main --head fix/release-maven-pin-and-exclude-demos --title \"ci(release): pin Maven 3.9.9 and exclude the demos from the Central deploy\" --body \"$(cat <<'EOF'\nFixes the Maven Central deployment validation failure.\n\n## Root cause\nThe runner image `20261004` moved `ubuntu-latest` to **Maven 3.10.0**, which writes a **`maven-metadata-local.xml`** beside each artifact in the Central staging (`org/pathland/<artifact>/maven-metadata-local.xml`). `central-publishing-maven-plugin` bundles it, and the Portal rejects the bundle: *\"content that does NOT have a .pom file: org/pathland/…\"* (all 14 artifacts, including `pathland-parent`, whose only artifact is its POM). Reproduced locally: with Maven 3.9.9 the staging is clean; with 3.10.0 the metadata appears. No plugin version (0.6.0→0.11.0, or the `io.github.mavenplugins` fork 1.3.1), install-plugin pin, install-skip, or antrun delete removes it.\n\nSeparately, the demos were being bundled — `central-publishing-maven-plugin` collects **every** reactor module, ignoring `maven.deploy.skip`.\n\n## Fix\n- **Pin Maven 3.9.9** in the release `java` job (self-contained download, no third-party action).\n- **Exclude the demos** from the release reactor: `mvn -B -P release deploy -pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'`. `maven.deploy.skip` stays on the demo POMs as belt-and-suspenders.\n- `RELEASING.md` updated.\n\n## Verified locally\n- Maven 3.9.9 + the `-pl '!…'` exclusions → reactor is 10 modules (demos gone), `central-staging/org/pathland/` has only the 9 publishable modules + parent, and **no** `maven-metadata-local.xml`.\n\n## After merge\nRe-run the `v0.1.3` release (`workflow_dispatch`, tag `v0.1.3`): Rust skips (all five already on crates.io), Java deploys `0.1.3`, assets attach, `bump` commits `0.1.3` to `main`.\nEOF\n)\" 2>&1 | tail -3",
+            "time": {
+              "start": 1791913886981,
+              "end": 1791913889732
+            }
+          },
+          "id": "prt_13663f6020010qt3vfHGVJbt7p",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13663ea95002r0C3gYiHMSvBEY"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d349757fa0fe1b20024ca3e5608867bdcac16261",
+          "type": "step-finish",
+          "tokens": {
+            "total": 698068,
+            "input": 480,
+            "output": 628,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 696960
+            }
+          },
+          "cost": 0.00253968,
+          "id": "prt_136641008001IJkyeWhft23YMH",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13663ea95002r0C3gYiHMSvBEY"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13661ca2a001F5RAtDFJR7jl4e",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002375802,
+        "tokens": {
+          "total": 698537,
+          "input": 111,
+          "output": 397,
+          "reasoning": 45,
+          "cache": {
+            "write": 0,
+            "read": 697984
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791913890107,
+          "completed": 1791913897076
+        },
+        "finish": "stop",
+        "id": "msg_13664113b002hWJBD3GkkPkj0L",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "d349757fa0fe1b20024ca3e5608867bdcac16261",
+          "type": "step-start",
+          "id": "prt_136641c88001uUwuWVekxNkXKz",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13664113b002hWJBD3GkkPkj0L"
+        },
+        {
+          "type": "reasoning",
+          "text": "PR #150 created.\n\nLet me summarize.\n\nLet me give a concise summary + next steps.\n\nLet me also clean up the temp Maven? It's in /tmp (pre-approved). Leave it.\n\nLet me summarize.",
+          "time": {
+            "start": 1791913893011,
+            "end": 1791913893015
+          },
+          "id": "prt_136641c93001Ur11dHgt1pwtK5",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13664113b002hWJBD3GkkPkj0L"
+        },
+        {
+          "type": "text",
+          "text": "Done → **PR #150**: https://github.com/PathlandDev/Pathland/pull/150\n\n**Fix (both verified locally):**\n- **Pin Maven 3.9.9** in the release `java` job (self-contained download) — Maven 3.10.0 writes `maven-metadata-local.xml` into the Central staging, which the Portal rejects; 3.9.9 doesn't.\n- **Exclude the demos** from the release reactor: `mvn -B -P release deploy -pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'` — the Central plugin bundles every reactor module (ignoring `maven.deploy.skip`), and the demos must not publish.\n- `RELEASING.md` updated.\n\n**Local verification:** with Maven 3.9.9 + the exclusions, the reactor is 10 modules (demos gone), `central-staging/org/pathland/` holds only the 9 publishable modules + parent, and there is **no** `maven-metadata-local.xml`.\n\n**After you merge #150:** re-run the `v0.1.3` release (**Actions → Release → Run workflow**, tag `v0.1.3`). Expected: `pathland-core…render-html` skip (all five already on crates.io), `java-natives` builds, `java` deploys `0.1.3` to Central, `release-assets` attaches everything, and `bump` commits `0.1.3` to `main`.\n\nReminder: the `bump` job needs `main` pushable by the workflow token — if it fails there, tell me and I'll switch it to a PR/ PAT.",
+          "time": {
+            "start": 1791913893018,
+            "end": 1791913896963
+          },
+          "id": "prt_136641c9a001ZuuaAI1ltauyt6",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13664113b002hWJBD3GkkPkj0L"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "d349757fa0fe1b20024ca3e5608867bdcac16261",
+          "type": "step-finish",
+          "tokens": {
+            "total": 698537,
+            "input": 111,
+            "output": 397,
+            "reasoning": 45,
+            "cache": {
+              "write": 0,
+              "read": 697984
+            }
+          },
+          "cost": 0.002375802,
+          "id": "prt_136642c3d0010YjHQBIAT9Twhe",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13664113b002hWJBD3GkkPkj0L"
         }
       ]
     }
