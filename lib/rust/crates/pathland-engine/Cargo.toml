@@ -3,10 +3,12 @@ name = "pathland-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
 description = "Pathland retained view tree + diff-based reactive emitter (moved out of pathland-core)"
-repository = "https://github.com/michaelkrog/Pathland"
 categories = ["encoding", "wasm", "graphics"]
 keywords = ["ui", "protocol", "opcode", "wasm", "retained-mode"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core" }
+pathland-core = { path = "../pathland-core", version = "0.1.0" }

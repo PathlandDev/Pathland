@@ -3,15 +3,16 @@ name = "pathland-core-transport"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
 description = "Pathland opcode transport: shared-memory ring (existing) + network batch encode/decode with time/size batching policy"
-repository = "https://github.com/michaelkrog/Pathland"
 categories = ["network-programming", "encoding", "wasm", "graphics"]
 keywords = ["ui", "protocol", "opcode", "transport", "batching"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core" }
+pathland-core = { path = "../pathland-core", version = "0.1.0" }
 
 [dev-dependencies]
-pathland-engine = { path = "../pathland-engine" }
-pathland-view = { path = "../pathland-view" }
-pathland-render-gtk = { path = "../pathland-render-gtk" }
+pathland-engine = { path = "../pathland-engine", version = "0.1.0" }
+pathland-view = { path = "../pathland-view", version = "0.1.0" }
