@@ -113,7 +113,7 @@ crates/pathland-render-gtk-demo/ # Rust GTK4 demo: authors the DSL, emits into t
 
 ### Java libraries (`lib/java/`, framework-agnostic)
 
-The reusable Java library set (`org.pathland`, Maven reactor, Java 17+) — the same
+The reusable Java library set (`dev.pathland`, Maven reactor, Java 17+) — the same
 hand-written DSL serves Spring Boot, Quarkus, and desktop apps:
 
 ```

@@ -29,7 +29,7 @@ crates/
 
 ## Java libraries (framework-agnostic)
 
-The reusable Java libraries live in `../java/` (Maven reactor, `org.pathland`):
+The reusable Java libraries live in `../java/` (Maven reactor, `dev.pathland`):
 
 - `pathland-view` — SwiftUI-like view DSL + Angular-style signals/computed/effects,
   fine-grained opcode emitter, wire codec, JNA ring interop (`com.pathland.view`)
