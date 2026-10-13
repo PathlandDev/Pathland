@@ -6,7 +6,7 @@
 
     <groupId>dev.pathland</groupId>
     <artifactId>pathland-parent</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.5</version>
     <packaging>pom</packaging>
 
     <name>Pathland Java</name>

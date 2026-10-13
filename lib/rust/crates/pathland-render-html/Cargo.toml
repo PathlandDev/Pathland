@@ -14,5 +14,5 @@ keywords = ["ui", "protocol", "opcode", "html", "ssr"]
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core", version = "0.1.0" }
-pathland-core-transport = { path = "../pathland-core-transport", version = "0.1.0" }
+pathland-core = { path = "../pathland-core", version = "0.1.5" }
+pathland-core-transport = { path = "../pathland-core-transport", version = "0.1.5" }
