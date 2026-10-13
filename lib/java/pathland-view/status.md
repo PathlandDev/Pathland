@@ -23,7 +23,20 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   the match** (`Emitter.restoreFitSelection`) — a nested fit (the player bar's
   controls slot under the root row) keeps its candidate instead of resetting to
   compact (a reset would strand the DOM client, which never re-reports an
-  unchanged width).
+  unchanged width). The **web-SSR full-snapshot emission** (issue #141) is an
+  internal emitter mode (`Emitter.snapshotEmission(true)`, armed by
+  `PathlandSession`): on mount/resync the slot emits EVERY candidate in `FIT_QUERY`
+  order so the SSR renders all branches gated by CSS container queries (a no-JS
+  correct first paint) — the authored DSL is unchanged. `PathlandNode.fitReported`
+  gates the mount-time structural effect so the multi-candidate presentation is
+  not collapsed before the renderer reports; the first `FIT_CHANGED` (recorded
+  before the incoming index) downgrades the slot to the single selected child via
+  the normal reconcile, and the web client unwraps the gated branches. The
+  downgrade is a **clean N→1**: it keeps the SELECTED candidate's node as-is
+  (retaining its id + subtree, zero churn) and removes the others — it never
+  positionally diffs, because both candidates are frequently the same component
+  and morphing the loser's node into the winner would relocate the winner into
+  the SSR's loser wrapper and break the renderer's candidate-position CSS gate.
 - **v2 authoring surface (complete)**: every concrete view exposes
   the three operations — values via the static `View.make(...)`
   (`make(Consumer<Config>)`, `make(value)` shortcuts, empty `make()`),

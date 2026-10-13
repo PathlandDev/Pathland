@@ -147,6 +147,8 @@ fn scenarios() -> Vec<Scenario> {
         semantics(),
         icons(),
         sizethatfits(),
+        sizethatfits_snapshot(),
+        sizethatfits_snapshot_three(),
         media(),
     ]
 }
@@ -372,6 +374,49 @@ fn sizethatfits() -> Scenario {
     b.set_text(3, "compact");
     Scenario {
         name: "sizethatfits",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn sizethatfits_snapshot() -> Scenario {
+    let mut b = Builder::new();
+    // The web SSR full-snapshot form (issue #141): the slot carries EVERY
+    // candidate, the SSR renders them all behind `data-pathland-fit-cand`
+    // wrappers gated by `@container` band rules (`<style data-pathland-fit>`),
+    // and the slot becomes a `container-name` container — a no-JS first paint
+    // already shows the candidate matching the slot's width.
+    b.create(1, component_type::SIZE_THAT_FITS);
+    b.create(2, component_type::HSTACK);
+    b.create(3, component_type::VSTACK);
+    b.insert(1, 2);
+    b.insert(1, 3);
+    b.set_list_f32(1, property_id::FIT_QUERY, &[0.0, 640.0]);
+    Scenario {
+        name: "sizethatfits-snapshot",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn sizethatfits_snapshot_three() -> Scenario {
+    let mut b = Builder::new();
+    // A three-candidate snapshot slot with thresholds `[0, 600, 900]`: locks the
+    // candidate-identity ordering (wrapper `i` = FIT_QUERY position) and the
+    // exactly-one-visible band contract — candidate 0 by default, one `@container`
+    // band per non-fallback threshold (ascending), no band for T_0.
+    b.create(1, component_type::SIZE_THAT_FITS);
+    b.create(2, component_type::VSTACK);
+    b.create(3, component_type::HSTACK);
+    b.create(4, component_type::ZSTACK);
+    b.insert(1, 2);
+    b.insert(1, 3);
+    b.insert(1, 4);
+    b.set_list_f32(1, property_id::FIT_QUERY, &[0.0, 600.0, 900.0]);
+    Scenario {
+        name: "sizethatfits-snapshot-three",
         opcodes: b.opcodes,
         strings: b.strings,
         root: 1,

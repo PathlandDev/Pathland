@@ -188,12 +188,15 @@ constrains them (scroll for `SCROLLVIEW`, otherwise overflow is visible unless
 
 A fit slot is **size-taking on both axes**: it stretches to its parent's
 proposal (`FILL` semantics — never hugs), because its **allocated width is the
-unit of fitting**. It holds at most one (selected) child, laid out normally
-inside the box. The renderer measures its allocated width and derives the fit
-index (threshold rule in [PRIMITIVES.md](./PRIMITIVES.md#size-that-fits)). No
-content-based measurement of candidates is ever done or transmitted — the query
-thresholds are app-declared, so the pick is a pure function of
-`(thresholds, allocated width)`.
+unit of fitting**. It holds at most one (selected) child in the live form, laid
+out normally inside the box; a **full-snapshot emission** (the web SSR first
+document) carries every candidate and the renderer lays each one out, selecting
+the visible branch by CSS container queries keyed to the slot's own width (a
+no-JS correct first paint — see [PRIMITIVES.md](./PRIMITIVES.md#size-that-fits)).
+The renderer measures its allocated width and derives the fit index (threshold
+rule in [PRIMITIVES.md](./PRIMITIVES.md#size-that-fits)). No content-based
+measurement of candidates is ever done or transmitted — the query thresholds are
+app-declared, so the pick is a pure function of `(thresholds, allocated width)`.
 
 ---
 

@@ -690,12 +690,16 @@ realization is windowed.
 ### SizeThatFits — `SIZE_THAT_FITS` 0x17
 
 A **fit slot**: it shows **one child at a time — the currently selected
-candidate — so only that child is ever transmitted**. The app owns the
-candidates (their views never ride the wire); it transmits the **fit query**
-(`FIT_QUERY`, LIST — the candidates' `minWidth` thresholds, ascending) plus the
-selected child. The renderer measures its **own allocated width** (the slot is
-size-taking — it stretches to its parent's proposal, never hugs, so it always
-has a well-defined width) and selects the fit **locally**:
+candidate**. In the **live (delta) form** only that child is ever transmitted:
+the app owns the candidates (their views never ride the wire) and transmits the
+**fit query** (`FIT_QUERY`, LIST — the candidates' `minWidth` thresholds,
+ascending) plus the selected child. In a **full-snapshot emission** (the web SSR
+first document), every candidate is transmitted as a child — the renderer renders
+all branches and the browser selects the matching one (see the visibility
+contract below) so the first paint is already correct. The renderer measures its
+**own allocated width** (the slot is size-taking — it stretches to its parent's
+proposal, never hugs, so it always has a well-defined width) and selects the fit
+**locally**:
 
 > **Fit rule** — the selected index is `max{ i : thresholds[i] ≤ measured
 > width }` (threshold 0 candidate always qualifies — the fallback); equal
@@ -707,13 +711,55 @@ The renderer reports its selection back with **`FIT_CHANGED`** ([EVENTS.md](./EV
 — emitted **once after the first measure, and then only when the derived fit
 index changes** (a band crossing). It never streams the raw size. The app reacts
 by swapping the slot's child (a `TREE` delta pair); a selection that maps to the
-already-shown view re-emits **zero** opcodes.
+already-shown view re-emits **zero** opcodes. After a **full-snapshot**
+presentation (all candidates laid out), the first `FIT_CHANGED` is the signal
+that collapses the slot back to the live single-selected-child form.
+
+**Candidate identity (MUST).** The candidate **index `i`** is the candidate's
+position in the **ascending `FIT_QUERY` table** (equal thresholds keep the app's
+surface order). In a **full-snapshot emission** the slot's **child order MUST
+equal `FIT_QUERY` order** — the child at position `i` is candidate `i`. The fit
+rule, the `FIT_CHANGED` payload, and the CSS gate all use this one mapping. A
+candidate declared first in the DSL but carrying a **higher** `minWidth` is
+therefore **not** index 0.
+
+**Full-snapshot visibility (MUST).** In a full-snapshot emission the renderer
+MUST show **exactly one** candidate — the one at `index(w)` for the slot's own
+allocated width `w` — with no JS:
+
+- the slot's own width is the query context (each slot is measured
+  independently);
+- each candidate is gated behind a marker carrying its `FIT_QUERY` index;
+- for every threshold `T_i` with `i ≥ 1` there is a **band** that, at
+  `w ≥ T_i`, makes candidate `i` visible and **hides every candidate `j ≠ i`**;
+  bands are emitted **ascending** so the highest matching band wins; no band
+  exists for `T_0`;
+- the per-candidate **default** (below the first band / no match) is candidate
+  `0` visible, every other candidate hidden;
+- **invariant**: exactly one candidate is visible at every width.
+
+**Hydration collapse (MUST).** After the first `FIT_CHANGED` the app swaps the
+slot to the live single-selected-child form (the unselected candidates leave as
+`TREE` deltas) and the renderer removes the full-snapshot gating — the gate
+markers, the query context, and the band rules — so no CSS gate remains; a
+`FIT_CHANGED` that maps to the already-shown candidate re-emits **zero** opcodes.
+
+The collapse is signalled by the **removal of a candidate** (a `TREE` `REMOVE_CHILD`
+/`DELETE_NODE` on the slot), not by an arbitrary structural op. A **full-snapshot
+emission replayed as opcodes** (e.g. `META::RESYNC`) therefore does **not** collapse
+the slot: the renderer reuses its existing gate (the SSR gate markers + band rules)
+and keeps showing the width-correct candidate. The app's retained tree stays in the
+snapshot form until the first `FIT_CHANGED` downgrade actually removes a candidate.
+
+The concrete web realization (CSS container + per-candidate gate wrappers +
+`@container` band rules) is **renderer-owned** and described in
+`lib/rust/crates/pathland-render-html/status.md`.
 
 Semantics:
 - **Properties**: `FIT_QUERY` (`0x1039`, LIST).
 - **Events**: `FIT_CHANGED` (`0x13`, host → guest) — reported fit index.
-- **Children**: at most one (the current selection); candidate views live
-  app-side.
+- **Children**: at most one in the live form; all candidates in a
+  full-snapshot emission (the web SSR's first document), in `FIT_QUERY` order.
 - **Renderer statelessness**: the measured width and derived index are layout
   output, not retained application state.
 

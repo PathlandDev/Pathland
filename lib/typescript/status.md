@@ -109,8 +109,18 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `FIT_QUERY` (the `LIST` value type — `readList`) is mirrored to
   `data-pathland-fit`; a per-slot `ResizeObserver` derives the fit index locally
   (the spec'd rule) and reports `encodeFittedChanged` **only on transitions**
-  (plus the first measure), torn down on `CMD_DELETE_NODE`. Golden
-  `sizethatfits` fixture / `ssr-conformance`; `test/fit.test.ts`.
+  (plus the first measure), torn down on `CMD_DELETE_NODE`. The **web-SSR
+  snapshot form** (issue #141: a slot rendered from a multi-candidate SSR batch
+  carries `data-pathland-fit-cands`) hydrates with every gated branch in place —
+  the SSR `<style data-pathland-fit>` `@container` rules already picked the
+  first paint. The teardown fires only on the **downgrade's candidate removal**
+  (`REMOVE_CHILD`/`DELETE_NODE`): `collapseFitSlotFor` unwraps the gated
+  candidates + strips `container-name`/cands + the slot's band rules so the
+  REMOVE/DELETE deltas apply to plain children (the single-child live form). An
+  `INSERT_CHILD`/`CREATE_NODE` (a `META::RESYNC` replaying the tree) does **not**
+  tear the gate down — the SSR gate survives the resync and keeps showing the
+  width-correct candidate. Golden `sizethatfits` (+ `sizethatfits-snapshot`)
+  fixtures / `ssr-conformance`; `test/fit.test.ts`.
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or

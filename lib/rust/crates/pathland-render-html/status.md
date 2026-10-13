@@ -44,6 +44,23 @@ Statelessness). Protocol contract: `spec/`.
   (`inherit`) into its own box so a wrapper never pins a centered candidate to
   the start — `VStack(CENTER)` > fit slot > `HSTACK` keeps centering; stays
   size-taking via `flex:1 1 auto;align-self:stretch;min-width/height:0`),
+  and the **web-SSR snapshot form** (issue #141: the slot carries EVERY candidate,
+  in `FIT_QUERY` order — the protocol's candidate-identity contract) renders each
+  branch in a `data-pathland-fit-cand="i" data-pathland-fit-cand-id="<child>"`
+  gate wrapper whose inline `display` is the pre-CSS default (candidate 0
+  `contents`, every other candidate `none`), marks the slot as the query context
+  (`container-type:inline-size; container-name:pf-<id>`), and emits the
+  `@container` **band rules** into a `<style data-pathland-fit>` head element: for
+  each distinct threshold `T_i` (`i ≥ 1`, ascending) a self-contained
+  `@container pf-<id> (min-width: T_i)` band that **hides every candidate `j ≠ i`
+  and shows candidate `i`**, so the highest matching band wins and **exactly one**
+  candidate is visible at any width (no band for `T_0`; below the first band the
+  inline default shows candidate 0). A no-JS first paint therefore already shows
+  the candidate matching the slot's width; the single-child live form is
+  unchanged. The bands are **SSR-only** — the first `FIT_CHANGED` collapses the
+  slot to the live single-child form and the DOM client removes the gating
+  (`collapseFitSlotFor` unwraps the gate wrappers, strips the container/candidate
+  attrs, and `dropFitBandRules` deletes the slot's rules)),
   `COLOR` → `<div>`, `SHAPE` → CSS shapes / inline SVG, `DIVIDER` → `<hr>`,
   `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
   `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex

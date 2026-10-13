@@ -443,6 +443,19 @@ function renumberPickerOptions(container: Node): void {
 }
 
 function applyTree(op: Opcode, r: DomRenderer): void {
+  // N→1 fit-slot reconcile (issue #141): the server's SSR snapshot carried EVERY
+  // candidate behind CSS `@container` gated wrappers (`data-pathland-fit-cands`).
+  // The downgrade to a single selected child is signalled by REMOVING a candidate
+  // (a `REMOVE_CHILD`/`DELETE_NODE` on the slot) — collapse the presentation first
+  // (unwrap the wrappers, strip the container-name/cands and the slot's band
+  // rules) so the REMOVE/DELETE deltas apply to the plain children exactly as in
+  // the live single-child form. An `INSERT_CHILD`/`CREATE_NODE` is NOT the
+  // downgrade: a `META::RESYNC` replays the whole tree, and the SSR gate must
+  // SURVIVE it (the CSS band keeps showing the width-correct candidate) — so it
+  // must never trigger the teardown.
+  if (op.command === CMD_REMOVE_CHILD || op.command === CMD_DELETE_NODE) {
+    collapseFitSlotFor(op, r);
+  }
   switch (op.command) {
     case CMD_CREATE_NODE: {
       // Hydration-aware: an id already present in the registry is the SSR-hydrated
@@ -1385,6 +1398,102 @@ function evaluateFit(el: HTMLElement, r: DomRenderer, state: FitSlotState): void
   const id = Number(el.getAttribute("data-pathland-id"));
   if (Number.isInteger(id) && id > 0) {
     send(encodeFittedChanged(id, index));
+  }
+}
+
+/**
+ * The parent a TREE op structurally mutates (for the fit-slot collapse hook).
+ * INSERT/REMOVE/MOVE target the parent (`A`); DELETE targets the child (`A`),
+ * whose parent is the mutated container (a deleted candidate's wrapper sits
+ * under the slot).
+ */
+function treeOpParent(op: Opcode, r: DomRenderer): HTMLElement | null {
+  const id = op.command === CMD_DELETE_NODE ? null : op.a;
+  if (id != null && id > 0) {
+    const parent = r.byId.get(id) as HTMLElement | undefined;
+    return parent ?? null;
+  }
+  if (op.command === CMD_DELETE_NODE) {
+    const child = r.byId.get(op.a) as HTMLElement | undefined;
+    return child?.parentElement ?? null;
+  }
+  return null;
+}
+
+/**
+ * N→1 fit-slot collapse (issue #141): the SSR snapshot form laid out EVERY
+ * candidate behind `data-pathland-fit-cand` wrappers gated by `@container`
+ * rules (a `style[data-pathland-fit]` element) and made the slot a
+ * `container-name` container. The first live structural op on such a slot is the
+ * server's downgrade to a single selected child — collapse the snapshot
+ * presentation FIRST so the REMOVE/INSERT deltas apply to plain children:
+ * unwrap each candidate wrapper (its inner candidate has the real id + styles),
+ * strip `data-pathland-fit-cands` + the container name/type, and drop the slot's
+ * band rules. Afterwards the slot is the ordinary single-child form.
+ */
+function collapseFitSlotFor(op: Opcode, r: DomRenderer): void {
+  const parent = treeOpParent(op, r);
+  if (!parent) return;
+  const slot = parent.closest<HTMLElement>("[data-pathland-fit-cands]");
+  if (!slot) return;
+  // Unwrap: replace each gated wrapper with its inner candidate element (the
+  // candidate carried the id + styles; the wrapper was purely presentational).
+  const wrappers = Array.from(slot.children).filter(
+    (n): n is HTMLElement => n instanceof HTMLElement && n.hasAttribute("data-pathland-fit-cand"),
+  );
+  for (const wrapper of wrappers) {
+    const inner = wrapper.firstElementChild;
+    if (inner) {
+      wrapper.replaceWith(inner);
+    } else {
+      wrapper.remove();
+    }
+  }
+  slot.removeAttribute("data-pathland-fit-cands");
+  slot.style.removeProperty("container-type");
+  slot.style.removeProperty("container-name");
+  const id = slot.getAttribute("data-pathland-id");
+  if (id) {
+    dropFitBandRules(Number(id));
+  }
+}
+
+/**
+ * Remove a slot's `@container pf-<id>` band rules from the managed
+ * `style[data-pathland-fit]` element (created by the SSR head or the client's
+ * rule manager). Called when a snapshot slot collapses to the live single-child
+ * form — the leftover rules would otherwise keep gating nothing (harmless), but
+ * the element must not grow stale rules across resyncs.
+ */
+function dropFitBandRules(slotId: number): void {
+  const style = document.querySelector<HTMLStyleElement>("style[data-pathland-fit]");
+  if (!style) return;
+  const blocks = style.textContent?.split(/\n/) ?? [];
+  // Match the slot's `@container pf-<id>` at a word boundary so slot `1` never
+  // matches slot `10`/`11`… (multi-digit ids are common once nested fit slots
+  // exist).
+  const marker = new RegExp(`@container pf-${slotId}\\b`);
+  const kept: string[] = [];
+  let skip = false;
+  for (const line of blocks) {
+    if (!skip && marker.test(line)) {
+      skip = true;
+    }
+    if (skip) {
+      if (line.includes("}")) {
+        skip = false;
+      }
+      continue;
+    }
+    kept.push(line);
+  }
+  const text = kept.join("\n");
+  style.textContent = text;
+  // Keep a live sheet in sync where supported.
+  try {
+    style.sheet?.replaceSync?.(text);
+  } catch {
+    // happy-dom / older engines — textContent is the source of truth.
   }
 }
 

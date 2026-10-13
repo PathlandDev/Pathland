@@ -1,6 +1,7 @@
 package com.pathland.view.emit;
 
 import com.pathland.view.Color;
+import com.pathland.view.Components;
 import com.pathland.view.Environment;
 import com.pathland.view.EnvironmentValues;
 import com.pathland.view.Properties;
@@ -61,6 +62,12 @@ public final class Emitter {
     private PathlandNode tree;
     private Environment env;
 
+    /** Whether the next full emission (mount/resync) renders `SIZE_THAT_FITS`
+     *  slots with ALL candidates as children (the web SSR container-query first
+     *  paint, issue #141). Set by the SSR session before mount; internal only —
+     *  the authored DSL and the live reconcile path are unchanged. */
+    private boolean snapshotEmission;
+
     public Emitter(OpcodeSink sink) {
         this(sink, null);
     }
@@ -78,6 +85,16 @@ public final class Emitter {
         this.theme = theme;
     }
 
+    /**
+     * Enable full-snapshot fit-slot expansion (see {@link #snapshotEmission}).
+     * Called by the server-core SSR session before mount. Internal plumbing
+     * between {@code pathland-view} and {@code pathland-server-core} — not part
+     * of the DSL authoring surface.
+     */
+    public void snapshotEmission(boolean on) {
+        this.snapshotEmission = on;
+    }
+
     /** Mount the view tree: assign ids, emit the structural frame, register bindings. */
     public RenderResult mount(View root, Environment env) {
         if (mounted) {
@@ -86,7 +103,18 @@ public final class Emitter {
         mounted = true;
         this.env = env;
 
-        PathlandNode tree = root.render(env);
+        // A full-snapshot (SSR) emission renders fit slots with ALL candidates so
+        // the web SSR shows every branch (CSS container queries gate the first
+        // paint); the live reconcile path keeps one child. The flag is scoped to
+        // this render via a thread-local read by SizeThatFits.FitSlot.
+        boolean prevSnapshot = PathlandNode.SNAPSHOT_EMISSION.get();
+        PathlandNode.SNAPSHOT_EMISSION.set(snapshotEmission);
+        PathlandNode tree;
+        try {
+            tree = root.render(env);
+        } finally {
+            PathlandNode.SNAPSHOT_EMISSION.set(prevSnapshot);
+        }
         this.tree = tree;
         nextId = 1;
         assignIds(tree);
@@ -139,6 +167,13 @@ public final class Emitter {
         }
         sink.beginFrame();
         emitTheme();
+        // The retained tree already carries every fit candidate when the session
+        // mounted in snapshot mode; re-emit it as-is (a resync re-establishes the
+        // container-query first paint for a reconnecting client). Before the first
+        // FIT_CHANGED the tree IS the snapshot form (every candidate): the client
+        // reuses its SSR gate (candidate wrappers + `@container` band rules) so the
+        // width-correct candidate stays shown — a resync must NOT collapse it
+        // (issue #141, spec/PRIMITIVES.md §SizeThatFits).
         emitNode(tree);
         sink.endFrame();
     }
@@ -301,6 +336,16 @@ public final class Emitter {
             EffectRef structural = Signals.effect(() -> reconcileSlot(node));
             bindings.add(structural);
             nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(structural);
+            // A full-snapshot fit slot (web SSR, issue #141) has every candidate as
+            // a child before the renderer reports; register their bindings too so
+            // the CSS-visible candidate stays reactive in the multi-candidate form.
+            // On the first FIT_CHANGED the reconcile collapses to one child and
+            // re-registers just that subtree (zero-op identical recompute).
+            if (node.children.size() > 1) {
+                for (PathlandNode child : node.children) {
+                    registerBindings(child);
+                }
+            }
         } else {
             for (PathlandNode child : node.children) {
                 registerBindings(child);
@@ -381,7 +426,47 @@ public final class Emitter {
      * values inside it stay fine-grained (owned by their own node-level binding effects).
      */
     private void reconcileSlot(PathlandNode slot) {
+        // Read the selector FIRST (the tracked dependency) so this structural effect
+        // subscribes to the fit-index signal; the gate below must not starve it.
         View content = slot.structuralContent.get(); // tracked: subscribes to the selector
+        // A full-snapshot fit slot (issue #141) carries every candidate until the
+        // renderer reports. The structural effect fires immediately at mount AND
+        // on the selector read — before the first FIT_CHANGED we must keep the
+        // multi-candidate presentation (the web SSR's container-query first paint),
+        // so a no-op gate collapses nothing. The first FIT_CHANGED sets fitReported
+        // (before the incoming index) → the gate opens → the normal reconcile
+        // below downgrades N → 1 selected child.
+        if (slot.children.size() > 1 && !slot.fitReported) {
+            return;
+        }
+        // Snapshot → live downgrade (issue #141): the slot carried EVERY candidate
+        // (in FIT_QUERY order); now keep the SELECTED candidate's node as-is and
+        // remove the others. NEVER positionally diff here — both candidates are
+        // frequently the same component, and morphing the loser's node into the
+        // winner would relocate the winner into the SSR's LOSER wrapper, breaking
+        // the renderer's candidate-position CSS gate (the wide content would end up
+        // behind the hidden wrapper → blank page). Keeping the selected node also
+        // makes the transition zero-churn (its id + subtree are retained).
+        if (slot.children.size() > 1) {
+            int keepIndex = Math.min(Math.max(slot.fitSelection, 0), slot.children.size() - 1);
+            PathlandNode keep = slot.children.get(keepIndex);
+            List<PathlandNode> dropped = new ArrayList<>(slot.children);
+            dropped.remove(keepIndex);
+            destroySubtreeBindings(dropped);
+            forgetInputs(dropped);
+            slot.children.clear();
+            slot.children.add(keep);
+            if (!dropped.isEmpty()) {
+                sink.beginFrame();
+                for (PathlandNode old : dropped) {
+                    int parentId = slot.id, oldId = old.id;
+                    sink.removeChild(parentId, oldId);
+                    sink.deleteNode(oldId);
+                }
+                sink.endFrame();
+            }
+            return;
+        }
         // Re-apply the scope the destination should see (the slot's incoming
         // environment + any slot-provided bindings like the router), so destinations
         // that read environment values keep working on every re-render.

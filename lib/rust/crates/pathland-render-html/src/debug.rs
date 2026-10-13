@@ -388,6 +388,7 @@ mod tests {
             token_refs: Default::default(),
             date: None,
             children: Vec::new(),
+            fit_thresholds: Vec::new(),
         }
     }
 

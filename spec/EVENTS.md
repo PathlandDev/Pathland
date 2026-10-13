@@ -289,8 +289,14 @@ renderer-native media element with default controls reports nothing).
   measure, and then only when the derived index changes** (a band crossing) —
   never a steady size stream. The app swaps the slot's child in response; a
   `FIT_CHANGED` that maps to the already-shown candidate must re-emit **zero**
-  opcodes. Hosts route it into the slot's fit sink, never as a general size
-  event.
+  opcodes. After a **full-snapshot** presentation (the web SSR laid out every
+  candidate behind CSS container queries — issue #141), the app collapses the
+  slot back to the live single-selected-child form: the downgrade **removes the
+  unselected candidates** (`TREE` `REMOVE_CHILD`/`DELETE_NODE`), and that removal —
+  not an arbitrary structural op — is what makes the renderer tear the gate down.
+  A full-snapshot replayed as opcodes (e.g. `META::RESYNC`) does **not** collapse
+  the slot: the renderer keeps its gate and the width-correct candidate. Hosts
+  route it into the slot's fit sink, never as a general size event.
 - **Commands vs reports (MUST)**: `MEDIA_POSITION`/`MEDIA_VOLUME` are **seek /
   volume commands** the app writes to control playback; `MEDIA_TIME_UPDATED` /
   `MEDIA_VOLUME_CHANGED` are **position / volume reports** the renderer emits.

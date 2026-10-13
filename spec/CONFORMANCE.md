@@ -559,7 +559,10 @@ A transition hint on the slot (enum code carried as an `F32` bit pattern):
 ### 28a. PARAMETER:SET_PROPERTY (id=1, propertyId=FIT_QUERY=0x1039, valueType=LIST=0x09, arenaRef=0)
 
 A `SIZE_THAT_FITS` slot's candidate threshold table. `C` is an arena offset; the
-arena entry is a length-prefixed f32 array `[u32 count][f32 × count]`.
+arena entry is a length-prefixed f32 array `[u32 count][f32 × count]`. The wire
+encoding is identical in the live (one selected child) and web-SSR snapshot
+(multiple children, container-query gated first paint) forms — the snapshot form
+differs only in the slot's **child count**, not in any opcode or value (issue #141).
 
 ```
 02 01 00 00 01 00 00 00 39 10 09 00 00 00 00 00
@@ -575,7 +578,8 @@ arena entry is a length-prefixed f32 array `[u32 count][f32 × count]`.
 - `00 00 00 00` C = arenaRef = 0
 
 Arena (entry at offset 0) — thresholds `[0, 480, 720]` (ascending, the `FIT_QUERY`
-ordering contract; the app's candidates map 0→fallback … 2→widest):
+ordering contract; the app's candidates map 0→fallback … 2→widest, and in a
+full-snapshot emission the slot's **child order equals this table order**):
 
 ```
 03 00 00 00 00 00 00 00 00 00 F0 43 00 00 34 44
@@ -585,6 +589,43 @@ ordering contract; the app's candidates map 0→fallback … 2→widest):
 - `00 00 00 00` = 0.0f (the threshold-0 fallback)
 - `00 00 F0 43` = 480.0f (0x43F00000 LE)
 - `00 00 34 44` = 720.0f (0x44340000 LE)
+
+### 28b. `SIZE_THAT_FITS` full-snapshot child order + visibility contract
+
+The full-snapshot (web SSR first document) form of a fit slot carries **every**
+candidate as a child, in `FIT_QUERY` order. The wire differs from the live form
+**only in the slot's child count** — the `FIT_QUERY` opcode + arena are identical
+(28a). Here two candidates with thresholds `[0, 1024]`: child 2 is candidate 0
+(the threshold-0 fallback) and child 3 is candidate 1.
+
+```
+01 01 00 00 01 00 00 00 17 00 00 00 00 00 00 00
+02 01 00 00 01 00 00 00 39 10 09 00 00 00 00 00
+01 01 00 00 02 00 00 00 10 00 00 00 00 00 00 00
+01 01 00 00 03 00 00 00 10 00 00 00 00 00 00 00
+01 03 00 00 01 00 00 00 02 00 00 00 00 00 00 00
+01 03 00 00 01 00 00 00 03 00 00 00 01 00 00 00
+```
+
+- `01 01 00 00 01 00 00 00 17 00 00 00 00 00 00 00` = `TREE:CREATE_NODE`
+  (id=1, `SIZE_THAT_FITS` 0x17)
+- `02 01 00 00 01 00 00 00 39 10 09 00 00 00 00 00` = `PARAMETER:SET_PROPERTY`
+  (id=1, `FIT_QUERY` 0x1039, LIST, arenaRef=0) — bytes per 28a
+- `01 01 00 00 02 00 00 00 10 00 00 00 00 00 00 00` = `TREE:CREATE_NODE`
+  (id=2, candidate 0)
+- `01 01 00 00 03 00 00 00 10 00 00 00 00 00 00 00` = `TREE:CREATE_NODE`
+  (id=3, candidate 1)
+- `01 03 00 00 01 00 00 00 02 00 00 00 00 00 00 00` = `TREE:INSERT_CHILD`
+  (parent=1, child=2, index 0)
+- `01 03 00 00 01 00 00 00 03 00 00 00 01 00 00 00` = `TREE:INSERT_CHILD`
+  (parent=1, child=3, index 1)
+
+Arena: `[2][0.0][1024.0]` = `02 00 00 00 00 00 00 00 00 00 80 44`.
+
+**Contract** (spec/PRIMITIVES.md §SizeThatFits): child order 2, 3 equals the
+`FIT_QUERY` order; the visible candidate is child 2 below 1024 and child 3 at
+`≥ 1024`; **exactly one** candidate is visible at any width; the `FIT_CHANGED`
+index equals this table index.
 
 ### 29. Structural swap (slot 4: delete old destination 5, create new destination 6, insert)
 
