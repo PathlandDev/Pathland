@@ -91,8 +91,10 @@ function decorationOf(el: HTMLElement): DecorationInfo {
 
 function recomposeShadow(el: HTMLElement): void {
   const s = shadowOf(el);
+  // Color first, then the lengths — the canonical order a browser serializes a
+  // `box-shadow` to (matches the SSR output).
   el.style.boxShadow = s.radius > 0 || s.x !== 0 || s.y !== 0
-    ? `${fmtFloat(s.x)}px ${fmtFloat(s.y)}px ${fmtFloat(s.radius)}px ${s.color}`
+    ? `${s.color} ${fmtFloat(s.x)}px ${fmtFloat(s.y)}px ${fmtFloat(s.radius)}px`
     : "";
 }
 function recomposeFilter(el: HTMLElement): void {

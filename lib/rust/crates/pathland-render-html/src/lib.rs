@@ -392,7 +392,9 @@ impl Node {
                 .token_ref(property_id::SHADOW_COLOR)
                 .or_else(|| self.properties.get(&property_id::SHADOW_COLOR).copied().map(rgba))
                 .unwrap_or_else(|| "rgba(0,0,0,0.3)".to_string());
-            css.push_str(&format!("box-shadow:{shadow_x}px {shadow_y}px {shadow_radius}px {color};"));
+            // Color first, then the lengths — the order the browser serializes a
+            // `box-shadow` back to, so the SSR string matches the hydrated DOM.
+            css.push_str(&format!("box-shadow:{color} {shadow_x}px {shadow_y}px {shadow_radius}px;"));
         }
         if let Some(v) = self.token_ref(property_id::OPACITY) {
             css.push_str(&format!("opacity:{v};"));
@@ -3612,7 +3614,7 @@ mod tests {
         // Radius only → the renderer default color.
         let html = render_f32(&[(property_id::SHADOW_RADIUS, 10.0)]);
         assert!(
-            html.contains("box-shadow:0px 0px 10px rgba(0,0,0,0.3);"),
+            html.contains("box-shadow:rgba(0,0,0,0.3) 0px 0px 10px;"),
             "radius-only shadow draws with the default color: {html}"
         );
         // An offset alone also draws a shadow.
@@ -3640,7 +3642,7 @@ mod tests {
             ((value_type::COLOR as u32) << 16) | property_id::SHADOW_COLOR as u32, 0xFF00_0000,
         ));
         let explicit = HtmlRenderer::new().render_fragment(&opcodes, &[], 1);
-        assert!(explicit.contains("box-shadow:0px 0px 8px rgba(0,0,0,1)"), "explicit color wins: {explicit}");
+        assert!(explicit.contains("box-shadow:rgba(0,0,0,1) 0px 0px 8px"), "explicit color wins: {explicit}");
     }
 
     #[test]
