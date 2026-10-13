@@ -97,7 +97,9 @@ jobs:
               continue
             fi
             # `cargo publish` packages (leaving the .crate in target/package) then uploads.
-            cargo publish -p "$c"
+            # `--allow-dirty`: `cargo set-version` above intentionally edits the
+            # crates' manifests (the path-dep version pins), so the tree is "dirty".
+            cargo publish --allow-dirty -p "$c"
             echo "::endgroup::"
             # Let the index propagate so the next dependent crate resolves it.
             sleep 20
@@ -109,7 +111,7 @@ jobs:
           set -euo pipefail
           # All dependencies are published by now, so packaging every crate works.
           for c in pathland-core pathland-engine pathland-view pathland-core-transport pathland-render-html; do
-            cargo package -p "$c"
+            cargo package --allow-dirty -p "$c"
           done
 
       - name: Upload the .crate files
