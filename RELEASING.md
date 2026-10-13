@@ -50,11 +50,18 @@ successful publish).
      crates.io in dependency order, upload the `.crate` files.
    - `java-natives` — build `libpathland_render_html` for windows-x86_64,
      linux-x86_64, linux-aarch64, macos-aarch64.
-   - `java` — set the version, stage the natives into the renderer jar, run
-     `mvn -P release deploy` to Maven Central (auto-published after validation).
-   - `bump` — commit the version back to `main`.
-   - `release-assets` — attach the `.crate` files, the Java main jars, and the
-     four native libs to the GitHub Release.
+    - `java` — set the version, stage the natives into the renderer jar, run
+      `mvn -P release deploy` to Maven Central (auto-published after validation).
+    - `bump` — commit the version back to `main`.
+    - `release-assets` — attach the `.crate` files, the Java main jars, and the
+      four native libs to the GitHub Release.
+
+The Java deploy runs on **Maven 3.9.9** (pinned in the workflow): Maven 3.10
+writes a `maven-metadata-local.xml` beside each artifact in the Central staging,
+which the Portal rejects ("content that does NOT have a .pom file"). The demos
+are **excluded from the release reactor** (`-pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'`)
+— `central-publishing-maven-plugin` bundles every reactor module, ignoring
+`maven.deploy.skip`, and the demos must not be published.
 
 The publish steps are **idempotent**: a crate+version already on crates.io is
 skipped, so re-running a partially failed release is safe (re-run the workflow
