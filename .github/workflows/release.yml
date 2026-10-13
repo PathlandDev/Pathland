@@ -185,6 +185,18 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
+      # Maven 3.10 (the runner default since 2026-10-04) writes a
+      # `maven-metadata-local.xml` beside each artifact in the Central staging,
+      # which central-publishing-maven-plugin bundles and the Portal rejects
+      # ("content that does NOT have a .pom file"). 3.9.x does not. Pin it here.
+      - name: Pin Maven 3.9.9
+        run: |
+          set -euo pipefail
+          v=3.9.9
+          curl -sSL "https://archive.apache.org/dist/maven/maven-3/$v/binaries/apache-maven-$v-bin.tar.gz" | tar -xz -C "$HOME"
+          echo "$HOME/apache-maven-$v/bin" >> "$GITHUB_PATH"
+          mvn -v
+
       - name: Set the version from the tag
         working-directory: lib/java
         run: mvn -B -q versions:set -DnewVersion="${{ needs.version.outputs.version }}" -DgenerateBackupPoms=false -DprocessAllModules=true
@@ -205,13 +217,18 @@ jobs:
           done
           find lib/java/pathland-render-html/target/native -type f
 
+      # The demos are excluded from the release reactor: central-publishing-maven-plugin
+      # bundles every reactor module (it ignores maven.deploy.skip), and the demos must
+      # not be published.
       - name: Deploy to Maven Central
         working-directory: lib/java
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: mvn -B -P release deploy
+        run: >-
+          mvn -B -P release deploy
+          -pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'
 
       - name: Collect the published main jars
         run: |
