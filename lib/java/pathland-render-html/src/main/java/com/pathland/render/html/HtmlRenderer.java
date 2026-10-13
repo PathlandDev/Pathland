@@ -137,40 +137,50 @@ public final class HtmlRenderer {
 
     /** Extract the jar-embedded dylib to a temp dir; returns its path or null. */
     private static String extractEmbedded() {
+        String resource = embeddedResourcePath();
+        if (resource == null) {
+            return null;
+        }
         String fileName = "libpathland_render_html" + platformLibraryExtension();
-        // The published jar embeds one dylib per platform under
-        // `META-INF/native/<os>-<arch>/`; a local dev build uses the legacy flat
-        // `META-INF/native/` layout. Try the platform dir first, then the flat one.
-        String platform = platformKey();
-        String[] candidates = platform == null
-                ? new String[] { "/META-INF/native/" + fileName }
-                : new String[] {
-                    "/META-INF/native/" + platform + "/" + fileName,
-                    "/META-INF/native/" + fileName,
-                };
-        for (String resource : candidates) {
-            try (var stream = HtmlRenderer.class.getResourceAsStream(resource)) {
-                if (stream == null) {
-                    continue;
-                }
-                java.io.File dir = new java.io.File(System.getProperty("java.io.tmpdir"),
-                        "pathland-native-" + HtmlRenderer.class.getSimpleName() + "-" + System.nanoTime());
-                if (!dir.mkdirs()) {
-                    return null;
-                }
-                java.io.File out = new java.io.File(dir, fileName);
-                try (var copy = new java.io.FileOutputStream(out)) {
-                    stream.transferTo(copy);
-                }
-                if (!out.setExecutable(true, false)) {
-                    // non-fatal: some platforms lack POSIX perms
-                }
-                return out.getAbsolutePath();
-            } catch (IOException e) {
+        try (var stream = HtmlRenderer.class.getResourceAsStream(resource)) {
+            if (stream == null) {
                 return null;
             }
+            java.io.File dir = new java.io.File(System.getProperty("java.io.tmpdir"),
+                    "pathland-native-" + HtmlRenderer.class.getSimpleName() + "-" + System.nanoTime());
+            if (!dir.mkdirs()) {
+                return null;
+            }
+            java.io.File out = new java.io.File(dir, fileName);
+            try (var copy = new java.io.FileOutputStream(out)) {
+                stream.transferTo(copy);
+            }
+            if (!out.setExecutable(true, false)) {
+                // non-fatal: some platforms lack POSIX perms
+            }
+            return out.getAbsolutePath();
+        } catch (IOException e) {
+            return null;
         }
-        return null;
+    }
+
+    /**
+     * The classpath resource for this platform's embedded dylib, or {@code null}
+     * when the jar carries neither layout. The published jar embeds one dylib per
+     * platform under {@code META-INF/native/<os>-<arch>/}; a local dev build uses
+     * the legacy flat {@code META-INF/native/} layout. The platform dir wins.
+     */
+    static String embeddedResourcePath() {
+        String fileName = "libpathland_render_html" + platformLibraryExtension();
+        String platform = platformKey();
+        if (platform != null) {
+            String platformPath = "/META-INF/native/" + platform + "/" + fileName;
+            if (HtmlRenderer.class.getResource(platformPath) != null) {
+                return platformPath;
+            }
+        }
+        String flat = "/META-INF/native/" + fileName;
+        return HtmlRenderer.class.getResource(flat) != null ? flat : null;
     }
 
     /**
