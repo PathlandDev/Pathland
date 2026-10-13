@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4TWMV7PHVCMBXHHKQDG61AY",
+  "session_id": "ses_ecedc6916ffegSKVxr4z7ElDMA",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-13T15:03:43.537169Z",
+  "branch": "fix/release-cargo-allow-dirty",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/release.yml"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "b3cb14af30b7",
+  "checkpoint_transcript_start": 25,
+  "transcript_lines_at_start": 25,
+  "compact_transcript_start": 25,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-13T15:03:43.495382Z",
+    "agent_lines": 4,
+    "agent_removed": 2,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 4,
+    "total_lines_changed": 6,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
