@@ -1,0 +1,92 @@
+package dev.pathland.view;
+
+import dev.pathland.view.emit.PathlandNode;
+import dev.pathland.view.signal.Signal;
+import dev.pathland.view.signal.Signals;
+
+import java.util.function.Consumer;
+
+/**
+ * Determinate progress or an activity indicator ({@code ProgressView}).
+ * {@code value} is {@code 0..1}; {@code indeterminate()} builds the animated
+ * spinner variant ({@code IS_INDETERMINATE}).
+ */
+public final class ProgressView implements View, Configurable<ProgressView.Config> {
+
+    /** {@link ProgressView} values. */
+    public static final class Config implements View.Config {
+
+        private Signal<Float> value;
+        private boolean indeterminate;
+
+        /** Set the determinate value ({@code 0..1}). */
+        public Config value(float value) {
+            this.value = Signals.constant(value);
+            this.indeterminate = false;
+            return this;
+        }
+
+        /** Bind the determinate value ({@code 0..1}) to a signal. */
+        public Config value(Signal<Float> value) {
+            this.value = value;
+            this.indeterminate = false;
+            return this;
+        }
+
+        /** Build the indeterminate activity-indicator variant. */
+        public Config indeterminate() {
+            this.value = null;
+            this.indeterminate = true;
+            return this;
+        }
+    }
+
+    private final Config config;
+
+    private ProgressView(Config config) {
+        this.config = config;
+    }
+
+    /** A determinate progress bar ({@code value} in {@code 0..1}). */
+    public static ViewBuilder<ProgressView, Config> make(float value) {
+        return Configurators.view(Config::new, ProgressView::new, c -> c.value(value));
+    }
+
+    /** A determinate progress bar bound to a reactive signal ({@code 0..1}). */
+    public static ViewBuilder<ProgressView, Config> make(Signal<Float> value) {
+        return Configurators.view(Config::new, ProgressView::new, c -> c.value(value));
+    }
+
+    /** An indeterminate activity indicator (renderer-animated). */
+    public static ProgressView indeterminate() {
+        return new ProgressView(new Config().indeterminate());
+    }
+
+    /** Configure the progress view's values. */
+/** An empty ProgressView (no values). */
+    public static ViewBuilder<ProgressView, Config> make() {
+        return new ViewBuilder<>(new ProgressView(new Config()));
+    }
+
+    public static ViewBuilder<ProgressView, Config> make(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new ViewBuilder<>(new ProgressView(config));
+    }
+
+    @Override
+    public Config config() {
+        return config;
+    }
+
+    @Override
+    public PathlandNode render(Environment env) {
+        PathlandNode node = new PathlandNode(Components.PROGRESS_VIEW);
+        if (config.indeterminate || config.value == null) {
+            node.properties.put(Properties.IS_INDETERMINATE, 1);
+        } else {
+            node.property(Properties.PROGRESS, config.value);
+        }
+        return node;
+    }
+}

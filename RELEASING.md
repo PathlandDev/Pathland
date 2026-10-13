@@ -8,7 +8,7 @@ the version back to `main`:
 | Ecosystem | Artifacts | Registry |
 |-----------|-----------|----------|
 | Rust | `pathland-core`, `pathland-engine`, `pathland-view`, `pathland-core-transport`, `pathland-render-html` | crates.io |
-| Java | `org.pathland:*` libraries (incl. the renderer's native libs for windows-x86_64, linux-x86_64, linux-aarch64, macos-aarch64) | Maven Central |
+| Java | `dev.pathland:*` libraries (incl. the renderer's native libs for windows-x86_64, linux-x86_64, linux-aarch64, macos-aarch64) | Maven Central |
 
 ## Versioning (tag-driven)
 

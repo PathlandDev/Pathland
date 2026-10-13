@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.pathland</groupId>
+        <groupId>dev.pathland</groupId>
         <artifactId>pathland-parent</artifactId>
         <version>0.1.0</version>
     </parent>
@@ -15,7 +15,7 @@
 
     <name>Pathland Render HTML</name>
     <description>
-        The Java binding to the Rust HTML renderer (com.pathland.render.html): a
+        The Java binding to the Rust HTML renderer (dev.pathland.render.html): a
         thin JNA shim over libpathland_render_html (pathland_html_render /
         _render_fragment / _free). Stateless: each call renders
         a full snapshot frame to HTML in one pass. The server-side/remote-projection
@@ -25,7 +25,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-view</artifactId>
             <version>${project.version}</version>
         </dependency>
