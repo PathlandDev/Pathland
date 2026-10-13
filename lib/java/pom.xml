@@ -18,6 +18,32 @@
         Runs on every LTS from Java 17.
     </description>
 
+    <url>https://github.com/PathlandDev/Pathland</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>michaelkrog</id>
+            <name>Michael Krog</name>
+            <email>mic@apaq.dk</email>
+            <url>https://github.com/michaelkrog</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/PathlandDev/Pathland.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/PathlandDev/Pathland.git</developerConnection>
+        <url>https://github.com/PathlandDev/Pathland</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <modules>
         <module>pathland-view</module>
         <module>pathland-view-processor</module>
@@ -127,6 +153,67 @@
          (dom-renderer-<sha256>.js) so a rebuilt bundle busts the immutable asset cache by
          URL — a normal reload after restart is enough, no hard refresh. -->
     <profiles>
+    <!-- Maven Central publishing (`mvn -P release deploy`). Normal builds/tests are
+         unaffected: this profile only activates on demand. -->
+    <profile>
+        <id>release</id>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <goals><goal>jar-no-fork</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.6.3</version>
+                    <configuration>
+                        <!-- Central requires a -javadoc jar; disable strict doclint so
+                             existing doc comments don't fail the release build. -->
+                        <doclint>none</doclint>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals><goal>jar</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.4</version>
+                    <executions>
+                        <execution>
+                            <id>sign-artifacts</id>
+                            <phase>verify</phase>
+                            <goals><goal>sign</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <!-- Uploads the whole reactor to the Sonatype Central Portal as one
+                     deployment (auto-published after validation). Credentials come
+                     from the `central` server in ~/.m2/settings.xml. -->
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.6.0</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <publishingServerId>central</publishingServerId>
+                        <autoPublish>true</autoPublish>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
     <profile>
         <id>refresh-ide</id>
         <build>

@@ -13,6 +13,12 @@
     <artifactId>pathland-gtk-demo</artifactId>
     <packaging>jar</packaging>
 
+    <!-- Demo application — not published to Maven Central. -->
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
+
     <name>Pathland GTK Desktop Demo</name>
     <description>
         Runs the shared framework-agnostic demo views (com.pathland.demo) under the
