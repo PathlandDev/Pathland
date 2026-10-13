@@ -102,6 +102,11 @@ Statelessness). Protocol contract: `spec/`.
   `TEXT_CASE`, `FONT_STYLE`, `FONT_DESIGN`, `UNDERLINE`/`STRIKETHROUGH`,
   `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `COLOR_INVERT`. `WIDTH`/`HEIGHT`
   `HUG_CONTENT` (-2) is **omitted** (intrinsic size); `FILL` (-1) → `100%`.
+- **`SHADOW_*` (box-shadow)**: a non-zero `SHADOW_RADIUS` (or an `SHADOW_X`/`SHADOW_Y`
+  offset) emits `box-shadow: <x>px <y>px <radius>px <color>`. The color is
+  `SHADOW_COLOR` when set, else the **renderer-owned default `rgba(0,0,0,0.3)`** —
+  so a `shadow(radius)` modifier (radius only; the color is renderer-owned) already
+  draws before hydration, matching the DOM client.
 - **`Z_INDEX` (draw-order override)**: a `ZSTACK` child's `Z_INDEX` is emitted on
   its **shell** (the grid item that participates in stacking — the child's own
   `z-index` is inert inside the shell), so a higher value draws above lower

@@ -380,19 +380,19 @@ impl Node {
                 css.push_str(&format!("transform:scale({v});"));
             }
         }
-        // Shadow (accumulate x/y/radius/color — simplified to radius+color inline).
-        if let (Some(r), Some(color_bits)) = (
-            f32p(property_id::SHADOW_RADIUS),
-            self.properties.get(&property_id::SHADOW_COLOR).copied(),
-        ) {
-            if r != 0.0 {
-                let x = f32p(property_id::SHADOW_X).unwrap_or(0.0);
-                let y = f32p(property_id::SHADOW_Y).unwrap_or(0.0);
-                let color = self
-                    .token_ref(property_id::SHADOW_COLOR)
-                    .unwrap_or_else(|| rgba(color_bits));
-                css.push_str(&format!("box-shadow:{x}px {y}px {r}px {color};"));
-            }
+        // Shadow: a non-zero `SHADOW_RADIUS` (or an x/y offset) draws a
+        // box-shadow. The color is `SHADOW_COLOR` when set, else the
+        // renderer-owned default `rgba(0,0,0,0.3)` — mirroring the DOM client.
+        // `shadow(radius)` carries only the radius (the color is the renderer's).
+        let shadow_radius = f32p(property_id::SHADOW_RADIUS).unwrap_or(0.0);
+        let shadow_x = f32p(property_id::SHADOW_X).unwrap_or(0.0);
+        let shadow_y = f32p(property_id::SHADOW_Y).unwrap_or(0.0);
+        if shadow_radius != 0.0 || shadow_x != 0.0 || shadow_y != 0.0 {
+            let color = self
+                .token_ref(property_id::SHADOW_COLOR)
+                .or_else(|| self.properties.get(&property_id::SHADOW_COLOR).copied().map(rgba))
+                .unwrap_or_else(|| "rgba(0,0,0,0.3)".to_string());
+            css.push_str(&format!("box-shadow:{shadow_x}px {shadow_y}px {shadow_radius}px {color};"));
         }
         if let Some(v) = self.token_ref(property_id::OPACITY) {
             css.push_str(&format!("opacity:{v};"));
@@ -3587,6 +3587,60 @@ mod tests {
         assert!(html.contains("color:rgba(17,34,51,1)"));
         assert!(html.contains("font-size:18px"), "font-size inline (dp): {}", html);
         assert!(html.contains("hidden"), "visible=0 -> hidden class");
+    }
+
+    #[test]
+    fn shadow_renders_with_a_renderer_default_color_when_only_radius_is_set() {
+        use pathland_core::value_type;
+
+        // `shadow(radius)` carries only `SHADOW_RADIUS` (the color is
+        // renderer-owned), so the SSR must still draw a box-shadow with the
+        // default color — mirroring the DOM client's `rgba(0,0,0,0.3)`.
+        let render_f32 = |props: &[(u16, f32)]| {
+            let mut opcodes = vec![Opcode::new(
+                category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0,
+            )];
+            for &(prop, value) in props {
+                opcodes.push(Opcode::new(
+                    category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+                    ((value_type::F32 as u32) << 16) | prop as u32, value.to_bits(),
+                ));
+            }
+            HtmlRenderer::new().render_fragment(&opcodes, &[], 1)
+        };
+
+        // Radius only → the renderer default color.
+        let html = render_f32(&[(property_id::SHADOW_RADIUS, 10.0)]);
+        assert!(
+            html.contains("box-shadow:0px 0px 10px rgba(0,0,0,0.3);"),
+            "radius-only shadow draws with the default color: {html}"
+        );
+        // An offset alone also draws a shadow.
+        assert!(
+            render_f32(&[(property_id::SHADOW_X, 4.0), (property_id::SHADOW_Y, 4.0)]).contains("box-shadow:"),
+            "an offset alone draws a shadow"
+        );
+        // Unset / zero radius → no shadow.
+        assert!(!render_f32(&[]).contains("box-shadow:"), "no shadow when unset");
+        assert!(
+            !render_f32(&[(property_id::SHADOW_RADIUS, 0.0)]).contains("box-shadow:"),
+            "radius 0 → no shadow"
+        );
+
+        // An explicit `SHADOW_COLOR` wins over the default.
+        let mut opcodes = vec![Opcode::new(
+            category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0,
+        )];
+        opcodes.push(Opcode::new(
+            category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+            ((value_type::F32 as u32) << 16) | property_id::SHADOW_RADIUS as u32, 8.0f32.to_bits(),
+        ));
+        opcodes.push(Opcode::new(
+            category::PARAMETER, parameter::SET_PROPERTY, 0, 1,
+            ((value_type::COLOR as u32) << 16) | property_id::SHADOW_COLOR as u32, 0xFF00_0000,
+        ));
+        let explicit = HtmlRenderer::new().render_fragment(&opcodes, &[], 1);
+        assert!(explicit.contains("box-shadow:0px 0px 8px rgba(0,0,0,1)"), "explicit color wins: {explicit}");
     }
 
     #[test]
