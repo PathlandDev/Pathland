@@ -1,0 +1,1 @@
+More specifcally, if a shadow modifier is added to a view, it is not rendered beofre the view is hydrated
