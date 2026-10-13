@@ -3,8 +3,10 @@ name = "pathland-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
 description = "Pathland 16-byte opcode protocol: fixed-size opcodes, ring buffer, arena, events, and linear-memory layout (no_std)"
-repository = "https://github.com/michaelkrog/Pathland"
 categories = ["encoding", "wasm", "graphics"]
 keywords = ["ui", "protocol", "opcode", "wasm", "ring-buffer"]
 

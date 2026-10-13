@@ -602,7 +602,6 @@ version = "0.1.0"
 dependencies = [
  "pathland-core",
  "pathland-engine",
- "pathland-render-gtk",
  "pathland-view",
 ]
 
