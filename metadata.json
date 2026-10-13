@@ -1,0 +1,55 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4TFC0APB391788XG7EAZGX8",
+  "strategy": "manual-commit",
+  "branch": "feat/ftf-container-queries",
+  "checkpoints_count": 79,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/test/java/com/pathland/demo/music/MusicPlayerViewTest.java",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-19f5666dc2ee.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-d903f2af059d.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-server-core/src/main/java/com/pathland/server/PathlandSession.java",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-19f5666dc2ee.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-d903f2af059d.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/SizeThatFits.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/Emitter.java",
+    "lib/java/pathland-view/src/main/java/com/pathland/view/emit/PathlandNode.java",
+    "lib/java/pathland-view/src/test/java/com/pathland/view/SizeThatFitsTest.java",
+    "lib/java/pathland-view/status.md",
+    "lib/rust/crates/pathland-html-golden/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/src/debug.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/index.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/fit.test.ts",
+    "lib/typescript/test/fixtures/ssr/sizethatfits-snapshot-three.html",
+    "lib/typescript/test/fixtures/ssr/sizethatfits-snapshot-three.plpl",
+    "lib/typescript/test/fixtures/ssr/sizethatfits-snapshot.html",
+    "lib/typescript/test/fixtures/ssr/sizethatfits-snapshot.plpl",
+    "spec/CONFORMANCE.md",
+    "spec/DSL.md",
+    "spec/EVENTS.md",
+    "spec/LAYOUT.md",
+    "spec/PRIMITIVES.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 12692369,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 171208192,
+    "output_tokens": 396523,
+    "api_call_count": 531
+  }
+}
