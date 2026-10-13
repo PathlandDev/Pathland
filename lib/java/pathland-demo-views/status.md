@@ -2,7 +2,7 @@
 
 **Last updated:** September 28, 2026
 
-The framework-agnostic shared demo views (`com.pathland.demo`), consumed by the
+The framework-agnostic shared demo views (`dev.pathland.demo`), consumed by the
 Quarkus and Spring Boot demos. Uses `State` fields wired by the
 `pathland-view-processor` annotation processor.
 
@@ -68,7 +68,7 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   - A `fallback` ("Not Found") for any other path.
 
 - **Semantic accessibility roles** (`accessibilityRole(Roles.*)`,
-  `com.pathland.view.Roles`): the demo root views carry the `MAIN` landmark
+  `dev.pathland.view.Roles`): the demo root views carry the `MAIN` landmark
   (`HomeView`/`SettingsView`/`KitchenSinkView`/`CounterView`), the sidebar is
   `NAVIGATION`, and `SectionCard` titles are `HEADER` headings — the web
   renderer reflects these as native semantic elements (`<nav>`, `<main>`,
@@ -86,7 +86,7 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
 - **`MediaSection`** (kitchensink): a `Video` + `Audio` node with remote sample
   URLs — playback interaction is renderer-native (`controls`); the app supplies
   only the source + size.
-- **`MusicPlayerView`** (com.pathland.demo.music) — the **web demos' root** (an
+- **`MusicPlayerView`** (dev.pathland.demo.music) — the **web demos' root** (an
   Apple Music-style player): a track **`LibraryView`** (left) + the
   **`NowPlayingSidebar`** (right) in a fill HStack, over the bottom
   **`PlayerBar`**. The main row is a **`SizeThatFits`** fit slot: the
@@ -153,7 +153,7 @@ media events drive position/volume/ended). Both SSR demos are verified by
 running them and curling the routes (`/` renders the music player's
 `<img>`s + range sliders + transport buttons + the `.pathland-media` audio
 wrapper; the albumart + audio assets serve from `/_pathland/assets/`).
-- **Single embedded asset copy** (`com.pathland.demo.assets.DemoAssets`): the
+- **Single embedded asset copy** (`dev.pathland.demo.assets.DemoAssets`): the
   media + icon assets live once in this jar under
   `META-INF/resources/_pathland/assets/`; `DemoAssets.extractToTemp()` unpacks
   them to a temp dir (with `Range`/caching headers) that every host serves from —

@@ -2,7 +2,7 @@
 
 **Last updated:** October 2, 2026
 
-The **Java binding to the Rust HTML renderer** (`com.pathland.render.html`) — a
+The **Java binding to the Rust HTML renderer** (`dev.pathland.render.html`) — a
 thin **JNA shim** over `libpathland_render_html`. There is a **single renderer**
 (the Rust crate), reused by every language; the former hand-written retained
 Java renderer is removed. Protocol contract: `spec/`.

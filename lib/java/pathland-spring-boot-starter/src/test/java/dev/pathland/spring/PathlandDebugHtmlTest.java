@@ -1,0 +1,46 @@
+package dev.pathland.spring;
+
+import dev.pathland.server.PathlandApp;
+import dev.pathland.server.PathlandHost;
+import dev.pathland.view.Text;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.TestPropertySource;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * The {@code pathland.debug-html} property gates SSR debug comments: with it set,
+ * the auto-configured registry (for the root app in the host) renders per-node HTML
+ * comments; the default stays off.
+ */
+@SpringBootTest(classes = PathlandDebugHtmlTest.TestApp.class)
+@TestPropertySource(properties = "pathland.debug-html=true")
+class PathlandDebugHtmlTest {
+
+    @SpringBootApplication
+    static class TestApp {
+        @Bean
+        PathlandApp pathlandApp() {
+            return () -> Text.make("Hello Pathland");
+        }
+    }
+
+    @Autowired
+    PathlandHost host;
+
+    @Test
+    void debugHtmlPropertyReachesTheRegistry() {
+        assertTrue(host.registry("/").isDebugHtml(), "pathland.debug-html=true turns debug comments on");
+    }
+
+    @Test
+    void defaultRegistryHasDebugOff() {
+        assertFalse(new dev.pathland.server.PathlandRegistry(
+                () -> Text.make("x"), new dev.pathland.view.state.InMemoryStateStore()).isDebugHtml());
+    }
+}

@@ -4,11 +4,11 @@ Shared test infrastructure for the Pathland Java reactor.
 
 ## Implemented
 
-- **`com.pathland.server.test.WsSession`** — a minimal JDK-`java.net.http.WebSocket`
+- **`dev.pathland.server.test.WsSession`** — a minimal JDK-`java.net.http.WebSocket`
   client that speaks the PLPL wire protocol (environment / resync / click / ping),
   collects decoded frames + peer-close codes, and tracks unexpected closes. One shared
   `HttpClient` across all connections.
-- **`com.pathland.server.test.MultiSessionProbe`** — the shared 100-session (configurable
+- **`dev.pathland.server.test.MultiSessionProbe`** — the shared 100-session (configurable
   via `PATHLAND_TEST_SESSIONS`) WS stress probe used by the Quarkus + Spring starters'
   `MultiSessionWebSocketTest`: every session connects, re-syncs, gets transport-level
   PONGs, stays isolated (only its own click counts reach its label), and is never closed

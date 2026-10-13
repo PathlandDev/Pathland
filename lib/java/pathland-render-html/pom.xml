@@ -15,7 +15,7 @@
 
     <name>Pathland Render HTML</name>
     <description>
-        The Java binding to the Rust HTML renderer (com.pathland.render.html): a
+        The Java binding to the Rust HTML renderer (dev.pathland.render.html): a
         thin JNA shim over libpathland_render_html (pathland_html_render /
         _render_fragment / _free). Stateless: each call renders
         a full snapshot frame to HTML in one pass. The server-side/remote-projection

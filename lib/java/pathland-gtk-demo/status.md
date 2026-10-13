@@ -2,7 +2,7 @@
 
 **Last updated:** September 29, 2026
 
-Runs the shared framework-agnostic demo views (`com.pathland.demo`, e.g.
+Runs the shared framework-agnostic demo views (`dev.pathland.demo`, e.g.
 `MusicPlayerView`) under the **native GTK4 renderer** (`libpathland_gtk`) — the
 cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
 
@@ -33,7 +33,7 @@ cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
   `pathland_gtk_set_asset_root(dir)`); library resolved from the
   `pathland.gtk.lib` system property or `java.library.path`.
 - `RingEventReader` — decodes raw ring `EVENT` opcodes into
-  `com.pathland.view.transport.Event`, resolving `TEXT_CHANGED`/`NAVIGATE`
+  `dev.pathland.view.transport.Event`, resolving `TEXT_CHANGED`/`NAVIGATE`
   strings from the shared host → guest event arena (header `0x40`), plus the
   four `MEDIA_*` events (play state, time, ended, volume). Headless unit tests
   cover pointer/value/date/text/navigate/media decoding and bounds behaviour.

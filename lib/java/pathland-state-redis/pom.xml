@@ -15,7 +15,7 @@
 
     <name>Pathland State Redis</name>
     <description>
-        Framework-agnostic Redis-backed StateStore (com.pathland.state.redis) over
+        Framework-agnostic Redis-backed StateStore (dev.pathland.state.redis) over
         Lettuce. Usable from Spring Boot, Quarkus, or a plain JVM desktop app to persist
         application state for multi-tenant scale-out servers.
     </description>

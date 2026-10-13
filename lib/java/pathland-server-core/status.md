@@ -74,7 +74,7 @@ dependency — framework glue lives in the starters.
   construct throwaway sessions on request threads — the shared-actor / global-`Scheduler`
   cross-session corruption guard. Each session must reach exactly its own click count
   (no lost effects, no cross-session values).
-- **Shared WS test harness** — `com.pathland.server.test.{WsSession,MultiSessionProbe}`
+- **Shared WS test harness** — `dev.pathland.server.test.{WsSession,MultiSessionProbe}`
   (a JDK-WebSocket client speaking the PLPL protocol: env/resync/click/ping) lives in the
   **`pathland-test-kit`** module (main scope, so package builds resolve it as a normal
   jar); the starters' 100-session stress tests reuse it.

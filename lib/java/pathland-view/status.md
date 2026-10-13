@@ -2,7 +2,7 @@
 
 **Last updated:** October 9, 2026
 
-The hand-written, framework-agnostic Java 17+ DSL (`com.pathland.view`):
+The hand-written, framework-agnostic Java 17+ DSL (`dev.pathland.view`):
 declarative views, Angular-style signals, fine-grained emitter, `PLPL` wire
 codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 `spec/`. Runs on every LTS from Java 17.
@@ -51,7 +51,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   means `make(...)` is the only static of the three; the former static
   `X.modifiers(...)` first-call entry points are **removed**). Modifiers/styles are
   built through the **`Modifiers` facade's lowercase functions** — one
-  `import static com.pathland.view.Modifiers.*;` brings the whole vocabulary
+  `import static dev.pathland.view.Modifiers.*;` brings the whole vocabulary
   (`padding(p -> p.uniform(16))`, `frame(f -> f.width(100).height(24))`,
   `foregroundStyle(f -> f.color(c))`, `borderedButtonStyle(b -> …)`); the
   former per-type `with(...)` configurators are **removed** (a same-package
@@ -242,7 +242,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   modifier.
   `AccessibilityLabel`/`Image` accept reactive `Signal<String>` overloads
   (node-level `LABEL`/`IMAGE_SOURCE` bindings).
-- **`Roles` constants** (`com.pathland.view.Roles`): the canonical **semantic**
+- **`Roles` constants** (`dev.pathland.view.Roles`): the canonical **semantic**
   `ROLE` catalog (mirrors `pathland_core::constants::role` / `spec/OPCODE.md`,
   dense 0–13): `HEADER`, `PARAGRAPH`, `LIST`, `LIST_ITEM`, `SUMMARY`, `BANNER`,
   `NAVIGATION`, `MAIN`, `CONTENT_INFO`, `COMPLEMENTARY`, `ARTICLE`, `SECTION`,
@@ -274,7 +274,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `LABEL`/`PROMPT`/`FONT_FAMILY`/`IMAGE_SOURCE` → `STRING`; enum-valued
   properties ride as `F32` holding the numeric enum code. `FontWeight` uses the
   spec's numeric 100–900 scale.
-- **Signals** (`com.pathland.view.signal`): `signal`/`computed`/`effect`/
+- **Signals** (`dev.pathland.view.signal`): `signal`/`computed`/`effect`/
   `untracked` — glitch-free synchronous flush, equality suppression,
   circular-dependency detection. The `Scheduler`'s global effect queue is
   **thread-safe** (all entry points synchronized) so a request/SSR-thread flush can
@@ -298,7 +298,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   **zero** opcodes, nested containers work, and the slot's subtree owns its own
   bindings. `RenderResult` routing maps are now live unmodifiable views (a swap
   updates tap/text/value/date routing after mount).
-- **Router** (`com.pathland.view.router`, spec DSL.md §4.5): `Route` (absolute
+- **Router** (`dev.pathland.view.router`, spec DSL.md §4.5): `Route` (absolute
   path, `pathOnly()` strips query/fragment), `RouteTable` (literal + `:param`
   patterns, guards → `replace()` redirect, `fallback` 404), `Router`
   (`Signal<Route>` + back-stack; `navigate`/`push`/`pop`/`replace`/`back`,
