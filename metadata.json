@@ -3,7 +3,7 @@
   "checkpoint_id": "01M4TN3QFP0TQXCMRPFTXSE5QX",
   "strategy": "manual-commit",
   "branch": "feat/publish-crates-io",
-  "checkpoints_count": 13,
+  "checkpoints_count": 14,
   "files_touched": [
     ".github/workflows/release-rust.yml",
     "RELEASING.md",
@@ -29,13 +29,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 905433,
+    "input_tokens": 922944,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 26211456,
-    "output_tokens": 17001,
-    "api_call_count": 69
+    "cache_read_tokens": 26326144,
+    "output_tokens": 20083,
+    "api_call_count": 77
   }
 }
