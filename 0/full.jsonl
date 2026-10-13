@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 11.003605379999977,
+    "cost": 11.011150181999975,
     "tokens": {
-      "input": 44742122,
-      "output": 1642624,
-      "reasoning": 780535,
+      "input": 44742629,
+      "output": 1643659,
+      "reasoning": 780650,
       "cache": {
-        "read": 946130560,
+        "read": 948390144,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791916564130
+      "updated": 1791916620245
     }
   },
   "messages": [
@@ -462294,21 +462294,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.002466354,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 753258,
+          "input": 191,
+          "output": 253,
+          "reasoning": 46,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 752768
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791916564660
+          "created": 1791916564660,
+          "completed": 1791916605277
         },
+        "finish": "tool-calls",
         "id": "msg_1368ce0b40020UVvc2EUzA6jkL",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -462336,20 +462339,211 @@
           "tool": "bash",
           "callID": "chatcmpl-tool-9db1afd78d309ed4",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nfix(render-html): render a radius-only shadow with the renderer default color\n\n`shadow(radius)` (the DSL's Shadow modifier without a color) emits only\nSHADOW_RADIUS — the color is renderer-owned. The HTML renderer required a\nSHADOW_COLOR too, so the SSR emitted no box-shadow until hydration (the DOM\nclient defaults the color to rgba(0,0,0,0.3)).\n\nDraw the shadow when SHADOW_RADIUS is non-zero (or there is an x/y offset),\nusing SHADOW_COLOR when set and the renderer default rgba(0,0,0,0.3) otherwise\n— matching the DOM client. Add a unit test; document in status.md.\nEOF\n)\" && git push -u origin fix/ssr-missing-shadow 2>&1 | tail -3"
             },
+            "output": "To https://github.com/PathlandDev/Pathland.git\n * [new branch]        fix/ssr-missing-shadow -> fix/ssr-missing-shadow\nbranch 'fix/ssr-missing-shadow' set up to track 'origin/fix/ssr-missing-shadow'.\n",
+            "metadata": {
+              "output": "To https://github.com/PathlandDev/Pathland.git\n * [new branch]        fix/ssr-missing-shadow -> fix/ssr-missing-shadow\nbranch 'fix/ssr-missing-shadow' set up to track 'origin/fix/ssr-missing-shadow'.\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nfix(render-html): render a radius-only shadow with the renderer default color\n\n`shadow(radius)` (the DSL's Shadow modifier without a color) emits only\nSHADOW_RADIUS — the color is renderer-owned. The HTML renderer required a\nSHADOW_COLOR too, so the SSR emitted no box-shadow until hydration (the DOM\nclient defaults the color to rgba(0,0,0,0.3)).\n\nDraw the shadow when SHADOW_RADIUS is non-zero (or there is an x/y offset),\nusing SHADOW_COLOR when set and the renderer default rgba(0,0,0,0.3) otherwise\n— matching the DOM client. Add a unit test; document in status.md.\nEOF\n)\" && git push -u origin fix/ssr-missing-shadow 2>&1 | tail -3",
             "time": {
-              "start": 1791916570285
+              "start": 1791916570285,
+              "end": 1791916605155
             }
           },
           "id": "prt_1368cf629001ciynwKc46E145E",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_1368ce0b40020UVvc2EUzA6jkL"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "fe2071884b60c474bd6901574ec70a582c9a715e",
+          "type": "step-finish",
+          "tokens": {
+            "total": 753258,
+            "input": 191,
+            "output": 253,
+            "reasoning": 46,
+            "cache": {
+              "write": 0,
+              "read": 752768
+            }
+          },
+          "cost": 0.002466354,
+          "id": "prt_1368d7f250016RIB7JEeQ5FQji",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1368ce0b40020UVvc2EUzA6jkL"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13688c079001rf7KyeMiOszcl9",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002553156,
+        "tokens": {
+          "total": 753775,
+          "input": 178,
+          "output": 445,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 753152
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791916605888,
+          "completed": 1791916613908
+        },
+        "finish": "tool-calls",
+        "id": "msg_1368d81c00023pjEE1IMBH1X6x",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "fe2071884b60c474bd6901574ec70a582c9a715e",
+          "type": "step-start",
+          "id": "prt_1368d8a9600153kfec5sxCv626",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1368d81c00023pjEE1IMBH1X6x"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-a513b70e333c7df4",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr create --base main --head fix/ssr-missing-shadow --title \"fix(render-html): render a radius-only shadow before hydration\" --body \"$(cat <<'EOF'\nFixes a shadow added via a modifier not appearing in the SSR HTML (it only showed up after hydration).\n\n## Cause\nThe DSL's `shadow(radius)` (a `Shadow` modifier without an explicit color) emits **only `SHADOW_RADIUS`** — the color is renderer-owned. The HTML renderer required **both** `SHADOW_RADIUS` and `SHADOW_COLOR`, so it dropped the shadow in the SSR. After hydration the DOM client draws it (it defaults the color to `rgba(0,0,0,0.3)`), which is why it \"appears once hydrated\".\n\n## Fix\nDraw the `box-shadow` when `SHADOW_RADIUS` is non-zero **or** there is an `SHADOW_X`/`SHADOW_Y` offset, using `SHADOW_COLOR` when set and the renderer default `rgba(0,0,0,0.3)` otherwise — mirroring the DOM client (`classes.ts` `recomposeShadow`).\n\n## Verified\n- New unit test `shadow_renders_with_a_renderer_default_color_when_only_radius_is_set` (radius-only → default color; offset-only → draws; unset/zero → none; explicit color wins). `cargo test -p pathland-render-html` → 70 pass.\n- `pathland-html-golden` guard passes (no scenario uses shadows → fixtures unchanged).\n- TS `npm test` → 227 pass; `check-wasm.sh` OK.\n- `status.md` documents the behavior.\nEOF\n)\" 2>&1 | tail -2"
+            },
+            "output": "https://github.com/PathlandDev/Pathland/pull/152\n",
+            "metadata": {
+              "output": "https://github.com/PathlandDev/Pathland/pull/152\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr create --base main --head fix/ssr-missing-shadow --title \"fix(render-html): render a radius-only shadow before hydration\" --body \"$(cat <<'EOF'\nFixes a shadow added via a modifier not appearing in the SSR HTML (it only showed up after hydration).\n\n## Cause\nThe DSL's `shadow(radius)` (a `Shadow` modifier without an explicit color) emits **only `SHADOW_RADIUS`** — the color is renderer-owned. The HTML renderer required **both** `SHADOW_RADIUS` and `SHADOW_COLOR`, so it dropped the shadow in the SSR. After hydration the DOM client draws it (it defaults the color to `rgba(0,0,0,0.3)`), which is why it \"appears once hydrated\".\n\n## Fix\nDraw the `box-shadow` when `SHADOW_RADIUS` is non-zero **or** there is an `SHADOW_X`/`SHADOW_Y` offset, using `SHADOW_COLOR` when set and the renderer default `rgba(0,0,0,0.3)` otherwise — mirroring the DOM client (`classes.ts` `recomposeShadow`).\n\n## Verified\n- New unit test `shadow_renders_with_a_renderer_default_color_when_only_radius_is_set` (radius-only → default color; offset-only → draws; unset/zero → none; explicit color wins). `cargo test -p pathland-render-html` → 70 pass.\n- `pathland-html-golden` guard passes (no scenario uses shadows → fixtures unchanged).\n- TS `npm test` → 227 pass; `check-wasm.sh` OK.\n- `status.md` documents the behavior.\nEOF\n)\" 2>&1 | tail -2",
+            "time": {
+              "start": 1791916611343,
+              "end": 1791916613787
+            }
+          },
+          "id": "prt_1368d968c001xqNjw0uC6jiGYD",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1368d81c00023pjEE1IMBH1X6x"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "fe2071884b60c474bd6901574ec70a582c9a715e",
+          "type": "step-finish",
+          "tokens": {
+            "total": 753775,
+            "input": 178,
+            "output": 445,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 753152
+            }
+          },
+          "cost": 0.002553156,
+          "id": "prt_1368da0de001KhiPOwNQsDX2Yk",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1368d81c00023pjEE1IMBH1X6x"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13688c079001rf7KyeMiOszcl9",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002525292,
+        "tokens": {
+          "total": 754208,
+          "input": 138,
+          "output": 337,
+          "reasoning": 69,
+          "cache": {
+            "write": 0,
+            "read": 753664
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791916614193,
+          "completed": 1791916620124
+        },
+        "finish": "stop",
+        "id": "msg_1368da231002Ds7AUhT7g2J102",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "fe2071884b60c474bd6901574ec70a582c9a715e",
+          "type": "step-start",
+          "id": "prt_1368dad56001vtI6m4In5bhewh",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1368da231002Ds7AUhT7g2J102"
+        },
+        {
+          "type": "reasoning",
+          "text": "PR #152 created.\n\nLet me summarize.\n\nLet me update todos (I didn't set any for this task — let me just summarize).\n\nLet me give a concise summary.\n\nHmm — I should also mention: the SSR now matches the DOM client. And the fix is on `fix/ssr-missing-shadow`.\n\nLet me summarize.",
+          "time": {
+            "start": 1791916617048,
+            "end": 1791916617736
+          },
+          "id": "prt_1368dad5800170NIeLIR2XJxsO",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1368da231002Ds7AUhT7g2J102"
+        },
+        {
+          "type": "text",
+          "text": "**PR #152**: https://github.com/PathlandDev/Pathland/pull/152\n\n**Root cause** (matches your observation exactly): the DSL's `shadow(radius)` — a `Shadow` modifier without an explicit color — emits **only `SHADOW_RADIUS`** (the color is renderer-owned). The HTML renderer required **both** `SHADOW_RADIUS` and `SHADOW_COLOR`, so it emitted **no `box-shadow` in the SSR**; it only appeared after hydration because the DOM client defaults the color to `rgba(0,0,0,0.3)`.\n\n**Fix:** draw the `box-shadow` when `SHADOW_RADIUS` is non-zero (or there's an `SHADOW_X`/`SHADOW_Y` offset), using `SHADOW_COLOR` when set and the renderer default `rgba(0,0,0,0.3)` otherwise — mirroring the DOM client's `recomposeShadow`.\n\n**Verified:** new unit test (radius-only → default color; offset-only → draws; unset/zero → none; explicit color wins) — `pathland-render-html` 70 pass; `pathland-html-golden` guard passes (fixtures unchanged); TS 227 pass; `check-wasm.sh` OK; `status.md` updated.\n\nBranch `fix/ssr-missing-shadow` is pushed. Once merged, the player-bar shadow (and any `shadow(radius)`) will render on first paint, before hydration.",
+          "time": {
+            "start": 1791916617738,
+            "end": 1791916619996
+          },
+          "id": "prt_1368db00a001b3jM5UXBt31D75",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1368da231002Ds7AUhT7g2J102"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "fe2071884b60c474bd6901574ec70a582c9a715e",
+          "type": "step-finish",
+          "tokens": {
+            "total": 754208,
+            "input": 138,
+            "output": 337,
+            "reasoning": 69,
+            "cache": {
+              "write": 0,
+              "read": 753664
+            }
+          },
+          "cost": 0.002525292,
+          "id": "prt_1368db922001aTfFoPyUtsF0l9",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1368da231002Ds7AUhT7g2J102"
         }
       ]
     }
