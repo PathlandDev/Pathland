@@ -1,26 +1,29 @@
 # Releasing Pathland
 
-Publishing a **GitHub Release** (which creates the tag, e.g. `v0.1.0`) runs
-`.github/workflows/release.yml`, which builds and publishes every artifact and
-attaches the built files to the Release:
+Publishing a **GitHub Release** (tagged `vX.Y.Z`) runs
+`.github/workflows/release.yml`, which sets the version from the tag, builds and
+publishes every artifact, attaches the built files to the Release, and commits
+the version back to `main`:
 
 | Ecosystem | Artifacts | Registry |
 |-----------|-----------|----------|
 | Rust | `pathland-core`, `pathland-engine`, `pathland-view`, `pathland-core-transport`, `pathland-render-html` | crates.io |
 | Java | `org.pathland:*` libraries (incl. the renderer's native libs for windows-x86_64, linux-x86_64, linux-aarch64, macos-aarch64) | Maven Central |
 
-Both ecosystems share one version (`0.1.0` today), so a release uses a single
-`vX.Y.Z` tag. Releases are immutable per version — bump before re-releasing.
+## Versioning (tag-driven)
 
-## Version bump
+**The tag drives the version** — no pre-bump commit is needed:
 
-The version lives in exactly two places; keep them in lockstep, and make the
-release tag match:
+- The workflow writes `X.Y.Z` (from the tag `vX.Y.Z`) into
+  `lib/rust/Cargo.toml` (`[workspace.package] version` + the intra-workspace
+  path-dep pins, via `cargo set-version --workspace`) and
+  `lib/java/pom.xml` (via `mvn versions:set`) **in CI**, then publishes.
+- A `bump` job then commits that version back to `main`, so `main` always
+  reflects the latest release.
 
-- Rust: `lib/rust/Cargo.toml` → `[workspace.package] version`
-- Java: `lib/java/pom.xml` → `<version>`
-
-The workflow's `version-check` job fails early if the tag does not equal both.
+Tags must be `v<major>.<minor>.<patch>` (an optional pre-release suffix is
+allowed); the `version` job fails on anything else. Releases are immutable per
+version — pick a new tag to re-release.
 
 ## One-time setup
 
@@ -34,20 +37,23 @@ Repository secrets (Settings → Secrets and variables → Actions):
 - `CENTRAL_USERNAME` / `CENTRAL_PASSWORD` — a Sonatype Central Portal **user
   token** (https://central.sonatype.com/account).
 
+Also: `main` must be pushable by the workflow's `GITHUB_TOKEN` (the `bump` job).
+If `main` is protected, allow the Actions bot, or the bump step fails (after a
+successful publish).
+
 ## Release
 
-1. Bump the version in `lib/rust/Cargo.toml` and `lib/java/pom.xml`, commit, and
-   merge to `main`.
-2. Create a **GitHub Release** on `main` tagged `vX.Y.Z` (publish it).
-3. The workflow runs:
-   - `version-check` — tag == Rust version == Java version.
-   - `rust` — tests the publishable crates, publishes them to crates.io in
-     dependency order, and uploads the `.crate` files.
-   - `java-natives` — builds `libpathland_render_html` for windows-x86_64,
+1. Create a **GitHub Release** on `main` tagged `vX.Y.Z` (publish it).
+2. The workflow runs:
+   - `version` — derive + validate `X.Y.Z` from the tag.
+   - `rust` — set the version, test the publishable crates, publish them to
+     crates.io in dependency order, upload the `.crate` files.
+   - `java-natives` — build `libpathland_render_html` for windows-x86_64,
      linux-x86_64, linux-aarch64, macos-aarch64.
-   - `java` — stages the natives into the renderer jar and runs
+   - `java` — set the version, stage the natives into the renderer jar, run
      `mvn -P release deploy` to Maven Central (auto-published after validation).
-   - `release-assets` — attaches the `.crate` files, the Java main jars, and the
+   - `bump` — commit the version back to `main`.
+   - `release-assets` — attach the `.crate` files, the Java main jars, and the
      four native libs to the GitHub Release.
 
 The publish steps are **idempotent**: a crate+version already on crates.io is
