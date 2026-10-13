@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 11.033863391999976,
+    "cost": 11.044062755999976,
     "tokens": {
-      "input": 44777060,
-      "output": 1645219,
-      "reasoning": 785752,
+      "input": 44778494,
+      "output": 1646399,
+      "reasoning": 785983,
       "cache": {
-        "read": 952907264,
+        "read": 955953152,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791917505695
+      "updated": 1791917572910
     }
   },
   "messages": [
@@ -464630,21 +464630,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.00245418,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 761532,
+          "input": 382,
+          "output": 190,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 760960
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791917505930
+          "created": 1791917505930,
+          "completed": 1791917549093
         },
+        "finish": "tool-calls",
         "id": "msg_1369b3d8a0026LzWP7N7teMIn8",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -464661,20 +464664,329 @@
           "tool": "bash",
           "callID": "chatcmpl-tool-bdde310305d1cde7",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nfix(render-html): emit box-shadow color-first to match the hydrated DOM\n\nThe SSR wrote `box-shadow:<x>px <y>px <radius>px <color>`; a browser serializes\na box-shadow back as `<color> <x>px <y>px <radius>px`, so the pre- and\npost-hydration strings differed (rendering was identical). Emit the color first\nin the HTML renderer and the DOM client's recomposeShadow so both match.\nEOF\n)\" && git push 2>&1 | tail -2"
             },
+            "output": "To https://github.com/PathlandDev/Pathland.git\n * [new branch]        fix/ssr-missing-shadow -> fix/ssr-missing-shadow\n",
+            "metadata": {
+              "output": "To https://github.com/PathlandDev/Pathland.git\n * [new branch]        fix/ssr-missing-shadow -> fix/ssr-missing-shadow\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nfix(render-html): emit box-shadow color-first to match the hydrated DOM\n\nThe SSR wrote `box-shadow:<x>px <y>px <radius>px <color>`; a browser serializes\na box-shadow back as `<color> <x>px <y>px <radius>px`, so the pre- and\npost-hydration strings differed (rendering was identical). Emit the color first\nin the HTML renderer and the DOM client's recomposeShadow so both match.\nEOF\n)\" && git push 2>&1 | tail -2",
             "time": {
-              "start": 1791917511645
+              "start": 1791917511645,
+              "end": 1791917548978
             }
           },
           "id": "prt_1369b47dc001RGC3o9vt6Uc0Zp",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_1369b3d8a0026LzWP7N7teMIn8"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "a55d58d4dc73218598c716a12e814a1534d8d58f",
+          "type": "step-finish",
+          "tokens": {
+            "total": 761532,
+            "input": 382,
+            "output": 190,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 760960
+            }
+          },
+          "cost": 0.00245418,
+          "id": "prt_1369be5ef0015w8V6wxalZ6K14",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369b3d8a0026LzWP7N7teMIn8"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13698799b0015wMf854DcR4LB5",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002389866,
+        "tokens": {
+          "total": 761728,
+          "input": 107,
+          "output": 83,
+          "reasoning": 66,
+          "cache": {
+            "write": 0,
+            "read": 761472
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791917549728,
+          "completed": 1791917553614
+        },
+        "finish": "tool-calls",
+        "id": "msg_1369be8a0002nq6aaIa8JGEJEN",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "a55d58d4dc73218598c716a12e814a1534d8d58f",
+          "type": "step-start",
+          "id": "prt_1369bf441001gpI93BbxvD4OL5",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369be8a0002nq6aaIa8JGEJEN"
+        },
+        {
+          "type": "reasoning",
+          "text": "Hmm — the push says \"new branch\" again (odd, since it existed). Let me verify the push landed.\n\nLet me check git log + remote.\n\nLet me run.\n\nHmm — the earlier push created the branch; this push should update it. The \"new branch\" message is odd. Let me verify.",
+          "time": {
+            "start": 1791917552708,
+            "end": 1791917553059
+          },
+          "id": "prt_1369bf444001uNc46WKHUAEOzp",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369be8a0002nq6aaIa8JGEJEN"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-8b9c7a93d653a605",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && git log --oneline -2 && git rev-parse HEAD origin/fix/ssr-missing-shadow && git status -sb | head -1"
+            },
+            "output": "395fa271 fix(render-html): emit box-shadow color-first to match the hydrated DOM\n77c6a03f fix(render-html): render a radius-only shadow with the renderer default color\n395fa271616be5a4065698f77d712d1e66695cf1\n395fa271616be5a4065698f77d712d1e66695cf1\n## fix/ssr-missing-shadow...origin/fix/ssr-missing-shadow\n",
+            "metadata": {
+              "output": "395fa271 fix(render-html): emit box-shadow color-first to match the hydrated DOM\n77c6a03f fix(render-html): render a radius-only shadow with the renderer default color\n395fa271616be5a4065698f77d712d1e66695cf1\n395fa271616be5a4065698f77d712d1e66695cf1\n## fix/ssr-missing-shadow...origin/fix/ssr-missing-shadow\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git log --oneline -2 && git rev-parse HEAD origin/fix/ssr-missing-shadow && git status -sb | head -1",
+            "time": {
+              "start": 1791917553448,
+              "end": 1791917553498
+            }
+          },
+          "id": "prt_1369bf5a5001skgVa5f960O8eJ",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369be8a0002nq6aaIa8JGEJEN"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "a55d58d4dc73218598c716a12e814a1534d8d58f",
+          "type": "step-finish",
+          "tokens": {
+            "total": 761728,
+            "input": 107,
+            "output": 83,
+            "reasoning": 66,
+            "cache": {
+              "write": 0,
+              "read": 761472
+            }
+          },
+          "cost": 0.002389866,
+          "id": "prt_1369bf7980019qLUrTJK0ai0XK",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369be8a0002nq6aaIa8JGEJEN"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13698799b0015wMf854DcR4LB5",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.0027309,
+        "tokens": {
+          "total": 762528,
+          "input": 246,
+          "output": 568,
+          "reasoning": 114,
+          "cache": {
+            "write": 0,
+            "read": 761600
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791917553881,
+          "completed": 1791917564279
+        },
+        "finish": "tool-calls",
+        "id": "msg_1369bf8d9002aBu8E6K4ZZzBzT",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "a55d58d4dc73218598c716a12e814a1534d8d58f",
+          "type": "step-start",
+          "id": "prt_1369c051a001mt45h4zRyp3yp6",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369bf8d9002aBu8E6K4ZZzBzT"
+        },
+        {
+          "type": "reasoning",
+          "text": "The branch is pushed and in sync (HEAD == origin). The two commits:\n- 77c6a03f: render a radius-only shadow with the default color.\n- 395fa271: emit box-shadow color-first.\n\nPR #152 has both. Let me update the PR description to mention the order alignment.\n\nLet me update PR #152's body.\n\nLet me run gh pr edit.\n\nLet me add the order note.\n\nLet me update.\n\nHmm — let me just add a section. Let me re-send the body.\n\nLet me run.",
+          "time": {
+            "start": 1791917557031,
+            "end": 1791917557555
+          },
+          "id": "prt_1369c0527001tAMuxNkpTbIVYb",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369bf8d9002aBu8E6K4ZZzBzT"
+        },
+        {
+          "type": "text",
+          "text": "Both commits pushed to PR #152. Let me update the PR description.\n\n",
+          "time": {
+            "start": 1791917557556,
+            "end": 1791917561774
+          },
+          "id": "prt_1369c0734001NdWCE4YgrU33tB",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369bf8d9002aBu8E6K4ZZzBzT"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-ad8f893181187ebe",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr edit 152 --title \"fix(render-html): render a radius-only shadow (and match the browser's box-shadow order)\" --body \"$(cat <<'EOF'\nFixes a shadow added via a modifier not appearing in the SSR HTML (it only showed up after hydration), and aligns the SSR's `box-shadow` order with the browser.\n\n## 1. Radius-only shadow wasn't drawn\nThe DSL's `shadow(radius)` (a `Shadow` modifier without an explicit color) emits **only `SHADOW_RADIUS`** — the color is renderer-owned. The HTML renderer required **both** `SHADOW_RADIUS` and `SHADOW_COLOR`, so it dropped the shadow in the SSR. After hydration the DOM client draws it (defaults the color to `rgba(0,0,0,0.3)`), which is why it \"appears once hydrated\".\n\n**Fix:** draw the `box-shadow` when `SHADOW_RADIUS` is non-zero **or** there is an `SHADOW_X`/`SHADOW_Y` offset, using `SHADOW_COLOR` when set and the renderer default `rgba(0,0,0,0.3)` otherwise — mirroring the DOM client.\n\n## 2. `box-shadow` order\nThe SSR wrote `box-shadow:<x>px <y>px <radius>px <color>`, but a browser serializes a `box-shadow` back as `<color> <x>px <y>px <radius>px` — so pre- and post-hydration strings differed (rendering was identical). Emit the **color first** in both the HTML renderer and the DOM client's `recomposeShadow`, so the SSR string matches the hydrated DOM.\n\n## Verified\n- New unit test `shadow_renders_with_a_renderer_default_color_when_only_radius_is_set` (radius-only → default color; offset-only → draws; unset/zero → none; explicit color wins). `cargo test -p pathland-render-html` → 70 pass.\n- `pathland-html-golden` guard passes; TS `npm test` → 227 pass; `check-wasm.sh` OK.\n- `status.md` documents both.\nEOF\n)\" 2>&1 | tail -2"
+            },
+            "output": "https://github.com/PathlandDev/Pathland/pull/152\n",
+            "metadata": {
+              "output": "https://github.com/PathlandDev/Pathland/pull/152\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr edit 152 --title \"fix(render-html): render a radius-only shadow (and match the browser's box-shadow order)\" --body \"$(cat <<'EOF'\nFixes a shadow added via a modifier not appearing in the SSR HTML (it only showed up after hydration), and aligns the SSR's `box-shadow` order with the browser.\n\n## 1. Radius-only shadow wasn't drawn\nThe DSL's `shadow(radius)` (a `Shadow` modifier without an explicit color) emits **only `SHADOW_RADIUS`** — the color is renderer-owned. The HTML renderer required **both** `SHADOW_RADIUS` and `SHADOW_COLOR`, so it dropped the shadow in the SSR. After hydration the DOM client draws it (defaults the color to `rgba(0,0,0,0.3)`), which is why it \"appears once hydrated\".\n\n**Fix:** draw the `box-shadow` when `SHADOW_RADIUS` is non-zero **or** there is an `SHADOW_X`/`SHADOW_Y` offset, using `SHADOW_COLOR` when set and the renderer default `rgba(0,0,0,0.3)` otherwise — mirroring the DOM client.\n\n## 2. `box-shadow` order\nThe SSR wrote `box-shadow:<x>px <y>px <radius>px <color>`, but a browser serializes a `box-shadow` back as `<color> <x>px <y>px <radius>px` — so pre- and post-hydration strings differed (rendering was identical). Emit the **color first** in both the HTML renderer and the DOM client's `recomposeShadow`, so the SSR string matches the hydrated DOM.\n\n## Verified\n- New unit test `shadow_renders_with_a_renderer_default_color_when_only_radius_is_set` (radius-only → default color; offset-only → draws; unset/zero → none; explicit color wins). `cargo test -p pathland-render-html` → 70 pass.\n- `pathland-html-golden` guard passes; TS `npm test` → 227 pass; `check-wasm.sh` OK.\n- `status.md` documents both.\nEOF\n)\" 2>&1 | tail -2",
+            "time": {
+              "start": 1791917561771,
+              "end": 1791917564152
+            }
+          },
+          "id": "prt_1369c088d001zfpgdvRoNesvpt",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369bf8d9002aBu8E6K4ZZzBzT"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "a55d58d4dc73218598c716a12e814a1534d8d58f",
+          "type": "step-finish",
+          "tokens": {
+            "total": 762528,
+            "input": 246,
+            "output": 568,
+            "reasoning": 114,
+            "cache": {
+              "write": 0,
+              "read": 761600
+            }
+          },
+          "cost": 0.0027309,
+          "id": "prt_1369c213f001cep5JsmwV5K7Y5",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369bf8d9002aBu8E6K4ZZzBzT"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13698799b0015wMf854DcR4LB5",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002624418,
+        "tokens": {
+          "total": 762945,
+          "input": 699,
+          "output": 339,
+          "reasoning": 51,
+          "cache": {
+            "write": 0,
+            "read": 761856
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791917564549,
+          "completed": 1791917572871
+        },
+        "finish": "stop",
+        "id": "msg_1369c2285002xq3Ik6tlBfxzQ7",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "a55d58d4dc73218598c716a12e814a1534d8d58f",
+          "type": "step-start",
+          "id": "prt_1369c31f6001P8rtJ124SeJXRe",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369c2285002xq3Ik6tlBfxzQ7"
+        },
+        {
+          "type": "reasoning",
+          "text": "PR #152 updated.\n\nLet me summarize.\n\nLet me give a concise summary.\n\nLet me also note: after merging, the player-bar shadow will render pre-hydration with the color-first order, matching the hydrated DOM.\n\nLet me write the summary.",
+          "time": {
+            "start": 1791917568506,
+            "end": 1791917568810
+          },
+          "id": "prt_1369c31fa001mqU1xBjY7K5eoU",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369c2285002xq3Ik6tlBfxzQ7"
+        },
+        {
+          "type": "text",
+          "text": "**PR #152** now covers both: https://github.com/PathlandDev/Pathland/pull/152\n\n1. **Radius-only shadow now renders in the SSR** — the DSL's `shadow(radius)` emits only `SHADOW_RADIUS` (color is renderer-owned), so the HTML renderer (which required a color) dropped it; it appeared only after hydration. Now it draws whenever the radius (or an x/y offset) is non-zero, defaulting the color to `rgba(0,0,0,0.3)` — matching the DOM client.\n\n2. **`box-shadow` order aligned** — the SSR wrote `<x>px <y>px <radius>px <color>`, but a browser serializes a `box-shadow` as `<color> <x>px <y>px <radius>px`. Both the HTML renderer and the DOM client's `recomposeShadow` now emit **color-first**, so the pre- and post-hydration strings match (they already rendered identically).\n\n**Verified:** `pathland-render-html` 70 pass (incl. the new shadow test), `pathland-html-golden` guard passes, TS 227 pass, `check-wasm.sh` OK, `status.md` updated.\n\nBranch `fix/ssr-missing-shadow` is pushed. Merge it and the player-bar shadow shows on first paint with the same `box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 10px;` before and after hydration.",
+          "time": {
+            "start": 1791917568812,
+            "end": 1791917572747
+          },
+          "id": "prt_1369c332c001u9RML2NiS2Z0p9",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369c2285002xq3Ik6tlBfxzQ7"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "a55d58d4dc73218598c716a12e814a1534d8d58f",
+          "type": "step-finish",
+          "tokens": {
+            "total": 762945,
+            "input": 699,
+            "output": 339,
+            "reasoning": 51,
+            "cache": {
+              "write": 0,
+              "read": 761856
+            }
+          },
+          "cost": 0.002624418,
+          "id": "prt_1369c42ce001ca7RjwWNryXBKI",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1369c2285002xq3Ik6tlBfxzQ7"
         }
       ]
     }
