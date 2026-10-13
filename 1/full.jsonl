@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 9.628164917999975,
+    "cost": 9.635702453999974,
     "tokens": {
-      "input": 38428889,
-      "output": 1591756,
-      "reasoning": 646410,
+      "input": 38430737,
+      "output": 1593656,
+      "reasoning": 646528,
       "cache": {
-        "read": 840310656,
+        "read": 842327168,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791900012926
+      "updated": 1791900082378
     }
   },
   "messages": [
@@ -433395,21 +433395,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001780788,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 504049,
+          "input": 402,
+          "output": 351,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 503296
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791900013083
+          "created": 1791900013083,
+          "completed": 1791900055646
         },
+        "finish": "tool-calls",
         "id": "msg_13590521b002KNXtOySqw5lOVF",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -433426,20 +433429,389 @@
           "tool": "bash",
           "callID": "chatcmpl-tool-a6cc2a619df3257e",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nbuild(java): publish to Maven Central with all-platform renderer natives\n\nMake the org.pathland libraries publishable to Maven Central and ship the HTML\nrenderer's native library for every supported platform.\n\n- shim: resolve the embedded dylib per platform (META-INF/native/<os>-<arch>/),\n  falling back to the legacy flat layout and java.library.path;\n- render-html pom: the antrun embed copies every staged platform lib\n  (target/native/<os>-<arch>/) into the jar, or the host build for local dev;\n- parent pom: add url/licenses/developers/scm and a `release` profile\n  (central-publishing-maven-plugin + gpg + sources + javadoc, doclint off);\n- demo modules: maven.deploy.skip (and javadoc.skip);\n- release.yml: add java-natives (matrix: windows-x86_64, linux-x86_64,\n  linux-aarch64, macos-aarch64) and java (stage natives -> mvn -P release\n  deploy), and attach the jars + native libs alongside the .crate files;\n- RELEASING.md: document the Central flow.\nEOF\n)\" && git push -u origin feat/publish-maven-central 2>&1 | tail -3"
             },
+            "output": "To https://github.com/PathlandDev/Pathland.git\n * [new branch]        feat/publish-maven-central -> feat/publish-maven-central\nbranch 'feat/publish-maven-central' set up to track 'origin/feat/publish-maven-central'.\n",
+            "metadata": {
+              "output": "To https://github.com/PathlandDev/Pathland.git\n * [new branch]        feat/publish-maven-central -> feat/publish-maven-central\nbranch 'feat/publish-maven-central' set up to track 'origin/feat/publish-maven-central'.\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git commit -q -m \"$(cat <<'EOF'\nbuild(java): publish to Maven Central with all-platform renderer natives\n\nMake the org.pathland libraries publishable to Maven Central and ship the HTML\nrenderer's native library for every supported platform.\n\n- shim: resolve the embedded dylib per platform (META-INF/native/<os>-<arch>/),\n  falling back to the legacy flat layout and java.library.path;\n- render-html pom: the antrun embed copies every staged platform lib\n  (target/native/<os>-<arch>/) into the jar, or the host build for local dev;\n- parent pom: add url/licenses/developers/scm and a `release` profile\n  (central-publishing-maven-plugin + gpg + sources + javadoc, doclint off);\n- demo modules: maven.deploy.skip (and javadoc.skip);\n- release.yml: add java-natives (matrix: windows-x86_64, linux-x86_64,\n  linux-aarch64, macos-aarch64) and java (stage natives -> mvn -P release\n  deploy), and attach the jars + native libs alongside the .crate files;\n- RELEASING.md: document the Central flow.\nEOF\n)\" && git push -u origin feat/publish-maven-central 2>&1 | tail -3",
             "time": {
-              "start": 1791900017675
+              "start": 1791900017675,
+              "end": 1791900055516
             }
           },
           "id": "prt_135905cf8001NVynCFuk62NKyL",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_13590521b002KNXtOySqw5lOVF"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "b520c0109640f865652e6c7d3c695a48002eace7",
+          "type": "step-finish",
+          "tokens": {
+            "total": 504049,
+            "input": 402,
+            "output": 351,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 503296
+            }
+          },
+          "cost": 0.001780788,
+          "id": "prt_13590f821001HaNE3ymQtEIh2J",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13590521b002KNXtOySqw5lOVF"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13589631b001E7qqAN4cYAuIAK",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002024658,
+        "tokens": {
+          "total": 504928,
+          "input": 183,
+          "output": 772,
+          "reasoning": 37,
+          "cache": {
+            "write": 0,
+            "read": 503936
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791900056199,
+          "completed": 1791900067794
+        },
+        "finish": "tool-calls",
+        "id": "msg_13590fa87001pHML3gVEDWSC3A",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "b520c0109640f865652e6c7d3c695a48002eace7",
+          "type": "step-start",
+          "id": "prt_1359102fc00118j6RG91T4X433",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13590fa87001pHML3gVEDWSC3A"
+        },
+        {
+          "type": "reasoning",
+          "text": "Committed and pushed. Let me create the PR.\n\nLet me create PR for feat/publish-maven-central → main.\n\nLet me write the PR body.\n\nLet me create it.",
+          "time": {
+            "start": 1791900058369,
+            "end": 1791900058372
+          },
+          "id": "prt_135910301001YDGTWSFvohl2cf",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13590fa87001pHML3gVEDWSC3A"
+        },
+        {
+          "type": "text",
+          "text": "Pushed. Creating the PR:\n\n",
+          "time": {
+            "start": 1791900058374,
+            "end": 1791900063975
+          },
+          "id": "prt_1359103060018qU8N7gQ7215f6",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13590fa87001pHML3gVEDWSC3A"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-85f7bf2468b8806a",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr create --base main --head feat/publish-maven-central --title \"build(java): publish to Maven Central with all-platform renderer natives\" --body \"$(cat <<'EOF'\nPhase 2: makes the `org.pathland` libraries publishable to Maven Central and ships the HTML renderer's native library for every supported platform, so a single dependency works everywhere.\n\n## Native (all platforms)\n- **Shim** (`HtmlRenderer`): resolves the embedded dylib per platform at `META-INF/native/<os>-<arch>/` (`windows-x86_64`, `linux-x86_64`, `linux-aarch64`, `macos-aarch64`), falling back to the legacy flat `META-INF/native/` layout and then `java.library.path` / `pathland.render.html.lib`.\n- **`pathland-render-html` pom**: the antrun embed copies every staged platform lib (`target/native/<os>-<arch>/`) into the jar; a local build (no staging dir) falls back to the host Rust debug build.\n\n## POMs\n- **Parent**: `url`, `licenses` (Apache-2.0), `developers`, `scm`, plus a `release` profile — `central-publishing-maven-plugin` (`autoPublish=true`) + `maven-gpg-plugin` + `maven-source-plugin` + `maven-javadoc-plugin` (`doclint=none`).\n- **Demos** (`pathland-demo-views`, `pathland-gtk-demo`, `pathland-quarkus-demo`, `pathland-spring-boot-demo`): `maven.deploy.skip` (+ `maven.javadoc.skip`).\n\n## CI (`.github/workflows/release.yml`)\n- **`java-natives`** — matrix `windows-latest`, `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-14` → `cargo build --release -p pathland-render-html` → stage + upload.\n- **`java`** (`needs: java-natives`) — stage the natives, `mvn -P release deploy` (JDK 17 + Maven server creds + GPG via `setup-java`). Secrets: `GPG_PRIVATE_KEY`, `GPG_PASSPHRASE`, `CENTRAL_USERNAME`, `CENTRAL_PASSWORD`.\n- **`release-assets`** — attaches the `.crate` files, the Java main jars, and the four native libs to the GitHub Release.\n\n## Verification\n- Whole reactor packages clean; `mvn -P release -DskipTests package` **BUILD SUCCESS** (sources + javadoc jars; central plugin loads).\n- The `pathland-render-html` jar embeds the platform libs (verified with staged fixtures) and, locally, the host dylib; `HtmlRendererTest` green (11).\n\n## Release\nAfter merge, run the release workflow from `main` with tag `v0.1.0` (`workflow_dispatch`) — the Rust job skips (already published) and Java publishes `0.1.0` to Central, keeping both ecosystems on the same `v0.1.0` release.\nEOF\n)\" 2>&1 | tail -3"
+            },
+            "output": "https://github.com/PathlandDev/Pathland/pull/146\n",
+            "metadata": {
+              "output": "https://github.com/PathlandDev/Pathland/pull/146\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr create --base main --head feat/publish-maven-central --title \"build(java): publish to Maven Central with all-platform renderer natives\" --body \"$(cat <<'EOF'\nPhase 2: makes the `org.pathland` libraries publishable to Maven Central and ships the HTML renderer's native library for every supported platform, so a single dependency works everywhere.\n\n## Native (all platforms)\n- **Shim** (`HtmlRenderer`): resolves the embedded dylib per platform at `META-INF/native/<os>-<arch>/` (`windows-x86_64`, `linux-x86_64`, `linux-aarch64`, `macos-aarch64`), falling back to the legacy flat `META-INF/native/` layout and then `java.library.path` / `pathland.render.html.lib`.\n- **`pathland-render-html` pom**: the antrun embed copies every staged platform lib (`target/native/<os>-<arch>/`) into the jar; a local build (no staging dir) falls back to the host Rust debug build.\n\n## POMs\n- **Parent**: `url`, `licenses` (Apache-2.0), `developers`, `scm`, plus a `release` profile — `central-publishing-maven-plugin` (`autoPublish=true`) + `maven-gpg-plugin` + `maven-source-plugin` + `maven-javadoc-plugin` (`doclint=none`).\n- **Demos** (`pathland-demo-views`, `pathland-gtk-demo`, `pathland-quarkus-demo`, `pathland-spring-boot-demo`): `maven.deploy.skip` (+ `maven.javadoc.skip`).\n\n## CI (`.github/workflows/release.yml`)\n- **`java-natives`** — matrix `windows-latest`, `ubuntu-latest`, `ubuntu-24.04-arm`, `macos-14` → `cargo build --release -p pathland-render-html` → stage + upload.\n- **`java`** (`needs: java-natives`) — stage the natives, `mvn -P release deploy` (JDK 17 + Maven server creds + GPG via `setup-java`). Secrets: `GPG_PRIVATE_KEY`, `GPG_PASSPHRASE`, `CENTRAL_USERNAME`, `CENTRAL_PASSWORD`.\n- **`release-assets`** — attaches the `.crate` files, the Java main jars, and the four native libs to the GitHub Release.\n\n## Verification\n- Whole reactor packages clean; `mvn -P release -DskipTests package` **BUILD SUCCESS** (sources + javadoc jars; central plugin loads).\n- The `pathland-render-html` jar embeds the platform libs (verified with staged fixtures) and, locally, the host dylib; `HtmlRendererTest` green (11).\n\n## Release\nAfter merge, run the release workflow from `main` with tag `v0.1.0` (`workflow_dispatch`) — the Rust job skips (already published) and Java publishes `0.1.0` to Central, keeping both ecosystems on the same `v0.1.0` release.\nEOF\n)\" 2>&1 | tail -3",
+            "time": {
+              "start": 1791900063955,
+              "end": 1791900067685
+            }
+          },
+          "id": "prt_135910309001NEi77VG7l47ExI",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13590fa87001pHML3gVEDWSC3A"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "b520c0109640f865652e6c7d3c695a48002eace7",
+          "type": "step-finish",
+          "tokens": {
+            "total": 504928,
+            "input": 183,
+            "output": 772,
+            "reasoning": 37,
+            "cache": {
+              "write": 0,
+              "read": 503936
+            }
+          },
+          "cost": 0.002024658,
+          "id": "prt_13591279f001A8vlmVHKH6zdMp",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13590fa87001pHML3gVEDWSC3A"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13589631b001E7qqAN4cYAuIAK",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001854042,
+        "tokens": {
+          "total": 505302,
+          "input": 891,
+          "output": 266,
+          "reasoning": 81,
+          "cache": {
+            "write": 0,
+            "read": 504064
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791900067981,
+          "completed": 1791900074552
+        },
+        "finish": "tool-calls",
+        "id": "msg_13591288d002q9jbQG7WSnaVPe",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "b520c0109640f865652e6c7d3c695a48002eace7",
+          "type": "step-start",
+          "id": "prt_1359133cf001qDcMAV5rdOoPpZ",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13591288d002q9jbQG7WSnaVPe"
+        },
+        {
+          "type": "reasoning",
+          "text": "PR #146 created.\n\nLet me update todos and give a final summary.\n\nLet me mark todos complete.\n\nLet me summarize what's done and the next steps.\n\nLet me also note: the user needs to set the new secrets (GPG_PRIVATE_KEY, GPG_PASSPHRASE, CENTRAL_USERNAME, CENTRAL_PASSWORD) before running the Java release.\n\nLet me finalize.",
+          "time": {
+            "start": 1791900070867,
+            "end": 1791900071234
+          },
+          "id": "prt_1359133d3001nexicFIB4KxCNW",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13591288d002q9jbQG7WSnaVPe"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "chatcmpl-tool-844fa25d90b2708c",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "B1: shim platformKey + multi-platform extractEmbedded",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "B1: antrun embed copies staged platform libs (host fallback)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "B2: parent POM metadata + release profile (central-publishing, gpg, source, javadoc)",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "B3: maven.deploy.skip on the 4 demo modules",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "B4: release.yml java-natives + java jobs + assets",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "B6: RELEASING.md Central section",
+                  "priority": "medium",
+                  "status": "completed"
+                },
+                {
+                  "content": "Verify: mvn -P release verify; jar embeds natives; resolve smoke",
+                  "priority": "high",
+                  "status": "completed"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"B1: shim platformKey + multi-platform extractEmbedded\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"B1: antrun embed copies staged platform libs (host fallback)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"B2: parent POM metadata + release profile (central-publishing, gpg, source, javadoc)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"B3: maven.deploy.skip on the 4 demo modules\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"B4: release.yml java-natives + java jobs + assets\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"B6: RELEASING.md Central section\",\n    \"status\": \"completed\",\n    \"priority\": \"medium\"\n  },\n  {\n    \"content\": \"Verify: mvn -P release verify; jar embeds natives; resolve smoke\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "B1: shim platformKey + multi-platform extractEmbedded",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "B1: antrun embed copies staged platform libs (host fallback)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "B2: parent POM metadata + release profile (central-publishing, gpg, source, javadoc)",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "B3: maven.deploy.skip on the 4 demo modules",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "B4: release.yml java-natives + java jobs + assets",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "B6: RELEASING.md Central section",
+                  "status": "completed",
+                  "priority": "medium"
+                },
+                {
+                  "content": "Verify: mvn -P release verify; jar embeds natives; resolve smoke",
+                  "status": "completed",
+                  "priority": "high"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "0 todos",
+            "time": {
+              "start": 1791900074444,
+              "end": 1791900074446
+            }
+          },
+          "id": "prt_135913543001G19BnU9uGlW416",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13591288d002q9jbQG7WSnaVPe"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "b520c0109640f865652e6c7d3c695a48002eace7",
+          "type": "step-finish",
+          "tokens": {
+            "total": 505302,
+            "input": 891,
+            "output": 266,
+            "reasoning": 81,
+            "cache": {
+              "write": 0,
+              "read": 504064
+            }
+          },
+          "cost": 0.001854042,
+          "id": "prt_135914208001yTq3axNnMwK92h",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13591288d002q9jbQG7WSnaVPe"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13589631b001E7qqAN4cYAuIAK",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001878048,
+        "tokens": {
+          "total": 506099,
+          "input": 372,
+          "output": 511,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 505216
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791900074747,
+          "completed": 1791900082344
+        },
+        "finish": "stop",
+        "id": "msg_1359142fb0024nbnVPcSv022VF",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "b520c0109640f865652e6c7d3c695a48002eace7",
+          "type": "step-start",
+          "id": "prt_135914ca60011kmdfj6BytBIQf",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1359142fb0024nbnVPcSv022VF"
+        },
+        {
+          "type": "text",
+          "text": "Phase B is done and pushed → **PR #146**: https://github.com/PathlandDev/Pathland/pull/146\n\n**What landed**\n- **Native (all platforms):** the shim resolves `META-INF/native/<os>-<arch>/libpathland_render_html.<ext>` (with the flat-layout + `java.library.path` fallbacks); the antrun embed copies every staged platform lib into the jar, or the host build for local dev.\n- **POMs:** parent metadata (`url`/`licenses`/`developers`/`scm`) + a `release` profile (`central-publishing-maven-plugin` `autoPublish=true`, GPG, sources, javadoc `doclint=none`); the four demo modules get `maven.deploy.skip`.\n- **CI:** `release.yml` now has `java-natives` (matrix `windows-latest`/`ubuntu-latest`/`ubuntu-24.04-arm`/`macos-14`) and `java` (`mvn -P release deploy`), and `release-assets` attaches the `.crate` files, Java main jars, and the four native libs.\n- **`RELEASING.md`** documents the Central flow.\n\n**Verified:** whole reactor packages clean; `mvn -P release -DskipTests package` **BUILD SUCCESS**; the renderer jar embeds the platform libs (checked with staged fixtures) and the host dylib locally; `HtmlRendererTest` 11 green. (The one red I hit was self-inflicted — fake platform dirs I'd left in `target/classes` — cleared with `clean`.)\n\n**To release Java**, set the repo secrets — `GPG_PRIVATE_KEY`, `GPG_PASSPHRASE`, `CENTRAL_USERNAME`, `CENTRAL_PASSWORD` — then after merging #146, run the release workflow from `main` with tag `v0.1.0` (`workflow_dispatch`): Rust skips (already published) and Java publishes `0.1.0` to Central — both ecosystems on the one `v0.1.0` release.\n\nWant me to hold for your review/merge, or is there anything else (e.g. a `dry_run` dispatch input, or the local GPG/`settings.xml` setup)?",
+          "time": {
+            "start": 1791900077289,
+            "end": 1791900082233
+          },
+          "id": "prt_135914ce90013MeV5lZOvZ6HIx",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1359142fb0024nbnVPcSv022VF"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "b520c0109640f865652e6c7d3c695a48002eace7",
+          "type": "step-finish",
+          "tokens": {
+            "total": 506099,
+            "input": 372,
+            "output": 511,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 505216
+            }
+          },
+          "cost": 0.001878048,
+          "id": "prt_135916072001mRO9ENqvjmoEuZ",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1359142fb0024nbnVPcSv022VF"
         }
       ]
     }
