@@ -1,1 +1,1 @@
-dev.pathland
+The packages/folders in java code shoudl also be changed from org.pathland to dev.pathland

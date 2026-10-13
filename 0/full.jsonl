@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 10.802351081999976,
+    "cost": 10.812533561999976,
     "tokens": {
-      "input": 43952411,
-      "output": 1635732,
-      "reasoning": 767093,
+      "input": 43954115,
+      "output": 1637285,
+      "reasoning": 767624,
       "cache": {
-        "read": 922598144,
+        "read": 925490304,
         "write": 0
       }
     },
     "time": {
       "created": 1791526798247,
-      "updated": 1791915024437
+      "updated": 1791915163667
     }
   },
   "messages": [
@@ -457127,21 +457127,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.002442828,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 722818,
+          "input": 242,
+          "output": 270,
+          "reasoning": 130,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 722176
           }
         },
         "modelID": "deepseek-v4-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1791915024943
+          "created": 1791915024943,
+          "completed": 1791915070776
         },
+        "finish": "tool-calls",
         "id": "msg_13675622f002q4DQdnbgCtA2Nr",
         "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
       },
@@ -457180,20 +457183,369 @@
           "tool": "bash",
           "callID": "chatcmpl-tool-9c206e7d4d9ca040",
           "state": {
-            "metadata": {
-              "output": "  14 M\n 312 R\n"
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git status --short | awk '{print $1}' | sort | uniq -c && git commit -q -m \"$(cat <<'EOF'\nrefactor(java): rename com.pathland packages to dev.pathland\n\nAlign the Java source packages with the (verified) dev.pathland Maven groupId:\n\n- move src/{main,test}/java/com/pathland -> .../dev/pathland (all modules);\n- rewrite package/import statements and every com.pathland reference in the\n  Java sources, POMs (mainClass, annotation-processor paths), the\n  META-INF/services processor registration, the Spring AutoConfiguration.imports,\n  the Quarkus application.properties, and the module status docs.\n\nThe GTK app id (org.pathland.GtkDemo) is unrelated and unchanged.\nEOF\n)\" && git push 2>&1 | tail -2 && git log --oneline -3"
             },
+            "output": "  14 M\n 312 R\nTo https://github.com/PathlandDev/Pathland.git\n   9d0064b1..6d3ac4ad  fix/release-maven-pin-and-exclude-demos -> fix/release-maven-pin-and-exclude-demos\n6d3ac4ad refactor(java): rename com.pathland packages to dev.pathland\n9d0064b1 build(java): use the verified dev.pathland Maven groupId\n53470a87 ci(release): pin Maven 3.9.9 and exclude the demos from the Central deploy\n",
+            "metadata": {
+              "output": "  14 M\n 312 R\nTo https://github.com/PathlandDev/Pathland.git\n   9d0064b1..6d3ac4ad  fix/release-maven-pin-and-exclude-demos -> fix/release-maven-pin-and-exclude-demos\n6d3ac4ad refactor(java): rename com.pathland packages to dev.pathland\n9d0064b1 build(java): use the verified dev.pathland Maven groupId\n53470a87 ci(release): pin Maven 3.9.9 and exclude the demos from the Central deploy\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git add -A && git status --short | awk '{print $1}' | sort | uniq -c && git commit -q -m \"$(cat <<'EOF'\nrefactor(java): rename com.pathland packages to dev.pathland\n\nAlign the Java source packages with the (verified) dev.pathland Maven groupId:\n\n- move src/{main,test}/java/com/pathland -> .../dev/pathland (all modules);\n- rewrite package/import statements and every com.pathland reference in the\n  Java sources, POMs (mainClass, annotation-processor paths), the\n  META-INF/services processor registration, the Spring AutoConfiguration.imports,\n  the Quarkus application.properties, and the module status docs.\n\nThe GTK app id (org.pathland.GtkDemo) is unrelated and unchanged.\nEOF\n)\" && git push 2>&1 | tail -2 && git log --oneline -3",
             "time": {
-              "start": 1791915031895
+              "start": 1791915031895,
+              "end": 1791915070664
             }
           },
           "id": "prt_136757330001BTou2XwopFN58o",
           "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
           "messageID": "msg_13675622f002q4DQdnbgCtA2Nr"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "63bf3f96130fb0dfc6e37cd23b1cd05bb99650b2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 722818,
+            "input": 242,
+            "output": 270,
+            "reasoning": 130,
+            "cache": {
+              "write": 0,
+              "read": 722176
+            }
+          },
+          "cost": 0.002442828,
+          "id": "prt_136761502001fqNrMA0fCOXgpJ",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13675622f002q4DQdnbgCtA2Nr"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13672299f001U1UxcEgszkC9rF",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00286698,
+        "tokens": {
+          "total": 724027,
+          "input": 402,
+          "output": 790,
+          "reasoning": 275,
+          "cache": {
+            "write": 0,
+            "read": 722560
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791915071058,
+          "completed": 1791915123948
+        },
+        "finish": "tool-calls",
+        "id": "msg_1367616520027Ny4omAHL8DDrE",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "63bf3f96130fb0dfc6e37cd23b1cd05bb99650b2",
+          "type": "step-start",
+          "id": "prt_13676201f001mTYvNfGhgo7pvX",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367616520027Ny4omAHL8DDrE"
+        },
+        {
+          "type": "reasoning",
+          "text": "Committed (`6d3ac4ad`): 312 renames + 14 modifications. Pushed.\n\nNow let me update PR #150's description to mention the package rename.\n\nLet me update the PR body.\n\nLet me use `gh pr edit 150`.\n\nHmm — let me append the package-rename note.\n\nLet me update.\n\nLet me also update the todos.\n\nLet me update the PR.\n\nLet me run gh pr edit with an updated body (adding the package rename section).\n\nHmm — the body is long. Let me just add a section. Let me re-send the full body with the addition.\n\nActually — let me just update the title + add a note via a PR comment? Hmm. Let me edit the body.\n\nLet me construct the updated body (append the package rename).\n\nLet me run.\n\nHmm — simpler: add a comment to the PR describing the package rename. Hmm — or edit the body. Let me edit the body (cleaner).\n\nLet me run `gh pr edit 150 --body \"...\"` with the full updated body.\n\nLet me write it.\n\nActually — let me just add the package-rename note to the body. Let me reconstruct.\n\nLet me do it.\n\nHmm — to keep it concise, let me update the title and add a short section.\n\nLet me run.",
+          "time": {
+            "start": 1791915073570,
+            "end": 1791915075246
+          },
+          "id": "prt_136762022001Q3A09dfEB31G3D",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367616520027Ny4omAHL8DDrE"
+        },
+        {
+          "type": "text",
+          "text": "Pushed (`6d3ac4ad`, 312 renames + 14 edits). Updating PR #150.\n\n",
+          "time": {
+            "start": 1791915075248,
+            "end": 1791915121487
+          },
+          "id": "prt_1367626b00015nRBprUftEEysb",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367616520027Ny4omAHL8DDrE"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-880b161c4b17bf79",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr edit 150 --title \"ci(release): fix the Central deploy (Maven 3.9.9 pin, exclude demos, dev.pathland groupId + packages)\" --body \"$(cat <<'EOF'\nGets the Maven Central deployment passing. Four fixes, all verified locally.\n\n## 1. Pin Maven 3.9.9 (bundle validation)\nThe runner image `20261004` moved `ubuntu-latest` to **Maven 3.10.0**, which writes a **`maven-metadata-local.xml`** beside each artifact in the Central staging. `central-publishing-maven-plugin` bundles it and the Portal rejects it (*\"content that does NOT have a .pom file: …\"*, all artifacts). Reproduced locally: 3.9.9 clean, 3.10.0 has the stray file; no plugin version (0.6.0→0.11.0 or the `io.github.mavenplugins` fork), install-plugin pin, install-skip, or antrun delete removes it. → the `java` job pins **Maven 3.9.9** (self-contained download).\n\n## 2. Exclude the demos from the release reactor\n`central-publishing-maven-plugin` collects **every** reactor module (ignoring `maven.deploy.skip`), so the demos were bundled. → deploy with `-pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'` (keep `maven.deploy.skip` as belt-and-suspenders).\n\n## 3. Use the verified `dev.pathland` groupId\nThe Portal rejected publishing under an unverified namespace (*\"Namespace 'org.pathland' is not allowed\"*). The verified namespace is `dev.pathland`. → switch the reactor groupId `org.pathland` → `dev.pathland` (parent + every module + intra-module dependency coordinates).\n\n## 4. Rename the Java packages to match\nMove `src/{main,test}/java/com/pathland` → `…/dev/pathland` (all modules) and rewrite every `com.pathland` reference: Java `package`/`import` statements, POMs (`mainClass`, annotation-processor paths), the `META-INF/services` processor registration, the Spring `AutoConfiguration.imports`, the Quarkus `application.properties`, and the module status docs. The GTK app id (`org.pathland.GtkDemo`) is unrelated and unchanged.\n\n## Verified locally\n- `mvn clean test` (full reactor) → **BUILD SUCCESS**.\n- Maven 3.9.9 + the exclusions → reactor is 10 modules (demos gone), `central-staging/dev/pathland/` holds only the 9 publishable modules + parent, and **no** `maven-metadata-local.xml`.\n\n## After merge\nRe-run the `v0.1.3` release (`workflow_dispatch`, tag `v0.1.3`): Rust skips (already on crates.io), Java deploys `dev.pathland:*:0.1.3`, assets attach, `bump` commits `0.1.3`.\nEOF\n)\" 2>&1 | tail -2"
+            },
+            "output": "https://github.com/PathlandDev/Pathland/pull/150\n",
+            "metadata": {
+              "output": "https://github.com/PathlandDev/Pathland/pull/150\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && gh pr edit 150 --title \"ci(release): fix the Central deploy (Maven 3.9.9 pin, exclude demos, dev.pathland groupId + packages)\" --body \"$(cat <<'EOF'\nGets the Maven Central deployment passing. Four fixes, all verified locally.\n\n## 1. Pin Maven 3.9.9 (bundle validation)\nThe runner image `20261004` moved `ubuntu-latest` to **Maven 3.10.0**, which writes a **`maven-metadata-local.xml`** beside each artifact in the Central staging. `central-publishing-maven-plugin` bundles it and the Portal rejects it (*\"content that does NOT have a .pom file: …\"*, all artifacts). Reproduced locally: 3.9.9 clean, 3.10.0 has the stray file; no plugin version (0.6.0→0.11.0 or the `io.github.mavenplugins` fork), install-plugin pin, install-skip, or antrun delete removes it. → the `java` job pins **Maven 3.9.9** (self-contained download).\n\n## 2. Exclude the demos from the release reactor\n`central-publishing-maven-plugin` collects **every** reactor module (ignoring `maven.deploy.skip`), so the demos were bundled. → deploy with `-pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'` (keep `maven.deploy.skip` as belt-and-suspenders).\n\n## 3. Use the verified `dev.pathland` groupId\nThe Portal rejected publishing under an unverified namespace (*\"Namespace 'org.pathland' is not allowed\"*). The verified namespace is `dev.pathland`. → switch the reactor groupId `org.pathland` → `dev.pathland` (parent + every module + intra-module dependency coordinates).\n\n## 4. Rename the Java packages to match\nMove `src/{main,test}/java/com/pathland` → `…/dev/pathland` (all modules) and rewrite every `com.pathland` reference: Java `package`/`import` statements, POMs (`mainClass`, annotation-processor paths), the `META-INF/services` processor registration, the Spring `AutoConfiguration.imports`, the Quarkus `application.properties`, and the module status docs. The GTK app id (`org.pathland.GtkDemo`) is unrelated and unchanged.\n\n## Verified locally\n- `mvn clean test` (full reactor) → **BUILD SUCCESS**.\n- Maven 3.9.9 + the exclusions → reactor is 10 modules (demos gone), `central-staging/dev/pathland/` holds only the 9 publishable modules + parent, and **no** `maven-metadata-local.xml`.\n\n## After merge\nRe-run the `v0.1.3` release (`workflow_dispatch`, tag `v0.1.3`): Rust skips (already on crates.io), Java deploys `dev.pathland:*:0.1.3`, assets attach, `bump` commits `0.1.3`.\nEOF\n)\" 2>&1 | tail -2",
+            "time": {
+              "start": 1791915121481,
+              "end": 1791915123835
+            }
+          },
+          "id": "prt_13676d435001a466hjhWVX5YI5",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367616520027Ny4omAHL8DDrE"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "63bf3f96130fb0dfc6e37cd23b1cd05bb99650b2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 724027,
+            "input": 402,
+            "output": 790,
+            "reasoning": 275,
+            "cache": {
+              "write": 0,
+              "read": 722560
+            }
+          },
+          "cost": 0.00286698,
+          "id": "prt_13676e4b6001Za6efy65wOh8pk",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367616520027Ny4omAHL8DDrE"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13672299f001U1UxcEgszkC9rF",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.0024087,
+        "tokens": {
+          "total": 724239,
+          "input": 854,
+          "output": 185,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 723200
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791915124219,
+          "completed": 1791915130660
+        },
+        "finish": "tool-calls",
+        "id": "msg_13676e5fb0025FX8aO0WSmEFW7",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "63bf3f96130fb0dfc6e37cd23b1cd05bb99650b2",
+          "type": "step-start",
+          "id": "prt_13676f492001Ha6IUcQNMhh8JH",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13676e5fb0025FX8aO0WSmEFW7"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "chatcmpl-tool-88a4b8165feacbfa",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "git mv src/*/java/com/pathland -> src/*/java/dev/pathland",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Replace com.pathland -> dev.pathland in .java",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Replace in poms, application.properties, META-INF/services, status.md",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Build + test the reactor",
+                  "priority": "high",
+                  "status": "completed"
+                },
+                {
+                  "content": "Commit + push (PR #150)",
+                  "priority": "medium",
+                  "status": "completed"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"git mv src/*/java/com/pathland -> src/*/java/dev/pathland\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Replace com.pathland -> dev.pathland in .java\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Replace in poms, application.properties, META-INF/services, status.md\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Build + test the reactor\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Commit + push (PR #150)\",\n    \"status\": \"completed\",\n    \"priority\": \"medium\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "git mv src/*/java/com/pathland -> src/*/java/dev/pathland",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Replace com.pathland -> dev.pathland in .java",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Replace in poms, application.properties, META-INF/services, status.md",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Build + test the reactor",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Commit + push (PR #150)",
+                  "status": "completed",
+                  "priority": "medium"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "0 todos",
+            "time": {
+              "start": 1791915130527,
+              "end": 1791915130531
+            }
+          },
+          "id": "prt_13676f696001UlynoV9FTvw6SI",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13676e5fb0025FX8aO0WSmEFW7"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "63bf3f96130fb0dfc6e37cd23b1cd05bb99650b2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 724239,
+            "input": 854,
+            "output": 185,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 723200
+            }
+          },
+          "cost": 0.0024087,
+          "id": "prt_13676feed001c5ciV2BgH34MUG",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_13676e5fb0025FX8aO0WSmEFW7"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_13672299f001U1UxcEgszkC9rF",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002463972,
+        "tokens": {
+          "total": 724864,
+          "input": 206,
+          "output": 308,
+          "reasoning": 126,
+          "cache": {
+            "write": 0,
+            "read": 724224
+          }
+        },
+        "modelID": "deepseek-v4-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1791915130934,
+          "completed": 1791915163554
+        },
+        "finish": "stop",
+        "id": "msg_1367700360029RWyTSBagI6nwz",
+        "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a"
+      },
+      "parts": [
+        {
+          "snapshot": "63bf3f96130fb0dfc6e37cd23b1cd05bb99650b2",
+          "type": "step-start",
+          "id": "prt_136775eb7001qjoEzdmAsF3OLu",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367700360029RWyTSBagI6nwz"
+        },
+        {
+          "type": "reasoning",
+          "text": "Done. Let me summarize.\n\nThe package rename is complete:\n- 312 file renames (`com/pathland` → `dev/pathland` dirs).\n- 14 modified (poms, resources, docs, and files with string refs).\n- Full reactor `clean test` → BUILD SUCCESS.\n- Pushed to PR #150.\n\nLet me summarize concisely.\n\nNote: the user said \"from org.pathland\" but the actual was `com.pathland`; I renamed `com.pathland` → `dev.pathland`. Let me mention this correction.\n\nLet me write the summary.",
+          "time": {
+            "start": 1791915155137,
+            "end": 1791915160795
+          },
+          "id": "prt_136775ec1001aEErnBsPRFJ35G",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367700360029RWyTSBagI6nwz"
+        },
+        {
+          "type": "text",
+          "text": "Done — the Java packages are now `dev.pathland.*`.\n\n**What changed** (`6d3ac4ad`, on PR #150):\n- Moved `src/{main,test}/java/com/pathland` → `…/dev/pathland` across all modules (**312 renames**).\n- Rewrote every `com.pathland` reference (**14 files**): Java `package`/`import`, POMs (`<mainClass>`, annotation-processor paths), `META-INF/services/javax.annotation.processing.Processor`, the Spring `AutoConfiguration.imports`, the Quarkus `application.properties`, and the module `status.md` docs.\n- The GTK app id (`org.pathland.GtkDemo`) is unrelated and left alone.\n\nSmall correction: the packages were actually **`com.pathland`** (not `org.pathland`), so I renamed `com.pathland` → `dev.pathland` to match the verified groupId.\n\n**Verified:** full reactor `mvn clean test` → **BUILD SUCCESS**; release diagnostic (Maven 3.9.9 + demo exclusions) stages only `dev/pathland/…` for the 10 non-demo modules with no stray metadata.\n\n**PR #150** now bundles all four release fixes (Maven pin, demo exclusion, groupId, package rename). After you merge it, re-run the `v0.1.3` release.",
+          "time": {
+            "start": 1791915160798,
+            "end": 1791915163430
+          },
+          "id": "prt_1367774de0011BBP2ONh0DnL5O",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367700360029RWyTSBagI6nwz"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "63bf3f96130fb0dfc6e37cd23b1cd05bb99650b2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 724864,
+            "input": 206,
+            "output": 308,
+            "reasoning": 126,
+            "cache": {
+              "write": 0,
+              "read": 724224
+            }
+          },
+          "cost": 0.002463972,
+          "id": "prt_136777f6e001hQop0eVpj9fOGx",
+          "sessionID": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+          "messageID": "msg_1367700360029RWyTSBagI6nwz"
         }
       ]
     }
