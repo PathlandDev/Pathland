@@ -113,14 +113,19 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   snapshot form** (issue #141: a slot rendered from a multi-candidate SSR batch
   carries `data-pathland-fit-cands`) hydrates with every gated branch in place —
   the SSR `<style data-pathland-fit>` `@container` rules already picked the
-  first paint. The teardown fires only on the **downgrade's candidate removal**
-  (`REMOVE_CHILD`/`DELETE_NODE`): `collapseFitSlotFor` unwraps the gated
-  candidates + strips `container-name`/cands + the slot's band rules so the
-  REMOVE/DELETE deltas apply to plain children (the single-child live form). An
-  `INSERT_CHILD`/`CREATE_NODE` (a `META::RESYNC` replaying the tree) does **not**
-  tear the gate down — the SSR gate survives the resync and keeps showing the
-  width-correct candidate. Golden `sizethatfits` (+ `sizethatfits-snapshot`)
-  fixtures / `ssr-conformance`; `test/fit.test.ts`.
+  first paint. The teardown is a **post-batch reconcile** (`reconcileFitGate`,
+  gated on the slot's FINAL state): after a batch, a slot that still carries
+  `data-pathland-fit-cands` and has collapsed to a **single live candidate** (the
+  app's `REMOVE_CHILD`/`DELETE_NODE` downgrade removed the others) is unwrapped —
+  the surviving candidate is lifted out, the empty wrappers dropped, and the
+  `container-name`/cands + the slot's band rules stripped (the single-child live
+  form). A removal that does **not** reduce the slot to one live candidate (e.g. a
+  band-crossing fit swap dropping a child INSIDE a candidate — the "all branches
+  rendered" bug) leaves the gate intact, and an `INSERT_CHILD`/`CREATE_NODE` (a
+  `META::RESYNC` replaying the tree) never tears it down — the SSR gate survives
+  the resync and keeps showing the width-correct candidate. Golden `sizethatfits`
+  (+ `sizethatfits-snapshot`) fixtures; the hydrate→downgrade case in
+  `ssr-conformance`; `test/fit.test.ts`.
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or

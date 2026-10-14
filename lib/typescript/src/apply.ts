@@ -338,12 +338,19 @@ export interface DomRenderer {
 
 /** Apply every opcode in a batch to the DOM (TREE structure + PARAMETER/META deltas). */
 export function applyBatch(batch: Batch, renderer: DomRenderer): void {
+  // SSR snapshot fit slots (`data-pathland-fit-cands`) touched by a structural
+  // removal in this batch. The gate is torn down AFTER the whole batch, gated on
+  // the slot's FINAL state (issue #141): a removal that does NOT reduce the slot
+  // to a single live candidate (e.g. a band-crossing fit swap dropping a child
+  // inside a candidate) must leave the gate intact — unwrapping it eagerly would
+  // expose every candidate (the "all branches rendered" bug).
+  const touchedFitGates = new Set<HTMLElement>();
   for (let i = 0; i < batch.opcodes.length; i++) {
     const op = batch.opcodes[i]!;
     try {
       switch (op.category) {
         case CAT_TREE:
-          applyTree(op, renderer);
+          applyTree(op, renderer, touchedFitGates);
           break;
         case CAT_PARAMETER:
           applyStyle(op, batch.strings, renderer);
@@ -367,6 +374,9 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
         `cat=${op.category} cmd=${op.command} a=${op.a} b=${op.b} c=${op.c} target=${where}`, err);
       throw err;
     }
+  }
+  for (const slot of touchedFitGates) {
+    reconcileFitGate(slot);
   }
   // Derived layout (fill propagation, ZStack sizing/positioning, cross-axis
   // align-self) — mirrors the Rust SSR renderer's whole-tree decisions.
@@ -442,19 +452,23 @@ function renumberPickerOptions(container: Node): void {
   });
 }
 
-function applyTree(op: Opcode, r: DomRenderer): void {
+function applyTree(op: Opcode, r: DomRenderer, touchedFitGates: Set<HTMLElement>): void {
   // N→1 fit-slot reconcile (issue #141): the server's SSR snapshot carried EVERY
   // candidate behind CSS `@container` gated wrappers (`data-pathland-fit-cands`).
   // The downgrade to a single selected child is signalled by REMOVING a candidate
-  // (a `REMOVE_CHILD`/`DELETE_NODE` on the slot) — collapse the presentation first
-  // (unwrap the wrappers, strip the container-name/cands and the slot's band
-  // rules) so the REMOVE/DELETE deltas apply to the plain children exactly as in
-  // the live single-child form. An `INSERT_CHILD`/`CREATE_NODE` is NOT the
-  // downgrade: a `META::RESYNC` replays the whole tree, and the SSR gate must
-  // SURVIVE it (the CSS band keeps showing the width-correct candidate) — so it
-  // must never trigger the teardown.
+  // (a `REMOVE_CHILD`/`DELETE_NODE` on the slot). Record the touched slot and
+  // reconcile it AFTER the batch (`reconcileFitGate`), once the REMOVE/DELETE
+  // deltas have applied: only a slot that actually ended up with a single live
+  // candidate is the downgrade — a removal that merely drops a child inside a
+  // candidate (a band-crossing fit swap) must leave the gate intact. An
+  // `INSERT_CHILD`/`CREATE_NODE` is never the downgrade: a `META::RESYNC` replays
+  // the whole tree and the SSR gate must SURVIVE it (the CSS band keeps showing the
+  // width-correct candidate).
   if (op.command === CMD_REMOVE_CHILD || op.command === CMD_DELETE_NODE) {
-    collapseFitSlotFor(op, r);
+    const slot = nearestGatedFitSlot(op, r);
+    if (slot) {
+      touchedFitGates.add(slot);
+    }
   }
   switch (op.command) {
     case CMD_CREATE_NODE: {
@@ -1421,31 +1435,53 @@ function treeOpParent(op: Opcode, r: DomRenderer): HTMLElement | null {
 }
 
 /**
- * N→1 fit-slot collapse (issue #141): the SSR snapshot form laid out EVERY
- * candidate behind `data-pathland-fit-cand` wrappers gated by `@container`
- * rules (a `style[data-pathland-fit]` element) and made the slot a
- * `container-name` container. The first live structural op on such a slot is the
- * server's downgrade to a single selected child — collapse the snapshot
- * presentation FIRST so the REMOVE/INSERT deltas apply to plain children:
- * unwrap each candidate wrapper (its inner candidate has the real id + styles),
- * strip `data-pathland-fit-cands` + the container name/type, and drop the slot's
- * band rules. Afterwards the slot is the ordinary single-child form.
+ * The nearest gated SSR fit slot (`data-pathland-fit-cands`) an op structurally
+ * mutates, or null. The mutated parent is resolved by `treeOpParent`; `closest`
+ * includes the slot itself (the downgrade's REMOVE/DELETE targets the slot's
+ * candidate). Used to record slots to reconcile after the batch.
  */
-function collapseFitSlotFor(op: Opcode, r: DomRenderer): void {
+function nearestGatedFitSlot(op: Opcode, r: DomRenderer): HTMLElement | null {
   const parent = treeOpParent(op, r);
-  if (!parent) return;
-  const slot = parent.closest<HTMLElement>("[data-pathland-fit-cands]");
-  if (!slot) return;
-  // Unwrap: replace each gated wrapper with its inner candidate element (the
-  // candidate carried the id + styles; the wrapper was purely presentational).
+  return parent?.closest<HTMLElement>("[data-pathland-fit-cands]") ?? null;
+}
+
+/**
+ * N→1 fit-slot reconcile (issue #141), run AFTER a batch: the SSR snapshot form
+ * laid out EVERY candidate behind `data-pathland-fit-cand` wrappers gated by
+ * `@container` rules (a `style[data-pathland-fit]` element) and made the slot a
+ * `container-name` container. The app's downgrade to a single selected child
+ * removes the unselected candidates; once the slot holds a SINGLE live candidate
+ * it is the ordinary live form, so tear the snapshot presentation down: unwrap the
+ * surviving candidate, drop the now-empty wrappers, strip `data-pathland-fit-cands`
+ * + the container name/type, and drop the slot's band rules.
+ *
+ * Gating on the slot's FINAL state (rather than on any structural removal) is what
+ * keeps the gate intact when a fit swap merely drops a child INSIDE a candidate
+ * (a band crossing) — unwrapping then would expose every candidate (the "all
+ * branches rendered" bug).
+ */
+function reconcileFitGate(slot: HTMLElement): void {
+  if (!slot.hasAttribute("data-pathland-fit-cands")) {
+    return;
+  }
   const wrappers = Array.from(slot.children).filter(
     (n): n is HTMLElement => n instanceof HTMLElement && n.hasAttribute("data-pathland-fit-cand"),
   );
+  // A wrapper is a LIVE candidate while it still holds its candidate element (the
+  // app's downgrade removes the element, leaving an empty wrapper behind).
+  const live = wrappers.filter((w) => w.firstElementChild !== null);
+  if (live.length > 1) {
+    return; // still gated: the CSS band keeps showing exactly one candidate
+  }
+  // Single (or zero) live candidate → the downgrade completed: unwrap the survivor
+  // (it carried the id + styles; the wrapper was purely presentational) and drop
+  // every now-empty wrapper.
+  const survivor = live[0]?.firstElementChild;
+  if (survivor) {
+    live[0]!.replaceWith(survivor);
+  }
   for (const wrapper of wrappers) {
-    const inner = wrapper.firstElementChild;
-    if (inner) {
-      wrapper.replaceWith(inner);
-    } else {
+    if (wrapper.parentNode === slot) {
       wrapper.remove();
     }
   }

@@ -10,6 +10,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { applyBatch, type DomRenderer } from "../src/apply";
 import { parseBatch, type Batch } from "../src/plpl";
+import { buildBatch } from "./plpl.test";
+import { CAT_TREE, CMD_DELETE_NODE, CMD_REMOVE_CHILD } from "../src/constants";
 
 const FIXTURES = resolve(process.cwd(), "test/fixtures/ssr");
 
@@ -206,5 +208,34 @@ describe("SSR conformance (golden fixtures from pathland-html-golden)", () => {
     const r = hydrate(html("delta_base"));
     applyBatch(parseBatch(plpl("delta_change")), r);
     expect(canon(r.byId.get(1) as HTMLElement)).toBe(canon(html("delta_result")));
+  });
+
+  it("snapshot fit slot: hydrating the SSR gate + the N→1 downgrade collapses it", () => {
+    // The real SSR full-snapshot form (issue #141) is renderer-only: the slot
+    // carries BOTH candidates behind `data-pathland-fit-cand` wrappers + a CSS
+    // `container-name` container, and the client HYDRATES that DOM (it never
+    // re-creates the wrappers). The app's downgrade then removes the unselected
+    // candidate (id 3) — the client must collapse the gate to the plain
+    // single-child live form (no wrappers, no container).
+    const r = hydrate(html("sizethatfits-snapshot"));
+    const slot = r.byId.get(1) as HTMLElement;
+    expect(slot.hasAttribute("data-pathland-fit-cands")).toBe(true);
+    expect(slot.querySelectorAll("[data-pathland-fit-cand]").length).toBe(2);
+
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_REMOVE_CHILD, 0, 1, 3],
+          [CAT_TREE, CMD_DELETE_NODE, 0, 3],
+        ]),
+      ),
+      r,
+    );
+
+    expect(slot.hasAttribute("data-pathland-fit-cands")).toBe(false);
+    expect(slot.style.containerName).toBe("");
+    expect(slot.querySelector("[data-pathland-fit-cand]")).toBeNull();
+    expect(slot.children.length).toBe(1);
+    expect((slot.children[0] as HTMLElement).getAttribute("data-pathland-id")).toBe("2");
   });
 });
