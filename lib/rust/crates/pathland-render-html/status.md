@@ -103,7 +103,9 @@ Statelessness). Protocol contract: `spec/`.
   `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `COLOR_INVERT`. `WIDTH`/`HEIGHT`
   `HUG_CONTENT` (-2) is **omitted** (intrinsic size); `FILL` (-1) → `100%`.
 - **`SHADOW_*` (box-shadow)**: a non-zero `SHADOW_RADIUS` (or an `SHADOW_X`/`SHADOW_Y`
-  offset) emits `box-shadow: <x>px <y>px <radius>px <color>`. The color is
+  offset) emits `box-shadow: <color> <x>px <y>px <radius>px` (color first — the
+  canonical order a browser serializes back to, so the SSR string matches the
+  hydrated DOM). The color is
   `SHADOW_COLOR` when set, else the **renderer-owned default `rgba(0,0,0,0.3)`** —
   so a `shadow(radius)` modifier (radius only; the color is renderer-owned) already
   draws before hydration, matching the DOM client.
