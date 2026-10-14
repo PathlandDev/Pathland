@@ -90,7 +90,7 @@ public final class PlayerControlsStyle implements AudioStyle {
                 .children(
                         Button.make(b -> b.action(() -> { prev(); restartSeek(); })).modifiers(fontSize(20))
                                         .children(Icon.make(IconName.SKIP_BACK)),
-                        Button.make(b -> b.action(() -> configuration.playing().update(v -> !v))).modifiers(fontSize(28))
+                        Button.make(b -> b.action(() -> configuration.playing().update(v -> !v))).modifiers(fontSize(20))
                                         .children(Icon.make(transportIcon)),
                         Button.make(b -> b.action(() -> { next(); restartSeek(); })).modifiers(fontSize(20))
                                         .children(Icon.make(IconName.SKIP_FORWARD)));
@@ -133,7 +133,7 @@ public final class PlayerControlsStyle implements AudioStyle {
                         volumeView);
 
         var groups = SizeThatFits.make(
-                Fit.of(controls, 600),
+                Fit.of(controls, 700),
                 Fit.of(compactControls)
         );
 
