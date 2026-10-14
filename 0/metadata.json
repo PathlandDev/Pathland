@@ -1,0 +1,49 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4WXXE4D3SJ2T05E4PQTCAPT",
+  "session_id": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-14T10:04:45.757843Z",
+  "branch": "fix/fit-slot-gate-teardown",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/music/MusicPlayerViewTest.java"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "e5365bb0f3ca",
+  "checkpoint_transcript_start": 3018,
+  "transcript_lines_at_start": 3018,
+  "compact_transcript_start": 3018,
+  "token_usage": {
+    "input_tokens": 4601,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1587584,
+    "output_tokens": 1246,
+    "api_call_count": 9
+  },
+  "session_metrics": {
+    "turn_count": 242
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-14T10:04:43.495007Z",
+    "agent_lines": 4,
+    "agent_removed": 4,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 4,
+    "total_lines_changed": 8,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
