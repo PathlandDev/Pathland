@@ -1,0 +1,95 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M4WWZJMY9X91MT1K11RP589C",
+  "session_id": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-14T09:48:24.378118Z",
+  "branch": "fix/fit-slot-gate-teardown",
+  "checkpoints_count": 6,
+  "save_step_count": 5,
+  "files_touched": [
+    "lib/typescript/test/fit.test.ts"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "44f20838b123",
+  "checkpoint_transcript_start": 2936,
+  "transcript_lines_at_start": 2936,
+  "compact_transcript_start": 2936,
+  "token_usage": {
+    "input_tokens": 1828860,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 13090944,
+    "output_tokens": 17558,
+    "api_call_count": 68
+  },
+  "session_metrics": {
+    "turn_count": 240
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-14T09:48:22.12566Z",
+    "agent_lines": 56,
+    "agent_removed": 0,
+    "human_added": 117,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 173,
+    "total_lines_changed": 218,
+    "agent_percentage": 25.688073394495415,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 10,
+      "user_lines_removed": 6,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/MusicPlayerView.java": 7,
+        "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/PlayerBar.java": 1,
+        "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/PlayerControlsStyle.java": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/MusicPlayerView.java": 3,
+        "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/PlayerBar.java": 1,
+        "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/PlayerControlsStyle.java": 2
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 10,
+      "agent_lines_removed": 6
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 10,
+      "agent_lines_removed": 6
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 10,
+      "agent_lines_removed": 6
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 10,
+      "agent_lines_removed": 6
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 66,
+      "agent_lines_removed": 6
+    }
+  ]
+}
