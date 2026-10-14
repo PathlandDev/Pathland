@@ -99,8 +99,10 @@ public final class MusicPlayerView implements View {
                                 .position(position.signal())
                                 .playing(playing.signal())
                                 .seekRequest(seekRequest.signal())),
-                        HStack.make() .modifiers(padding(16))
-                                .children(PlayerBar.make(p -> p
+                        HStack.make().modifiers(padding(16))
+                                .children(
+                                        Spacer.make(),
+                                        PlayerBar.make(p -> p
                                         .trackIndex(trackIndex.signal())
                                         .position(position.signal())
                                         .playing(playing.signal())
@@ -109,7 +111,9 @@ public final class MusicPlayerView implements View {
                                         .volumeRequest(volumeRequest.signal()))
                                         .modifiers(
                                                 border(b -> b.color(MusicPlayerView.BAR_BORDER).width(1).radius(500)),
-                                                shadow(10))),
+                                                shadow(10)),
+                                        Spacer.make()
+                                ),
                         subtitlePill(block, previous, current));
         View wideRow = HStack.make()
                 .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))

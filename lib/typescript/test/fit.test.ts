@@ -399,6 +399,62 @@ describe("SizeThatFits · FIT_QUERY + local fit → FIT_CHANGED", () => {
     expect(slot.style.containerName).toBe("pf-1");
     expect(Array.from(slot.children).filter((c) => c.hasAttribute("data-pathland-fit-cand")).length).toBe(2);
   });
+
+  it("keeps the gate when a NON-candidate node is removed under a snapshot slot", () => {
+    // A fit swap (e.g. a rotate crossing a band) can emit REMOVE_CHILD/DELETE_NODE
+    // for a node INSIDE a candidate — the bar's wide→compact swap drops the volume
+    // slider + a divider — while the slot is still in the SSR snapshot form. That is
+    // NOT the N→1 downgrade (no candidate is removed): the gate must survive, or
+    // unwrapping it would expose EVERY candidate (the "all branches rendered" bug).
+    const style = document.createElement("style");
+    style.setAttribute("data-pathland-fit", "");
+    style.textContent =
+      "@container pf-1 (min-width: 1024px) { [data-pathland-id=\"1\"] > [data-pathland-fit-cand=\"0\"] { display: none !important; } [data-pathland-id=\"1\"] > [data-pathland-fit-cand=\"1\"] { display: contents !important; } }";
+    document.head.appendChild(style);
+
+    const slot = document.createElement("div");
+    slot.setAttribute("data-pathland-id", "1");
+    slot.setAttribute("data-pathland-fit", "0,1024");
+    slot.setAttribute("data-pathland-fit-cands", "2");
+    slot.style.cssText = "display:flex;container-type:inline-size;container-name:pf-1;";
+    const c0 = document.createElement("div");
+    c0.setAttribute("data-pathland-fit-cand", "0");
+    c0.setAttribute("data-pathland-fit-cand-id", "2");
+    c0.style.display = "contents";
+    c0.innerHTML = '<div data-pathland-id="2" style="display:flex;flex-direction:row;"><div data-pathland-id="3">main</div><div data-pathland-id="4">volume</div></div>';
+    const c1 = document.createElement("div");
+    c1.setAttribute("data-pathland-fit-cand", "1");
+    c1.setAttribute("data-pathland-fit-cand-id", "115");
+    c1.style.display = "none";
+    c1.innerHTML = '<div data-pathland-id="115" style="display:flex;flex-direction:row;"><div data-pathland-id="116">main</div></div>';
+    slot.append(c0, c1);
+    document.body.appendChild(slot);
+
+    const r = renderer();
+    r.byId.set(1, slot);
+    r.byId.set(2, c0.firstElementChild as Element);
+    r.byId.set(3, (c0.firstElementChild as Element).children[0] as Element);
+    r.byId.set(4, (c0.firstElementChild as Element).children[1] as Element);
+    r.byId.set(115, c1.firstElementChild as Element);
+    r.byId.set(116, (c1.firstElementChild as Element).children[0] as Element);
+
+    // Remove a NON-candidate node (id 4, a child inside candidate 0).
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_REMOVE_CHILD, 0, 2, 4],
+          [CAT_TREE, CMD_DELETE_NODE, 0, 4],
+        ]),
+      ),
+      r,
+    );
+
+    // The gate SURVIVES (still gated, still two gated wrappers, band rules kept).
+    expect(slot.hasAttribute("data-pathland-fit-cands")).toBe(true);
+    expect(slot.style.containerName).toBe("pf-1");
+    expect(Array.from(slot.children).filter((c) => c.hasAttribute("data-pathland-fit-cand")).length).toBe(2);
+    expect(style.textContent).toContain("min-width: 1024px");
+  });
 });
 
 interface BatchGlimpse {

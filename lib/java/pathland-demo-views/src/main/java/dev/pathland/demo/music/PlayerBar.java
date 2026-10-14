@@ -111,7 +111,7 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
                                 .volume(config.volume)
                                 .volumeRequest(config.volumeRequest)),
                         background(MusicPlayerView.BAR_BG),
-                        frame(f -> f.width(Commands.Size.FILL).height(MusicPlayerView.BAR_HEIGHT)));
+                        frame(f -> f.width(Commands.Size.FILL).maxWidth(768).height(MusicPlayerView.BAR_HEIGHT)));
     }
 
     /** The media ended: advance to the next track and restart from the top. The

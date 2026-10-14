@@ -85,7 +85,7 @@ class MusicPlayerViewTest {
     @Test
     void fitShowsTheSidebarWhenTheParentIsWideEnough() {
         Mounted m = mount();
-        // The parent row is ≥ 600pt wide: the renderer reports FIT_CHANGED(index 1)
+        // The parent row is ≥ 1024pt wide: the renderer reports FIT_CHANGED(index 1)
         // and the fit sink swaps the compact row for the row with the sidebar —
         // exactly how the server routes the DOM client's fit report (spec PRIMITIVES.md).
         int slotId = slotIdByMaxThreshold(m.sink.frame(), 1024f);
@@ -126,10 +126,10 @@ class MusicPlayerViewTest {
         assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0), "the audio node binds play state");
         assertTrue(anySetProperty(frame, Properties.MEDIA_POSITION, 0f), "the audio node binds position");
 
-        // The full controls cluster (transport + now-playing + volume) wants ≥600pt:
+        // The full controls cluster (transport + now-playing + volume) wants ≥700pt:
         // firing the player-bar slot's fit change mounts it — and its volume slider
         // (persisted value 0.7) that the compact bar hides.
-        int barSlot = slotIdByMaxThreshold(frame, 600f);
+        int barSlot = slotIdByMaxThreshold(frame, 700f);
         m.result.fitInputs().get(barSlot).accept(1);
         ProtocolFrame wideBar = m.sink.frame();
         assertTrue(countCreate(wideBar, Components.SLIDER) == 1, "the wide controls add the volume slider");
@@ -367,7 +367,7 @@ class MusicPlayerViewTest {
     }
 
     /** The SizeThatFits slot whose threshold table ends at the given width (e.g. the
-     *  root MusicPlayerView row at 1024f, the player-bar controls group at 600f). */
+     *  root MusicPlayerView row at 1024f, the player-bar controls group at 700f). */
     private static int slotIdByMaxThreshold(ProtocolFrame frame, float maxThreshold) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE
