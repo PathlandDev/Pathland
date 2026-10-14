@@ -1,0 +1,1 @@
+The first render for playerbar has this shadow: box-shadow:0px 0px 10px rgba(0,0,0,0.3); After hydration it has this: box-shadow: rgba(0, 0, 0, 0.3) 0px 0px 10px;
