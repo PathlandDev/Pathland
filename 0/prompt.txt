@@ -1,0 +1,13 @@
+Explore /Users/michael/Development/michaelkrog/Pathland/spec (all .md) and the Rust crates lib/rust/crates/pathland-core (constants/opcode/arena/engine), lib/rust/crates/pathland-core-transport, and lib/java/pathland-view/src/main/java/dev/pathland/view/emit (the Java emitter).
+
+I'm planning a "proxy view": a node in app A's tree that connects to another Pathland server B and embeds B's emitted subtree into A's stream. I need exact protocol facts.
+
+Report with file:line refs and exact byte layouts:
+1. TREE opcode semantics: CREATE_NODE, DELETE_NODE, INSERT_CHILD, REMOVE_CHILD, MOVE_CHILD — the exact A/B/C field meanings, especially how PARENT and CHILD are encoded, and the ROOT/sentinel id conventions (is there a root id? what is it?).
+2. Node id allocation: are ids monotonic u32 per emitter/engine? Per tree? Global? Any reserved ranges/sentinels? How does the Java emitter assign ids vs the Rust engine? Can two independent emitters collide?
+3. PLPL network batch format: header/magic, version, sections (frames, events, strings), how frames are delimited, and the exact byte layout. Also the META category commands (RESET, RESYNC, ENVIRONMENT).
+4. The size of the id space and the opcode PARAMETER id space (A field).
+5. Does ANY spec or code mention: "proxy", "embed", "portal", "remote view", "host view", "iframe", "subtree injection", or nesting a foreign tree? Search thoroughly (case-insensitive) across spec/ and all source.
+6. How SizeThatFits / container queries and node ids interact (is a node id globally unique for CSS container names?).
+
+Be thorough and concrete — quote exact specs and code. Research only; do not modify anything.
