@@ -3,7 +3,7 @@
   "checkpoint_id": "01M50JJBRPGP3J6DX10BJSHA00",
   "strategy": "manual-commit",
   "branch": "feat/proxy-views",
-  "checkpoints_count": 1,
+  "checkpoints_count": 2,
   "files_touched": [
     "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
     "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandTelemetry.java",
@@ -31,6 +31,13 @@
       "transcript": "/0/full.jsonl",
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
       "prompt": ""
     }
   ],
