@@ -1,0 +1,14 @@
+Explore /Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-server-core and the Quarkus/Spring starters (lib/java/pathland-quarkus-starter, lib/java/pathland-spring-boot-starter).
+
+I need a precise understanding of how a Pathland server runs, to plan a "proxy view" feature (a node in app A's tree that connects to another Pathland server B and embeds B's view subtree).
+
+Report, with file:line refs and method signatures:
+1. How an app's root view is created (PathlandApp) and how a session is created/lives (PathlandSession) — the lifecycle, threads (actor?), and the per-session environment/state scope.
+2. How the connection sends opcodes to the client (PathlandConnection) — both the SSR HTML path and the live WebSocket delta path. The exact SSR HTML shape (how the client hydrates by data-pathland-id) and how the /ws endpoint is set up in each starter (Quarkus + Spring).
+3. What messages flow over /ws: batch encode/decode (PLPL), META::RESYNC full-snapshot, how the per-window id (sessionStorage) selects a session, and how events (raw input) flow from client to the app and get routed to state signals.
+4. The registry (PathlandRegistry) — session lifecycle, 1:1 mapping, actor thread.
+5. StateStores (in-memory + Redis) — the contract.
+6. Where, architecturally, an OUTBOUND HTTP/WebSocket client could be added so a Pathland server connects to ANOTHER Pathland server as a client (does the codebase already have any HTTP/WS client dependency? Quarkus REST client, Spring WebClient, Java HttpClient?).
+7. Any existing notion of multiple root views, multiple sessions per connection, or multiplexing.
+
+Be thorough and concrete — quote key code. This is research only; do not modify anything.
