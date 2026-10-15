@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** October 1, 2026
+**Last Updated:** October 15, 2026
 
 ---
 
@@ -43,6 +43,7 @@ Mapping Range](#definitive-opcode-mapping-range)):
 | **PRIMITIVES.md** (this file) | Which **views/nodes** exist and their protocol IDs |
 | [MODIFIERS.md](./MODIFIERS.md) | Which **modifiers** (protocol properties) exist and how they encode |
 | [EVENTS.md](./EVENTS.md) | Which **core events** (raw inputs) exist and how they encode |
+| [PROXY.md](./PROXY.md) | How a **proxy view** composes a subtree served by another Pathland server |
 | [CONFORMANCE.md](./CONFORMANCE.md) | Golden byte vectors |
 
 > **Implementation status** is tracked per implementing project (a `status.md`
@@ -184,7 +185,8 @@ with SwiftUI's view categories and are the **single authoritative allocation**.
 | `0x1B` | `LAZY_VSTACK` | Virtualized vertical stack |
 | `0x1C` | `LAZY_HSTACK` | Virtualized horizontal stack |
 | `0x1D` | `GRID_ROW` | Explicit row grouping for `GRID` (planned): a grid child whose children are one row's cells — the SwiftUI `GridRow` authoring surface |
-| `0x1E`–`0x1F` | — | Future layout/container nodes |
+| `0x1E` | `PROXY_VIEW` | **Proxy view** — a transparent single-child container whose child subtree is served by **another** Pathland server; the proxying server remaps the foreign subtree's node ids into a disjoint high range and routes its events back to the origin (see [PROXY.md](./PROXY.md)) |
+| `0x1F` | — | Future layout/container nodes |
 
 ### C. Semantic Control Nodes (`0x20`–`0x2F`)
 
@@ -763,6 +765,39 @@ Semantics:
 - **Renderer statelessness**: the measured width and derived index are layout
   output, not retained application state.
 
+### ProxyView — `PROXY_VIEW` 0x1E
+
+A **proxy view**: a transparent container whose child subtree is served by a
+**different Pathland server**. It lets one app compose views from several
+servers into a single unified document. The proxying server (the app that owns
+the proxy node) connects to the origin server as a Pathland **host** (client),
+receives the origin's subtree, and splices it into its own stream.
+
+- **Protocol**: a container node with **exactly one** child in the live form —
+  the origin subtree's root. The origin subtree's nodes are ordinary nodes of
+  the same protocol; the proxying server has **remapped their node ids** into a
+  disjoint high range so they never collide with the proxying app's own ids.
+- **Layout**: a **transparent passthrough** container. It imposes no spacing or
+  alignment of its own; it proposes its own allocated size to its single child
+  and, unless the app constrains it (`frame`/size modifiers), sizes to that
+  child. Renderers render it as a plain container (a box/`div`) — there is no
+  proxy-specific native element.
+- **Events**: raw events whose target id falls in a proxy's remapped range are
+  the origin server's; the proxying server forwards them (id remapped back) to
+  the origin over the origin connection rather than dispatching them locally.
+- **Ownership**: the proxy node belongs to the proxying app's retained tree; the
+  child subtree belongs to the origin server's retained tree. The proxying app
+  never diffs the origin subtree — it forwards the origin's deltas verbatim
+  (id-remapped). A **full-snapshot** (`META::RESYNC`) of the proxying app embeds
+  the origin's current snapshot; the origin snapshot is requested with a
+  `META::RESYNC` sent to the origin server (there is no proxy-specific opcode).
+- **Renderer statelessness**: a renderer applies the remapped origin opcodes
+  like any other opcodes; it holds no notion of "remote".
+
+The full contract — id namespacing, the snapshot/`RESYNC` handshake, event
+routing, SSR embedding, and the backpressure policy — is specified in
+[PROXY.md](./PROXY.md).
+
 ---
 
 ## C. Semantic Control Nodes
@@ -956,9 +991,9 @@ A native system color picker control.
 |-------|-----|
 | `0x01`–`0x08` | Primitive drawing nodes (allocated, this file) |
 | `0x09`–`0x0F` | Future drawing nodes (unallocated) |
-| `0x10`–`0x16`, `0x1B`–`0x1D` | Layout & container primitives (this file) |
+| `0x10`–`0x16`, `0x1B`–`0x1E` | Layout & container primitives (this file) |
 | `0x17`–`0x1A` | Reserved (formerly composites) — never reused |
-| `0x1E`–`0x1F` | Future layout nodes (unallocated) |
+| `0x1F` | Future layout nodes (unallocated) |
 | `0x20`–`0x22`, `0x24`–`0x2A` | Semantic control nodes (this file) |
 | `0x23`, `0x2B`–`0x2F` | Future semantic controls (unallocated) |
 | `0x30`–`0x7E` | Future categories (unallocated) |

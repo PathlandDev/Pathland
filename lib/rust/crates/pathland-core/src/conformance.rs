@@ -268,6 +268,15 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x00, // C = 0
         ],
     ),
+    (
+        "TREE:CREATE_NODE (id=1, PROXY_VIEW=0x001E)",
+        [
+            0x01, 0x01, 0x00, 0x00, // category TREE, command CREATE_NODE
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x1E, 0x00, 0x00, 0x00, // B = componentType = 0x001E (PROXY_VIEW)
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -430,6 +439,7 @@ mod tests {
             ),
             (0x04, 0x04, 0x0000, 0, 0, 0, VECTORS[27].1),
             (0x04, 0x05, 0x0000, 0, 0, 0, VECTORS[28].1),
+            (0x01, 0x01, 0x0000, 1, 0x001E, 0, VECTORS[29].1),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {
             let op = Opcode::new(*cat, *cmd, *flags, *a, *b, *c);

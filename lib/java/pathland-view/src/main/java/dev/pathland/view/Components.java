@@ -37,6 +37,9 @@ public final class Components {
     public static final int LAZY_HSTACK = 0x1C;
     /** Explicit row grouping for a {@code GRID}: a grid child whose children are one row's cells. */
     public static final int GRID_ROW = 0x1D;
+    /** Proxy view: a transparent container whose child subtree is served by another
+     *  Pathland server (see {@code spec/PROXY.md}). */
+    public static final int PROXY_VIEW = 0x1E;
 
     // ── Semantic Control Nodes (0x20–0x2F) ─────────────────────────────────
     public static final int BUTTON = 0x20;

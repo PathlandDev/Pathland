@@ -284,7 +284,13 @@ pub mod component_type {
     /// are one row's cells (the SwiftUI `GridRow` surface). Renders nothing
     /// outside a `GRID`.
     pub const GRID_ROW: u16 = 0x1D;
-    // 0x1E–0x1F reserved (future layout nodes).
+    /// **Draft.** Proxy view (`spec/PROXY.md`): a transparent single-child
+    /// container whose child subtree is served by **another** Pathland server.
+    /// Renderers render it as a plain container; the proxying server remaps the
+    /// foreign subtree's node ids into a disjoint high range and routes its
+    /// events back to the origin server.
+    pub const PROXY_VIEW: u16 = 0x1E;
+    // 0x1F reserved (future layout nodes).
 
     // ── Semantic Control Nodes (0x20–0x2F) ──────────────────────────────────
     /// Action trigger control.
