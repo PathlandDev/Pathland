@@ -1,0 +1,13 @@
+Explore /Users/michael/Development/michaelkrog/Pathland/lib/typescript (src/, test/) in depth.
+
+I'm planning a "proxy view" feature: app A's server embeds a subtree served by a DIFFERENT Pathland server B, and the single browser client must render both into one unified DOM. I need to know exactly what the client does today.
+
+Report with file:line refs and function signatures:
+1. SSR hydration: how the client maps `data-pathland-id` to DOM elements, the hydration entry point, and the shape it expects.
+2. PLPL batch decode: the batch format parsing, sections (frames/events/strings), and the decode entry point.
+3. Delta application: how TREE (CREATE_NODE/DELETE_NODE/INSERT_CHILD/REMOVE_CHILD/MOVE_CHILD) and PARAMETER deltas are applied — the id -> element map, how parents are tracked, how a root/container is identified. Where is the "root" element and how are node ids scoped?
+4. Event sending: how raw-input events are captured and sent over /ws, and how a node id is attached to an event.
+5. WebSocket lifecycle: connect, reconnect, META::RESYNC full-snapshot request, the per-window id (sessionStorage) in the WS URL, and what happens on a full snapshot (does it replace the whole tree?).
+6. Anything relevant to namespacing node ids or rendering a SECOND, independent opcode stream into a nested DOM region (e.g. is there a notion of multiple roots, multiple connections, or scoped id maps?).
+
+Be thorough and concrete — quote key code. Research only; do not modify anything.
