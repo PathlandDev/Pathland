@@ -3,7 +3,7 @@
   "checkpoint_id": "01M504J1QQAGP8175SB2TR7505",
   "strategy": "manual-commit",
   "branch": "feat/proxy-views",
-  "checkpoints_count": 3,
+  "checkpoints_count": 8,
   "files_touched": [
     "lib/java/pathland-view/src/main/java/dev/pathland/view/Components.java",
     "lib/rust/crates/pathland-core/src/conformance.rs",
@@ -34,13 +34,20 @@
       "compact_transcript": "/2/transcript.jsonl",
       "content_hash": "/2/content_hash.txt",
       "prompt": "/2/prompt.txt"
+    },
+    {
+      "metadata": "/3/metadata.json",
+      "transcript": "/3/full.jsonl",
+      "compact_transcript": "/3/transcript.jsonl",
+      "content_hash": "/3/content_hash.txt",
+      "prompt": "/3/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 373169,
+    "input_tokens": 1153790,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 6369280,
-    "output_tokens": 31602,
-    "api_call_count": 82
+    "cache_read_tokens": 10337920,
+    "output_tokens": 54000,
+    "api_call_count": 123
   }
 }
