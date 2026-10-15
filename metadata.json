@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M50JJBRPGP3J6DX10BJSHA00",
+  "strategy": "manual-commit",
+  "branch": "feat/proxy-views",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandTelemetry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/JdkWebSocketTransport.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/ProxyHost.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/ProxyIdMap.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/ProxySession.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/ProxyTransport.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/proxy/ProxyIdMapTest.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/proxy/ProxyIntegrationTest.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/proxy/ProxySessionTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/ProxyConfig.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/ProxyView.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/Emitter.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/PathlandNode.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/RenderResult.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/ProxyViewTest.java",
+    "lib/java/pathland-view/status.md",
+    "lib/rust/crates/pathland-core/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  }
+}
