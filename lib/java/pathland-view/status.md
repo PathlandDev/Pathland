@@ -1,6 +1,6 @@
 # pathland-view (Java) — implementation status
 
-**Last updated:** October 9, 2026
+**Last updated:** October 15, 2026
 
 The hand-written, framework-agnostic Java 17+ DSL (`dev.pathland.view`):
 declarative views, Angular-style signals, fine-grained emitter, `PLPL` wire
@@ -9,6 +9,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 
 ## Implemented
 
+- **`ProxyView`** (`ProxyView.make(p -> p.endpoint(...).route(...).credential(...))`):
+  a `PROXY_VIEW` (0x1E) container whose child subtree is served by **another**
+  Pathland server (spec/PROXY.md). It authors **no** children — the origin root is
+  spliced in at runtime — and takes size modifiers like any view. The immutable
+  `ProxyConfig` snapshot rides the node (`PathlandNode.proxyConfig`) and is
+  surfaced to the host through `RenderResult.proxyViews()` (node id → config) so
+  `pathland-server-core` opens an origin connection per proxy node.
 - **`SizeThatFits` fit slot** (`SizeThatFits.make(Fit...)` + `Fit.of(view, minWidth)`):
   a structural slot (`SIZE_THAT_FITS` 0x17) emitting `FIT_QUERY` (LIST, ascending
   thresholds) + the single selected child — unselected candidates never transmit.

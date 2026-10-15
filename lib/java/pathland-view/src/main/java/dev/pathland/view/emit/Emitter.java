@@ -53,6 +53,7 @@ public final class Emitter {
     private final Map<Integer, MediaInput> mediaInputs = new LinkedHashMap<>();
     private final Map<Integer, Consumer<Integer>> fitInputs = new LinkedHashMap<>();
     private final Map<Integer, Runnable> navigateActions = new LinkedHashMap<>();
+    private final Map<Integer, dev.pathland.view.ProxyConfig> proxyViews = new LinkedHashMap<>();
     private final List<EffectRef> bindings = new ArrayList<>();
     private final Map<Integer, List<EffectRef>> nodeBindings = new LinkedHashMap<>();
     private Consumer<Event> navigateHandler;
@@ -126,6 +127,7 @@ public final class Emitter {
         mediaInputs.clear();
         fitInputs.clear();
         navigateActions.clear();
+        proxyViews.clear();
         navigateHandler = null;
         collectInputs(tree);
 
@@ -148,7 +150,8 @@ public final class Emitter {
                 Collections.unmodifiableMap(mediaInputs),
                 Collections.unmodifiableMap(fitInputs),
                 Collections.unmodifiableMap(navigateActions),
-                navigateHandler);
+                navigateHandler,
+                Collections.unmodifiableMap(proxyViews));
     }
 
     /** The root node id (0 until mounted). */
@@ -233,6 +236,9 @@ public final class Emitter {
         if (node.fitInput != null) {
             fitInputs.put(node.id, node.fitInput);
         }
+        if (node.proxyConfig != null) {
+            proxyViews.put(node.id, node.proxyConfig);
+        }
         if (node.navigateHandler != null) {
             navigateHandler = node.navigateHandler; // global: a NavigationContainer's router sink
         }
@@ -265,6 +271,7 @@ public final class Emitter {
         mediaInputs.remove(node.id);
         fitInputs.remove(node.id);
         navigateActions.remove(node.id);
+        proxyViews.remove(node.id);
         for (PathlandNode child : node.children) {
             forgetInputs(child);
         }

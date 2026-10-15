@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** October 3, 2026
+**Last updated:** October 15, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -100,6 +100,43 @@ dependency — framework glue lives in the starters.
 - Quarkus mounted-app WebSocket endpoints require a **single-segment** mount path
   (the `/{app}` path param); Spring supports any depth.
 
+## Proxy views (spec/PROXY.md) — M1 (live)
+
+- **`proxy.ProxyIdMap`** — node-id namespacing: the reserved high range
+  `[0x4000_0000, 0x8000_0000)`, 1024 blocks of `2^20`, the block math, and the
+  opcode remap in both directions (`TREE` node ids + every `PARAMETER` `A` on
+  ingress; `EVENT` targets on egress; `META` untouched). Pure + unit-tested.
+- **`proxy.ProxyTransport`** + **`proxy.JdkWebSocketTransport`** — the outbound
+  connection seam (default: the JDK `HttpClient` WebSocket client, no new
+  dependency) with a `Factory` so a starter can swap a native client.
+- **`proxy.ProxySession`** — one origin connection: sends `META::ENVIRONMENT` +
+  `META::RESYNC`, **remaps** the origin snapshot into the proxy's block and
+  attaches the origin root under the proxy node, forwards live deltas remapped,
+  routes client events back (target unmapped), replies `PONG` to origin `PING`,
+  translates origin `META::RESET` into a **scoped** subtree teardown (never a
+  global reset), tears the subtree down on disconnect (the origin session is
+  per-connection), and reconnects with exponential backoff. The service
+  credential + a cycle-guard instance id ride the handshake headers.
+  **Backpressure** (spec/PROXY.md §8): a "chatty origin" breaker (a per-second
+  batch cap → drop + `RESYNC`) and event coalescing (pointer-moves coalesce by
+  target; discrete events flush immediately).
+- **`proxy.ProxyHost`** — one `ProxySession` per `PROXY_VIEW` node, each with its
+  own block; routes inbound events whose target is in a proxy range to the owning
+  origin connection; owns the proxy scheduler.
+- **`PathlandSession`** integration — captures `RenderResult.proxyViews()` and, on
+  `connect` (live only), starts a `ProxyHost` whose frames feed the session's
+  `DeltaBatcher` (a single unified sequence); `dispatch` splits proxy-range events
+  to the origin and everything else to the app's own bindings; `close` tears the
+  proxies down. `proxyTransportFactory(...)` lets a host supply a framework
+  transport.
+- **`PathlandTelemetry`** — `proxyConnected`/`proxyDisconnected`/`proxyBatchDropped`/
+  `proxyResyncRequested` (all default no-ops).
+
+**Gaps (M2/M3):** SSR does **not** yet embed the origin subtree — a live session
+proxies, but the SSR first paint shows an empty proxy node (the origin subtree
+hydrates over the WebSocket). The renderer embeds API + blocking `requestSnapshot`
+are M2. Nested proxies and per-proxy token scoping are deferred.
+
 ## Verified by
 
 `mvn test` — `PathlandSessionTest`: mounts + routes taps through the binding maps,
@@ -113,3 +150,15 @@ normalization, SSR emits the mounted app's base.
 session/event/resync/flush/SSR/close events, the host binds the active-sessions
 gauge, a failed send reports `connectionFailed`, and `DeltaBatcher` reports the
 flushed batch.
+`proxy.ProxyIdMapTest`: the reserved range, block round-trips, overflow rejection,
+and the opcode remap (TREE/PARAMETER node ids remapped, APPEND/META untouched,
+EVENT targets unmapped).
+`proxy.ProxySessionTest` (a fake origin transport): the ENVIRONMENT+RESYNC
+handshake + handshake headers, snapshot remap + root attachment, delta remap with
+the string section passed through verbatim, event egress unmapped, pointer-move
+coalescing, `META::RESET` → scoped teardown, disconnect teardown, and the
+chatty-origin drop+resync breaker.
+`proxy.ProxyIntegrationTest`: a `ProxyView` in the app tree opens an origin
+connection on `connect`, the remapped origin snapshot reaches the client (with the
+root attached), and a client event in the proxy range routes back to the origin
+unmapped.
