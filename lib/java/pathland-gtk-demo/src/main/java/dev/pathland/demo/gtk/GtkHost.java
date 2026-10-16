@@ -66,7 +66,7 @@ public final class GtkHost {
 
             Emitter emitter = new Emitter(sink, DemoTheme.adaptive());
             RenderResult result = emitter.mount(
-                    new MusicPlayerView(),
+                    MusicPlayerView.make(),
                     new Environment(state));
             InputDispatcher dispatcher = new InputDispatcher(result, activePath);
             RingEventReader reader =

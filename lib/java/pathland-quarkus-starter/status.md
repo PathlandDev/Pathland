@@ -1,6 +1,6 @@
 # pathland-quarkus-starter — implementation status
 
-**Last updated:** October 3, 2026
+**Last updated:** October 15, 2026
 
 Quarkus integration for Pathland: SSR at any path, live deltas over each app's reserved
 `/{base}/ws`, per-session state. Adding the starter dependency + a `PathlandApp` CDI
@@ -80,10 +80,13 @@ public class MyApp {
 
 ## Verified by
 
-Manual: the `pathland-quarkus-demo` renders `/`, `/kitchen`, `/settings` and the 404
-fallback **and a second app at `/app2`**; a WebSocket handshake to `/_pathland/ws` and
-`/app2/_pathland/ws` returns 101. Core behavior is covered by `pathland-server-core`
-tests. `MultiSessionWebSocketTest` (`@QuarkusTest`) opens **100 concurrent real WS
+Manual: the `pathland-quarkus-demo` renders `/` (the music player, whose Now
+Playing pane embeds the small `/ad` app via a **same-server `ProxyView`**,
+spec/PROXY.md) and `/ad` (the ad app); a WebSocket handshake to `/_pathland/ws`
+and `/ad/_pathland/ws` returns 101. `ProxyDemoTest` (`@QuarkusTest`) asserts
+`GET /` embeds the `/ad` app's subtree with remapped node ids
+(`data-pathland-id="1073741825"` — proxy block 0 + origin id 1). Core behavior is
+covered by `pathland-server-core` tests. `MultiSessionWebSocketTest` (`@QuarkusTest`) opens **100 concurrent real WS
 sessions** against `/_pathland/ws` (via the shared `pathland-server-core` test-jar
 probe) and asserts each connects, re-syncs, gets transport-level PONGs, stays isolated,
 and is never closed by the peer.

@@ -49,7 +49,7 @@ class MusicPlayerViewTest {
         StateStore store = new InMemoryStateStore();
         PersistentState state = new PersistentState(store, "session-1");
         FrameOpcodeSink sink = new FrameOpcodeSink();
-        RenderResult result = new Emitter(sink).mount(new MusicPlayerView(), new Environment(state));
+        RenderResult result = new Emitter(sink).mount(MusicPlayerView.make(), new Environment(state));
         return new Mounted(result, sink, store);
     }
 
@@ -59,7 +59,7 @@ class MusicPlayerViewTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         emitter.snapshotEmission(true);
-        RenderResult result = emitter.mount(new MusicPlayerView(), new Environment(state));
+        RenderResult result = emitter.mount(MusicPlayerView.make(), new Environment(state));
         return new Mounted(result, sink, store);
     }
 
@@ -185,7 +185,7 @@ class MusicPlayerViewTest {
         StateStore store = new InMemoryStateStore();
         PersistentState state = new PersistentState(store, "session-1");
         FrameOpcodeSink sink = new FrameOpcodeSink();
-        RenderResult result = new Emitter(sink).mount(new MusicPlayerView(), new Environment(state));
+        RenderResult result = new Emitter(sink).mount(MusicPlayerView.make(), new Environment(state));
         InputDispatcher dispatcher = new InputDispatcher(result, Signals.signal("/"));
 
         // The app-driven audio node's media events (spec/EVENTS.md Media) route
@@ -209,7 +209,7 @@ class MusicPlayerViewTest {
         StateStore store = new InMemoryStateStore();
         PersistentState state = new PersistentState(store, "session-3");
         FrameOpcodeSink sink = new FrameOpcodeSink();
-        RenderResult result = new Emitter(sink).mount(new MusicPlayerView(), new Environment(state));
+        RenderResult result = new Emitter(sink).mount(MusicPlayerView.make(), new Environment(state));
         InputDispatcher dispatcher = new InputDispatcher(result, Signals.signal("/"));
         int audioId = result.mediaInputs().entrySet().iterator().next().getKey();
 
@@ -287,6 +287,29 @@ class MusicPlayerViewTest {
             }
         }
         return false;
+    }
+
+    @Test
+    void sponsoredSlotProxiesTheAdAppOnlyWhenConfigured() {
+        // The live/SSR server mounts in snapshot mode (every fit candidate retained),
+        // so the Now Playing sidebar — and its sponsored proxy — are in the tree.
+        Mounted plain = mountSnapshot();
+        assertEquals(0, countCreate(plain.sink.frame(), Components.PROXY_VIEW), "no sponsored slot by default");
+        assertTrue(plain.result.proxyViews().isEmpty(), "no proxy config without an ad URL");
+
+        StateStore store = new InMemoryStateStore();
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        emitter.snapshotEmission(true);
+        RenderResult result = emitter.mount(
+                MusicPlayerView.make("http://localhost:8080/ad"),
+                new Environment(new PersistentState(store, "session-1")));
+
+        assertEquals(1, countCreate(sink.frame(), Components.PROXY_VIEW), "one sponsored proxy node");
+        assertEquals(1, result.proxyViews().size(), "the origin config is surfaced to the host");
+        assertEquals("http://localhost:8080/ad",
+                result.proxyViews().values().iterator().next().endpoint());
+        assertTrue(anySetText(sink.frame(), "Sponsored"), "the sponsored label renders in the sidebar");
     }
 
     private static boolean anySetText(ProtocolFrame frame, String text) {
