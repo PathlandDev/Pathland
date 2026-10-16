@@ -3,7 +3,7 @@
   "checkpoint_id": "01M51MBKQ8380EWN55ZKE7FZSY",
   "strategy": "manual-commit",
   "branch": "feat/proxy-views",
-  "checkpoints_count": 4,
+  "checkpoints_count": 8,
   "files_touched": [
     "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/ad/AdView.java",
     "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/MusicPlayerView.java",
@@ -48,13 +48,20 @@
       "compact_transcript": "/3/transcript.jsonl",
       "content_hash": "/3/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/4/metadata.json",
+      "transcript": "/4/full.jsonl",
+      "compact_transcript": "/4/transcript.jsonl",
+      "content_hash": "/4/content_hash.txt",
+      "prompt": "/4/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 96722,
+    "input_tokens": 2253710,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 1108352,
-    "output_tokens": 10459,
-    "api_call_count": 19
+    "cache_read_tokens": 42973568,
+    "output_tokens": 46754,
+    "api_call_count": 153
   }
 }
