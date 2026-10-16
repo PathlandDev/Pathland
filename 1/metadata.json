@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M51MBKQ8380EWN55ZKE7FZSY",
+  "session_id": "ses_ebff305c9ffesY4agWAGzxkg9q",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-16T05:53:35.693942Z",
+  "branch": "feat/proxy-views",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/ad/AdView.java",
+    "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/MusicPlayerView.java",
+    "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/NowPlayingSidebar.java",
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/ad/AdViewTest.java",
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/music/MusicPlayerViewTest.java",
+    "lib/java/pathland-demo-views/status.md",
+    "lib/java/pathland-gtk-demo/src/main/java/dev/pathland/demo/gtk/GtkHost.java",
+    "lib/java/pathland-quarkus-demo/pom.xml",
+    "lib/java/pathland-quarkus-demo/src/main/java/dev/pathland/demo/quarkus/QuarkusDemoApp.java",
+    "lib/java/pathland-quarkus-demo/src/main/resources/application.properties",
+    "lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/ProxyDemoTest.java",
+    "lib/java/pathland-quarkus-demo/src/test/resources/application.properties",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-spring-boot-demo/src/main/java/dev/pathland/demo/spring/SpringDemoApplication.java"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "7794464a941e",
+  "checkpoint_transcript_start": 40,
+  "transcript_lines_at_start": 40,
+  "compact_transcript_start": 40,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-16T05:53:35.638675Z",
+    "agent_lines": 341,
+    "agent_removed": 45,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 341,
+    "total_lines_changed": 386,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
