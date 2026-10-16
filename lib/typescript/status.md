@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** October 1, 2026
+**Last updated:** October 15, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -220,6 +220,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   and `POINTER_UP` on `click` is sent for **any** listening element — not just
   `<button>` — so `onTapGesture` works on non-button nodes (matching the GTK
   renderer's gesture-on-any-widget behavior; also repairs composite-label buttons).
+- **Robust input-target resolution** (`src/dom-target.ts`): an event's `target` is
+  frequently a **Text node** (e.g. a wheel over a `<span>`'s text) rather than an
+  Element — `closest` then threw `t.closest is not a function`. `nodeOf`/
+  `eventNodeOf` guard with `instanceof Element` and return `null` for a non-Element
+  target (unit-tested in `test/dom-target.test.ts`). Aborted promises are also
+  swallowed: a media `play()` interrupted by a src change/pause (`AbortError`) and
+  a Blob `arrayBuffer()` aborted on socket close no longer surface as unhandled
+  rejections.
 - **Hydration-aware TREE reconciliation** (`src/apply.ts`): `CREATE_NODE` reuses an
   existing hydrated element (id already in the registry) and `INSERT_CHILD` skips
   when the child is already in the parent's container — so a resync'd full
