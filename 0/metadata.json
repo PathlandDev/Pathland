@@ -1,0 +1,51 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M517N9JCWCNXMGGDW6H7E8N6",
+  "session_id": "ses_ebff305c9ffesY4agWAGzxkg9q",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-16T02:11:47.631564Z",
+  "branch": "feat/proxy-views",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/DeltaBatcher.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/FrameMerger.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/FrameRebase.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/ProxyHost.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/ProxySession.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/FrameMergerTest.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/proxy/ProxyIntegrationTest.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/proxy/ProxySessionTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/rust/crates/pathland-render-gtk/src/layout.rs",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "7794464a941e",
+  "checkpoint_transcript_start": 40,
+  "transcript_lines_at_start": 40,
+  "compact_transcript_start": 40,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-16T02:11:47.457853Z",
+    "agent_lines": 435,
+    "agent_removed": 62,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 435,
+    "total_lines_changed": 497,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
