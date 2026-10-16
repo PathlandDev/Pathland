@@ -2,6 +2,7 @@ package dev.pathland.server;
 
 import dev.pathland.render.html.HtmlRenderer;
 import dev.pathland.server.proxy.ProxyHost;
+import dev.pathland.server.proxy.ProxySession;
 import dev.pathland.view.Environment;
 import dev.pathland.view.EnvironmentBinding;
 import dev.pathland.view.Platform;
@@ -49,6 +50,9 @@ public final class PathlandSession {
      *  WebSocket, the DOM client bundle, the asset mount) live under
      *  {@code /_pathland/**}, never colliding with app routes. */
     public static final String PATHLAND_BASE = "/_pathland";
+
+    /** How long the SSR path waits for a proxy's origin snapshot before rendering a placeholder. */
+    private static final long PROXY_SNAPSHOT_TIMEOUT_MILLIS = 2_000;
 
     private final PersistentState state;
     private final WritableSignal<String> activePath;
@@ -207,6 +211,12 @@ public final class PathlandSession {
     /** Re-send the current tree as a full snapshot (META::RESYNC), flushed immediately. */
     public void resync() {
         emitter.renderFull();
+        // A's own emitter does not carry the origin subtree (it is forwarded), so a
+        // client resync must also refresh the proxy regions from their origins.
+        ProxyHost host = proxyHost;
+        if (host != null) {
+            host.resyncAll();
+        }
         batcher.flush();
     }
 
@@ -279,9 +289,10 @@ public final class PathlandSession {
                     + "<p>Build the Rust crate so libpathland_render_html is embedded in the "
                     + "pathland-render-html jar.</p></body></html>";
         }
+        ProtocolFrame frame = ssrFrame();
         String html = debugHtml
-                ? renderer.renderDebug(sink.frame(), rootId)
-                : renderer.render(sink.frame(), rootId);
+                ? renderer.renderDebug(frame, rootId)
+                : renderer.render(frame, rootId);
         // The reserved framework path prefix (spec): host system endpoints live
         // under `/{base}/**`. Carried as `data-pathland-base` so the DOM client
         // resolves its WebSocket and the bundle from the same base. Multi-app
@@ -292,6 +303,44 @@ public final class PathlandSession {
                 .replace("<html>", "<html data-pathland-base=\"" + base + "\">")
                 .replace("</body>", "<script src=\"" + base + "/" + PathlandAssets.bundleName()
                         + "\" defer></script></body>");
+    }
+
+    /**
+     * The frame the SSR document is rendered from: the session's mount frame plus,
+     * for every {@code PROXY_VIEW}, the origin's remapped snapshot spliced in
+     * (spec/PROXY.md §5) — one document, one render, so the renderer emits the
+     * origin's fit band rules and token overrides into the same head. A proxy whose
+     * origin does not answer within the timeout renders empty (a placeholder) and
+     * hydrates over the live connection.
+     */
+    private ProtocolFrame ssrFrame() {
+        ProtocolFrame frame = sink.frame();
+        if (proxyViews.isEmpty()) {
+            return frame;
+        }
+        return FrameMerger.merge(frame, proxySnapshots(PROXY_SNAPSHOT_TIMEOUT_MILLIS));
+    }
+
+    /** Start the proxies (SSR) and block for each origin's snapshot (bounded per proxy). */
+    private List<ProtocolFrame> proxySnapshots(long timeoutMillis) {
+        startProxies();
+        ProxyHost host = proxyHost;
+        if (host == null) {
+            return List.of();
+        }
+        List<ProtocolFrame> snapshots = new ArrayList<>();
+        for (ProxySession session : host.sessions()) {
+            try {
+                ProtocolFrame snapshot = session.awaitSnapshot(timeoutMillis);
+                if (snapshot != null) {
+                    snapshots.add(snapshot);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return snapshots;
     }
 
     /** Tear down: close the persistent state, unsubscribe the emitter, stop the batcher, drop the connection. */

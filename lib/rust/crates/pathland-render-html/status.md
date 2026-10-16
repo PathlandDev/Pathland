@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** October 2, 2026
+**Last updated:** October 15, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -10,6 +10,11 @@ Statelessness). Protocol contract: `spec/`.
 
 ## Implemented
 
+- **`PROXY_VIEW` (0x1E)**: renders as a plain container box (a flex column,
+  like a stack with one child) and lays out the (id-remapped) origin subtree the
+  proxying server spliced in — the renderer holds no notion of "remote"
+  (spec/PROXY.md §5). Without this arm the component fell to the `_ => String::new()`
+  default and the spliced subtree was dropped. Covered by a unit test.
 - **Stateless streaming API**: `HtmlRenderer::render_document(opcodes, strings, root)`
   / `render_fragment(...)` build a transient decode map per call and stream HTML;
   the retained `apply`/`apply_frame`/`render` model is removed.

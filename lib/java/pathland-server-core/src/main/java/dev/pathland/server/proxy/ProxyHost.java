@@ -111,6 +111,18 @@ public final class ProxyHost {
         return sessions.size();
     }
 
+    /** The live proxy sessions (e.g. for an SSR snapshot wait or a resync refresh). */
+    public java.util.List<ProxySession> sessions() {
+        return java.util.List.copyOf(sessions.values());
+    }
+
+    /** Ask every origin for a fresh snapshot ({@code META::RESYNC}); the replies are forwarded. */
+    public void resyncAll() {
+        for (ProxySession session : sessions.values()) {
+            session.requestOriginSnapshot();
+        }
+    }
+
     /** Close every origin connection and stop the proxy scheduler. */
     public void close() {
         for (ProxySession session : sessions.values()) {

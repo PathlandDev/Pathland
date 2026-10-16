@@ -181,7 +181,7 @@ public final class ProxySession {
      *
      * @return the remapped snapshot frame, or {@code null} on timeout/close
      */
-    public ProtocolFrame requestSnapshot(long timeoutMillis) throws InterruptedException {
+    public ProtocolFrame awaitSnapshot(long timeoutMillis) throws InterruptedException {
         long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
         synchronized (lock) {
             while (pendingSnapshot == null && !closed) {
@@ -193,6 +193,15 @@ public final class ProxySession {
             }
             return pendingSnapshot;
         }
+    }
+
+    /**
+     * Ask the origin for a fresh snapshot ({@code META::RESYNC}, non-blocking). The
+     * reply arrives on the transport thread, is remapped, and is forwarded — so a
+     * client {@code META::RESYNC} (reconnect/reload/gap) refreshes the proxy region.
+     */
+    public void requestOriginSnapshot() {
+        sendRaw(FrameCodec.encodeResync());
     }
 
     // ── Client → origin (event egress) ──────────────────────────────────────
@@ -293,17 +302,19 @@ public final class ProxySession {
 
         boolean snapshot = !snapshotReceived || createsRoot(data);
         List<Opcode> remapped = new ArrayList<>(data.size() + 1);
+        for (Opcode op : data) {
+            remapped.add(ProxyIdMap.toProxy(op, block));
+        }
         if (snapshot) {
             int root = originRootId >= 0 ? originRootId : computeRoot(data);
             if (root >= 0) {
                 originRootId = root;
-                // Attach the origin's (parentless) root under the proxy node.
+                // Attach the origin's (parentless) root under the proxy node, APPENDED
+                // after the origin's opcodes so the root's CREATE_NODE precedes the
+                // INSERT_CHILD (renderers link a child that already exists).
                 remapped.add(new Opcode(Categories.TREE, Commands.Tree.INSERT_CHILD, 0,
                         proxyId, ProxyIdMap.toProxyId(block, root), -1));
             }
-        }
-        for (Opcode op : data) {
-            remapped.add(ProxyIdMap.toProxy(op, block));
         }
 
         ProtocolFrame out = new ProtocolFrame(remapped, frame.strings());

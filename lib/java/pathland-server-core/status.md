@@ -132,10 +132,19 @@ dependency — framework glue lives in the starters.
 - **`PathlandTelemetry`** — `proxyConnected`/`proxyDisconnected`/`proxyBatchDropped`/
   `proxyResyncRequested` (all default no-ops).
 
-**Gaps (M2/M3):** SSR does **not** yet embed the origin subtree — a live session
-proxies, but the SSR first paint shows an empty proxy node (the origin subtree
-hydrates over the WebSocket). The renderer embeds API + blocking `requestSnapshot`
-are M2. Nested proxies and per-proxy token scoping are deferred.
+**SSR embed (M2).** `renderHtml` starts the proxies and **blocks** for each
+origin's snapshot (`ProxySession.awaitSnapshot`, bounded by a 2s timeout), then
+splices the remapped origin frames into the session's mount frame
+(`FrameMerger`, reusing the batcher's string rebasing via `FrameRebase`) so the
+renderer emits **one** document — the origin subtree plus its fit band rules and
+token overrides in the same head. A proxy whose origin does not answer in time
+renders empty (a placeholder) and hydrates over the live connection. A client
+`META::RESYNC` also replays A's tree **and** asks every origin for a fresh
+snapshot (`ProxyHost.resyncAll`).
+
+**Gaps (M3):** nested proxies and per-proxy token scoping are deferred; the
+origin's global design tokens merge into the whole document (last writer wins,
+spec/PROXY.md §9).
 
 ## Verified by
 
@@ -160,5 +169,9 @@ coalescing, `META::RESET` → scoped teardown, disconnect teardown, and the
 chatty-origin drop+resync breaker.
 `proxy.ProxyIntegrationTest`: a `ProxyView` in the app tree opens an origin
 connection on `connect`, the remapped origin snapshot reaches the client (with the
-root attached), and a client event in the proxy range routes back to the origin
-unmapped.
+root attached), a client event in the proxy range routes back to the origin
+unmapped, and the SSR document embeds the origin subtree (remapped ids) in one
+render.
+`FrameMergerTest`: splicing a proxy's origin frame into an SSR frame rebases its
+string offsets (SET_TEXT / LIST / STRING operands) and returns the base unchanged
+when there is nothing to append.

@@ -20,6 +20,8 @@ pub fn stack_orientation(component_type: u16) -> Option<Orientation> {
     match component_type {
         component_type::VSTACK | component_type::LAZY_VSTACK => Some(Orientation::Vertical),
         component_type::HSTACK | component_type::LAZY_HSTACK => Some(Orientation::Horizontal),
+        // A proxy view (spec/PROXY.md) is a transparent single-child container.
+        component_type::PROXY_VIEW => Some(Orientation::Vertical),
         _ => None,
     }
 }
@@ -139,6 +141,7 @@ fn propagates_fill(component_type: u16) -> bool {
             | component_type::ZSTACK
             | component_type::LAZY_VSTACK
             | component_type::LAZY_HSTACK
+            | component_type::PROXY_VIEW
     )
 }
 

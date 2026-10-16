@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** October 1, 2026
+**Last updated:** October 15, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -11,6 +11,8 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 - **Components → widgets** (`widget_kind`/`build_widget`):
   - `VSTACK`/`HSTACK`/`LAZY_VSTACK`/`LAZY_HSTACK` → `GtkBox` (spacing/alignment/
     padding/content-margins),
+  - `PROXY_VIEW` (spec/PROXY.md) → `GtkBox` (a transparent container): the spliced
+    (id-remapped) origin subtree lays out in place,
   - `TEXT` → `GtkLabel` (text; `TEXT_STYLE`/`FONT_SIZE`/`FONT_WEIGHT`/
     `FONT_FAMILY`/`FONT_DESIGN`/`COLOR` via a Pango `FontDescription`/
     attributes),

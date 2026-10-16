@@ -87,16 +87,19 @@ class ProxySessionTest {
         assertEquals(1, frames.size());
         List<Opcode> ops = frames.get(0).opcodes();
         int base = base();
-        // The proxy attaches the origin's parentless root under the proxy node.
-        assertEquals(Commands.Tree.INSERT_CHILD, ops.get(0).command());
-        assertEquals(PROXY_ID, ops.get(0).a(), "attached to the proxy node");
-        assertEquals(base + 1, ops.get(0).b(), "the remapped origin root");
-        assertEquals(-1, ops.get(0).c(), "APPEND");
-        // The rest are remapped verbatim.
-        assertEquals(base + 1, ops.get(1).a());
-        assertEquals(base + 2, ops.get(2).a());
-        assertEquals(base + 1, ops.get(3).a());
-        assertEquals(base + 2, ops.get(3).b());
+        assertEquals(4, ops.size());
+        // The origin's opcodes are remapped verbatim, in order.
+        assertEquals(base + 1, ops.get(0).a());
+        assertEquals(base + 2, ops.get(1).a());
+        assertEquals(base + 1, ops.get(2).a());
+        assertEquals(base + 2, ops.get(2).b());
+        // The proxy attaches the origin's parentless root under the proxy node, appended
+        // so the root's CREATE_NODE precedes the INSERT_CHILD.
+        Opcode attach = ops.get(3);
+        assertEquals(Commands.Tree.INSERT_CHILD, attach.command());
+        assertEquals(PROXY_ID, attach.a(), "attached to the proxy node");
+        assertEquals(base + 1, attach.b(), "the remapped origin root");
+        assertEquals(-1, attach.c(), "APPEND");
     }
 
     @Test

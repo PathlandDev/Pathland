@@ -1,5 +1,6 @@
 package dev.pathland.server.proxy;
 
+import dev.pathland.render.html.HtmlRenderer;
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandConnection;
 import dev.pathland.server.PathlandSession;
@@ -17,7 +18,9 @@ import dev.pathland.view.transport.Event;
 import dev.pathland.view.transport.FrameCodec;
 import org.junit.jupiter.api.Test;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
@@ -25,6 +28,7 @@ import java.util.function.BooleanSupplier;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * The session-level proxy wiring (spec/PROXY.md): a {@code ProxyView} in the app
@@ -82,10 +86,82 @@ class ProxyIntegrationTest {
         session.close();
     }
 
+    @Test
+    void ssrEmbedsTheOriginSubtreeIntoOneDocument() {
+        byte[] originSnapshot = FrameCodec.encodeFrame(new ProtocolFrame(List.of(
+                new Opcode(Categories.TREE, Commands.Tree.CREATE_NODE, 0, 1, 0x10, 0),
+                new Opcode(Categories.TREE, Commands.Tree.CREATE_NODE, 0, 2, 0x01, 0),
+                new Opcode(Categories.TREE, Commands.Tree.INSERT_CHILD, 0, 1, 2, -1),
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 2, 0, 0)),
+                stringSection("origin-text")));
+        assumeTrue(HtmlRenderer.tryInstance() != null, "the Rust HTML renderer is available");
+
+        PathlandApp app = () -> VStack.children(
+                Text.make("local"),
+                ProxyView.make(p -> p.endpoint("http://b.example")));
+        PathlandSession session = new PathlandSession(
+                "s1", new InMemoryStateStore(), app, EnvironmentData.of("/"),
+                false, "/_pathland", "scope", PathlandTelemetry.NOOP, "/");
+        session.proxyTransportFactory(() -> new ReplayingTransport(originSnapshot));
+
+        String html = session.renderHtml();
+        session.close();
+
+        int base = ProxyIdMap.base(0);
+        assertTrue(html.contains("data-pathland-id=\"" + (base + 2) + "\""),
+                "the origin subtree is spliced into the SSR document with a remapped id");
+        assertTrue(html.contains("origin-text"), "the origin's text is rendered in the document");
+    }
+
+    private static byte[] stringSection(String entry) {
+        byte[] bytes = entry.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        out.write(bytes.length & 0xFF);
+        out.write((bytes.length >>> 8) & 0xFF);
+        out.write((bytes.length >>> 16) & 0xFF);
+        out.write((bytes.length >>> 24) & 0xFF);
+        out.writeBytes(bytes);
+        return out.toByteArray();
+    }
+
     private static void awaitTrue(BooleanSupplier condition) throws InterruptedException {
         long deadline = System.nanoTime() + 2_000_000_000L;
         while (!condition.getAsBoolean() && System.nanoTime() < deadline) {
             Thread.sleep(10);
+        }
+    }
+
+    /** An origin transport that answers {@code META::RESYNC} with a canned snapshot, synchronously. */
+    private static final class ReplayingTransport implements ProxyTransport {
+
+        private final byte[] snapshot;
+        volatile ProxyTransport.Listener listener;
+
+        ReplayingTransport(byte[] snapshot) {
+            this.snapshot = snapshot;
+        }
+
+        @Override
+        public void connect(URI uri, Map<String, String> headers, Listener listener) {
+            this.listener = listener;
+            listener.onOpen();
+        }
+
+        @Override
+        public void send(byte[] bytes) {
+            if (FrameCodec.isResync(bytes)) {
+                listener.onBinary(snapshot);
+            }
+        }
+
+        @Override
+        public boolean isOpen() {
+            return true;
+        }
+
+        @Override
+        public void close() {
+            // no-op
         }
     }
 
