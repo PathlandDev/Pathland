@@ -161,6 +161,7 @@ public final class ProxySession {
     /** Close the origin connection and stop any pending work (idempotent). */
     public void close() {
         ProxyTransport t;
+        int root;
         synchronized (lock) {
             if (closed) {
                 return;
@@ -168,7 +169,18 @@ public final class ProxySession {
             closed = true;
             t = transport;
             transport = null;
+            root = originRootId;
+            originRootId = -1;
             lock.notifyAll();
+        }
+        // Belt-and-braces: drop the origin subtree from the client if it was applied.
+        // The emitter's own DELETE_NODE on the proxy node already purged it (so this
+        // is a no-op then), but it corrects a partially-applied origin subtree.
+        if (root >= 0) {
+            frameSink.accept(new ProtocolFrame(
+                    List.of(new Opcode(Categories.TREE, Commands.Tree.DELETE_NODE, 0,
+                            ProxyIdMap.toProxyId(block, root), 0, 0)),
+                    new byte[0]));
         }
         if (t != null) {
             t.close();
@@ -266,6 +278,11 @@ public final class ProxySession {
     // ── Origin → client ─────────────────────────────────────────────────────
 
     private void onOriginBatch(byte[] bytes) {
+        synchronized (lock) {
+            if (closed) {
+                return; // torn down (its proxy node left the retained tree) — stop forwarding
+            }
+        }
         ProtocolFrame frame;
         try {
             frame = FrameCodec.decodeFrame(bytes);

@@ -228,8 +228,17 @@ applies A's single live stream — it requires **no proxy awareness**.
   on failure.
 - **Origin session restart:** tear down the old remapped subtree, then re-seed
   (§2.4).
-- **Proxy removal:** when A's tree removes the proxy node (structural
-  reconcile), A closes the origin connection and releases the block.
+- **Proxy lifetime = node lifetime (MUST).** A proxy lives **exactly while its
+  `PROXY_VIEW` node is in A's retained tree**. A **structural reconcile** that
+  removes the node — e.g. a `SIZE_THAT_FITS` slot dropping the candidate that
+  held it, a `Conditional` branch swap — MUST close the origin connection (stop
+  forwarding, release the id block). Re-adding the node (a fresh reconcile) MUST
+  open a **fresh** origin connection and re-seed it from a `META::RESYNC`. The
+  proxying server therefore reconciles its origin connections against the live
+  set of `PROXY_VIEW` nodes after every structural reconcile. Released id blocks
+  are **reused**, so repeated removal/re-add cycles never exhaust the range.
+  (The renderer already removes the origin subtree from the client when the
+  proxy node is deleted — a `DELETE_NODE` covers the whole subtree, §5.)
 - **Session close:** A closes every origin connection.
 - **Origin unreachable:** A renders a placeholder/error node for the proxy and
   retries; the rest of A's document is unaffected.

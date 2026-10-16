@@ -12,6 +12,8 @@ import dev.pathland.view.Text;
 import dev.pathland.view.VStack;
 import dev.pathland.view.emit.Opcode;
 import dev.pathland.view.emit.ProtocolFrame;
+import dev.pathland.view.signal.Signals;
+import dev.pathland.view.signal.WritableSignal;
 import dev.pathland.view.state.InMemoryStateStore;
 import dev.pathland.view.transport.EnvironmentData;
 import dev.pathland.view.transport.Event;
@@ -19,13 +21,16 @@ import dev.pathland.view.transport.FrameCodec;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
+import static dev.pathland.view.Conditional.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -122,6 +127,41 @@ class ProxyIntegrationTest {
         out.write((bytes.length >>> 24) & 0xFF);
         out.writeBytes(bytes);
         return out.toByteArray();
+    }
+
+    @Test
+    void aProxyThatLeavesTheRetainedTreeClosesItsOriginAndReturnsOnReAdd() {
+        // A PROXY_VIEW inside a structural slot (e.g. the wide candidate of a
+        // SizeThatFits slot): when the slot swaps it out the origin connection must
+        // close; re-adding it opens a fresh one (spec/PROXY.md §7).
+        WritableSignal<Boolean> show = Signals.signal(true);
+        PathlandApp app = () -> VStack.children(when(show,
+                VStack.children(ProxyView.make(p -> p.endpoint("http://b.example"))),
+                Text.make("no ad")));
+
+        PathlandSession session = new PathlandSession(
+                "s1", new InMemoryStateStore(), app, EnvironmentData.of("/"),
+                false, "/_pathland", "scope", PathlandTelemetry.NOOP, "/");
+        List<ProxySessionTest.FakeTransport> transports = new ArrayList<>();
+        session.proxyTransportFactory(() -> {
+            ProxySessionTest.FakeTransport t = new ProxySessionTest.FakeTransport();
+            transports.add(t);
+            return t;
+        });
+        session.connect(new RecordingConnection());
+
+        assertEquals(1, transports.size(), "the proxy node opened an origin connection");
+
+        // The proxy node leaves the tree (a structural reconcile) → the origin closes.
+        show.set(false);
+        assertFalse(transports.get(0).isOpen(), "the origin connection closed when its node left the tree");
+
+        // Re-added → a fresh origin connection opens.
+        show.set(true);
+        assertEquals(2, transports.size(), "a fresh origin connection opens when the node returns");
+        assertTrue(transports.get(1).isOpen());
+
+        session.close();
     }
 
     private static void awaitTrue(BooleanSupplier condition) throws InterruptedException {

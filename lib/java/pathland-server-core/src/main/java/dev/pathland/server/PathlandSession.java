@@ -160,6 +160,11 @@ public final class PathlandSession {
         this.inputDispatcher = new InputDispatcher(result, activePath);
         this.rootId = result.rootId();
         this.proxyViews = result.proxyViews();
+        // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a SizeThatFits
+        // slot dropping the candidate that held it) — reconcile the proxy sessions
+        // against the live proxyViews map so a proxy lives exactly while its node is
+        // in the retained tree (spec/PROXY.md §7).
+        this.emitter.onStructureReconciled(this::reconcileProxies);
         applyEnvironment(env); // records viewport; the router already seeded from env.route()
     }
 
@@ -177,26 +182,29 @@ public final class PathlandSession {
     /** Wire the live connection AFTER mount (the initial frame was already SSR'd). */
     public void connect(PathlandConnection connection) {
         this.connection = connection;
-        startProxies();
+        reconcileProxies();
     }
 
     /**
-     * Start an origin connection per {@code PROXY_VIEW} node (spec/PROXY.md). Only
-     * live sessions proxy: the SSR session renders a placeholder (v1) and the origin
-     * subtree arrives over this connection. The origin is given this session's
-     * window scope as its {@code wid}, so the origin's persisted state is per-window.
+     * Reconcile the proxy sessions against the live {@code proxyViews} map: open an
+     * origin connection for every {@code PROXY_VIEW} node in the retained tree, and
+     * close the connection of every node that left it (spec/PROXY.md §7). Driven by
+     * the emitter's structural-reconcile callback, so a proxy lives exactly while its
+     * node is in the tree — e.g. a {@code SizeThatFits} slot dropping the candidate
+     * that held it closes the origin connection, and re-adding it opens a fresh one.
+     * The origin is given this session's window scope as its {@code wid}, so the
+     * origin's persisted state is per-window.
      */
-    private void startProxies() {
-        if (proxyViews.isEmpty() || proxyHost != null) {
-            return;
+    private void reconcileProxies() {
+        if (proxyHost == null) {
+            if (proxyViews.isEmpty()) {
+                return;
+            }
+            proxyHost = new ProxyHost(
+                    batcher::append, stateScope, viewportWidth, viewportHeight, telemetry, mount,
+                    proxyTransportFactory);
         }
-        ProxyHost host = new ProxyHost(
-                batcher::append, stateScope, viewportWidth, viewportHeight, telemetry, mount,
-                proxyTransportFactory);
-        proxyHost = host;
-        for (Map.Entry<Integer, ProxyConfig> entry : proxyViews.entrySet()) {
-            host.add(entry.getKey(), entry.getValue());
-        }
+        proxyHost.reconcile(proxyViews);
     }
 
     /**
@@ -323,7 +331,7 @@ public final class PathlandSession {
 
     /** Start the proxies (SSR) and block for each origin's snapshot (bounded per proxy). */
     private List<ProtocolFrame> proxySnapshots(long timeoutMillis) {
-        startProxies();
+        reconcileProxies();
         ProxyHost host = proxyHost;
         if (host == null) {
             return List.of();

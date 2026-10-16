@@ -122,13 +122,20 @@ dependency — framework glue lives in the starters.
   target; discrete events flush immediately).
 - **`proxy.ProxyHost`** — one `ProxySession` per `PROXY_VIEW` node, each with its
   own block; routes inbound events whose target is in a proxy range to the owning
-  origin connection; owns the proxy scheduler.
-- **`PathlandSession`** integration — captures `RenderResult.proxyViews()` and, on
-  `connect` (live only), starts a `ProxyHost` whose frames feed the session's
-  `DeltaBatcher` (a single unified sequence); `dispatch` splits proxy-range events
-  to the origin and everything else to the app's own bindings; `close` tears the
-  proxies down. `proxyTransportFactory(...)` lets a host supply a framework
-  transport.
+  origin connection; owns the proxy scheduler. `reconcile(wanted)` starts a
+  session for every `PROXY_VIEW` node and closes the session of every node that
+  left the tree; released id blocks go to a **free-block pool** and are reused, so
+  repeated removal/re-add cycles never exhaust the 1024-block range.
+- **`PathlandSession`** integration — captures `RenderResult.proxyViews()` and
+  registers the emitter's structural-reconcile callback
+  (`Emitter.onStructureReconciled`) to `reconcileProxies()`, so a proxy lives
+  **exactly while its node is in the retained tree** (spec/PROXY.md §7): a
+  `SizeThatFits` slot dropping the candidate that held it closes the origin
+  connection, and re-adding it opens a fresh one (re-seeded by `META::RESYNC`).
+  The host's frames feed the session's `DeltaBatcher` (a single unified sequence);
+  `dispatch` splits proxy-range events to the origin and everything else to the
+  app's own bindings; `close` tears the proxies down. `proxyTransportFactory(...)`
+  lets a host supply a framework transport.
 - **`PathlandTelemetry`** — `proxyConnected`/`proxyDisconnected`/`proxyBatchDropped`/
   `proxyResyncRequested` (all default no-ops).
 
@@ -144,7 +151,11 @@ snapshot (`ProxyHost.resyncAll`).
 
 **Gaps (M3):** nested proxies and per-proxy token scoping are deferred; the
 origin's global design tokens merge into the whole document (last writer wins,
-spec/PROXY.md §9).
+spec/PROXY.md §9). A tiny orphan window remains on removal: an origin batch
+already queued in the `DeltaBatcher` (≤20 ms) when the proxy node is removed can
+still create an unattached element in the client's `byId` (not in the DOM);
+eliminating it needs the `ProxySession` to track the ids it emitted and `DELETE`
+them on close.
 
 ## Verified by
 

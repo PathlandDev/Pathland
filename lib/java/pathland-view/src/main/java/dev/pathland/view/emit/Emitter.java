@@ -69,6 +69,9 @@ public final class Emitter {
      *  the authored DSL and the live reconcile path are unchanged. */
     private boolean snapshotEmission;
 
+    /** Fired after a structural reconcile (see {@link #onStructureReconciled}). */
+    private Runnable structureReconciled;
+
     public Emitter(OpcodeSink sink) {
         this(sink, null);
     }
@@ -94,6 +97,28 @@ public final class Emitter {
      */
     public void snapshotEmission(boolean on) {
         this.snapshotEmission = on;
+    }
+
+    /**
+     * Register a callback fired after a **structural reconcile** (a slot's child
+     * subtree was added/removed, spec DSL.md §3.4) — after the input routing maps
+     * reflect the new subtree, so a host reading them sees the current state. The
+     * server session uses it to reconcile proxy sessions against the live
+     * {@code RenderResult.proxyViews()} map: a {@code PROXY_VIEW} node that left the
+     * retained tree (e.g. a {@code SizeThatFits} slot dropping the candidate that
+     * held it) closes its origin connection, and a new one opens a fresh connection.
+     * Internal plumbing between {@code pathland-view} and {@code pathland-server-core}
+     * — not part of the DSL authoring surface.
+     */
+    public void onStructureReconciled(Runnable callback) {
+        this.structureReconciled = callback;
+    }
+
+    private void fireStructureReconciled() {
+        Runnable callback = structureReconciled;
+        if (callback != null) {
+            callback.run();
+        }
     }
 
     /** Mount the view tree: assign ids, emit the structural frame, register bindings. */
@@ -472,6 +497,7 @@ public final class Emitter {
                 }
                 sink.endFrame();
             }
+            fireStructureReconciled();
             return;
         }
         // Re-apply the scope the destination should see (the slot's incoming
@@ -535,6 +561,8 @@ public final class Emitter {
             collectInputs(fresh, slot.router);
             registerBindings(fresh);
         }
+        // The routing maps (incl. proxyViews) now reflect the reconciled subtree.
+        fireStructureReconciled();
     }
 
     /**

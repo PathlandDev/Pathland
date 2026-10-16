@@ -26,6 +26,9 @@ import java.util.function.Consumer;
 public final class ProxyHost {
 
     private final Map<Integer, ProxySession> sessions = new ConcurrentHashMap<>();
+    /** Released id blocks, reused before the pool grows (a proxy node may leave and
+     *  re-enter the retained tree — e.g. a fit slot dropping/re-adding its candidate). */
+    private final java.util.Deque<Integer> freeBlocks = new java.util.concurrent.ConcurrentLinkedDeque<>();
     private final AtomicInteger nextBlock = new AtomicInteger(0);
     private final ScheduledExecutorService scheduler;
     private final ProxyTransport.Factory transportFactory;
@@ -73,16 +76,56 @@ public final class ProxyHost {
 
     /** Register and start a proxy for a {@code PROXY_VIEW} node. */
     public ProxySession add(int proxyId, ProxyConfig config) {
-        int block = nextBlock.getAndIncrement();
-        if (block >= ProxyIdMap.MAX_BLOCKS) {
-            throw new IllegalStateException("too many proxy views (max " + ProxyIdMap.MAX_BLOCKS + ")");
-        }
+        int block = allocateBlock();
         ProxySession session = new ProxySession(
                 proxyId, block, config, wid, viewportWidth, viewportHeight,
                 transportFactory, scheduler, frameSink, telemetry, mount, instanceId);
         sessions.put(proxyId, session);
         session.start();
         return session;
+    }
+
+    /**
+     * Reconcile the live proxy sessions against the wanted set (spec/PROXY.md §7):
+     * start a session for every {@code PROXY_VIEW} node without one, and close the
+     * session of every node that left the retained tree (releasing its id block).
+     * Called after each structural reconcile, so a proxy lives exactly while its
+     * node is in the tree.
+     */
+    public void reconcile(Map<Integer, ProxyConfig> wanted) {
+        for (Integer proxyId : java.util.List.copyOf(sessions.keySet())) {
+            if (!wanted.containsKey(proxyId)) {
+                remove(proxyId);
+            }
+        }
+        for (Map.Entry<Integer, ProxyConfig> entry : wanted.entrySet()) {
+            if (!sessions.containsKey(entry.getKey())) {
+                add(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    /** Close one proxy's origin connection and release its id block for reuse. */
+    public void remove(int proxyId) {
+        ProxySession session = sessions.remove(proxyId);
+        if (session != null) {
+            session.close();
+            freeBlocks.addFirst(session.block());
+        }
+    }
+
+    /** Reuse a released block, else grow the pool (bounded by {@link ProxyIdMap#MAX_BLOCKS}). */
+    private int allocateBlock() {
+        Integer reused = freeBlocks.pollFirst();
+        if (reused != null) {
+            return reused;
+        }
+        int block = nextBlock.getAndIncrement();
+        if (block >= ProxyIdMap.MAX_BLOCKS) {
+            throw new IllegalStateException(
+                    "too many concurrent proxy views (max " + ProxyIdMap.MAX_BLOCKS + ")");
+        }
+        return block;
     }
 
     /**

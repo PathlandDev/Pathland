@@ -15,7 +15,11 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   spliced in at runtime — and takes size modifiers like any view. The immutable
   `ProxyConfig` snapshot rides the node (`PathlandNode.proxyConfig`) and is
   surfaced to the host through `RenderResult.proxyViews()` (node id → config) so
-  `pathland-server-core` opens an origin connection per proxy node.
+  `pathland-server-core` opens an origin connection per proxy node. The emitter's
+  internal `onStructureReconciled(Runnable)` hook (like `snapshotEmission`) fires
+  after each structural reconcile — after the routing maps reflect the new subtree
+  — so the host reconciles origin connections against the live `proxyViews` map
+  (a proxy lives exactly while its node is in the retained tree, spec/PROXY.md §7).
 - **`SizeThatFits` fit slot** (`SizeThatFits.make(Fit...)` + `Fit.of(view, minWidth)`):
   a structural slot (`SIZE_THAT_FITS` 0x17) emitting `FIT_QUERY` (LIST, ascending
   thresholds) + the single selected child — unselected candidates never transmit.
