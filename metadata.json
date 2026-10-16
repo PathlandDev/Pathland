@@ -3,7 +3,7 @@
   "checkpoint_id": "01M51WMQ9GWE1XGY3A1364D4CG",
   "strategy": "manual-commit",
   "branch": "fix/dom-client-robustness",
-  "checkpoints_count": 4,
+  "checkpoints_count": 9,
   "files_touched": [
     "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-916759561b66.js",
     "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-a14cb2a355ee.js",
@@ -46,13 +46,20 @@
       "compact_transcript": "/3/transcript.jsonl",
       "content_hash": "/3/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/4/metadata.json",
+      "transcript": "/4/full.jsonl",
+      "compact_transcript": "/4/transcript.jsonl",
+      "content_hash": "/4/content_hash.txt",
+      "prompt": ""
     }
   ],
   "token_usage": {
-    "input_tokens": 0,
+    "input_tokens": 6687,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 0,
-    "output_tokens": 0,
-    "api_call_count": 0
+    "cache_read_tokens": 12159232,
+    "output_tokens": 4112,
+    "api_call_count": 23
   }
 }
