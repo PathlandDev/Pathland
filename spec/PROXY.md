@@ -100,12 +100,15 @@ Every opcode field carrying a **node id** is remapped:
 | `TREE::INSERT_CHILD` | `A` (parent), `B` (child) |
 | `TREE::REMOVE_CHILD` | `A` (parent), `B` (child) |
 | `TREE::MOVE_CHILD` | `A` (parent), `B` (child) |
-| `PARAMETER::SET_*` | `A` (node id) |
+| `PARAMETER::SET_TEXT`, `SET_PROPERTY`, `SET_DATE` | `A` (node id) |
+| `PARAMETER::SET_DESIGN_TOKEN` | — **not remapped**: `A` is a token-path **arena offset**, not a node id |
 | `EVENT::*` | `A` (target id) — in the reverse direction (egress) |
 
 `B`/`C` fields that are **not** node ids (component type, property id, value,
 index) are left unchanged. `APPEND` (`u32::MAX`) is never a node id and is never
-remapped.
+remapped. Only the `PARAMETER` ops above carry a node id in `A`; a remapper MUST
+switch on the command, not treat every `PARAMETER` op alike (remapping
+`SET_DESIGN_TOKEN`'s offset as an id yields a huge out-of-bounds string offset).
 
 ### 2.4 Origin id stability
 
@@ -194,8 +197,13 @@ For each embed the renderer:
 
 1. inlines the embed's subtree at the host (proxy) node, and
 2. merges the embed's **head extras** into the document head — the
-   `<style data-pathland-fit>` `@container pf-<id>` band rules and the
-   `<style data-pathland-tokens>` overrides.
+   `<style data-pathland-fit>` `@container pf-<id>` band rules.
+
+The origin's **global token overrides** (`SET_DESIGN_TOKEN`) are **dropped**
+(§9): a proxied app renders under the **host's** theme, so the embed contributes
+fit band rules (whose `pf-<id>` names are remapped and thus disjoint from A's)
+but no token rules. A node's token **reference** (a `DESIGN_TOKEN`-typed
+`SET_PROPERTY`) is kept — it resolves against the host theme.
 
 Because A remaps the origin ids (§2) **before** rendering, the embed's
 `pf-<id>` container names and `[data-pathland-id]` selectors are disjoint from
@@ -282,11 +290,11 @@ replacing them with a snapshot never corrupts the rendered result.
 
 ## 9. Known limitations (this version)
 
-- **Global design tokens.** Design tokens resolve to global `:root` custom
-  properties; an origin's `<style data-pathland-tokens>` overrides are merged
-  into A's head and therefore affect the **whole** document (last writer wins).
-  Per-proxy token scoping (rewriting origin token selectors to the proxy
-  container) is deferred.
+- **The origin's global tokens are dropped.** A proxied app renders under the
+  **host's** theme: the origin's `SET_DESIGN_TOKEN` overrides are neither
+  forwarded in the live stream nor merged into the SSR head, while the origin's
+  token **references** resolve against the host theme. Per-proxy theme scoping
+  (letting a proxied subtree carry its own token overrides) is deferred.
 - **No nested proxies** and **no end-user identity propagation** (§7).
 - **Origin tree size** bounded by the `2^20` block (§2.5).
 

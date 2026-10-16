@@ -22,6 +22,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -181,6 +182,40 @@ class ProxySessionTest {
         }
         assertTrue(transport.sent.size() > before, "the breaker asked the origin to resync");
         assertTrue(FrameCodec.isResync(transport.sent.get(transport.sent.size() - 1)));
+    }
+
+    @Test
+    void dropsTheOriginsGlobalTokenOverrides() {
+        start();
+        // The origin's full frame starts with its theme (SET_DESIGN_TOKEN). A proxied
+        // app renders under the HOST's theme, so the origin's global overrides are
+        // dropped (spec/PROXY.md §9) — and never forwarded with a remapped (bad) offset.
+        byte[] strings = concat(stringSection("color.primary"), stringSection("Hi"));
+        int textOffset = stringSection("color.primary").length;
+        transport.deliver(FrameCodec.encodeFrame(new ProtocolFrame(List.of(
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN, 0, 0, 0x07, 0xFF00_00FF),
+                new Opcode(Categories.TREE, Commands.Tree.CREATE_NODE, 0, 1, 0x10, 0),
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, textOffset, 0)), strings)));
+
+        ProtocolFrame forwarded = frames.get(frames.size() - 1);
+        assertFalse(forwarded.opcodes().stream().anyMatch(o ->
+                        o.category() == Categories.PARAMETER
+                                && o.command() == Commands.Parameter.SET_DESIGN_TOKEN),
+                "the origin's global token overrides are dropped");
+        // Every string-bearing op references a valid offset in the forwarded section.
+        for (Opcode op : forwarded.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT) {
+                assertEquals("Hi", forwarded.stringAt(op.b()));
+            }
+        }
+    }
+
+    private static byte[] concat(byte[]... parts) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (byte[] part : parts) {
+            out.writeBytes(part);
+        }
+        return out.toByteArray();
     }
 
     private static byte[] snapshot() {

@@ -301,12 +301,20 @@ public final class ProxySession {
             handleOriginReset();
         }
 
-        // Forward only data opcodes (TREE/PARAMETER); META is proxy-internal.
+        // Forward only data opcodes (TREE/PARAMETER). META is proxy-internal, and the
+        // origin's GLOBAL token overrides (SET_DESIGN_TOKEN) are dropped: a proxied app
+        // renders under the HOST's theme (spec/PROXY.md §9). A node's token REFERENCE
+        // (a DESIGN_TOKEN-typed SET_PROPERTY) is kept — it resolves against that theme.
         List<Opcode> data = new ArrayList<>(ops.size());
         for (Opcode op : ops) {
-            if (op.category() != Categories.META) {
-                data.add(op);
+            if (op.category() == Categories.META) {
+                continue;
             }
+            if (op.category() == Categories.PARAMETER
+                    && op.command() == Commands.Parameter.SET_DESIGN_TOKEN) {
+                continue;
+            }
+            data.add(op);
         }
         if (data.isEmpty()) {
             return;

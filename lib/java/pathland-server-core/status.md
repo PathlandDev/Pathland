@@ -104,8 +104,12 @@ dependency — framework glue lives in the starters.
 
 - **`proxy.ProxyIdMap`** — node-id namespacing: the reserved high range
   `[0x4000_0000, 0x8000_0000)`, 1024 blocks of `2^20`, the block math, and the
-  opcode remap in both directions (`TREE` node ids + every `PARAMETER` `A` on
-  ingress; `EVENT` targets on egress; `META` untouched). Pure + unit-tested.
+  opcode remap in both directions (`TREE` node ids + the node-id-bearing
+  `PARAMETER` ops `SET_TEXT`/`SET_PROPERTY`/`SET_DATE` on ingress; `EVENT` targets
+  on egress; `META` untouched). `SET_DESIGN_TOKEN` is **not** remapped — its `A`
+  is a token-path arena offset, not a node id (remapping it produced a huge
+  out-of-bounds string offset → the client's RESYNC loop; regression-tested).
+  Pure + unit-tested.
 - **`proxy.ProxyTransport`** + **`proxy.JdkWebSocketTransport`** — the outbound
   connection seam (default: the JDK `HttpClient` WebSocket client, no new
   dependency) with a `Factory` so a starter can swap a native client.
@@ -143,15 +147,18 @@ dependency — framework glue lives in the starters.
 origin's snapshot (`ProxySession.awaitSnapshot`, bounded by a 2s timeout), then
 splices the remapped origin frames into the session's mount frame
 (`FrameMerger`, reusing the batcher's string rebasing via `FrameRebase`) so the
-renderer emits **one** document — the origin subtree plus its fit band rules and
-token overrides in the same head. A proxy whose origin does not answer in time
+renderer emits **one** document — the origin subtree plus its fit band rules in
+the same head. The origin's **global** token overrides (`SET_DESIGN_TOKEN`) are
+**dropped** (live + SSR): a proxied app renders under the **host's** theme, while
+its token *references* resolve against that theme (spec/PROXY.md §9). A proxy
+whose origin does not answer in time
 renders empty (a placeholder) and hydrates over the live connection. A client
 `META::RESYNC` also replays A's tree **and** asks every origin for a fresh
 snapshot (`ProxyHost.resyncAll`).
 
-**Gaps (M3):** nested proxies and per-proxy token scoping are deferred; the
-origin's global design tokens merge into the whole document (last writer wins,
-spec/PROXY.md §9). A tiny orphan window remains on removal: an origin batch
+**Gaps (M3):** nested proxies and per-proxy theme scoping are deferred (the
+origin's global overrides are dropped, not scoped, spec/PROXY.md §9). A tiny
+orphan window remains on removal: an origin batch
 already queued in the `DeltaBatcher` (≤20 ms) when the proxy node is removed can
 still create an unattached element in the client's `byId` (not in the DOM);
 eliminating it needs the `ProxySession` to track the ids it emitted and `DELETE`

@@ -13,12 +13,16 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The frame merger (spec/PROXY.md §5): appending a proxy's origin snapshot to an
  * SSR frame, rebasing its string offsets so the renderer emits one document.
  */
 class FrameMergerTest {
+
+    /** The offset of the second entry in a `[tokenPath][text]` string section. */
+    private static final int TEXT_OFFSET = stringSection("color.primary").length;
 
     @Test
     void appendsExtrasAndRebasesTheirStringOffsets() {
@@ -56,6 +60,31 @@ class FrameMergerTest {
 
         assertEquals(7, merged.opcodes().get(1).c(), "the LIST offset rebases");
         assertEquals(7 + 12, merged.opcodes().get(2).c(), "the STRING offset rebases");
+    }
+
+    @Test
+    void mergingTwoThemedFramesKeepsEveryStringOffsetInBounds() {
+        // Two full frames, each starting with a theme (SET_DESIGN_TOKEN, whose A is a
+        // token-path arena offset — not a node id). Merging must rebase that offset
+        // too, or the second frame's token path points out of bounds.
+        ProtocolFrame a = new ProtocolFrame(List.of(
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN, 0, 0, 0x07, 0xFF00_00FF),
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, TEXT_OFFSET, 0)),
+                concat(stringSection("color.primary"), stringSection("Hello")));
+        ProtocolFrame b = new ProtocolFrame(List.of(
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN, 0, 0, 0x07, 0x00FF_00FF),
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 2, TEXT_OFFSET, 0)),
+                concat(stringSection("color.primary"), stringSection("World")));
+
+        ProtocolFrame merged = FrameMerger.merge(a, List.of(b));
+
+        for (Opcode op : merged.opcodes()) {
+            if (op.command() == Commands.Parameter.SET_DESIGN_TOKEN) {
+                assertEquals("color.primary", merged.stringAt(op.a()), "token path offset is in bounds");
+            } else if (op.command() == Commands.Parameter.SET_TEXT) {
+                assertTrue(merged.stringAt(op.b()).matches("Hello|World"), "text offset is in bounds");
+            }
+        }
     }
 
     @Test

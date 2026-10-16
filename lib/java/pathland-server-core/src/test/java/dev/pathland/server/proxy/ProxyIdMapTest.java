@@ -71,6 +71,27 @@ class ProxyIdMapTest {
     }
 
     @Test
+    void doesNotRemapNonNodeIdParameterFields() {
+        // SET_DESIGN_TOKEN's A is a token-path ARENA OFFSET, not a node id. Remapping it
+        // as an id (base + offset) produced an out-of-bounds string offset → the client
+        // threw "string offset out of bounds" and looped on RESYNC (the resync-only
+        // regression). It must pass through unchanged.
+        int block = 1;
+        Opcode token = new Opcode(
+                Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN, 0, 0, 0x07, 0xFF00_00FF);
+        Opcode out = ProxyIdMap.toProxy(token, block);
+        assertEquals(0, out.a(), "the token path offset is not remapped");
+        assertEquals(0x07, out.b(), "the value type is untouched");
+        assertEquals(0xFF00_00FF, out.c(), "the value is untouched");
+
+        // Node-id-bearing PARAMETER ops still remap A.
+        assertEquals(ProxyIdMap.base(block) + 4, ProxyIdMap.toProxy(
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, 4, 0, 0), block).a());
+        assertEquals(ProxyIdMap.base(block) + 6, ProxyIdMap.toProxy(
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_DATE, 0, 6, 0, 0), block).a());
+    }
+
+    @Test
     void remapsEventTargetsBackToOrigin() {
         int block = 2;
         int proxyId = ProxyIdMap.toProxyId(block, 11);

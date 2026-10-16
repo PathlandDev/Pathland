@@ -67,7 +67,10 @@ public final class ProxyIdMap {
      * Remap an origin (guest → host) opcode's node ids into {@code block}'s proxy
      * range. Node-id-bearing fields: {@code CREATE_NODE}/{@code DELETE_NODE} {@code A};
      * {@code INSERT_CHILD}/{@code REMOVE_CHILD}/{@code MOVE_CHILD} {@code A}+{@code B};
-     * every {@code PARAMETER} op's {@code A}. {@code META} ops carry no node ids.
+     * and the node-id-bearing {@code PARAMETER} ops ({@code SET_TEXT}/
+     * {@code SET_PROPERTY}/{@code SET_DATE}) {@code A}. {@code META} ops carry no node
+     * ids, and {@code SET_DESIGN_TOKEN}'s {@code A} is a **token-path arena offset** —
+     * remapping it as a node id produced an out-of-bounds string offset.
      */
     public static Opcode toProxy(Opcode op, int block) {
         if (op.category() == Categories.TREE) {
@@ -82,8 +85,15 @@ public final class ProxyIdMap {
             };
         }
         if (op.category() == Categories.PARAMETER) {
-            return new Opcode(op.category(), op.command(), op.flags(),
-                    toProxyId(block, op.a()), op.b(), op.c());
+            // Only these PARAMETER ops carry a node id in A. SET_DESIGN_TOKEN's A is a
+            // token-path arena offset (spec/OPCODE.md) — leave it (and any unknown op)
+            // unchanged, or the offset becomes a huge out-of-bounds string offset.
+            return switch (op.command()) {
+                case Commands.Parameter.SET_TEXT, Commands.Parameter.SET_PROPERTY,
+                     Commands.Parameter.SET_DATE -> new Opcode(
+                        op.category(), op.command(), op.flags(), toProxyId(block, op.a()), op.b(), op.c());
+                default -> op;
+            };
         }
         return op;
     }
