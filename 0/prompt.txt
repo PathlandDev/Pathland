@@ -1,0 +1,17 @@
+Explore /Users/michael/Development/michaelkrog/Pathland/lib/java for the multi-app hosting and the demos. I need to plan a "proxy view" demo where ONE server hosts TWO Pathland apps (MountedApp) and one proxies the other on the SAME server.
+
+Report precisely, with file:line refs and signatures:
+
+1. **Multi-app host**: `PathlandHost` + `MountedApp` (in pathland-server-core) — how apps are mounted at subpaths, how each registry gets its own base()/actor/state scope, and how `match(requestUri)` dispatches. Quote the key methods.
+
+2. **Per-app WebSocket endpoints**: In the Quarkus starter (`pathland-quarkus-starter`) and Spring starter (`pathland-spring-boot-starter`), exactly how each mounted app's WebSocket endpoint path is registered (e.g. `/{app}/_pathland/ws`) and how the SSR path is served per app. Quote the relevant classes/methods.
+
+3. **The existing demos**: `pathland-spring-boot-demo` and `pathland-quarkus-demo` — what apps do they currently host (root only? multiple MountedApps?), their `PathlandApp` beans, application config (ports, `pathland.*` properties), and their module structure (pom, main class, resources). Quote the app/config classes.
+
+4. **How a starter binds MountedApps**: the property/bean that declares mounted apps (e.g. `pathland.apps`, a `MountedApp` bean list) in each starter, and how a demo would add a second app at `/dashboard` or similar.
+
+5. **Server's own address**: is there anything exposing the server's own base URL / port to a `PathlandApp` or a bean (e.g. `server.port`, a `PathlandHost` base)? Could a ProxyView endpoint be resolved relative to the incoming request's Host header (does `PathlandSession`/`PathlandRegistry` see the request host anywhere)?
+
+6. **Shared demo views**: what `pathland-demo-views` offers (CounterView, MusicPlayerView, etc.) and how a new demo app would reuse them.
+
+Be thorough and concrete; quote code. Research only — do not modify anything.
