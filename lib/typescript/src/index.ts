@@ -41,35 +41,7 @@ import {
   LISTEN_SCROLL,
   LISTEN_WHEEL,
 } from "./constants";
-
-/** The owning Pathland node (the closest `[data-pathland-id]` ancestor). */
-function nodeOf(el: Element | null): HTMLElement | null {
-  return el ? el.closest<HTMLElement>("[data-pathland-id]") : null;
-}
-
-/**
- * The element an input event belongs to: the nearest element (self or ancestor)
- * that has a `data-pathland-id` AND a `data-event-listeners` mask including `bit`.
- * Unlike {@link nodeOf} (which returns the deepest id-bearing element), this walks
- * up so a gesture declared on a container (e.g. a tap on a `VStack` row whose child
- * `Text` is what's actually clicked) is attributed to the node that listens — the
- * contract the GTK renderer follows (gesture attached to any widget with the bits).
- * Elements that declare no listeners are skipped, so non-listening children never
- * steal an event from a listening ancestor.
- */
-function eventNodeOf(target: Element | null, bit: number): HTMLElement | null {
-  let el: Element | null = target;
-  while (el && el !== document.body) {
-    if (el.hasAttribute("data-pathland-id")) {
-      const raw = el.getAttribute("data-event-listeners");
-      if (raw !== null && (Number(raw) & bit) !== 0) {
-        return el as HTMLElement;
-      }
-    }
-    el = el.parentElement;
-  }
-  return null;
-}
+import { eventNodeOf, nodeOf } from "./dom-target";
 
 /**
  * EVENT_LISTENERS gating: emit an event only if the node's `data-event-listeners`
