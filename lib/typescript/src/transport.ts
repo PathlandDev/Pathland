@@ -199,7 +199,11 @@ export class Transport {
     if (data instanceof ArrayBuffer) {
       bytes = new Uint8Array(data);
     } else if (data instanceof Blob) {
-      void data.arrayBuffer().then((buffer) => this.handleMessage(buffer));
+      // A Blob read can abort (socket close / navigation) — swallow it rather than
+      // surface an unhandled promise rejection.
+      data.arrayBuffer()
+        .then((buffer) => this.handleMessage(buffer))
+        .catch(() => undefined);
       return;
     } else {
       bytes = new Uint8Array(0);

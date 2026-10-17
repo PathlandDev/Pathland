@@ -1599,7 +1599,13 @@ function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, val
       state.playing = playing;
     }
     if (playing) {
-      void media.play();
+      // A `play()` promise rejects with `AbortError` when a src change / pause
+      // interrupts it — expected during rapid track switches. Swallow it so it never
+      // surfaces as an unhandled rejection.
+      const p = media.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => undefined);
+      }
     } else {
       media.pause();
     }
