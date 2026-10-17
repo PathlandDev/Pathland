@@ -1,6 +1,6 @@
 # pathland-quarkus-starter — implementation status
 
-**Last updated:** October 15, 2026
+**Last updated:** October 17, 2026
 
 Quarkus integration for Pathland: SSR at any path, live deltas over each app's reserved
 `/{base}/ws`, per-session state. Adding the starter dependency + a `PathlandApp` CDI
@@ -38,6 +38,11 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
   per-node HTML comments in SSR output, and `pathland.service-worker` (default `false`)
   to opt the DOM client into the per-window-id service worker (issue #155) — served at
   `{base}/sw.js` with `Service-Worker-Allowed: /` + `Cache-Control: no-cache`.
+- **`ServiceWorkerFilter`** — serves `/_pathland/sw.js` (root and mounted bases) with
+  `Service-Worker-Allowed: /` + `Cache-Control: no-cache`, so the client's root-scoped
+  registration succeeds. A `Filters` handler always runs before routes, so it wins over
+  Quarkus's static-resource handler (which sends neither header, and whose configured
+  max-age would otherwise cache the script and delay update detection).
 - **Observability (issue #62)** — `quarkus-micrometer` (a `MeterRegistry` bean) +
   `quarkus-smallrye-health`: the producer builds a `MicrometerTelemetry` over the
   registry and decorates it with `TracingTelemetry` when a `Tracer` bean is present and

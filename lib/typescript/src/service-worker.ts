@@ -1,6 +1,8 @@
 // The per-window-id service worker wiring (issue #155). Kept in its own module so it
 // is unit-testable without booting the whole client.
 
+import { log } from "./log";
+
 /**
  * Opt into (or out of) the per-window-id service worker. The server emits
  * `data-pathland-service-worker` on `<html>` when it wants the worker:
@@ -22,7 +24,7 @@ export function setupServiceWorker(wid: string, base: string): void {
     void navigator.serviceWorker
       .getRegistrations()
       .then((regs) => Promise.all(regs.map((reg) => reg.unregister())))
-      .catch(() => undefined);
+      .catch((err) => log.debug("sw", `unregister failed: ${err}`));
     return;
   }
   void navigator.serviceWorker
@@ -35,5 +37,7 @@ export function setupServiceWorker(wid: string, base: string): void {
       post();
       reg.addEventListener?.("updatefound", post);
     })
-    .catch(() => undefined);
+    // Surfaced (not swallowed): a failed registration is otherwise invisible — e.g. a
+    // missing Service-Worker-Allowed header, which the browser reports only in its console.
+    .catch((err) => log.warn("sw", `service worker registration failed: ${err}`));
 }
