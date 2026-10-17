@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M557JADXZ7M8SV48JVV4F8N8",
+  "strategy": "manual-commit",
+  "branch": "feat/service-worker-window-id",
+  "checkpoints_count": 8,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-b9d4058e9308.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-c825d8187c20.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/sw.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-b9d4058e9308.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-c825d8187c20.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/sw.js",
+    "lib/typescript/.gitignore",
+    "lib/typescript/README.md",
+    "lib/typescript/e2e/fixture/server.mjs",
+    "lib/typescript/e2e/service-worker.spec.ts",
+    "lib/typescript/package-lock.json",
+    "lib/typescript/package.json",
+    "lib/typescript/playwright.config.ts",
+    "lib/typescript/src/service-worker.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/sw.js",
+    "lib/typescript/test/service-worker.test.ts",
+    "lib/typescript/test/sw-script.test.ts",
+    "lib/typescript/vitest.config.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 58161570,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1197520896,
+    "output_tokens": 1857953,
+    "api_call_count": 3359
+  }
+}
