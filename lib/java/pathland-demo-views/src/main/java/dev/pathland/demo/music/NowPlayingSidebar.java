@@ -96,17 +96,8 @@ public final class NowPlayingSidebar implements View, Configurable<NowPlayingSid
      * embedded app is fully interactive in place.
      */
     private static View adCard(String adUrl) {
-        return VStack.make(v -> v.alignment(HorizontalAlignment.LEADING).spacing(6))
-                .modifiers(
-                        padding(12),
-                        cornerRadius(10),
-                        border(b -> b.color(MusicPlayerView.SECONDARY_FG).width(1).radius(10)))
-                .children(
-                        Text.make("Sponsored").modifiers(
-                                fontSize(11), FontWeight.SEMIBOLD,
-                                foregroundStyle(MusicPlayerView.SECONDARY_FG)),
-                        ProxyView.make(p -> p.endpoint(adUrl).route("/"))
-                                .modifiers(frame(f -> f.width(220).height(140))));
+        return ProxyView.make(p -> p.endpoint(adUrl).route("/"))
+                                .modifiers(frame(f -> f.width(220).height(140)));
     }
 
     /** The track {@code offset} places after the current one. */
