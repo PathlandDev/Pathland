@@ -1,9 +1,12 @@
 package dev.pathland.server;
 
 import dev.pathland.render.html.HtmlRenderer;
+import dev.pathland.server.proxy.ProxyHost;
+import dev.pathland.server.proxy.ProxySession;
 import dev.pathland.view.Environment;
 import dev.pathland.view.EnvironmentBinding;
 import dev.pathland.view.Platform;
+import dev.pathland.view.ProxyConfig;
 import dev.pathland.view.emit.Emitter;
 import dev.pathland.view.emit.ProtocolFrame;
 import dev.pathland.view.emit.FrameOpcodeSink;
@@ -19,6 +22,10 @@ import dev.pathland.view.transport.FrameCodec;
 import static dev.pathland.view.Modifiers.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * One Pathland application instance per session (1:1 with a client). Owns the session's
@@ -44,8 +51,12 @@ public final class PathlandSession {
      *  {@code /_pathland/**}, never colliding with app routes. */
     public static final String PATHLAND_BASE = "/_pathland";
 
+    /** How long the SSR path waits for a proxy's origin snapshot before rendering a placeholder. */
+    private static final long PROXY_SNAPSHOT_TIMEOUT_MILLIS = 2_000;
+
     private final PersistentState state;
     private final WritableSignal<String> activePath;
+    private final String stateScope;
 
     private final String base;
     private final FrameOpcodeSink sink;
@@ -57,10 +68,18 @@ public final class PathlandSession {
     private final PathlandTelemetry telemetry;
     private final String mount;
 
+    /** node id → proxy config for every {@code PROXY_VIEW} in the mounted tree (spec/PROXY.md). */
+    private final Map<Integer, ProxyConfig> proxyViews;
+
     private float viewportWidth = -1f;
     private float viewportHeight = -1f;
 
     private volatile PathlandConnection connection;
+    private volatile ProxyHost proxyHost;
+
+    /** The outbound transport for proxy origin connections (default: the JDK WebSocket client). */
+    private dev.pathland.server.proxy.ProxyTransport.Factory proxyTransportFactory =
+            dev.pathland.server.proxy.JdkWebSocketTransport.factory();
 
     public PathlandSession(String sessionId, StateStore store, PathlandApp app, EnvironmentData env) {
         this(sessionId, store, app, env, false);
@@ -101,6 +120,7 @@ public final class PathlandSession {
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         this.mount = mount == null ? "/" : mount;
         this.state = new PersistentState(store, stateScope);
+        this.stateScope = stateScope;
         // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the
         // app reads it, and a bound Router re-routes guard-aware on external changes.
         this.activePath = Signals.signal(env.route());
@@ -139,6 +159,12 @@ public final class PathlandSession {
                 new Environment(state));
         this.inputDispatcher = new InputDispatcher(result, activePath);
         this.rootId = result.rootId();
+        this.proxyViews = result.proxyViews();
+        // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a SizeThatFits
+        // slot dropping the candidate that held it) — reconcile the proxy sessions
+        // against the live proxyViews map so a proxy lives exactly while its node is
+        // in the retained tree (spec/PROXY.md §7).
+        this.emitter.onStructureReconciled(this::reconcileProxies);
         applyEnvironment(env); // records viewport; the router already seeded from env.route()
     }
 
@@ -156,11 +182,49 @@ public final class PathlandSession {
     /** Wire the live connection AFTER mount (the initial frame was already SSR'd). */
     public void connect(PathlandConnection connection) {
         this.connection = connection;
+        reconcileProxies();
+    }
+
+    /**
+     * Reconcile the proxy sessions against the live {@code proxyViews} map: open an
+     * origin connection for every {@code PROXY_VIEW} node in the retained tree, and
+     * close the connection of every node that left it (spec/PROXY.md §7). Driven by
+     * the emitter's structural-reconcile callback, so a proxy lives exactly while its
+     * node is in the tree — e.g. a {@code SizeThatFits} slot dropping the candidate
+     * that held it closes the origin connection, and re-adding it opens a fresh one.
+     * The origin is given this session's window scope as its {@code wid}, so the
+     * origin's persisted state is per-window.
+     */
+    private void reconcileProxies() {
+        if (proxyHost == null) {
+            if (proxyViews.isEmpty()) {
+                return;
+            }
+            proxyHost = new ProxyHost(
+                    batcher::append, stateScope, viewportWidth, viewportHeight, telemetry, mount,
+                    proxyTransportFactory);
+        }
+        proxyHost.reconcile(proxyViews);
+    }
+
+    /**
+     * Set the outbound transport for proxy origin connections (spec/PROXY.md §1).
+     * Defaults to the JDK WebSocket client; a framework starter may supply a native
+     * client (Quarkus websockets-client, Spring {@code StandardWebSocketClient}).
+     */
+    public void proxyTransportFactory(dev.pathland.server.proxy.ProxyTransport.Factory factory) {
+        this.proxyTransportFactory = factory;
     }
 
     /** Re-send the current tree as a full snapshot (META::RESYNC), flushed immediately. */
     public void resync() {
         emitter.renderFull();
+        // A's own emitter does not carry the origin subtree (it is forwarded), so a
+        // client resync must also refresh the proxy regions from their origins.
+        ProxyHost host = proxyHost;
+        if (host != null) {
+            host.resyncAll();
+        }
         batcher.flush();
     }
 
@@ -204,7 +268,22 @@ public final class PathlandSession {
     /** Route decoded events into the app's bindings (a host may pre-transform them, e.g. mount-strip NAVIGATE urls). */
     public void dispatch(Iterable<Event> events) {
         try {
-            inputDispatcher.dispatch(events);
+            ProxyHost host = proxyHost;
+            if (host == null) {
+                inputDispatcher.dispatch(events);
+                return;
+            }
+            // Events whose target is in a proxy's id range belong to the origin
+            // server; everything else dispatches to the app's own bindings.
+            List<Event> local = new ArrayList<>();
+            for (Event event : events) {
+                if (!host.forward(event)) {
+                    local.add(event);
+                }
+            }
+            if (!local.isEmpty()) {
+                inputDispatcher.dispatch(local);
+            }
         } catch (RuntimeException e) {
             LOG.warn("dropping event batch: {}", e.getMessage());
         }
@@ -218,9 +297,10 @@ public final class PathlandSession {
                     + "<p>Build the Rust crate so libpathland_render_html is embedded in the "
                     + "pathland-render-html jar.</p></body></html>";
         }
+        ProtocolFrame frame = ssrFrame();
         String html = debugHtml
-                ? renderer.renderDebug(sink.frame(), rootId)
-                : renderer.render(sink.frame(), rootId);
+                ? renderer.renderDebug(frame, rootId)
+                : renderer.render(frame, rootId);
         // The reserved framework path prefix (spec): host system endpoints live
         // under `/{base}/**`. Carried as `data-pathland-base` so the DOM client
         // resolves its WebSocket and the bundle from the same base. Multi-app
@@ -233,8 +313,51 @@ public final class PathlandSession {
                         + "\" defer></script></body>");
     }
 
+    /**
+     * The frame the SSR document is rendered from: the session's mount frame plus,
+     * for every {@code PROXY_VIEW}, the origin's remapped snapshot spliced in
+     * (spec/PROXY.md §5) — one document, one render, so the renderer emits the
+     * origin's fit band rules and token overrides into the same head. A proxy whose
+     * origin does not answer within the timeout renders empty (a placeholder) and
+     * hydrates over the live connection.
+     */
+    private ProtocolFrame ssrFrame() {
+        ProtocolFrame frame = sink.frame();
+        if (proxyViews.isEmpty()) {
+            return frame;
+        }
+        return FrameMerger.merge(frame, proxySnapshots(PROXY_SNAPSHOT_TIMEOUT_MILLIS));
+    }
+
+    /** Start the proxies (SSR) and block for each origin's snapshot (bounded per proxy). */
+    private List<ProtocolFrame> proxySnapshots(long timeoutMillis) {
+        reconcileProxies();
+        ProxyHost host = proxyHost;
+        if (host == null) {
+            return List.of();
+        }
+        List<ProtocolFrame> snapshots = new ArrayList<>();
+        for (ProxySession session : host.sessions()) {
+            try {
+                ProtocolFrame snapshot = session.awaitSnapshot(timeoutMillis);
+                if (snapshot != null) {
+                    snapshots.add(snapshot);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        return snapshots;
+    }
+
     /** Tear down: close the persistent state, unsubscribe the emitter, stop the batcher, drop the connection. */
     public void close() {
+        ProxyHost host = proxyHost;
+        if (host != null) {
+            host.close();
+            proxyHost = null;
+        }
         state.close();
         emitter.destroy();
         batcher.close();

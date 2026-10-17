@@ -1302,6 +1302,14 @@ impl HtmlRenderer {
             component_type::LAZY_HSTACK => {
                 wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
             }
+            component_type::PROXY_VIEW => {
+                // A proxy view (spec/PROXY.md §5): a transparent single-child
+                // container whose child subtree is served by another Pathland
+                // server. The renderer holds no notion of "remote" — it renders a
+                // plain container box and lays out the (id-remapped) origin subtree
+                // the proxying server spliced in, exactly like a stack with one child.
+                wrap_stack(id, "column", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
+            }
             component_type::SIZE_THAT_FITS => {
                 // A fit slot (spec/PRIMITIVES.md §SizeThatFits): size-taking — it
                 // fills the parent's proposal, and that measured width is the unit
@@ -2105,6 +2113,31 @@ mod tests {
     #[test]
     fn escapes_text() {
         assert_eq!(escape("<a & b>"), "&lt;a &amp; b&gt;");
+    }
+
+    #[test]
+    fn renders_proxy_view_as_a_plain_container_with_its_spliced_subtree() {
+        // A PROXY_VIEW(1) whose (id-remapped) origin root VSTACK(2) — with a TEXT(3)
+        // child — was spliced in by the proxying server (spec/PROXY.md §5). The
+        // renderer holds no notion of "remote": it renders a plain container box and
+        // lays out the origin subtree.
+        let mut opcodes = Vec::new();
+        let mut strings = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::PROXY_VIEW as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 3, pathland_core::APPEND));
+        // The proxy attaches the origin's parentless root under itself.
+        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, pathland_core::APPEND));
+        strings.extend_from_slice(&(5u32).to_le_bytes());
+        strings.extend_from_slice(b"Hello");
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 3, 0, 0));
+
+        let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
+
+        assert!(html.contains("data-pathland-id=\"1\""), "the proxy node renders as a box: {html}");
+        assert!(html.contains("data-pathland-id=\"2\""), "the spliced origin root renders: {html}");
+        assert!(html.contains("<span data-pathland-id=\"3\">Hello</span>"), "the origin's text: {html}");
     }
 
     #[test]

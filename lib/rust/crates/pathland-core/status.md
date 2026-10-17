@@ -1,6 +1,6 @@
 # pathland-core — implementation status
 
-**Last updated:** October 2, 2026
+**Last updated:** October 15, 2026
 
 The **protocol core**: 16-byte opcode, SPSC ring buffers (both directions),
 bump arenas (both directions), memory layout, typed events, and the golden
@@ -13,9 +13,13 @@ tracks what this crate implements.
   `TEXT 0x01, IMAGE 0x02, COLOR 0x03, SHAPE 0x04, DIVIDER 0x05, SPACER 0x06,
   PROGRESS_VIEW 0x07, GAUGE 0x08, AUDIO 0x09, VIDEO 0x0A, ICON 0x0B, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
 0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
-   LAZY_HSTACK 0x1C, GRID_ROW 0x1D, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
+   LAZY_HSTACK 0x1C, GRID_ROW 0x1D, PROXY_VIEW 0x1E, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
    0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
    COLOR_PICKER 0x2A, COMMENT 0x7F`.
+- **`PROXY_VIEW`** (`0x1E`) — a container whose child subtree is served by another
+  Pathland server (spec/PROXY.md); the id is the only wire-visible part of the
+  proxy contract (the origin subtree's nodes are ordinary opcodes with
+  **id-remapped** node ids). Covered by conformance vector 38.
 - **`GRID_COLUMNS`/`GRID_ROWS`** (`0x001E`/`0x001F`, F32) track-count properties
   for grids (positive = count, `FILL`/absent = auto-fit; never a pixel box),
   **`GRID_TRACKS`** (`0x0020`, STRING) per-track specs (takes precedence over the
@@ -124,8 +128,8 @@ tracks what this crate implements.
   bytes **incl. vectors 17–18, 20–27** (`SET_DESIGN_TOKEN` (COLOR +
   STRING-valued), `DESIGN_TOKEN`-typed `SET_PROPERTY`, `NAVIGATE`±URL,
   `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE), vectors
-  **34–37** (grid `GRID_COLUMNS`/`GRID_ROWS`/`GRID_TRACKS`, `GRID_ROW`,
-  `ALIGNMENT` topCenter), and the network-only **`META::PING`/`PONG`** heartbeat
+  **34–38** (grid `GRID_COLUMNS`/`GRID_ROWS`/`GRID_TRACKS`, `GRID_ROW`,
+  `ALIGNMENT` topCenter, `PROXY_VIEW`), and the network-only **`META::PING`/`PONG`** heartbeat
   opcodes; a ring
   test proving `Guest::set_design_token` emits vector 17 byte-exactly;
   `cargo test` enforces them.

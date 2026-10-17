@@ -1,8 +1,5 @@
 package dev.pathland.server;
 
-import dev.pathland.view.Categories;
-import dev.pathland.view.Commands;
-import dev.pathland.view.ValueTypes;
 import dev.pathland.view.emit.ProtocolFrame;
 import dev.pathland.view.emit.Opcode;
 import dev.pathland.view.transport.FrameCodec;
@@ -95,7 +92,7 @@ public final class DeltaBatcher {
         frames++;
         int base = strings.size();
         for (Opcode op : frame.opcodes()) {
-            opcodes.add(rebase(op, base));
+            opcodes.add(FrameRebase.rebase(op, base));
         }
         strings.writeBytes(frame.strings());
         approxBytes += frame.opcodes().size() * Opcode.SIZE + frame.strings().length + 4;
@@ -141,37 +138,5 @@ public final class DeltaBatcher {
     /** Stop the flush scheduler (call when the session closes). */
     public void close() {
         scheduler.shutdownNow();
-    }
-
-    /**
-     * Rebase a frame's relative string offsets onto the merged section.
-     * {@code SET_TEXT}, {@code STRING}/{@code DESIGN_TOKEN}-typed
-     * {@code SET_PROPERTY}, and {@code SET_DESIGN_TOKEN} reference the string
-     * section by a relative offset (spec/OPCODE.md).
-     */
-    private static Opcode rebase(Opcode op, int base) {
-        int a = op.a();
-        int b = op.b();
-        int c = op.c();
-        if (op.category() == Categories.PARAMETER) {
-            int command = op.command();
-            if (command == Commands.Parameter.SET_TEXT) {
-                b += base;
-            } else if (command == Commands.Parameter.SET_PROPERTY) {
-                int valueType = b >>> 16;
-                // The LIST value type (e.g. a SIZE_THAT_FITS FIT_QUERY threshold
-                // table) also references the string section by a relative offset.
-                if (valueType == ValueTypes.STRING || valueType == ValueTypes.DESIGN_TOKEN
-                        || valueType == ValueTypes.LIST) {
-                    c += base;
-                }
-            } else if (command == Commands.Parameter.SET_DESIGN_TOKEN) {
-                a += base;
-                if ((b & 0xFF) == ValueTypes.STRING) {
-                    c += base;
-                }
-            }
-        }
-        return new Opcode(op.category(), op.command(), op.flags(), a, b, c);
     }
 }

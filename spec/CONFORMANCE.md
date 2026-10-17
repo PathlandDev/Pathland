@@ -791,6 +791,25 @@ A `ZStack`/grid's 2D position code: `3` = horizontal center × vertical start
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 40 40` C = 3.0 (f32 LE: 0x40400000) = topCenter
 
+### 38. TREE:CREATE_NODE (id=1, PROXY_VIEW=0x001E)
+
+A proxy view: a transparent container whose child subtree is served by
+**another** Pathland server ([PROXY.md](./PROXY.md)). The component id is the
+only wire-visible part of the proxy contract — the origin subtree's nodes are
+ordinary opcodes with **id-remapped** node ids; there is no proxy-specific
+opcode.
+
+```
+01 01 00 00 01 00 00 00 1E 00 00 00 00 00 00 00
+```
+
+- `01` category = TREE
+- `01` command = CREATE_NODE
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `1E 00 00 00` B = componentType = 0x001E (PROXY_VIEW)
+- `00 00 00 00` C = 0
+
 ---
 
 ## Design-Token Resolution Conformance

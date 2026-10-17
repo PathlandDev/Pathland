@@ -1,6 +1,6 @@
 # pathland-demo-views — implementation status
 
-**Last updated:** September 28, 2026
+**Last updated:** October 15, 2026
 
 The framework-agnostic shared demo views (`dev.pathland.demo`), consumed by the
 Quarkus and Spring Boot demos. Uses `State` fields wired by the
@@ -133,6 +133,17 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   the GTK desktop host decodes them unchanged. Mounted by `QuarkusDemoApp` / `SpringDemoApplication` as
   `newRoot()` and by the **GTK desktop host** (`GtkHost` mounts it directly,
   unchanged); `SplitNavDemo` remains the nav showcase for the Qt host.
+- **`MusicPlayerView` sponsored proxy slot** (spec/PROXY.md): the view is now a
+  configurator (`MusicPlayerView.make()` / `make(adUrl)` / `make(Consumer<Config>)`).
+  With an `adUrl`, `NowPlayingSidebar` appends a **Sponsored** card embedding a
+  **second Pathland app** via a `ProxyView` (a `PROXY_VIEW` node): the proxying
+  server remaps the origin app's node ids into a disjoint high range and routes
+  its events back, so the embedded app is fully interactive in place. The Quarkus
+  demo points it at its own `/ad` app — a **same-server** proxy.
+- **`AdView`** (`dev.pathland.demo.ad`) — a small self-contained demo app (a title,
+  a button, and a per-session `State<Integer>` click counter) used as the **origin**
+  of the player's sponsored proxy slot; clicking the button updates its own state,
+  and the delta travels through the proxy.
 
 ## Not implemented / gaps
 

@@ -107,6 +107,14 @@ public final class PathlandNode {
     public boolean fitReported;
 
     /**
+     * Proxy-view config (spec/PROXY.md): non-null on a {@code PROXY_VIEW} node.
+     * The emitter surfaces it through {@code RenderResult.proxyViews()} so the
+     * host opens an origin connection per proxy node and splices the origin's
+     * (id-remapped) subtree under this node. The node itself authors no children.
+     */
+    public dev.pathland.view.ProxyConfig proxyConfig;
+
+    /**
      * Internal, set by the emitter while rendering a **full/snapshot emission**
      * (mount + resync): a {@code SIZE_THAT_FITS} slot emits every candidate so the
      * web SSR renders all branches gated by CSS container queries (issue #141).

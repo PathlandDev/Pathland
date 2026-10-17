@@ -54,4 +54,18 @@ public interface PathlandTelemetry {
 
     /** A connection send failed and the session dropped it (the client will reconnect). */
     default void connectionFailed(String mount, String reason) {}
+
+    // ── Proxy views (spec/PROXY.md) ─────────────────────────────────────────
+
+    /** A proxy's origin connection opened (after the handshake). */
+    default void proxyConnected(String mount, String endpoint) {}
+
+    /** A proxy's origin connection closed (origin disconnect, failure, or teardown). */
+    default void proxyDisconnected(String mount, String endpoint, String reason) {}
+
+    /** A proxy batch was dropped by the backpressure breaker (a resync re-establishes state). */
+    default void proxyBatchDropped(String mount, String reason) {}
+
+    /** A proxy asked its origin for a fresh snapshot ({@code META::RESYNC}). */
+    default void proxyResyncRequested(String mount) {}
 }

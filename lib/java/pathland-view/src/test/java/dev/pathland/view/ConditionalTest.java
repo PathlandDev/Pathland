@@ -64,6 +64,29 @@ class ConditionalTest {
     }
 
     @Test
+    void structureReconcileCallbackFiresOnEveryBranchSwap() {
+        // The server session uses this callback to reconcile proxy sessions against
+        // the live proxyViews map (spec/PROXY.md §7): a PROXY_VIEW node leaving the
+        // tree closes its origin connection, a new one opens a fresh connection.
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        AtomicInteger reconciled = new AtomicInteger();
+        emitter.onStructureReconciled(reconciled::incrementAndGet);
+
+        WritableSignal<Boolean> show = Signals.signal(true);
+        emitter.mount(VStack.children(when(show,
+                Text.make(t -> t.text("A")), Text.make(t -> t.text("B")))), Environment.DEFAULT);
+
+        // The initial structural effect run fires it once; the host registers the
+        // callback after mount, so that first fire is a no-op for it.
+        int afterMount = reconciled.get();
+        show.set(false);
+        assertEquals(afterMount + 1, reconciled.get(), "a branch swap fires the reconcile callback");
+        show.set(true);
+        assertEquals(afterMount + 2, reconciled.get(), "every structural reconcile fires it");
+    }
+
+    @Test
     void identicalStructureAcrossRecomputeEmitsZeroOpcodes() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);

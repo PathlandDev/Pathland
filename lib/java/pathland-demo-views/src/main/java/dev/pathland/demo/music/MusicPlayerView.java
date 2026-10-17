@@ -8,6 +8,7 @@ import static dev.pathland.view.Modifiers.*;
 import static dev.pathland.view.signal.Signals.computed;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * The music player demo root view — an Apple Music-style player authored purely
@@ -20,8 +21,12 @@ import java.util.List;
  * the bound signals to its subviews; selecting a track or pressing prev/next
  * only changes app-owned state, and the renderer re-emits fine-grained
  * {@code SET_TEXT}/{@code SET_PROPERTY} deltas.
+ *
+ * <p>An optional {@code adUrl} (spec/PROXY.md) embeds a **second Pathland app**
+ * — e.g. one mounted on the same server — as a sponsored slot in the Now Playing
+ * pane via a {@link ProxyView}.
  */
-public final class MusicPlayerView implements View {
+public final class MusicPlayerView implements View, Configurable<MusicPlayerView.Config> {
 
     static final int SIDEBAR_WIDTH = 280;
     static final int BAR_HEIGHT = 76;
@@ -32,6 +37,52 @@ public final class MusicPlayerView implements View {
     static final Color SIDEBAR_BG = Color.rgb(0xF6, 0xF7, 0xFA);
     static final Color BAR_BORDER = Color.rgb(0xFF, 0xFF, 0xFF);
     static final Color BAR_BG = Color.argb(0xBF, 0xEB, 0xEB, 0xED);
+
+    /** {@link MusicPlayerView} values. */
+    public static final class Config implements View.Config {
+
+        private String adUrl;
+
+        /**
+         * The base URL of a Pathland app to embed as a sponsored slot in the Now
+         * Playing pane (spec/PROXY.md) — the music player proxies it. Absent = no
+         * sponsored slot. App-configured, never client-supplied.
+         */
+        public Config adUrl(String adUrl) {
+            this.adUrl = adUrl;
+            return this;
+        }
+    }
+
+    private final Config config;
+
+    private MusicPlayerView(Config config) {
+        this.config = config;
+    }
+
+    /** A player with no sponsored slot. */
+    public static ViewBuilder<MusicPlayerView, Config> make() {
+        return new ViewBuilder<>(new MusicPlayerView(new Config()));
+    }
+
+    /** A player with a sponsored slot proxying {@code adUrl} (spec/PROXY.md). */
+    public static ViewBuilder<MusicPlayerView, Config> make(String adUrl) {
+        Config config = new Config();
+        config.adUrl(adUrl);
+        return new ViewBuilder<>(new MusicPlayerView(config));
+    }
+
+    /** Configure the player's values. */
+    public static ViewBuilder<MusicPlayerView, Config> make(Consumer<Config> configure) {
+        Config config = new Config();
+        configure.accept(config);
+        return new ViewBuilder<>(new MusicPlayerView(config));
+    }
+
+    @Override
+    public Config config() {
+        return config;
+    }
 
     /** The demo library: six Pathland concept tracks, one album each. */
     static final List<Track> TRACKS = List.of(
@@ -119,7 +170,9 @@ public final class MusicPlayerView implements View {
                 .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(
                         mainArea,
-                        NowPlayingSidebar.make(s -> s.trackIndex(trackIndex.signal())).modifiers(clipped()));
+                        NowPlayingSidebar.make(s -> s
+                                .trackIndex(trackIndex.signal())
+                                .adUrl(config.adUrl)).modifiers(clipped()));
         View compactRow = HStack.make()
                 .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(mainArea);

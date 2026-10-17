@@ -1248,7 +1248,10 @@ pub fn widget_kind(component_type: u16) -> WidgetKind {
         component_type::VSTACK
         | component_type::HSTACK
         | component_type::LAZY_VSTACK
-        | component_type::LAZY_HSTACK => WidgetKind::Stack,
+        | component_type::LAZY_HSTACK
+        // A proxy view (spec/PROXY.md) is a transparent container: render it as a
+        // stack box so the spliced (id-remapped) origin subtree lays out in place.
+        | component_type::PROXY_VIEW => WidgetKind::Stack,
         component_type::TEXT => WidgetKind::Text,
         component_type::BUTTON => WidgetKind::Button,
         component_type::GRID

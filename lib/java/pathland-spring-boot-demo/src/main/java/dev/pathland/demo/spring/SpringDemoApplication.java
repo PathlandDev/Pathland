@@ -46,7 +46,7 @@ public class SpringDemoApplication {
         return new PathlandApp() {
             @Override
             public View newRoot() {
-                return new MusicPlayerView();
+                return MusicPlayerView.make();
             }
 
             @Override

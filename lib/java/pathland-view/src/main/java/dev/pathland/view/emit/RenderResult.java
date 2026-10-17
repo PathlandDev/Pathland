@@ -27,6 +27,10 @@ import java.util.function.Consumer;
  * @param navigateHandler global sink for {@code NAVIGATE} events (host → guest; a
  *                        {@code NavigationContainer} routes them into its router —
  *                        back/forward/deep-link). Null when no router is mounted.
+ * @param proxyViews      node id → {@code ProxyConfig} for every {@code PROXY_VIEW}
+ *                        node (spec/PROXY.md); the host opens an origin connection
+ *                        per entry and routes events in the proxy's id range back
+ *                        to the origin.
  */
 public record RenderResult(
         int rootId,
@@ -38,4 +42,5 @@ public record RenderResult(
         Map<Integer, MediaInput> mediaInputs,
         Map<Integer, Consumer<Integer>> fitInputs,
         Map<Integer, Runnable> navigateActions,
-        Consumer<Event> navigateHandler) {}
+        Consumer<Event> navigateHandler,
+        Map<Integer, dev.pathland.view.ProxyConfig> proxyViews) {}

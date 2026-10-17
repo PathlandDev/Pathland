@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** October 9, 2026
+**Last Updated:** October 15, 2026
 
 ---
 
@@ -454,6 +454,20 @@ Containers are **content-bearing**: they expose `children(...)`.
 | `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.make(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `LAZY_VSTACK` 0x1B |
 | `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.make(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `LAZY_HSTACK` 0x1C |
 | `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.make().children(Fit.of(view, minWidth))...` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit in the live form; a full-snapshot/SSR emission carries every candidate for a no-JS first paint gated by CSS container queries — the DSL is unchanged) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
+| `ProxyView` | `RemoteView(endpoint:route:)` (no SwiftUI equivalent) | `ProxyView.make(p -> p.endpoint(String).route(String).credential(String))` | `PROXY_VIEW` 0x1E; child = the **origin subtree root** (served by another Pathland server, id-remapped); see [PROXY.md](./PROXY.md) |
+
+**`ProxyView` (proxy view).** A container whose child subtree is served by
+**another** Pathland server — it lets one app compose views from several servers
+into a single unified document. It is **not** `children(...)`-bearing: the app
+does not author the subtree; the proxying server fetches it from the origin
+(blocking `META::RESYNC` at SSR, live deltas over the origin connection),
+**remaps its node ids** into a disjoint high range, and splices it in
+([PROXY.md](./PROXY.md)). `endpoint` is the origin server's base URL (app-
+configured, never client-supplied); `route` is the origin route to render;
+`credential` names the service credential the proxying server presents to the
+origin. The proxy node lays out as a **transparent passthrough** container
+(§[PRIMITIVES.md §ProxyView](./PRIMITIVES.md#proxyview--proxy_view-0x1e)) and
+takes size modifiers like any view.
 
 Alignment is **position-only** (SwiftUI/Compose parity): `VStack` takes a
 `HorizontalAlignment` (leading/center/trailing), `HStack` a `VerticalAlignment`
