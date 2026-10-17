@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Transport } from "../src/transport";
+import { Transport, shouldInitialResync } from "../src/transport";
 import {
   CAT_META,
   CAT_PARAMETER,
@@ -310,5 +310,25 @@ describe("Transport", () => {
         vi.useRealTimers();
       }
     });
+  });
+});
+
+describe("shouldInitialResync", () => {
+  it("skips the initial snapshot when the SSR was already scoped", () => {
+    expect(shouldInitialResync(true, false, true)).toBe(false); // reload, scoped SSR
+    expect(shouldInitialResync(false, false, true)).toBe(false); // fresh, scoped
+  });
+
+  it("requests one for a reload whose SSR could not be scoped", () => {
+    expect(shouldInitialResync(true, false, false)).toBe(true);
+  });
+
+  it("requests one when the URL carried a wid this window did not adopt", () => {
+    expect(shouldInitialResync(false, true, true)).toBe(true);
+    expect(shouldInitialResync(true, true, true)).toBe(true);
+  });
+
+  it("needs no snapshot for a fresh window with a scoped SSR", () => {
+    expect(shouldInitialResync(false, false, false)).toBe(false);
   });
 });

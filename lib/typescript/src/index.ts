@@ -5,7 +5,7 @@
 
 import type { DomRenderer } from "./apply";
 import { hydrateFitElement, refreshFitSlots, setupMediaElement, updateNavBackButtons } from "./apply";
-import { Transport } from "./transport";
+import { Transport, shouldInitialResync } from "./transport";
 import { log } from "./log";
 import { clearInFlightRange, markRangeInFlight } from "./inFlight";
 import {
@@ -42,6 +42,7 @@ import {
   LISTEN_WHEEL,
 } from "./constants";
 import { eventNodeOf, nodeOf } from "./dom-target";
+import { setupServiceWorker } from "./service-worker";
 
 /**
  * EVENT_LISTENERS gating: emit an event only if the node's `data-event-listeners`
@@ -103,6 +104,9 @@ function boot(): void {
     wid = crypto.randomUUID();
     sessionStorage.setItem(storageKey, wid);
   }
+  // Opt into (or out of) the per-window-id service worker (issue #155) before anything
+  // else: the server decides, via `data-pathland-service-worker` on <html>.
+  setupServiceWorker(wid, base);
   // Strip a stale `?wid=` a shared/bookmarked URL may carry (from before the id left
   // the URL): the SSR already used it, so it also forces a re-sync below. Keeping the
   // search otherwise intact preserves other params and the route-mirror closure.
@@ -113,6 +117,10 @@ function boot(): void {
     const search = urlParams.toString();
     history.replaceState(null, "", location.pathname + (search ? `?${search}` : ""));
   }
+  // The server marks whether this document was rendered with this window's persisted
+  // state (its request carried a wid — e.g. the service worker attached it). When it
+  // was, no initial snapshot is needed (see shouldInitialResync).
+  const ssrScoped = document.documentElement.dataset.pathlandSsrScoped != null;
   const renderer: DomRenderer = { byId };
   const transport = new Transport({
     url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${base}/ws?wid=${wid}`,
@@ -128,13 +136,13 @@ function boot(): void {
       // fit report emitted at boot (before the WS handshake) is dropped, so
       // without this a wide first load would never switch to the wide candidate.
       refreshFitSlots(renderer);
-      // The SSR request never carries the wid, so it always rendered DEFAULT state. On a
-      // same-tab reload (sessionStorage holds this window's wid) — or any load whose URL
-      // carried a stale wid the SSR used — request a full snapshot to restore this
-      // window's persisted state. A fresh window needs no snapshot: its defaults match
-      // the fresh session's defaults.
-      if (isReload || urlHadWid) {
-        log.debug("route", "reload — requesting RESYNC for this window's persisted state");
+      // Request a full snapshot only when the SSR could not render this window's
+      // persisted state — a reload whose SSR was unscoped (no wid reached the server,
+      // e.g. no service worker), or a stale ?wid= the SSR used but this window did not
+      // adopt. A scoped SSR (e.g. the service worker attached the wid) needs none: the
+      // live session shares the same scope.
+      if (shouldInitialResync(isReload, urlHadWid, ssrScoped)) {
+        log.debug("route", "unscoped SSR — requesting RESYNC for this window's persisted state");
         t.send(encodeResync());
       }
     },

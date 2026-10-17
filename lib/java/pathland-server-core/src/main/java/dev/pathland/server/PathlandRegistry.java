@@ -49,6 +49,7 @@ public final class PathlandRegistry {
     private final StateStore store;
     private final boolean debugHtml;
     private final PathlandTelemetry telemetry;
+    private final boolean serviceWorker;
 
     private final ExecutorService actor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "pathland-actor");
@@ -73,11 +74,32 @@ public final class PathlandRegistry {
 
     public PathlandRegistry(
             String mountPath, PathlandApp app, StateStore store, boolean debugHtml, PathlandTelemetry telemetry) {
+        this(mountPath, app, store, debugHtml, telemetry, false);
+    }
+
+    public PathlandRegistry(
+            String mountPath,
+            PathlandApp app,
+            StateStore store,
+            boolean debugHtml,
+            PathlandTelemetry telemetry,
+            boolean serviceWorker) {
         this.mountPath = mountPath == null || mountPath.isBlank() ? "/" : mountPath;
         this.app = app;
         this.store = store;
         this.debugHtml = debugHtml;
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
+        this.serviceWorker = serviceWorker;
+    }
+
+    /** Whether the SSR opts the DOM client into the per-window-id service worker (issue #155). */
+    public boolean serviceWorker() {
+        return serviceWorker;
+    }
+
+    /** The reserved framework URL the service worker script is served from (under this app's base). */
+    public String serviceWorkerUrl() {
+        return base() + "/sw.js";
     }
 
     /** Whether SSR HTML is rendered with per-node debug comments. */
@@ -135,16 +157,15 @@ public final class PathlandRegistry {
      * shared/bookmarked URL may carry).
      */
     public String renderHtml(String route, String windowId) {
-        String scope = windowId == null || windowId.isBlank()
-                ? stateScope(UUID.randomUUID().toString())
-                : stateScope(windowId);
+        boolean scoped = windowId != null && !windowId.isBlank();
+        String scope = scoped ? stateScope(windowId) : stateScope(UUID.randomUUID().toString());
         String sessionId = UUID.randomUUID().toString();
         long start = System.nanoTime();
         PathlandSession session = new PathlandSession(
                 sessionId, store, app, EnvironmentData.of(stripRoute(route)),
                 debugHtml, base(), scope, telemetry, mountPath);
         try {
-            return session.renderHtml();
+            return session.renderHtml(serviceWorker, scoped);
         } finally {
             telemetry.ssrRendered(mountPath, System.nanoTime() - start);
             session.close();

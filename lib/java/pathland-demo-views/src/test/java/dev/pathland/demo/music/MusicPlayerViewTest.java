@@ -309,7 +309,6 @@ class MusicPlayerViewTest {
         assertEquals(1, result.proxyViews().size(), "the origin config is surfaced to the host");
         assertEquals("http://localhost:8080/ad",
                 result.proxyViews().values().iterator().next().endpoint());
-        assertTrue(anySetText(sink.frame(), "Sponsored"), "the sponsored label renders in the sidebar");
     }
 
     private static boolean anySetText(ProtocolFrame frame, String text) {

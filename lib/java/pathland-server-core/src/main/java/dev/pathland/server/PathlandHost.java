@@ -26,6 +26,7 @@ public final class PathlandHost {
     private final List<PathlandRegistry> registries;
     private final Map<String, PathlandRegistry> byMount;
     private final PathlandTelemetry telemetry;
+    private final boolean serviceWorker;
     private volatile boolean running = true;
 
     public PathlandHost(List<MountedApp> mounts, StateStore store, boolean debugHtml) {
@@ -33,7 +34,25 @@ public final class PathlandHost {
     }
 
     public PathlandHost(List<MountedApp> mounts, StateStore store, boolean debugHtml, PathlandTelemetry telemetry) {
+        this(mounts, store, debugHtml, telemetry, false);
+    }
+
+    /**
+     * @param serviceWorker whether the SSR document should opt the DOM client into a
+     *   service worker that attaches the per-window id to top-level navigations, so
+     *   the first paint renders the right persisted-state scope without the id ever
+     *   being in the URL (issue #155). Host-level (one SW registration covers the
+     *   whole origin); default {@code false} — the SSR then renders defaults and the
+     *   live connection corrects them.
+     */
+    public PathlandHost(
+            List<MountedApp> mounts,
+            StateStore store,
+            boolean debugHtml,
+            PathlandTelemetry telemetry,
+            boolean serviceWorker) {
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
+        this.serviceWorker = serviceWorker;
         List<MountedApp> normalized = new ArrayList<>(mounts == null ? List.of() : mounts);
         this.registries = new ArrayList<>(normalized.size());
         this.byMount = new LinkedHashMap<>();
@@ -42,7 +61,8 @@ public final class PathlandHost {
             if (byMount.putIfAbsent(path, null) != null) {
                 throw new IllegalArgumentException("duplicate mount path: " + path);
             }
-            PathlandRegistry registry = new PathlandRegistry(path, mount.app(), store, debugHtml, this.telemetry);
+            PathlandRegistry registry = new PathlandRegistry(
+                    path, mount.app(), store, debugHtml, this.telemetry, serviceWorker);
             byMount.put(path, registry);
             registries.add(registry);
         }
@@ -53,6 +73,11 @@ public final class PathlandHost {
 
     public static PathlandHost of(StateStore store, boolean debugHtml, MountedApp... mounts) {
         return new PathlandHost(List.of(mounts), store, debugHtml);
+    }
+
+    /** Whether the SSR opts the DOM client into the per-window-id service worker. */
+    public boolean serviceWorker() {
+        return serviceWorker;
     }
 
     /** The registry for an exact mount path (e.g. {@code "/app2"}), or {@code null}. */

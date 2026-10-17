@@ -93,6 +93,15 @@ dependency — framework glue lives in the starters.
   asset refs resolve from the same reserved prefix (spec DSL.md). The content-hashed
   name busts the immutable asset cache with a fresh URL per build. Multi-app hosts
   give each mount its own base.
+- **Per-window-id service worker (opt-in, issue #155)**: `PathlandHost` carries a
+  host-level `serviceWorker` flag (default `false`; one registration covers the
+  whole origin) threaded to every `PathlandRegistry`; `PathlandSession.renderHtml`
+  emits `data-pathland-service-worker="true"` on `<html>` when set, and the DOM
+  client registers `{base}/sw.js` (root scope) / unregisters when absent (the kill
+  switch). `PathlandRegistry.serviceWorkerUrl()` names the served script.
+  `renderHtml` also emits `data-pathland-ssr-scoped="true"` when the request carried
+  a real per-window id, so the client can skip its initial `META::RESYNC` (the SSR
+  was already rendered with that window's state and the live session shares it).
 
 ## Not implemented / gaps
 

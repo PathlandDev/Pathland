@@ -46,6 +46,15 @@ npm run build     # tsc --noEmit + esbuild -> dist/pathland-dom-renderer.js (IIF
 npm run copy-to-demos   # copy the bundle into both Java demos' static dirs
 ```
 
+The per-window-id service worker has a real-browser E2E (Chromium + WebKit) — the
+worker-engine differences (e.g. WebKit reporting an empty `clientId` on navigations)
+are invisible to jsdom, so they are guarded here:
+
+```bash
+npx playwright install chromium webkit   # one-time
+npm run test:e2e                          # boots a fixture server + the shipped sw.js
+```
+
 ## The bundle
 
 `dist/pathland-dom-renderer.js` is served by the Spring Boot and Quarkus demos under a

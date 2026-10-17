@@ -291,6 +291,31 @@ public final class PathlandSession {
 
     /** Render the SSR HTML for this session's current tree (request thread). */
     public String renderHtml() {
+        return renderHtml(false);
+    }
+
+    /**
+     * Render the SSR HTML. {@code serviceWorker} opts the DOM client into the
+     * per-window-id service worker (issue #155) by emitting
+     * {@code data-pathland-service-worker} on {@code <html>}; the client registers
+     * from it (and unregisters when it is absent — the kill switch).
+     */
+    public String renderHtml(boolean serviceWorker) {
+        return renderHtml(serviceWorker, false);
+    }
+
+    /**
+     * Render the SSR HTML. {@code serviceWorker} opts the DOM client into the
+     * per-window-id service worker (issue #155) by emitting
+     * {@code data-pathland-service-worker} on {@code <html>}; the client registers
+     * from it (and unregisters when it is absent — the kill switch).
+     *
+     * <p>{@code ssrScoped} records that the request carried a real per-window id, so
+     * this document was rendered with that window's persisted state — emitted as
+     * {@code data-pathland-ssr-scoped} so the client can skip its initial
+     * {@code META::RESYNC} (the live session shares the same scope).
+     */
+    public String renderHtml(boolean serviceWorker, boolean ssrScoped) {
         HtmlRenderer renderer = HtmlRenderer.tryInstance();
         if (renderer == null) {
             return "<!DOCTYPE html><html><body><h1>Pathland renderer unavailable</h1>"
@@ -308,7 +333,9 @@ public final class PathlandSession {
         // The bundle name is content-hashed (see PathlandAssets) so a new build
         // busts the immutable asset cache via a fresh URL.
         return html
-                .replace("<html>", "<html data-pathland-base=\"" + base + "\">")
+                .replace("<html>", "<html data-pathland-base=\"" + base + "\""
+                        + (serviceWorker ? " data-pathland-service-worker=\"true\"" : "")
+                        + (ssrScoped ? " data-pathland-ssr-scoped=\"true\"" : "") + ">")
                 .replace("</body>", "<script src=\"" + base + "/" + PathlandAssets.bundleName()
                         + "\" defer></script></body>");
     }

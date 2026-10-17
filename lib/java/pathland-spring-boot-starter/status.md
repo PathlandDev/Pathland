@@ -36,6 +36,10 @@ subpaths (the BFF layout).
 - **SSR debug comments**: the host reads the `pathland.debug-html` property
   (`@Value("${pathland.debug-html:false}")`) and forwards it to each registry, enabling
   per-node HTML comments in SSR output when set.
+- **Per-window-id service worker (opt-in, issue #155)**: `pathland.service-worker`
+  (default `false`) forwards to the host; the SSR emits `data-pathland-service-worker`
+  and the controller serves `{base}/sw.js` with `Service-Worker-Allowed: /` +
+  `Cache-Control: no-cache` (a stable, uncached script the browser byte-compares).
 - **`SpringConnection`** — adapts `WebSocketSession` to `PathlandConnection`.
   `AutoCloseable`: a failed send surfaces as a close (the session's
   `closeConnection` closes the underlying session) so the DOM client reconnects +

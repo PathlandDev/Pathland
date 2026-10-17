@@ -147,3 +147,14 @@ jobs:
         run: |
           npm run copy-to-demos
           git diff --exit-code -- lib/java/pathland-quarkus-demo/src/main/resources lib/java/pathland-spring-boot-demo/src/main/resources
+
+      # Real-browser guard for the per-window-id service worker: the browser-variance
+      # bugs (WebKit reports an empty clientId on navigations; relative cache keys are
+      # rejected) only appear in a real worker engine, never in jsdom/happy-dom.
+      - name: Install Playwright browsers
+        working-directory: lib/typescript
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Service worker E2E (Chromium + WebKit)
+        working-directory: lib/typescript
+        run: npm run test:e2e

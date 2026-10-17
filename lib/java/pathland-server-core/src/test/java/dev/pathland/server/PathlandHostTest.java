@@ -6,10 +6,12 @@ import dev.pathland.view.state.StateStore;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * The multi-app host: dispatches requests to the app whose mount path is the longest
@@ -37,6 +39,41 @@ class PathlandHostTest {
         assertEquals("/", match.route());
         assertEquals("/home", host.match("/home").route(), "the root mount strips nothing");
         assertEquals("/users/42", host.match("/users/42").route());
+    }
+
+    @Test
+    void serviceWorkerIsHostLevelAndOffByDefault() {
+        PathlandHost off = host(MountedApp.of("/", app("root")));
+        assertFalse(off.serviceWorker(), "off by default");
+        assertFalse(off.registry("/").serviceWorker());
+
+        PathlandHost on = new PathlandHost(
+                java.util.List.of(MountedApp.of("/", app("root")), MountedApp.of("/app2", app("two"))),
+                STORE, false, PathlandTelemetry.NOOP, true);
+        assertTrue(on.serviceWorker());
+        assertTrue(on.registry("/").serviceWorker());
+        assertTrue(on.registry("/app2").serviceWorker(), "the flag is host-level (one SW per origin)");
+        assertEquals("/_pathland/sw.js", on.registry("/").serviceWorkerUrl());
+        assertEquals("/app2/_pathland/sw.js", on.registry("/app2").serviceWorkerUrl());
+
+        off.shutdown();
+        on.shutdown();
+    }
+
+    @Test
+    void ssrMarksWhetherItWasRenderedWithAWindowScope() {
+        // Issue #155: the client skips its initial META::RESYNC when the SSR was already
+        // rendered with this window's persisted state (a wid was on the request).
+        assumeTrue(dev.pathland.render.html.HtmlRenderer.tryInstance() != null, "the Rust HTML renderer is available");
+        PathlandHost host = host(MountedApp.of("/", app("root")));
+        PathlandRegistry registry = host.registry("/");
+
+        assertTrue(registry.renderHtml("/", "W1").contains("data-pathland-ssr-scoped=\"true\""),
+                "a wid on the request marks the document as scoped");
+        assertFalse(registry.renderHtml("/", null).contains("data-pathland-ssr-scoped"),
+                "no wid means defaults — the client must resync");
+
+        host.shutdown();
     }
 
     @Test
