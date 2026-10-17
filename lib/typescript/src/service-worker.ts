@@ -34,8 +34,14 @@ export function setupServiceWorker(wid: string, base: string): void {
         const target = reg.active ?? navigator.serviceWorker.controller;
         target?.postMessage({ type: "pathland-wid", wid });
       };
+      // Seed now, and again whenever the worker/controller becomes available: `reg.active`
+      // and `controller` can be momentarily null right after `register` (and on the first
+      // install), so a single post can be missed — the worker would then have no id for
+      // this tab and the SSR would render defaults on the next navigation.
       post();
       reg.addEventListener?.("updatefound", post);
+      void navigator.serviceWorker.ready.then(post);
+      navigator.serviceWorker.addEventListener?.("controllerchange", post);
     })
     // Surfaced (not swallowed): a failed registration is otherwise invisible — e.g. a
     // missing Service-Worker-Allowed header, which the browser reports only in its console.

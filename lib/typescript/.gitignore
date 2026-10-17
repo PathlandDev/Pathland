@@ -1,2 +1,7 @@
 node_modules/
 dist/
+
+# Playwright E2E (built fixture bundle + artifacts)
+e2e/fixture/service-worker.bundle.js
+test-results/
+playwright-report/

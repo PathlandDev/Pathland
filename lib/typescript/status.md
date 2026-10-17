@@ -230,17 +230,30 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   rejections.
 - **Per-window-id service worker** (issue #155): when the server emits
   `data-pathland-service-worker` on `<html>`, `boot()` registers `{base}/sw.js` at
-  the **root** scope and hands the worker this window's id (`postMessage`); the
-  worker (`sw.js`, shipped next to the bundle) attaches the id to top-level
-  navigations so the SSR renders the right persisted-state scope on the first paint
-  — the id never appears in the URL. Absent → any existing registration is removed
-  (the kill switch). Strictly pass-through: it never caches and fails open (any
-  error → the original request); the id is keyed per tab (client id) and carried
+  the **root** scope and hands the worker this window's id (`postMessage`, re-seeded
+  on `ready`/`controllerchange` — a single post can be missed while `reg.active` is
+  still null); the worker (`sw.js`, shipped next to the bundle) attaches the id to
+  top-level navigations so the SSR renders the right persisted-state scope on the
+  first paint — the id never appears in the URL. Absent → any existing registration
+  is removed (the kill switch). Strictly pass-through: it never caches and fails open
+  (any error → the original request); the id is keyed per tab in the Cache API under
+  an **absolute** key URL (a relative `Request` URL is rejected by WebKit) and carried
   across documents via `resultingClientId`. The rewrite builds an **explicit** fetch
   init — never the navigation `Request`, whose `mode: "navigate"` a script cannot
   construct (passing it made `fetch` throw and fail open silently) — with
   `cache: "reload"` (so a same-window reload is never served a stale SSR body); a
-  rewrite failure is `console.warn`ed in the worker's console, not swallowed.
+  store/rewrite failure is `console.warn`ed in the worker's console, not swallowed.
+  **Engine variance**: Chrome reports the *initiating* document's client id on the
+  navigation fetch event, WebKit reports an **empty** `clientId` (only
+  `resultingClientId`). The worker therefore resolves the id by `clientId` first, then
+  falls back to client identity **only when unambiguous** — the sole window client, or
+  the single client whose URL equals the request URL (a reload) — and otherwise fails
+  open, so a navigation can never be scoped to another window's state.
+- **Service-worker E2E** (`e2e/`, Playwright, Chromium + WebKit, `npm run test:e2e`):
+  serves the shipped `sw.js` + a bundle of the real `src/service-worker.ts` from a tiny
+  fixture server and asserts the next navigation carries the window id. Real worker
+  engines are the only place the variance above is observable — jsdom/happy-dom cannot
+  reproduce it, which is how the WebKit bug shipped.
 - **SSR-scoped marker + initial-resync skip** (issue #155): the server emits
   `data-pathland-ssr-scoped` on `<html>` when the request carried a `wid`, i.e. the
   document was rendered with this window's persisted state. `shouldInitialResync`
@@ -332,8 +345,10 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `space.N` refs), event byte layouts (incl. `NAVIGATE`), navigation (ROUTE →
   `onRoute`, transition animation, non-hinted slots), transport lifecycle
   (reconnect/resync), the logger (level gating, prefix), the opcode/event
-  descriptors, the runtime-shell drift guard, and the ZStack/ProgressView
-  behavior — 138 tests.
+  descriptors, the runtime-shell drift guard, the service-worker script +
+  registration/seeding wiring (incl. the WebKit empty-`clientId` fallback and the
+  ambiguity fail-open), and the ZStack/ProgressView behavior — 252 tests, plus the
+  Chromium + WebKit service-worker E2E (`npm run test:e2e`).
 
 ## Not implemented / gaps
 
