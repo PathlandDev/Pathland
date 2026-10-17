@@ -99,6 +99,9 @@ dependency — framework glue lives in the starters.
   emits `data-pathland-service-worker="true"` on `<html>` when set, and the DOM
   client registers `{base}/sw.js` (root scope) / unregisters when absent (the kill
   switch). `PathlandRegistry.serviceWorkerUrl()` names the served script.
+  `renderHtml` also emits `data-pathland-ssr-scoped="true"` when the request carried
+  a real per-window id, so the client can skip its initial `META::RESYNC` (the SSR
+  was already rendered with that window's state and the live session shares it).
 
 ## Not implemented / gaps
 

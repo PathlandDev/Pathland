@@ -48,7 +48,14 @@ describe("sw.js", () => {
     });
 
     const fetched: string[] = [];
-    vi.stubGlobal("fetch", async (input: unknown) => {
+    const inits: Array<{ mode?: string } | undefined> = [];
+    vi.stubGlobal("fetch", async (input: unknown, init?: { mode?: string }) => {
+      // Mirror the browser: a script cannot construct a request with mode "navigate".
+      // Passing the navigation Request as the init (the bug) throws here.
+      if (init && init.mode === "navigate") {
+        throw new TypeError("The 'navigate' mode is not allowed");
+      }
+      inits.push(init);
       fetched.push(typeof input === "string" ? input : (input as { url: string }).url);
       return { ok: true };
     });
@@ -64,6 +71,7 @@ describe("sw.js", () => {
     });
     await responded;
     expect(fetched[0]).toBe("http://x/app?wid=W1");
+    expect(inits[0]?.mode).toBe("same-origin");
   });
 
   it("does not intercept non-navigation requests", async () => {

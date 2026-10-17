@@ -236,7 +236,18 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   — the id never appears in the URL. Absent → any existing registration is removed
   (the kill switch). Strictly pass-through: it never caches and fails open (any
   error → the original request); the id is keyed per tab (client id) and carried
-  across documents via `resultingClientId`.
+  across documents via `resultingClientId`. The rewrite builds an **explicit** fetch
+  init — never the navigation `Request`, whose `mode: "navigate"` a script cannot
+  construct (passing it made `fetch` throw and fail open silently) — with
+  `cache: "reload"` (so a same-window reload is never served a stale SSR body); a
+  rewrite failure is `console.warn`ed in the worker's console, not swallowed.
+- **SSR-scoped marker + initial-resync skip** (issue #155): the server emits
+  `data-pathland-ssr-scoped` on `<html>` when the request carried a `wid`, i.e. the
+  document was rendered with this window's persisted state. `shouldInitialResync`
+  (`src/transport.ts`) then skips the client's initial `META::RESYNC` — the live
+  session shares the scope. A reload whose SSR could **not** be scoped (no `wid`
+  reached the server) or a stale `?wid=` the window did not adopt still resyncs.
+  Sequence-gap and reconnect recovery are unaffected.
 - **Hydration-aware TREE reconciliation** (`src/apply.ts`): `CREATE_NODE` reuses an
   existing hydrated element (id already in the registry) and `INSERT_CHILD` skips
   when the child is already in the parent's container — so a resync'd full

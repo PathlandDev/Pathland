@@ -157,16 +157,15 @@ public final class PathlandRegistry {
      * shared/bookmarked URL may carry).
      */
     public String renderHtml(String route, String windowId) {
-        String scope = windowId == null || windowId.isBlank()
-                ? stateScope(UUID.randomUUID().toString())
-                : stateScope(windowId);
+        boolean scoped = windowId != null && !windowId.isBlank();
+        String scope = scoped ? stateScope(windowId) : stateScope(UUID.randomUUID().toString());
         String sessionId = UUID.randomUUID().toString();
         long start = System.nanoTime();
         PathlandSession session = new PathlandSession(
                 sessionId, store, app, EnvironmentData.of(stripRoute(route)),
                 debugHtml, base(), scope, telemetry, mountPath);
         try {
-            return session.renderHtml(serviceWorker);
+            return session.renderHtml(serviceWorker, scoped);
         } finally {
             telemetry.ssrRendered(mountPath, System.nanoTime() - start);
             session.close();

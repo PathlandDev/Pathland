@@ -78,6 +78,8 @@ class PathlandSessionTest {
 
         assertFalse(session.renderHtml(false).contains("data-pathland-service-worker"), "off by default");
         assertTrue(session.renderHtml(true).contains("data-pathland-service-worker=\"true\""), "emitted when enabled");
+        assertFalse(session.renderHtml(true, false).contains("data-pathland-ssr-scoped"), "unscoped by default");
+        assertTrue(session.renderHtml(true, true).contains("data-pathland-ssr-scoped=\"true\""), "marked when scoped");
 
         session.close();
     }

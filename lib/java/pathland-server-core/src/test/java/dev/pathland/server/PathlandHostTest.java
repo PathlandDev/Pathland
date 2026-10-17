@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * The multi-app host: dispatches requests to the app whose mount path is the longest
@@ -57,6 +58,22 @@ class PathlandHostTest {
 
         off.shutdown();
         on.shutdown();
+    }
+
+    @Test
+    void ssrMarksWhetherItWasRenderedWithAWindowScope() {
+        // Issue #155: the client skips its initial META::RESYNC when the SSR was already
+        // rendered with this window's persisted state (a wid was on the request).
+        assumeTrue(dev.pathland.render.html.HtmlRenderer.tryInstance() != null, "the Rust HTML renderer is available");
+        PathlandHost host = host(MountedApp.of("/", app("root")));
+        PathlandRegistry registry = host.registry("/");
+
+        assertTrue(registry.renderHtml("/", "W1").contains("data-pathland-ssr-scoped=\"true\""),
+                "a wid on the request marks the document as scoped");
+        assertFalse(registry.renderHtml("/", null).contains("data-pathland-ssr-scoped"),
+                "no wid means defaults — the client must resync");
+
+        host.shutdown();
     }
 
     @Test

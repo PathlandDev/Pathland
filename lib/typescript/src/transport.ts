@@ -272,3 +272,23 @@ export class Transport {
     this.expectedSequence = batch.sequence + 1;
   }
 }
+
+/**
+ * Whether the client should request an initial `META::RESYNC` on connect.
+ *
+ * When the SSR request carried this window's `wid` (`ssrScoped`), the first paint was
+ * already rendered with the window's persisted state — and the live session shares the
+ * same scope — so no snapshot is needed. Two cases still need one:
+ *
+ * - a same-tab reload whose SSR could NOT be scoped (no `wid` reached the server — e.g.
+ *   no service worker), where the SSR rendered defaults;
+ * - a stale `?wid=` the SSR used but this window did NOT adopt (it generated a fresh
+ *   id), so the SSR's scope differs from the live session's.
+ */
+export function shouldInitialResync(
+  isReload: boolean,
+  urlHadWid: boolean,
+  ssrScoped: boolean,
+): boolean {
+  return (isReload && !ssrScoped) || urlHadWid;
+}
