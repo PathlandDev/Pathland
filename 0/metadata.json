@@ -1,0 +1,56 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M557NGDZ3C8RRS8VM6JBSDX9",
+  "session_id": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-17T15:29:07.735467Z",
+  "branch": "feat/service-worker-window-id",
+  "checkpoints_count": 1,
+  "save_step_count": 2,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/NowPlayingSidebar.java",
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/music/MusicPlayerViewTest.java"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-flash",
+  "turn_id": "a7b64170c251",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 58170776,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1198157184,
+    "output_tokens": 1859076,
+    "api_call_count": 3366
+  },
+  "session_metrics": {
+    "turn_count": 291
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-17T15:29:05.735897Z",
+    "agent_lines": 2,
+    "agent_removed": 12,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 2,
+    "total_lines_changed": 14,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2,
+      "agent_lines_removed": 12
+    }
+  ]
+}
