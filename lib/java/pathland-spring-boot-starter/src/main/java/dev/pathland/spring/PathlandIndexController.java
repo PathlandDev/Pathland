@@ -95,6 +95,22 @@ public class PathlandIndexController {
             return ResponseEntity.notFound().build();
         }
         String file = uri.substring(idx + "/_pathland/".length());
+        if ("sw.js".equals(file)) {
+            // The per-window-id service worker (issue #155): a STABLE, uncached script
+            // (the browser byte-compares it to detect updates) that may claim the ROOT
+            // scope via Service-Worker-Allowed (its path sits under /_pathland/).
+            Resource sw = classpathFrameworkResource(file);
+            if (sw == null || !sw.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+            try (InputStream in = sw.getInputStream()) {
+                return ResponseEntity.ok()
+                        .contentType(new MediaType("application", "javascript"))
+                        .header("Service-Worker-Allowed", "/")
+                        .cacheControl(CacheControl.noCache())
+                        .body(in.readAllBytes());
+            }
+        }
         Resource resource = classpathFrameworkResource(file);
         if (resource == null) {
             resource = diskAsset(file);

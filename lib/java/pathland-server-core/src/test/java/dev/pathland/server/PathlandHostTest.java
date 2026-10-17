@@ -6,6 +6,7 @@ import dev.pathland.view.state.StateStore;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,6 +38,25 @@ class PathlandHostTest {
         assertEquals("/", match.route());
         assertEquals("/home", host.match("/home").route(), "the root mount strips nothing");
         assertEquals("/users/42", host.match("/users/42").route());
+    }
+
+    @Test
+    void serviceWorkerIsHostLevelAndOffByDefault() {
+        PathlandHost off = host(MountedApp.of("/", app("root")));
+        assertFalse(off.serviceWorker(), "off by default");
+        assertFalse(off.registry("/").serviceWorker());
+
+        PathlandHost on = new PathlandHost(
+                java.util.List.of(MountedApp.of("/", app("root")), MountedApp.of("/app2", app("two"))),
+                STORE, false, PathlandTelemetry.NOOP, true);
+        assertTrue(on.serviceWorker());
+        assertTrue(on.registry("/").serviceWorker());
+        assertTrue(on.registry("/app2").serviceWorker(), "the flag is host-level (one SW per origin)");
+        assertEquals("/_pathland/sw.js", on.registry("/").serviceWorkerUrl());
+        assertEquals("/app2/_pathland/sw.js", on.registry("/app2").serviceWorkerUrl());
+
+        off.shutdown();
+        on.shutdown();
     }
 
     @Test

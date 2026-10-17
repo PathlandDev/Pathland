@@ -35,7 +35,9 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
 - **`PathlandRegistryProducer`** — CDI `@Produces @Singleton` `PathlandHost` from every
   `MountedApp` bean plus the lone `PathlandApp` bean (mounted at `/`); `@Disposes` shuts
   it down. Reads the `pathland.debug-html` config property (default `false`) to enable
-  per-node HTML comments in SSR output.
+  per-node HTML comments in SSR output, and `pathland.service-worker` (default `false`)
+  to opt the DOM client into the per-window-id service worker (issue #155) — served at
+  `{base}/sw.js` with `Service-Worker-Allowed: /` + `Cache-Control: no-cache`.
 - **Observability (issue #62)** — `quarkus-micrometer` (a `MeterRegistry` bean) +
   `quarkus-smallrye-health`: the producer builds a `MicrometerTelemetry` over the
   registry and decorates it with `TracingTelemetry` when a `Tracer` bean is present and

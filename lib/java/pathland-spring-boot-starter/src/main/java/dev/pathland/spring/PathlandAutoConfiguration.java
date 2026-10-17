@@ -102,14 +102,15 @@ public class PathlandAutoConfiguration {
             ObjectProvider<MountedApp> mounts,
             StateStore store,
             PathlandTelemetry telemetry,
-            @Value("${pathland.debug-html:false}") boolean debugHtml) {
+            @Value("${pathland.debug-html:false}") boolean debugHtml,
+            @Value("${pathland.service-worker:false}") boolean serviceWorker) {
         List<MountedApp> list = new ArrayList<>();
         mounts.orderedStream().forEach(list::add);
         PathlandApp lone = apps.getIfAvailable();
         if (lone != null && list.stream().noneMatch(m -> "/".equals(m.path()))) {
             list.add(0, MountedApp.of("/", lone));
         }
-        return new PathlandHost(list, store, debugHtml, telemetry);
+        return new PathlandHost(list, store, debugHtml, telemetry, serviceWorker);
     }
 
     /**

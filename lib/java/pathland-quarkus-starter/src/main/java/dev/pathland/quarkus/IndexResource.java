@@ -81,6 +81,21 @@ public class IndexResource {
 
     /** Serve a mounted app's framework file (its {@code data-pathland-base} bundle) from the shared classpath mount. */
     private Response frameworkFile(String file) throws IOException {
+        if ("sw.js".equals(file)) {
+            // The per-window-id service worker (issue #155): a STABLE, uncached script
+            // (the browser byte-compares it to detect updates) that may claim the ROOT
+            // scope via Service-Worker-Allowed (its path sits under /_pathland/).
+            try (InputStream in = getClass().getResourceAsStream("/META-INF/resources/_pathland/sw.js")) {
+                if (in != null) {
+                    return Response.ok(in.readAllBytes())
+                            .type(new MediaType("application", "javascript"))
+                            .header("Service-Worker-Allowed", "/")
+                            .header("Cache-Control", "no-cache")
+                            .build();
+                }
+            }
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
         // Quarkus web static lives in META-INF/resources (classpath resource root), so the
         // shared `/_pathland/**` mount resolves as /META-INF/resources/_pathland/<file>.
         try (InputStream in = getClass().getResourceAsStream("/META-INF/resources/_pathland/" + file)) {

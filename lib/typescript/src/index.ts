@@ -42,6 +42,7 @@ import {
   LISTEN_WHEEL,
 } from "./constants";
 import { eventNodeOf, nodeOf } from "./dom-target";
+import { setupServiceWorker } from "./service-worker";
 
 /**
  * EVENT_LISTENERS gating: emit an event only if the node's `data-event-listeners`
@@ -103,6 +104,9 @@ function boot(): void {
     wid = crypto.randomUUID();
     sessionStorage.setItem(storageKey, wid);
   }
+  // Opt into (or out of) the per-window-id service worker (issue #155) before anything
+  // else: the server decides, via `data-pathland-service-worker` on <html>.
+  setupServiceWorker(wid, base);
   // Strip a stale `?wid=` a shared/bookmarked URL may carry (from before the id left
   // the URL): the SSR already used it, so it also forces a re-sync below. Keeping the
   // search otherwise intact preserves other params and the route-mirror closure.

@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * The transport-agnostic session runtime: mounts the app's root (with the active-path
@@ -64,6 +65,20 @@ class PathlandSessionTest {
         session.applyEnvironment(EnvironmentData.of("/kitchen"));
         session.resync();
         session.close(); // idempotent
+        session.close();
+    }
+
+    @Test
+    void renderHtmlEmitsTheServiceWorkerFlagOnlyWhenEnabled() {
+        // Issue #155: the server opts the DOM client into the per-window-id service
+        // worker via a <html> attribute; absent -> the client unregisters (kill switch).
+        assumeTrue(dev.pathland.render.html.HtmlRenderer.tryInstance() != null, "the Rust HTML renderer is available");
+        PathlandApp app = () -> Button.make(b -> b.title("Tap").action(() -> {}));
+        PathlandSession session = new PathlandSession("s1", STORE, app, EnvironmentData.of("/"));
+
+        assertFalse(session.renderHtml(false).contains("data-pathland-service-worker"), "off by default");
+        assertTrue(session.renderHtml(true).contains("data-pathland-service-worker=\"true\""), "emitted when enabled");
+
         session.close();
     }
 

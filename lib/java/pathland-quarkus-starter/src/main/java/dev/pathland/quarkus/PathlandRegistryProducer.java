@@ -71,6 +71,10 @@ public class PathlandRegistryProducer {
     @ConfigProperty(name = "pathland.debug-html", defaultValue = "false")
     boolean debugHtml;
 
+    /** Opt the DOM client into the per-window-id service worker (issue #155); default off. */
+    @ConfigProperty(name = "pathland.service-worker", defaultValue = "false")
+    boolean serviceWorker;
+
     /**
      * The observability seam: a Micrometer adapter over the app's {@link MeterRegistry}
      * (always present via {@code quarkus-micrometer}), decorated with OpenTelemetry spans
@@ -95,7 +99,8 @@ public class PathlandRegistryProducer {
         if (lone != null && list.stream().noneMatch(m -> "/".equals(m.path()))) {
             list.add(0, MountedApp.of("/", lone));
         }
-        return new PathlandHost(list, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml, telemetry);
+        return new PathlandHost(
+                list, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml, telemetry, serviceWorker);
     }
 
     void shutdown(@Disposes PathlandHost host) {

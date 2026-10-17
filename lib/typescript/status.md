@@ -228,6 +228,15 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   swallowed: a media `play()` interrupted by a src change/pause (`AbortError`) and
   a Blob `arrayBuffer()` aborted on socket close no longer surface as unhandled
   rejections.
+- **Per-window-id service worker** (issue #155): when the server emits
+  `data-pathland-service-worker` on `<html>`, `boot()` registers `{base}/sw.js` at
+  the **root** scope and hands the worker this window's id (`postMessage`); the
+  worker (`sw.js`, shipped next to the bundle) attaches the id to top-level
+  navigations so the SSR renders the right persisted-state scope on the first paint
+  — the id never appears in the URL. Absent → any existing registration is removed
+  (the kill switch). Strictly pass-through: it never caches and fails open (any
+  error → the original request); the id is keyed per tab (client id) and carried
+  across documents via `resultingClientId`.
 - **Hydration-aware TREE reconciliation** (`src/apply.ts`): `CREATE_NODE` reuses an
   existing hydrated element (id already in the registry) and `INSERT_CHILD` skips
   when the child is already in the parent's container — so a resync'd full
