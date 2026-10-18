@@ -98,9 +98,11 @@ pub struct GtkRenderer {
     /// itself (a route change it already applied), the `popped` signal must not
     /// be re-emitted as a back request — the app already knows it navigated.
     nav_reconciling: HashMap<u32, Rc<Cell<bool>>>,
-    /// Per-node native media streams (AUDIO/VIDEO nodes), the rendered output
-    /// for app-driven playback. Playback is driven by the node's media control
-    /// properties; media events report back through the event sink.
+    /// Per-**controller** native media streams (`MEDIA_CONTROLLER` nodes), the
+    /// rendered output for app-driven playback. Playback is driven by the
+    /// controller's transport properties; media events report back through the
+    /// event sink (spec/MEDIA.md). A `VIDEO` surface renders the output but never
+    /// owns the stream.
     media_players: HashMap<u32, MediaPlayer>,
     /// Per-node cache of the last applied fixed-size image content, so steady-
     /// state frames don't re-decode: (source, box width, box height, content mode).
@@ -213,10 +215,41 @@ impl GtkRenderer {
             self.image_cache.remove(&id);
         }
 
+        // Media players are keyed by **controller** id, and a controller has no
+        // widget — so its teardown is driven by the tree, not the widget map.
+        // A controller that is no longer live releases its playback.
+        let stale_media: Vec<u32> = self
+            .media_players
+            .keys()
+            .copied()
+            .filter(|id| !live.contains(id))
+            .collect();
+        for id in stale_media {
+            if let Some(player) = self.media_players.remove(&id) {
+                player.teardown();
+            }
+        }
+
         // 2. Pre-order walk: get-or-create widgets, update text/style, and
         //    reconcile each stack's child list/order.
         if let Some(root_id) = self.tree.root().map(|n| n.id) {
             self.sync_node(root_id);
+        }
+
+        // 3. Drive every media controller's playback. Controllers are
+        //    layout-transparent (no widget), so the widget walk above never
+        //    reaches them; playback identity is the controller id (spec/MEDIA.md).
+        let controllers: Vec<u32> = self
+            .tree
+            .nodes
+            .values()
+            .filter(|n| is_media_controller(n))
+            .map(|n| n.id)
+            .collect();
+        for id in controllers {
+            if let Some(node) = self.tree.node(id).cloned() {
+                self.sync_media(id, &node);
+            }
         }
     }
 
@@ -224,6 +257,12 @@ impl GtkRenderer {
         let Some(node) = self.tree.node(id).cloned() else {
             return;
         };
+
+        // A media controller is layout-transparent (no widget): the widget walk
+        // skips it. Its playback is driven by `apply_frame` (spec/MEDIA.md).
+        if is_media_controller(&node) {
+            return;
+        }
 
         let widget = self.get_or_create(id, &node);
         // The first get_or_create may have just enriched the token defaults
@@ -233,7 +272,18 @@ impl GtkRenderer {
         self.update(widget, &node);
 
         // Recurse into children (build them first so they exist to attach).
-        let children = node.children.clone();
+        // Layout-transparent children (a `MEDIA_CONTROLLER`) are not slots: they
+        // are excluded from the parent's child list and contribute no spacing.
+        let children: Vec<u32> = node
+            .children
+            .iter()
+            .copied()
+            .filter(|child| {
+                self.tree
+                    .node(*child)
+                    .is_some_and(|n| widget_kind(n.component_type) != WidgetKind::Invisible)
+            })
+            .collect();
         for child in &children {
             self.sync_node(*child);
         }
@@ -352,12 +402,6 @@ impl GtkRenderer {
         // In-flight interaction session controllers (drag suppression + focus/
         // editing boundaries, spec EVENTS.md "In-flight interaction").
         self.attach_drag_sessions(node.id, &widget, node);
-
-        // App-driven media: an AUDIO/VIDEO node (or any node carrying a media
-        // source) gets a hidden native stream driven by its control properties.
-        if is_media_node(&node) {
-            self.sync_media(node.id, &node);
-        }
 
         match widget_kind(node.component_type) {
             WidgetKind::Stack => {
@@ -648,15 +692,14 @@ if want_editing {
         }
     }
 
-    /// Drive a node's native media stream from its control properties (the
-    /// app-driven media contract, spec/EVENTS.md Media): source, playback
-    /// state, position (seek, echo-guarded), and volume.
+    /// Drive a media **controller**'s native stream from its control properties
+    /// (the app-driven media contract, spec/MEDIA.md + spec/EVENTS.md Media):
+    /// source, playback state, position (seek, echo-guarded), volume, mute, loop,
+    /// and rate. Playback identity is the controller id, so a `VIDEO` surface
+    /// appearing/disappearing never restarts the stream.
     fn sync_media(&mut self, id: u32, node: &HostNode) {
-        let source = node
-            .string_property(property_id::AUDIO_SOURCE)
-            .or_else(|| node.string_property(property_id::VIDEO_SOURCE));
-        let Some(source) = source else {
-            // A media node with no source: nothing to play; drop any stream.
+        let Some(source) = node.string_property(property_id::MEDIA_SOURCE) else {
+            // A controller with no source: nothing to play; drop any stream.
             if let Some(player) = self.media_players.remove(&id) {
                 player.teardown();
             }
@@ -670,7 +713,7 @@ if want_editing {
                     old.teardown();
                 }
                 let Some(player) = self.create_media_player(id, resolved.clone()) else {
-                    // GStreamer unavailable: nothing to play for this node.
+                    // GStreamer unavailable: nothing to play for this controller.
                     return;
                 };
                 self.media_players.insert(id, player);
@@ -678,9 +721,9 @@ if want_editing {
             }
         };
 
-        // Playback state: the node's current value (a source change re-emits only
-        // AUDIO_SOURCE, so the retained PLAYBACK_STATE is authoritative — a skip
-        // while playing therefore resumes automatically). Sent to the worker,
+        // Playback state: the controller's current value (a source change re-emits
+        // only MEDIA_SOURCE, so the retained PLAYBACK_STATE is authoritative — a
+        // skip while playing therefore resumes automatically). Sent to the worker,
         // which applies the state change off the GTK main thread.
         let playing = node.u32_property(property_id::PLAYBACK_STATE, 0) != 0;
         let _ = player.ctrl.send(MediaControl::Play(playing));
@@ -709,6 +752,14 @@ if want_editing {
         let _ = player
             .ctrl
             .send(MediaControl::Volume(volume.clamp(0.0, 1.0)));
+
+        // Transport extras (spec/MEDIA.md): mute, loop, rate.
+        let muted = node.u32_property(property_id::MEDIA_MUTED, 0) != 0;
+        let looping = node.u32_property(property_id::MEDIA_LOOP, 0) != 0;
+        let rate = node.f32_property(property_id::MEDIA_RATE, 1.0);
+        let _ = player.ctrl.send(MediaControl::Muted(muted));
+        let _ = player.ctrl.send(MediaControl::Loop(looping));
+        let _ = player.ctrl.send(MediaControl::Rate(rate));
     }
 
     /// Create a media player for a node: a GStreamer `playbin` pipeline driven by
@@ -758,6 +809,12 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
                         }
                         MediaReport::SeekApplied => {
                             suppress.set(monotonic_ms() + 250);
+                        }
+                        MediaReport::Duration(seconds) => {
+                            sink.borrow_mut()(Event::MediaDurationChanged {
+                                target: id,
+                                seconds,
+                            });
                         }
                         MediaReport::Ended => {
                             sink.borrow_mut()(Event::MediaEnded { target: id });
@@ -1235,9 +1292,14 @@ pub enum WidgetKind {
     Menu,
     /// `COLOR_PICKER` → `GtkColorButton`.
     ColorPicker,
-    /// `AUDIO`/`VIDEO` → a media container (playback is driven by the node's
-    /// media control properties; see [`GtkRenderer::sync_media`]).
+    /// `VIDEO` → a media container (the video surface; playback is owned by the
+    /// `MEDIA_CONTROLLER` it references; see [`GtkRenderer::sync_media`]).
     Media,
+    /// `MEDIA_CONTROLLER` → **no widget**. Ownership of a media playback is not a
+    /// visual: the controller is layout-transparent (no element, no space, no
+    /// spacing) and never attaches to a parent. Its playback is driven by
+    /// [`GtkRenderer::sync_media`] (spec/MEDIA.md).
+    Invisible,
     /// Any component the renderer does not map yet → a blank `GtkLabel`.
     Blank,
 }
@@ -1262,7 +1324,8 @@ pub fn widget_kind(component_type: u16) -> WidgetKind {
         component_type::SPACER => WidgetKind::Spacer,
         component_type::IMAGE => WidgetKind::Image,
         component_type::ICON => WidgetKind::Icon,
-        component_type::AUDIO | component_type::VIDEO => WidgetKind::Media,
+        component_type::VIDEO => WidgetKind::Media,
+        component_type::MEDIA_CONTROLLER => WidgetKind::Invisible,
         component_type::TOGGLE => WidgetKind::Toggle,
         component_type::SLIDER => WidgetKind::Slider,
         component_type::TEXT_FIELD => WidgetKind::TextField,
@@ -1343,9 +1406,8 @@ fn is_container(component_type: u16) -> bool {
             | component_type::LAZY_HGRID
             | component_type::SCROLLVIEW
             | component_type::ZSTACK
-            // A wrapper-model Audio/Video node hosts its custom style's controls as
-            // children (spec DSL.md §5.7); the native stream is not a widget.
-            | component_type::AUDIO
+            // A wrapper-model `VIDEO` surface hosts its custom style's controls as
+            // children (spec DSL.md §5.7); the video output itself is not a widget.
             | component_type::VIDEO
     )
 }
@@ -1368,13 +1430,11 @@ fn is_composite(node: &HostNode) -> bool {
         )
 }
 
-/// Whether a node is app-driven media: an `AUDIO`/`VIDEO` component, or any
-/// node carrying a media source (a custom `AudioStyle`/`VideoStyle` body keeps
-/// its own component — e.g. a `VStack` — and adds the media properties).
-fn is_media_node(node: &HostNode) -> bool {
-    matches!(node.component_type, component_type::AUDIO | component_type::VIDEO)
-        || node.string_property(property_id::AUDIO_SOURCE).is_some()
-        || node.string_property(property_id::VIDEO_SOURCE).is_some()
+/// Whether a node **owns a media playback** — a `MEDIA_CONTROLLER` (spec/MEDIA.md).
+/// Playback identity is the controller's node id; the `VIDEO` surfaces that
+/// reference it render the output but never own the stream.
+fn is_media_controller(node: &HostNode) -> bool {
+    node.component_type == component_type::MEDIA_CONTROLLER
 }
 
 /// The asset root directory (set once by a foreign host before `run`, via
@@ -1470,6 +1530,12 @@ enum MediaControl {
     Seek(f32),
     /// Set the volume (0..1).
     Volume(f32),
+    /// Mute/unmute (independent of volume).
+    Muted(bool),
+    /// Loop the resource on end.
+    Loop(bool),
+    /// Set the playback rate (1.0 = normal).
+    Rate(f32),
     /// Release the pipeline and end the worker thread.
     Stop,
 }
@@ -1479,6 +1545,8 @@ enum MediaControl {
 enum MediaReport {
     /// The raw stream position in seconds.
     Position(f32),
+    /// The resource duration became known/changed, in seconds.
+    Duration(f32),
     /// A seek was just applied (start the post-seek echo-suppression window).
     SeekApplied,
     /// The stream reached end-of-stream.
@@ -1579,6 +1647,9 @@ fn media_worker_loop(
     let mut playing = false;
     let mut last_state_playing: Option<bool> = None;
     let mut last_volume: Option<f32> = None;
+    let mut last_muted: Option<bool> = None;
+    let mut looping = false;
+    let mut last_duration: Option<f32> = None;
     let mut reporting = true;
     loop {
         // Block up to the poll interval for a control message, then fall
@@ -1610,6 +1681,19 @@ fn media_worker_loop(
                     let _ = playbin.set_property("volume", f64::from(volume));
                 }
             }
+            Ok(MediaControl::Muted(muted)) => {
+                if last_muted != Some(muted) {
+                    last_muted = Some(muted);
+                    let _ = playbin.set_property("mute", muted);
+                }
+            }
+            Ok(MediaControl::Loop(l)) => {
+                looping = l;
+            }
+            Ok(MediaControl::Rate(_rate)) => {
+                // GStreamer changes rate via a rate-seeking seek; the desktop
+                // renderer does not apply `MEDIA_RATE` yet (see status.md).
+            }
             Ok(MediaControl::Stop) => {
                 let _ = pipeline.set_state(gst::State::Null);
                 break;
@@ -1619,15 +1703,26 @@ fn media_worker_loop(
         }
 
         // Drain the pipeline bus (a blocking wait is safe off the main thread):
-        // EOS → MEDIA_ENDED, an error → play-state false (so the app's play
-        // button isn't left stuck on a failed stream).
+        // EOS → MEDIA_ENDED (and, when looping, restart from 0), an error →
+        // play-state false (so the app's play button isn't left stuck on a failed
+        // stream).
         if let Some(bus) = pipeline.bus() {
             loop {
                 match bus.timed_pop(gst::ClockTime::ZERO) {
                     Some(msg) => match msg.view() {
                         gst::MessageView::Eos(_) => {
-                            playing = false;
                             let _ = report_tx.send(MediaReport::Ended);
+                            if looping {
+                                // Loop: report the end, then restart from 0.
+                                let _ = playbin.seek_simple(
+                                    gst::SeekFlags::FLUSH,
+                                    gst::ClockTime::ZERO,
+                                );
+                                let _ = pipeline.set_state(gst::State::Playing);
+                                playing = true;
+                            } else {
+                                playing = false;
+                            }
                         }
                         gst::MessageView::Error(err) => {
                             eprintln!(
@@ -1640,6 +1735,24 @@ fn media_worker_loop(
                         _ => {}
                     },
                     None => break,
+                }
+            }
+        }
+
+        // Report the duration once it becomes known, and whenever it changes
+        // (the resource load is asynchronous).
+        if reporting {
+            if let Some(seconds) = playbin
+                .query_duration::<gst::ClockTime>()
+                .map(|t| t.nseconds() as f32 / 1_000_000_000.0)
+                .filter(|s| *s > 0.0)
+            {
+                if last_duration != Some(seconds)
+                    && report_tx.send(MediaReport::Duration(seconds)).is_err()
+                {
+                    reporting = false;
+                } else {
+                    last_duration = Some(seconds);
                 }
             }
         }
@@ -1756,9 +1869,14 @@ fn build_widget(node: &HostNode) -> gtk::Widget {
         }
         WidgetKind::Image => gtk::Picture::new().upcast(),
         WidgetKind::Icon => gtk::Image::new().upcast(),
-        // Bare `AUDIO`/`VIDEO`: a hidden playback container (the stream itself is
-        // not a widget). A custom media style renders its own body container.
+        // A `VIDEO` surface: a media container (the surface; the stream itself
+        // renders via its controller). A custom video style renders its own body
+        // container.
         WidgetKind::Media => GtkBox::new(gtk::Orientation::Vertical, 0).upcast(),
+        // A `MEDIA_CONTROLLER` is never attached to a parent, so this widget is
+        // created and discarded; `sync_node` skips the whole create/attach path
+        // for it. Kept exhaustive for `widget_kind`.
+        WidgetKind::Invisible => GtkBox::new(gtk::Orientation::Vertical, 0).upcast(),
         WidgetKind::Toggle => toggle_widget(node),
         WidgetKind::Slider => {
             let min = f64::from(node.f32_property(property_id::MIN_VALUE, 0.0));
@@ -3022,8 +3140,8 @@ mod tests {
         assert_eq!(widget_kind(PICKER), WidgetKind::Picker);
         assert_eq!(widget_kind(MENU), WidgetKind::Menu);
         assert_eq!(widget_kind(COLOR_PICKER), WidgetKind::ColorPicker);
-        assert_eq!(widget_kind(AUDIO), WidgetKind::Media);
         assert_eq!(widget_kind(VIDEO), WidgetKind::Media);
+        assert_eq!(widget_kind(MEDIA_CONTROLLER), WidgetKind::Invisible);
         // In-flight interaction: an inbound VALUE write is skipped while the
         // user is dragging the control (spec EVENTS.md).
         assert!(should_apply_value(false));
@@ -3033,20 +3151,24 @@ mod tests {
     }
 
     #[test]
-    fn media_node_detection_and_asset_resolution() {
-        // An AUDIO/VIDEO component, or any node carrying a media source.
-        let audio = HostNode {
-            component_type: component_type::AUDIO,
+    fn media_controller_detection_and_asset_resolution() {
+        // Only a MEDIA_CONTROLLER owns a playback (spec/MEDIA.md); a VIDEO
+        // surface does not, and neither does an unrelated node.
+        let controller = HostNode {
+            component_type: component_type::MEDIA_CONTROLLER,
             ..Default::default()
         };
-        assert!(is_media_node(&audio));
-        let mut vstack = HostNode {
+        assert!(is_media_controller(&controller));
+        let video = HostNode {
+            component_type: component_type::VIDEO,
+            ..Default::default()
+        };
+        assert!(!is_media_controller(&video));
+        let vstack = HostNode {
             component_type: component_type::VSTACK,
             ..Default::default()
         };
-        assert!(!is_media_node(&vstack));
-        vstack.strings.insert(property_id::AUDIO_SOURCE, "/_pathland/assets/audio/track1.mp3".into());
-        assert!(is_media_node(&vstack));
+        assert!(!is_media_controller(&vstack));
 
         // No asset root → sources pass through unchanged.
         *ASSET_ROOT.lock().unwrap() = None;
@@ -3101,10 +3223,10 @@ mod tests {
     #[test]
     fn container_kinds_are_recognized() {
         use component_type::*;
-        for ct in [VSTACK, HSTACK, GRID, SCROLLVIEW, ZSTACK, AUDIO, VIDEO] {
+        for ct in [VSTACK, HSTACK, GRID, SCROLLVIEW, ZSTACK, VIDEO] {
             assert!(is_container(ct), "{ct:#x} should be a container");
         }
-        for ct in [TEXT, BUTTON, SPACER, IMAGE, TOGGLE, SLIDER] {
+        for ct in [TEXT, BUTTON, SPACER, IMAGE, TOGGLE, SLIDER, MEDIA_CONTROLLER] {
             assert!(!is_container(ct), "{ct:#x} should not be a container");
         }
     }

@@ -277,6 +277,33 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x00, // C = 0
         ],
     ),
+    (
+        "TREE:CREATE_NODE (id=1, MEDIA_CONTROLLER=0x0030)",
+        [
+            0x01, 0x01, 0x00, 0x00, // category TREE, command CREATE_NODE
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x30, 0x00, 0x00, 0x00, // B = componentType = 0x0030 (MEDIA_CONTROLLER)
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
+    (
+        "PARAMETER:SET_PROPERTY (id=1, propertyId=MEDIA_CONTROLLER_ID=0x103A, valueType=U32=0x02, controller=9)",
+        [
+            0x02, 0x01, 0x00, 0x00, // category PARAMETER, command SET_PROPERTY
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x3A, 0x10, 0x02, 0x00, // B = (valueType 0x02 << 16) | 0x103A
+            0x09, 0x00, 0x00, 0x00, // C = the referenced controller node id = 9
+        ],
+    ),
+    (
+        "PARAMETER:SET_PROPERTY (id=1, propertyId=MEDIA_SOURCE=0x103B, valueType=STRING=0x05, arenaRef=0)",
+        [
+            0x02, 0x01, 0x00, 0x00, // category PARAMETER, command SET_PROPERTY
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x3B, 0x10, 0x05, 0x00, // B = (valueType 0x05 << 16) | 0x103B
+            0x00, 0x00, 0x00, 0x00, // C = arenaRef = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -440,6 +467,25 @@ mod tests {
             (0x04, 0x04, 0x0000, 0, 0, 0, VECTORS[27].1),
             (0x04, 0x05, 0x0000, 0, 0, 0, VECTORS[28].1),
             (0x01, 0x01, 0x0000, 1, 0x001E, 0, VECTORS[29].1),
+            (0x01, 0x01, 0x0000, 1, 0x0030, 0, VECTORS[30].1),
+            (
+                0x02,
+                0x01,
+                0x0000,
+                1,
+                (0x02u32 << 16) | 0x103A,
+                9,
+                VECTORS[31].1,
+            ),
+            (
+                0x02,
+                0x01,
+                0x0000,
+                1,
+                (0x05u32 << 16) | 0x103B,
+                0,
+                VECTORS[32].1,
+            ),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {
             let op = Opcode::new(*cat, *cmd, *flags, *a, *b, *c);

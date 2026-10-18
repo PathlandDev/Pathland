@@ -75,19 +75,20 @@ Statelessness). Protocol contract: `spec/`.
   input, `SLIDER` → `<input type="range">`, `STEPPER` → `.pathland-stepper`,
   `DATE_PICKER` → `<input type="date">`/`<input type="time">`, `PICKER` →
   `<select>` + `<option>`, `MENU` → `.pathland-menu` composite, `COLOR_PICKER`
-  → `<input type="color">`, `AUDIO`/`VIDEO` → `<audio controls>` /
-  `<video controls>` (hidden media element + custom body when app-driven),
-  `COMMENT` → none.
-- **Media**: `IMAGE` renders `<img src alt>` (the `LABEL` accessibility text is
+  → `<input type="color">`, `VIDEO` → `<video controls>`,
+  `MEDIA_CONTROLLER` → a hidden `display:none` marker (non-visual,
+  layout-transparent), `COMMENT` → none.
+- **Media (spec/MEDIA.md)**: `IMAGE` renders `<img src alt>` (the `LABEL`
+  accessibility text is
   the `alt`; empty = decorative) and honors `CONTENT_MODE`/`ASPECT_RATIO`
-  inline (`Fit`→`object-fit:contain`, `Fill`→`object-fit:cover`); `VIDEO` →
-  `<video src controls>` and `AUDIO` → `<audio src controls>` (playback
-  interaction is renderer-native by default). **App-driven media**: an
-  `AUDIO`/`VIDEO` node whose custom `AudioStyle`/`VideoStyle` body is its child
-  (spec DSL.md §5.7) — or any node carrying `AUDIO_SOURCE`/`VIDEO_SOURCE` with
-  children — renders a `.pathland-media` wrapper holding a hidden control-less
-  media element as its first child (the DOM client wires playback events,
-  spec/EVENTS.md Media). Asset refs are absolute (`/_pathland/assets/…`);
+  inline (`Fit`→`object-fit:contain`, `Fill`→`object-fit:cover`); a `VIDEO`
+  surface renders `<video data-pathland-controller="C" controls>` (or a
+  `.pathland-media` wrapper when it has custom `VideoStyle` children). **Audio
+  has no view.** A **`MEDIA_CONTROLLER`** is non-visual and layout-transparent:
+  it renders a hidden `display:none` marker carrying the resource
+  (`data-pathland-media-controller` + `data-pathland-media-src`), which the DOM
+  client turns into the playback (keyed by the controller id; spec/EVENTS.md
+  Media). Asset refs are absolute (`/_pathland/assets/…`);
   bytes never ride the opcode stream.
 - **Composite override mode**: `BUTTON`/`TOGGLE`/`SLIDER` with children render
   the custom body wrapped in the native element.

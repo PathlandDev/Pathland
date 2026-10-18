@@ -88,21 +88,25 @@ pub mod event {
     /// batch string section) to the destination URL; without it, the event means
     /// "back one step" (native back affordance) and `B`/`C` are ignored.
     pub const NAVIGATE: u8 = 0x0E;
-    /// **Draft.** A bound `AUDIO`/`VIDEO` node's playback state changed
+    /// **Draft.** A bound `MEDIA_CONTROLLER`'s playback state changed
     /// (host → guest); `B` = 0/1. Reported only when `PLAYBACK_STATE` is bound.
     pub const MEDIA_PLAY_STATE_CHANGED: u8 = 0x0F;
-    /// **Draft.** A bound media node's current position (host → guest); `B` =
+    /// **Draft.** A bound controller's current position (host → guest); `B` =
     /// seconds (f32). Reported while playing; an app-initiated seek is not echoed.
     pub const MEDIA_TIME_UPDATED: u8 = 0x10;
-    /// **Draft.** A bound media node reached the end of its media (host → guest).
+    /// **Draft.** A bound controller reached the end of its media (host → guest).
     pub const MEDIA_ENDED: u8 = 0x11;
-    /// **Draft.** A bound media node's volume changed (host → guest); `B` =
+    /// **Draft.** A bound controller's volume changed (host → guest); `B` =
     /// volume (f32, 0..1).
     pub const MEDIA_VOLUME_CHANGED: u8 = 0x12;
     /// **Draft.** A `SIZE_THAT_FITS` slot's selected candidate index changed
     /// (host → guest); `B` = index (f32). Reported once after the first measure,
     /// then only when the derived fit index changes.
     pub const FIT_CHANGED: u8 = 0x13;
+    /// **Draft.** A bound controller's media duration became known/changed
+    /// (host → guest); `B` = seconds (f32). Reported when the resource loads and
+    /// only when the value changes — never a stream.
+    pub const MEDIA_DURATION_CHANGED: u8 = 0x14;
 }
 
 /// Commands within the `META` category.
@@ -245,11 +249,10 @@ pub mod component_type {
     pub const PROGRESS_VIEW: u16 = 0x07;
     /// **Draft.** Range meter against a scale (read-only).
     pub const GAUGE: u16 = 0x08;
-    /// **Draft.** Audio playback node (`AUDIO_SOURCE` references the media;
-    /// playback interaction is renderer-native).
-    pub const AUDIO: u16 = 0x09;
-    /// **Draft.** Video playback node (`VIDEO_SOURCE` references the media;
-    /// playback interaction is renderer-native).
+    // 0x09 freed (formerly AUDIO — audio now has no view; see MEDIA_CONTROLLER).
+    /// **Draft.** Video playback **surface** — renders a `MEDIA_CONTROLLER`'s
+    /// video output; it references the controller via `MEDIA_CONTROLLER_ID` and
+    /// carries no source of its own (spec/MEDIA.md).
     pub const VIDEO: u16 = 0x0A;
     /// **Draft.** Semantic icon (`ICON_NAME` selects a renderer-native symbol —
     /// Adwaita on GTK, Lucide on the web; spec/ICONS.md).
@@ -316,6 +319,16 @@ pub mod component_type {
     /// **Draft.** Native system color picker control.
     pub const COLOR_PICKER: u16 = 0x2A;
     // 0x2B–0x2F reserved (future semantic controls).
+
+    // ── Non-visual / Resource Nodes (0x30–0x3F) ─────────────────────────────
+    /// **Draft.** Media controller — a **non-visual** node that owns a media
+    /// resource (`MEDIA_SOURCE`) and its transport state (`PLAYBACK_STATE`,
+    /// `MEDIA_POSITION`, `MEDIA_VOLUME`, `MEDIA_MUTED`, `MEDIA_LOOP`,
+    /// `MEDIA_RATE`). A `VIDEO` surface references it by id
+    /// (`MEDIA_CONTROLLER_ID`); audio has no view and is controlled by the
+    /// application's own views. Layout-transparent (spec/MEDIA.md).
+    pub const MEDIA_CONTROLLER: u16 = 0x30;
+    // 0x31–0x3F reserved (future non-visual/resource nodes).
 
     /// Opaque/debug node; renderers ignore it (no native element).
     pub const COMMENT: u16 = 0x7F;
@@ -392,19 +405,30 @@ pub mod property_id {
     /// an **asset reference**, resolved and loaded by the renderer/host; never
     /// embedded in the opcode stream).
     pub const IMAGE_SOURCE: u16 = 0x1002;
-    /// **Draft.** Audio source (STRING asset reference, see `IMAGE_SOURCE`).
-    pub const AUDIO_SOURCE: u16 = 0x1033;
-    /// **Draft.** Video source (STRING asset reference, see `IMAGE_SOURCE`).
-    pub const VIDEO_SOURCE: u16 = 0x1034;
-    /// **Draft.** Media playback state (U32 0=pause, 1=play) on an `AUDIO`/`VIDEO`
-    /// node. When bound, the renderer reports `MEDIA_PLAY_STATE_CHANGED`.
+    // 0x1033, 0x1034 freed (formerly AUDIO_SOURCE / VIDEO_SOURCE).
+    /// **Draft.** Media playback state (U32 0=pause, 1=play) on a
+    /// `MEDIA_CONTROLLER`. When bound, the renderer reports
+    /// `MEDIA_PLAY_STATE_CHANGED`.
     pub const PLAYBACK_STATE: u16 = 0x1035;
-    /// **Draft.** Media position in seconds (F32) on an `AUDIO`/`VIDEO` node; a
+    /// **Draft.** Media position in seconds (F32) on a `MEDIA_CONTROLLER`; a
     /// change seeks. When bound, the renderer reports `MEDIA_TIME_UPDATED`.
     pub const MEDIA_POSITION: u16 = 0x1036;
-    /// **Draft.** Media volume (F32 0..1) on an `AUDIO`/`VIDEO` node. When bound,
+    /// **Draft.** Media volume (F32 0..1) on a `MEDIA_CONTROLLER`. When bound,
     /// the renderer reports `MEDIA_VOLUME_CHANGED`.
     pub const MEDIA_VOLUME: u16 = 0x1037;
+    /// **Draft.** The referenced `MEDIA_CONTROLLER`'s node id (U32) on a `VIDEO`
+    /// surface — the binding that connects the surface to its playback.
+    pub const MEDIA_CONTROLLER_ID: u16 = 0x103A;
+    /// **Draft.** Media resource (STRING asset reference, see `IMAGE_SOURCE`) on
+    /// a `MEDIA_CONTROLLER`.
+    pub const MEDIA_SOURCE: u16 = 0x103B;
+    /// **Draft.** Mute (U8 0/1) on a `MEDIA_CONTROLLER`; independent of
+    /// `MEDIA_VOLUME`.
+    pub const MEDIA_MUTED: u16 = 0x103C;
+    /// **Draft.** Loop the resource on end (U8 0/1) on a `MEDIA_CONTROLLER`.
+    pub const MEDIA_LOOP: u16 = 0x103D;
+    /// **Draft.** Playback rate (F32, 1.0 = normal) on a `MEDIA_CONTROLLER`.
+    pub const MEDIA_RATE: u16 = 0x103E;
     /// **Draft.** Semantic icon name (STRING, canonical; spec/ICONS.md) on an
     /// `ICON` node. The renderer maps it to its native icon set and falls back
     /// to a renderer-default visual for unknown names.
@@ -600,19 +624,21 @@ pub fn value_type_for(prop: u16) -> u8 {
         | property_id::COLOR_INVERT
         | property_id::ALLOWS_HIT_TESTING
         | property_id::FIXED_SIZE_HORIZONTAL
-        | property_id::FIXED_SIZE_VERTICAL => value_type::U8,
+        | property_id::FIXED_SIZE_VERTICAL
+        | property_id::MEDIA_MUTED
+        | property_id::MEDIA_LOOP => value_type::U8,
         property_id::LABEL
         | property_id::PROMPT
         | property_id::FONT_FAMILY
         | property_id::IMAGE_SOURCE
-        | property_id::AUDIO_SOURCE
-        | property_id::VIDEO_SOURCE
+        | property_id::MEDIA_SOURCE
         | property_id::ICON_NAME
         | property_id::ROUTE => value_type::STRING,
         property_id::LINE_LIMIT
         | property_id::SELECTION
         | property_id::ACTION_ID
         | property_id::BINDING_ID
+        | property_id::MEDIA_CONTROLLER_ID
         | property_id::NAV_DEPTH => value_type::U32,
         _ => value_type::F32,
     }
