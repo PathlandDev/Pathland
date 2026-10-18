@@ -28,7 +28,7 @@ import java.util.Set;
  *
  * <p>Both are configured through a static {@code make(Consumer<Config>)} factory
  * (views) / a lowercase static factory on the style's own type (styles,
- * e.g. {@code playerControlsStyle(...)}),
+ * e.g. {@code playerControls(...)}),
  * never a parameterized constructor. Any non-abstract class assignable to
  * {@code View} or {@code Style} that exposes a {@code public}/{@code protected}
  * constructor **with ≥ 1 parameter** is a compile error — creation must go

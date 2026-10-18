@@ -101,8 +101,8 @@ class MusicPlayerViewTest {
         // only the sidebar subtree is created/inserted. A regression: if the two
         // candidates' root components differ, the whole main area would be
         // re-created (a large delta + node churn).
-        assertEquals(0, countCreate(wide, Components.AUDIO),
-                "the app-driven player node is re-used, not re-created");
+        assertEquals(0, countCreate(wide, Components.MEDIA_CONTROLLER),
+                "the media controller node is re-used, not re-created");
         assertEquals(0, countCreate(wide, Components.SIZE_THAT_FITS), "the slot itself is untouched");
         assertTrue(countCreateAnything(wide) < 40, "the fit swap is a small delta, not a tree rebuild");
     }
@@ -120,11 +120,11 @@ class MusicPlayerViewTest {
         assertTrue(anySlider(frame, 0f, 100f), "seek slider carries its 0..100 percent range");
         // The compact bar groups: transport | now-playing (| divider).
         assertTrue(anySetText(frame, "|"), "the bar groups are separated by | dividers");
-        // The app-driven audio node: source + media control properties bound.
-        assertTrue(anySetPropertyString(frame, Properties.AUDIO_SOURCE, "/_pathland/assets/audio/track1.mp3"),
-                "the audio node carries the current track's source");
-        assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0), "the audio node binds play state");
-        assertTrue(anySetProperty(frame, Properties.MEDIA_POSITION, 0f), "the audio node binds position");
+        // The media controller: source + transport properties bound.
+        assertTrue(anySetPropertyString(frame, Properties.MEDIA_SOURCE, "/_pathland/assets/audio/track1.mp3"),
+                "the controller carries the current track's source");
+        assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0), "the controller binds play state");
+        assertTrue(anySetProperty(frame, Properties.MEDIA_POSITION, 0f), "the controller binds position");
 
         // The full controls cluster (transport + now-playing + volume) wants ≥700pt:
         // firing the player-bar slot's fit change mounts it — and its volume slider
@@ -171,7 +171,7 @@ class MusicPlayerViewTest {
         Mounted m = mount();
         // Run every tap (hosts drive taps exactly like this); whichever button fires,
         // it must write the app's player state through the store.
-        for (Runnable tap : m.result.tapActions().values()) {
+        for (Runnable tap : java.util.List.copyOf(m.result.tapActions().values())) {
             tap.run();
         }
         Optional<Integer> track = m.store.load("player.track:session-1", Integer.class);

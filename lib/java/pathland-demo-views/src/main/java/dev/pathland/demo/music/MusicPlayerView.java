@@ -124,8 +124,30 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
     State<Float> seekRequest = new State<>(0f, "player.seekRequest");
     State<Float> volumeRequest = new State<>(0.7f, "player.volumeRequest");
 
+    // The playback controller (spec/MEDIA.md): a single state object owning the
+    // transport. Wire it in body() to the persisted signals above; both the
+    // compact PlayerBar and the wide NowPlayingSidebar (its SIZE_THAT_FITS
+    // branches) drive the SAME controller, so a band swap never restarts playback.
+    final MediaController player = new MediaController();
+
+    /** The media ended: advance to the next track and restart from the top. */
+    private void ended() {
+        trackIndex.update(i -> (i + 1) % TRACKS.size());
+        seekRequest.set(0f);
+        position.set(0f);
+    }
+
     @Override
     public View body() {
+        // Bind the controller to this player's (persisted) transport state, so the
+        // emitter drives exactly the signals the rest of the UI reads.
+        player.source(computed(() -> at(trackIndex.get()).audio()));
+        player.playing(playing.signal());
+        player.position(seekRequest.signal());
+        player.volume(volumeRequest.signal());
+        player.time(position.signal());
+        player.volumeReport(volume.signal());
+        player.onEnded(this::ended);
         // The synced karaoke lyric block + the current (being-sung) line index
         // for the current track + play position, shown only while playing.
         var block = computed(() -> playing.get()
@@ -145,6 +167,9 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
         View mainArea = ZStack
                 .make(z -> z.alignment(Alignment.BOTTOM_CENTER))
                 .children(
+                        // Audio has no view: the marker materializes the playback
+                        // controller's node (non-visual) once, outside the fit slot.
+                        player.attach(),
                         LibraryView.make(l -> l
                                 .trackIndex(trackIndex.signal())
                                 .position(position.signal())
@@ -155,11 +180,7 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
                                         Spacer.make(),
                                         PlayerBar.make(p -> p
                                         .trackIndex(trackIndex.signal())
-                                        .position(position.signal())
-                                        .playing(playing.signal())
-                                        .volume(volume.signal())
-                                        .seekRequest(seekRequest.signal())
-                                        .volumeRequest(volumeRequest.signal()))
+                                        .player(player))
                                         .modifiers(
                                                 border(b -> b.color(MusicPlayerView.BAR_BORDER).width(1).radius(500)),
                                                 shadow(10)),

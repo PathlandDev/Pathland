@@ -3,21 +3,17 @@ package dev.pathland.demo.music;
 import dev.pathland.view.*;
 import dev.pathland.view.signal.WritableSignal;
 import static dev.pathland.view.Modifiers.*;
-import static dev.pathland.demo.music.PlayerControlsStyle.playerControlsStyle;
 
 import java.util.function.Consumer;
 
-import static dev.pathland.view.signal.Signals.computed;
-
 /**
- * The bottom player bar: an app-driven {@link Audio} node whose custom
- * {@link PlayerControlsStyle} renders the whole bar surface — a centered row of
- * {@code [⏮] [play-pause] [⏭] | [cover art] [track title] | [volume]} over a
- * slim seek bar. The audio element is hidden; the controls drive it through the
- * bound media state, and playback events (time/ended/volume) flow back into the
- * same state.
+ * The bottom player bar: the {@link PlayerControls} surface over the player's
+ * {@link MediaController} (spec/MEDIA.md). Audio has no view — this bar is an
+ * ordinary view whose controls bind the controller's transport signals, so a
+ * {@code SIZE_THAT_FITS} swap between this bar and the wide sidebar re-emits only
+ * the controls; the controller's playback is untouched.
  *
- * <p>Configured with {@code PlayerBar.make(p -> p.trackIndex(...).position(...)...)} —
+ * <p>Configured with {@code PlayerBar.make(p -> p.trackIndex(...).player(...))} —
  * a private constructor keeps creation on the configurator (spec DSL.md §2).
  */
 public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
@@ -26,45 +22,17 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
     public static final class Config implements View.Config {
 
         private WritableSignal<Integer> trackIndex;
-        private WritableSignal<Float> position;
-        private WritableSignal<Boolean> playing;
-        private WritableSignal<Float> volume;
-        private WritableSignal<Float> seekRequest;
-        private WritableSignal<Float> volumeRequest;
+        private MediaController player;
 
-        /** The current track index (drives the source + now-playing content). */
+        /** The current track index (drives the track info + prev/next). */
         public Config trackIndex(WritableSignal<Integer> trackIndex) {
             this.trackIndex = trackIndex;
             return this;
         }
 
-        /** The play position (seconds) — the seek-bar DISPLAY. */
-        public Config position(WritableSignal<Float> position) {
-            this.position = position;
-            return this;
-        }
-
-        /** Toggled by the play/pause button. */
-        public Config playing(WritableSignal<Boolean> playing) {
-            this.playing = playing;
-            return this;
-        }
-
-        /** The volume slider's DISPLAY (0..1). */
-        public Config volume(WritableSignal<Float> volume) {
-            this.volume = volume;
-            return this;
-        }
-
-        /** The SEEK command bound to {@code MEDIA_POSITION} (user drags only). */
-        public Config seekRequest(WritableSignal<Float> seekRequest) {
-            this.seekRequest = seekRequest;
-            return this;
-        }
-
-        /** The VOLUME command bound to {@code MEDIA_VOLUME} (user drags only). */
-        public Config volumeRequest(WritableSignal<Float> volumeRequest) {
-            this.volumeRequest = volumeRequest;
+        /** The playback controller the bar drives. */
+        public Config player(MediaController player) {
+            this.player = player;
             return this;
         }
     }
@@ -89,37 +57,11 @@ public final class PlayerBar implements View, Configurable<PlayerBar.Config> {
 
     @Override
     public View body() {
-        var current = computed(() -> MusicPlayerView.at(config.trackIndex.get()));
-        // The whole bar surface is the audio node's custom style: a hidden media
-        // element + the centered control row + the slim seek bar (app-driven).
-        // The position/volume REPORTS flow to the DISPLAY signals (onPositionReport/
-        // onVolumeReport); MEDIA_POSITION/MEDIA_VOLUME are bound to the seek/volume
-        // COMMANDS, so a report never echoes back as a command (spec/EVENTS.md Media).
-        return Audio.make(a -> a
-                        .source(computed(() -> current.get().audio()))
-                        .playing(config.playing)
-                        .position(config.seekRequest)
-                        .onPositionReport(config.position)
-                        .volume(config.volumeRequest)
-                        .onVolumeReport(config.volume)
-                        .onEnded(this::ended))
+        return PlayerControls.make(c -> c
+                        .player(config.player)
+                        .trackIndex(config.trackIndex))
                 .modifiers(
-                        playerControlsStyle(s -> s
-                                .trackIndex(config.trackIndex)
-                                .position(config.position)
-                                .seekRequest(config.seekRequest)
-                                .volume(config.volume)
-                                .volumeRequest(config.volumeRequest)),
                         background(MusicPlayerView.BAR_BG),
                         frame(f -> f.width(Commands.Size.FILL).maxWidth(768).height(MusicPlayerView.BAR_HEIGHT)));
-    }
-
-    /** The media ended: advance to the next track and restart from the top. The
-     *  playing state is unchanged — the DOM client resumes playback when the new
-     *  source lands. */
-    private void ended() {
-        config.trackIndex.update(i -> (i + 1) % MusicPlayerView.TRACKS.size());
-        config.position.set(0f);
-        config.seekRequest.set(0f);
     }
 }

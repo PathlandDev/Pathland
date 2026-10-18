@@ -93,6 +93,15 @@ public final class PathlandNode {
      *  events (spec/EVENTS.md) into it — play state, time, ended, volume. */
     public MediaInput mediaInput;
 
+    /**
+     * The {@link dev.pathland.view.MediaController} a `VIDEO` surface references
+     * (spec/MEDIA.md). The emitter materializes one `MEDIA_CONTROLLER` node per
+     * distinct controller (by object identity) and writes its node id as
+     * `MEDIA_CONTROLLER_ID` on this node; playback is keyed by the controller id,
+     * so a structural swap of this surface never restarts the stream.
+     */
+    public dev.pathland.view.MediaController mediaControllerRef;
+
     /** Fit-index sink (`SIZE_THAT_FITS`): the host routes `FIT_CHANGED` into it —
      *  a selected-candidate index the container converts into its slot selection. */
     public Consumer<Integer> fitInput;

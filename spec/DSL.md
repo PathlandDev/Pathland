@@ -105,7 +105,7 @@ DSL must be *shaped* by them:
   [§9.3](#93-language-adaptation-rules).
 - **There is exactly one style mechanism.** A customizable control/view takes
   its **content** from a *style* value (`ButtonStyle`, `LabelStyle`,
-  `AudioStyle`, `VideoStyle`, …) scoped through the environment; the control
+  `VideoStyle`, …) scoped through the environment; the control
   owns its native component + interaction and the style owns the content
   ([§5.7](#57-styleable-controls-the-style-contract)). Closed-variant/token
   styles (`ToggleStyle`, `PickerStyle`, `TextStyle`) are the same surface.
@@ -255,7 +255,7 @@ Eligible members (non-exhaustive; the companion tables list the surface):
 
 | Kind | Shortcut |
 |------|----------|
-| Views | `Text(text)`, `Image(source)`, `Icon(name)`, `Label(title)`, `ProgressView(value)`, `RoundedRectangle(cornerRadius)`, `Audio(source)`, `Video(source)`, `Shape(kind)` |
+| Views | `Text(text)`, `Image(source)`, `Icon(name)`, `Label(title)`, `ProgressView(value)`, `RoundedRectangle(cornerRadius)`, `Video(controller)`, `Shape(kind)` |
 | Modifiers | `Padding(uniform)`, `FontSize(size)`, `ForegroundStyle(color)`, `Background(color)`, `Tint(color)`, `CornerRadius(radius)`, `Opacity(value)`, `Blur(radius)`, `Rotation(degrees)`, `ScaleEffect(value)`, `LineLimit(value)`, `Kerning`/`Tracking`/`BaselineOffset`/`LineSpacing`/`FontWidth`/`MinimumScaleFactor`/`LayoutPriority`/`ZIndex`(value), `FontFamily(family)`, `HueRotation(degrees)`, `Saturation`/`Contrast`/`Brightness`/`Grayscale`(value), `ColorMultiply(color)`, `ClipShape(shape)`, `AccessibilityLabel(text)`, `AccessibilityRole(role)`, `AccessibilityState(state)`, `Shadow(radius)`, `ImageSource(source)`, `Visible`/`Disabled`/`AllowsHitTesting`(bool), `Underline`/`Strikethrough`(bool), `PointerEvents(mask)`, `TapGesture(action)` |
 
 Per-language adaptation summary:
@@ -916,8 +916,7 @@ anchors. Transforms do not affect layout.
 | `modifier` (custom) | `.modifier(_:)` | `.modifiers(ViewModifier)` | composes core modifiers |
 | `buttonStyle` | `.buttonStyle(_:)` | `.modifiers(ButtonStyle)` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins); the style supplies the button's content ([§5.7](#57-styleable-controls-the-style-contract)) |
 | `labelStyle` | `.labelStyle(_:)` | `.modifiers(LabelStyle)` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
-| `audioStyle` | `.audioStyle(_:)` | `.modifiers(AudioStyle)` | environment-scoped (`Environment.AUDIO_STYLE` key, nearest-wins); the style supplies the `AUDIO` node's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
-| `videoStyle` | `.videoStyle(_:)` | `.modifiers(VideoStyle)` | environment-scoped (`Environment.VIDEO_STYLE` key, nearest-wins); the style supplies the `VIDEO` node's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
+| `videoStyle` | `.videoStyle(_:)` | `.modifiers(VideoStyle)` | environment-scoped (`Environment.VIDEO_STYLE` key, nearest-wins); the style supplies the `VIDEO` surface's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
 | `environment` | `.environment(_:_:)` | `.modifiers(environmentBinding(e -> e.key(EnvironmentKey).value(value)))` | environment-scoped (a typed `EnvironmentKey`, nearest-wins); no wire property |
 | `focusable` | `.focusable(_:)` | (via the `PointerEvents` modifier) | **no property** — declares `FOCUS` listener bit 5; observe `FOCUS_CHANGED` |
 | raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifiers(pointerEvents(p -> p.mask(int)))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
@@ -975,19 +974,52 @@ emission stays diff-based, and a renderer that cannot apply a modifier
   environment-only). Application-authored `ViewModifier.body(View)` is
   SwiftUI-shaped and can wrap content with structure.
 
-### 5.7 Styleable controls (the style contract)
+#### Media (`MediaController`)
+
+A media playback is a **state object**, not a view (spec/MEDIA.md; the SwiftUI
+`AVPlayer` analog). `MediaController` owns the transport as signals — commands
+(`source()`, `playing()`, `position()`, `volume()`, `muted()`, `loop()`,
+`rate()`) and reports (`time()`, `duration()`, `volumeReport()`) — plus
+`play()/pause()/toggle()/seek()/setVolume()`. The emitter materializes one
+non-visual `MEDIA_CONTROLLER` node per controller (keyed by object identity), so
+playback is stable across structural swaps.
+
+- **Audio has no view**: bind ordinary views (buttons/sliders) to the
+  controller's signals. Include `controller.attach()` once in the tree — a
+  non-visual marker that materializes the controller node — placed **outside**
+  any swapping branch (e.g. a `SizeThatFits` slot).
+- **Video** is the only media view: `Video.make(controller)` renders the
+  controller's output. `VideoStyle` supplies a custom control surface; the
+  default `NativeVideoStyle` shows renderer-native controls.
+- A `MediaController` may be rebound to the app's own (e.g. persisted) signals
+  (`controller.playing(signal)`), so the controller drives the same state the
+  rest of the UI reads.
+
+```java
+MediaController player = new MediaController(computed(() -> track.get().audio()));
+player.playing(playing.signal()).position(seekRequest.signal()).volume(volume.signal());
+player.time(position.signal()).onEnded(this::next);
+
+VStack.make().children(
+    player.attach(),                                   // audio: non-visual
+    Button.make(b -> b.action(player::toggle)),
+    Slider.make(s -> s.value(player.time())),
+    Video.make(player));                               // video: the only media view
+```
+
+## 5.7 Styleable controls (the style contract)
 
 A **style** customizes a view or control's *content*; the control owns its
 *component and interaction*. This is one contract for every styleable surface
-(`ButtonStyle`, `LabelStyle`, `AudioStyle`, `VideoStyle`, …), and it is the
+(`ButtonStyle`, `LabelStyle`, `VideoStyle`, …), and it is the
 author-facing shape of the protocol's **Composite Override Mode**
 ([PRIMITIVES.md §2](./PRIMITIVES.md#2-dual-mode-rendering-pipeline--platform-delegation)).
 
 - **The control owns the native component and the interaction.** A semantic
   control renders its **native control node** (its component id — `BUTTON`,
-  `AUDIO`, …) and attaches its behavior to *that* node: the tap action /
-  `EVENT_LISTENERS` (Button), the value/text/date sink, or the media sink
-  (Audio/Video). The **whole control is interactive**, including its padding.
+  `VIDEO`, …) and attaches its behavior to *that* node: the tap action /
+  `EVENT_LISTENERS` (Button), the value/text/date sink, or the media binding
+  (`Video`). The **whole control is interactive**, including its padding.
 - **The style owns the content.** A style returns the control's **content view**
   from `makeBody(Config)`; the control attaches it as the control node's
   **single child**. The content keeps its own component(s), layout, and
@@ -997,16 +1029,15 @@ author-facing shape of the protocol's **Composite Override Mode**
 - **The style consumes the control's config.** The `Config` a style's
   `makeBody(Config)` receives is the **same type** the view configured through
   `make(...)` ([§2](#2-canonical-signature-notation)): `ButtonStyle.makeBody(Button.Config)`,
-  `LabelStyle.makeBody(Label.Config)`, `AudioStyle.makeBody(Audio.Config)`,
-  `VideoStyle.makeBody(Video.Config)`. The style **reads** the config (the
+  `LabelStyle.makeBody(Label.Config)`,
+  `VideoStyle.makeBody(VideoStyle.Configuration)`. The style **reads** the config (the
   control's values: content, action, label, media state); it does not mutate it.
 - **A style is a modifier.** Styles are `ViewModifier` values scoped down a
   subtree with `.modifiers(<Style>)`, binding the style's `EnvironmentKey` over
   the wrapped subtree (nearest wins); the control reads it via its
   `Environment.<name>Style()` accessor. This is the one inheritance mechanism
   ([§6 rule 6](#6-authoring-conventions)); `ButtonStyle` binds
-  `Environment.BUTTON_STYLE`, `AudioStyle` `Environment.AUDIO_STYLE`,
-  `VideoStyle` `Environment.VIDEO_STYLE`, `LabelStyle`
+  `Environment.BUTTON_STYLE`, `VideoStyle` `Environment.VIDEO_STYLE`, `LabelStyle`
   `Environment.LABEL_STYLE`.
 - **Button content precedence (three developer options).** A `Button`'s content
   resolves as: (1) an **explicit child** supplied via `.children(...)` wins;
@@ -1016,7 +1047,7 @@ author-facing shape of the protocol's **Composite Override Mode**
   SwiftUI's multiple button-authoring forms.
 - **Defaults preserve the native path.** The default style contributes the
   control's natural content: `PlainButtonStyle` → the label;
-  `NativeAudioStyle`/`NativeVideoStyle` → **no content** (an empty-content
+  `NativeVideoStyle` → **no content** (an empty-content
   sentinel), so the control stays a **leaf** in Native Token Mode and the
   renderer shows native media controls; `DefaultLabelStyle` → title + icon.
 - **Text/foreground modifiers cascade to content.** A `.foregroundStyle`/
@@ -1041,8 +1072,7 @@ Canonical signatures (SwiftUI-shaped) and the realization:
 |---------|----------------|----------|---------------|
 | `Button` | `ButtonStyle { makeBody(config) -> View }` | the `Button.Config` (title, action, content) | `PlainButtonStyle` (label) |
 | `Label` | `LabelStyle { makeBody(config) -> View }` | the `Label.Config` (title, icon) | `DefaultLabelStyle` (title + icon) |
-| `Audio` | `AudioStyle { makeBody(config) -> View }` | the `Audio.Config` (playing, position, volume, duration) | `NativeAudioStyle` (no content) |
-| `Video` | `VideoStyle { makeBody(config) -> View }` | the `Video.Config` (playing, position, volume, duration) | `NativeVideoStyle` (no content) |
+| `Video` | `VideoStyle { makeBody(config) -> View }` | the `VideoStyle.Configuration` (its `MediaController`) | `NativeVideoStyle` (no content) |
 
 ```java
 // Button: the control wires the action; the style decorates the label/content.
@@ -1065,7 +1095,7 @@ enum BadgeLabelStyle implements LabelStyle { INSTANCE;
 
 The Java DSL ships `PlainButtonStyle`/`BorderedButtonStyle`,
 `DefaultLabelStyle`/`TitleOnlyLabelStyle`/`IconOnlyLabelStyle`, and
-`NativeAudioStyle`/`NativeVideoStyle`; application-authored styles implement the
+`NativeVideoStyle`; application-authored styles implement the
 same interfaces. **Delta:** SwiftUI's `LabelStyleConfiguration.title`/`.icon`
 are always-present views; Pathland passes `null` for an absent part (a style
 checks `hasTitle()`/`hasIcon()`). Because styles are modifiers, a style is
