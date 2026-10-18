@@ -1343,9 +1343,11 @@ export function unlockMedia(): void {
     const wasMuted = media.muted;
     media.muted = true;
     const p = media.play();
-    const restore = () => {
-      media.muted = wasMuted;
-    };
+    // Restore the mute **synchronously**: the browser's autoplay check happens at
+    // the instant of `play()`, so `muted` only needs to be true *then*. Leaving it
+    // true until the async promise settles would let the element (and any play()
+    // that lands meanwhile) run muted — silent playback with advancing time.
+    media.muted = wasMuted;
     if (p && typeof p.then === "function") {
       p.then(
         () => {
@@ -1354,10 +1356,8 @@ export function unlockMedia(): void {
           if (!mediaState.get(media)?.playing) {
             media.pause();
           }
-          restore();
         },
         (err: unknown) => {
-          restore();
           const name = err instanceof Error ? err.name : String(err);
           // A not-yet-loaded element rejects here; the next gesture retries.
           log.debug("media", "unlock play() deferred", name);
@@ -1365,7 +1365,6 @@ export function unlockMedia(): void {
       );
     } else {
       state.unlocked = true;
-      restore();
     }
   }
 }

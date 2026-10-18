@@ -28,6 +28,16 @@ pub mod icons;
 pub mod role_spec;
 pub mod token_spec;
 
+/// The `MEDIA_CONTROLLER` shell's inline style (spec/MEDIA.md). A media
+/// controller owns playback but renders nothing: the container is **off-flow**
+/// (`position:absolute`, 1×1, transparent) so it contributes no spacing while
+/// still being *rendered* — browsers refuse to route a `<video>`'s **audio** to
+/// the output when its ancestor is `display:none` (the pipeline still runs and
+/// `currentTime` advances, so the failure is silent). `visibility:hidden` /
+/// `display:none` are both wrong here for the same reason.
+pub const MEDIA_CONTROLLER_SHELL_STYLE: &str =
+    "position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none";
+
 /// The renderer-owned default typography scale for a `TEXT_STYLE` code
 /// (spec/MODIFIERS.md §2): `(size_px, weight_100_900)`. `None` for an unknown
 /// code. Explicit `FONT_SIZE`/`FONT_WEIGHT` override these.
@@ -1497,10 +1507,13 @@ impl HtmlRenderer {
                 format!("<img{data_id}{event}{aria} src=\"{src}\" alt=\"{alt}\"{style}>")
             }
             component_type::MEDIA_CONTROLLER => {
-                // Non-visual + layout-transparent (spec/MEDIA.md): a hidden
-                // (`display:none`) container holding the control-less playback
-                // element — never a flex slot, so it contributes no spacing. The
-                // DOM client hydrates this shell and drives the element.
+                // Non-visual + layout-transparent (spec/MEDIA.md): an off-flow
+                // container holding the control-less playback element. It is
+                // **position:absolute**, NOT `display:none`: browsers refuse to
+                // route a `<video>`'s **audio** to the output when its ancestor is
+                // `display:none` (the media pipeline still runs — `currentTime`
+                // advances — so the failure is silent). Absolutely positioning it
+                // keeps it laid out (audio flows) while contributing no spacing.
                 let src = escape(
                     node.strings
                         .get(&property_id::MEDIA_SOURCE)
@@ -1512,7 +1525,9 @@ impl HtmlRenderer {
                 } else {
                     format!("<video data-pathland-media src=\"{src}\"></video>")
                 };
-                format!("<div{data_id} style=\"display:none\">{media}</div>")
+                format!(
+                    "<div{data_id} style=\"{MEDIA_CONTROLLER_SHELL_STYLE}\">{media}</div>"
+                )
             }
             component_type::VIDEO => {
                 // The video surface: renders the video output of the controller it
@@ -2595,8 +2610,9 @@ mod tests {
     }
 
     /// The media controller is non-visual + layout-transparent: the renderer emits
-    /// a hidden (`display:none`) container holding the control-less playback
-    /// element — the shell the DOM client hydrates.
+    /// an **off-flow** (`position:absolute`, 1×1) container holding the
+    /// control-less playback element — the shell the DOM client hydrates. It is
+    /// deliberately NOT `display:none`, which would silence the `<video>`'s audio.
     #[test]
     fn media_controller_renders_a_hidden_shell() {
         use pathland_core::value_type;
@@ -2618,8 +2634,14 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_fragment(&opcodes, &strings, 1);
         assert!(
-            html.contains("data-pathland-id=\"1\" style=\"display:none\""),
-            "the controller is layout-transparent (no flex slot): {html}"
+            html.contains(&format!(
+                "data-pathland-id=\"1\" style=\"{MEDIA_CONTROLLER_SHELL_STYLE}\""
+            )),
+            "the controller is off-flow but still rendered (audio flows): {html}"
+        );
+        assert!(
+            !html.contains("style=\"display:none\""),
+            "the controller must NOT be display:none (it would silence the audio): {html}"
         );
         assert!(
             html.contains("<video data-pathland-media src=\"https://example.com/track.mp3\"></video>"),
