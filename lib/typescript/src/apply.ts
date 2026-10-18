@@ -94,6 +94,7 @@ import {
 } from "./generated/role-spec";
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 import { isRangeInFlight } from "./inFlight";
+import { log } from "./log";
 import { applyTextStyle, copyTypography, textStyleByNode } from "./typography";
 import { setIcon } from "./icons";
 
@@ -1243,7 +1244,131 @@ const mediaState = new WeakMap<HTMLMediaElement, {
   lastReported: number;
   lastReportedVolume: number;
   reportTimer: number;
+  /** The element has been unlocked inside a trusted user gesture (autoplay
+   *  policy): an unmuted `play()` is now accepted. */
+  unlocked: boolean;
 }>();
+
+/** A `play()` the browser refused for lack of user activation (autoplay policy):
+ *  replayed on the next trusted gesture (`retryPendingPlay`, driven by the DOM
+ *  client's own gesture listeners). */
+let pendingPlay: HTMLMediaElement | null = null;
+
+/**
+ * Start (or resume) a media element, wiring the autoplay-policy outcome.
+ *
+ * The play/pause action is a **server round-trip**: the click sends a pointer
+ * event, the app toggles its state, and the `PLAYBACK_STATE` delta comes back
+ * over the WebSocket — by which point the click's transient user activation has
+ * expired. A browser therefore rejects the unmuted `play()` with
+ * `NotAllowedError` (spec/EVENTS.md Media). That is not a failure: the element
+ * is marked **pending** and replayed inside the next trusted gesture (where the
+ * browser accepts it), so playback starts without the app re-emitting anything.
+ * Any *other* rejection is logged — a media failure must never be silent.
+ */
+export function playMedia(media: HTMLMediaElement): void {
+  const p = media.play();
+  if (!p || typeof p.then !== "function") {
+    return;
+  }
+  p.then(
+    () => {
+      if (pendingPlay === media) {
+        pendingPlay = null;
+      }
+    },
+    (err: unknown) => {
+      const name = err instanceof Error ? err.name : String(err);
+      if (name === "NotAllowedError") {
+        pendingPlay = media;
+        log.debug("media", "play() blocked by the autoplay policy — retrying on the next gesture");
+      } else {
+        log.warn("media", "play() rejected", name);
+      }
+    },
+  );
+}
+
+/** Replay a `play()` the autoplay policy blocked, within a trusted gesture
+ *  (`event.isTrusted`) — the one context a browser accepts an unmuted `play()`.
+ *  Safe to call on every gesture. */
+export function retryPendingPlay(): void {
+  const media = pendingPlay;
+  if (media) {
+    pendingPlay = null;
+    playMedia(media);
+  }
+}
+
+/** The playback element(s) a controller owns, hydrated from the SSR HTML. */
+function playbackElements(): HTMLMediaElement[] {
+  const out: HTMLMediaElement[] = [];
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
+    const media = el instanceof HTMLMediaElement
+      ? el
+      : el.querySelector<HTMLMediaElement>("audio,video");
+    if (media) {
+      out.push(media);
+    }
+  }
+  return out;
+}
+
+/**
+ * One-time audio unlock, called from inside a **trusted user gesture**.
+ *
+ * Autoplay policy only accepts an unmuted `play()` within a real gesture, and the
+ * app-driven play arrives after a server round-trip — so the element must be
+ * unlocked up front. Play it **muted** (always permitted) and pause, restoring
+ * the mute state: an inaudible play that earns the element permission, after
+ * which the server-driven `play()` is accepted. Idempotent and cheap, so it can
+ * run on every gesture until each element is unlocked (a not-yet-loaded element
+ * is simply retried on the next one). Elements the app already wants playing are
+ * left alone.
+ */
+export function unlockMedia(): void {
+  const seen = new Set<HTMLMediaElement>();
+  for (const media of playbackElements()) {
+    if (seen.has(media)) {
+      continue;
+    }
+    seen.add(media);
+    const state = mediaState.get(media);
+    if (!state || state.unlocked || state.playing || !media.paused) {
+      continue;
+    }
+    if (!media.currentSrc && !media.getAttribute("src")) {
+      continue; // nothing to load yet — try again on the next gesture
+    }
+    const wasMuted = media.muted;
+    media.muted = true;
+    const p = media.play();
+    const restore = () => {
+      media.muted = wasMuted;
+    };
+    if (p && typeof p.then === "function") {
+      p.then(
+        () => {
+          state.unlocked = true;
+          // Only park it if the app has not meanwhile asked it to play.
+          if (!mediaState.get(media)?.playing) {
+            media.pause();
+          }
+          restore();
+        },
+        (err: unknown) => {
+          restore();
+          const name = err instanceof Error ? err.name : String(err);
+          // A not-yet-loaded element rejects here; the next gesture retries.
+          log.debug("media", "unlock play() deferred", name);
+        },
+      );
+    } else {
+      state.unlocked = true;
+      restore();
+    }
+  }
+}
 
 /** The media element of a node: the element itself when it IS the media, else the
  *  inner `<audio>`/`<video>` of a `.pathland-media` wrapper. */
@@ -1289,7 +1414,7 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer, reportId?: nu
   if (!media || mediaState.has(media)) {
     return;
   }
-  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1, reportTimer: 0 };
+  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1, reportTimer: 0, unlocked: false };
   mediaState.set(media, state);
   const id = reportId ?? Number(el.getAttribute("data-pathland-id"));
   const send = r.onMediaEvent;
@@ -1720,13 +1845,10 @@ function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, val
       state.playing = playing;
     }
     if (playing) {
-      // A `play()` promise rejects with `AbortError` when a src change / pause
-      // interrupts it — expected during rapid track switches. Swallow it so it never
-      // surfaces as an unhandled rejection.
-      const p = media.play();
-      if (p && typeof p.catch === "function") {
-        p.catch(() => undefined);
-      }
+      // The play/pause action is a server round-trip, so this runs after the
+      // click's user activation has expired: `playMedia` handles the autoplay
+      // rejection (retried on the next trusted gesture) and logs real failures.
+      playMedia(media);
     } else {
       media.pause();
     }
@@ -1779,16 +1901,12 @@ function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, val
 /** A source change resets the media element to a paused, loading state — even
  *  when it was playing. If the app last requested "playing", resume playback on
  *  the new source (a skip/auto-advance must keep playing, not require a manual
- *  pause+play). Transient rejections (not yet buffered / autoplay policy) are
- *  non-fatal. */
+ *  pause+play). The autoplay-policy outcome is handled by `playMedia`. */
 function resumeIfPlaying(el: HTMLElement): void {
   const media = mediaElementOf(el);
   const state = media ? mediaState.get(media) : undefined;
   if (media && state && state.playing) {
-    const p = media.play();
-    if (p && typeof p.catch === "function") {
-      p.catch(() => undefined);
-    }
+    playMedia(media);
   }
 }
 
