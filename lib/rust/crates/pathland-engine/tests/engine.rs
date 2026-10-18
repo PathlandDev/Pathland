@@ -47,6 +47,8 @@ fn text_node(text: &str) -> Node {
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -62,6 +64,8 @@ fn vstack(children: Vec<Node>) -> Node {
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -77,6 +81,8 @@ fn hstack(children: Vec<Node>) -> Node {
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -459,6 +465,8 @@ fn list_property_emits_fit_query_with_the_list_value_type() {
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     });
 

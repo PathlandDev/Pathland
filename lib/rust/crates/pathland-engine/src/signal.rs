@@ -82,6 +82,9 @@ pub enum Dep {
     Text { node: u32 },
     /// A node property is bound to the signal.
     Property { node: u32, prop: u16 },
+    /// A `STRING`-valued node property is bound to the signal (e.g. a media
+    /// controller's `MEDIA_SOURCE`); a change re-emits only that property.
+    StringProperty { node: u32, prop: u16 },
 }
 
 /// A value kind that maps to/from a [`SignalValue`] — the typed-signal surface.

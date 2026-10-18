@@ -5,14 +5,15 @@
 //! here (in the opcode-engine core) so the diff emitter can walk it without the
 //! engine depending on the authoring DSL.
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
-use pathland_core::component_type;
+use pathland_core::{component_type, property_id};
 
+use crate::media::MediaControllerRef;
 use crate::signal::SignalId;
 
 /// An app-side tap callback.
@@ -52,6 +53,15 @@ pub struct Node {
     /// Property signals (propertyId to signal), overriding the static
     /// `properties` entry for that id when both are present.
     pub property_bindings: BTreeMap<u16, SignalId>,
+    /// `STRING`-valued property signals (propertyId to signal), overriding the
+    /// static `string_properties` entry for that id when both are present. A
+    /// change re-emits only that property (`SET_PROPERTY` with the `STRING`
+    /// value type) — e.g. a media controller's `MEDIA_SOURCE`.
+    pub string_bindings: BTreeMap<u16, SignalId>,
+    /// The media controller this node references (spec/MEDIA.md): a
+    /// `MEDIA_CONTROLLER` node **is** the controller's node, and a `VIDEO`
+    /// surface's `MEDIA_CONTROLLER_ID` points at it. `None` otherwise.
+    pub media_controller: Option<MediaControllerRef>,
     /// App-side gesture handlers (callbacks). These live only in the
     /// application's retained tree and are **never** emitted as protocol.
     pub gestures: Vec<Gesture>,
@@ -69,6 +79,8 @@ impl core::fmt::Debug for Node {
             .field("list_properties", &self.list_properties)
             .field("text_binding", &self.text_binding)
             .field("property_bindings", &self.property_bindings)
+            .field("string_bindings", &self.string_bindings)
+            .field("media_controller", &self.media_controller)
             .field("gestures", &self.gestures.len())
             .finish()
     }
@@ -87,6 +99,8 @@ impl Node {
             list_properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
+            string_bindings: BTreeMap::new(),
+            media_controller: None,
             gestures: Vec::new(),
         }
     }
@@ -177,6 +191,13 @@ pub enum Component {
     LazyVStack,
     /// Virtualized horizontal stack.
     LazyHStack,
+    /// Non-visual media controller node (spec/MEDIA.md): owns a
+    /// [`MediaController`](crate::MediaController)'s resource + transport. It
+    /// renders nothing and takes no space.
+    MediaController,
+    /// Video playback **surface**: renders a `MEDIA_CONTROLLER`'s video output
+    /// (referenced via `MEDIA_CONTROLLER_ID`).
+    Video,
     /// Fit slot (`SIZE_THAT_FITS`): shows its single (selected) child — only
     /// the selected candidate is ever transmitted; the renderer measures its
     /// own allocated width against the `FIT_QUERY` list and reports `FIT_CHANGED`.
@@ -223,6 +244,8 @@ impl core::fmt::Debug for Component {
             Component::LazyHGrid => f.write_str("LazyHGrid"),
             Component::LazyVStack => f.write_str("LazyVStack"),
             Component::LazyHStack => f.write_str("LazyHStack"),
+            Component::MediaController => f.write_str("MediaController"),
+            Component::Video => f.write_str("Video"),
             Component::SizeThatFits => f.write_str("SizeThatFits"),
             Component::Toggle => f.write_str("Toggle"),
             Component::Slider => f.write_str("Slider"),
@@ -259,6 +282,8 @@ pub fn component_type_id(component: &Component) -> u16 {
         Component::LazyHGrid => component_type::LAZY_HGRID,
         Component::LazyVStack => component_type::LAZY_VSTACK,
         Component::LazyHStack => component_type::LAZY_HSTACK,
+        Component::MediaController => component_type::MEDIA_CONTROLLER,
+        Component::Video => component_type::VIDEO,
         Component::SizeThatFits => component_type::SIZE_THAT_FITS,
         Component::Toggle => component_type::TOGGLE,
         Component::Slider => component_type::SLIDER,
@@ -276,11 +301,80 @@ pub fn component_type_id(component: &Component) -> u16 {
 ///
 /// The engine keys its diff snapshot by node id, so call this after building
 /// the (possibly re-built) tree and before `Engine::emit`.
+///
+/// **Media controllers are pinned**: a `MEDIA_CONTROLLER` node keeps the id it
+/// was first given (spec/MEDIA.md), so a structural swap that shifts other ids
+/// never changes the playback key — and its `VIDEO` surface's
+/// `MEDIA_CONTROLLER_ID` is linked in the same pass.
 pub fn assign_ids(root: &mut Node, next: &mut u32) {
-    root.id = *next;
+    // Reserve every already-pinned controller id up front, so no other node can
+    // be handed one even when it is lower than the current cursor.
+    let mut reserved = BTreeSet::new();
+    collect_pinned_controller_ids(root, &mut reserved);
+    assign_ids_pass(root, next, &mut reserved);
+}
+
+/// Collect the ids already pinned by the controllers present in this tree.
+fn collect_pinned_controller_ids(node: &Node, out: &mut BTreeSet<u32>) {
+    if matches!(node.component, Component::MediaController) {
+        if let Some(id) = node
+            .media_controller
+            .as_ref()
+            .map(|c| c.0.pinned_node_id())
+            .filter(|id| *id != 0)
+        {
+            out.insert(id);
+        }
+    }
+    for child in &node.children {
+        collect_pinned_controller_ids(child, out);
+    }
+}
+
+/// Take the next free (unreserved) id from the cursor.
+fn take_id(next: &mut u32, reserved: &BTreeSet<u32>) -> u32 {
+    if *next == 0 {
+        *next = 1;
+    }
+    while reserved.contains(next) {
+        *next += 1;
+    }
+    let id = *next;
     *next += 1;
-    for child in &mut root.children {
-        assign_ids(child, next);
+    id
+}
+
+fn assign_ids_pass(node: &mut Node, next: &mut u32, reserved: &mut BTreeSet<u32>) {
+    match (&node.component, node.media_controller.clone()) {
+        (Component::MediaController, Some(controller)) => {
+            // A controller keeps the id it was first pinned to.
+            let pinned = controller.0.pinned_node_id();
+            node.id = if pinned != 0 {
+                pinned
+            } else {
+                let id = take_id(next, reserved);
+                controller.0.pin_node_id(id);
+                id
+            };
+            reserved.insert(node.id);
+        }
+        _ => {
+            node.id = take_id(next, reserved);
+        }
+    }
+    // Link a video surface to its controller (spec/MEDIA.md).
+    if matches!(node.component, Component::Video) {
+        if let Some(id) = node
+            .media_controller
+            .as_ref()
+            .map(|c| c.0.pinned_node_id())
+            .filter(|id| *id != 0)
+        {
+            node.properties.insert(property_id::MEDIA_CONTROLLER_ID, id);
+        }
+    }
+    for child in &mut node.children {
+        assign_ids_pass(child, next, reserved);
     }
 }
 

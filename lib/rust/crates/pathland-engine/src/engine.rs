@@ -320,6 +320,33 @@ impl Engine {
                         }
                     }
                 }
+                Dep::StringProperty { node, prop } => {
+                    let new_text: Option<String> = value.to_text().map(ToOwned::to_owned);
+                    let prev_text = self.snapshot_string(node, prop).map(ToOwned::to_owned);
+                    if new_text != prev_text {
+                        let emitted = match new_text.as_deref() {
+                            Some(t) => {
+                                let arena = guest
+                                    .alloc_str(t)
+                                    .map_err(|_| pathland_core::RingError::Full)?;
+                                guest.set_property(node, prop, value_type::STRING, arena)?;
+                                out += 1;
+                                Some((t.to_string(), arena))
+                            }
+                            None => None,
+                        };
+                        if let Some(s) = self.snapshot_mut(node) {
+                            match emitted {
+                                Some((v, arena)) => {
+                                    s.string_properties.insert(prop, (v, arena));
+                                }
+                                None => {
+                                    s.string_properties.remove(&prop);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
         Ok(out)
@@ -343,6 +370,14 @@ impl Engine {
             .get(node as usize)
             .and_then(|s| s.as_ref())
             .and_then(|s| s.properties.get(&prop).copied())
+    }
+
+    fn snapshot_string(&self, node: u32, prop: u16) -> Option<&str> {
+        self.snapshot
+            .get(node as usize)
+            .and_then(|s| s.as_ref())
+            .and_then(|s| s.string_properties.get(&prop))
+            .map(|(value, _)| value.as_str())
     }
 
     fn slot_mut(&mut self, id: u32) -> &mut Option<SnapshotNode> {
@@ -382,6 +417,20 @@ impl Engine {
             Some(m)
         };
 
+        // `STRING`-valued property bindings (e.g. a media controller's
+        // `MEDIA_SOURCE`) resolve on top of the static string properties.
+        let merged_strings: Option<BTreeMap<u16, String>> = if node.string_bindings.is_empty() {
+            None
+        } else {
+            let mut m = node.string_properties.clone();
+            for (prop, sid) in &node.string_bindings {
+                if let Some(v) = self.store.get(*sid).to_text() {
+                    m.insert(*prop, v.to_string());
+                }
+            }
+            Some(m)
+        };
+
         let text_borrowed: Option<&str> = match (&bound_text, &node.component) {
             (Some(s), _) => Some(s.as_str()),
             (None, Component::Text { text }) => Some(text.as_str()),
@@ -390,7 +439,9 @@ impl Engine {
         };
         let props: &BTreeMap<u16, u32> = merged_props.as_ref().unwrap_or(&node.properties);
         let token_refs = &node.token_properties;
-        let strings = &node.string_properties;
+        let strings: &BTreeMap<u16, String> = merged_strings
+            .as_ref()
+            .unwrap_or(&node.string_properties);
         let lists = &node.list_properties;
 
         let prev = self.slot_mut(node.id).take();
@@ -663,6 +714,10 @@ impl Engine {
         for (prop, sid) in &node.property_bindings {
             self.store
                 .add_node_dep(*sid, Dep::Property { node: node.id, prop: *prop });
+        }
+        for (prop, sid) in &node.string_bindings {
+            self.store
+                .add_node_dep(*sid, Dep::StringProperty { node: node.id, prop: *prop });
         }
 
         for (i, child) in node.children.iter().enumerate() {
