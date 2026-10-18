@@ -2,8 +2,8 @@
 //! render-tree decode.
 
 use pathland_gtk::RenderTree;
-use pathland_native::{component_from_id, NativeHost};
-use pathland_core::{property_id, SharedHeader, parameter};
+use pathland_native::{component_from_id, MediaControllerSlot, NativeHost};
+use pathland_core::{component_type, property_id, tree, SharedHeader, parameter};
 use pathland_engine::SignalValue;
 use pathland_core_transport::FrameSource;
 
@@ -119,4 +119,57 @@ fn signal_noop_set_writes_nothing() {
     // Setting to the same value is a no-op.
     assert!(!host.set_signal(sig, SignalValue::Str("hello".into())));
     assert!(host.next_frame().unwrap().is_none());
+}
+
+/// A flat host authors media without the Rust view DSL (spec/MEDIA.md): a
+/// controller handle, its non-visual node, a `VIDEO` surface linked to it, and a
+/// reactive `MEDIA_SOURCE`.
+#[test]
+fn flat_world_authors_a_media_controller_and_its_surface() {
+    let mut host = NativeHost::new();
+    // A root container + the controller's marker node + a video surface.
+    host.create_node(1, pathland_view::Component::VStack);
+    host.create_node(2, pathland_view::Component::MediaController);
+    host.create_node(3, pathland_view::Component::Video);
+    host.insert_child(1, 2, u32::MAX);
+    host.insert_child(1, 3, u32::MAX);
+
+    let handle = host.media_controller_create();
+    assert_ne!(handle, 0, "a controller handle");
+    assert!(host.media_controller_source(handle, "/assets/track1.mp3"));
+    assert!(host.node_media_controller(2, handle), "the marker is the controller's node");
+    assert!(host.node_media_controller(3, handle), "the video is a surface");
+
+    // The controller's transport slots are addressable (a host drives them with
+    // `set_signal`), and the resource is a reactive STRING property.
+    assert!(
+        host.media_controller_signal(handle, MediaControllerSlot::Playing).is_some(),
+        "the transport slots are reachable"
+    );
+    let source = host.create_signal(SignalValue::Str("/assets/track1.mp3".into()));
+    assert!(host.bind_string_property(2, property_id::MEDIA_SOURCE, source));
+
+    assert!(host.emit());
+    let batch = host.next_frame().unwrap().expect("a mount frame");
+    let ops: Vec<pathland_core::Opcode> = batch.frame().opcodes().collect();
+
+    // The controller node was created and the surface points at it.
+    assert!(ops.iter().any(|op| op.command() == tree::CREATE_NODE
+        && op.a() == 2
+        && op.b() as u16 == component_type::MEDIA_CONTROLLER));
+    assert!(ops.iter().any(|op| op.command() == parameter::SET_PROPERTY
+        && op.a() == 3
+        && (op.b() as u16) == property_id::MEDIA_CONTROLLER_ID
+        && op.c() == 2));
+    assert!(ops.iter().any(|op| op.command() == parameter::SET_PROPERTY
+        && op.a() == 2
+        && (op.b() as u16) == property_id::MEDIA_SOURCE));
+
+    // A track change re-emits only the controller's `MEDIA_SOURCE`.
+    assert!(host.set_signal(source, SignalValue::Str("/assets/track2.mp3".into())));
+    let delta = host.next_frame().unwrap().expect("a delta frame");
+    let ops: Vec<pathland_core::Opcode> = delta.frame().opcodes().collect();
+    assert_eq!(ops.len(), 1, "one opcode: the changed source");
+    assert_eq!(ops[0].a(), 2);
+    assert_eq!(ops[0].b() as u16, property_id::MEDIA_SOURCE);
 }
