@@ -9,91 +9,76 @@ import java.util.function.Consumer;
 import static dev.pathland.view.signal.Signals.computed;
 
 /**
- * The music player's custom {@link AudioStyle}: the full bottom-bar surface —
- * a centered row of {@code [rewind] [play-pause] [forward] | [cover art]
- * [track title] | [volume]} over a slim, draggable seek bar that reports
- * <b>progress as a percent</b> (mapped in the UI model via {@link PercentSeek};
- * the wire keeps seconds). Everything binds to the media configuration's
- * signals, so this becomes the {@code AUDIO} node's children and the renderer
- * emits a hidden media element alongside these app-defined controls (real
- * playback, app-driven).
+ * The player bar's control surface: a centered row of
+ * {@code [rewind] [play-pause] [forward] | [cover art] [track title] | [volume]}
+ * over a slim, draggable seek bar that reports <b>progress as a percent</b>
+ * (mapped in the UI model via {@link PercentSeek}; the wire keeps seconds).
  *
- * <p>Configured via {@code playerControlsStyle(s -> s.trackIndex(...)…)} — an
- * app-authored style exposes a lowercase static factory on its own type (spec
- * DSL.md §5.6); a private constructor keeps creation on the configurator.
+ * <p><b>Audio has no view</b> (spec/MEDIA.md): this is an ordinary view whose
+ * controls bind a {@link MediaController}'s transport signals — the play button
+ * toggles {@code playing()}, the seek bar displays {@code time()} and writes
+ * {@code position()}, the volume slider displays {@code volumeReport()} and writes
+ * {@code volume()}. The controller owns the playback; a {@code SIZE_THAT_FITS}
+ * swap of this bar never restarts it.
+ *
+ * <p>Configured via {@code PlayerControls.make(c -> c.player(player).trackIndex(i))}.
  */
-public final class PlayerControlsStyle implements AudioStyle {
+public final class PlayerControls implements View, Configurable<PlayerControls.Config> {
 
-    /** {@link PlayerControlsStyle} values: the DISPLAY signals (fed by the media
-     *  reports) and the SEEK/VOLUME command signals (written on user drags). */
+    /** {@link PlayerControls} values. */
     public static final class Config implements View.Config {
 
+        private MediaController player;
         private WritableSignal<Integer> trackIndex;
-        private WritableSignal<Float> position;
-        private WritableSignal<Float> seekRequest;
-        private WritableSignal<Float> volume;
-        private WritableSignal<Float> volumeRequest;
 
-        /** The current track index. */
+        /** The playback controller the controls drive. */
+        public Config player(MediaController player) {
+            this.player = player;
+            return this;
+        }
+
+        /** The current track index (drives the track info + prev/next). */
         public Config trackIndex(WritableSignal<Integer> trackIndex) {
             this.trackIndex = trackIndex;
-            return this;
-        }
-
-        /** The play-position DISPLAY signal (fed by the media reports). */
-        public Config position(WritableSignal<Float> position) {
-            this.position = position;
-            return this;
-        }
-
-        /** The SEEK command signal (written on user drags). */
-        public Config seekRequest(WritableSignal<Float> seekRequest) {
-            this.seekRequest = seekRequest;
-            return this;
-        }
-
-        /** The volume DISPLAY signal (fed by the media reports). */
-        public Config volume(WritableSignal<Float> volume) {
-            this.volume = volume;
-            return this;
-        }
-
-        /** The VOLUME command signal (written on user drags). */
-        public Config volumeRequest(WritableSignal<Float> volumeRequest) {
-            this.volumeRequest = volumeRequest;
             return this;
         }
     }
 
     private final Config config;
 
-    private PlayerControlsStyle(Config config) {
+    private PlayerControls(Config config) {
         this.config = config;
     }
 
-    /** Configure the player-controls style's signals. */
-    public static PlayerControlsStyle playerControlsStyle(Consumer<Config> configure) {
+    /** Configure the control surface's values. */
+    public static ViewBuilder<PlayerControls, Config> make(Consumer<Config> configure) {
         Config config = new Config();
         configure.accept(config);
-        return new PlayerControlsStyle(config);
+        return new ViewBuilder<>(new PlayerControls(config));
     }
 
     @Override
-    public View makeBody(Configuration configuration) {
+    public Config config() {
+        return config;
+    }
+
+    @Override
+    public View body() {
+        MediaController player = config.player;
         var current = computed(() -> MusicPlayerView.at(config.trackIndex.get()));
-        var transportIcon = computed(() -> configuration.playing().get() ? IconName.PAUSE.wire() : IconName.PLAY.wire());
-        var seek = new SeekControl(config.position, config.seekRequest);
-        var volumeControl = new VolumeControl(config.volume, config.volumeRequest);
+        var transportIcon = computed(() -> player.playing().get() ? IconName.PAUSE.wire() : IconName.PLAY.wire());
+        var seek = new SeekControl(player.time(), player.position());
+        var volumeControl = new VolumeControl(player.volumeReport(), player.volume());
 
         var playControl = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Button.make(b -> b.action(() -> { prev(); restartSeek(); })).modifiers(fontSize(20))
-                                        .children(Icon.make(IconName.SKIP_BACK)),
-                        Button.make(b -> b.action(() -> configuration.playing().update(v -> !v))).modifiers(fontSize(20))
-                                        .children(Icon.make(transportIcon)),
-                        Button.make(b -> b.action(() -> { next(); restartSeek(); })).modifiers(fontSize(20))
-                                        .children(Icon.make(IconName.SKIP_FORWARD)));
+                        Button.make(b -> b.action(this::prev)).modifiers(fontSize(20))
+                                .children(Icon.make(IconName.SKIP_BACK)),
+                        Button.make(b -> b.action(player::toggle)).modifiers(fontSize(20))
+                                .children(Icon.make(transportIcon)),
+                        Button.make(b -> b.action(this::next)).modifiers(fontSize(20))
+                                .children(Icon.make(IconName.SKIP_FORWARD)));
         var trackInfo = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
@@ -152,19 +137,15 @@ public final class PlayerControlsStyle implements AudioStyle {
                                         padding(p -> p.edges(0, 16, 0, 16))));
     }
 
-    /** Previous track (wraps around); the seek restarts via the command binding. */
+    /** Previous track (wraps around), restarting from the top. */
     private void prev() {
         config.trackIndex.update(i -> (i - 1 + MusicPlayerView.TRACKS.size()) % MusicPlayerView.TRACKS.size());
+        config.player.seek(0f);
     }
 
-    /** Next track (wraps around); the seek restarts via the command binding. */
+    /** Next track (wraps around), restarting from the top. */
     private void next() {
         config.trackIndex.update(i -> (i + 1) % MusicPlayerView.TRACKS.size());
-    }
-
-    /** A prev/next restart seeks to the top: reset both the display and the command. */
-    private void restartSeek() {
-        config.position.set(0f);
-        config.seekRequest.set(0f);
+        config.player.seek(0f);
     }
 }

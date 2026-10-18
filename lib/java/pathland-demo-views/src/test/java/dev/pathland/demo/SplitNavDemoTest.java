@@ -81,6 +81,9 @@ class SplitNavDemoTest {
         mount(sink, "/kitchen");
 
         ProtocolFrame frame = sink.frame();
+        java.util.List<String> texts = new java.util.ArrayList<>();
+        for (var op : frame.opcodes()) { texts.add(op.category()+"/"+op.command()+"/"+op.a()+"/"+op.b()+"/"+op.c()); }
+        System.out.println("KITCHEN FRAME n=" + texts.size() + " " + texts);
         assertTrue(anySetText(frame, "Pathland Kitchensink"),
                 "the /kitchen content area is the full KitchenSinkView");
         assertEquals("/kitchen", routeOf(frame));

@@ -4,6 +4,7 @@ import dev.pathland.view.Color;
 import dev.pathland.view.Components;
 import dev.pathland.view.Environment;
 import dev.pathland.view.EnvironmentValues;
+import dev.pathland.view.MediaController;
 import dev.pathland.view.Properties;
 import dev.pathland.view.ThemeData;
 import dev.pathland.view.ValueTypes;
@@ -17,6 +18,7 @@ import dev.pathland.view.transport.Event;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,6 +58,13 @@ public final class Emitter {
     private final Map<Integer, Consumer<Integer>> fitInputs = new LinkedHashMap<>();
     private final Map<Integer, Runnable> navigateActions = new LinkedHashMap<>();
     private final Map<Integer, dev.pathland.view.ProxyConfig> proxyViews = new LinkedHashMap<>();
+    /** Materialized `MEDIA_CONTROLLER` nodes by controller identity (spec/MEDIA.md):
+     *  one non-visual node per referenced controller, keyed by the controller id. */
+    private final Map<MediaController, PathlandNode> mediaControllers = new IdentityHashMap<>();
+    /** The last-emitted controller node id per controller — so a re-render that keeps
+     *  the same id does not re-emit a redundant `MEDIA_CONTROLLER_ID` (an identical
+     *  recompute must stay zero-op). */
+    private final Map<MediaController, Integer> mediaControllerIds = new IdentityHashMap<>();
     private final List<EffectRef> bindings = new ArrayList<>();
     private final Map<Integer, List<EffectRef>> nodeBindings = new LinkedHashMap<>();
     private Consumer<Event> navigateHandler;
@@ -146,6 +155,13 @@ public final class Emitter {
         this.tree = tree;
         nextId = 1;
         assignIds(tree);
+        // Materialize one non-visual `MEDIA_CONTROLLER` node per referenced
+        // MediaController (spec/MEDIA.md) and bind each `VIDEO` surface to it.
+        // The controller nodes are prepended so they are emitted before any
+        // surface references them (a forward reference would render blank).
+        mediaControllers.clear();
+        mediaControllerIds.clear();
+        materializeControllers(tree);
         guardUniqueIds();
         tapActions.clear();
         textInputs.clear();
@@ -259,6 +275,20 @@ public final class Emitter {
         }
     }
 
+    /** Every node in a subtree, pre-order. */
+    private static List<PathlandNode> flatten(PathlandNode node) {
+        List<PathlandNode> out = new ArrayList<>();
+        flattenInto(node, out);
+        return out;
+    }
+
+    private static void flattenInto(PathlandNode node, List<PathlandNode> out) {
+        out.add(node);
+        for (PathlandNode child : node.children) {
+            flattenInto(child, out);
+        }
+    }
+
     /**
      * Fail loudly when the retained tree violates the unique-node-id invariant
      * (spec/OPCODE.md §Frame Lifecycle). {@link #assignIds}/{@code nextId} is the
@@ -275,6 +305,95 @@ public final class Emitter {
                             + ": a frame MUST NOT contain two nodes with the same id "
                             + "(spec/OPCODE.md §Frame Lifecycle)");
         }
+    }
+
+    /**
+     * Materialize one non-visual {@code MEDIA_CONTROLLER} node per attached
+     * {@link MediaController} (spec/MEDIA.md). An attach marker
+     * ({@link MediaController#attach()}) *is* the controller node: it becomes the
+     * MEDIA_CONTROLLER **in place**, so the controller lives exactly where the
+     * application placed it — outside any swapping branch — and no structure is
+     * synthesized.
+     */
+    private void materializeControllers(PathlandNode scanRoot) {
+        List<PathlandNode> nodes = flatten(scanRoot);
+        for (PathlandNode node : nodes) {
+            MediaController controller = node.mediaControllerRef;
+            if (controller != null && node.component == Components.COMMENT) {
+                node.component = Components.MEDIA_CONTROLLER;
+                applyController(node, controller);
+                // The controller's node id is the playback key and MUST stay stable
+                // across re-renders (a changing key would restart playback). Pin it
+                // on first materialization and reuse it on every reconcile.
+                Integer stable = mediaControllerIds.get(controller);
+                if (stable == null) {
+                    stable = nextId++;
+                    mediaControllerIds.put(controller, stable);
+                }
+                node.id = stable;
+                mediaControllers.put(controller, node);
+            }
+        }
+        // Resolve a `VIDEO` surface's binding pre-diff (so the diff compares like for
+        // like and never emits a late `MEDIA_CONTROLLER_ID` frame). A surface whose
+        // controller was never attached stays unbound (blank, never a crash).
+        for (PathlandNode node : nodes) {
+            MediaController controller = node.mediaControllerRef;
+            if (controller == null || node.component != Components.VIDEO) {
+                continue;
+            }
+            Integer id = mediaControllerIds.get(controller);
+            if (id != null) {
+                node.properties.put(Properties.MEDIA_CONTROLLER_ID, id);
+            }
+        }
+    }
+
+    /** Bind a controller's transport signals to its `MEDIA_CONTROLLER` node, and
+     *  route the renderer's `MEDIA_*` reports back into the controller's signals. */
+    private void applyController(PathlandNode node, MediaController c) {
+        node.properties.put(Properties.MEDIA_SOURCE, c.sourceSignal().get());
+        node.propertyBindings.put(Properties.MEDIA_SOURCE, c.sourceSignal());
+        node.properties.put(Properties.PLAYBACK_STATE, c.playing().get() ? 1 : 0);
+        node.propertyBindings.put(Properties.PLAYBACK_STATE, c.playing());
+        node.properties.put(Properties.MEDIA_POSITION, c.position().get());
+        node.propertyBindings.put(Properties.MEDIA_POSITION, c.position());
+        node.properties.put(Properties.MEDIA_VOLUME, c.volume().get());
+        node.propertyBindings.put(Properties.MEDIA_VOLUME, c.volume());
+        node.properties.put(Properties.MEDIA_MUTED, c.muted().get() ? 1 : 0);
+        node.propertyBindings.put(Properties.MEDIA_MUTED, c.muted());
+        node.properties.put(Properties.MEDIA_LOOP, c.loop().get() ? 1 : 0);
+        node.propertyBindings.put(Properties.MEDIA_LOOP, c.loop());
+        node.properties.put(Properties.MEDIA_RATE, c.rate().get());
+        node.propertyBindings.put(Properties.MEDIA_RATE, c.rate());
+        // Reports flow into the dedicated report signals (never echoed back as
+        // commands, spec/EVENTS.md Media).
+        node.mediaInput = new MediaInput() {
+            @Override
+            public void onPlayStateChanged(boolean playing) {
+                c.playing().set(playing);
+            }
+
+            @Override
+            public void onTimeUpdated(float seconds) {
+                c.time().set(seconds);
+            }
+
+            @Override
+            public void onDurationChanged(float seconds) {
+                c.duration().set(seconds);
+            }
+
+            @Override
+            public void onEnded() {
+                c.onEnded().run();
+            }
+
+            @Override
+            public void onVolumeChanged(float volume) {
+                c.volumeReport().set(volume);
+            }
+        };
     }
 
     /** Collect tap actions + input sinks, keyed by node id, for the host's event routing. */
@@ -570,6 +689,11 @@ public final class Emitter {
         forgetInputs(oldChildren);
 
         List<Runnable> ops = new ArrayList<>();
+        // Materialize the fresh subtree's controllers in place (binds nothing yet:
+        // ids are assigned by the diff below).
+        if (fresh != null) {
+            materializeControllers(fresh);
+        }
         reconcileChildren(slot, oldChildren, newChildren, ops);
         slot.children.clear();
         slot.children.addAll(newChildren);
@@ -649,7 +773,9 @@ public final class Emitter {
                     });
                 }
                 if (fresh != null) {
-                    fresh.id = nextId++;
+                    if (fresh.id == 0) {
+                        fresh.id = nextId++;
+                    }
                     int id = fresh.id, component = fresh.component, index = i;
                     ops.add(() -> sink.createNode(id, component));
                     emitSubtreeInto(ops, fresh);

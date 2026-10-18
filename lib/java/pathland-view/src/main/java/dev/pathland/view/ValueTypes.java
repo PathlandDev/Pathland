@@ -24,12 +24,14 @@ public final class ValueTypes {
             case Properties.SELECTED, Properties.VISIBLE, Properties.ENABLED, Properties.UNDERLINE,
                     Properties.STRIKETHROUGH, Properties.COLOR_INVERT, Properties.CLIPS_TO_BOUNDS,
                     Properties.ALLOWS_HIT_TESTING, Properties.IS_SECURE, Properties.IS_INDETERMINATE,
-                    Properties.FIXED_SIZE_HORIZONTAL, Properties.FIXED_SIZE_VERTICAL -> U8;
+                    Properties.FIXED_SIZE_HORIZONTAL, Properties.FIXED_SIZE_VERTICAL,
+                    Properties.MEDIA_MUTED, Properties.MEDIA_LOOP -> U8;
             case Properties.LABEL, Properties.PROMPT, Properties.FONT_FAMILY, Properties.IMAGE_SOURCE,
-                    Properties.AUDIO_SOURCE, Properties.VIDEO_SOURCE, Properties.ROUTE,
+                    Properties.MEDIA_SOURCE, Properties.ROUTE,
                     Properties.ICON_NAME, Properties.GRID_TRACKS -> STRING;
             case Properties.LINE_LIMIT, Properties.SELECTION, Properties.ACTION_ID, Properties.BINDING_ID,
-                    Properties.NAV_DEPTH, Properties.PLAYBACK_STATE -> U32;
+                    Properties.NAV_DEPTH, Properties.PLAYBACK_STATE,
+                    Properties.MEDIA_CONTROLLER_ID -> U32;
             case Properties.FIT_QUERY -> LIST;
             // Enums ride the wire as F32 holding the numeric enum code (spec convention).
             case Properties.ALIGNMENT, Properties.TEXT_ALIGNMENT, Properties.TRUNCATION_MODE,

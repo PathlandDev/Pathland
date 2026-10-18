@@ -40,14 +40,22 @@ public final class Properties {
     // Style (0x1000 range)
     public static final int BACKGROUND_COLOR = 0x1001;
     public static final int IMAGE_SOURCE = 0x1002;
-    public static final int AUDIO_SOURCE = 0x1033;
-    public static final int VIDEO_SOURCE = 0x1034;
-    /** Media playback state on an `AUDIO`/`VIDEO` node (0 pause, 1 play). */
+    /** Media playback state on a `MEDIA_CONTROLLER` (0 pause, 1 play). */
     public static final int PLAYBACK_STATE = 0x1035;
-    /** Media position in seconds on an `AUDIO`/`VIDEO` node; a change seeks. */
+    /** Media position in seconds on a `MEDIA_CONTROLLER`; a change seeks. */
     public static final int MEDIA_POSITION = 0x1036;
-    /** Media volume on an `AUDIO`/`VIDEO` node (0..1). */
+    /** Media volume on a `MEDIA_CONTROLLER` (0..1). */
     public static final int MEDIA_VOLUME = 0x1037;
+    /** The referenced `MEDIA_CONTROLLER`'s node id on a `VIDEO` surface (U32). */
+    public static final int MEDIA_CONTROLLER_ID = 0x103A;
+    /** Media resource (STRING asset reference) on a `MEDIA_CONTROLLER`. */
+    public static final int MEDIA_SOURCE = 0x103B;
+    /** Mute (U8 0/1) on a `MEDIA_CONTROLLER`; independent of `MEDIA_VOLUME`. */
+    public static final int MEDIA_MUTED = 0x103C;
+    /** Loop the resource on end (U8 0/1) on a `MEDIA_CONTROLLER`. */
+    public static final int MEDIA_LOOP = 0x103D;
+    /** Playback rate (F32, 1.0 = normal) on a `MEDIA_CONTROLLER`. */
+    public static final int MEDIA_RATE = 0x103E;
     /** Semantic icon name (STRING, canonical; spec/ICONS.md) on an `ICON` node. */
     public static final int ICON_NAME = 0x1038;
     public static final int BORDER_WIDTH = 0x1003;

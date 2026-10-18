@@ -210,7 +210,7 @@ class SizeThatFitsTest {
      *  bar's volume controls vanish when the root row shows the now-playing sidebar)
      *  and the DOM client never re-reports an unchanged width, so it stays lost.
      *  The nested slot is deliberately re-built FRESH on every render, mirroring a
-     *  custom style body (PlayerControlsStyle.makeBody) re-run on a subtree re-render. */
+     *  control body (PlayerControls.body) re-run on a subtree re-render. */
     @Test
     void outerSwapPreservesNestedSlotSelection() {
         FrameOpcodeSink sink = new FrameOpcodeSink();

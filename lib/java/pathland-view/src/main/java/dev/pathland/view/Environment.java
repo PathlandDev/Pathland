@@ -45,14 +45,6 @@ public final class Environment {
     public static final EnvironmentKey<LabelStyle> LABEL_STYLE = EnvironmentKey.of("labelStyle");
 
     /**
-     * The environment key for the active {@link AudioStyle} ({@code .audioStyle}).
-     * {@code AudioStyle} (a {@code Style} — the value is the modifier) scopes it down the wrapped subtree; {@link Audio} reads
-     * it with {@link #audioStyle()} (defaulting to
-     * {@link NativeAudioStyle}).
-     */
-    public static final EnvironmentKey<AudioStyle> AUDIO_STYLE = EnvironmentKey.of("audioStyle");
-
-    /**
      * The environment key for the active {@link VideoStyle} ({@code .videoStyle}).
      * {@code VideoStyle} (a {@code Style} — the value is the modifier) scopes it down the wrapped subtree; {@link Video} reads
      * it with {@link #videoStyle()} (defaulting to
@@ -93,15 +85,6 @@ public final class Environment {
     public LabelStyle labelStyle() {
         LabelStyle style = Environment.value(LABEL_STYLE).get();
         return style != null ? style : DefaultLabelStyle.INSTANCE;
-    }
-
-    /**
-     * The audio style active for the current render — the scoped environment value
-     * {@link #AUDIO_STYLE}, defaulting to {@link NativeAudioStyle}.
-     */
-    public AudioStyle audioStyle() {
-        AudioStyle style = Environment.value(AUDIO_STYLE).get();
-        return style != null ? style : NativeAudioStyle.INSTANCE;
     }
 
     /**

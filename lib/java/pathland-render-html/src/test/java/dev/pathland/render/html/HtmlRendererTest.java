@@ -2,7 +2,7 @@ package dev.pathland.render.html;
 
 import dev.pathland.view.AccessibilityLabel;
 import dev.pathland.view.AccessibilityRole;
-import dev.pathland.view.Audio;
+import dev.pathland.view.MediaController;
 import dev.pathland.view.Button;
 import dev.pathland.view.DatePicker;
 import dev.pathland.view.DatePickerMode;
@@ -170,11 +170,13 @@ Divider.make().modifiers(),
 
     @Test
     void rendersMedia() {
-        // Video/audio render with renderer-native controls; an image with an
-        // accessibility label renders its `alt` and ContentMode Fill → cover.
+        // A `VIDEO` surface over its media controller renders with renderer-native
+        // controls (spec/MEDIA.md); an image with an accessibility label renders its
+        // `alt` and ContentMode Fill → cover.
+        MediaController player = new MediaController("https://example.com/sample.mp4");
         View root = VStack.children(
-                Video.make(v -> v.source("https://example.com/sample.mp4")),
-                Audio.make(a -> a.source("https://example.com/sample.mp3")),
+                player.attach(),
+                Video.make(player),
                 Image.make(i -> i.source("/_pathland/assets/icons/home.svg"))
                         .modifiers(accessibilityLabel(l -> l.text("Home")))
                         .modifiers(scaledToFill())
@@ -182,9 +184,8 @@ Divider.make().modifiers(),
         String html = renderer().renderFragment(frameOf(root), 1);
         assertTrue(html.contains("<video"), "video element");
         assertTrue(html.contains("controls"), "video native controls");
-        assertTrue(html.contains("src=\"https://example.com/sample.mp4\""), "video source");
-        assertTrue(html.contains("<audio"), "audio element");
-        assertTrue(html.contains("src=\"https://example.com/sample.mp3\""), "audio source");
+        assertTrue(html.contains("data-pathland-controller"), "video binds its controller");
+        assertTrue(html.contains("src=\"https://example.com/sample.mp4\""), "the controller's resource");
         assertTrue(html.contains("alt=\"Home\""), "image alt from accessibility label");
         assertTrue(html.contains("object-fit:cover"), "ContentMode Fill -> cover");
     }

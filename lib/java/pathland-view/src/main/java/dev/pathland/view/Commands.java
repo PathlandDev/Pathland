@@ -41,16 +41,18 @@ public final class Commands {
         public static final int DATE_CHANGED = 0x0D;
         /** Global navigation request (host → guest, never node-keyed); URL in the string section when `NAVIGATE_URL` is set. */
         public static final int NAVIGATE = 0x0E;
-        /** A bound `AUDIO`/`VIDEO` node's playback state changed (B = 0/1). */
+        /** A bound `MEDIA_CONTROLLER`'s playback state changed (B = 0/1). */
         public static final int MEDIA_PLAY_STATE_CHANGED = 0x0F;
-        /** A bound media node's current position (B = seconds, f32). */
+        /** A bound controller's current position (B = seconds, f32). */
         public static final int MEDIA_TIME_UPDATED = 0x10;
-        /** A bound media node reached the end of its media. */
+        /** A bound controller reached the end of its media. */
         public static final int MEDIA_ENDED = 0x11;
-        /** A bound media node's volume changed (B = 0..1, f32). */
+        /** A bound controller's volume changed (B = 0..1, f32). */
         public static final int MEDIA_VOLUME_CHANGED = 0x12;
         /** A `SIZE_THAT_FITS` slot's selected candidate changed (B = index, f32). */
         public static final int FIT_CHANGED = 0x13;
+        /** A bound controller's media duration became known/changed (B = seconds, f32). */
+        public static final int MEDIA_DURATION_CHANGED = 0x14;
         private Event() {}
     }
 
