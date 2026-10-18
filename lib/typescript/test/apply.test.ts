@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, __setMediaLastReported, type DomRenderer } from "../src/apply";
+import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, unlockMedia, playMedia, retryPendingPlay, __setMediaLastReported, type DomRenderer } from "../src/apply";
 import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
 import {
@@ -92,6 +92,99 @@ function seedGlyph(name: string, inner: string): void {
   svg.innerHTML = inner;
   document.body.appendChild(svg);
 }
+
+describe("media autoplay policy", () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  /** A playback element hydrated from the SSR HTML (the controller's hidden
+   *  `<video data-pathland-media>` inside its shell), registered at `id` so
+   *  property deltas reach it. Returns the element + its renderer. */
+  function hydratedMedia(id = 1): { media: HTMLMediaElement; element: HTMLElement; r: DomRenderer } {
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-pathland-id", String(id));
+    wrapper.setAttribute("data-pathland-media", "");
+    const media = document.createElement("video");
+    media.setAttribute("data-pathland-media", "");
+    media.setAttribute("src", "/_pathland/assets/audio/track1.mp3");
+    wrapper.appendChild(media);
+    document.body.appendChild(wrapper);
+    const r = renderer();
+    r.byId.set(id, wrapper);
+    setupMediaElement(wrapper, r);
+    return { media, element: wrapper, r };
+  }
+
+  it("retries a play() the autoplay policy blocked, on the next gesture", async () => {
+    const media = document.createElement("video");
+    document.body.appendChild(media);
+    const play = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        Promise.reject(Object.assign(new Error("blocked"), { name: "NotAllowedError" })),
+      )
+      .mockImplementation(() => Promise.resolve());
+    media.play = play as unknown as HTMLMediaElement["play"];
+
+    // The server-driven play arrives outside a gesture: the browser blocks it.
+    playMedia(media);
+    expect(play).toHaveBeenCalledTimes(1);
+    await flush();
+
+    // The next trusted gesture replays it…
+    retryPendingPlay();
+    expect(play).toHaveBeenCalledTimes(2);
+    // …and it is no longer pending.
+    retryPendingPlay();
+    expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs a non-autoplay play() rejection instead of swallowing it", async () => {
+    const media = document.createElement("video");
+    document.body.appendChild(media);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    media.play = vi.fn(() =>
+      Promise.reject(Object.assign(new Error("bad"), { name: "NotSupportedError" })),
+    ) as unknown as HTMLMediaElement["play"];
+
+    playMedia(media);
+    await flush();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("unlocks the playback element muted inside a gesture, then restores the mute", async () => {
+    const { media } = hydratedMedia();
+    let mutedDuringPlay: boolean | null = null;
+    media.play = vi.fn(() => {
+      mutedDuringPlay = media.muted;
+      return Promise.resolve();
+    }) as unknown as HTMLMediaElement["play"];
+
+    unlockMedia();
+    expect(mutedDuringPlay).toBe(true); // played muted (always permitted)
+    await flush();
+    expect(media.muted).toBe(false); // mute state restored
+  });
+
+  it("does not unlock while the app already wants the element playing", async () => {
+    const { media, r } = hydratedMedia();
+    const play = vi.fn(() => Promise.resolve());
+    media.play = play as unknown as HTMLMediaElement["play"];
+
+    // The app requested playing: a PLAYBACK_STATE apply sets `state.playing`.
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, ((VAL_U8 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry("")),
+      ),
+      r,
+    );
+    expect(play).toHaveBeenCalledTimes(1); // the app's own play
+
+    unlockMedia();
+    await flush();
+    expect(play).toHaveBeenCalledTimes(1); // the unlock leaves it alone
+  });
+});
 
 describe("applyBatch · media", () => {
   it("seeks only on a meaningful MEDIA_POSITION change (no echo interruption)", () => {
