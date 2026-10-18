@@ -11,6 +11,13 @@ import static dev.pathland.view.Modifiers.*;
  */
 public final class KitchenSinkView implements View {
 
+    /**
+     * The media section's playback controller (spec/MEDIA.md). It is created
+     * **once**, outside any swapping branch, so its `MEDIA_CONTROLLER` node keeps
+     * a stable id and playback is not restarted by a structural swap.
+     */
+    private final MediaController player = new MediaController("https://example.com/sample.mp4");
+
     @Override
     public View body() {
         return ScrollView.make()
@@ -40,7 +47,7 @@ public final class KitchenSinkView implements View {
                                         new LayoutSection(),
                                         new TextStylesSection(),
                                         new LabelSection(),
-                                        new MediaSection(),
+                                        MediaSection.make(m -> m.player(player)),
                                         new AppearanceSection(),
                                         Text.make("Pathland · per-session · 16-byte deltas")
                                                 .modifiers(

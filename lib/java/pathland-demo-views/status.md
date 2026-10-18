@@ -95,7 +95,10 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   report from the DOM client swaps the row; the shared `mainArea` nodes are
   re-used by the reconcile). Owns the player's `State` (persisted per-session under
   `player.*` keys) and hands the bound signals to its subviews; each subview is
-  its own `View` class. **Real playback**: `MusicPlayerView` owns a
+  its own `View` class. The destinations are held as fields (not constructed
+  inline in `body()`), so the controller-owning view — and therefore its
+  `MediaController` — is created once and its pinned playback id survives a
+  content swap. **Real playback**: `MusicPlayerView` owns a
   **`MediaController`** (spec/MEDIA.md) wired in `body()` to its persisted
   signals and passed to both `SizeThatFits` branches, with `player.attach()`
   placed once (inside `mainArea`, outside the swapping branch) to materialize the

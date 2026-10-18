@@ -32,6 +32,17 @@ import static dev.pathland.view.Modifiers.*;
  */
 public final class SplitNavDemo implements View {
 
+    /**
+     * The destinations are constructed **once**, not inline in `body()`.
+     * `body()` re-runs whenever the active path changes (it is read to bind the
+     * router), and a destination that owns a {@link dev.pathland.view.MediaController}
+     * must keep the same controller instance across those re-renders — otherwise a
+     * new controller means a new `MEDIA_CONTROLLER` node id and the renderer
+     * restarts playback (spec/MEDIA.md).
+     */
+    private final View home = new HomeView();
+    private final View kitchen = new KitchenSinkView();
+    private final View settings = new SettingsView();
 
     @Override
     public View body() {
@@ -39,10 +50,10 @@ public final class SplitNavDemo implements View {
         // Environment.value always returns a signal; the router binds to it (reading
         // external writes and mirroring navigation back when the host signal is writable).
         Router router = Navigation.navigator()
-                .route("/", new HomeView())
-                .route("/home", new HomeView())
-                .route("/kitchen", new KitchenSinkView())
-                .route("/settings", new SettingsView())
+                .route("/", home)
+                .route("/home", home)
+                .route("/kitchen", kitchen)
+                .route("/settings", settings)
                 .fallback(Text.make("Not Found"))
                 .build(Environment.value(Platform.ACTIVE_PATH));
         // The split: a fixed sidebar column + the structural navigation slot (detail).
