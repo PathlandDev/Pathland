@@ -1506,6 +1506,20 @@ fn seek_target_changed(previous: Option<f32>, target_seconds: f64) -> bool {
     }
 }
 
+/// Seek to `pos` at `rate`, preserving the playback rate. A plain
+/// `seek_simple` always seeks at rate 1.0, so it would silently drop a
+/// `MEDIA_RATE` the app had set.
+fn seek_with_rate(pipeline: &gst::Pipeline, rate: f64, pos: gst::ClockTime) {
+    let _ = pipeline.seek(
+        rate,
+        gst::SeekFlags::FLUSH | gst::SeekFlags::ACCURATE,
+        gst::SeekType::Set,
+        pos,
+        gst::SeekType::None,
+        gst::ClockTime::ZERO,
+    );
+}
+
 /// The `MEDIA_TIME_UPDATED` cadence — ~30/s (≈ every 33 ms of playback
 /// progress), the sampling interval both the worker's position poll and the
 /// main-thread report router run at (spec/EVENTS.md Media; parity with the
@@ -1649,6 +1663,10 @@ fn media_worker_loop(
     let mut last_volume: Option<f32> = None;
     let mut last_muted: Option<bool> = None;
     let mut looping = false;
+    // The playback rate (`MEDIA_RATE`, 1.0 = normal). GStreamer changes rate via a
+    // rate-seeking seek, so every later seek re-applies it (a plain `seek_simple`
+    // would silently reset the rate to 1.0).
+    let mut rate: f64 = 1.0;
     let mut last_duration: Option<f32> = None;
     let mut reporting = true;
     loop {
@@ -1669,10 +1687,7 @@ fn media_worker_loop(
                 }
             }
             Ok(MediaControl::Seek(target)) => {
-                let _ = playbin.seek_simple(
-                    gst::SeekFlags::FLUSH,
-                    gst::ClockTime::from_seconds_f64(f64::from(target)),
-                );
+                seek_with_rate(&pipeline, rate, gst::ClockTime::from_seconds_f64(f64::from(target)));
                 let _ = report_tx.send(MediaReport::SeekApplied);
             }
             Ok(MediaControl::Volume(volume)) => {
@@ -1690,9 +1705,18 @@ fn media_worker_loop(
             Ok(MediaControl::Loop(l)) => {
                 looping = l;
             }
-            Ok(MediaControl::Rate(_rate)) => {
-                // GStreamer changes rate via a rate-seeking seek; the desktop
-                // renderer does not apply `MEDIA_RATE` yet (see status.md).
+            Ok(MediaControl::Rate(r)) => {
+                // Rate is applied as a rate-seeking seek from the current position
+                // (GStreamer has no standalone rate setter). Sign/zero are clamped
+                // out: reverse playback is not a transport control Pathland models.
+                let r = f64::from(r);
+                if r > 0.0 && (r - rate).abs() > 1e-3 {
+                    rate = r;
+                    let pos = pipeline
+                        .query_position::<gst::ClockTime>()
+                        .unwrap_or(gst::ClockTime::ZERO);
+                    seek_with_rate(&pipeline, rate, pos);
+                }
             }
             Ok(MediaControl::Stop) => {
                 let _ = pipeline.set_state(gst::State::Null);
@@ -1713,11 +1737,9 @@ fn media_worker_loop(
                         gst::MessageView::Eos(_) => {
                             let _ = report_tx.send(MediaReport::Ended);
                             if looping {
-                                // Loop: report the end, then restart from 0.
-                                let _ = playbin.seek_simple(
-                                    gst::SeekFlags::FLUSH,
-                                    gst::ClockTime::ZERO,
-                                );
+                                // Loop: report the end, then restart from 0 (keeping
+                                // the current playback rate).
+                                seek_with_rate(&pipeline, rate, gst::ClockTime::ZERO);
                                 let _ = pipeline.set_state(gst::State::Playing);
                                 playing = true;
                             } else {
