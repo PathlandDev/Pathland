@@ -13,8 +13,9 @@
 //! transport.
 
 use std::collections::{BTreeMap, HashMap};
+use std::rc::Rc;
 
-use pathland_engine::{Engine, SignalId, SignalValue};
+use pathland_engine::{Engine, MediaController, MediaControllerRef, SignalId, SignalValue};
 use pathland_core::{component_type, property_id, MemoryLayout};
 use pathland_core_transport::{
     DriverTransport, FrameSource, OpcodeBatch, RingTransport, TransportError,
@@ -22,6 +23,47 @@ use pathland_core_transport::{
 use pathland_view::{component_type_id, Node};
 
 mod capi;
+
+/// A media controller transport slot (spec/MEDIA.md): the addressable signals of
+/// a controller, so a flat host can read a report or write a command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MediaControllerSlot {
+    /// Play/pause command (`PLAYBACK_STATE`).
+    Playing,
+    /// Seek command (`MEDIA_POSITION`, seconds).
+    Position,
+    /// Volume command (`MEDIA_VOLUME`, 0..1).
+    Volume,
+    /// Mute command (`MEDIA_MUTED`).
+    Muted,
+    /// Loop-on-end command (`MEDIA_LOOP`).
+    Loop,
+    /// Playback rate command (`MEDIA_RATE`).
+    Rate,
+    /// Position report feed (`MEDIA_TIME_UPDATED`).
+    Time,
+    /// Duration report feed (`MEDIA_DURATION_CHANGED`).
+    Duration,
+    /// Volume report feed (`MEDIA_VOLUME_CHANGED`).
+    VolumeReport,
+}
+
+impl MediaControllerSlot {
+    /// The slot's signal id on `controller`.
+    pub fn id_of(self, controller: &MediaController) -> SignalId {
+        match self {
+            MediaControllerSlot::Playing => controller.playing_signal().id(),
+            MediaControllerSlot::Position => controller.position_signal().id(),
+            MediaControllerSlot::Volume => controller.volume_signal().id(),
+            MediaControllerSlot::Muted => controller.muted_signal().id(),
+            MediaControllerSlot::Loop => controller.looping_signal().id(),
+            MediaControllerSlot::Rate => controller.rate_signal().id(),
+            MediaControllerSlot::Time => controller.time_signal().id(),
+            MediaControllerSlot::Duration => controller.duration_signal().id(),
+            MediaControllerSlot::VolumeReport => controller.volume_report_signal().id(),
+        }
+    }
+}
 
 /// A flat node in the host's retained tree (id → node).
 #[derive(Clone)]
@@ -33,6 +75,13 @@ pub struct FlatNode {
     pub text_binding: Option<SignalId>,
     /// Property signals (propertyId → signal), overriding static properties.
     pub property_bindings: BTreeMap<u16, SignalId>,
+    /// `STRING`-valued property signals (propertyId → signal), overriding the
+    /// static value (e.g. a media controller's `MEDIA_SOURCE`).
+    pub string_bindings: BTreeMap<u16, SignalId>,
+    /// The media controller this node references (a host-side handle, spec/MEDIA.md):
+    /// a marker node *is* the controller's node; a `VIDEO` node is one of its
+    /// surfaces (`MEDIA_CONTROLLER_ID` is linked at materialization).
+    pub media_controller: Option<u32>,
     pub parent: Option<u32>,
     pub children: Vec<u32>,
 }
@@ -43,6 +92,11 @@ pub struct NativeHost {
     nodes: HashMap<u32, FlatNode>,
     engine: Engine,
     ring: RingTransport,
+    /// Media controllers by host handle (spec/MEDIA.md). A controller is an
+    /// engine-side state object; the flat world holds them so a host that links
+    /// only this ABI can still author media.
+    media_controllers: HashMap<u32, Rc<MediaController>>,
+    next_media_controller: u32,
 }
 
 /// Safe, checked operations returning `()` (used by the C shim).
@@ -59,6 +113,8 @@ impl NativeHost {
             nodes: HashMap::new(),
             engine: Engine::new(),
             ring: RingTransport::new(),
+            media_controllers: HashMap::new(),
+            next_media_controller: 1,
         }
     }
 
@@ -68,6 +124,8 @@ impl NativeHost {
             nodes: HashMap::new(),
             engine: Engine::new(),
             ring: RingTransport::with_buffer(mem, layout),
+            media_controllers: HashMap::new(),
+            next_media_controller: 1,
         }
     }
 
@@ -79,6 +137,8 @@ impl NativeHost {
             properties: BTreeMap::new(),
             text_binding: None,
             property_bindings: BTreeMap::new(),
+            string_bindings: BTreeMap::new(),
+            media_controller: None,
             parent: None,
             children: Vec::new(),
         });
@@ -86,6 +146,8 @@ impl NativeHost {
         entry.properties.clear();
         entry.text_binding = None;
         entry.property_bindings.clear();
+        entry.string_bindings.clear();
+        entry.media_controller = None;
     }
 
     /// Insert `child` into `parent` at `index` (u32::MAX appends).
@@ -160,6 +222,79 @@ impl NativeHost {
         }
     }
 
+    /// Bind a node's `STRING`-valued property to a signal (e.g. a controller's
+    /// `MEDIA_SOURCE`; a change re-emits only that property). Returns `true` if
+    /// the node exists.
+    pub fn bind_string_property(&mut self, id: u32, prop: u16, signal: SignalId) -> bool {
+        if let Some(node) = self.nodes.get_mut(&id) {
+            node.string_bindings.insert(prop, signal);
+            true
+        } else {
+            false
+        }
+    }
+
+    // --- Media controllers (spec/MEDIA.md) ---
+
+    /// Create a media controller and return its host handle (0 = failure). The
+    /// controller owns its transport signals on the host's runtime, reachable
+    /// through [`NativeHost::media_controller_signal`].
+    pub fn media_controller_create(&mut self) -> u32 {
+        let runtime = self.engine.runtime();
+        let handle = self.next_media_controller;
+        self.next_media_controller += 1;
+        self.media_controllers
+            .insert(handle, Rc::new(MediaController::new(&runtime)));
+        handle
+    }
+
+    /// A controller's transport signal for `slot`
+    /// ([`MediaControllerSlot`]) — write it with `set_signal` to drive playback.
+    pub fn media_controller_signal(&self, handle: u32, slot: MediaControllerSlot) -> Option<SignalId> {
+        let controller = self.media_controllers.get(&handle)?;
+        Some(slot.id_of(controller))
+    }
+
+    /// Set a controller's resource (resource name, file path or URL).
+    pub fn media_controller_source(&mut self, handle: u32, source: &str) -> bool {
+        match self.media_controllers.get(&handle) {
+            Some(existing) => {
+                // `MediaController` is shared; rebuild it with the new source and
+                // keep the same handle, so views referencing it stay valid.
+                let rebuilt = MediaController::new(&self.engine.runtime())
+                    .source(source)
+                    .playing(existing.playing_signal())
+                    .position(existing.position_signal())
+                    .volume(existing.volume_signal())
+                    .muted(existing.muted_signal())
+                    .looping(existing.looping_signal())
+                    .rate(existing.rate_signal())
+                    .time(existing.time_signal())
+                    .duration(existing.duration_signal())
+                    .volume_report(existing.volume_report_signal());
+                self.media_controllers.insert(handle, Rc::new(rebuilt));
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Mark a node as referencing a media controller: a node created as
+    /// `MEDIA_CONTROLLER` becomes the controller's own (non-visual) node, and a
+    /// `VIDEO` node becomes one of its surfaces (`MEDIA_CONTROLLER_ID` is linked
+    /// at materialization). Returns `true` if the node and handle exist.
+    pub fn node_media_controller(&mut self, id: u32, handle: u32) -> bool {
+        if !self.media_controllers.contains_key(&handle) {
+            return false;
+        }
+        if let Some(node) = self.nodes.get_mut(&id) {
+            node.media_controller = Some(handle);
+            true
+        } else {
+            false
+        }
+    }
+
     /// Create a new signal with an initial value.
     pub fn create_signal(&mut self, value: SignalValue) -> SignalId {
         self.engine.create_signal(value)
@@ -224,14 +359,40 @@ impl NativeHost {
 
     /// Materialize a `pathland_view::Node` subtree rooted at `id`.
     fn materialize(&self, id: u32) -> Option<Node> {
+        // The controller's node id, resolved up front so a surface can be linked
+        // to it before its own properties are written (spec/MEDIA.md).
+        let controller_node = self
+            .nodes
+            .values()
+            .find(|n| {
+                n.media_controller.is_some()
+                    && n.view_component == pathland_view::Component::MediaController
+            })
+            .map(|n| n.id);
+        self.materialize_at(id, controller_node)
+    }
+
+    fn materialize_at(&self, id: u32, controller_node: Option<u32>) -> Option<Node> {
         let flat = self.nodes.get(&id)?.clone();
         let mut node = Node::from_component(&flat.view_component);
         node.id = flat.id;
         node.properties = flat.properties.clone();
         node.text_binding = flat.text_binding;
         node.property_bindings = flat.property_bindings.clone();
+        node.string_bindings = flat.string_bindings.clone();
+        if let Some(handle) = flat.media_controller {
+            if let Some(controller) = self.media_controllers.get(&handle) {
+                node.media_controller = Some(MediaControllerRef::new(Rc::clone(controller)));
+                // A `VIDEO` surface points at the controller's node.
+                if flat.view_component == pathland_view::Component::Video {
+                    if let Some(target) = controller_node {
+                        node.properties.insert(property_id::MEDIA_CONTROLLER_ID, target);
+                    }
+                }
+            }
+        }
         for child_id in &flat.children {
-            if let Some(child) = self.materialize(*child_id) {
+            if let Some(child) = self.materialize_at(*child_id, controller_node) {
                 node.children.push(child);
             }
         }
