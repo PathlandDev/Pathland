@@ -1497,34 +1497,42 @@ impl HtmlRenderer {
                 format!("<img{data_id}{event}{aria} src=\"{src}\" alt=\"{alt}\"{style}>")
             }
             component_type::MEDIA_CONTROLLER => {
-                // Non-visual + layout-transparent (spec/MEDIA.md): emit a hidden
-                // marker the DOM client turns into the playback (keyed by this
-                // controller id). `display:none` keeps it out of the layout, so it
-                // is never a flex slot and contributes no spacing.
+                // Non-visual + layout-transparent (spec/MEDIA.md): a hidden
+                // (`display:none`) container holding the control-less playback
+                // element — never a flex slot, so it contributes no spacing. The
+                // DOM client hydrates this shell and drives the element.
                 let src = escape(
                     node.strings
                         .get(&property_id::MEDIA_SOURCE)
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                format!(
-                    "<div{data_id} data-pathland-media-controller data-pathland-media-src=\"{src}\" style=\"display:none\"></div>"
-                )
+                let media = if src.is_empty() {
+                    String::new()
+                } else {
+                    format!("<video data-pathland-media src=\"{src}\"></video>")
+                };
+                format!("<div{data_id} style=\"display:none\">{media}</div>")
             }
             component_type::VIDEO => {
                 // The video surface: renders the video output of the controller it
                 // references (`MEDIA_CONTROLLER_ID`); the DOM client resolves the
                 // source + transport from the controller (spec/MEDIA.md).
                 let controller = node.u32_property(property_id::MEDIA_CONTROLLER_ID, 0);
+                let binding = if controller != 0 {
+                    format!(" data-pathland-controller=\"{controller}\"")
+                } else {
+                    String::new()
+                };
                 if node.children.is_empty() {
                     // Renderer-native controls (the default `VideoStyle`).
                     format!(
-                        "<video{data_id}{event}{aria} data-pathland-controller=\"{controller}\" controls{style}></video>"
+                        "<video{data_id}{event}{aria}{binding} controls{style}></video>"
                     )
                 } else {
                     // A custom `VideoStyle` body: the children are the control UI.
                     format!(
-                        "<div{data_id}{event}{aria} class=\"pathland-media\" data-pathland-controller=\"{controller}\"{style}>{children}</div>"
+                        "<div{data_id}{event}{aria} class=\"pathland-media\"{binding}{style}>{children}</div>"
                     )
                 }
             }
@@ -2587,9 +2595,10 @@ mod tests {
     }
 
     /// The media controller is non-visual + layout-transparent: the renderer emits
-    /// a hidden marker (with the source) the DOM client turns into the playback.
+    /// a hidden (`display:none`) container holding the control-less playback
+    /// element — the shell the DOM client hydrates.
     #[test]
-    fn media_controller_renders_a_hidden_marker() {
+    fn media_controller_renders_a_hidden_shell() {
         use pathland_core::value_type;
 
         let mut opcodes = Vec::new();
@@ -2609,16 +2618,12 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_fragment(&opcodes, &strings, 1);
         assert!(
-            html.contains("data-pathland-id=\"1\" data-pathland-media-controller"),
-            "the controller renders a hidden marker: {html}"
-        );
-        assert!(
-            html.contains("data-pathland-media-src=\"https://example.com/track.mp3\""),
-            "the marker carries the resource: {html}"
-        );
-        assert!(
-            html.contains("display:none"),
+            html.contains("data-pathland-id=\"1\" style=\"display:none\""),
             "the controller is layout-transparent (no flex slot): {html}"
+        );
+        assert!(
+            html.contains("<video data-pathland-media src=\"https://example.com/track.mp3\"></video>"),
+            "the shell holds the control-less playback element: {html}"
         );
         assert!(!html.contains("<audio"), "audio has no view: {html}");
     }

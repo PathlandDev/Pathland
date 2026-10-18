@@ -26,7 +26,7 @@ import {
   COMPONENT_ICON,
   ALIGN_TOP_TRAILING,
   PROP_ALIGNMENT,
-  PROP_AUDIO_SOURCE,
+  PROP_MEDIA_SOURCE,
   PROP_COLOR,
   PROP_FONT_SIZE,
   PROP_FONT_WEIGHT,
@@ -141,7 +141,7 @@ describe("applyBatch · media", () => {
     audio.pause();
     // ...and applying the new source resumes playback.
     applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
-      ((VAL_STRING << 16) | PROP_AUDIO_SOURCE) >>> 0, 0]], stringEntry("/track2.mp3"))), r);
+      ((VAL_STRING << 16) | PROP_MEDIA_SOURCE) >>> 0, 0]], stringEntry("/track2.mp3"))), r);
     expect(audio.paused).toBe(false);
   });
 

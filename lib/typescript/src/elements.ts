@@ -3,7 +3,6 @@
 // path renders the shell server-side with Tailwind classes).
 
 import {
-  COMPONENT_AUDIO,
   COMPONENT_BUTTON,
   COMPONENT_COLOR,
   COMPONENT_COLOR_PICKER,
@@ -21,6 +20,7 @@ import {
   COMPONENT_LAZY_VGRID,
   COMPONENT_LAZY_VSTACK,
   COMPONENT_MENU,
+  COMPONENT_MEDIA_CONTROLLER,
   COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_SCROLLVIEW,
@@ -141,14 +141,22 @@ export function createElement(component: number): Node {
       el.setAttribute("focusable", "false");
       return el;
     }
-    case COMPONENT_AUDIO: {
-      // A bare media element: native (no children) gets `controls` in apply; a
-      // node that gains custom control children is morphed to a
-      // `.pathland-media` wrapper on first insert (mirrors the Rust SSR).
-      return document.createElement("audio");
+    case COMPONENT_MEDIA_CONTROLLER: {
+      // A non-visual, layout-transparent playback owner (spec/MEDIA.md): a hidden
+      // container holding the (control-less) playback element, which the apply
+      // layer materializes from `MEDIA_SOURCE`. A `VIDEO` surface that references
+      // this controller shows its video output.
+      const el = document.createElement("div");
+      el.style.display = "none";
+      return el;
     }
     case COMPONENT_VIDEO: {
-      return document.createElement("video");
+      // A bare video surface renders renderer-native controls (the default
+      // `VideoStyle`, spec/MEDIA.md); a surface that gains custom control children
+      // is morphed to a `.pathland-media` wrapper on first insert, which drops them.
+      const el = document.createElement("video");
+      el.controls = true;
+      return el;
     }
     case COMPONENT_COLOR: {
       // Layout-greedy (SwiftUI Color): expands to the available space unless a
