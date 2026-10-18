@@ -26,6 +26,7 @@ import {
   COMPONENT_ICON,
   ALIGN_TOP_TRAILING,
   PROP_ALIGNMENT,
+  PROP_MEDIA_CONTROLLER_ID,
   PROP_MEDIA_SOURCE,
   PROP_COLOR,
   PROP_FONT_SIZE,
@@ -143,6 +144,43 @@ describe("applyBatch · media", () => {
     applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
       ((VAL_STRING << 16) | PROP_MEDIA_SOURCE) >>> 0, 0]], stringEntry("/track2.mp3"))), r);
     expect(audio.paused).toBe(false);
+  });
+
+  it("binds a VIDEO surface that precedes its controller (order-independent)", () => {
+    // The surface is emitted first: its MEDIA_CONTROLLER_ID references a
+    // controller node that does not exist yet. Binding must not depend on
+    // emission order — a later MEDIA_SOURCE on the controller completes it
+    // (spec/MEDIA.md).
+    const surface = document.createElement("div");
+    surface.setAttribute("data-pathland-id", "2");
+    const surfaceVideo = document.createElement("video");
+    surfaceVideo.setAttribute("data-pathland-media", "");
+    surface.appendChild(surfaceVideo);
+    document.body.appendChild(surface);
+    const r = renderer();
+    r.byId.set(2, surface);
+
+    // The surface binds to controller 1 (which is not in the tree yet).
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 2,
+      ((VAL_U32 << 16) | PROP_MEDIA_CONTROLLER_ID) >>> 0, 1]], stringEntry(""))), r);
+    expect(surfaceVideo.src).toBe("");
+
+    // The controller arrives afterwards with its resource.
+    const controller = document.createElement("div");
+    controller.setAttribute("data-pathland-id", "1");
+    controller.setAttribute("data-pathland-media", "");
+    const controllerVideo = document.createElement("video");
+    controllerVideo.setAttribute("data-pathland-media", "");
+    controller.appendChild(controllerVideo);
+    document.body.appendChild(controller);
+    r.byId.set(1, controller);
+
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_STRING << 16) | PROP_MEDIA_SOURCE) >>> 0, 0]], stringEntry("/track9.mp3"))), r);
+
+    // The surface adopted the resource; the controller element carries no audio.
+    expect(surfaceVideo.getAttribute("src")).toContain("track9.mp3");
+    expect(controllerVideo.muted).toBe(true);
   });
 
   it("reports MEDIA_TIME_UPDATED at ~30/s (a 33 ms position sampler)", () => {

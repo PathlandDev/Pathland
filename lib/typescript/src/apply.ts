@@ -856,6 +856,14 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
             applyStringProperty(el, propId, text);
             setupMediaElement(el, r);
             resumeIfPlaying(el);
+            // The controller is the source of truth for its surfaces: mirror the
+            // new resource to every bound `VIDEO` surface. They may have been
+            // emitted *before* the controller (or the controller's source may
+            // arrive late), so mirroring cannot depend on emission order.
+            const controllerMedia = mediaElementOf(el);
+            if (controllerMedia) {
+              mirrorToSurfaces(Number(el.getAttribute("data-pathland-id")), controllerMedia);
+            }
           }
         }
       } else if (valueType === VAL_DESIGN_TOKEN) {
@@ -1598,19 +1606,51 @@ function detachIfWrongParent(container: Node, child: Node): void {
   }
 }
 
-/** `VIDEO` surfaces bound to a controller (spec/MEDIA.md). Each surface's
- *  `<video>` element mirrors the controller's resource + transport, so the same
- *  playback is shown in the surface's box; the surface element reports media
- *  events keyed to the **controller** id. */
-const controllerSurfaces = new Map<number, Set<HTMLVideoElement>>();
+/** The media registry (spec/MEDIA.md): per **controller** id, the element that
+ *  owns the resource + transport, and every `VIDEO` surface mirroring it. Keyed
+ *  by controller id rather than by emission order, so a surface that arrives
+ *  before its controller, or a controller that arrives after its surface, still
+ *  binds — the entry is shared and reconciled from both directions. */
+interface MediaEntry {
+  /** The controller's playback element (null until its `MEDIA_SOURCE` arrives). */
+  controllerMedia: HTMLVideoElement | null;
+  /** The `VIDEO` surfaces mirroring this controller. */
+  surfaces: Set<HTMLVideoElement>;
+}
 
-/** Copy a controller's transport state onto its bound `VIDEO` surfaces. */
+const mediaRegistry = new Map<number, MediaEntry>();
+
+function mediaEntry(controllerId: number): MediaEntry {
+  let entry = mediaRegistry.get(controllerId);
+  if (!entry) {
+    entry = { controllerMedia: null, surfaces: new Set() };
+    mediaRegistry.set(controllerId, entry);
+  }
+  return entry;
+}
+
+/** Copy a controller's transport state onto its bound `VIDEO` surfaces, dropping
+ *  surfaces that have left the DOM (a removed subtree must not keep playing). */
 function mirrorToSurfaces(controllerId: number, media: HTMLMediaElement): void {
-  const surfaces = controllerSurfaces.get(controllerId);
-  if (!surfaces) {
+  const entry = mediaRegistry.get(controllerId);
+  if (!entry) {
     return;
   }
+  if (media instanceof HTMLVideoElement) {
+    entry.controllerMedia = media;
+    // The controller owns the resource but a bound surface carries the audio:
+    // silence the controller element. Applied here (not only at surface-bind
+    // time) so it holds whichever side arrives first.
+    if (entry.surfaces.size > 0) {
+      media.muted = true;
+    }
+  }
+  const surfaces = entry.surfaces;
   for (const video of surfaces) {
+    if (!video.isConnected) {
+      surfaces.delete(video);
+      continue;
+    }
     if (media.src && video.src !== media.src) {
       video.src = media.src;
     }
@@ -1649,14 +1689,16 @@ function bindVideoSurface(el: HTMLElement, r: DomRenderer, controllerId: number)
   if (controllerMedia) {
     controllerMedia.muted = true; // the surface carries the audio
   }
-  let surfaces = controllerSurfaces.get(controllerId);
-  if (!surfaces) {
-    surfaces = new Set();
-    controllerSurfaces.set(controllerId, surfaces);
-  }
-  surfaces.add(video);
+  // Register the surface against the controller id. A surface may be emitted
+  // *before* its controller (or the controller's `MEDIA_SOURCE` may arrive
+  // later) — mirroring happens on whichever side arrives second, because both
+  // resolve the same registry entry.
+  const entry = mediaEntry(controllerId);
+  entry.surfaces.add(video);
   if (controllerMedia) {
     mirrorToSurfaces(controllerId, controllerMedia);
+  } else if (entry.controllerMedia) {
+    mirrorToSurfaces(controllerId, entry.controllerMedia);
   }
   setupMediaElement(el, r, controllerId);
   finalizeNativeMedia(el);
