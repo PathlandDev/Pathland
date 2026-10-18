@@ -810,6 +810,58 @@ opcode.
 - `1E 00 00 00` B = componentType = 0x001E (PROXY_VIEW)
 - `00 00 00 00` C = 0
 
+### 39. TREE:CREATE_NODE (id=1, MEDIA_CONTROLLER=0x0030)
+
+A media controller: a non-visual node that owns a media resource and its
+transport state ([MEDIA.md](./MEDIA.md)). The component id is the only
+wire-visible part of the controller; its transport properties are ordinary
+`SET_PROPERTY` opcodes and the `MEDIA_*` events target its node id.
+
+```
+01 01 00 00 01 00 00 00 30 00 00 00 00 00 00 00
+```
+
+- `01` category = TREE
+- `01` command = CREATE_NODE
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `30 00 00 00` B = componentType = 0x0030 (MEDIA_CONTROLLER)
+- `00 00 00 00` C = 0
+
+### 40. PARAMETER:SET_PROPERTY (id=1, propertyId=MEDIA_CONTROLLER_ID=0x103A, valueType=U32=0x02, controller=9)
+
+A `VIDEO` surface binding to its controller: the referenced controller's node id.
+
+```
+02 01 00 00 01 00 00 00 3A 10 02 00 09 00 00 00
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `3A 10 02 00` B = `(valueType << 16) | propertyId` = `(0x02 << 16) | 0x103A`
+  - low two bytes `3A 10` = propertyId = 0x103A (MEDIA_CONTROLLER_ID)
+  - high byte `02` = valueType = 0x02 (U32)
+- `09 00 00 00` C = the controller node id = 9
+
+### 41. PARAMETER:SET_PROPERTY (id=1, propertyId=MEDIA_SOURCE=0x103B, valueType=STRING=0x05, arenaRef=0)
+
+The controller's media resource (`"/audio/track1.mp3"` at arena offset 0).
+
+```
+02 01 00 00 01 00 00 00 3B 10 05 00 00 00 00 00
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `3B 10 05 00` B = `(valueType << 16) | propertyId` = `(0x05 << 16) | 0x103B`
+  - low two bytes `3B 10` = propertyId = 0x103B (MEDIA_SOURCE)
+  - high byte `05` = valueType = 0x05 (STRING)
+- `00 00 00 00` C = arenaRef = 0 (`"/audio/track1.mp3"`)
+
 ---
 
 ## Design-Token Resolution Conformance

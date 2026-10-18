@@ -116,6 +116,26 @@ Rules:
   **Fixed / Fill / Hug** node governed by the size model — no implicit
   greediness.
 
+### Non-visual nodes (layout-transparent)
+
+Some nodes exist in the retained tree but render **no** element and take part in
+**no** layout. They are **layout-transparent**:
+
+- They are **not slots**: a stack/grid parent MUST NOT allocate space to them and
+  MUST NOT contribute spacing for them (they are skipped entirely, as if absent).
+- They have no box, no intrinsic size, and no content mode; `WIDTH`/`HEIGHT` and
+  alignment do not apply.
+- Their position in the tree carries **no layout meaning** — applications place
+  them for lifetime stability, not for geometry.
+
+| Node | Role |
+|------|------|
+| `COMMENT` 0x7F | Opaque/debug marker |
+| `MEDIA_CONTROLLER` 0x30 | Owns a media resource + transport; referenced by a `VIDEO` surface ([MEDIA.md](./MEDIA.md)) |
+
+Audio has no node at all: an audio playback is a controller plus the
+application's own views, which are ordinary layout nodes.
+
 ### A container that is itself Fixed
 
 A container with a **Fixed** `WIDTH`/`HEIGHT` is allocated exactly that box and
@@ -141,10 +161,11 @@ These rules are the bugs-fixed-and-avoided model of the reference renderers:
 
 Content-bearing views fit their content **inside** their allocated box:
 
-- **Media** (`IMAGE`, `VIDEO`, and the visual of `AUDIO`): fitted per
-  `CONTENT_MODE` — `Fit` (0) scales to contain (letterboxed), `Fill` (1) scales
-  to cover (cropped). The box is the allocation, never the content's intrinsic
-  size.
+- **Media** (`IMAGE`, `VIDEO`): fitted per `CONTENT_MODE` — `Fit` (0) scales to
+  contain (letterboxed), `Fill` (1) scales to cover (cropped). The box is the
+  allocation, never the content's intrinsic size. A `VIDEO` surface's playback
+  lives on a separate `MEDIA_CONTROLLER` node; audio has no visual at all (§
+  Non-visual nodes) and is controlled by the application's own views.
 
 ### Text
 
