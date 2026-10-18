@@ -53,6 +53,14 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   that left the DOM are pruned (a removed subtree never keeps playing). `IMAGE_SOURCE` applies the asset ref;
   the `LABEL` accessibility text is set as `alt` on media elements;
   `CONTENT_MODE` maps `Fit`→`contain`, `Fill`→**`cover`** (matching the Rust SSR).
+  **Autoplay policy**: an unmuted `play()` is only accepted inside a trusted
+  user gesture, but the play action is a server round-trip (`PLAYBACK_STATE`
+  arrives after the click's activation expires), so every trusted gesture
+  (`pointerdown`/`keydown`/`touchend`) unlocks the playback element with an
+  inaudible muted play→pause (`unlockMedia`), a `NotAllowedError` is marked
+  **pending** and replayed on the next gesture (`playMedia`/`retryPendingPlay`),
+  and any other `play()` rejection is `log.warn`ed — media failures are never
+  silent.
   All media reports are keyed to the **controller** node: `MEDIA_TIME_UPDATED` at
   **~30/s** (a 33 ms position sampler — the browser's `timeupdate` alone is only
   ~4 Hz; torn down when the node is removed), `MEDIA_DURATION_CHANGED`
