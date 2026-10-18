@@ -176,8 +176,11 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   - **`AUDIO` is retired** (audio has no view — a controller plus the app's own
     control views); a **`VIDEO`** node is the only media surface (a container
     box; the video output is not a widget).
-  - **Gap**: `MEDIA_RATE` is accepted but not applied yet (GStreamer changes rate
-    via a rate-seeking seek).
+  - **`MEDIA_MUTED` / `MEDIA_LOOP` / `MEDIA_RATE`** are applied: mute + loop map
+    straight onto the playbin, and rate is applied as a **rate-seeking seek** from
+    the current position (GStreamer has no standalone rate setter). Every later
+    seek re-applies the rate, so a `MEDIA_RATE` is not silently reset by a seek;
+    rate ≤ 0 (reverse) is ignored — not a transport control Pathland models.
   - **Media runs on a dedicated worker thread**: each media player owns a
     `pathland-media-<id>` thread that performs *every* GStreamer operation —
     state changes, FLUSH seeks, `query_position`, and the bus drain — so the GTK
