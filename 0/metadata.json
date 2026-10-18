@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M57BC2H08HAFX5FATR4MV78D",
+  "session_id": "ses_ee0ae7c59ffe3xAcuBQUBpeT2a",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-18T11:12:31.28833Z",
+  "branch": "spec/media-controller",
+  "checkpoints_count": 9,
+  "save_step_count": 2,
+  "files_touched": [],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "2202a156f5b8",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 60920666,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1363329408,
+    "output_tokens": 2026781,
+    "api_call_count": 3906
+  },
+  "session_metrics": {
+    "turn_count": 330
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
