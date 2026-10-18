@@ -82,8 +82,8 @@ Statelessness). Protocol contract: `spec/`.
   accessibility text is
   the `alt`; empty = decorative) and honors `CONTENT_MODE`/`ASPECT_RATIO`
   inline (`Fit`→`object-fit:contain`, `Fill`→`object-fit:cover`); a `VIDEO`
-  surface renders `<video data-pathland-controller="C" controls>` (or a
-  `.pathland-media` wrapper when it has custom `VideoStyle` children). **Audio
+  surface renders `<video data-pathland-controller="C" controls>` (the binding
+  attribute appears only when the surface references a controller). **Audio
   has no view.** A **`MEDIA_CONTROLLER`** is non-visual and layout-transparent:
   it renders a hidden `display:none` marker carrying the resource
   (`data-pathland-media-controller` + `data-pathland-media-src`), which the DOM

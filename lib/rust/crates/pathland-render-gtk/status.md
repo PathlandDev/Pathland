@@ -190,8 +190,8 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 - **Asset root**: `pathland_gtk_set_asset_root(const char*)` sets a directory
   that web-style `/_pathland/...` media/image source paths resolve against
   (`/_pathland/assets/x` → `<root>/assets/x`), so desktop apps reference the same
-  asset paths as the web demos. Applied to `IMAGE_SOURCE`, `AUDIO_SOURCE`, and
-  `VIDEO_SOURCE`.
+  asset paths as the web demos. Applied to `IMAGE_SOURCE` and a controller's
+  `MEDIA_SOURCE`.
 - **C ABI for foreign hosts (`capi.rs`)**:
   - `pathland_gtk_run(host, on_event)` — pump a `pathland-view-native`
     `NativeHost`'s ring in-process.

@@ -62,8 +62,10 @@ Java renderer is removed. Protocol contract: `spec/`.
   `pathland-html-golden` conformance harness. `HtmlRendererTest` covers the
   semantic-role → element mapping (`NAVIGATION`→`<nav>`, `HEADER`→`<h2>`,
   `TEXT_STYLE` headings) and the DSL's rejection of non-semantic role codes,
-  plus media rendering (`<video>/<audio>` native controls, image `alt` from the
-  accessibility label, `ContentMode Fill`→`cover`).
+  plus media rendering (a `VIDEO` surface bound to its `MEDIA_CONTROLLER` —
+  native `<video controls>` + `data-pathland-controller`, the non-visual hidden
+  controller shell, image `alt` from the accessibility label,
+  `ContentMode Fill`→`cover`).
 
 ## Verified by
 
