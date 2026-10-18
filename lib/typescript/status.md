@@ -45,8 +45,12 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   control-less `<video data-pathland-media>` (the playback resource);
   `MEDIA_SOURCE` drives that element, while `MEDIA_MUTED`/`MEDIA_LOOP`/
   `MEDIA_RATE` apply to it. A `VIDEO` surface defaults to `controls` and binds to
-  its controller via `MEDIA_CONTROLLER_ID` (`data-pathland-controller`, mirrored
-  both ways after hydration). `IMAGE_SOURCE` applies the asset ref;
+  its controller via `MEDIA_CONTROLLER_ID` (`data-pathland-controller`) through a
+  **media registry** keyed by controller id (not by emission order): a surface
+  emitted *before* its controller, or a controller whose `MEDIA_SOURCE` arrives
+  late, still binds — mirroring runs from whichever side lands second, the
+  controller element is silenced whenever it has bound surfaces, and surfaces
+  that left the DOM are pruned (a removed subtree never keeps playing). `IMAGE_SOURCE` applies the asset ref;
   the `LABEL` accessibility text is set as `alt` on media elements;
   `CONTENT_MODE` maps `Fit`→`contain`, `Fill`→**`cover`** (matching the Rust SSR).
   All media reports are keyed to the **controller** node: `MEDIA_TIME_UPDATED` at
