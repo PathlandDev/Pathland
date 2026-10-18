@@ -24,6 +24,12 @@ ring for foreign hosts (Swift/Java/C# via FFI). Protocol contract: `spec/`.
 
 - STRING-valued properties are typed as STRING but the flat world has no
   arena-alloc helper to emit them (callers must `pathland_core_arena_alloc`).
+- **Media**: `MEDIA_CONTROLLER`/`VIDEO` are mapped in `component_from_id`/
+  `component_id`, but the flat world has no media surface of its own — a
+  `MediaController` is an engine-side `Rc` state object (the Rust DSL's `Video` +
+  `attach()` and the Java `MediaController` both own their emitters), so there is
+  no `node_media_controller`/`node_bind_string_property` C ABI yet. Native hosts
+  that link only the flat surface cannot author media.
 
 ## Verified by
 

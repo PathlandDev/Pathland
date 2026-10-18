@@ -290,6 +290,8 @@ pub fn component_from_id(id: u32) -> Option<pathland_view::Component> {
         component_type::LAZY_HGRID => Some(Component::LazyHGrid),
         component_type::LAZY_VSTACK => Some(Component::LazyVStack),
         component_type::LAZY_HSTACK => Some(Component::LazyHStack),
+        component_type::MEDIA_CONTROLLER => Some(Component::MediaController),
+        component_type::VIDEO => Some(Component::Video),
         component_type::TOGGLE => Some(Component::Toggle),
         component_type::SLIDER => Some(Component::Slider),
         component_type::TEXT_FIELD => Some(Component::TextField),
