@@ -164,8 +164,7 @@ with SwiftUI's view categories and are the **single authoritative allocation**.
 | `0x06` | `SPACER` | Flexible expanding layout filler |
 | `0x07` | `PROGRESS_VIEW` | Activity indicator / determinate progress |
 | `0x08` | `GAUGE` | Range meter against a scale |
-| `0x09` | `AUDIO` | Audio playback node (`AUDIO_SOURCE`) |
-| `0x0A` | `VIDEO` | Video playback node (`VIDEO_SOURCE`) |
+| `0x0A` | `VIDEO` | Video playback surface — renders a `MEDIA_CONTROLLER`'s video output (`MEDIA_CONTROLLER_ID`) |
 | `0x0B` | `ICON` | Renderer-native symbol for a canonical name (`ICON_NAME`, spec/ICONS.md) |
 | `0x0C`–`0x0F` | — | Future drawing/visual nodes |
 
@@ -204,6 +203,17 @@ with SwiftUI's view categories and are the **single authoritative allocation**.
 | `0x29` | `MENU` | Contextual action trigger + popover container |
 | `0x2A` | `COLOR_PICKER` | Native system color picker control |
 | `0x2B`–`0x2F` | — | Future semantic controls |
+
+### D. Non-visual / resource nodes (`0x30`–`0x3F`)
+
+Nodes that exist in the retained tree but are **layout-transparent** and render
+**no** native element. They carry a resource or a control surface for other
+nodes to reference.
+
+| ID | Component | Notes |
+| ---- | ----------- | ------- |
+| `0x30` | `MEDIA_CONTROLLER` | **Media controller** — a non-visual node that owns a media resource and its transport state; a `VIDEO` surface references it (see [MEDIA.md](./MEDIA.md)) |
+| `0x31`–`0x3F` | — | Future non-visual/resource nodes |
 
 ### Utility & custom
 
@@ -275,39 +285,57 @@ icon set (spec/ICONS.md).
 - **Fallback**: an unknown canonical name (a name the vocabulary has not
   allocated) resolves to a renderer-owned placeholder (spec/ICONS.md).
 
-### Audio — `AUDIO` 0x09
-
-An audio playback node. Playback is **renderer-native by default** (the
-renderer emits native playback controls); the app supplies the source
-reference. A **custom
-`AudioStyle`** supplies app-driven control children (transport buttons, seek,
-volume) — the node then carries the media control properties below and the
-renderer renders a hidden media element alongside the custom controls.
-
-- **Protocol**: a leaf node by default (no children); source via `AUDIO_SOURCE`
-  (0x1033, STRING: a resource name, file path, or absolute URL — an asset
-  reference, never embedded in the opcode stream). With a custom style the
-  node's children are the custom control UI.
-- **Properties**: `AUDIO_SOURCE`, the media control properties —
-  `PLAYBACK_STATE` (0x1035, U32 0/1), `MEDIA_POSITION` (0x1036, F32 seconds;
-  a change seeks), `MEDIA_VOLUME` (0x1037, F32 0..1) — and size modifiers.
-- **Events**: none by default; when a control property is bound, the renderer
-  reports `MEDIA_PLAY_STATE_CHANGED` / `MEDIA_TIME_UPDATED` / `MEDIA_ENDED` /
-  `MEDIA_VOLUME_CHANGED` (see EVENTS.md).
-
 ### Video — `VIDEO` 0x0A
 
-A video playback node. Playback is **renderer-native by default** (`controls`);
-a custom `VideoStyle` supplies app-driven control children, mirroring `AUDIO`.
+A **video media surface**: a view that references a
+[`MEDIA_CONTROLLER`](#media-controller--media_controller-0x30) and renders that
+playback's **video output** in its own box. It owns the box, the content mode,
+and the controls; the playback belongs to the controller ([MEDIA.md](./MEDIA.md)).
+(Audio has no view of its own — an audio playback is a controller plus the
+application's own control views, [MEDIA.md](./MEDIA.md).)
 
-- **Protocol**: a leaf node by default; source via `VIDEO_SOURCE` (0x1034,
-  STRING asset reference). Custom style → children = the control UI.
-- **Properties**: `VIDEO_SOURCE`, `CONTENT_MODE`, the media control properties
-  (`PLAYBACK_STATE`, `MEDIA_POSITION`, `MEDIA_VOLUME`), size modifiers.
-- **Events**: none by default; the media events above when a control property
-  is bound.
-- **Note**: a poster/preview frame is a planned draft (`POSTER_SOURCE`); a
-  video plays fine without one.
+- **Protocol**: a leaf node by default; references its playback with
+  `MEDIA_CONTROLLER_ID` (0x103A) and carries **no source of its own** (the source
+  lives on the controller as `MEDIA_SOURCE`). A custom `VideoStyle` supplies
+  app-driven control children.
+- **Properties**: `MEDIA_CONTROLLER_ID`, `CONTENT_MODE` (`Fit`/`Fill`), size and
+  style modifiers.
+- **Events**: none on the surface; the `MEDIA_*` family reports against the
+  **controller** id.
+- **Note**: a poster/preview frame is a planned draft (`POSTER_SOURCE`, on the
+  surface); a video plays fine without one.
+
+### Media Controller — `MEDIA_CONTROLLER` 0x30
+
+A **media controller**: a **non-visual** node that owns a media resource and its
+transport state, so playback survives structural changes and can be controlled
+from several places at once. A `VIDEO` surface **references** it by id
+(`MEDIA_CONTROLLER_ID`) — the relationship is a reference, not a parent/child
+edge; a controller has no children of its own. An audio playback is a controller
+with **no** media view, controlled by the application's own views.
+
+- **Protocol**: a leaf node carrying `MEDIA_SOURCE` (0x103B, STRING asset
+  reference) and the transport commands — `PLAYBACK_STATE` (0x1035, U32 0/1),
+  `MEDIA_POSITION` (0x1036, F32 seconds; a change seeks), `MEDIA_VOLUME`
+  (0x1037, F32 0..1), `MEDIA_MUTED` (0x103C, U8), `MEDIA_LOOP` (0x103D, U8),
+  `MEDIA_RATE` (0x103E, F32). It is created/deleted like any node, so it
+  participates in the structural diff, full-snapshot (`META::RESYNC`), and
+  proxy-id remapping with no media-specific machinery.
+- **Layout**: **layout-transparent** — no native element, no box, no space, no
+  spacing contribution (like `COMMENT` and the `PROXY_VIEW` passthrough,
+  [LAYOUT.md](./LAYOUT.md)). Place it for **lifetime stability** (outside any
+  swapping branch such as a `SIZE_THAT_FITS` slot), not for layout.
+- **Events**: the `MEDIA_*` family targets the controller id, gated by the
+  transport properties bound on it (see [EVENTS.md](./EVENTS.md#media)).
+- **Independence**: attaching/detaching a `VIDEO` surface never starts, stops,
+  seeks, or re-loads playback; a controller with zero media views keeps playing.
+  One controller = one playback, shared by every surface that references it.
+- **Kind**: kind-agnostic. A controller referenced by a `VIDEO` surface renders
+  video; otherwise the playback is audio (presented by the application's own
+  views, never by the protocol).
+
+The full contract — the model, the swap rules, the guards, and the renderer
+obligations — is specified in [MEDIA.md](./MEDIA.md).
 
 ### Color — `COLOR` 0x03
 
@@ -989,14 +1017,15 @@ A native system color picker control.
 
 | Range | Use |
 |-------|-----|
-| `0x01`–`0x08` | Primitive drawing nodes (allocated, this file) |
-| `0x09`–`0x0F` | Future drawing nodes (unallocated) |
+| `0x01`–`0x08`, `0x0A`–`0x0B` | Primitive drawing & visual nodes (allocated, this file) |
+| `0x09`, `0x0C`–`0x0F` | Future drawing nodes (unallocated; `0x09` formerly `AUDIO`) |
 | `0x10`–`0x16`, `0x1B`–`0x1E` | Layout & container primitives (this file) |
 | `0x17`–`0x1A` | Reserved (formerly composites) — never reused |
 | `0x1F` | Future layout nodes (unallocated) |
 | `0x20`–`0x22`, `0x24`–`0x2A` | Semantic control nodes (this file) |
 | `0x23`, `0x2B`–`0x2F` | Future semantic controls (unallocated) |
-| `0x30`–`0x7E` | Future categories (unallocated) |
+| `0x30` | `MEDIA_CONTROLLER` (non-visual/resource, this file) |
+| `0x31`–`0x7E` | Future categories (unallocated) |
 | `0x7F` | `COMMENT` (utility) |
 | `0x80`–`0xFF` | Reserved |
 | `0x0100`–`0xFFFF` | Application/custom component types |

@@ -98,11 +98,14 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 | `.scaledToFit()` | `CONTENT_MODE` 0x001C | ENUM (`Fit`=0) | one |
 | `.scaledToFill()` | `CONTENT_MODE` 0x001C | ENUM (`Fill`=1) | one |
 | `.imageSource(_:)` | `IMAGE_SOURCE` 0x1002 | STRING (asset reference) | one (arenaRef) |
-| `.audioSource(_:)` | `AUDIO_SOURCE` 0x1033 | STRING (asset reference) | one (arenaRef) |
-| `.videoSource(_:)` | `VIDEO_SOURCE` 0x1034 | STRING (asset reference) | one (arenaRef) |
-| `.playback(_:)` (Audio/Video) | `PLAYBACK_STATE` 0x1035 | U32 (0 pause, 1 play) | one |
-| `.mediaPosition(_:)` (Audio/Video) | `MEDIA_POSITION` 0x1036 | F32 (seconds; change = seek) | one |
-| `.mediaVolume(_:)` (Audio/Video) | `MEDIA_VOLUME` 0x1037 | F32 (0..1) | one |
+| `.mediaSource(_:)` (MediaController) | `MEDIA_SOURCE` 0x103B | STRING (asset reference) | one (arenaRef) |
+| `.mediaController(_:)` (Video) | `MEDIA_CONTROLLER_ID` 0x103A | U32 (the controller node id) | one |
+| `.playback(_:)` (MediaController) | `PLAYBACK_STATE` 0x1035 | U32 (0 pause, 1 play) | one |
+| `.mediaPosition(_:)` (MediaController) | `MEDIA_POSITION` 0x1036 | F32 (seconds; change = seek) | one |
+| `.mediaVolume(_:)` (MediaController) | `MEDIA_VOLUME` 0x1037 | F32 (0..1) | one |
+| `.mediaMuted(_:)` (MediaController) | `MEDIA_MUTED` 0x103C | U8 (0/1) | one |
+| `.mediaLoop(_:)` (MediaController) | `MEDIA_LOOP` 0x103D | U8 (0/1) | one |
+| `.mediaRate(_:)` (MediaController) | `MEDIA_RATE` 0x103E | F32 (1.0 = normal) | one |
 | `.minimumScaleFactor(_:)` | `MINIMUM_SCALE_FACTOR` 0x001D | F32 | one |
 | `.spacing(_:)` (stacks) | `SPACING` 0x0001 | F32 | one |
 | `Spacer` | — (implied by component) | — | none |
@@ -411,9 +414,11 @@ are never chainable modifiers.
 | `0x1030` | `TINT` (COLOR) | — |
 | `0x1031` | `TRANSITION` (ENUM; navigation swap hint) | — |
 | `0x1032` | `TEXT_STYLE` (ENUM; predefined typography) | — |
-| `0x1033`–`0x1037` | Media — `AUDIO_SOURCE`, `VIDEO_SOURCE` (STRING asset references), `PLAYBACK_STATE` (U32), `MEDIA_POSITION` (F32), `MEDIA_VOLUME` (F32), see PRIMITIVES.md |
+| `0x1035`–`0x1037`, `0x103A`–`0x103E` | Media — `PLAYBACK_STATE` (U32), `MEDIA_POSITION` (F32), `MEDIA_VOLUME` (F32), `MEDIA_CONTROLLER_ID` (U32), `MEDIA_SOURCE` (STRING), `MEDIA_MUTED`/`MEDIA_LOOP` (U8), `MEDIA_RATE` (F32) — see PRIMITIVES.md + spec/MEDIA.md |
+| `0x1033`, `0x1034` | Unallocated (formerly `AUDIO_SOURCE`/`VIDEO_SOURCE`) |
 | `0x1038` | `ICON_NAME` (STRING; the canonical icon name — spec/ICONS.md) on an `ICON` node |
-| `0x1039`–`0x10FF` | Future styling properties (unallocated) |
+| `0x1039` | `FIT_QUERY` (LIST of F32; a `SIZE_THAT_FITS` slot's candidate thresholds) — CONFORMANCE.md vector 28a |
+| `0x103F`–`0x10FF` | Future styling properties (unallocated) |
 | `0x2001`–`0x200B` | Semantic (ROLE, STATE, ENABLED, SELECTED, EVENT_LISTENERS, VALUE, MIN_VALUE, MAX_VALUE, LABEL, PROMPT) |
 | `0x2009`, `0x200C`–`0x2014` | Control properties (allocated: STEP_VALUE, CONTROL_SIZE, IS_SECURE, PROGRESS, IS_INDETERMINATE, SELECTION, COLOR_VALUE, DATE_PICKER_MODE, PICKER_STYLE) — defined in PRIMITIVES.md controls. Note: a `DATE_PICKER`'s date is set via the `PARAMETER::SET_DATE` command (0x04), not a property; **`0x2011` is unallocated/reserved** (its former `DATE_VALUE` draft was dropped) |
 | `0x2016`–`0x2018` | Binding/action properties (allocated: `ACTION_ID`, `BINDING_ID`, `TOGGLE_STYLE`) — defined in PRIMITIVES.md semantic controls |
@@ -441,10 +446,11 @@ The canonical value type per property (the protocol's authoritative mapping):
 - `EVENT_LISTENERS`, `BORDER_EDGES` → `U32`
 - `SELECTED`, `VISIBLE`, `ENABLED`, `UNDERLINE`, `STRIKETHROUGH`,
   `COLOR_INVERT`, `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `IS_SECURE`,
-  `IS_INDETERMINATE`, `FIXED_SIZE_*` → `U8`
+  `IS_INDETERMINATE`, `FIXED_SIZE_*`, `MEDIA_MUTED`, `MEDIA_LOOP` → `U8`
 - `LABEL`, `PROMPT`, `FONT_FAMILY`, `IMAGE_SOURCE`,
-  `AUDIO_SOURCE`, `VIDEO_SOURCE`, `ICON_NAME`, `ROUTE` → `STRING`
-- `LINE_LIMIT`, `SELECTION`, `ACTION_ID`, `BINDING_ID` → `U32`
+  `MEDIA_SOURCE`, `ICON_NAME`, `ROUTE` → `STRING`
+- `LINE_LIMIT`, `SELECTION`, `ACTION_ID`, `BINDING_ID`,
+  `MEDIA_CONTROLLER_ID` → `U32`
 - `ALIGNMENT`, `TEXT_ALIGNMENT`, `TRUNCATION_MODE`, `TEXT_CASE`, `FONT_STYLE`,
   `FONT_DESIGN`, `CONTENT_MODE`, `CONTROL_SIZE`, `SHAPE_KIND`,
   `DATE_PICKER_MODE`, `PICKER_STYLE`, `TOGGLE_STYLE`, `TRANSITION` → `F32`
