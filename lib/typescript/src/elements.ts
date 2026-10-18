@@ -142,12 +142,23 @@ export function createElement(component: number): Node {
       return el;
     }
     case COMPONENT_MEDIA_CONTROLLER: {
-      // A non-visual, layout-transparent playback owner (spec/MEDIA.md): a hidden
-      // container holding the (control-less) playback element, which the apply
-      // layer materializes from `MEDIA_SOURCE`. A `VIDEO` surface that references
-      // this controller shows its video output.
+      // A non-visual, layout-transparent playback owner (spec/MEDIA.md): an
+      // off-flow container holding the control-less playback element, which the
+      // apply layer materializes from `MEDIA_SOURCE`. A `VIDEO` surface that
+      // references this controller shows its video output.
+      //
+      // NOT `display:none`: a browser refuses to route a `<video>`'s **audio** to
+      // the output when its ancestor is `display:none` (the media pipeline still
+      // runs — `currentTime` advances — so the failure is silent). Absolutely
+      // positioning a 1×1 transparent box keeps it rendered (audio flows) while
+      // contributing no spacing.
       const el = document.createElement("div");
-      el.style.display = "none";
+      el.style.position = "absolute";
+      el.style.width = "1px";
+      el.style.height = "1px";
+      el.style.opacity = "0";
+      el.style.overflow = "hidden";
+      el.style.pointerEvents = "none";
       return el;
     }
     case COMPONENT_VIDEO: {
