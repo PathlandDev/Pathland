@@ -233,9 +233,8 @@ fn media() -> Scenario {
     b.set_prop(2, value_type::F32, property_id::CONTENT_MODE, 1f32.to_bits());
     b.set_prop(2, value_type::F32, property_id::ASPECT_RATIO, 1.5f32.to_bits());
     b.set_prop(2, value_type::F32, property_id::WIDTH, 200f32.to_bits());
-    // Video surface: binds its controller (4); the playback + source belong to the
+    // Video surface: renders its own output; the playback + source belong to the
     // controller (spec/MEDIA.md), so the surface carries no source of its own.
-    b.set_prop(3, value_type::U32, property_id::MEDIA_CONTROLLER_ID, 4);
     b.set_prop(3, value_type::F32, property_id::WIDTH, 320f32.to_bits());
     b.set_prop(3, value_type::F32, property_id::HEIGHT, 180f32.to_bits());
     // The media controller: the resource (non-visual, layout-transparent).
