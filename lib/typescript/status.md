@@ -41,8 +41,9 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **Media** (spec/MEDIA.md): `IMAGE`/`VIDEO` shells (`<img>`,
   `<video controls>`). **Audio has no view** — a `MEDIA_CONTROLLER` is a
   non-visual state object the app drives with its own controls.
-  `MEDIA_CONTROLLER` hydrates to a hidden `display:none` shell holding a
-  control-less `<video data-pathland-media>` (the playback resource);
+  `MEDIA_CONTROLLER` hydrates to an **off-flow** shell (`position:absolute;1px;
+  opacity:0` — deliberately *not* `display:none`, which silences a `<video>`'s
+  audio) holding a control-less `<video data-pathland-media>` (the resource);
   `MEDIA_SOURCE` drives that element, while `MEDIA_MUTED`/`MEDIA_LOOP`/
   `MEDIA_RATE` apply to it. A `VIDEO` surface defaults to `controls` and binds to
   its controller via `MEDIA_CONTROLLER_ID` (`data-pathland-controller`) through a
@@ -299,8 +300,9 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `PICKER` → `<select>` + `<option>`, `DATE_PICKER` → date/time inputs,
   `COLOR_PICKER` → `<input type="color">`, `MENU` → `.pathland-menu`,
   `VIDEO` → `<video controls>` (with `data-pathland-controller` when bound),
-  `MEDIA_CONTROLLER` → a hidden `display:none` shell (non-visual,
-  layout-transparent).
+  `MEDIA_CONTROLLER` → an off-flow shell (`position:absolute;1px;opacity:0`,
+  non-visual + layout-transparent — not `display:none`, which would silence the
+  audio).
 - **ZStack/grid tracks shrink below content (`minmax(0,1fr)`)**: the ZStack's
   single-cell grid and the count-generated grid tracks
   (`repeat(n,minmax(0,1fr))`, lazy-hgrid auto columns) use `minmax(0,1fr)` — a

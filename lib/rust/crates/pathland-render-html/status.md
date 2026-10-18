@@ -76,8 +76,9 @@ Statelessness). Protocol contract: `spec/`.
   `DATE_PICKER` → `<input type="date">`/`<input type="time">`, `PICKER` →
   `<select>` + `<option>`, `MENU` → `.pathland-menu` composite, `COLOR_PICKER`
   → `<input type="color">`, `VIDEO` → `<video controls>`,
-  `MEDIA_CONTROLLER` → a hidden `display:none` marker (non-visual,
-  layout-transparent), `COMMENT` → none.
+  `MEDIA_CONTROLLER` → an off-flow (`position:absolute;1px;opacity:0`) shell
+  (non-visual, layout-transparent — **not** `display:none`, which silences the
+  `<video>`'s audio), `COMMENT` → none.
 - **Media (spec/MEDIA.md)**: `IMAGE` renders `<img src alt>` (the `LABEL`
   accessibility text is
   the `alt`; empty = decorative) and honors `CONTENT_MODE`/`ASPECT_RATIO`
@@ -85,7 +86,7 @@ Statelessness). Protocol contract: `spec/`.
   surface renders `<video data-pathland-controller="C" controls>` (the binding
   attribute appears only when the surface references a controller). **Audio
   has no view.** A **`MEDIA_CONTROLLER`** is non-visual and layout-transparent:
-  it renders a hidden `display:none` marker carrying the resource
+  it renders an off-flow shell carrying the resource
   (`data-pathland-media-controller` + `data-pathland-media-src`), which the DOM
   client turns into the playback (keyed by the controller id; spec/EVENTS.md
   Media). Asset refs are absolute (`/_pathland/assets/…`);
