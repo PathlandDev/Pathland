@@ -181,6 +181,12 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
     the current position (GStreamer has no standalone rate setter). Every later
     seek re-applies the rate, so a `MEDIA_RATE` is not silently reset by a seek;
     rate ≤ 0 (reverse) is ignored — not a transport control Pathland models.
+  - **Verified from the DSL**: a test builds the Rust DSL's `MediaController` +
+    `attach()` + `Video` tree, emits it, and applies the frame to a `RenderTree` —
+    asserting the non-visual `MEDIA_CONTROLLER` node carries `MEDIA_SOURCE` +
+    `PLAYBACK_STATE`, the surface's `MEDIA_CONTROLLER_ID` points at it, and the
+    controller maps to no widget (`WidgetKind::Invisible`). (A runnable demo
+    section still needs a bundled asset — the Java GTK demo covers that path.)
   - **Media runs on a dedicated worker thread**: each media player owns a
     `pathland-media-<id>` thread that performs *every* GStreamer operation —
     state changes, FLUSH seeks, `query_position`, and the bus drain — so the GTK
