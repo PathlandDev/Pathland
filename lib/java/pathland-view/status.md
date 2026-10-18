@@ -72,7 +72,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `FontDesign.SERIF`, `Font.system(18)` — the enums + `Font` implement
   `ViewModifier`), and `Style extends ViewModifier`, so `.modifiers(MyButtonStyle)`
   scopes the matching environment key — an app-authored style exposes a lowercase
-  static factory on its own type (`PlayerControlsStyle.playerControlsStyle(s -> s…)`).
+  static factory on its own type (`BorderedButtonStyle.borderedButtonStyle(s -> s…)`).
   The `View` per-modifier sugar
   (`font`/`navigate`/`environment`/`onPathChange`), the former
   `View.with(ViewModifier...)` general modifier chain, and the `*Mod` shims
@@ -151,9 +151,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   Mode). `Button` renders a `BUTTON` node and wires the action/`EVENT_LISTENERS` on
   it (whole button tappable); `ButtonStyle.Configuration` carries only the label, so
   a style decorates content and never installs the tap. `PlainButtonStyle` returns
-  the label, `BorderedButtonStyle` decorates it. `Audio`/`Video` render an
-  `AUDIO`/`VIDEO` node and attach the active style's control UI as its child (the
-  `EmptyContent` sentinel = native controls, no child). Label parts are passed to
+  the label, `BorderedButtonStyle` decorates it. `Video` renders a `VIDEO` node
+  and attaches the active style's control UI as its child (the `EmptyContent`
+  sentinel = native controls, no child). Label parts are passed to
   `LabelStyle` (nullable; `hasTitle()`/`hasIcon()`).
   Reactive values
   (`foregroundStyle(f -> f.color(signal))`, `background(b -> b.color(signal))`,
@@ -165,7 +165,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   so the modifier name is unambiguous).
 - **Views**: `View` (open interface), `VStack`, `HStack`, `ZStack`, `Group`
   (transparent container, maps to a `VSTACK` node today), `Text`, `Image`,
-  `Audio`, `Video`,
+  `Video`,
   `Color` (dual identity: a `COLOR` view *and* a value passed into style
   modifiers), shapes (`Rectangle`, `Circle`, `Capsule`, `Ellipse`,
   `RoundedRectangle`, generic `Shape.make(ShapeKind)` — all `SHAPE` nodes),
@@ -179,23 +179,24 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (the environment is the **only** inheritance mechanism, Java 17+ — a
   hierarchical `EnvironmentKey`/`EnvironmentValues` scope over the synchronous
   render pass; no modifier scopes values by any other route).
-- **App-driven media** (`AudioStyle`/`VideoStyle` + `NativeAudioStyle`/
-  `NativeVideoStyle`): `Audio`/`Video` render an `AUDIO`/`VIDEO` node and attach
-  the environment's active style content as its child — the default
-  (`EmptyContent`) adds no child, so the node is a leaf and the renderer shows
-  native media controls; a custom style adds the app's control UI as the child
-  (hidden media element + controls; spec `DSL.md` §5.7). `.playing/.position/.volume/
-  .duration/.onEnded` bind the media control properties (`PLAYBACK_STATE`/
-  `MEDIA_POSITION`/`MEDIA_VOLUME`, `Properties` 0x1035–0x1037); the node
-  registers a **`MediaInput`** and `RenderResult.mediaInputs` routes the
-  `MEDIA_*` events (spec/EVENTS.md 0x0F–0x12) into the bound signals via
-  `InputDispatcher` (time→position, ended→`onEnded`, play state/volume).
-  `.onPositionReport`/`.onVolumeReport` **decouple the report sink from the
-  command binding** — `MEDIA_TIME_UPDATED`/`MEDIA_VOLUME_CHANGED` then update a
-  display signal while `MEDIA_POSITION`/`MEDIA_VOLUME` stay bound to a
-  user-interaction command, so a report never echoes back as a seek/volume
-  command (spec/EVENTS.md Media echo guard).
-  `Commands.Event`/`transport.Event`/`FrameCodec` decode the new events.
+- **Media** (spec/MEDIA.md): `MediaController` — the non-visual app-side state
+  object owning the resource and transport as signals. It exposes the *command*
+  signals (`source`/`playing`/`position`/`volume`/`muted`/`loop`/`rate`, each
+  rebindable to an app-owned `WritableSignal` so the controller drives the state
+  the rest of the UI reads), the *report* feeds
+  (`time`/`duration`/`volumeReport`), `onEnded`, and the convenience transport
+  (`play`/`pause`/`toggle`/`seek`/`setVolume`/`setMuted`/`setLoop`/`setRate`).
+  The emitter materializes **one `MEDIA_CONTROLLER` node per controller** (in
+  place at its `attach()` marker, with a **pinned** id), so playback identity is
+  stable across structural swaps; `Video` is the only media view (a `VIDEO`
+  surface referencing the controller), and **audio has no view** — the app binds
+  its own buttons/sliders. `VideoStyle` supplies a custom control surface; the
+  default (`EmptyContent`) keeps the node a leaf with renderer-native controls.
+  A **`MediaInput`** + `RenderResult.mediaInputs` route the `MEDIA_*` events
+  (spec/EVENTS.md; `MEDIA_DURATION_CHANGED`) into the bound signals via
+  `InputDispatcher`; the report feeds are separate from the command binding, so a
+  report never echoes back as a seek/volume command (spec/EVENTS.md Media echo
+  guard). `Commands.Event`/`transport.Event`/`FrameCodec` decode the events.
 - **Component IDs**: synced to the spec's grouped ranges (`Components.java`:
   `TEXT 0x01`, `IMAGE 0x02`, `COLOR 0x03`, `SHAPE 0x04`, `DIVIDER 0x05`,
   `SPACER 0x06`, `PROGRESS_VIEW 0x07`, `GAUGE 0x08`, `VSTACK 0x10`,
@@ -248,7 +249,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `AllowsHitTesting`, `ControlSize`,
   `AccessibilityLabel`/`AccessibilityRole`/`AccessibilityState`, `ImageSource`,
   `PointerEvents` (OR-in), `ActionId`/`BindingId`, `TapGesture` (onTapGesture),
-  `ButtonStyle`, `LabelStyle`, `AudioStyle`, `VideoStyle`,
+  `ButtonStyle`, `LabelStyle`, `VideoStyle`,
   `EnvironmentBinding`, `PathChange`, `NavigationIntent` — `Color` is never a
   modifier.
   `AccessibilityLabel`/`Image` accept reactive `Signal<String>` overloads

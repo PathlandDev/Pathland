@@ -24,8 +24,10 @@ Rust sources, so the TS side cannot drift silently.
   `ShellKind`, and the `semanticTag`/`textTag`/`ariaRole`/`headingLevel`
   resolvers — so semantic-tag / ARIA / heading decisions cannot drift between
   the Rust SSR renderer and the DOM client. `constants.ts` also carries the
-  media surface (`COMPONENT_AUDIO`/`VIDEO`, `PROP_AUDIO_SOURCE`/`VIDEO_SOURCE`)
-  and the icon surface (`COMPONENT_ICON`, `PROP_ICON_NAME`).
+  media surface (`COMPONENT_MEDIA_CONTROLLER`/`VIDEO`, `PROP_MEDIA_SOURCE`/
+  `MEDIA_CONTROLLER_ID`/`MEDIA_MUTED`/`MEDIA_LOOP`/`MEDIA_RATE`, and the
+  `MEDIA_*` event commands) and the icon surface (`COMPONENT_ICON`,
+  `PROP_ICON_NAME`).
 - **Icon glyph map — intentionally NOT generated.** The full canonical icon
   catalog (`generated/icons.ts`, ~13KB in the bundle) was **removed**: the DOM
   client no longer carries glyph data. SSR inlines only the icons the page uses,

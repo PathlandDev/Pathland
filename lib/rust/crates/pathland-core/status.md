@@ -53,8 +53,9 @@ tracks what this crate implements.
   `SELECTION`/`COLOR_VALUE`/`DATE_PICKER_MODE`/`PICKER_STYLE`,
   `ACTION_ID`/`BINDING_ID`/`TOGGLE_STYLE`, the **asset references** `IMAGE_SOURCE`
   and `MEDIA_SOURCE` (0x103B) — STRING asset refs (URL /
-  resource / path), never embedded in the opcode stream (`AUDIO_SOURCE` 0x1033 /
-  `VIDEO_SOURCE` 0x1034 are freed, spec/MEDIA.md); `ICON_NAME` (0x1038,
+  resource / path), never embedded in the opcode stream (`AUDIO` 0x09 and
+  `AUDIO_SOURCE` 0x1033 / `VIDEO_SOURCE` 0x1034 are freed — audio has no view,
+  spec/MEDIA.md); `ICON_NAME` (0x1038,
   STRING — the `ICON` primitive's canonical name, spec/ICONS.md); plus the navigation
   drafts `TRANSITION` (0x1031), `ROUTE` (0x2019, STRING), `NAV_DEPTH` (0x201A,
   U32 — the `NavigationContainer`'s back-stack depth, so native navigation
