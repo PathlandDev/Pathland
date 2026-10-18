@@ -222,6 +222,15 @@ pub trait ViewExt: View + Sized {
             style: Rc::new(style),
         }
     }
+
+    /// Scope a [`VideoStyle`] down this subtree (the active style for any
+    /// `Video` surface whose control content it supplies).
+    fn video_style(self, style: impl VideoStyle + 'static) -> WithVideoStyle<Self> {
+        WithVideoStyle {
+            view: self,
+            style: Rc::new(style),
+        }
+    }
 }
 
 impl<T: View> ViewExt for T {}
@@ -238,6 +247,7 @@ impl<T: View> ViewExt for T {}
 #[derive(Default)]
 pub struct Environment {
     button_style: Option<Rc<dyn ButtonStyle>>,
+    video_style: Option<Rc<dyn VideoStyle>>,
 }
 
 impl Environment {
@@ -251,6 +261,13 @@ impl Environment {
         self.button_style
             .clone()
             .unwrap_or_else(|| Rc::new(PlainButtonStyle))
+    }
+
+    /// The active video style (defaults to [`NativeVideoStyle`]).
+    pub fn video_style(&self) -> Rc<dyn VideoStyle> {
+        self.video_style
+            .clone()
+            .unwrap_or_else(|| Rc::new(NativeVideoStyle))
     }
 }
 
@@ -283,6 +300,65 @@ impl ButtonStyle for BorderedButtonStyle {
             Border::new(Color::argb(0xFF_888888), 1.0),
         ));
         Some(Box::new(label))
+    }
+}
+
+/// A video style: supplies a [`Video`] surface's **content** — the transport
+/// control UI shown over/next to the playback (spec DSL.md §5.7). The control
+/// owns the native component and the media binding; a style only supplies
+/// content and never installs a binding. `None` = the renderer's native controls.
+pub trait VideoStyle {
+    /// Build the styled content for `config`, or `None` for the native path.
+    fn make_body(&self, config: &VideoStyleConfig) -> Option<Box<dyn View>>;
+}
+
+/// What a [`VideoStyle`] reads (spec DSL.md §5.7): the surface's controller, so
+/// the style's own controls can drive the same playback.
+pub struct VideoStyleConfig {
+    controller: Option<Rc<MediaController>>,
+}
+
+impl VideoStyleConfig {
+    /// The controller this surface renders (`None` for an unbound surface).
+    pub fn controller(&self) -> Option<&Rc<MediaController>> {
+        self.controller.as_ref()
+    }
+}
+
+/// The default style: renderer-native controls (no content view, so the surface
+/// stays a leaf in Native Token Mode).
+pub struct NativeVideoStyle;
+
+impl VideoStyle for NativeVideoStyle {
+    fn make_body(&self, _config: &VideoStyleConfig) -> Option<Box<dyn View>> {
+        None
+    }
+}
+
+/// A view wrapped by a scoped [`VideoStyle`] (applied via
+/// [`ViewExt::video_style`]).
+pub struct WithVideoStyle<V> {
+    view: V,
+    style: Rc<dyn VideoStyle>,
+}
+
+impl<V: View> View for WithVideoStyle<V> {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let previous = env.video_style.take();
+        env.video_style = Some(self.style.clone());
+        let node = self.view.build_env(env);
+        env.video_style = previous;
+        node
+    }
+}
+
+impl<V: Configurable> Configurable for WithVideoStyle<V> {
+    type Config = V::Config;
+    fn config(&self) -> &Self::Config {
+        self.view.config()
+    }
+    fn config_mut(&mut self) -> &mut Self::Config {
+        self.view.config_mut()
     }
 }
 
@@ -1510,12 +1586,22 @@ impl Configurable for Video {
 }
 
 impl View for Video {
-    fn build_env(&self, _env: &mut Environment) -> Node {
+    fn build_env(&self, env: &mut Environment) -> Node {
         let mut node = plain_node(Component::Video, Vec::new(), BTreeMap::new());
         if let Some(controller) = &self.config.controller {
             // The surface only references the controller: `assign_ids` links its
             // `MEDIA_CONTROLLER_ID` once the controller node has its (pinned) id.
             node.media_controller = Some(MediaControllerRef::new(controller.clone()));
+        }
+        // The active style may supply the surface's content (Composite Override
+        // Mode, spec DSL.md §5.7): the control keeps the `VIDEO` component and the
+        // media binding, the style adds the control UI as the single child.
+        let style = env.video_style();
+        let config = VideoStyleConfig {
+            controller: self.config.controller.clone(),
+        };
+        if let Some(content) = style.make_body(&config) {
+            node.children.push(content.build_env(env));
         }
         node
     }
@@ -4237,6 +4323,44 @@ mod media_tests {
             Some(&pinned)
         );
         assert_ne!(second.children[0].id, pinned, "no other node reuses it");
+    }
+
+    /// A custom `VideoStyle` supplies the surface's content (Composite Override
+    /// Mode); the default `NativeVideoStyle` keeps it a leaf (native controls).
+    #[test]
+    fn video_style_supplies_the_surface_content() {
+        struct ControlsStyle;
+        impl VideoStyle for ControlsStyle {
+            fn make_body(&self, config: &VideoStyleConfig) -> Option<Box<dyn View>> {
+                // A style may read the surface's controller for its own controls.
+                assert!(config.controller().is_some(), "the config carries the controller");
+                Some(Box::new(Text::new("controls")))
+            }
+        }
+
+        let engine = Engine::new();
+        let rt = engine.runtime();
+        let player = Rc::new(MediaController::with_source(&rt, "/clip.mp4"));
+
+        let native = Video::new(player.clone()).build();
+        assert_eq!(native.component, Component::Video);
+        assert!(native.children.is_empty(), "the native style adds no content");
+
+        let styled = Video::new(player.clone())
+            .video_style(ControlsStyle)
+            .build();
+        assert_eq!(styled.component, Component::Video, "the control keeps its component");
+        assert_eq!(styled.children.len(), 1, "the style's content is the surface's child");
+        assert_eq!(
+            styled.children[0].component,
+            Component::Text {
+                text: "controls".into()
+            }
+        );
+        assert!(
+            styled.media_controller.is_some(),
+            "the media binding survives a custom style"
+        );
     }
 
     #[test]
