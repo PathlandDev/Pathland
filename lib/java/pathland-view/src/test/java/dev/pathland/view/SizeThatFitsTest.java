@@ -341,6 +341,84 @@ class SizeThatFitsTest {
         }
     }
 
+    /**
+     * The music player's shape: a `MediaController` + a `Video` surface inside a
+     * fit-slot candidate, with the controller marker outside the swapping branch
+     * (spec/MEDIA.md). Re-selecting the **same** candidate must emit nothing — an
+     * identical recompute stays zero-op even with a pinned controller node.
+     */
+    @Test
+    void mediaControllerMountOutsideTheSlotEmitsZeroOnAnUnchangedSelection() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        MediaController player = new MediaController("/assets/track1.mp3");
+
+        View root = VStack.children(
+                player.attach(),
+                SizeThatFits.make(
+                        Fit.of(VStack.children(Text.make(t -> t.text("wide")), Video.make(player)), 640f),
+                        Fit.of(VStack.children(Text.make(t -> t.text("compact")), Video.make(player)))));
+        RenderResult result = emitter.mount(root, Environment.DEFAULT);
+        int slot = slotId(result);
+
+        // The controller's pinned node id (its playback key).
+        long controllerId = sink.frame().opcodes().stream()
+                .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE)
+                .filter(o -> o.b() == Components.MEDIA_CONTROLLER)
+                .mapToLong(Opcode::a).findFirst().orElseThrow();
+
+        // Swap to the wide candidate (a real delta)…
+        result.fitInputs().get(slot).accept(1);
+        assertTrue(containsText(sink.frame(), "wide"), "the wide candidate swapped in");
+        assertNoIdCollision(sink.frame(), controllerId, "after the first swap");
+
+        // …then re-select the SAME index: an identical recompute emits nothing.
+        long frames = sink.framesProduced();
+        result.fitInputs().get(slot).accept(1);
+        assertEquals(frames, sink.framesProduced(), "an identical recompute emits no frame");
+
+        // …and swap back and forth: the pinned controller id is never handed to
+        // another node (a collision would make the renderer drop/restart playback).
+        result.fitInputs().get(slot).accept(0);
+        assertNoIdCollision(sink.frame(), controllerId, "after swapping back");
+        result.fitInputs().get(slot).accept(1);
+        assertNoIdCollision(sink.frame(), controllerId, "after swapping again");
+    }
+
+    /** The pinned controller id must never be *created* as a different component. */
+    private static void assertNoIdCollision(ProtocolFrame frame, long controllerId, String when) {
+        frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE)
+                .filter(o -> o.a() == controllerId && o.b() != Components.MEDIA_CONTROLLER)
+                .findFirst()
+                .ifPresent(o -> { throw new AssertionError(
+                        "a node re-created the pinned controller id " + controllerId
+                                + " as component 0x" + Integer.toHexString((int) o.b()) + " " + when); });
+    }
+
+    /** Same, with the attach marker INSIDE the swapping candidate (the fragile
+     *  shape): the controller node is re-created with the candidate, and the
+     *  surface rebinds — but an unchanged selection must still emit nothing. */
+    @Test
+    void mediaControllerInsideTheSlotEmitsZeroOnAnUnchangedSelection() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        MediaController player = new MediaController("/assets/track1.mp3");
+
+        View root = SizeThatFits.make(
+                Fit.of(VStack.children(player.attach(), Video.make(player), Text.make(t -> t.text("wide"))), 640f),
+                Fit.of(VStack.children(player.attach(), Video.make(player), Text.make(t -> t.text("compact")))));
+        RenderResult result = emitter.mount(root, Environment.DEFAULT);
+        int slot = slotId(result);
+
+        result.fitInputs().get(slot).accept(1);
+        assertTrue(containsText(sink.frame(), "wide"), "the wide candidate swapped in");
+
+        long frames = sink.framesProduced();
+        result.fitInputs().get(slot).accept(1);
+        assertEquals(frames, sink.framesProduced(), "an identical recompute emits no frame");
+    }
+
     /** A custom-style body: re-builds the nested fit slot (fresh signal, default 0) on
      *  every render, like `AudioStyle.makeBody` does when its parent subtree re-renders. */
     private static View rebuiltNested(String suffix) {

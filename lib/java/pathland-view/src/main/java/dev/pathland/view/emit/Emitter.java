@@ -243,7 +243,7 @@ public final class Emitter {
     }
 
     private void assignIds(PathlandNode node) {
-        node.id = nextId++;
+        node.id = nextFreeId();
         for (PathlandNode child : node.children) {
             assignIds(child);
         }
@@ -273,6 +273,37 @@ public final class Emitter {
         for (PathlandNode child : node.children) {
             collectDuplicateIds(child, seen, duplicates);
         }
+    }
+
+    /**
+     * Allocate the next node id, **skipping ids pinned for a media controller**
+     * (spec/MEDIA.md). A controller's node id is its playback key and must stay
+     * stable across re-renders; handing the same id to a freshly created node
+     * would make the renderer lose (and restart) the playback.
+     */
+    private int nextFreeId() {
+        while (mediaControllerIds.containsValue(nextId)) {
+            nextId++;
+        }
+        return nextId++;
+    }
+
+    /**
+     * The id a freshly emitted node takes. A materialized `MEDIA_CONTROLLER` keeps
+     * its **pinned** id — the playback key must survive a subtree re-emission
+     * (a content swap re-emits the whole destination, controller included), or the
+     * renderer would tear down and restart playback (spec/MEDIA.md). Everything
+     * else draws a fresh free id.
+     */
+    private int freshIdFor(PathlandNode node) {
+        MediaController controller = node.mediaControllerRef;
+        if (controller != null && node.component == Components.MEDIA_CONTROLLER) {
+            Integer pinned = mediaControllerIds.get(controller);
+            if (pinned != null) {
+                return pinned;
+            }
+        }
+        return nextFreeId();
     }
 
     /** Every node in a subtree, pre-order. */
@@ -327,7 +358,9 @@ public final class Emitter {
                 // on first materialization and reuse it on every reconcile.
                 Integer stable = mediaControllerIds.get(controller);
                 if (stable == null) {
-                    stable = nextId++;
+                    // Reserve the id before any further node is allocated, so a
+                    // later create/reconcile can never reuse the playback key.
+                    stable = nextFreeId();
                     mediaControllerIds.put(controller, stable);
                 }
                 node.id = stable;
@@ -774,7 +807,7 @@ public final class Emitter {
                 }
                 if (fresh != null) {
                     if (fresh.id == 0) {
-                        fresh.id = nextId++;
+                        fresh.id = freshIdFor(fresh);
                     }
                     int id = fresh.id, component = fresh.component, index = i;
                     ops.add(() -> sink.createNode(id, component));
@@ -874,7 +907,7 @@ public final class Emitter {
             ops.add(() -> emitProperty(id, property, value));
         }
         for (PathlandNode child : node.children) {
-            child.id = nextId++;
+            child.id = freshIdFor(child);
             int id = child.id, component = child.component;
             ops.add(() -> sink.createNode(id, component));
             emitSubtreeInto(ops, child);

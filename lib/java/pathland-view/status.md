@@ -196,8 +196,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (`time`/`duration`/`volumeReport`), `onEnded`, and the convenience transport
   (`play`/`pause`/`toggle`/`seek`/`setVolume`/`setMuted`/`setLoop`/`setRate`).
   The emitter materializes **one `MEDIA_CONTROLLER` node per controller** (in
-  place at its `attach()` marker, with a **pinned** id), so playback identity is
-  stable across structural swaps; `Video` is the only media view (a `VIDEO`
+  place at its `attach()` marker, with a **pinned** id). The pinned id is
+  reserved in the id allocator (no other node can take it) and honored on **every**
+  emission path — including a subtree re-emission that reassigns ids (`freshIdFor`)
+  — so the playback key survives a content swap / band swap and the renderer never
+  tears down playback. A controller must therefore be created **once** by the app
+  (a view field, not inline in a route/destination factory: `body()` re-runs on a
+  path change and would make a new controller); `Video` is the only media view (a `VIDEO`
   surface referencing the controller), and **audio has no view** — the app binds
   its own buttons/sliders. `VideoStyle` supplies a custom control surface; the
   default (`EmptyContent`) keeps the node a leaf with renderer-native controls.

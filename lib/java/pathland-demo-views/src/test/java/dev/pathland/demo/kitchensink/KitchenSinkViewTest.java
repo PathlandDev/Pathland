@@ -57,13 +57,35 @@ class KitchenSinkViewTest {
                 Components.PROGRESS_VIEW, Components.GAUGE, Components.TEXT_EDITOR,
                 Components.PICKER, Components.MENU, Components.COLOR_PICKER,
                 Components.DATE_PICKER, Components.ZSTACK, Components.SHAPE, Components.COLOR,
-                Components.ICON}) {
+                Components.ICON, Components.MEDIA_CONTROLLER, Components.VIDEO}) {
             assertTrue(anyCreateNode(frame, component), "frame contains component 0x"
                     + Integer.toHexString(component));
         }
 
+        // The media section's `MediaController` materializes its non-visual node
+        // and the `VIDEO` surface binds to it (spec/MEDIA.md) — the binding must
+        // point at the controller node that was actually created.
+        long controllerId = frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE)
+                .filter(o -> o.b() == Components.MEDIA_CONTROLLER)
+                .mapToLong(Opcode::a).findFirst().orElseThrow();
+        assertTrue(bindsController(frame, controllerId), "the VIDEO surface binds its controller node");
+
         state.close();
         emitter.destroy();
+    }
+
+    /** Whether some `VIDEO` carries `MEDIA_CONTROLLER_ID` = `controllerId`. */
+    private static boolean bindsController(ProtocolFrame frame, long controllerId) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER
+                    && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == dev.pathland.view.Properties.MEDIA_CONTROLLER_ID
+                    && op.c() == controllerId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test
