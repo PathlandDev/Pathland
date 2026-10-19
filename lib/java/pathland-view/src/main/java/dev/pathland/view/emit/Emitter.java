@@ -697,6 +697,13 @@ public final class Emitter {
                 }
                 sink.endFrame();
             }
+            // A **shared** subtree (e.g. the music player's mainArea, which holds the
+            // media controller) is rendered once per candidate, so the kept and
+            // dropped subtrees contain nodes with the SAME ids. `forgetInputs(dropped)`
+            // therefore removed the kept subtree's routing entries too (tap actions,
+            // media sinks, …) — re-collect them, or a controller's media reports are
+            // silently dropped after the snapshot→live downgrade (spec/MEDIA.md).
+            collectInputs(keep, slot.router);
             guardUniqueIds();
             fireStructureReconciled();
             return;

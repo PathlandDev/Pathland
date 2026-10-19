@@ -224,6 +224,22 @@ public final class FrameCodec {
             } else if (event.isFocusChanged() || event.isEditingChanged() || event.isSubmit()) {
                 opcodes.add(new Opcode(
                         Categories.EVENT, event.command(), 0, event.target(), event.b(), 0));
+            } else if (event.isMediaTimeUpdated() || event.isMediaVolumeChanged()
+                    || event.isMediaDurationChanged() || event.isFitChanged()) {
+                // Media/fit reports carry their float value in field B (the value
+                // bits), NOT in the pointer x/y fields — the decode
+                // (`decodeEvents`) reads `Float.intBitsToFloat(op.b())`.
+                opcodes.add(new Opcode(
+                        Categories.EVENT,
+                        event.command(),
+                        0,
+                        event.target(),
+                        Float.floatToRawIntBits(event.value()),
+                        0));
+            } else if (event.isMediaPlayStateChanged() || event.isMediaEnded()) {
+                // A play-state bit / a fieldless ended marker.
+                opcodes.add(new Opcode(
+                        Categories.EVENT, event.command(), 0, event.target(), event.b(), 0));
             } else {
                 opcodes.add(new Opcode(
                         Categories.EVENT,
