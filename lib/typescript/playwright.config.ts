@@ -16,11 +16,6 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: liveHost ?? "http://127.0.0.1:4173",
-    launchOptions: {
-      // The server-driven media flow is about progress, not the autoplay gate
-      // (the media spec still starts playback explicitly).
-      args: ["--autoplay-policy=no-user-gesture-required"],
-    },
   },
   webServer: liveHost
     ? undefined
@@ -31,7 +26,16 @@ export default defineConfig({
         timeout: 30_000,
       },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // Chromium-only: WebKit rejects this flag. The server-driven media flow
+        // is about progress, not the autoplay gate (the spec still starts
+        // playback explicitly).
+        launchOptions: { args: ["--autoplay-policy=no-user-gesture-required"] },
+      },
+    },
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
   ],
 });
