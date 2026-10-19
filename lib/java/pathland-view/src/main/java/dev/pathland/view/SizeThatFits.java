@@ -53,7 +53,36 @@ public final class SizeThatFits {
         return slot(fits);
     }
 
+    /**
+     * Reject the same {@link View} instance used as the candidate of more than one
+     * {@code Fit}. A reused instance is materialized once per candidate, so it
+     * occupies two independent positions in the retained tree; that leaks the
+     * view's mutable state across branches and lets an identity-stable node (a media
+     * controller, a stateful custom view) hand out the same node id twice. The frame's
+     * unique-node-id invariant (spec/OPCODE.md §Frame Lifecycle) forbids that, so fail
+     * loudly at the authoring surface instead of corrupting id-keyed consumers.
+     *
+     * <p>Sharing a subtree <em>inside</em> two distinct candidate roots (e.g. a
+     * "main area" composed into both rows) is allowed: each candidate renders its own
+     * fresh nodes, which get distinct ids.
+     */
+    private static void rejectReusedCandidates(Fit[] fits) {
+        for (int i = 0; i < fits.length; i++) {
+            View candidate = fits[i].view();
+            for (int j = i + 1; j < fits.length; j++) {
+                if (candidate == fits[j].view()) {
+                    throw new IllegalStateException(
+                            "a View instance can be used as the candidate of at most one "
+                                    + "SizeThatFits Fit: " + candidate.getClass().getName()
+                                    + " is passed to candidates " + i + " and " + j
+                                    + ". Create a fresh view instance per candidate.");
+                }
+            }
+        }
+    }
+
     private static View slot(Fit[] fits) {
+        rejectReusedCandidates(fits);
         // Ascending, stable order = the FIT_QUERY table and the fit-index mapping.
         List<Fit> sorted = new ArrayList<>(List.of(fits));
         sorted.sort(Comparator.comparingDouble(Fit::minWidth));

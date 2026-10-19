@@ -48,6 +48,15 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   positionally diffs, because both candidates are frequently the same component
   and morphing the loser's node into the winner would relocate the winner into
   the SSR's loser wrapper and break the renderer's candidate-position CSS gate.
+  **View reuse** (issue #159): the same `View` instance may not be the candidate
+  of two `Fit`s — `SizeThatFits.make` rejects it (`IllegalStateException`), since
+  it would be materialized once per candidate and leak shared state / ids.
+  Sharing a subtree **inside** two distinct candidate roots stays allowed; every
+  materialized copy gets a distinct node id. The emitter enforces the frame's
+  **unique-node-id invariant** (spec/OPCODE.md §Frame Lifecycle) with
+  `Emitter.duplicateIds` / a fail-loud guard at mount, resync, and after each
+  structural reconcile, so an id-overriding pass (an identity-stable node pinning
+  a playback key) can never silently corrupt an id-keyed consumer.
 - **v2 authoring surface (complete)**: every concrete view exposes
   the three operations — values via the static `View.make(...)`
   (`make(Consumer<Config>)`, `make(value)` shortcuts, empty `make()`),

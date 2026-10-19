@@ -52,7 +52,10 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
   `TapHandler`/`ValueInputHandler`/`TextInputHandler`/`DateInputHandler` aliases).
   `collect_tap_handlers` and `collect_input_handlers` (→ `InputHandlers`) expose
   the app-side registries; sinks are never serialized.
-- **`assign_ids`** (pre-order stable ids).
+- **`assign_ids`** (pre-order stable ids) — the **single id authority**: it hands
+  out unique ids, satisfying the frame's **unique-node-id invariant**
+  (spec/OPCODE.md §Frame Lifecycle — a frame never carries two nodes with the same
+  id).
 
 ## Not implemented / gaps
 

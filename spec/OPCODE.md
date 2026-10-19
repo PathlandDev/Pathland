@@ -641,6 +641,14 @@ A frame is a batch of delta opcodes produced by one `emit` pass:
 
 Because the ring and arena are plain memory, the guest publishes via a single release store of `frameCount`; the host acquires on read.
 
+> **Unique node-id invariant.** A frame MUST NOT contain two nodes with the same
+> id. `TREE` and `PARAMETER` opcodes reference each node id for exactly one node,
+> so every id-keyed consumer (the renderer's `id → element` map, `PLAYBACK_STATE`,
+> `MEDIA_*`, proxy remapping, …) stays unambiguous. A full-snapshot emission of a
+> subtree materialized more than once (e.g. a `SIZE_THAT_FITS` candidate shared
+> between branches, spec/PRIMITIVES.md §SizeThatFits) MUST give **every copy a
+> distinct id** — no id is reused between copies, including identity-stable nodes.
+
 ---
 
 ## Transport
