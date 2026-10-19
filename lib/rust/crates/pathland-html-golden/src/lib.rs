@@ -223,7 +223,7 @@ fn media() -> Scenario {
     b.create(1, component_type::VSTACK);
     b.create(2, component_type::IMAGE);
     b.create(3, component_type::VIDEO);
-    b.create(4, component_type::AUDIO);
+    b.create(4, component_type::MEDIA_CONTROLLER);
     b.insert(1, 2);
     b.insert(1, 3);
     b.insert(1, 4);
@@ -233,12 +233,12 @@ fn media() -> Scenario {
     b.set_prop(2, value_type::F32, property_id::CONTENT_MODE, 1f32.to_bits());
     b.set_prop(2, value_type::F32, property_id::ASPECT_RATIO, 1.5f32.to_bits());
     b.set_prop(2, value_type::F32, property_id::WIDTH, 200f32.to_bits());
-    // Video: source ref; playback interaction is renderer-native (controls).
-    b.set_string(3, property_id::VIDEO_SOURCE, "https://example.com/sample.mp4");
+    // Video surface: renders its own output; the playback + source belong to the
+    // controller (spec/MEDIA.md), so the surface carries no source of its own.
     b.set_prop(3, value_type::F32, property_id::WIDTH, 320f32.to_bits());
     b.set_prop(3, value_type::F32, property_id::HEIGHT, 180f32.to_bits());
-    // Audio: source ref.
-    b.set_string(4, property_id::AUDIO_SOURCE, "https://example.com/sample.mp3");
+    // The media controller: the resource (non-visual, layout-transparent).
+    b.set_string(4, property_id::MEDIA_SOURCE, "https://example.com/sample.mp4");
     Scenario {
         name: "media",
         opcodes: b.opcodes,

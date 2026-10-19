@@ -1,11 +1,10 @@
 package dev.pathland.view;
 
-import dev.pathland.view.signal.WritableSignal;
-
 /**
  * A video style ({@code VideoStyle}). A style turns a {@link Video}
- * node's media configuration into a body view, mirroring {@link AudioStyle}.
- * Injected down the tree via {@code View.videoStyle(VideoStyle)}.
+ * surface's media configuration into a body view — the app-defined control UI
+ * (transport buttons, seek/volume sliders). Injected down the tree via
+ * {@code View.videoStyle(VideoStyle)}.
  */
 public interface VideoStyle extends Style {
 
@@ -19,9 +18,9 @@ public interface VideoStyle extends Style {
     }
 
     /**
-     * The media configuration of the video being styled (same shape as
-     * {@link AudioStyle.Configuration}); the source rides the {@code Video} view.
+     * The media configuration of the video being styled: the {@link MediaController}
+     * the surface renders. The style's control UI binds the controller's transport
+     * signals (spec/MEDIA.md); it may be {@code null} (an unbound surface).
      */
-    record Configuration(WritableSignal<Boolean> playing, WritableSignal<Float> position,
-                         WritableSignal<Float> volume, float duration) {}
+    record Configuration(MediaController controller) {}
 }

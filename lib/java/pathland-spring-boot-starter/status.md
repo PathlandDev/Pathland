@@ -29,7 +29,8 @@ subpaths (the BFF layout).
     no static icon files on any host, and a host can still override a glyph with a file.
     The framework controller honors byte-range requests (`206 Partial Content` +
     `Content-Range`, `416` for unsatisfiable ranges, `Accept-Ranges` on the full
-    response) — an `<audio>`/`<video>` seeking beyond its buffer issues a `Range`
+    response) — a `<video>` (a `MediaController`'s playback) seeking beyond its
+    buffer issues a `Range`
     request, and answering it with a full `200` would make browsers restart the media
     at byte 0.
     SSR renders defaults (no session cookie — per-window state arrives over the WS).

@@ -18,7 +18,7 @@ import java.util.function.Consumer;
  *
  * <p>Application-authored modifiers (a custom {@link ViewModifier} or a custom style)
  * expose a lowercase static factory on their own type, e.g.
- * {@code public static PlayerControlsStyle playerControlsStyle(Consumer<Config> c)}.
+ * {@code public static PlayerControls playerControls(Consumer<Config> c)}.
  */
 public final class Modifiers {
 

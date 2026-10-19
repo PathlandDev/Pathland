@@ -95,6 +95,18 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   `navigate`/`push`/`pop`/`replace`), `NavigationContainer` (builds the current
   destination and carries `ROUTE`/`NAV_DEPTH`/`NAV_CHROME` on a container slot),
   and `NavigationLink` (a button that changes the route via a router).
+- **Media (Phase 6)**: `Video` — the video playback **surface**
+  (`Video::new(Rc<MediaController>)` / `video(rc)`) referencing a
+  `pathland_engine::MediaController`; `MediaControllerExt::attach()` on a
+  controller (`Rc`) is the **non-visual marker** that materializes its
+  `MEDIA_CONTROLLER` node with the transport bound (`MEDIA_SOURCE` as a reactive
+  STRING binding, `PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`/`MEDIA_MUTED`/
+  `MEDIA_LOOP`/`MEDIA_RATE` as property bindings). `assign_ids` pins the
+  controller's id and links each surface's `MEDIA_CONTROLLER_ID`. A **`VideoStyle`**
+  (`ViewExt::video_style`) supplies the surface's control content — the style reads
+  the surface's controller through `VideoStyleConfig` — while the default
+  `NativeVideoStyle` keeps the surface a leaf with renderer-native controls.
+  **Audio has no view** — bind ordinary views to the controller's signals.
 - **Persisted state (Phase 5)**: `pathland_view::state` — a platform-neutral
   `StateStore` trait (`get`/`set` by key over `SignalValue`) + the in-process
   `InMemoryStateStore`; `PersistentState::state(name, initial)` returns a
@@ -108,9 +120,9 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   for Toggle/Slider/TextField/Picker; Stepper/TextEditor/DatePicker/ColorPicker
   sink wiring lands in the DSL but the renderer side for some controls is still
   to come. Date/color two-way is not wired (needs `SET_DATE`).
-- **Styles**: only `ButtonStyle` (there is no `Label`/`Audio`/`Video` view in the
-  Rust DSL, so `LabelStyle`/`AudioStyle`/`VideoStyle` have no target). The
-  environment carries only the button-style slot (no arbitrary typed keys).
+- **Styles**: `ButtonStyle` + `VideoStyle` (there is no `Label` view in the Rust
+  DSL, so `LabelStyle` has no target). The environment carries the button- and
+  video-style slots (no arbitrary typed keys).
 - **Navigation**: links hold a router explicitly (no nearest-enclosing-router
   resolution / `NavigationIntent`); `NAVIGATE` event routing is app-side; no
   `Label`/`GridRow` components.
@@ -129,5 +141,8 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 `cargo test -p pathland-view` — the three operations (static + chained, any
 order), per-view config, tuple/single modifier lists, custom modifiers,
 `assign_ids`, tap-gesture listener wiring, token refs, grid counts, named
-shapes, `SizeThatFits`. Workspace `cargo test` green; `lib/rust/check-wasm.sh`
+shapes, `SizeThatFits`, and the media surface (`Video` + `attach()`: the
+controller's node + transport bindings, the pinned/stable controller id across a
+structural swap, and its `MEDIA_CONTROLLER_ID` link, plus the reactive
+`MEDIA_SOURCE` re-emit). Workspace `cargo test` green; `lib/rust/check-wasm.sh`
 (`no_std` preserved).

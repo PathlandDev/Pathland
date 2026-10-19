@@ -101,6 +101,11 @@ public record Event(
         return new Event(Commands.Event.MEDIA_VOLUME_CHANGED, target, 0, 0, 0, volume, null, 0, 0);
     }
 
+    /** A bound controller's media duration became known/changed (seconds). */
+    public static Event mediaDurationChanged(int target, float seconds) {
+        return new Event(Commands.Event.MEDIA_DURATION_CHANGED, target, 0, 0, 0, seconds, null, 0, 0);
+    }
+
     /** A `SIZE_THAT_FITS` slot's selected candidate changed (the fit index). */
     public static Event fitChanged(int target, float index) {
         return new Event(Commands.Event.FIT_CHANGED, target, 0, 0, 0, index, null, 0, 0);
@@ -176,6 +181,10 @@ public record Event(
 
     public boolean isMediaVolumeChanged() {
         return command == Commands.Event.MEDIA_VOLUME_CHANGED;
+    }
+
+    public boolean isMediaDurationChanged() {
+        return command == Commands.Event.MEDIA_DURATION_CHANGED;
     }
 
     public boolean isFitChanged() {

@@ -38,18 +38,34 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   derives the app's mount prefix from `data-pathland-base` (`/<mount>/_pathland`) and
   pushes the app's <b>real</b> address (`/app2` app navigating to `/home` →
   `pushState("/app2/home…")`). The root app (base `/_pathland`) is unchanged.
-- **Media**: `IMAGE`/`VIDEO`/`AUDIO` shells (`<img>`, `<video controls>`,
-  `<audio controls>`); a wrapper-model `AUDIO`/`VIDEO` node whose custom style
-  body is its child (spec DSL.md §5.7) morphs its media element into a
-  `.pathland-media` wrapper holding the hidden media + the app controls;
-  `IMAGE_SOURCE`/`VIDEO_SOURCE`/`AUDIO_SOURCE` apply the
-  asset ref; the `LABEL` accessibility text is set as `alt` on media elements;
+- **Media** (spec/MEDIA.md): `IMAGE`/`VIDEO` shells (`<img>`,
+  `<video controls>`). **Audio has no view** — a `MEDIA_CONTROLLER` is a
+  non-visual state object the app drives with its own controls.
+  `MEDIA_CONTROLLER` hydrates to an **off-flow** shell (`position:absolute;1px;
+  opacity:0` — deliberately *not* `display:none`, which silences a `<video>`'s
+  audio) holding a control-less `<video data-pathland-media>` (the resource);
+  `MEDIA_SOURCE` drives that element, while `MEDIA_MUTED`/`MEDIA_LOOP`/
+  `MEDIA_RATE` apply to it. A `VIDEO` surface defaults to `controls` and binds to
+  its controller via `MEDIA_CONTROLLER_ID` (`data-pathland-controller`) through a
+  **media registry** keyed by controller id (not by emission order): a surface
+  emitted *before* its controller, or a controller whose `MEDIA_SOURCE` arrives
+  late, still binds — mirroring runs from whichever side lands second, the
+  controller element is silenced whenever it has bound surfaces, and surfaces
+  that left the DOM are pruned (a removed subtree never keeps playing). `IMAGE_SOURCE` applies the asset ref;
+  the `LABEL` accessibility text is set as `alt` on media elements;
   `CONTENT_MODE` maps `Fit`→`contain`, `Fill`→**`cover`** (matching the Rust SSR).
-  App-driven media reports `MEDIA_TIME_UPDATED` at **~30/s** (a 33 ms position
-  sampler — the browser's `timeupdate` alone is only ~4 Hz; torn down when the
-  node is removed) and `MEDIA_ENDED` at track end; play/pause/volume are
-  reported only for
-  native-controls media.
+  **Autoplay policy**: an unmuted `play()` is only accepted inside a trusted
+  user gesture, but the play action is a server round-trip (`PLAYBACK_STATE`
+  arrives after the click's activation expires), so every trusted gesture
+  (`pointerdown`/`keydown`/`touchend`) unlocks the playback element with an
+  inaudible muted play→pause (`unlockMedia`), a `NotAllowedError` is marked
+  **pending** and replayed on the next gesture (`playMedia`/`retryPendingPlay`),
+  and any other `play()` rejection is `log.warn`ed — media failures are never
+  silent.
+  All media reports are keyed to the **controller** node: `MEDIA_TIME_UPDATED` at
+  **~30/s** (a 33 ms position sampler — the browser's `timeupdate` alone is only
+  ~4 Hz; torn down when the node is removed), `MEDIA_DURATION_CHANGED`
+  (`durationchange`), and `MEDIA_ENDED` at track end.
   **Media echo guards (spec/EVENTS.md Media)**: a `MEDIA_POSITION` write within
   `0.25 s` of the **last-reported** position (not `currentTime`) does not seek —
   so a network-delayed `MEDIA_TIME_UPDATED` echo can't cause per-second seek
@@ -283,7 +299,10 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   `<textarea>`, `TOGGLE` → checkbox/switch, `SLIDER` → `<input type="range">`,
   `PICKER` → `<select>` + `<option>`, `DATE_PICKER` → date/time inputs,
   `COLOR_PICKER` → `<input type="color">`, `MENU` → `.pathland-menu`,
-  `AUDIO`/`VIDEO` → `<audio>`/`<video controls>`.
+  `VIDEO` → `<video controls>` (with `data-pathland-controller` when bound),
+  `MEDIA_CONTROLLER` → an off-flow shell (`position:absolute;1px;opacity:0`,
+  non-visual + layout-transparent — not `display:none`, which would silence the
+  audio).
 - **ZStack/grid tracks shrink below content (`minmax(0,1fr)`)**: the ZStack's
   single-cell grid and the count-generated grid tracks
   (`repeat(n,minmax(0,1fr))`, lazy-hgrid auto columns) use `minmax(0,1fr)` — a

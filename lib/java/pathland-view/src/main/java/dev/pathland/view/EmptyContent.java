@@ -5,7 +5,7 @@ import dev.pathland.view.emit.PathlandNode;
 /**
  * A sentinel style content meaning "no content" ({@code EmptyView}). A style
  * returns it when the control should render its native shell without custom content —
- * e.g. {@link NativeAudioStyle} (renderer-native media controls). A control recognizes
+ * e.g. {@link NativeVideoStyle} (renderer-native video controls). A control recognizes
  * the sentinel and attaches no child, so it stays in Native Token Mode
  * (spec PRIMITIVES.md §2, spec DSL.md §5.7).
  *

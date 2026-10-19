@@ -441,7 +441,11 @@ mod tests {
     use super::*;
     use pathland_engine::Engine;
     use pathland_core::{init_memory, Guest, MemoryLayout};
-    use pathland_view::{assign_ids, text, vstack, Configurable, Padding, View, ViewExt};
+    use pathland_view::{
+        assign_ids, text, vstack, Configurable, MediaController, MediaControllerExt, Padding,
+        Video, View, ViewExt,
+    };
+    use std::rc::Rc;
 
     #[test]
     fn decodes_a_declarative_frame() {
@@ -481,6 +485,70 @@ mod tests {
         assert_eq!(child.text.as_deref(), Some("ab"));
         // No layout/rect data is present.
         assert!(!child.properties.contains_key(&pathland_core::property_id::WIDTH));
+    }
+
+    /// The Rust view DSL's media kit, end to end into the renderer's tree
+    /// (spec/MEDIA.md): a `MediaController` + `attach()` + a `Video` surface emit
+    /// a non-visual `MEDIA_CONTROLLER` node carrying its transport, and the
+    /// surface is linked to it by `MEDIA_CONTROLLER_ID`.
+    #[test]
+    fn media_surface_from_the_view_dsl_reaches_the_render_tree() {
+        let layout = MemoryLayout::default();
+        let mut mem = vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        let mut engine = Engine::new();
+        let player = Rc::new(MediaController::with_source(
+            &engine.runtime(),
+            "/assets/clip.mp4",
+        ));
+        player.play();
+
+        let mut root = vstack![player.attach(), Video::new(player.clone())].build();
+        assign_ids(&mut root, &mut 1);
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&root, &mut guest).unwrap();
+            guest.end_frame();
+        }
+
+        let mut host = pathland_core::Host::new(&mut mem, &layout);
+        let tree = render_tree_from_frame(&host.frames()[0]);
+
+        let controller = tree
+            .nodes
+            .values()
+            .find(|n| n.component_type == component_type::MEDIA_CONTROLLER)
+            .expect("the controller's non-visual node");
+        // The controller carries the resource and the transport (the app drives
+        // playback through them).
+        assert_eq!(
+            controller.string_property(pathland_core::property_id::MEDIA_SOURCE),
+            Some("/assets/clip.mp4")
+        );
+        assert_eq!(
+            controller.u32_property(pathland_core::property_id::PLAYBACK_STATE, 0),
+            1,
+            "playing was set before the emit"
+        );
+
+        let surface = tree
+            .nodes
+            .values()
+            .find(|n| n.component_type == component_type::VIDEO)
+            .expect("the video surface");
+        assert_eq!(
+            surface.u32_property(pathland_core::property_id::MEDIA_CONTROLLER_ID, 0),
+            controller.id,
+            "the surface points at the controller's node"
+        );
+
+        // The controller is non-visual: the renderer maps it to no widget.
+        assert_eq!(
+            crate::widget_kind(component_type::MEDIA_CONTROLLER),
+            crate::WidgetKind::Invisible
+        );
     }
 
     #[test]

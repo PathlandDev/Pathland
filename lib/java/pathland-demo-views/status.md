@@ -83,8 +83,8 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   the sidebar, player controls, and label section now use the semantic
   **`Icon`** primitive (`Icon.make(IconName.…)`, spec/ICONS.md) that every
   renderer maps to its native symbol set.
-- **`MediaSection`** (kitchensink): a `Video` + `Audio` node with remote sample
-  URLs — playback interaction is renderer-native (`controls`); the app supplies
+- **`MediaSection`** (kitchensink): a bare `Video` surface with a remote sample
+  URL — playback interaction is renderer-native (`controls`); the app supplies
   only the source + size.
 - **`MusicPlayerView`** (dev.pathland.demo.music) — the **web demos' root** (an
   Apple Music-style player): a track **`LibraryView`** (left) + the
@@ -95,14 +95,20 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
   report from the DOM client swaps the row; the shared `mainArea` nodes are
   re-used by the reconcile). Owns the player's `State` (persisted per-session under
   `player.*` keys) and hands the bound signals to its subviews; each subview is
-  its own `View` class. **Real playback**: the bottom bar is an app-driven
-  `Audio` node whose custom **`PlayerControlsStyle`** (`AudioStyle`) renders the
-  whole bar — a centered row of `[⏮] [play-pause] [⏭] | [cover art] [track
-  title] | [volume]` over a slim, draggable **seek bar showing progress as a
-  percent** (`PercentSeek` maps seconds↔percent in the UI model; the wire keeps
-  seconds) — bound to the media configuration's signals; the hidden media
-  element plays the current track and reports time/ended/volume back into the
-  player state (spec/EVENTS.md Media) — `MEDIA_ENDED` auto-advances. Track
+  its own `View` class. The destinations are held as fields (not constructed
+  inline in `body()`), so the controller-owning view — and therefore its
+  `MediaController` — is created once and its pinned playback id survives a
+  content swap. **Real playback**: `MusicPlayerView` owns a
+  **`MediaController`** (spec/MEDIA.md) wired in `body()` to its persisted
+  signals and passed to both `SizeThatFits` branches, with `player.attach()`
+  placed once (inside `mainArea`, outside the swapping branch) to materialize the
+  non-visual `MEDIA_CONTROLLER` node. The bottom bar is the app's own
+  **`PlayerControls`** view (not a style) driving the controller directly — a
+  centered row of `[⏮] [play-pause] [⏭] | [cover art] [track title] | [volume]`
+  over a slim, draggable **seek bar showing progress as a percent** (`PercentSeek`
+  maps seconds↔percent in the UI model; the wire keeps seconds); the controller's
+  playback reports time/ended/volume back into the player state (spec/EVENTS.md
+  Media) — `MEDIA_ENDED` auto-advances. Track
   selection / prev / next change app-owned state (position resets to 0). The
   seek + volume sliders **decouple the seek/volume command from the report**
   (`SeekControl`/`VolumeControl`: display from the report signals, command
@@ -158,12 +164,12 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
 `KitchenSinkViewTest` (mount + persistence + input routing),
 `SplitNavDemoTest` (sidebar + content first frame, `/kitchen` content swap,
 menu-click content swap deltas, reactive active-row highlight), and
-`MusicPlayerViewTest` (library/art/buttons/sliders render; the app-driven audio
-node binds source + media control props; taps persist the player state; the
-media events drive position/volume/ended). Both SSR demos are verified by
-running them and curling the routes (`/` renders the music player's
-`<img>`s + range sliders + transport buttons + the `.pathland-media` audio
-wrapper; the albumart + audio assets serve from `/_pathland/assets/`).
+`MusicPlayerViewTest` (library/art/buttons/sliders render; the
+`MediaController` materializes a `MEDIA_CONTROLLER` node bound to its transport +
+`MEDIA_SOURCE`; taps persist the player state; the media events drive
+position/volume/ended). Both SSR demos are verified by running them and curling
+the routes (`/` renders the music player's `<img>`s + range sliders + transport
+buttons; the albumart + audio assets serve from `/_pathland/assets/`).
 - **Single embedded asset copy** (`dev.pathland.demo.assets.DemoAssets`): the
   media + icon assets live once in this jar under
   `META-INF/resources/_pathland/assets/`; `DemoAssets.extractToTemp()` unpacks

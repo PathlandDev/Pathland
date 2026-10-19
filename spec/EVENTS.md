@@ -264,18 +264,23 @@ its own native control geometry.
 
 ### Media
 
-Media events report a `AUDIO`/`VIDEO` node's playback state back to the app
-(target = the media node id). They are reported by the renderer by virtue of the
-media node's component type — no listener bit, mirroring `VALUE_CHANGED` — and
-only when the app has bound the corresponding control property (so a
-renderer-native media element with default controls reports nothing).
+Media events report a
+[`MEDIA_CONTROLLER`](./PRIMITIVES.md#media-controller--media_controller-0x30)'s
+playback state back to the app — **`A` = the controller node id**, never a media
+**surface** id. They are reported by the renderer by virtue of the controller's
+component type — no listener bit, mirroring `VALUE_CHANGED` — and only when the
+app has bound the corresponding transport property **on the controller** (so a
+renderer-native playback with default controls reports nothing). Because the
+target is the controller, reporting does not change when a surface is created,
+destroyed, or swapped ([MEDIA.md §5](./MEDIA.md#5-structural-swaps-the-motivating-contract)).
 
 | Command | Value | A | B | C | Flags | SwiftUI counterpart |
 | --------- | ------- | --- | --- | --- | ------- | --------------------- |
-| `MEDIA_PLAY_STATE_CHANGED` | 0x0F | targetId | playing (0/1) | 0 | — | `AVPlayer` play/pause |
-| `MEDIA_TIME_UPDATED` | 0x10 | targetId | seconds (f32) | 0 | — | periodic time observer |
-| `MEDIA_ENDED` | 0x11 | targetId | 0 | 0 | — | `AVPlayerItemDidPlayToEndTime` |
-| `MEDIA_VOLUME_CHANGED` | 0x12 | targetId | volume (f32, 0..1) | 0 | — | `AVPlayer.volume` |
+| `MEDIA_PLAY_STATE_CHANGED` | 0x0F | controllerId | playing (0/1) | 0 | — | `AVPlayer` play/pause |
+| `MEDIA_TIME_UPDATED` | 0x10 | controllerId | seconds (f32) | 0 | — | periodic time observer |
+| `MEDIA_ENDED` | 0x11 | controllerId | 0 | 0 | — | `AVPlayerItemDidPlayToEndTime` |
+| `MEDIA_VOLUME_CHANGED` | 0x12 | controllerId | volume (f32, 0..1) | 0 | — | `AVPlayer.volume` |
+| `MEDIA_DURATION_CHANGED` | 0x14 | controllerId | seconds (f32) | 0 | — | `AVPlayerItem.duration` |
 | `FIT_CHANGED` | 0x13 | targetId | fit index (f32) | 0 | — | a `SizeThatFits` slot's selected candidate |
 
 - **`MEDIA_TIME_UPDATED`**: the media's current playback position in seconds.
@@ -283,6 +288,9 @@ renderer-native media element with default controls reports nothing).
   both renderers sample their position source at ~30 Hz (best-effort: browser
   background-tab and occluded-window timers throttle to worse cadences). A seek
   initiated by the app (`MEDIA_POSITION` change) is not echoed back.
+- **`MEDIA_DURATION_CHANGED`**: the resource's duration in seconds. Reported when
+  the resource loads (or its duration becomes known), and only when it changes —
+  never a stream. Gates the useful range of a seek control.
 - **`FIT_CHANGED`**: a `SIZE_THAT_FITS` slot's **selected candidate index** —
   the renderer measures its own allocated width against the slot's `FIT_QUERY`
   thresholds and reports the derived index. Emitted **once after the first
@@ -299,12 +307,13 @@ renderer-native media element with default controls reports nothing).
   route it into the slot's fit sink, never as a general size event.
 - **Commands vs reports (MUST)**: `MEDIA_POSITION`/`MEDIA_VOLUME` are **seek /
   volume commands** the app writes to control playback; `MEDIA_TIME_UPDATED` /
-  `MEDIA_VOLUME_CHANGED` are **position / volume reports** the renderer emits.
-  An app **MUST NOT** bind a command property to the signal its matching report
-  updates — that echoes every report back as a command (e.g. each second's
-  position report re-emits a `MEDIA_POSITION` seek, causing per-second seek
-  jitter). The app binds the command to a **user-interaction-only** signal and
-  routes the report to a separate display signal.
+  `MEDIA_DURATION_CHANGED` / `MEDIA_VOLUME_CHANGED` are **position / duration /
+  volume reports** the renderer emits. An app **MUST NOT** bind a command
+  property to the signal its matching report updates — that echoes every report
+  back as a command (e.g. each second's position report re-emits a
+  `MEDIA_POSITION` seek, causing per-second seek jitter). The app binds the
+  command to a **user-interaction-only** signal and routes the report to a
+  separate display signal.
 - **Renderer echo guard (MUST)**: a renderer **MUST NOT** act on a command write
   that matches the value it last **reported** (within an epsilon): the app is
   echoing the report back, not interacting. E.g. a `MEDIA_POSITION` write within
@@ -312,9 +321,12 @@ renderer-native media element with default controls reports nothing).
   write within `0.01` of the last `MEDIA_VOLUME_CHANGED` must not re-apply. This
   is defense-in-depth: it holds at **any** network latency (the echo *is* the
   last-reported value), so a delayed echo cannot fight the playback position.
-- **Guards**: media events flow only when the app bound the matching control
-  property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`) on the node; a
-  plain renderer-native media element reports nothing.
+  The guard is **per controller** (the playback), not per surface.
+- **Guards**: media events flow only when the app bound the matching transport
+  property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`) **on the
+  controller**; a plain renderer-native playback reports nothing. Binding a
+  transport property on a `VIDEO` surface has no effect — the surface only
+  names the controller ([MEDIA.md](./MEDIA.md)).
 
 - **`NAVIGATE` is a global event — never node-gated.** It carries **no
   `targetId`** (`A` = 0) and is **not** subject to `EVENT_LISTENERS` or the

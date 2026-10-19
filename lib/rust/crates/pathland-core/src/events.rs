@@ -102,19 +102,23 @@ pub enum Event {
     /// navigated to (browser `popstate`/back/forward/deep-link), resolved from
     /// the string section / event arena; `url: None` is a native back request.
     Navigate { url: Option<String> },
-    /// A bound `AUDIO`/`VIDEO` node's playback state changed (host → guest).
+    /// A bound `MEDIA_CONTROLLER`'s playback state changed (host → guest).
     /// Draft command 0x0F; reported only when `PLAYBACK_STATE` is bound.
     MediaPlayStateChanged { target: u32, playing: bool },
-    /// A bound media node's current playback position (host → guest). Draft
+    /// A bound controller's current playback position (host → guest). Draft
     /// command 0x10; `seconds` is the position in seconds (f32), reported while
     /// playing. An app-initiated seek (`MEDIA_POSITION` change) is not echoed.
     MediaTimeUpdated { target: u32, seconds: f32 },
-    /// A bound media node reached the end of its media (host → guest). Draft
+    /// A bound controller reached the end of its media (host → guest). Draft
     /// command 0x11.
     MediaEnded { target: u32 },
-    /// A bound media node's volume changed (host → guest). Draft command 0x12;
+    /// A bound controller's volume changed (host → guest). Draft command 0x12;
     /// `volume` is in the range 0..1 (f32).
     MediaVolumeChanged { target: u32, volume: f32 },
+    /// A bound controller's media duration became known/changed (host → guest).
+    /// Draft command 0x14; `seconds` is the duration (f32). Reported when the
+    /// resource loads and only when the value changes.
+    MediaDurationChanged { target: u32, seconds: f32 },
     /// A `SIZE_THAT_FITS` slot's selected candidate changed (host → guest).
     /// Draft command 0x13; `index` is the derived fit index (f32), reported once
     /// after the first measure and then only when it changes.
@@ -312,6 +316,14 @@ impl Event {
                 volume.to_bits(),
                 0,
             ),
+            Event::MediaDurationChanged { target, seconds } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_DURATION_CHANGED,
+                0,
+                *target,
+                seconds.to_bits(),
+                0,
+            ),
             Event::FitChanged { target, index } => Opcode::new(
                 category::EVENT,
                 crate::event::FIT_CHANGED,
@@ -440,6 +452,10 @@ impl TryFrom<Opcode> for Event {
             crate::event::MEDIA_VOLUME_CHANGED => Ok(Event::MediaVolumeChanged {
                 target: op.a(),
                 volume: op.b_f32(),
+            }),
+            crate::event::MEDIA_DURATION_CHANGED => Ok(Event::MediaDurationChanged {
+                target: op.a(),
+                seconds: op.b_f32(),
             }),
             crate::event::FIT_CHANGED => Ok(Event::FitChanged {
                 target: op.a(),
@@ -582,6 +598,7 @@ mod tests {
             Event::MediaTimeUpdated { target: 7, seconds: 12.5 },
             Event::MediaEnded { target: 7 },
             Event::MediaVolumeChanged { target: 7, volume: 0.5 },
+            Event::MediaDurationChanged { target: 7, seconds: 210.0 },
             Event::FitChanged { target: 42, index: 2.0 },
         ] {
             assert_eq!(round_trip(e.clone()), e);
@@ -602,6 +619,10 @@ mod tests {
         assert_eq!(
             Event::MediaVolumeChanged { target: 7, volume: 0.5 }.encode().to_bytes(),
             [0x03, 0x12, 0, 0, 7, 0, 0, 0, 0, 0, 0x00, 0x3F, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::MediaDurationChanged { target: 7, seconds: 210.0 }.encode().to_bytes(),
+            [0x03, 0x14, 0, 0, 7, 0, 0, 0, 0, 0, 0x52, 0x43, 0, 0, 0, 0]
         );
         assert_eq!(
             Event::FitChanged { target: 42, index: 2.0 }.encode().to_bytes(),

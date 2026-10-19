@@ -28,6 +28,16 @@ pub mod icons;
 pub mod role_spec;
 pub mod token_spec;
 
+/// The `MEDIA_CONTROLLER` shell's inline style (spec/MEDIA.md). A media
+/// controller owns playback but renders nothing: the container is **off-flow**
+/// (`position:absolute`, 1×1, transparent) so it contributes no spacing while
+/// still being *rendered* — browsers refuse to route a `<video>`'s **audio** to
+/// the output when its ancestor is `display:none` (the pipeline still runs and
+/// `currentTime` advances, so the failure is silent). `visibility:hidden` /
+/// `display:none` are both wrong here for the same reason.
+pub const MEDIA_CONTROLLER_SHELL_STYLE: &str =
+    "position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none";
+
 /// The renderer-owned default typography scale for a `TEXT_STYLE` code
 /// (spec/MODIFIERS.md §2): `(size_px, weight_100_900)`. `None` for an unknown
 /// code. Explicit `FONT_SIZE`/`FONT_WEIGHT` override these.
@@ -586,7 +596,6 @@ fn rgba(argb: u32) -> String {
     format!("rgba({r},{g},{b},{a})")
 }
 
-/// Whether an `AUDIO`/`VIDEO` node is **app-driven**: it binds at least one
 /// A `WIDTH`/`HEIGHT` hint as CSS: `FILL` (-1) → `100%`, `HUG_CONTENT` (-2) →
 /// `fit-content`, otherwise pixels.
 fn size_css(v: f32) -> String {
@@ -1223,37 +1232,13 @@ impl HtmlRenderer {
         let Some(node) = nodes.get(&id) else {
             return String::new();
         };
-        let mut children: String = node
+        let children: String = node
             .children
             .iter()
             .map(|&child| self.render_node(nodes, child, Some(node.component)))
             .collect();
         let mut data_id = format!(" data-pathland-id=\"{id}\"");
         data_id.push_str(&slot_attrs(node));
-        // An app-driven media container (a custom AudioStyle/VideoStyle body, e.g.
-        // a VStack carrying AUDIO_SOURCE): inject a hidden, control-less media
-        // element as its first child and mark the container so the DOM client
-        // wires playback events (spec/EVENTS.md Media). The style body's own
-        // component is preserved, so the container keeps its layout (e.g. a
-        // flex-column VStack). Native media (no children) render `<audio
-        // controls>` via the AUDIO/VIDEO cases below.
-        let mut media_attr = String::new();
-        if !node.children.is_empty() {
-            if let Some(src) = node.strings.get(&property_id::AUDIO_SOURCE) {
-                media_attr.push_str(" data-pathland-media");
-                children = format!(
-                    "<audio src=\"{}\" data-pathland-media></audio>{children}",
-                    escape(src)
-                );
-            } else if let Some(src) = node.strings.get(&property_id::VIDEO_SOURCE) {
-                media_attr.push_str(" data-pathland-media");
-                children = format!(
-                    "<video src=\"{}\" data-pathland-media></video>{children}",
-                    escape(src)
-                );
-            }
-        }
-        data_id.push_str(&media_attr);
         let mut css = format!("{}{}", node.style_css(), node.border_style());
         // Derived layout (LAYOUT.md), separate from the node's own css so
         // components with hardcoded shells (e.g. DIVIDER) can append it without
@@ -1291,16 +1276,16 @@ impl HtmlRenderer {
 
         let element = match node.component {
             component_type::VSTACK => {
-                wrap_stack(id, "column", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
+                wrap_stack(id, "column", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
             }
             component_type::HSTACK => {
-                wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
+                wrap_stack(id, "row", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
             }
             component_type::LAZY_VSTACK => {
-                wrap_stack(id, "column", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
+                wrap_stack(id, "column", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
             }
             component_type::LAZY_HSTACK => {
-                wrap_stack(id, "row", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
+                wrap_stack(id, "row", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
             }
             component_type::PROXY_VIEW => {
                 // A proxy view (spec/PROXY.md §5): a transparent single-child
@@ -1308,7 +1293,7 @@ impl HtmlRenderer {
                 // server. The renderer holds no notion of "remote" — it renders a
                 // plain container box and lays out the (id-remapped) origin subtree
                 // the proxying server spliced in, exactly like a stack with one child.
-                wrap_stack(id, "column", semantic, node, &media_attr, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
+                wrap_stack(id, "column", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
             }
             component_type::SIZE_THAT_FITS => {
                 // A fit slot (spec/PRIMITIVES.md §SizeThatFits): size-taking — it
@@ -1521,39 +1506,48 @@ impl HtmlRenderer {
                 );
                 format!("<img{data_id}{event}{aria} src=\"{src}\" alt=\"{alt}\"{style}>")
             }
-            component_type::AUDIO => {
+            component_type::MEDIA_CONTROLLER => {
+                // Non-visual + layout-transparent (spec/MEDIA.md): an off-flow
+                // container holding the control-less playback element. It is
+                // **position:absolute**, NOT `display:none`: browsers refuse to
+                // route a `<video>`'s **audio** to the output when its ancestor is
+                // `display:none` (the media pipeline still runs — `currentTime`
+                // advances — so the failure is silent). Absolutely positioning it
+                // keeps it laid out (audio flows) while contributing no spacing.
                 let src = escape(
                     node.strings
-                        .get(&property_id::AUDIO_SOURCE)
+                        .get(&property_id::MEDIA_SOURCE)
                         .map(String::as_str)
                         .unwrap_or_default(),
                 );
-                if node.children.is_empty() {
-                    // Renderer-native controls (the default `AudioStyle` emits no
-                    // children); the app supplies only the source.
-                    format!("<audio{data_id}{event}{aria} src=\"{src}\" controls{style}></audio>")
+                let media = if src.is_empty() {
+                    String::new()
                 } else {
-                    // Defensive: an `AUDIO` node with custom children — the central
-                    // injection above already added the hidden media + marker.
-                    format!(
-                        "<div{data_id}{event}{aria} class=\"pathland-media\"{style}>{children}</div>"
-                    )
-                }
+                    format!("<video data-pathland-media src=\"{src}\"></video>")
+                };
+                format!(
+                    "<div{data_id} style=\"{MEDIA_CONTROLLER_SHELL_STYLE}\">{media}</div>"
+                )
             }
             component_type::VIDEO => {
-                let src = escape(
-                    node.strings
-                        .get(&property_id::VIDEO_SOURCE)
-                        .map(String::as_str)
-                        .unwrap_or_default(),
-                );
+                // The video surface: renders the video output of the controller it
+                // references (`MEDIA_CONTROLLER_ID`); the DOM client resolves the
+                // source + transport from the controller (spec/MEDIA.md).
+                let controller = node.u32_property(property_id::MEDIA_CONTROLLER_ID, 0);
+                let binding = if controller != 0 {
+                    format!(" data-pathland-controller=\"{controller}\"")
+                } else {
+                    String::new()
+                };
                 if node.children.is_empty() {
                     // Renderer-native controls (the default `VideoStyle`).
-                    format!("<video{data_id}{event}{aria} src=\"{src}\" controls{style}></video>")
-                } else {
-                    // Defensive: a `VIDEO` node with custom children.
                     format!(
-                        "<div{data_id}{event}{aria} class=\"pathland-media\"{style}>{children}</div>"
+                        "<video{data_id}{event}{aria}{binding} controls{style}></video>"
+                    )
+                } else {
+                    // A custom `VideoStyle` body: the children are the control UI.
+                    format!(
+                        "<div{data_id}{event}{aria} class=\"pathland-media\"{binding}{style}>{children}</div>"
                     )
                 }
             }
@@ -1945,7 +1939,6 @@ if indeterminate {
         direction: &str,
         semantic: Option<&'static str>,
         node: &Node,
-        media_attr: &str,
         children: &str,
         css: &str,
         event: &str,
@@ -1971,7 +1964,7 @@ if indeterminate {
         );
         let stack_style = style_attr(&combined);
         format!(
-            "<{tag} data-pathland-id=\"{id}\"{}{media_attr}{event}{aria}{stack_style}>{children}</{tag}>",
+            "<{tag} data-pathland-id=\"{id}\"{}{event}{aria}{stack_style}>{children}</{tag}>",
             slot_attrs(node),
         )
     }
@@ -2592,7 +2585,7 @@ mod tests {
             ((value_type::F32 as u32) << 16) | property_id::CONTENT_MODE as u32,
             1f32.to_bits(),
         ));
-        // VIDEO + AUDIO with renderer-native controls.
+        // VIDEO with renderer-native controls, bound to a controller.
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::VIDEO as u32, 0));
         strings.extend_from_slice(&(30u32).to_le_bytes());
         strings.extend_from_slice(b"https://example.com/sample.mp4");
@@ -2601,19 +2594,8 @@ mod tests {
             parameter::SET_PROPERTY,
             0,
             2,
-            ((value_type::STRING as u32) << 16) | property_id::VIDEO_SOURCE as u32,
-            44,
-        ));
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::AUDIO as u32, 0));
-        strings.extend_from_slice(&(30u32).to_le_bytes());
-        strings.extend_from_slice(b"https://example.com/sample.mp3");
-        opcodes.push(Opcode::new(
-            category::PARAMETER,
-            parameter::SET_PROPERTY,
-            0,
-            3,
-            ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
-            78,
+            ((value_type::U32 as u32) << 16) | property_id::MEDIA_CONTROLLER_ID as u32,
+            9,
         ));
 
         let renderer = HtmlRenderer::new();
@@ -2621,23 +2603,22 @@ mod tests {
         assert!(img.contains("alt=\"Home\""), "image alt from LABEL");
         assert!(img.contains("object-fit:cover;"), "ContentMode Fill -> cover");
         let video = renderer.render_fragment(&opcodes, &strings, 2);
-        assert!(video.contains("<video data-pathland-id=\"2\" src=\"https://example.com/sample.mp4\" controls"), "video native controls");
-        let audio = renderer.render_fragment(&opcodes, &strings, 3);
-        assert!(audio.contains("<audio data-pathland-id=\"3\" src=\"https://example.com/sample.mp3\" controls"), "audio native controls");
+        assert!(
+            video.contains("<video data-pathland-id=\"2\" data-pathland-controller=\"9\" controls"),
+            "video surface binds its controller and renders native controls: {video}"
+        );
     }
 
-    /// A custom `AudioStyle` body is a container (e.g. a VStack) carrying the media
-    /// source: the renderer preserves its layout and injects a hidden, control-less
-    /// media element + the `data-pathland-media` marker.
+    /// The media controller is non-visual + layout-transparent: the renderer emits
+    /// an **off-flow** (`position:absolute`, 1×1) container holding the
+    /// control-less playback element — the shell the DOM client hydrates. It is
+    /// deliberately NOT `display:none`, which would silence the `<video>`'s audio.
     #[test]
-    fn custom_controls_media_preserves_container_with_hidden_audio() {
+    fn media_controller_renders_a_hidden_shell() {
         use pathland_core::value_type;
 
         let mut opcodes = Vec::new();
-        // VSTACK node 1 (the custom style body) with a BUTTON child 2.
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::BUTTON as u32, 0));
-        opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::MEDIA_CONTROLLER as u32, 0));
         let mut strings = Vec::new();
         strings.extend_from_slice(&(29u32).to_le_bytes());
         strings.extend_from_slice(b"https://example.com/track.mp3");
@@ -2646,96 +2627,60 @@ mod tests {
             parameter::SET_PROPERTY,
             0,
             1,
-            ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
+            ((value_type::STRING as u32) << 16) | property_id::MEDIA_SOURCE as u32,
             0,
-        ));
-        // The app-bound media control properties ride the node.
-        opcodes.push(Opcode::new(
-            category::PARAMETER,
-            parameter::SET_PROPERTY,
-            0,
-            1,
-            ((value_type::U32 as u32) << 16) | property_id::PLAYBACK_STATE as u32,
-            1,
-        ));
-        opcodes.push(Opcode::new(
-            category::PARAMETER,
-            parameter::SET_PROPERTY,
-            0,
-            1,
-            ((value_type::F32 as u32) << 16) | property_id::MEDIA_POSITION as u32,
-            12.5f32.to_bits(),
-        ));
-        opcodes.push(Opcode::new(
-            category::PARAMETER,
-            parameter::SET_PROPERTY,
-            0,
-            1,
-            ((value_type::F32 as u32) << 16) | property_id::MEDIA_VOLUME as u32,
-            0.5f32.to_bits(),
         ));
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_fragment(&opcodes, &strings, 1);
         assert!(
-            html.contains("data-pathland-id=\"1\" data-pathland-media"),
-            "the container is marked app-driven: {html}"
+            html.contains(&format!(
+                "data-pathland-id=\"1\" style=\"{MEDIA_CONTROLLER_SHELL_STYLE}\""
+            )),
+            "the controller is off-flow but still rendered (audio flows): {html}"
         );
         assert!(
-            html.contains("display:flex;flex-direction:column"),
-            "the VStack body keeps its flex layout: {html}"
+            !html.contains("style=\"display:none\""),
+            "the controller must NOT be display:none (it would silence the audio): {html}"
         );
         assert!(
-            html.contains("<audio src=\"https://example.com/track.mp3\" data-pathland-media></audio>"),
-            "the container holds a hidden, control-less audio element"
+            html.contains("<video data-pathland-media src=\"https://example.com/track.mp3\"></video>"),
+            "the shell holds the control-less playback element: {html}"
         );
-        assert!(
-            !html.contains("controls"),
-            "the injected media element has no native controls"
-        );
-        assert!(html.contains("<button"), "the custom control children render");
-        let debug = renderer.with_debug_comments(true).render_fragment(&opcodes, &strings, 1);
-        assert!(debug.contains("<!-- #1 VStack:"), "debug comment names the VStack: {debug}");
+        assert!(!html.contains("<audio"), "audio has no view: {html}");
     }
 
-    /// Wrapper model (spec DSL.md §5.7): an `AUDIO` node whose custom style body is
-    /// its child keeps the `AUDIO` component and renders a `.pathland-media` wrapper
-    /// holding the hidden, control-less media element + the style's control children.
+    /// A custom `VideoStyle`: a `VIDEO` surface **with children** renders a
+    /// `.pathland-media` wrapper holding the surface's control children, bound to
+    /// its controller via `data-pathland-controller` (spec/MEDIA.md).
     #[test]
-    fn wrapper_media_node_keeps_audio_component_with_custom_children() {
+    fn video_surface_with_custom_children_renders_media_wrapper() {
         use pathland_core::value_type;
 
         let mut opcodes = Vec::new();
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::AUDIO as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VIDEO as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::HSTACK as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::BUTTON as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 2, 0));
         opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 2, 3, 0));
-        let mut strings = Vec::new();
-        strings.extend_from_slice(&(29u32).to_le_bytes());
-        strings.extend_from_slice(b"https://example.com/track.mp3");
         opcodes.push(Opcode::new(
             category::PARAMETER,
             parameter::SET_PROPERTY,
             0,
             1,
-            ((value_type::STRING as u32) << 16) | property_id::AUDIO_SOURCE as u32,
-            0,
+            ((value_type::U32 as u32) << 16) | property_id::MEDIA_CONTROLLER_ID as u32,
+            9,
         ));
 
         let renderer = HtmlRenderer::new();
-        let html = renderer.render_fragment(&opcodes, &strings, 1);
-        assert!(
-            html.contains("data-pathland-id=\"1\" data-pathland-media"),
-            "the AUDIO shell carries the app-driven media marker: {html}"
-        );
+        let html = renderer.render_fragment(&opcodes, &[], 1);
         assert!(
             html.contains("class=\"pathland-media\""),
-            "the AUDIO node renders the media wrapper, not a bare <audio>: {html}"
+            "a custom video body renders the media wrapper, not a bare <video>: {html}"
         );
         assert!(
-            html.contains("<audio src=\"https://example.com/track.mp3\" data-pathland-media></audio>"),
-            "a hidden, control-less audio is injected first: {html}"
+            html.contains("data-pathland-controller=\"9\""),
+            "the wrapper binds its controller: {html}"
         );
         assert!(
             html.contains("data-pathland-id=\"2\""),

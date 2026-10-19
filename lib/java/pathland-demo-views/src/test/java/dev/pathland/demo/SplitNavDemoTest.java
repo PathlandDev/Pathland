@@ -86,6 +86,39 @@ class SplitNavDemoTest {
         assertEquals("/kitchen", routeOf(frame));
     }
 
+    /**
+     * The media section's controller must keep the **same node id** (its playback
+     * key) across a content swap — otherwise re-creating the destination restarts
+     * playback and re-emits a wrenching `MEDIA_CONTROLLER`/`MEDIA_CONTROLLER_ID`
+     * pair (spec/MEDIA.md). This holds because the destination view that owns the
+     * controller is constructed **once** (the route table holds an instance), not
+     * inline on every render.
+     */
+    @Test
+    void mediaControllerKeepsItsNodeIdAcrossAContentSwap() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Mount mount = mount(sink, "/kitchen");
+        long first = controllerNodeId(sink.frame());
+
+        mount.activePath().set("/home");
+        assertTrue(anySetText(sink.frame(), "Home"), "swapped to the home content");
+
+        mount.activePath().set("/kitchen");
+        ProtocolFrame back = sink.frame();
+        assertTrue(anySetText(back, "Pathland Kitchensink"), "swapped back to the kitchen sink");
+        assertEquals(first, controllerNodeId(back),
+                "the controller's playback key is stable across a content swap");
+    }
+
+    /** The `MEDIA_CONTROLLER` node id created in this frame. */
+    private static long controllerNodeId(ProtocolFrame frame) {
+        return frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE)
+                .filter(o -> o.b() == Components.MEDIA_CONTROLLER)
+                .mapToLong(Opcode::a).findFirst().orElseThrow(
+                        () -> new AssertionError("no MEDIA_CONTROLLER node in the frame"));
+    }
+
     @Test
     void declarativeNavButtonInsideAContentAreaChangesTheRoute() {
         // HomeView's "Open kitchen sink" button declares `.navigate("/kitchen")` — a

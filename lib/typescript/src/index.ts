@@ -4,7 +4,7 @@
 // SSR HTML carries a `data-event-listeners` mask). Bundle: dist/pathland-dom-renderer.js
 
 import type { DomRenderer } from "./apply";
-import { hydrateFitElement, refreshFitSlots, setupMediaElement, updateNavBackButtons } from "./apply";
+import { hydrateFitElement, refreshFitSlots, retryPendingPlay, setupMediaElement, unlockMedia, updateNavBackButtons } from "./apply";
 import { Transport, shouldInitialResync } from "./transport";
 import { log } from "./log";
 import { clearInFlightRange, markRangeInFlight } from "./inFlight";
@@ -167,6 +167,24 @@ function boot(): void {
   // `data-pathland-media` marker) so playback state reports to the app.
   for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
     setupMediaElement(el, renderer);
+  }
+
+  // Autoplay policy: a browser accepts an unmuted `play()` only inside a
+  // **trusted user gesture**, but the play/pause action is a server round-trip
+  // (`PLAYBACK_STATE` arrives over the WebSocket after the click's activation has
+  // expired — spec/EVENTS.md Media). So every trusted gesture (a) unlocks the
+  // controller's playback element — an inaudible muted play→pause that earns it
+  // permission — and (b) replays any `play()` the policy blocked. Cheap and
+  // idempotent; a not-yet-loaded element is simply retried on the next gesture.
+  const onGesture = (event: Event) => {
+    if (!event.isTrusted) {
+      return;
+    }
+    unlockMedia();
+    retryPendingPlay();
+  };
+  for (const type of ["pointerdown", "keydown", "touchend"] as const) {
+    document.addEventListener(type, onGesture, { capture: true, passive: true });
   }
 
   // Hydrate fitted slots from the SSR HTML (they carry `data-pathland-fit`): an

@@ -52,10 +52,27 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
   `TapHandler`/`ValueInputHandler`/`TextInputHandler`/`DateInputHandler` aliases).
   `collect_tap_handlers` and `collect_input_handlers` (→ `InputHandlers`) expose
   the app-side registries; sinks are never serialized.
+- **Media controller** (`media.rs`, spec/MEDIA.md): `MediaController` — the
+  app-side state object owning a resource (`source`/`bind_source`) and its
+  transport as signals: commands `playing`/`position`/`volume`/`muted`/
+  `looping`/`rate` (each rebindable to an app-owned signal), report feeds
+  `time`/`duration`/`volume_report`, `on_ended`, and the convenience transport
+  (`play`/`pause`/`toggle`/`seek`/`set_volume`/`set_muted`/`set_looping`/
+  `set_rate`). A node references one through the identity-compared
+  `MediaControllerRef` (`Node.media_controller`); `Component::MediaController`
+  (0x30, non-visual) is the controller's node and `Component::Video` is its
+  surface. **Audio has no view.**
+- **String property bindings** (`Node.string_bindings`): a `STRING`-valued
+  property bound to a signal (e.g. a controller's `MEDIA_SOURCE`) re-emits only
+  that property (`SET_PROPERTY`, `STRING`, arena-allocated) on change — a track
+  change emits exactly one opcode.
 - **`assign_ids`** (pre-order stable ids) — the **single id authority**: it hands
   out unique ids, satisfying the frame's **unique-node-id invariant**
   (spec/OPCODE.md §Frame Lifecycle — a frame never carries two nodes with the same
-  id).
+  id). **Media controllers are pinned**: a `MEDIA_CONTROLLER` node keeps the id it
+  was first given, so a structural swap that shifts other ids never changes the
+  playback key; the same pass links each `VIDEO` surface's `MEDIA_CONTROLLER_ID`
+  to the controller node.
 
 ## Not implemented / gaps
 

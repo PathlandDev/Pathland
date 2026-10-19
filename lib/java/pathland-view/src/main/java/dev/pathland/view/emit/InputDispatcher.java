@@ -102,6 +102,11 @@ public final class InputDispatcher {
             if (sink != null) {
                 sink.onVolumeChanged(event.mediaValue());
             }
+        } else if (event.isMediaDurationChanged()) {
+            MediaInput sink = mediaInputs.get(event.target());
+            if (sink != null) {
+                sink.onDurationChanged(event.mediaValue());
+            }
         } else if (event.isFitChanged()) {
             Consumer<Integer> sink = fitInputs.get(event.target());
             if (sink != null) {

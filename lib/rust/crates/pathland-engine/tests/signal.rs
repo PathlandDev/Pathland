@@ -25,6 +25,8 @@ fn text_node(text: &str) -> Node {
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -40,6 +42,8 @@ fn vstack(children: Vec<Node>) -> Node {
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }

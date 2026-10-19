@@ -47,10 +47,10 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   `Center`, mirroring HTML's `inline-flex`) unless the node is explicitly
   `FILL`-sized — otherwise the enclosing box's default `Fill` alignment stretches
   it (e.g. a library row button absorbs the viewport height, inflating
-  fixed-size images). An **`AUDIO`/`VIDEO` node** with children (a custom
-  `AudioStyle`/`VideoStyle` body, spec DSL.md §5.7) is a container too: its
-  control children reconcile into the media container box; a leaf media node
-  shows native controls. Control-level `COLOR`/`FONT_SIZE`/`TEXT_STYLE` are
+  fixed-size images). A **`VIDEO` surface** with children (a custom
+  `VideoStyle` body, spec DSL.md §5.7) is a container too: its
+  control children reconcile into the media container box. Control-level
+  `COLOR`/`FONT_SIZE`/`TEXT_STYLE` are
   emitted as CSS (`color`, `font-size`, `font-weight`, `font-family`) so they
   **cascade** to the content's child labels (e.g. `.foregroundStyle`/`.fontSize`
   on a composite Button).
@@ -141,15 +141,18 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   - The generative `space.<N>` family resolves `space.base` × N.
   - Since GTK CSS has no custom properties, tokens resolve to **concrete**
     values (rgba/px/Pango) before the existing CSS-provider / text-style paths.
-- **App-driven media (spec/EVENTS.md Media)**: an `AUDIO`/`VIDEO` node — or any
-  node carrying a media source (a custom `AudioStyle`/`VideoStyle` body keeps its
-  own component, e.g. a `VStack`) — gets a hidden **GStreamer `playbin` pipeline**
-  driven by the node's media control properties: `AUDIO_SOURCE`/`VIDEO_SOURCE`
-  sets the source URI (re-created on change, resuming if the app was playing),
+- **App-driven media (spec/MEDIA.md)**: a **`MEDIA_CONTROLLER`** node (the
+  playback owner; layout-transparent, **no widget**) gets a hidden **GStreamer
+  `playbin` pipeline**, keyed by the **controller id** — so a `VIDEO` surface
+  appearing/disappearing (e.g. a `SIZE_THAT_FITS` swap) never restarts the
+  stream. Driven by the controller's transport properties: `MEDIA_SOURCE` sets
+  the source URI (re-created on change, resuming if the app was playing),
   `PLAYBACK_STATE` → pipeline `Playing`/`Paused`, `MEDIA_POSITION` → seek
   (**echo-guarded**: a write matching the position the renderer last REPORTED
   — the app's `MEDIA_TIME_UPDATED` echo — does not seek, even at network
-  latency; spec/EVENTS.md Media), `MEDIA_VOLUME` → playbin volume. The seek is
+  latency; spec/EVENTS.md Media), `MEDIA_VOLUME` → playbin volume, `MEDIA_MUTED`
+  → playbin `mute`, `MEDIA_LOOP` → restart from 0 on EOS (still reporting
+  `MEDIA_ENDED`). The seek is
   also **change-gated** (only a `MEDIA_POSITION` that changed since the last
   read is evaluated — the web client's delta semantics) so the retained command
   value, which stays fixed during playback, is never re-applied as a seek as the
@@ -158,16 +161,32 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   LATEST target to the worker) so a drag flooding `MEDIA_POSITION` — or any
   continuous-seek app — never blocks the UI in GStreamer's FLUSH seek (coalesced
   to ~12/s, last position wins). Media events report back
-  through the shared event sink/ring: `MEDIA_TIME_UPDATED` (the worker's ~30 Hz
+  through the shared event sink/ring, **targeting the controller id**:
+  `MEDIA_TIME_UPDATED` (the worker's ~30 Hz
   poll of `query_position` while playing reports whenever the position advanced
   at least ~33 ms — the ~30/s cadence the web client shares — suppressed briefly
-  after a seek), `MEDIA_ENDED` and error → play-state-false from the worker
+  after a seek), `MEDIA_DURATION_CHANGED` (the worker reports the duration once
+  known / on change), `MEDIA_ENDED` and error → play-state-false from the worker
   polling the pipeline bus (`EOS`/`Error` messages). Playback is
   **GStreamer-direct** because GTK4's own media backend (`GtkMediaFile`) is
   compiled out of some builds (Homebrew's `gtk4` ships with
   `-Dmedia-gstreamer=disabled`); the app owns all playback state, the pipeline is
   the renderer's rendered output (the desktop analog of the web client's hidden
-  `<audio>`).
+  media element).
+  - **`AUDIO` is retired** (audio has no view — a controller plus the app's own
+    control views); a **`VIDEO`** node is the only media surface (a container
+    box; the video output is not a widget).
+  - **`MEDIA_MUTED` / `MEDIA_LOOP` / `MEDIA_RATE`** are applied: mute + loop map
+    straight onto the playbin, and rate is applied as a **rate-seeking seek** from
+    the current position (GStreamer has no standalone rate setter). Every later
+    seek re-applies the rate, so a `MEDIA_RATE` is not silently reset by a seek;
+    rate ≤ 0 (reverse) is ignored — not a transport control Pathland models.
+  - **Verified from the DSL**: a test builds the Rust DSL's `MediaController` +
+    `attach()` + `Video` tree, emits it, and applies the frame to a `RenderTree` —
+    asserting the non-visual `MEDIA_CONTROLLER` node carries `MEDIA_SOURCE` +
+    `PLAYBACK_STATE`, the surface's `MEDIA_CONTROLLER_ID` points at it, and the
+    controller maps to no widget (`WidgetKind::Invisible`). (A runnable demo
+    section still needs a bundled asset — the Java GTK demo covers that path.)
   - **Media runs on a dedicated worker thread**: each media player owns a
     `pathland-media-<id>` thread that performs *every* GStreamer operation —
     state changes, FLUSH seeks, `query_position`, and the bus drain — so the GTK
@@ -180,8 +199,8 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 - **Asset root**: `pathland_gtk_set_asset_root(const char*)` sets a directory
   that web-style `/_pathland/...` media/image source paths resolve against
   (`/_pathland/assets/x` → `<root>/assets/x`), so desktop apps reference the same
-  asset paths as the web demos. Applied to `IMAGE_SOURCE`, `AUDIO_SOURCE`, and
-  `VIDEO_SOURCE`.
+  asset paths as the web demos. Applied to `IMAGE_SOURCE` and a controller's
+  `MEDIA_SOURCE`.
 - **C ABI for foreign hosts (`capi.rs`)**:
   - `pathland_gtk_run(host, on_event)` — pump a `pathland-view-native`
     `NativeHost`'s ring in-process.

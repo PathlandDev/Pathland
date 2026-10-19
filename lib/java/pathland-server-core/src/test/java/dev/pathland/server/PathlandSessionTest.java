@@ -1,11 +1,15 @@
 package dev.pathland.server;
 
 import dev.pathland.view.Button;
+import dev.pathland.view.MediaController;
 import dev.pathland.view.Categories;
 import dev.pathland.view.Commands;
 import dev.pathland.view.Environment;
 import dev.pathland.view.Platform;
+import dev.pathland.view.Properties;
+import dev.pathland.view.Slider;
 import dev.pathland.view.Text;
+import dev.pathland.view.VStack;
 import dev.pathland.view.View;
 import dev.pathland.view.emit.ProtocolFrame;
 import dev.pathland.view.emit.Opcode;
@@ -233,6 +237,60 @@ class PathlandSessionTest {
                 "the app's router sees the mount-stripped NAVIGATE route: " + describe(conn));
         assertFalse(framesContainText(conn, "app2"),
                 "the mount prefix never reaches the app's route: " + describe(conn));
+    }
+
+    @Test
+    void mediaTimeUpdateReachesTheSeekBarOverTheLiveConnection() {
+        // Reproduces the LIVE path (session -> fine-grained emitter -> DeltaBatcher ->
+        // connection): a MEDIA_TIME_UPDATED routed to the controller node must produce
+        // a seek-bar VALUE delta on the wire. If this passes but the browser's bar
+        // doesn't move, the bug is client-side; if it fails, it's server-side.
+        WritableSignal<Float> position = Signals.signal(0f);
+        MediaController player = new MediaController();
+        player.source("/track.mp3");
+        player.time(position);
+        PathlandApp app = () -> VStack.make().children(
+                player.attach(),
+                Slider.make(sl -> sl.value(position).in(0f, 100f)));
+
+        PathlandSession session = new PathlandSession("ui", STORE, app, EnvironmentData.of("/"));
+        RecordingConnection conn = new RecordingConnection();
+        session.connect(conn);
+
+        String html = session.renderHtml();
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("data-pathland-id=\"(\\d+)\" style=\"position:absolute")
+                .matcher(html);
+        assertTrue(matcher.find(), "the controller shell is in the SSR: " + html);
+        int controllerId = Integer.parseInt(matcher.group(1));
+
+        session.dispatch(FrameCodec.encodeEvents(List.of(Event.mediaTimeUpdated(controllerId, 30f))));
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (!framesHaveValue(conn) && System.nanoTime() < deadline) {
+            sleep(10);
+        }
+        session.close();
+        assertTrue(position.get() == 30f, "the media report reached the bound signal");
+        assertTrue(framesHaveValue(conn), "a seek-bar VALUE delta is sent: " + describe(conn));
+    }
+
+    private static boolean framesHaveValue(RecordingConnection conn) {
+        for (byte[] bytes : conn.frames()) {
+            try {
+                ProtocolFrame frame = FrameCodec.decodeFrame(bytes);
+                for (Opcode op : frame.opcodes()) {
+                    if (op.category() == Categories.PARAMETER
+                            && op.command() == Commands.Parameter.SET_PROPERTY
+                            && (op.b() & 0xFFFF) == Properties.VALUE) {
+                        return true;
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // a partial/undecodable batch — keep scanning
+            }
+        }
+        return false;
     }
 
     private static boolean framesContainText(RecordingConnection conn, String text) {

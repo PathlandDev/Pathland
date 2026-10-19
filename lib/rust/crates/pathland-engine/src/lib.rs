@@ -20,11 +20,13 @@ extern crate std;
 extern crate alloc;
 
 mod engine;
+mod media;
 mod node;
 mod signal;
 mod theme;
 
 pub use engine::{EmitResult, Engine};
+pub use media::{MediaController, MediaControllerRef};
 pub use node::*;
 pub use signal::{
     Dep, IntoSignalId, Runtime, Signal, SignalId, SignalValue, SignalValueKind, WritableSignal,

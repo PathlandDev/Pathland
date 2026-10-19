@@ -18,7 +18,6 @@ import {
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
-  COMPONENT_AUDIO,
   COMPONENT_COLOR,
   COMPONENT_DIVIDER,
   COMPONENT_GRID,
@@ -39,7 +38,11 @@ import {
   COMPONENT_ZSTACK,
   PROP_ALIGNMENT,
   PROP_BINDING_ID,
-  PROP_AUDIO_SOURCE,
+  PROP_MEDIA_CONTROLLER_ID,
+  PROP_MEDIA_SOURCE,
+  PROP_MEDIA_MUTED,
+  PROP_MEDIA_LOOP,
+  PROP_MEDIA_RATE,
   PROP_COLOR,
   PROP_COLOR_VALUE,
   PROP_ENABLED,
@@ -65,7 +68,6 @@ import {
   PROP_TEXT,
   PROP_TEXT_STYLE,
   PROP_VALUE,
-  PROP_VIDEO_SOURCE,
   VAL_DESIGN_TOKEN,
   VAL_ENUM,
   VAL_LIST,
@@ -78,6 +80,7 @@ import { childrenContainer, createElement } from "./elements";
 import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
   encodeFittedChanged,
+  encodeMediaDurationChanged,
   encodeMediaEnded,
   encodeMediaPlayStateChanged,
   encodeMediaTimeUpdated,
@@ -91,6 +94,7 @@ import {
 } from "./generated/role-spec";
 import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
 import { isRangeInFlight } from "./inFlight";
+import { log } from "./log";
 import { applyTextStyle, copyTypography, textStyleByNode } from "./typography";
 import { setIcon } from "./icons";
 
@@ -510,12 +514,12 @@ function applyTree(op: Opcode, r: DomRenderer, touchedFitGates: Set<HTMLElement>
         break;
       }
       let parent: Node = parentNode;
-      // A media node gaining custom control children morphs its bare media
-      // element into a `.pathland-media` wrapper (the Rust SSR emits the same
+      // A `VIDEO` surface gaining custom control children morphs its bare
+      // `<video>` into a `.pathland-media` wrapper (the Rust SSR emits the same
       // structure); the children then attach to the wrapper.
       const comp = componentByNode.get(parentNode);
-      if ((comp === COMPONENT_AUDIO || comp === COMPONENT_VIDEO)
-          && parentNode instanceof HTMLElement && parentNode.matches("audio,video")) {
+      if (comp === COMPONENT_VIDEO
+          && parentNode instanceof HTMLElement && parentNode.matches("video")) {
         parent = mediaToWrapper(parentNode, r);
       }
       const container = childrenContainer(parent);
@@ -844,15 +848,23 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
           r.onRoute?.(text); // host mirrors the URL (history.pushState)
         } else {
           applyStringProperty(el, propId, text);
-          if (propId === PROP_AUDIO_SOURCE || propId === PROP_VIDEO_SOURCE) {
-            // Wire a media node's element + listeners, finalize native controls
-            // (a control-less media node renders native controls), and resume
-            // playback if the app was playing (a src change pauses the element).
+          if (propId === PROP_MEDIA_SOURCE) {
+            // A controller's resource: wire its playback element + listeners
+            // (spec/MEDIA.md) and resume playback if the app was playing (a src
+            // change pauses the element). A controller is non-visual — it never
+            // renders native controls.
             ensureMediaElement(el, propId);
             applyStringProperty(el, propId, text);
             setupMediaElement(el, r);
-            finalizeNativeMedia(el);
             resumeIfPlaying(el);
+            // The controller is the source of truth for its surfaces: mirror the
+            // new resource to every bound `VIDEO` surface. They may have been
+            // emitted *before* the controller (or the controller's source may
+            // arrive late), so mirroring cannot depend on emission order.
+            const controllerMedia = mediaElementOf(el);
+            if (controllerMedia) {
+              mirrorToSurfaces(Number(el.getAttribute("data-pathland-id")), controllerMedia);
+            }
           }
         }
       } else if (valueType === VAL_DESIGN_TOKEN) {
@@ -891,8 +903,12 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
         }
         updateNavBackButton(el, r);
       } else if (propId === PROP_PLAYBACK_STATE || propId === PROP_MEDIA_POSITION
-              || propId === PROP_MEDIA_VOLUME) {
+              || propId === PROP_MEDIA_VOLUME || propId === PROP_MEDIA_MUTED
+              || propId === PROP_MEDIA_LOOP || propId === PROP_MEDIA_RATE) {
         applyMediaProperty(el, r, propId, valueType, op.c);
+      } else if (propId === PROP_MEDIA_CONTROLLER_ID) {
+        // A `VIDEO` surface binds to its controller (spec/MEDIA.md).
+        bindVideoSurface(el, r, op.c);
       } else {
         applyNumericProperty(el, propId, valueType, op.c);
       }
@@ -1000,17 +1016,12 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
       }
       break;
     }
-    case PROP_AUDIO_SOURCE: {
-      const audio = el.matches("audio") ? el : el.querySelector("audio");
-      if (audio instanceof HTMLAudioElement) {
-        audio.src = text;
-      }
-      break;
-    }
-    case PROP_VIDEO_SOURCE: {
-      const video = el.matches("video") ? el : el.querySelector("video");
-      if (video instanceof HTMLVideoElement) {
-        video.src = text;
+    case PROP_MEDIA_SOURCE: {
+      // A controller's resource: the playback element it owns (itself when the
+      // node adopted a media element, else an inner one).
+      const media = mediaElementOf(el);
+      if (media) {
+        media.src = text;
       }
       break;
     }
@@ -1233,7 +1244,135 @@ const mediaState = new WeakMap<HTMLMediaElement, {
   lastReported: number;
   lastReportedVolume: number;
   reportTimer: number;
+  /** The element has been unlocked inside a trusted user gesture (autoplay
+   *  policy): an unmuted `play()` is now accepted. */
+  unlocked: boolean;
 }>();
+
+/** A `play()` the browser refused for lack of user activation (autoplay policy):
+ *  replayed on the next trusted gesture (`retryPendingPlay`, driven by the DOM
+ *  client's own gesture listeners). */
+let pendingPlay: HTMLMediaElement | null = null;
+
+/**
+ * Start (or resume) a media element, wiring the autoplay-policy outcome.
+ *
+ * The play/pause action is a **server round-trip**: the click sends a pointer
+ * event, the app toggles its state, and the `PLAYBACK_STATE` delta comes back
+ * over the WebSocket — by which point the click's transient user activation has
+ * expired. A browser therefore rejects the unmuted `play()` with
+ * `NotAllowedError` (spec/EVENTS.md Media). That is not a failure: the element
+ * is marked **pending** and replayed inside the next trusted gesture (where the
+ * browser accepts it), so playback starts without the app re-emitting anything.
+ * Any *other* rejection is logged — a media failure must never be silent.
+ */
+export function playMedia(media: HTMLMediaElement): void {
+  const p = media.play();
+  if (!p || typeof p.then !== "function") {
+    return;
+  }
+  p.then(
+    () => {
+      if (pendingPlay === media) {
+        pendingPlay = null;
+      }
+    },
+    (err: unknown) => {
+      const name = err instanceof Error ? err.name : String(err);
+      if (name === "NotAllowedError") {
+        pendingPlay = media;
+        log.debug("media", "play() blocked by the autoplay policy — retrying on the next gesture");
+      } else {
+        log.warn("media", "play() rejected", name);
+      }
+    },
+  );
+}
+
+/** Replay a `play()` the autoplay policy blocked, within a trusted gesture
+ *  (`event.isTrusted`) — the one context a browser accepts an unmuted `play()`.
+ *  Safe to call on every gesture. */
+export function retryPendingPlay(): void {
+  const media = pendingPlay;
+  if (media) {
+    pendingPlay = null;
+    playMedia(media);
+  }
+}
+
+/** The playback element(s) a controller owns, hydrated from the SSR HTML. */
+function playbackElements(): HTMLMediaElement[] {
+  const out: HTMLMediaElement[] = [];
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
+    const media = el instanceof HTMLMediaElement
+      ? el
+      : el.querySelector<HTMLMediaElement>("audio,video");
+    if (media) {
+      out.push(media);
+    }
+  }
+  return out;
+}
+
+/**
+ * One-time audio unlock, called from inside a **trusted user gesture**.
+ *
+ * Autoplay policy only accepts an unmuted `play()` within a real gesture, and the
+ * app-driven play arrives after a server round-trip — so the element must be
+ * unlocked up front. Play it **muted** (always permitted) and pause, restoring
+ * the mute state: an inaudible play that earns the element permission, after
+ * which the server-driven `play()` is accepted. Idempotent and cheap, so it can
+ * run on every gesture until each element is unlocked (a not-yet-loaded element
+ * is simply retried on the next one). Elements the app already wants playing are
+ * left alone.
+ */
+export function unlockMedia(): void {
+  const seen = new Set<HTMLMediaElement>();
+  for (const media of playbackElements()) {
+    if (seen.has(media)) {
+      continue;
+    }
+    seen.add(media);
+    const state = mediaState.get(media);
+    if (!state || state.unlocked || state.playing || !media.paused) {
+      continue;
+    }
+    if (!media.currentSrc && !media.getAttribute("src")) {
+      continue; // nothing to load yet — try again on the next gesture
+    }
+    const wasMuted = media.muted;
+    media.muted = true;
+    const p = media.play();
+    // `muted` must stay true until playback actually starts (the browser
+    // re-evaluates the element when the media pipeline begins): unmuting in the
+    // same tick turns the muted-autoplay into an *unmuted* one and the browser
+    // rejects it. So restore the mute only once `play()` settles.
+    const restore = () => {
+      media.muted = wasMuted;
+    };
+    if (p && typeof p.then === "function") {
+      p.then(
+        () => {
+          state.unlocked = true;
+          // Only park it if the app has not meanwhile asked it to play.
+          if (!mediaState.get(media)?.playing) {
+            media.pause();
+          }
+          restore();
+        },
+        (err: unknown) => {
+          restore();
+          const name = err instanceof Error ? err.name : String(err);
+          // A not-yet-loaded element rejects here; the next gesture retries.
+          log.debug("media", "unlock play() deferred", name);
+        },
+      );
+    } else {
+      state.unlocked = true;
+      restore();
+    }
+  }
+}
 
 /** The media element of a node: the element itself when it IS the media, else the
  *  inner `<audio>`/`<video>` of a `.pathland-media` wrapper. */
@@ -1243,15 +1382,17 @@ function mediaElementOf(el: HTMLElement): HTMLMediaElement | null {
     : el.querySelector<HTMLMediaElement>("audio,video");
 }
 
-/** Ensure a media node's container holds an inner (hidden) media element,
- *  creating it for a live-created custom-controls node that lacks one yet. */
-function ensureMediaElement(el: HTMLElement, propId: number): HTMLMediaElement | null {
+/** Ensure a media container holds an inner media element, creating it for a
+ *  live-created node that lacks one yet. The controller's playback element is a
+ *  `<video>` (it plays audio fine while hidden) so a `VIDEO` surface can host the
+ *  same element for its video output (spec/MEDIA.md). */
+function ensureMediaElement(el: HTMLElement, _propId: number): HTMLMediaElement | null {
   if (el.matches("audio,video")) {
     return el as HTMLMediaElement;
   }
   let media = el.querySelector<HTMLMediaElement>("audio,video");
   if (!media) {
-    media = document.createElement(propId === PROP_VIDEO_SOURCE ? "video" : "audio");
+    media = document.createElement("video");
     media.setAttribute("data-pathland-media", "");
     el.prepend(media);
   }
@@ -1268,15 +1409,28 @@ const TIME_UPDATE_MAX_INTERVAL_S = 1 / 30;
 const TIME_UPDATE_SAMPLE_MS = 33;
 
 /** Attach a media node's element once: wire the app-driven media element to the
- *  host's media-event sink (play/pause/time/ended/volume, spec/EVENTS.md). */
-export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
+ *  host's media-event sink (play/pause/time/ended/volume/duration,
+ *  spec/EVENTS.md). Reports target the owning `MEDIA_CONTROLLER` id — for a
+ *  `VIDEO` surface that adopted the controller's element, `reportId` overrides
+ *  the element's own id so reports stay keyed to the controller (spec/MEDIA.md). */
+export function setupMediaElement(el: HTMLElement, r: DomRenderer, reportId?: number): void {
   const media = mediaElementOf(el);
   if (!media || mediaState.has(media)) {
     return;
   }
-  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1, reportTimer: 0 };
+  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1, reportTimer: 0, unlocked: false };
   mediaState.set(media, state);
-  const id = Number(el.getAttribute("data-pathland-id"));
+  // The report id is the owning `MEDIA_CONTROLLER` node. A controller's playback
+  // element is a `<video data-pathland-media>` **child** of the controller node
+  // (`<div data-pathland-id="…">`), so the element itself carries no id — fall
+  // back to the nearest ancestor that does. (A `VIDEO` surface passes its
+  // controller id explicitly via `reportId`.) Without this, reports go out as
+  // `target=0`, which no media sink is keyed to, and progress never advances.
+  const id = reportId ?? Number(
+    el.getAttribute("data-pathland-id")
+      ?? el.closest("[data-pathland-id]")?.getAttribute("data-pathland-id")
+      ?? 0,
+  );
   const send = r.onMediaEvent;
   if (!send) {
     return;
@@ -1318,6 +1472,13 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer): void {
   }, TIME_UPDATE_SAMPLE_MS);
   media.addEventListener("ended", () => {
     send(encodeMediaEnded(id));
+  });
+  // Duration becomes known after the resource loads — report it when it changes
+  // (spec/EVENTS.md `MEDIA_DURATION_CHANGED`).
+  media.addEventListener("durationchange", () => {
+    if (Number.isFinite(media.duration) && media.duration > 0) {
+      send(encodeMediaDurationChanged(id, media.duration));
+    }
   });
 }
 
@@ -1584,14 +1745,113 @@ function detachIfWrongParent(container: Node, child: Node): void {
   }
 }
 
+/** The media registry (spec/MEDIA.md): per **controller** id, the element that
+ *  owns the resource + transport, and every `VIDEO` surface mirroring it. Keyed
+ *  by controller id rather than by emission order, so a surface that arrives
+ *  before its controller, or a controller that arrives after its surface, still
+ *  binds — the entry is shared and reconciled from both directions. */
+interface MediaEntry {
+  /** The controller's playback element (null until its `MEDIA_SOURCE` arrives). */
+  controllerMedia: HTMLVideoElement | null;
+  /** The `VIDEO` surfaces mirroring this controller. */
+  surfaces: Set<HTMLVideoElement>;
+}
+
+const mediaRegistry = new Map<number, MediaEntry>();
+
+function mediaEntry(controllerId: number): MediaEntry {
+  let entry = mediaRegistry.get(controllerId);
+  if (!entry) {
+    entry = { controllerMedia: null, surfaces: new Set() };
+    mediaRegistry.set(controllerId, entry);
+  }
+  return entry;
+}
+
+/** Copy a controller's transport state onto its bound `VIDEO` surfaces, dropping
+ *  surfaces that have left the DOM (a removed subtree must not keep playing). */
+function mirrorToSurfaces(controllerId: number, media: HTMLMediaElement): void {
+  const entry = mediaRegistry.get(controllerId);
+  if (!entry) {
+    return;
+  }
+  if (media instanceof HTMLVideoElement) {
+    entry.controllerMedia = media;
+    // The controller owns the resource but a bound surface carries the audio:
+    // silence the controller element. Applied here (not only at surface-bind
+    // time) so it holds whichever side arrives first.
+    if (entry.surfaces.size > 0) {
+      media.muted = true;
+    }
+  }
+  const surfaces = entry.surfaces;
+  for (const video of surfaces) {
+    if (!video.isConnected) {
+      surfaces.delete(video);
+      continue;
+    }
+    if (media.src && video.src !== media.src) {
+      video.src = media.src;
+    }
+    video.volume = media.volume;
+    video.muted = media.muted;
+    video.loop = media.loop;
+    if (Number.isFinite(media.currentTime) && Math.abs(video.currentTime - media.currentTime) > 0.25) {
+      video.currentTime = media.currentTime;
+    }
+    if (!media.paused && video.paused) {
+      const p = video.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => undefined);
+      }
+    } else if (media.paused && !video.paused) {
+      video.pause();
+    }
+  }
+}
+
+/** Bind a `VIDEO` surface to its controller (`MEDIA_CONTROLLER_ID`): adopt the
+ *  controller's resource + current transport and mirror it from then on. The
+ *  controller element is silenced (the surface carries the audio), while the
+ *  surface reports media events keyed to the controller id (spec/MEDIA.md). */
+function bindVideoSurface(el: HTMLElement, r: DomRenderer, controllerId: number): void {
+  const video = el.matches("video")
+    ? (el as HTMLVideoElement)
+    : el.querySelector<HTMLVideoElement>("video");
+  if (!video) {
+    return;
+  }
+  const controller = r.byId.get(controllerId);
+  const controllerMedia = controller instanceof HTMLElement
+    ? ensureMediaElement(controller, PROP_MEDIA_SOURCE)
+    : null;
+  if (controllerMedia) {
+    controllerMedia.muted = true; // the surface carries the audio
+  }
+  // Register the surface against the controller id. A surface may be emitted
+  // *before* its controller (or the controller's `MEDIA_SOURCE` may arrive
+  // later) — mirroring happens on whichever side arrives second, because both
+  // resolve the same registry entry.
+  const entry = mediaEntry(controllerId);
+  entry.surfaces.add(video);
+  if (controllerMedia) {
+    mirrorToSurfaces(controllerId, controllerMedia);
+  } else if (entry.controllerMedia) {
+    mirrorToSurfaces(controllerId, entry.controllerMedia);
+  }
+  setupMediaElement(el, r, controllerId);
+  finalizeNativeMedia(el);
+}
+
 /** Apply a media control property: drive the media element, suppress the echo,
  *  and wire its listeners. */
 function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, valueType: number, bits: number): void {
-  const media = ensureMediaElement(el, propId);
+  const media = ensureMediaElement(el, PROP_MEDIA_SOURCE);
   if (!media) {
     return;
   }
   setupMediaElement(el, r);
+  const controllerId = Number(el.getAttribute("data-pathland-id"));
   const state = mediaState.get(media);
   if (propId === PROP_PLAYBACK_STATE) {
     const playing = (valueType === VAL_U8 ? bits & 0xff : bits) !== 0;
@@ -1599,13 +1859,10 @@ function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, val
       state.playing = playing;
     }
     if (playing) {
-      // A `play()` promise rejects with `AbortError` when a src change / pause
-      // interrupts it — expected during rapid track switches. Swallow it so it never
-      // surfaces as an unhandled rejection.
-      const p = media.play();
-      if (p && typeof p.catch === "function") {
-        p.catch(() => undefined);
-      }
+      // The play/pause action is a server round-trip, so this runs after the
+      // click's user activation has expired: `playMedia` handles the autoplay
+      // rejection (retried on the next trusted gesture) and logs real failures.
+      playMedia(media);
     } else {
       media.pause();
     }
@@ -1638,22 +1895,32 @@ function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, val
         state.suppressUntil = performance.now() + 100;
       }
     }
+  } else if (propId === PROP_MEDIA_MUTED) {
+    media.muted = (valueType === VAL_U8 ? bits & 0xff : bits) !== 0;
+    if (state) {
+      state.suppressUntil = performance.now() + 100;
+    }
+  } else if (propId === PROP_MEDIA_LOOP) {
+    media.loop = (valueType === VAL_U8 ? bits & 0xff : bits) !== 0;
+  } else if (propId === PROP_MEDIA_RATE) {
+    const rate = f32FromBits(bits);
+    if (rate > 0) {
+      media.playbackRate = rate;
+    }
   }
+  // Keep any bound `VIDEO` surface in step with the controller.
+  mirrorToSurfaces(controllerId, media);
 }
 
 /** A source change resets the media element to a paused, loading state — even
  *  when it was playing. If the app last requested "playing", resume playback on
  *  the new source (a skip/auto-advance must keep playing, not require a manual
- *  pause+play). Transient rejections (not yet buffered / autoplay policy) are
- *  non-fatal. */
+ *  pause+play). The autoplay-policy outcome is handled by `playMedia`. */
 function resumeIfPlaying(el: HTMLElement): void {
   const media = mediaElementOf(el);
   const state = media ? mediaState.get(media) : undefined;
   if (media && state && state.playing) {
-    const p = media.play();
-    if (p && typeof p.catch === "function") {
-      p.catch(() => undefined);
-    }
+    playMedia(media);
   }
 }
 
@@ -1696,6 +1963,9 @@ function mediaToWrapper(el: HTMLElement, r: DomRenderer): HTMLElement {
       wrapper.setAttribute(attr.name, attr.value);
     }
   }
+  // A custom-control surface body drops the native controls (the children are the
+  // control UI), matching the Rust SSR's `.pathland-media` wrapper.
+  (el as HTMLMediaElement).controls = false;
   const prevParent = el.parentNode;
   el.removeAttribute("data-pathland-id");
   el.style.cssText = "";

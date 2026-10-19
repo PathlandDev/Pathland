@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, __setMediaLastReported, type DomRenderer } from "../src/apply";
+import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, unlockMedia, playMedia, retryPendingPlay, __setMediaLastReported, type DomRenderer } from "../src/apply";
 import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
 import {
@@ -26,7 +26,8 @@ import {
   COMPONENT_ICON,
   ALIGN_TOP_TRAILING,
   PROP_ALIGNMENT,
-  PROP_AUDIO_SOURCE,
+  PROP_MEDIA_CONTROLLER_ID,
+  PROP_MEDIA_SOURCE,
   PROP_COLOR,
   PROP_FONT_SIZE,
   PROP_FONT_WEIGHT,
@@ -92,6 +93,124 @@ function seedGlyph(name: string, inner: string): void {
   document.body.appendChild(svg);
 }
 
+describe("media autoplay policy", () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  /** A playback element hydrated from the SSR HTML: the controller node is the
+   *  `data-pathland-id` container, and the inner `<video data-pathland-media>`
+   *  is its control-less playback element (the real SSR shape). Wired through the
+   *  **media element** so the report-id derivation is exercised. */
+  function hydratedMedia(id = 1): { media: HTMLMediaElement; element: HTMLElement; r: DomRenderer } {
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-pathland-id", String(id));
+    const media = document.createElement("video");
+    media.setAttribute("data-pathland-media", "");
+    media.setAttribute("src", "/_pathland/assets/audio/track1.mp3");
+    wrapper.appendChild(media);
+    document.body.appendChild(wrapper);
+    const r = renderer();
+    r.byId.set(id, wrapper);
+    setupMediaElement(media, r);
+    return { media, element: wrapper, r };
+  }
+
+  it("keys a controller's media reports to its node id, not 0", async () => {
+    // The controller's `<video>` carries no id of its own — reports must resolve
+    // the id from the nearest `[data-pathland-id]` ancestor (the controller node),
+    // or every MEDIA_TIME_UPDATED goes out as target=0 and progress stalls.
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-pathland-id", "241");
+    const media = document.createElement("video");
+    media.setAttribute("data-pathland-media", "");
+    media.setAttribute("src", "/_pathland/assets/audio/track1.mp3");
+    Object.defineProperty(media, "duration", { value: 120, configurable: true });
+    wrapper.appendChild(media);
+    document.body.appendChild(wrapper);
+
+    const sent: Uint8Array[] = [];
+    const r: DomRenderer = { byId: new Map(), onMediaEvent: (b) => sent.push(b) };
+    setupMediaElement(media, r);
+
+    media.dispatchEvent(new Event("durationchange"));
+    expect(sent.length).toBe(1);
+    // The EVENT opcode's target (A) is the 4th field of the first opcode.
+    const view = new DataView(sent[0]!.buffer, sent[0]!.byteOffset);
+    const opcodePos = 16; // HEADER_SIZE
+    expect(view.getUint32(opcodePos + 4, true)).toBe(241);
+  });
+
+  it("retries a play() the autoplay policy blocked, on the next gesture", async () => {
+    const media = document.createElement("video");
+    document.body.appendChild(media);
+    const play = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        Promise.reject(Object.assign(new Error("blocked"), { name: "NotAllowedError" })),
+      )
+      .mockImplementation(() => Promise.resolve());
+    media.play = play as unknown as HTMLMediaElement["play"];
+
+    // The server-driven play arrives outside a gesture: the browser blocks it.
+    playMedia(media);
+    expect(play).toHaveBeenCalledTimes(1);
+    await flush();
+
+    // The next trusted gesture replays it…
+    retryPendingPlay();
+    expect(play).toHaveBeenCalledTimes(2);
+    // …and it is no longer pending.
+    retryPendingPlay();
+    expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs a non-autoplay play() rejection instead of swallowing it", async () => {
+    const media = document.createElement("video");
+    document.body.appendChild(media);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    media.play = vi.fn(() =>
+      Promise.reject(Object.assign(new Error("bad"), { name: "NotSupportedError" })),
+    ) as unknown as HTMLMediaElement["play"];
+
+    playMedia(media);
+    await flush();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("unlocks the playback element muted inside a gesture, then restores the mute", async () => {
+    const { media } = hydratedMedia();
+    let mutedDuringPlay: boolean | null = null;
+    media.play = vi.fn(() => {
+      mutedDuringPlay = media.muted;
+      return Promise.resolve();
+    }) as unknown as HTMLMediaElement["play"];
+
+    unlockMedia();
+    expect(mutedDuringPlay).toBe(true); // played muted (always permitted)
+    await flush();
+    expect(media.muted).toBe(false); // mute state restored
+  });
+
+  it("does not unlock while the app already wants the element playing", async () => {
+    const { media, r } = hydratedMedia();
+    const play = vi.fn(() => Promise.resolve());
+    media.play = play as unknown as HTMLMediaElement["play"];
+
+    // The app requested playing: a PLAYBACK_STATE apply sets `state.playing`.
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, ((VAL_U8 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry("")),
+      ),
+      r,
+    );
+    expect(play).toHaveBeenCalledTimes(1); // the app's own play
+
+    unlockMedia();
+    await flush();
+    expect(play).toHaveBeenCalledTimes(1); // the unlock leaves it alone
+  });
+});
+
 describe("applyBatch · media", () => {
   it("seeks only on a meaningful MEDIA_POSITION change (no echo interruption)", () => {
     const wrapper = document.createElement("div");
@@ -141,8 +260,45 @@ describe("applyBatch · media", () => {
     audio.pause();
     // ...and applying the new source resumes playback.
     applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
-      ((VAL_STRING << 16) | PROP_AUDIO_SOURCE) >>> 0, 0]], stringEntry("/track2.mp3"))), r);
+      ((VAL_STRING << 16) | PROP_MEDIA_SOURCE) >>> 0, 0]], stringEntry("/track2.mp3"))), r);
     expect(audio.paused).toBe(false);
+  });
+
+  it("binds a VIDEO surface that precedes its controller (order-independent)", () => {
+    // The surface is emitted first: its MEDIA_CONTROLLER_ID references a
+    // controller node that does not exist yet. Binding must not depend on
+    // emission order — a later MEDIA_SOURCE on the controller completes it
+    // (spec/MEDIA.md).
+    const surface = document.createElement("div");
+    surface.setAttribute("data-pathland-id", "2");
+    const surfaceVideo = document.createElement("video");
+    surfaceVideo.setAttribute("data-pathland-media", "");
+    surface.appendChild(surfaceVideo);
+    document.body.appendChild(surface);
+    const r = renderer();
+    r.byId.set(2, surface);
+
+    // The surface binds to controller 1 (which is not in the tree yet).
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 2,
+      ((VAL_U32 << 16) | PROP_MEDIA_CONTROLLER_ID) >>> 0, 1]], stringEntry(""))), r);
+    expect(surfaceVideo.src).toBe("");
+
+    // The controller arrives afterwards with its resource.
+    const controller = document.createElement("div");
+    controller.setAttribute("data-pathland-id", "1");
+    controller.setAttribute("data-pathland-media", "");
+    const controllerVideo = document.createElement("video");
+    controllerVideo.setAttribute("data-pathland-media", "");
+    controller.appendChild(controllerVideo);
+    document.body.appendChild(controller);
+    r.byId.set(1, controller);
+
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_STRING << 16) | PROP_MEDIA_SOURCE) >>> 0, 0]], stringEntry("/track9.mp3"))), r);
+
+    // The surface adopted the resource; the controller element carries no audio.
+    expect(surfaceVideo.getAttribute("src")).toContain("track9.mp3");
+    expect(controllerVideo.muted).toBe(true);
   });
 
   it("reports MEDIA_TIME_UPDATED at ~30/s (a 33 ms position sampler)", () => {

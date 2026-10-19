@@ -101,8 +101,8 @@ class MusicPlayerViewTest {
         // only the sidebar subtree is created/inserted. A regression: if the two
         // candidates' root components differ, the whole main area would be
         // re-created (a large delta + node churn).
-        assertEquals(0, countCreate(wide, Components.AUDIO),
-                "the app-driven player node is re-used, not re-created");
+        assertEquals(0, countCreate(wide, Components.MEDIA_CONTROLLER),
+                "the media controller node is re-used, not re-created");
         assertEquals(0, countCreate(wide, Components.SIZE_THAT_FITS), "the slot itself is untouched");
         assertTrue(countCreateAnything(wide) < 40, "the fit swap is a small delta, not a tree rebuild");
     }
@@ -120,11 +120,11 @@ class MusicPlayerViewTest {
         assertTrue(anySlider(frame, 0f, 100f), "seek slider carries its 0..100 percent range");
         // The compact bar groups: transport | now-playing (| divider).
         assertTrue(anySetText(frame, "|"), "the bar groups are separated by | dividers");
-        // The app-driven audio node: source + media control properties bound.
-        assertTrue(anySetPropertyString(frame, Properties.AUDIO_SOURCE, "/_pathland/assets/audio/track1.mp3"),
-                "the audio node carries the current track's source");
-        assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0), "the audio node binds play state");
-        assertTrue(anySetProperty(frame, Properties.MEDIA_POSITION, 0f), "the audio node binds position");
+        // The media controller: source + transport properties bound.
+        assertTrue(anySetPropertyString(frame, Properties.MEDIA_SOURCE, "/_pathland/assets/audio/track1.mp3"),
+                "the controller carries the current track's source");
+        assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0), "the controller binds play state");
+        assertTrue(anySetProperty(frame, Properties.MEDIA_POSITION, 0f), "the controller binds position");
 
         // The full controls cluster (transport + now-playing + volume) wants ≥700pt:
         // firing the player-bar slot's fit change mounts it — and its volume slider
@@ -171,7 +171,7 @@ class MusicPlayerViewTest {
         Mounted m = mount();
         // Run every tap (hosts drive taps exactly like this); whichever button fires,
         // it must write the app's player state through the store.
-        for (Runnable tap : m.result.tapActions().values()) {
+        for (Runnable tap : java.util.List.copyOf(m.result.tapActions().values())) {
             tap.run();
         }
         Optional<Integer> track = m.store.load("player.track:session-1", Integer.class);
@@ -253,6 +253,70 @@ class MusicPlayerViewTest {
             }
         }
         return n;
+    }
+
+    @Test
+    void timeReportAdvancesTheSeekBarValue() {
+        StateStore store = new InMemoryStateStore();
+        PersistentState state = new PersistentState(store, "session-1");
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        RenderResult result = new Emitter(sink).mount(MusicPlayerView.make(), new Environment(state));
+        int seekId = seekSliderId(sink.frame());
+        InputDispatcher dispatcher = new InputDispatcher(result, Signals.signal("/"));
+        int audioId = result.mediaInputs().entrySet().iterator().next().getKey();
+
+        // A MEDIA_TIME_UPDATED report must advance the seek bar: the Slider's VALUE
+        // (0..100 percent against the track duration) re-emits. If it doesn't, the
+        // bug is server-side (the PercentSeek property binding never re-fires); if
+        // it does but the browser's bar doesn't move, the bug is client-side.
+        dispatcher.dispatch(dev.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
+        ProtocolFrame delta = sink.frame();
+        assertEquals(30f / MusicPlayerView.TRACKS.get(0).duration() * 100f,
+                propertyFloat(delta, seekId, Properties.VALUE), 0.05f,
+                "the seek bar's VALUE re-emits on a MEDIA_TIME_UPDATED report");
+    }
+
+    @Test
+    void snapshotMountStillRoutesTimeToTheSeekBar() {
+        // The live/SSR session mounts in snapshot mode (all fit candidates retained);
+        // the media report must still reach the seek bar's VALUE in that mode.
+        Mounted m = mountSnapshot();
+        InputDispatcher dispatcher = new InputDispatcher(m.result, Signals.signal("/"));
+        assertFalse(m.result.mediaInputs().isEmpty(), "a controller media sink is registered");
+        int audioId = m.result.mediaInputs().entrySet().iterator().next().getKey();
+        dispatcher.dispatch(dev.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
+        ProtocolFrame delta = m.sink.frame();
+        // Any VALUE re-emit proves the seek bar effect fired.
+        boolean anyValue = false;
+        for (Opcode op : delta.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == Properties.VALUE) {
+                anyValue = true;
+            }
+        }
+        assertTrue(anyValue, "the seek bar VALUE re-emits in snapshot mode");
+    }
+
+    /** The seek slider's node id (its `MAX_VALUE` is the 0..100 percent range). */
+    private static int seekSliderId(ProtocolFrame frame) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == Properties.MAX_VALUE
+                    && Float.intBitsToFloat(op.c()) == 100f) {
+                return op.a();
+            }
+        }
+        throw new AssertionError("the 0..100 seek slider is not in the mount frame");
+    }
+
+    private static float propertyFloat(ProtocolFrame frame, int nodeId, int property) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && op.a() == nodeId && (op.b() & 0xFFFF) == property) {
+                return Float.intBitsToFloat(op.c());
+            }
+        }
+        return Float.NaN;
     }
 
     private static boolean anySlider(ProtocolFrame frame, float min, float max) {

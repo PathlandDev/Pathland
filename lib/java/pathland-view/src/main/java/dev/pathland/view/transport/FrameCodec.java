@@ -224,6 +224,22 @@ public final class FrameCodec {
             } else if (event.isFocusChanged() || event.isEditingChanged() || event.isSubmit()) {
                 opcodes.add(new Opcode(
                         Categories.EVENT, event.command(), 0, event.target(), event.b(), 0));
+            } else if (event.isMediaTimeUpdated() || event.isMediaVolumeChanged()
+                    || event.isMediaDurationChanged() || event.isFitChanged()) {
+                // Media/fit reports carry their float value in field B (the value
+                // bits), NOT in the pointer x/y fields — the decode
+                // (`decodeEvents`) reads `Float.intBitsToFloat(op.b())`.
+                opcodes.add(new Opcode(
+                        Categories.EVENT,
+                        event.command(),
+                        0,
+                        event.target(),
+                        Float.floatToRawIntBits(event.value()),
+                        0));
+            } else if (event.isMediaPlayStateChanged() || event.isMediaEnded()) {
+                // A play-state bit / a fieldless ended marker.
+                opcodes.add(new Opcode(
+                        Categories.EVENT, event.command(), 0, event.target(), event.b(), 0));
             } else {
                 opcodes.add(new Opcode(
                         Categories.EVENT,
@@ -280,6 +296,8 @@ public final class FrameCodec {
                 case Commands.Event.MEDIA_ENDED -> events.add(Event.mediaEnded(op.a()));
                 case Commands.Event.MEDIA_VOLUME_CHANGED -> events.add(
                         Event.mediaVolumeChanged(op.a(), Float.intBitsToFloat(op.b())));
+                case Commands.Event.MEDIA_DURATION_CHANGED -> events.add(
+                        Event.mediaDurationChanged(op.a(), Float.intBitsToFloat(op.b())));
                 case Commands.Event.FIT_CHANGED -> events.add(
                         Event.fitChanged(op.a(), Float.intBitsToFloat(op.b())));
                 case Commands.Event.POINTER_DOWN, Commands.Event.POINTER_MOVE, Commands.Event.POINTER_UP -> events.add(

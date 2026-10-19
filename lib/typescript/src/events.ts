@@ -11,6 +11,7 @@ import {
   CMD_KEY_DOWN,
   CMD_KEY_UP,
   CMD_MEDIA_ENDED,
+  CMD_MEDIA_DURATION_CHANGED,
   CMD_MEDIA_PLAY_STATE_CHANGED,
   CMD_MEDIA_TIME_UPDATED,
   CMD_MEDIA_VOLUME_CHANGED,
@@ -154,6 +155,12 @@ export function encodeMediaEnded(target: number): Uint8Array {
 /** A bound media node's volume changed (B = 0..1, f32). */
 export function encodeMediaVolumeChanged(target: number, volume: number): Uint8Array {
   return eventBatch(CMD_MEDIA_VOLUME_CHANGED, target, bitsFromF32(volume), 0);
+}
+
+/** `MEDIA_DURATION_CHANGED` (0x14): the media's duration in seconds became
+ *  known / changed (target = the controller node id). */
+export function encodeMediaDurationChanged(target: number, seconds: number): Uint8Array {
+  return eventBatch(CMD_MEDIA_DURATION_CHANGED, target, bitsFromF32(seconds), 0);
 }
 
 /** A `SIZE_THAT_FITS` slot's selected candidate changed (B = index, f32). */

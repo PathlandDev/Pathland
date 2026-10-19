@@ -18,7 +18,8 @@ public final class Components {
     public static final int SPACER = 0x06;
     public static final int PROGRESS_VIEW = 0x07;
     public static final int GAUGE = 0x08;
-    public static final int AUDIO = 0x09;
+    /** Video playback surface: renders a {@code MEDIA_CONTROLLER}'s video output
+     *  (references it via {@code MEDIA_CONTROLLER_ID}); audio has no view. */
     public static final int VIDEO = 0x0A;
     public static final int ICON = 0x0B;
 
@@ -52,6 +53,12 @@ public final class Components {
     public static final int PICKER = 0x28;
     public static final int MENU = 0x29;
     public static final int COLOR_PICKER = 0x2A;
+
+    // ── Non-visual / Resource Nodes (0x30–0x3F) ────────────────────────────
+    /** Media controller: a non-visual, layout-transparent node that owns a media
+     *  resource + transport (spec/MEDIA.md); a {@code VIDEO} surface references it.
+     *  Audio has no view — it is controlled by the application's own views. */
+    public static final int MEDIA_CONTROLLER = 0x30;
 
     // ── Utility ────────────────────────────────────────────────────────────
     public static final int COMMENT = 0x7F;

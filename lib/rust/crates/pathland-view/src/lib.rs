@@ -85,8 +85,8 @@ use pathland_core::property_id;
 pub use pathland_core;
 pub use pathland_engine::{
     assign_ids, collect_input_handlers, collect_tap_handlers, component_type_id, AdaptiveTheme,
-    Component, Engine, Gesture, InputHandlers, IntoSignalId, Node, Signal, SignalId, SignalValue,
-    SignalValueKind, Theme, WritableSignal,
+    Component, Engine, Gesture, InputHandlers, IntoSignalId, MediaController, MediaControllerRef,
+    Node, Signal, SignalId, SignalValue, SignalValueKind, Theme, WritableSignal,
 };
 
 mod recognizer;
@@ -222,6 +222,15 @@ pub trait ViewExt: View + Sized {
             style: Rc::new(style),
         }
     }
+
+    /// Scope a [`VideoStyle`] down this subtree (the active style for any
+    /// `Video` surface whose control content it supplies).
+    fn video_style(self, style: impl VideoStyle + 'static) -> WithVideoStyle<Self> {
+        WithVideoStyle {
+            view: self,
+            style: Rc::new(style),
+        }
+    }
 }
 
 impl<T: View> ViewExt for T {}
@@ -238,6 +247,7 @@ impl<T: View> ViewExt for T {}
 #[derive(Default)]
 pub struct Environment {
     button_style: Option<Rc<dyn ButtonStyle>>,
+    video_style: Option<Rc<dyn VideoStyle>>,
 }
 
 impl Environment {
@@ -251,6 +261,13 @@ impl Environment {
         self.button_style
             .clone()
             .unwrap_or_else(|| Rc::new(PlainButtonStyle))
+    }
+
+    /// The active video style (defaults to [`NativeVideoStyle`]).
+    pub fn video_style(&self) -> Rc<dyn VideoStyle> {
+        self.video_style
+            .clone()
+            .unwrap_or_else(|| Rc::new(NativeVideoStyle))
     }
 }
 
@@ -283,6 +300,65 @@ impl ButtonStyle for BorderedButtonStyle {
             Border::new(Color::argb(0xFF_888888), 1.0),
         ));
         Some(Box::new(label))
+    }
+}
+
+/// A video style: supplies a [`Video`] surface's **content** — the transport
+/// control UI shown over/next to the playback (spec DSL.md §5.7). The control
+/// owns the native component and the media binding; a style only supplies
+/// content and never installs a binding. `None` = the renderer's native controls.
+pub trait VideoStyle {
+    /// Build the styled content for `config`, or `None` for the native path.
+    fn make_body(&self, config: &VideoStyleConfig) -> Option<Box<dyn View>>;
+}
+
+/// What a [`VideoStyle`] reads (spec DSL.md §5.7): the surface's controller, so
+/// the style's own controls can drive the same playback.
+pub struct VideoStyleConfig {
+    controller: Option<Rc<MediaController>>,
+}
+
+impl VideoStyleConfig {
+    /// The controller this surface renders (`None` for an unbound surface).
+    pub fn controller(&self) -> Option<&Rc<MediaController>> {
+        self.controller.as_ref()
+    }
+}
+
+/// The default style: renderer-native controls (no content view, so the surface
+/// stays a leaf in Native Token Mode).
+pub struct NativeVideoStyle;
+
+impl VideoStyle for NativeVideoStyle {
+    fn make_body(&self, _config: &VideoStyleConfig) -> Option<Box<dyn View>> {
+        None
+    }
+}
+
+/// A view wrapped by a scoped [`VideoStyle`] (applied via
+/// [`ViewExt::video_style`]).
+pub struct WithVideoStyle<V> {
+    view: V,
+    style: Rc<dyn VideoStyle>,
+}
+
+impl<V: View> View for WithVideoStyle<V> {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let previous = env.video_style.take();
+        env.video_style = Some(self.style.clone());
+        let node = self.view.build_env(env);
+        env.video_style = previous;
+        node
+    }
+}
+
+impl<V: Configurable> Configurable for WithVideoStyle<V> {
+    type Config = V::Config;
+    fn config(&self) -> &Self::Config {
+        self.view.config()
+    }
+    fn config_mut(&mut self) -> &mut Self::Config {
+        self.view.config_mut()
     }
 }
 
@@ -1254,6 +1330,8 @@ fn plain_node(component: Component, children: Vec<Node>, properties: BTreeMap<u1
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -1450,6 +1528,163 @@ view_statics!(Image);
 /// A free `Image` constructor (shorthand for [`Image::new`]).
 pub fn image(source: &str) -> Image {
     Image::new(source)
+}
+
+/// A video playback **surface** over a [`MediaController`] (spec/MEDIA.md).
+///
+/// The surface renders the controller's video output and gets renderer-native
+/// controls by default; a custom control surface is supplied with a modifier or
+/// by composing the app's own views over the controller's signals. Audio has no
+/// view — use [`MediaControllerExt::attach`] plus ordinary views.
+///
+/// ```
+/// use std::rc::Rc;
+/// use pathland_view::{vstack, text, Engine, MediaController, MediaControllerExt, Video, View};
+///
+/// let engine = Engine::new();
+/// let player = Rc::new(MediaController::with_source(&engine.runtime(), "/assets/clip.mp4"));
+/// let node = vstack![player.attach(), Video::new(player.clone())].build();
+/// # let _ = node;
+/// ```
+#[derive(Debug, Clone, Default)]
+pub struct Video {
+    config: VideoConfig,
+}
+
+/// [`Video`] values.
+#[derive(Debug, Clone, Default)]
+pub struct VideoConfig {
+    /// The controller whose output this surface renders.
+    pub controller: Option<Rc<MediaController>>,
+}
+
+impl VideoConfig {
+    /// Set the controller this surface renders.
+    pub fn controller(&mut self, controller: Rc<MediaController>) -> &mut Self {
+        self.controller = Some(controller);
+        self
+    }
+}
+
+impl Video {
+    /// A video surface rendering `controller`'s output.
+    pub fn new(controller: Rc<MediaController>) -> Self {
+        let mut config = VideoConfig::default();
+        config.controller(controller);
+        Self { config }
+    }
+}
+
+impl Configurable for Video {
+    type Config = VideoConfig;
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
+    fn config_mut(&mut self) -> &mut Self::Config {
+        &mut self.config
+    }
+}
+
+impl View for Video {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let mut node = plain_node(Component::Video, Vec::new(), BTreeMap::new());
+        if let Some(controller) = &self.config.controller {
+            // The surface only references the controller: `assign_ids` links its
+            // `MEDIA_CONTROLLER_ID` once the controller node has its (pinned) id.
+            node.media_controller = Some(MediaControllerRef::new(controller.clone()));
+        }
+        // The active style may supply the surface's content (Composite Override
+        // Mode, spec DSL.md §5.7): the control keeps the `VIDEO` component and the
+        // media binding, the style adds the control UI as the single child.
+        let style = env.video_style();
+        let config = VideoStyleConfig {
+            controller: self.config.controller.clone(),
+        };
+        if let Some(content) = style.make_body(&config) {
+            node.children.push(content.build_env(env));
+        }
+        node
+    }
+}
+
+view_statics!(Video);
+
+/// A free `Video` surface constructor (shorthand for [`Video::new`]).
+pub fn video(controller: Rc<MediaController>) -> Video {
+    Video::new(controller)
+}
+
+/// The authoring surface for a [`MediaController`].
+///
+/// Unlike the core views a controller is a **state object**, so it has no
+/// `modifiers`/`children`; the DSL entry point is [`MediaControllerExt::attach`],
+/// which materializes the controller's non-visual `MEDIA_CONTROLLER` node.
+pub trait MediaControllerExt {
+    /// A **non-visual marker** that materializes this controller's
+    /// `MEDIA_CONTROLLER` node in the tree. A [`Video`] surface references the
+    /// controller automatically; a purely **audio** playback has no surface, so
+    /// place this marker once in the tree — outside any swapping branch — and it
+    /// renders nothing and takes no space:
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    /// use pathland_view::{vstack, text, Engine, MediaController, MediaControllerExt, View};
+    ///
+    /// let engine = Engine::new();
+    /// let player = Rc::new(MediaController::with_source(&engine.runtime(), "/assets/track1.mp3"));
+    /// player.play();
+    /// let node = vstack![player.attach(), text("now playing")].build();
+    /// # let _ = node;
+    /// ```
+    fn attach(self: &Rc<Self>) -> MediaControllerAttach;
+}
+
+impl MediaControllerExt for MediaController {
+    fn attach(self: &Rc<Self>) -> MediaControllerAttach {
+        MediaControllerAttach(Rc::clone(self))
+    }
+}
+
+/// The non-visual node materializing a controller (see
+/// [`MediaControllerExt::attach`]).
+#[derive(Debug, Clone)]
+pub struct MediaControllerAttach(Rc<MediaController>);
+
+impl PartialEq for MediaControllerAttach {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl View for MediaControllerAttach {
+    fn build_env(&self, _env: &mut Environment) -> Node {
+        let controller = &self.0;
+        let mut node = plain_node(Component::MediaController, Vec::new(), BTreeMap::new());
+        node.media_controller = Some(MediaControllerRef::new(Rc::clone(controller)));
+        // The transport: commands as (reactive) properties, the resource as a
+        // reactive STRING property (a track change re-emits only `MEDIA_SOURCE`).
+        node.string_bindings
+            .insert(property_id::MEDIA_SOURCE, controller.source_signal().id());
+        node.string_properties.insert(
+            property_id::MEDIA_SOURCE,
+            controller.source_signal().get().unwrap_or_default(),
+        );
+        node.property_bindings.insert(
+            property_id::PLAYBACK_STATE,
+            controller.playing_signal().id(),
+        );
+        node.property_bindings
+            .insert(property_id::MEDIA_POSITION, controller.position_signal().id());
+        node.property_bindings
+            .insert(property_id::MEDIA_VOLUME, controller.volume_signal().id());
+        node.property_bindings
+            .insert(property_id::MEDIA_MUTED, controller.muted_signal().id());
+        node.property_bindings
+            .insert(property_id::MEDIA_LOOP, controller.looping_signal().id());
+        node.property_bindings
+            .insert(property_id::MEDIA_RATE, controller.rate_signal().id());
+        node
+    }
 }
 
 /// The canonical icon vocabulary for [`Icon`] (mirrors
@@ -4024,6 +4259,179 @@ mod sizethatfits_tests {
                 == Component::Text {
                     text: "wide".into()
                 }
+        );
+    }
+}
+
+#[cfg(test)]
+mod media_tests {
+    use super::*;
+    use pathland_core::{init_memory, value_type, Guest, Host, MemoryLayout};
+
+    #[test]
+    fn video_surface_links_its_controller() {
+        let engine = Engine::new();
+        let rt = engine.runtime();
+        let player = Rc::new(MediaController::with_source(&rt, "/assets/clip.mp4"));
+        let mut tree = vstack![player.attach(), Video::new(player.clone())].build();
+        assign_ids(&mut tree, &mut 1);
+
+        let controller = &tree.children[0];
+        let surface = &tree.children[1];
+        assert_eq!(controller.component, Component::MediaController);
+        assert_eq!(surface.component, Component::Video);
+        assert_eq!(controller.id, 2);
+        assert_eq!(
+            surface.properties.get(&property_id::MEDIA_CONTROLLER_ID),
+            Some(&controller.id),
+            "the surface points at the (pinned) controller node"
+        );
+        assert!(
+            controller
+                .string_bindings
+                .contains_key(&property_id::MEDIA_SOURCE),
+            "the resource is a reactive STRING binding"
+        );
+        assert!(
+            controller
+                .property_bindings
+                .contains_key(&property_id::PLAYBACK_STATE),
+            "the transport commands are bound"
+        );
+    }
+
+    #[test]
+    fn controller_id_is_pinned_across_a_structural_swap() {
+        let engine = Engine::new();
+        let rt = engine.runtime();
+        let player = Rc::new(MediaController::with_source(&rt, "/a.mp3"));
+
+        let mut first = vstack![player.attach(), Video::new(player.clone())].build();
+        assign_ids(&mut first, &mut 1);
+        let pinned = first.children[0].id;
+        assert_eq!(pinned, 2);
+
+        // A node is inserted *before* the marker (a band swap). The controller
+        // keeps its id, so playback is not restarted.
+        let mut second = vstack![text("new"), player.attach(), Video::new(player.clone())].build();
+        assign_ids(&mut second, &mut 1);
+        assert_eq!(second.children[1].id, pinned, "the playback key is stable");
+        assert_eq!(
+            second.children[2]
+                .properties
+                .get(&property_id::MEDIA_CONTROLLER_ID),
+            Some(&pinned)
+        );
+        assert_ne!(second.children[0].id, pinned, "no other node reuses it");
+    }
+
+    /// A custom `VideoStyle` supplies the surface's content (Composite Override
+    /// Mode); the default `NativeVideoStyle` keeps it a leaf (native controls).
+    #[test]
+    fn video_style_supplies_the_surface_content() {
+        struct ControlsStyle;
+        impl VideoStyle for ControlsStyle {
+            fn make_body(&self, config: &VideoStyleConfig) -> Option<Box<dyn View>> {
+                // A style may read the surface's controller for its own controls.
+                assert!(config.controller().is_some(), "the config carries the controller");
+                Some(Box::new(Text::new("controls")))
+            }
+        }
+
+        let engine = Engine::new();
+        let rt = engine.runtime();
+        let player = Rc::new(MediaController::with_source(&rt, "/clip.mp4"));
+
+        let native = Video::new(player.clone()).build();
+        assert_eq!(native.component, Component::Video);
+        assert!(native.children.is_empty(), "the native style adds no content");
+
+        let styled = Video::new(player.clone())
+            .video_style(ControlsStyle)
+            .build();
+        assert_eq!(styled.component, Component::Video, "the control keeps its component");
+        assert_eq!(styled.children.len(), 1, "the style's content is the surface's child");
+        assert_eq!(
+            styled.children[0].component,
+            Component::Text {
+                text: "controls".into()
+            }
+        );
+        assert!(
+            styled.media_controller.is_some(),
+            "the media binding survives a custom style"
+        );
+    }
+
+    #[test]
+    fn media_source_binding_emits_the_controller_and_re_emits_on_change() {
+        let mut engine = Engine::new();
+        let rt = engine.runtime();
+        let player = Rc::new(MediaController::with_source(&rt, "/track1.mp3"));
+        let source = player.source_signal();
+        let mut tree = vstack![player.attach(), Video::new(player.clone())].build();
+        assign_ids(&mut tree, &mut 1);
+
+        let layout = MemoryLayout::default();
+        let mut mem = std::vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        // Frame 1: mount. The controller node emits its transport properties.
+        let mount_ops: std::vec::Vec<(u32, u32)> = {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let frames = host.frames();
+            assert_eq!(frames.len(), 1);
+            frames[0]
+                .opcodes()
+                .map(|op| (op.a, op.b))
+                .collect()
+        };
+        assert!(
+            mount_ops
+                .iter()
+                .any(|(_, b)| (b & 0xFFFF) == property_id::MEDIA_SOURCE as u32),
+            "the controller emits its `MEDIA_SOURCE`"
+        );
+        assert!(
+            mount_ops
+                .iter()
+                .any(|(_, b)| (b & 0xFFFF) == property_id::PLAYBACK_STATE as u32),
+            "the controller emits its transport state"
+        );
+
+        // A track change re-emits only the controller's `MEDIA_SOURCE`.
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            let emitted = engine
+                .set_signal(
+                    source.id(),
+                    SignalValue::Str("/track2.mp3".into()),
+                    &mut guest,
+                )
+                .unwrap();
+            assert_eq!(emitted, 1, "exactly one property re-emitted");
+            guest.end_frame();
+        }
+
+        // The mount frame was already consumed above, so the reader sees only
+        // the delta frame.
+        let mut host = Host::new(&mut mem, &layout);
+        let frames = host.frames();
+        assert_eq!(frames.len(), 1, "the source change is its own frame");
+        let delta: std::vec::Vec<_> = frames[0].opcodes().collect();
+        assert_eq!(delta.len(), 1, "one opcode: the changed source property");
+        let bytes = delta[0].to_bytes();
+        let b = u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
+        assert_eq!(b & 0xFFFF, property_id::MEDIA_SOURCE as u32);
+        assert_eq!(
+            (b >> 16) as u8,
+            value_type::STRING,
+            "the resource rides the STRING value type"
         );
     }
 }

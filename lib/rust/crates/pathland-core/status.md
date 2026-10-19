@@ -11,11 +11,19 @@ tracks what this crate implements.
 
 - **Component types** (`constants.rs::component_type`): the full grouped map —
   `TEXT 0x01, IMAGE 0x02, COLOR 0x03, SHAPE 0x04, DIVIDER 0x05, SPACER 0x06,
-  PROGRESS_VIEW 0x07, GAUGE 0x08, AUDIO 0x09, VIDEO 0x0A, ICON 0x0B, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
+  PROGRESS_VIEW 0x07, GAUGE 0x08, VIDEO 0x0A, ICON 0x0B, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
 0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
    LAZY_HSTACK 0x1C, GRID_ROW 0x1D, PROXY_VIEW 0x1E, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
    0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
-   COLOR_PICKER 0x2A, COMMENT 0x7F`.
+   COLOR_PICKER 0x2A, MEDIA_CONTROLLER 0x30, COMMENT 0x7F`. (`0x09` formerly
+   `AUDIO` is freed — audio has no view; spec/MEDIA.md.)
+- **Media kit** (spec/MEDIA.md): `MEDIA_CONTROLLER` (`0x30`, **non-visual**,
+  layout-transparent) owns the resource + transport; a `VIDEO` (`0x0A`) surface
+  references it via `MEDIA_CONTROLLER_ID` (`0x103A`). Transport properties
+  `PLAYBACK_STATE` (0x1035), `MEDIA_POSITION` (0x1036), `MEDIA_VOLUME` (0x1037),
+  `MEDIA_SOURCE` (0x103B), `MEDIA_MUTED` (0x103C), `MEDIA_LOOP` (0x103D),
+  `MEDIA_RATE` (0x103E); the `MEDIA_*` events target the **controller** id and add
+  `MEDIA_DURATION_CHANGED` (0x14). Covered by conformance vectors 39–41.
 - **`PROXY_VIEW`** (`0x1E`) — a container whose child subtree is served by another
   Pathland server (spec/PROXY.md); the id is the only wire-visible part of the
   proxy contract (the origin subtree's nodes are ordinary opcodes with
@@ -43,9 +51,11 @@ tracks what this crate implements.
   `ROTATION_DEGREES`/`SCALE`/`ALLOWS_HIT_TESTING`, control drafts
   `STEP_VALUE`/`CONTROL_SIZE`/`IS_SECURE`/`PROGRESS`/`IS_INDETERMINATE`/
   `SELECTION`/`COLOR_VALUE`/`DATE_PICKER_MODE`/`PICKER_STYLE`,
-  `ACTION_ID`/`BINDING_ID`/`TOGGLE_STYLE`, the **asset references** `IMAGE_SOURCE`,
-  `AUDIO_SOURCE` (0x1033), `VIDEO_SOURCE` (0x1034) — STRING asset refs (URL /
-  resource / path), never embedded in the opcode stream; `ICON_NAME` (0x1038,
+  `ACTION_ID`/`BINDING_ID`/`TOGGLE_STYLE`, the **asset references** `IMAGE_SOURCE`
+  and `MEDIA_SOURCE` (0x103B) — STRING asset refs (URL /
+  resource / path), never embedded in the opcode stream (`AUDIO` 0x09 and
+  `AUDIO_SOURCE` 0x1033 / `VIDEO_SOURCE` 0x1034 are freed — audio has no view,
+  spec/MEDIA.md); `ICON_NAME` (0x1038,
   STRING — the `ICON` primitive's canonical name, spec/ICONS.md); plus the navigation
   drafts `TRANSITION` (0x1031), `ROUTE` (0x2019, STRING), `NAV_DEPTH` (0x201A,
   U32 — the `NavigationContainer`'s back-stack depth, so native navigation
