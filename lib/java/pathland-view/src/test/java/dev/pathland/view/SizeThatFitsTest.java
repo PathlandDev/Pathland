@@ -8,11 +8,15 @@ import dev.pathland.view.emit.PathlandNode;
 import dev.pathland.view.emit.RenderResult;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -238,6 +242,103 @@ class SizeThatFitsTest {
         // 3. The nested slot's fit sink still routes (a later resize can move it).
         result.fitInputs().get(nestedId).accept(0);
         assertTrue(containsText(sink.frame(), "compact"), "the nested slot can still swap back");
+    }
+
+    /**
+     * A full-snapshot emission whose candidates share a subtree (the music player's
+     * "main area" composed into both rows) materializes it once per candidate. Every
+     * copy must get a **distinct** node id — the frame's unique-node-id invariant
+     * (spec/OPCODE.md §Frame Lifecycle, spec/PRIMITIVES.md §SizeThatFits).
+     */
+    @Test
+    void snapshotWithASharedSubtreeEmitsUniqueNodeIds() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        emitter.snapshotEmission(true);
+        // The shared subtree is reused *inside* two distinct candidate roots — the
+        // allowed form (each candidate renders its own fresh copy).
+        View shared = VStack.children(
+                Text.make(t -> t.text("shared")),
+                Text.make(t -> t.text("detail")));
+        View wide = HStack.children(shared, Text.make(t -> t.text("wide")));
+        View compact = HStack.children(shared, Text.make(t -> t.text("compact")));
+        View root = VStack.children(SizeThatFits.make(Fit.of(wide, 640f), Fit.of(compact)));
+        emitter.mount(root, Environment.DEFAULT);
+
+        ProtocolFrame frame = sink.frame();
+        assertUniqueNodeIds(frame);
+        assertTrue(containsText(frame, "shared"), "the shared subtree rides the snapshot");
+        assertTrue(containsText(frame, "wide") && containsText(frame, "compact"),
+                "both candidates are materialized");
+    }
+
+    /**
+     * A custom view that returns the **same retained node** on every render (a cached
+     * node — the media controller's pinned id is the real-world instance) places one
+     * id at two positions. The emitter must fail loudly instead of emitting a frame
+     * that collapses in the renderer's id-keyed map (spec/OPCODE.md §Frame Lifecycle).
+     */
+    @Test
+    void aRetainedNodeReusedAcrossCandidatesTripsTheUniqueIdGuard() {
+        PathlandNode cached = new PathlandNode(Components.TEXT);
+        View shared = new View() {
+            @Override
+            public PathlandNode render(Environment env) {
+                return cached;
+            }
+        };
+        View wide = VStack.children(shared, Text.make(t -> t.text("wide")));
+        View compact = VStack.children(shared, Text.make(t -> t.text("compact")));
+
+        Emitter emitter = new Emitter(new FrameOpcodeSink());
+        emitter.snapshotEmission(true);
+        View root = VStack.children(SizeThatFits.make(Fit.of(wide, 640f), Fit.of(compact)));
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> emitter.mount(root, Environment.DEFAULT));
+        assertTrue(error.getMessage().contains("duplicate node id"), error.getMessage());
+    }
+
+    /** The duplicate-id scan helper detects a hand-built violating tree. */
+    @Test
+    void duplicateIdsDetectsARepeatedNodeId() {
+        PathlandNode root = new PathlandNode(Components.VSTACK);
+        root.id = 1;
+        PathlandNode a = new PathlandNode(Components.TEXT);
+        a.id = 2;
+        PathlandNode b = new PathlandNode(Components.TEXT);
+        b.id = 2;
+        root.children.add(a);
+        root.children.add(b);
+
+        assertEquals(List.of(2), Emitter.duplicateIds(root));
+        b.id = 3;
+        assertTrue(Emitter.duplicateIds(root).isEmpty(), "a clean tree reports no duplicates");
+    }
+
+    /**
+     * The same `View` instance may not be the candidate of two `Fit`s: it would be
+     * materialized twice with shared mutable state and could hand out the same id.
+     * Sharing a subtree inside distinct candidate roots stays allowed (above).
+     */
+    @Test
+    void rejectsTheSameViewInstanceAsTwoCandidates() {
+        View shared = Text.make(t -> t.text("shared"));
+        IllegalStateException fits = assertThrows(IllegalStateException.class,
+                () -> SizeThatFits.make(Fit.of(shared, 640f), Fit.of(shared)));
+        assertTrue(fits.getMessage().contains("at most one"), fits.getMessage());
+        IllegalStateException candidates = assertThrows(IllegalStateException.class,
+                () -> SizeThatFits.make(shared, shared));
+        assertTrue(candidates.getMessage().contains("at most one"), candidates.getMessage());
+    }
+
+    /** Every `CREATE_NODE` id in the frame is distinct. */
+    private static void assertUniqueNodeIds(ProtocolFrame frame) {
+        Set<Integer> seen = new HashSet<>();
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE) {
+                assertTrue(seen.add(op.a()), "duplicate node id " + op.a() + " in the frame");
+            }
+        }
     }
 
     /** A custom-style body: re-builds the nested fit slot (fresh signal, default 0) on

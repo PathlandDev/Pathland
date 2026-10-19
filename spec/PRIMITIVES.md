@@ -757,6 +757,14 @@ The concrete web realization (CSS container + per-candidate gate wrappers +
 `@container` band rules) is **renderer-owned** and described in
 `lib/rust/crates/pathland-render-html/status.md`.
 
+**Shared subtrees in a full snapshot (MUST).** When the same subtree is authored
+inside more than one candidate, a full-snapshot emission materializes that subtree
+**once per candidate** (each candidate renders its own retained nodes). Every copy
+MUST receive a **distinct node id** — no id is reused between candidates, including
+nodes with identity-stable semantics such as a media controller
+([MEDIA.md](./MEDIA.md)). The frame's unique-node-id invariant
+([OPCODE.md](./OPCODE.md#frame-lifecycle)) therefore holds across the whole slot.
+
 Semantics:
 - **Properties**: `FIT_QUERY` (`0x1039`, LIST).
 - **Events**: `FIT_CHANGED` (`0x13`, host → guest) — reported fit index.

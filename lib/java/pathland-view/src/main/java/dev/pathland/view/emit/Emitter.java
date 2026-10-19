@@ -18,9 +18,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -144,6 +146,7 @@ public final class Emitter {
         this.tree = tree;
         nextId = 1;
         assignIds(tree);
+        guardUniqueIds();
         tapActions.clear();
         textInputs.clear();
         valueInputs.clear();
@@ -193,6 +196,7 @@ public final class Emitter {
         if (!mounted) {
             throw new IllegalStateException("Emitter not mounted");
         }
+        guardUniqueIds();
         sink.beginFrame();
         emitTheme();
         // The retained tree already carries every fit candidate when the session
@@ -226,6 +230,50 @@ public final class Emitter {
         node.id = nextId++;
         for (PathlandNode child : node.children) {
             assignIds(child);
+        }
+    }
+
+    /**
+     * The ids that occur more than once in {@code root}'s subtree, in pre-order.
+     *
+     * <p>This is the tree-scan half of the frame's **unique-node-id invariant**
+     * (spec/OPCODE.md §Frame Lifecycle): a frame MUST NOT contain two nodes with the
+     * same id, because every id-keyed consumer (the renderer's {@code id → element}
+     * map, media reports, proxy remapping, …) treats the id as a single node. The
+     * emitter calls this before every emission ({@link #guardUniqueIds()}) and tests
+     * use it directly to prove a tree is clean.
+     */
+    public static List<Integer> duplicateIds(PathlandNode root) {
+        Set<Integer> seen = new LinkedHashSet<>();
+        Set<Integer> duplicates = new LinkedHashSet<>();
+        collectDuplicateIds(root, seen, duplicates);
+        return new ArrayList<>(duplicates);
+    }
+
+    private static void collectDuplicateIds(PathlandNode node, Set<Integer> seen, Set<Integer> duplicates) {
+        if (!seen.add(node.id)) {
+            duplicates.add(node.id);
+        }
+        for (PathlandNode child : node.children) {
+            collectDuplicateIds(child, seen, duplicates);
+        }
+    }
+
+    /**
+     * Fail loudly when the retained tree violates the unique-node-id invariant
+     * (spec/OPCODE.md §Frame Lifecycle). {@link #assignIds}/{@code nextId} is the
+     * single id authority, so ordinary emission is always unique — but any pass that
+     * overrides an id **after** {@code assignIds} (an identity-stable node pinning a
+     * playback key, a proxy remap, a reused view subtree) can reintroduce a duplicate
+     * and silently corrupt every id-keyed consumer. Throw instead.
+     */
+    private void guardUniqueIds() {
+        List<Integer> duplicates = duplicateIds(tree);
+        if (!duplicates.isEmpty()) {
+            throw new IllegalStateException(
+                    "frame contains duplicate node id(s) " + duplicates
+                            + ": a frame MUST NOT contain two nodes with the same id "
+                            + "(spec/OPCODE.md §Frame Lifecycle)");
         }
     }
 
@@ -497,6 +545,7 @@ public final class Emitter {
                 }
                 sink.endFrame();
             }
+            guardUniqueIds();
             fireStructureReconciled();
             return;
         }
@@ -562,6 +611,7 @@ public final class Emitter {
             registerBindings(fresh);
         }
         // The routing maps (incl. proxyViews) now reflect the reconciled subtree.
+        guardUniqueIds();
         fireStructureReconciled();
     }
 
