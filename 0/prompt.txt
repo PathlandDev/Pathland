@@ -1,0 +1,28 @@
+an e2e test is failing: Running 4 tests using 1 worker
+  -  1 [chromium] › e2e/media.spec.ts:14:1 › the seek bar advances while the controller plays
+  ✓  2 [chromium] › e2e/service-worker.spec.ts:8:1 › the service worker attaches the window id to the next navigation (216ms)
+  -  3 [webkit] › e2e/media.spec.ts:14:1 › the seek bar advances while the controller plays
+  ✘  4 [webkit] › e2e/service-worker.spec.ts:8:1 › the service worker attaches the window id to the next navigation (4ms)
+  1) [webkit] › e2e/service-worker.spec.ts:8:1 › the service worker attaches the window id to the next navigation 
+    Error: browserType.launch: Target page, context or browser has been closed
+    Browser logs:
+    <launching> /home/runner/.cache/ms-playwright/webkit-2370/pw_run.sh --inspector-pipe --headless --no-startup-window --autoplay-policy=no-user-gesture-required
+    <launched> pid=5819
+    [pid=5819][err] Cannot parse arguments: Unknown option --autoplay-policy=no-user-gesture-required
+    Call log:
+      - <launching> /home/runner/.cache/ms-playwright/webkit-2370/pw_run.sh --inspector-pipe --headless --no-startup-window --autoplay-policy=no-user-gesture-required
+      - <launched> pid=5819
+      - [pid=5819][err] Cannot parse arguments: Unknown option --autoplay-policy=no-user-gesture-required
+      - [pid=5819] <gracefully close start>
+      - [pid=5819] <kill>
+      - [pid=5819] <will force kill>
+      - [pid=5819] <process did exit: exitCode=1, signal=null>
+      - [pid=5819] starting temporary directories cleanup
+      - [pid=5819] finished temporary directories cleanup
+      - [pid=5819] <gracefully close end>
+    Error Context: test-results/service-worker-the-service-fd11e-w-id-to-the-next-navigation-webkit/error-context.md
+  1 failed
+    [webkit] › e2e/service-worker.spec.ts:8:1 › the service worker attaches the window id to the next navigation 
+  2 skipped
+  1 passed (4.7s)
+Error: Process completed with exit code 1.
