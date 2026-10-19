@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M57BC2H08HAFX5FATR4MV78D",
+  "session_id": "ses_eaad12bf0ffeSvDViYwQBEA2Sb",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-19T17:26:21.467639Z",
+  "branch": "feat/media-controller",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/rust/crates/pathland-engine/src/engine.rs",
+    "lib/rust/crates/pathland-engine/src/lib.rs",
+    "lib/rust/crates/pathland-engine/src/media.rs",
+    "lib/rust/crates/pathland-engine/src/node.rs",
+    "lib/rust/crates/pathland-engine/src/signal.rs",
+    "lib/rust/crates/pathland-engine/status.md",
+    "lib/rust/crates/pathland-engine/tests/engine.rs",
+    "lib/rust/crates/pathland-engine/tests/signal.rs",
+    "lib/rust/crates/pathland-view-native/src/lib.rs",
+    "lib/rust/crates/pathland-view-native/status.md",
+    "lib/rust/crates/pathland-view/src/lib.rs",
+    "lib/rust/crates/pathland-view/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "9cfc56a23e00",
+  "checkpoint_transcript_start": 23,
+  "transcript_lines_at_start": 23,
+  "compact_transcript_start": 23,
+  "token_usage": {
+    "input_tokens": 1526,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 84736,
+    "output_tokens": 128,
+    "api_call_count": 3
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-19T17:26:21.368425Z",
+    "agent_lines": 818,
+    "agent_removed": 13,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 818,
+    "total_lines_changed": 831,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
