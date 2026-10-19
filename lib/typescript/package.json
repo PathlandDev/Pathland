@@ -10,9 +10,11 @@
     "test": "vitest run",
     "copy-to-demos": "node scripts/copy-to-demos.mjs",
     "regen": "node scripts/regen.mjs",
-    "build:all": "npm run build && npm run copy-to-demos"
+    "build:all": "npm run build && npm run copy-to-demos",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^20.19.43",
     "esbuild": "^0.24.2",
     "happy-dom": "^15.11.7",

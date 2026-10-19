@@ -255,6 +255,70 @@ class MusicPlayerViewTest {
         return n;
     }
 
+    @Test
+    void timeReportAdvancesTheSeekBarValue() {
+        StateStore store = new InMemoryStateStore();
+        PersistentState state = new PersistentState(store, "session-1");
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        RenderResult result = new Emitter(sink).mount(MusicPlayerView.make(), new Environment(state));
+        int seekId = seekSliderId(sink.frame());
+        InputDispatcher dispatcher = new InputDispatcher(result, Signals.signal("/"));
+        int audioId = result.mediaInputs().entrySet().iterator().next().getKey();
+
+        // A MEDIA_TIME_UPDATED report must advance the seek bar: the Slider's VALUE
+        // (0..100 percent against the track duration) re-emits. If it doesn't, the
+        // bug is server-side (the PercentSeek property binding never re-fires); if
+        // it does but the browser's bar doesn't move, the bug is client-side.
+        dispatcher.dispatch(dev.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
+        ProtocolFrame delta = sink.frame();
+        assertEquals(30f / MusicPlayerView.TRACKS.get(0).duration() * 100f,
+                propertyFloat(delta, seekId, Properties.VALUE), 0.05f,
+                "the seek bar's VALUE re-emits on a MEDIA_TIME_UPDATED report");
+    }
+
+    @Test
+    void snapshotMountStillRoutesTimeToTheSeekBar() {
+        // The live/SSR session mounts in snapshot mode (all fit candidates retained);
+        // the media report must still reach the seek bar's VALUE in that mode.
+        Mounted m = mountSnapshot();
+        InputDispatcher dispatcher = new InputDispatcher(m.result, Signals.signal("/"));
+        assertFalse(m.result.mediaInputs().isEmpty(), "a controller media sink is registered");
+        int audioId = m.result.mediaInputs().entrySet().iterator().next().getKey();
+        dispatcher.dispatch(dev.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
+        ProtocolFrame delta = m.sink.frame();
+        // Any VALUE re-emit proves the seek bar effect fired.
+        boolean anyValue = false;
+        for (Opcode op : delta.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == Properties.VALUE) {
+                anyValue = true;
+            }
+        }
+        assertTrue(anyValue, "the seek bar VALUE re-emits in snapshot mode");
+    }
+
+    /** The seek slider's node id (its `MAX_VALUE` is the 0..100 percent range). */
+    private static int seekSliderId(ProtocolFrame frame) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == Properties.MAX_VALUE
+                    && Float.intBitsToFloat(op.c()) == 100f) {
+                return op.a();
+            }
+        }
+        throw new AssertionError("the 0..100 seek slider is not in the mount frame");
+    }
+
+    private static float propertyFloat(ProtocolFrame frame, int nodeId, int property) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && op.a() == nodeId && (op.b() & 0xFFFF) == property) {
+                return Float.intBitsToFloat(op.c());
+            }
+        }
+        return Float.NaN;
+    }
+
     private static boolean anySlider(ProtocolFrame frame, float min, float max) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() != Categories.PARAMETER || op.command() != Commands.Parameter.SET_PROPERTY) {
