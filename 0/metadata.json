@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M579V0DHKVBDXS81KN14K5GA",
+  "session_id": "ses_eaad12bf0ffeSvDViYwQBEA2Sb",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-19T17:26:02.399475Z",
+  "branch": "feat/media-controller",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/Emitter.java"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "9cfc56a23e00",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 24360,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 656768,
+    "output_tokens": 3971,
+    "api_call_count": 22
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-19T17:26:02.333352Z",
+    "agent_lines": 127,
+    "agent_removed": 1,
+    "human_added": 646,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 773,
+    "total_lines_changed": 1543,
+    "agent_percentage": 8.295528191834089,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
