@@ -96,13 +96,13 @@ function seedGlyph(name: string, inner: string): void {
 describe("media autoplay policy", () => {
   const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  /** A playback element hydrated from the SSR HTML (the controller's hidden
-   *  `<video data-pathland-media>` inside its shell), registered at `id` so
-   *  property deltas reach it. Returns the element + its renderer. */
+  /** A playback element hydrated from the SSR HTML: the controller node is the
+   *  `data-pathland-id` container, and the inner `<video data-pathland-media>`
+   *  is its control-less playback element (the real SSR shape). Wired through the
+   *  **media element** so the report-id derivation is exercised. */
   function hydratedMedia(id = 1): { media: HTMLMediaElement; element: HTMLElement; r: DomRenderer } {
     const wrapper = document.createElement("div");
     wrapper.setAttribute("data-pathland-id", String(id));
-    wrapper.setAttribute("data-pathland-media", "");
     const media = document.createElement("video");
     media.setAttribute("data-pathland-media", "");
     media.setAttribute("src", "/_pathland/assets/audio/track1.mp3");
@@ -110,9 +110,34 @@ describe("media autoplay policy", () => {
     document.body.appendChild(wrapper);
     const r = renderer();
     r.byId.set(id, wrapper);
-    setupMediaElement(wrapper, r);
+    setupMediaElement(media, r);
     return { media, element: wrapper, r };
   }
+
+  it("keys a controller's media reports to its node id, not 0", async () => {
+    // The controller's `<video>` carries no id of its own — reports must resolve
+    // the id from the nearest `[data-pathland-id]` ancestor (the controller node),
+    // or every MEDIA_TIME_UPDATED goes out as target=0 and progress stalls.
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-pathland-id", "241");
+    const media = document.createElement("video");
+    media.setAttribute("data-pathland-media", "");
+    media.setAttribute("src", "/_pathland/assets/audio/track1.mp3");
+    Object.defineProperty(media, "duration", { value: 120, configurable: true });
+    wrapper.appendChild(media);
+    document.body.appendChild(wrapper);
+
+    const sent: Uint8Array[] = [];
+    const r: DomRenderer = { byId: new Map(), onMediaEvent: (b) => sent.push(b) };
+    setupMediaElement(media, r);
+
+    media.dispatchEvent(new Event("durationchange"));
+    expect(sent.length).toBe(1);
+    // The EVENT opcode's target (A) is the 4th field of the first opcode.
+    const view = new DataView(sent[0]!.buffer, sent[0]!.byteOffset);
+    const opcodePos = 16; // HEADER_SIZE
+    expect(view.getUint32(opcodePos + 4, true)).toBe(241);
+  });
 
   it("retries a play() the autoplay policy blocked, on the next gesture", async () => {
     const media = document.createElement("video");

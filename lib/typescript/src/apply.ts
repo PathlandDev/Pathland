@@ -1343,11 +1343,13 @@ export function unlockMedia(): void {
     const wasMuted = media.muted;
     media.muted = true;
     const p = media.play();
-    // Restore the mute **synchronously**: the browser's autoplay check happens at
-    // the instant of `play()`, so `muted` only needs to be true *then*. Leaving it
-    // true until the async promise settles would let the element (and any play()
-    // that lands meanwhile) run muted — silent playback with advancing time.
-    media.muted = wasMuted;
+    // `muted` must stay true until playback actually starts (the browser
+    // re-evaluates the element when the media pipeline begins): unmuting in the
+    // same tick turns the muted-autoplay into an *unmuted* one and the browser
+    // rejects it. So restore the mute only once `play()` settles.
+    const restore = () => {
+      media.muted = wasMuted;
+    };
     if (p && typeof p.then === "function") {
       p.then(
         () => {
@@ -1356,8 +1358,10 @@ export function unlockMedia(): void {
           if (!mediaState.get(media)?.playing) {
             media.pause();
           }
+          restore();
         },
         (err: unknown) => {
+          restore();
           const name = err instanceof Error ? err.name : String(err);
           // A not-yet-loaded element rejects here; the next gesture retries.
           log.debug("media", "unlock play() deferred", name);
@@ -1365,6 +1369,7 @@ export function unlockMedia(): void {
       );
     } else {
       state.unlocked = true;
+      restore();
     }
   }
 }
@@ -1415,7 +1420,17 @@ export function setupMediaElement(el: HTMLElement, r: DomRenderer, reportId?: nu
   }
   const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1, reportTimer: 0, unlocked: false };
   mediaState.set(media, state);
-  const id = reportId ?? Number(el.getAttribute("data-pathland-id"));
+  // The report id is the owning `MEDIA_CONTROLLER` node. A controller's playback
+  // element is a `<video data-pathland-media>` **child** of the controller node
+  // (`<div data-pathland-id="…">`), so the element itself carries no id — fall
+  // back to the nearest ancestor that does. (A `VIDEO` surface passes its
+  // controller id explicitly via `reportId`.) Without this, reports go out as
+  // `target=0`, which no media sink is keyed to, and progress never advances.
+  const id = reportId ?? Number(
+    el.getAttribute("data-pathland-id")
+      ?? el.closest("[data-pathland-id]")?.getAttribute("data-pathland-id")
+      ?? 0,
+  );
   const send = r.onMediaEvent;
   if (!send) {
     return;
