@@ -167,9 +167,6 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
         View mainArea = ZStack
                 .make(z -> z.alignment(Alignment.BOTTOM_CENTER))
                 .children(
-                        // Audio has no view: the marker materializes the playback
-                        // controller's node (non-visual) once, outside the fit slot.
-                        player.attach(),
                         LibraryView.make(l -> l
                                 .trackIndex(trackIndex.signal())
                                 .position(position.signal())
@@ -197,12 +194,21 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
         View compactRow = HStack.make()
                 .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(mainArea);
-        return SizeThatFits.make(
-                Fit.of(wideRow, 1024f),
-                Fit.of(compactRow))
-                .modifiers(
-                        frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)),
-                        accessibilityRole(Roles.MAIN));
+        // Audio has no view: the attach marker materializes the playback
+        // controller's node (non-visual) ONCE at the root, outside both the fit
+        // slot and the shared main area. Keeping it outside the swapping branch
+        // means a full snapshot (both candidates) never materializes a duplicate
+        // controller id, and a band swap never tears the controller down.
+        return VStack.make()
+                .children(
+                        player.attach(),
+                        SizeThatFits.make(
+                                Fit.of(wideRow, 1024f),
+                                Fit.of(compactRow))
+                                .modifiers(
+                                        frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)),
+                                        accessibilityRole(Roles.MAIN)))
+                .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)));
     }
 
     /** The karaoke lyric pill just above the floating player bar: always two
