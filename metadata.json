@@ -2,8 +2,8 @@
   "cli_version": "0.9.0",
   "checkpoint_id": "01M57X4JGJW9N1R0NE1V73GP9X",
   "strategy": "manual-commit",
-  "branch": "spec/media-controller",
-  "checkpoints_count": 6,
+  "branch": "feat/media-controller",
+  "checkpoints_count": 7,
   "files_touched": [
     "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-3463ab1057d7.js",
     "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-452d9f3ccc68.js",
@@ -22,13 +22,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": ""
     }
   ],
   "token_usage": {
-    "input_tokens": 62436053,
+    "input_tokens": 62437206,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 1407327744,
-    "output_tokens": 2088803,
-    "api_call_count": 4109
+    "cache_read_tokens": 1407380992,
+    "output_tokens": 2088876,
+    "api_call_count": 4111
   }
 }
