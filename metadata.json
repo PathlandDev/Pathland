@@ -2,9 +2,19 @@
   "cli_version": "0.9.0",
   "checkpoint_id": "01M57N5A93RZ8ZRD8KPC30NW30",
   "strategy": "manual-commit",
-  "branch": "spec/media-controller",
-  "checkpoints_count": 1,
-  "files_touched": null,
+  "branch": "feat/media-controller",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/SplitNavDemo.java",
+    "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/kitchensink/KitchenSinkView.java",
+    "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/kitchensink/MediaSection.java",
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/SplitNavDemoTest.java",
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/kitchensink/KitchenSinkViewTest.java",
+    "lib/java/pathland-demo-views/status.md",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/Emitter.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/SizeThatFitsTest.java",
+    "lib/java/pathland-view/status.md"
+  ],
   "sessions": [
     {
       "metadata": "/0/metadata.json",
@@ -12,13 +22,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": ""
     }
   ],
   "token_usage": {
-    "input_tokens": 61888652,
+    "input_tokens": 61923675,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 1378159360,
-    "output_tokens": 2053576,
-    "api_call_count": 3996
+    "cache_read_tokens": 1378467968,
+    "output_tokens": 2054413,
+    "api_call_count": 4004
   }
 }
