@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M5AMDCF2G85MEEP2CFYP2SXT",
+  "session_id": "ses_eaad12bf0ffeSvDViYwQBEA2Sb",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-19T17:47:44.671745Z",
+  "branch": "feat/media-controller",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/main/java/dev/pathland/demo/music/MusicPlayerView.java",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-2da7368af3e1.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-58d83afc1063.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-b9d4058e9308.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-2da7368af3e1.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-58d83afc1063.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-b9d4058e9308.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "9cfc56a23e00",
+  "checkpoint_transcript_start": 42,
+  "transcript_lines_at_start": 42,
+  "compact_transcript_start": 42,
+  "token_usage": {
+    "input_tokens": 108085,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 2460928,
+    "output_tokens": 3835,
+    "api_call_count": 28
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-19T17:47:44.513277Z",
+    "agent_lines": 23,
+    "agent_removed": 23,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 23,
+    "total_lines_changed": 46,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
