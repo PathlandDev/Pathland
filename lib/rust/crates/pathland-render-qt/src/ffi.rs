@@ -32,6 +32,7 @@ impl Command {
     pub const SET_STRING_PROPERTY: u8 = 7;
     pub const RESET_NODE: u8 = 8;
     pub const SET_SCHEME: u8 = 9;
+    pub const SET_DATE: u8 = 10;
 
     fn new(kind: u8, a: u32, b: u32, c: u32) -> Self {
         Self {
@@ -99,6 +100,10 @@ impl Command {
     pub fn set_scheme(scheme: u8) -> Self {
         Self::new(Self::SET_SCHEME, scheme as u32, 0, 0)
     }
+    /// A `DATE_PICKER` value: `b = days since epoch (I32)`, `c = millis of day`.
+    pub fn set_date(id: u32, days: i32, millis: u32) -> Self {
+        Self::new(Self::SET_DATE, id, days as u32, millis)
+    }
 }
 
 pub type Wake = extern "C" fn(*mut c_void);
@@ -116,6 +121,10 @@ pub struct QtEvent {
     pub value: f32,
     pub str_len: u32,
     pub str_: *const c_char,
+    /// KEY_DOWN/KEY_UP payload: platform key code + modifier bitmask + repeat.
+    pub key_code: u16,
+    pub modifiers: u8,
+    pub repeat: u8,
 }
 
 pub mod ev {
@@ -131,6 +140,14 @@ pub mod ev {
     pub const MEDIA_ENDED: u8 = 10;
     pub const MEDIA_VOLUME: u8 = 11;
     pub const MEDIA_DURATION: u8 = 12;
+    pub const FIT_CHANGED: u8 = 13;
+    pub const POINTER_ENTER: u8 = 14;
+    pub const POINTER_LEAVE: u8 = 15;
+    pub const KEY_DOWN: u8 = 16;
+    pub const KEY_UP: u8 = 17;
+    pub const FOCUS: u8 = 18;
+    pub const EDITING: u8 = 19;
+    pub const SUBMIT: u8 = 20;
 }
 
 extern "C" {
@@ -192,6 +209,10 @@ extern "C" {
     pub fn pathland_qt_layer_anchors_fill(id: u32) -> u32;
     #[allow(dead_code)]
     pub fn pathland_qt_layer_video_source(id: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_fit_index(id: u32) -> i32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_report_fit(id: u32, width: f64);
     #[allow(dead_code)]
     pub fn pathland_qt_layer_render_once() -> i32;
     #[allow(dead_code)] // test-only hook
@@ -502,6 +523,68 @@ mod tests {
                 1,
                 "video surface bound to its controller"
             );
+        });
+    }
+
+    /// SIZE_THAT_FITS derives its fit index from the allocated width against the
+    /// FIT_QUERY threshold table and reports it (spec/PRIMITIVES.md).
+    #[test]
+    fn size_that_fits_derives_index_from_width() {
+        with_qt(|| unsafe {
+            // The fit slot stores FIT_QUERY; the renderer measures its allocated
+            // width and derives the index (the harness drives the measurement via
+            // the report_fit hook, since an offscreen layout has no real width).
+            let cmds = [
+                Command::create_node(2, 0x17),                    // SIZE_THAT_FITS
+                Command::set_string_property(2, 0x1039, "0,640"), // FIT_QUERY
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+
+            pathland_qt_layer_report_fit(2, 500.0);
+            assert_eq!(pathland_qt_layer_fit_index(2), 0, "500 < 640 -> compact");
+            pathland_qt_layer_report_fit(2, 640.0);
+            assert_eq!(pathland_qt_layer_fit_index(2), 1, "640 >= 640 -> wide");
+        });
+    }
+
+    /// GRID_ROW cells are flattened into the parent Grid (spec/PRIMITIVES.md), so
+    /// columns align across rows and the row itself takes no cell.
+    #[test]
+    fn grid_row_flattens_into_the_grid() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, 0x13), // GRID
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::create_node(2, 0x1D), // GRID_ROW
+                Command::insert_child(1, 2, u32::MAX),
+                Command::create_node(3, 0x01), // cell a
+                Command::insert_child(2, 3, u32::MAX),
+                Command::create_node(4, 0x01), // cell b
+                Command::insert_child(2, 4, u32::MAX),
+                Command::create_node(5, 0x01), // bare cell
+                Command::insert_child(1, 5, u32::MAX),
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            // The grid holds the two row cells + the bare cell; no row item.
+            assert_eq!(pathland_qt_layer_widget_child_count(1), 3);
+        });
+    }
+
+    /// DATE_PICKER formats a SET_DATE value as an ISO date (and time when set).
+    #[test]
+    fn date_picker_formats_set_date() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, 0x27), // DATE_PICKER
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::set_date(1, 19_723, 0), // 2024-01-01
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            assert_eq!(read_text(1), "2024-01-01");
+
+            let with_time = [Command::set_date(1, 19_723, 3_600_000)];
+            pathland_qt_layer_apply(with_time.as_ptr(), with_time.len() as u32);
+            assert_eq!(read_text(1), "2024-01-01 01:00");
         });
     }
 

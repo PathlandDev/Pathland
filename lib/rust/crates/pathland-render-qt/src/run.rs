@@ -113,6 +113,46 @@ fn decode_event(raw: &QtEvent) -> QtAction {
             target: raw.node_id,
             seconds: raw.value,
         }),
+        ev::FIT_CHANGED => QtAction::Send(Event::FitChanged {
+            target: raw.node_id,
+            index: raw.value,
+        }),
+        ev::POINTER_ENTER => QtAction::Send(Event::PointerMove {
+            target: raw.node_id,
+            x: 0.0,
+            y: 0.0,
+            hovering: true,
+            leaving: false,
+        }),
+        ev::POINTER_LEAVE => QtAction::Send(Event::PointerMove {
+            target: raw.node_id,
+            x: 0.0,
+            y: 0.0,
+            hovering: false,
+            leaving: true,
+        }),
+        ev::KEY_DOWN => QtAction::Send(Event::KeyDown {
+            target: raw.node_id,
+            key_code: raw.key_code,
+            modifiers: raw.modifiers,
+            repeat: raw.repeat != 0,
+        }),
+        ev::KEY_UP => QtAction::Send(Event::KeyUp {
+            target: raw.node_id,
+            key_code: raw.key_code,
+            modifiers: raw.modifiers,
+        }),
+        ev::FOCUS => QtAction::Send(Event::FocusChanged {
+            target: raw.node_id,
+            focused: raw.value >= 0.5,
+        }),
+        ev::EDITING => QtAction::Send(Event::EditingChanged {
+            target: raw.node_id,
+            editing: raw.value >= 0.5,
+        }),
+        ev::SUBMIT => QtAction::Send(Event::Submit {
+            target: raw.node_id,
+        }),
         ev::SCHEME_CHANGED => QtAction::Scheme(if raw.value >= 0.5 {
             Scheme::Dark
         } else {
@@ -379,6 +419,9 @@ mod tests {
             value,
             str_len: 0,
             str_: std::ptr::null(),
+            key_code: 0,
+            modifiers: 0,
+            repeat: 0,
         }
     }
 
@@ -453,6 +496,13 @@ mod tests {
             }
             _ => panic!("MEDIA_VOLUME must map to Event::MediaVolumeChanged"),
         }
+        match decode_event(&qt_event(ev::FIT_CHANGED, 8, 1.0)) {
+            QtAction::Send(Event::FitChanged { target, index }) => {
+                assert_eq!(target, 8);
+                assert_eq!(index, 1.0);
+            }
+            _ => panic!("FIT_CHANGED must map to Event::FitChanged"),
+        }
         match decode_event(&qt_event(ev::MEDIA_DURATION, 4, 210.0)) {
             QtAction::Send(Event::MediaDurationChanged { target, seconds }) => {
                 assert_eq!(target, 4);
@@ -460,6 +510,90 @@ mod tests {
             }
             _ => panic!("MEDIA_DURATION must map to Event::MediaDurationChanged"),
         }
+    }
+
+    #[test]
+    fn decode_maps_hover_key_and_focus() {
+        match decode_event(&qt_event(ev::POINTER_ENTER, 9, 0.0)) {
+            QtAction::Send(Event::PointerMove {
+                target,
+                hovering,
+                leaving,
+                ..
+            }) => {
+                assert_eq!(target, 9);
+                assert!(hovering);
+                assert!(!leaving);
+            }
+            _ => panic!("POINTER_ENTER must map to a hovering PointerMove"),
+        }
+        match decode_event(&qt_event(ev::POINTER_LEAVE, 9, 0.0)) {
+            QtAction::Send(Event::PointerMove {
+                target,
+                hovering,
+                leaving,
+                ..
+            }) => {
+                assert_eq!(target, 9);
+                assert!(!hovering);
+                assert!(leaving);
+            }
+            _ => panic!("POINTER_LEAVE must map to a leaving PointerMove"),
+        }
+
+        let mut down = qt_event(ev::KEY_DOWN, 9, 0.0);
+        down.key_code = 65;
+        down.modifiers = 1;
+        down.repeat = 1;
+        match decode_event(&down) {
+            QtAction::Send(Event::KeyDown {
+                target,
+                key_code,
+                modifiers,
+                repeat,
+            }) => {
+                assert_eq!(target, 9);
+                assert_eq!(key_code, 65);
+                assert_eq!(modifiers, 1);
+                assert!(repeat);
+            }
+            _ => panic!("KEY_DOWN must map to Event::KeyDown"),
+        }
+
+        let mut up = qt_event(ev::KEY_UP, 9, 0.0);
+        up.key_code = 66;
+        up.modifiers = 2;
+        match decode_event(&up) {
+            QtAction::Send(Event::KeyUp {
+                target,
+                key_code,
+                modifiers,
+            }) => {
+                assert_eq!(target, 9);
+                assert_eq!(key_code, 66);
+                assert_eq!(modifiers, 2);
+            }
+            _ => panic!("KEY_UP must map to Event::KeyUp"),
+        }
+
+        assert!(matches!(
+            decode_event(&qt_event(ev::FOCUS, 9, 1.0)),
+            QtAction::Send(Event::FocusChanged {
+                target: 9,
+                focused: true
+            })
+        ));
+        assert!(matches!(
+            decode_event(&qt_event(ev::EDITING, 9, 0.0)),
+            QtAction::Send(Event::EditingChanged {
+                target: 9,
+                editing: false
+            })
+        ));
+        assert!(matches!(
+            decode_event(&qt_event(ev::SUBMIT, 9, 0.0)),
+            QtAction::Send(Event::Submit { target: 9 })
+        ));
     }
 
     #[test]
@@ -521,6 +655,9 @@ mod tests {
             value: 0.0,
             str_len: text.len() as u32,
             str_: text.as_ptr() as *const c_char,
+            key_code: 0,
+            modifiers: 0,
+            repeat: 0,
         };
         ring_event(&raw, user);
         let events = ring.borrow_mut().drain_events();

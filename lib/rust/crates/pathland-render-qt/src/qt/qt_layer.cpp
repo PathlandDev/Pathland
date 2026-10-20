@@ -23,6 +23,7 @@
 #include <QtQml/QQmlContext>
 #include <QtCore/QTimer>
 #include <QtCore/QCoreApplication>
+#include <QtCore/QDate>
 #include <QtCore/QUrl>
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
@@ -300,6 +301,17 @@ struct LayerState {
     // Local asset root for web-style `/_pathland/...` source paths (empty = use
     // sources as-is), set by a foreign host via pathland_qt_layer_set_asset_root.
     QString asset_root;
+    // SIZE_THAT_FITS: ascending candidate thresholds (`FIT_QUERY`) and the last
+    // reported fit index (so FIT_CHANGED is reported only when it changes).
+    std::unordered_map<uint32_t, std::vector<double>> fit_queries;
+    std::unordered_map<uint32_t, int> fit_index;
+    // GRID_ROW -> its parent Grid (rows are flattened; cells attach to the grid).
+    std::unordered_map<uint32_t, uint32_t> grid_of;
+    // Full EVENT_LISTENERS mask per node (gates focus/editing/submit reports).
+    std::unordered_map<uint32_t, uint32_t> node_listeners;
+    // The focused text-input node (keys are reported against it) + its component.
+    uint32_t focused_id = 0;
+    uint16_t focused_component = 0;
     // EVENT_LISTENERS MouseArea overlay per node (id -> MouseArea item).
     std::unordered_map<uint32_t, QQuickItem *> mouse_areas;
     // Deferred FILL dimensions (bit0=width, bit1=height) for widgets whose
@@ -512,7 +524,8 @@ QString qmlFor(uint16_t component, uint32_t id) {
         return QStringLiteral(
                    "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
                    "TextField { objectName: \"pl%1\"; "
-                   "onTextChanged: bridge.textChanged(%2, text) }")
+                   "onTextChanged: bridge.textChanged(%2, text); "
+                   "onEditingFinished: bridge.submit(%2) }")
             .arg(id)
             .arg(id);
     case PL_COMP_SLIDER:
@@ -561,6 +574,38 @@ QObject *mediaAudioFor(uint32_t controllerId) {
     return item->findChild<QObject *>(QStringLiteral("pl%1audio").arg(controllerId));
 }
 
+// The fit index for an allocated width: the largest candidate whose minWidth is
+// <= width (thresholds ascending), clamped to the table (spec/PRIMITIVES.md).
+int deriveFitIndex(const std::vector<double> &thresholds, double width) {
+    if (thresholds.empty()) {
+        return 0;
+    }
+    int index = 0;
+    for (size_t i = 0; i < thresholds.size(); ++i) {
+        if (thresholds[i] <= width) {
+            index = static_cast<int>(i);
+        } else {
+            break;
+        }
+    }
+    return index;
+}
+
+// Measure a fit slot and report FIT_CHANGED when the derived index changes.
+void reportFit(uint32_t id, double width) {
+    auto it = g.fit_queries.find(id);
+    if (it == g.fit_queries.end() || !g.bridge) {
+        return;
+    }
+    const int index = deriveFitIndex(it->second, width);
+    auto prev = g.fit_index.find(id);
+    if (prev != g.fit_index.end() && prev->second == index) {
+        return;
+    }
+    g.fit_index[id] = index;
+    g.bridge->fitChanged(id, index);
+}
+
 // ---------------------------------------------------------------------------
 // Navigation adapter (spec DSL.md §4.5): a VSTACK/HSTACK slot carrying ROUTE
 // renders as a StackView; the adapter reconciles its page stack by NAV_DEPTH.
@@ -576,6 +621,22 @@ bool isStackComponent(uint16_t component) {
 // MEDIA_CONTROLLER owns playback but renders no element.
 bool isNonVisual(uint16_t component) {
     return component == PL_COMP_MEDIA_CONTROLLER;
+}
+
+// A component that consumes BackSpace (so it must not trigger native back).
+bool isTextInput(uint16_t component) {
+    return component == PL_COMP_TEXT_FIELD || component == PL_COMP_TEXT_EDITOR ||
+           component == PL_COMP_DATE_PICKER;
+}
+
+// Renderer-defined modifier bitmask reported with key events.
+uint32_t modifierMask(Qt::KeyboardModifiers m) {
+    uint32_t out = 0;
+    if (m & Qt::ShiftModifier) out |= 1;
+    if (m & Qt::ControlModifier) out |= 2;
+    if (m & Qt::AltModifier) out |= 4;
+    if (m & Qt::MetaModifier) out |= 8;
+    return out;
 }
 
 // Whether a parent item is a Qt Quick positioner (Row/Column/Grid). Positioners
@@ -896,6 +957,9 @@ void attachPointerArea(uint32_t id, uint32_t mask) {
     }
     if (mask & 2) { // POINTER_MOVE -> PLQT_EV_POINTER_MOVE = 5
         handlers += QStringLiteral("onPositionChanged: bridge.pointer(%1, 5, mouse.x, mouse.y)\n").arg(id);
+        // Hover enter/leave ride the same pointer-move listener (spec/EVENTS.md).
+        handlers += QStringLiteral("onEntered: bridge.hover(%1, true)\n").arg(id);
+        handlers += QStringLiteral("onExited: bridge.hover(%1, false)\n").arg(id);
     }
     if (mask & 4) { // POINTER_UP -> PLQT_EV_POINTER_UP = 1
         handlers += QStringLiteral("onReleased: bridge.pointer(%1, 1, mouse.x, mouse.y)\n").arg(id);
@@ -1166,6 +1230,7 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
         reconcileNav(id);
         break;
     case PL_PROP_EVENT_LISTENERS:
+        g.node_listeners[id] = value;
         attachPointerArea(id, value);
         break;
     case PL_PROP_ACTION_ID:
@@ -1295,6 +1360,20 @@ void applyStringProperty(uint32_t id, uint16_t prop, const char *str, uint32_t l
     }
     const QString value = QString::fromUtf8(str, static_cast<int>(len));
     switch (prop) {
+    case PL_PROP_FIT_QUERY: {
+        std::vector<double> thresholds;
+        for (const QString &part : value.split(',', Qt::SkipEmptyParts)) {
+            bool ok = false;
+            const double v = part.trimmed().toDouble(&ok);
+            if (ok) {
+                thresholds.push_back(v);
+            }
+        }
+        g.fit_queries[id] = thresholds;
+        g.fit_index.erase(id);
+        reportFit(id, item->width());
+        break;
+    }
     case PL_PROP_ICON_NAME:
         item->setProperty("text", iconGlyph(value));
         break;
@@ -1422,19 +1501,58 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
         return; // the destination is placed by the nav adapter, not visually here
     }
 
-    QQuickItem *parent = findWidget(parentId);
+    // GRID_ROW (spec/PRIMITIVES.md): a row's cells are flattened into the parent
+    // Grid so columns align across rows. The row itself renders nothing.
+    if (g.components[childId] == PL_COMP_GRID_ROW &&
+        g.components[parentId] == PL_COMP_GRID) {
+        g.grid_of[childId] = parentId;
+        if (QQuickItem *row = findWidget(childId)) {
+            QQuickItem *grid = findWidget(parentId);
+            for (QQuickItem *cell : row->childItems()) {
+                cell->setParentItem(grid); // cells already present join the grid
+            }
+            row->setParentItem(nullptr);
+        }
+        return;
+    }
+
+    // A GRID_ROW's cell attaches to the row's grid (flattened), at its global
+    // row-major cell index.
+    uint32_t visualParentId = parentId;
+    uint32_t visualIndex = index;
+    if (g.components[parentId] == PL_COMP_GRID_ROW) {
+        auto git = g.grid_of.find(parentId);
+        if (git != g.grid_of.end()) {
+            visualParentId = git->second;
+            int n = 0;
+            for (uint32_t c : g.children_of[visualParentId]) {
+                if (c == parentId) {
+                    break;
+                }
+                n += (g.components[c] == PL_COMP_GRID_ROW)
+                         ? static_cast<int>(g.children_of[c].size())
+                         : 1;
+            }
+            const auto &rowKids = g.children_of[parentId];
+            auto lit = std::find(rowKids.begin(), rowKids.end(), childId);
+            const int local = (lit == rowKids.end()) ? 0 : static_cast<int>(lit - rowKids.begin());
+            visualIndex = static_cast<uint32_t>(n + local);
+        }
+    }
+
+    QQuickItem *parent = findWidget(visualParentId);
     if (!parent) {
         return;
     }
     // Stacks attach children to their inner layout (so `Layout` stretch works);
     // a ScrollView attaches to its contentItem (so content sizes/scrolls it).
     QQuickItem *attach = parent;
-    if (isStackComponent(g.components[parentId])) {
+    if (isStackComponent(g.components[visualParentId])) {
         attach = layoutOf(parent);
         if (!attach) {
             attach = parent;
         }
-    } else if (g.components[parentId] == PL_COMP_SCROLL) {
+    } else if (g.components[visualParentId] == PL_COMP_SCROLL) {
         QVariant ci = parent->property("contentItem");
         if (ci.isValid()) {
             if (QQuickItem *c = ci.value<QQuickItem *>()) {
@@ -1479,13 +1597,13 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
         }
     }
     flushFill(child, attach);
-    if (index == UINT32_MAX) {
+    if (visualIndex == UINT32_MAX) {
         return; // append (already last)
     }
     QList<QQuickItem *> siblingsList = attach->childItems();
     siblingsList.removeAll(child);
-    if (static_cast<int>(index) < siblingsList.size()) {
-        QQuickItem *after = siblingsList.at(static_cast<int>(index));
+    if (static_cast<int>(visualIndex) < siblingsList.size()) {
+        QQuickItem *after = siblingsList.at(static_cast<int>(visualIndex));
         if (after != child) {
             child->stackBefore(after);
         }
@@ -1518,6 +1636,14 @@ void deleteNode(uint32_t id) {
     g.nav_page_tags.erase(id);
     g.gated_ids.erase(id);
     g.stack_align.erase(id);
+    g.fit_queries.erase(id);
+    g.fit_index.erase(id);
+    g.grid_of.erase(id);
+    g.node_listeners.erase(id);
+    if (g.focused_id == id) {
+        g.focused_id = 0;
+        g.focused_component = 0;
+    }
     detachPointerArea(id);
 }
 
@@ -1529,14 +1655,30 @@ public:
     using QObject::QObject;
 protected:
     bool eventFilter(QObject *obj, QEvent *ev) override {
-        if (ev->type() == QEvent::KeyPress) {
-            auto *ke = static_cast<QKeyEvent *>(ev);
-            if (ke->key() == Qt::Key_Escape) {
-                if (g.bridge) {
-                    g.bridge->navigateBack();
-                }
-                return true;
+        if (ev->type() != QEvent::KeyPress && ev->type() != QEvent::KeyRelease) {
+            return QObject::eventFilter(obj, ev);
+        }
+        auto *ke = static_cast<QKeyEvent *>(ev);
+        const bool down = ev->type() == QEvent::KeyPress;
+        // Escape is always native back (global, never node-keyed).
+        if (down && ke->key() == Qt::Key_Escape) {
+            if (g.bridge) {
+                g.bridge->navigateBack();
             }
+            return true;
+        }
+        // BackSpace is native back unless a text input owns the key.
+        if (down && ke->key() == Qt::Key_Backspace && !isTextInput(g.focused_component)) {
+            if (g.bridge) {
+                g.bridge->navigateBack();
+            }
+            return true;
+        }
+        // Report KEY_DOWN/KEY_UP for the focused node (gated by its listener bits
+        // inside the Bridge); the event still reaches the focused control.
+        if (g.focused_id != 0 && g.bridge) {
+            g.bridge->key(g.focused_id, ke->key(), modifierMask(ke->modifiers()),
+                          ke->isAutoRepeat(), down);
         }
         return QObject::eventFilter(obj, ev);
     }
@@ -1573,6 +1715,7 @@ int pathland_qt_layer_init(PathlandQtWake wake, PathlandQtTick tick,
     g.bridge->event_fn = event_fn;
     g.bridge->user = user;
     g.bridge->gated = &g.gated_ids;
+    g.bridge->listeners = &g.node_listeners;
     g.bridge->suppress = &g.suppress;
 
     g.engine = new QQmlEngine(g.app);
@@ -1649,6 +1792,28 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
             if (item) {
                 g.widgets[c.a] = item;
                 g.components[c.a] = component;
+                if (component == PL_COMP_SIZE_THAT_FITS) {
+                    const uint32_t id = c.a;
+                    QObject::connect(item, &QQuickItem::widthChanged, item,
+                                     [id, item]() { reportFit(id, item->width()); });
+                }
+                if (isTextInput(component)) {
+                    const uint32_t id = c.a;
+                    QObject::connect(item, &QQuickItem::activeFocusChanged, item, [id, item]() {
+                        const bool focused = item->hasActiveFocus();
+                        if (focused) {
+                            g.focused_id = id;
+                            g.focused_component = g.components[id];
+                        } else if (g.focused_id == id) {
+                            g.focused_id = 0;
+                            g.focused_component = 0;
+                        }
+                        if (g.bridge) {
+                            g.bridge->focusChanged(id, focused);
+                            g.bridge->editingChanged(id, focused);
+                        }
+                    });
+                }
             }
             break;
         }
@@ -1719,6 +1884,27 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
             break;
         case PLQT_SET_SCHEME:
             break; // MVP: scheme handling is a follow-up
+        case PLQT_SET_DATE: {
+            // A DATE_PICKER value: days since the Unix epoch + millis of day.
+            // The renderer owns the formatting (QML approximation of a picker).
+            if (QQuickItem *item = findWidget(c.a)) {
+                const qint64 days = static_cast<int32_t>(c.b);
+                const QDate date = QDate(1970, 1, 1).addDays(days);
+                QString text = date.toString(QStringLiteral("yyyy-MM-dd"));
+                const int millis = static_cast<int>(c.c);
+                if (millis > 0) {
+                    const int hours = millis / 3'600'000;
+                    const int minutes = (millis / 60'000) % 60;
+                    text += QStringLiteral(" %1:%2")
+                                .arg(hours, 2, 10, QChar('0'))
+                                .arg(minutes, 2, 10, QChar('0'));
+                }
+                g.suppress = true;
+                item->setProperty("text", text);
+                g.suppress = false;
+            }
+            break;
+        }
         }
     }
     g.apply_count += count;
@@ -1746,6 +1932,12 @@ void pathland_qt_layer_reset(void) {
     g.mouse_areas.clear();
     g.pending_fill.clear();
     g.media_play_state.clear();
+    g.fit_queries.clear();
+    g.fit_index.clear();
+    g.grid_of.clear();
+    g.node_listeners.clear();
+    g.focused_id = 0;
+    g.focused_component = 0;
     g.apply_count = 0;
     g.last_text_len = 0;
     g.last_text[0] = '\0';
@@ -1847,6 +2039,13 @@ uint32_t pathland_qt_layer_anchors_fill(uint32_t id) {
     QQuickItem *target = fill.value<QQuickItem *>();
     return target == g.root ? 1 : 0;
 }
+void pathland_qt_layer_report_fit(uint32_t id, double width) { reportFit(id, width); }
+
+int pathland_qt_layer_fit_index(uint32_t id) {
+    auto it = g.fit_index.find(id);
+    return it == g.fit_index.end() ? -1 : it->second;
+}
+
 uint32_t pathland_qt_layer_video_source(uint32_t id) {
     QQuickItem *item = findWidget(id);
     if (!item) {

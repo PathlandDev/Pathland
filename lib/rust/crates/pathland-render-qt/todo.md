@@ -37,17 +37,15 @@ grid rows). Remaining work is tracked here and in `status.md`.
 
 ## Still missing / needs doing
 
-- [ ] **`SIZE_THAT_FITS` / `FIT_CHANGED`**: decode the `FIT_QUERY` `LIST`
-      (arena `f32` thresholds) in `pathland-render-core` (or the Qt diff), then
-      measure allocated width and report `FIT_CHANGED` so the app can switch
-      candidates without a round trip.
-- [ ] **`GRID_ROW` flattening**: attach a row's cells directly to the `Grid`
-      (instead of one `RowLayout` cell) so columns align across rows.
-- [ ] **Events**: pointer `hover`/`leave`, `KEY_DOWN`/`KEY_UP`,
-      `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, BackSpace native back.
-- [ ] **Controls gaps**: `MENU` popup item list, native `DATE_PICKER`/
-      `COLOR_PICKER`, `PICKER` option styling, `BACKGROUND_COLOR`/border on
-      Qt Quick Controls, `SHAPE` paths.
+- [x] **`SIZE_THAT_FITS` / `FIT_CHANGED`** — shared `LIST` decode + width measure
+      + `FIT_CHANGED`.
+- [x] **`GRID_ROW` flattening** — cells attach to the Grid; columns align.
+- [x] **Events** — hover/leave, keys (focused text input),
+      focus/editing/submit, BackSpace native back.
+- [x] **`DATE_PICKER`** — `SET_DATE` → ISO text (QML approximation).
+- [ ] **Controls gaps**: `MENU` popup item list, `COLOR_PICKER` (QML popup),
+      `PICKER` option styling, `BACKGROUND_COLOR`/border on Qt Quick Controls,
+      `SHAPE` paths. (`DATE_PICKER` is an ISO-text approximation.)
 - [ ] **Lazy view virtualization** (currently eager) and `TRANSITION` animation.
 - [ ] **Demo icons (cosmetic)**: the Qt demo references `icons/*.svg`; point it
       at real assets (or the shared `DemoAssets`) so sidebar rows show icons.

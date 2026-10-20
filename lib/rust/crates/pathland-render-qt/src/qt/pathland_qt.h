@@ -29,6 +29,7 @@ typedef enum PathlandQtCommandKind {
     PLQT_SET_STRING_PROPERTY = 7, /* a=id, b=propertyId, str=value              */
     PLQT_RESET_NODE = 8,    /* a=id — reset renderer-owned style to defaults     */
     PLQT_SET_SCHEME = 9,    /* a=scheme (0 light, 1 dark)                        */
+    PLQT_SET_DATE = 10,     /* a=id, b=days since epoch (I32), c=millis of day   */
 } PathlandQtCommandKind;
 
 typedef struct PathlandQtCommand {
@@ -41,6 +42,20 @@ typedef struct PathlandQtCommand {
 } PathlandQtCommand;
 
 /* One raw input reported by the Qt layer (C++ -> Rust). */
+/* EVENT_LISTENERS bitmask (spec/EVENTS.md). */
+enum PathlandQtListenerBits {
+    PL_LISTENER_POINTER_DOWN = 1u << 0,
+    PL_LISTENER_POINTER_MOVE = 1u << 1,
+    PL_LISTENER_POINTER_UP = 1u << 2,
+    PL_LISTENER_KEY_DOWN = 1u << 3,
+    PL_LISTENER_KEY_UP = 1u << 4,
+    PL_LISTENER_FOCUS = 1u << 5,
+    PL_LISTENER_EDITING = 1u << 6,
+    PL_LISTENER_SUBMIT = 1u << 7,
+    PL_LISTENER_SCROLL = 1u << 8,
+    PL_LISTENER_WHEEL = 1u << 9,
+};
+
 typedef enum PathlandQtEventKind {
     PLQT_EV_NONE = 0,
     PLQT_EV_POINTER_UP = 1,   /* a control was tapped / pointer released (x,y)   */
@@ -55,6 +70,14 @@ typedef enum PathlandQtEventKind {
     PLQT_EV_MEDIA_ENDED = 10,     /* controller reached the end (no value)        */
     PLQT_EV_MEDIA_VOLUME = 11,    /* controller volume 0..1 (value)               */
     PLQT_EV_MEDIA_DURATION = 12,  /* controller duration, seconds (value)         */
+    PLQT_EV_FIT_CHANGED = 13,     /* SIZE_THAT_FITS derived fit index (value)     */
+    PLQT_EV_POINTER_ENTER = 14,   /* pointer entered a listener node (hover)      */
+    PLQT_EV_POINTER_LEAVE = 15,   /* pointer left a listener node                 */
+    PLQT_EV_KEY_DOWN = 16,        /* key pressed on the focused node              */
+    PLQT_EV_KEY_UP = 17,          /* key released on the focused node             */
+    PLQT_EV_FOCUS = 18,           /* focus changed (value 0/1)                    */
+    PLQT_EV_EDITING = 19,         /* editing changed (value 0/1)                  */
+    PLQT_EV_SUBMIT = 20,          /* text input submitted                         */
 } PathlandQtEventKind;
 
 typedef struct PathlandQtEvent {
@@ -65,6 +88,11 @@ typedef struct PathlandQtEvent {
     float value;
     uint32_t str_len;
     const char *str;
+    /* Key payload (KEY_DOWN/KEY_UP): the platform key code, a renderer-defined
+       modifier bitmask, and auto-repeat. Zero for every other event. */
+    uint16_t key_code;
+    uint8_t modifiers;
+    uint8_t repeat;
 } PathlandQtEvent;
 
 /* Wake callback into the Rust host: an event was written to the ring; the host
@@ -112,6 +140,8 @@ double pathland_qt_layer_widget_preferred(uint32_t id, uint32_t which);
 double pathland_qt_layer_widget_size(uint32_t id, uint32_t which);
 uint32_t pathland_qt_layer_anchors_fill(uint32_t id);
 uint32_t pathland_qt_layer_video_source(uint32_t id);
+int pathland_qt_layer_fit_index(uint32_t id);
+void pathland_qt_layer_report_fit(uint32_t id, double width);
 int pathland_qt_layer_render_once(void);
 
 #ifdef __cplusplus

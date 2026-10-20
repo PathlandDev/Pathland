@@ -10,7 +10,7 @@
 use std::collections::{HashMap, HashSet};
 
 use pathland_core::{value_type, Frame};
-use pathland_render_core::RenderTree;
+use pathland_render_core::{HostNode, RenderTree};
 
 use crate::ffi::Command;
 
@@ -20,6 +20,7 @@ struct SentNode {
     text: Option<String>,
     props: HashMap<u16, u32>,
     strings: HashMap<u16, String>,
+    date: Option<(i32, u32)>,
 }
 
 /// Pseudo-parent for tree roots: id `0` maps to the Qt window's contentItem.
@@ -155,7 +156,14 @@ impl QtRenderer {
                 cmds.push(Command::set_text(id, node.text.as_deref().unwrap_or("")));
                 s.text = node.text.clone();
             }
-            if node.properties != s.props || node.strings != s.strings {
+            if node.date != s.date {
+                if let Some((days, millis)) = node.date {
+                    cmds.push(Command::set_date(id, days, millis));
+                }
+                s.date = node.date;
+            }
+            let strings = string_props(node);
+            if node.properties != s.props || strings != s.strings {
                 cmds.push(Command::reset_node(id));
                 // Emit numeric props in a deterministic order with VALUE last:
                 // Qt Quick clamps a control's `value` when `from`/`to` aren't
@@ -167,11 +175,11 @@ impl QtRenderer {
                     let vt = value_type_for(*prop);
                     cmds.push(Command::set_property(id, *prop, vt, *value));
                 }
-                for (prop, value) in &node.strings {
+                for (prop, value) in &strings {
                     cmds.push(Command::set_string_property(id, *prop, value));
                 }
                 s.props = node.properties.clone();
-                s.strings = node.strings.clone();
+                s.strings = strings;
             }
         }
 
@@ -207,6 +215,22 @@ impl QtRenderer {
             }
         }
     }
+}
+
+/// The string-valued properties a node sends to the C++ layer: its decoded
+/// strings plus `LIST` properties serialized as CSV (today a `FIT_QUERY`
+/// threshold table, which the Qt layer parses to measure a fit slot).
+fn string_props(node: &HostNode) -> HashMap<u16, String> {
+    let mut props = node.strings.clone();
+    for (prop, values) in &node.lists {
+        let csv = values
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        props.insert(*prop, csv);
+    }
+    props
 }
 
 /// The opcode wire's value type for a property (same mapping the emit side
@@ -288,7 +312,10 @@ fn children_diff(parent: u32, prev: &[u32], next: &[u32]) -> Vec<Command> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pathland_core::{init_memory, Frame, Guest, Host, MemoryLayout};
+    use pathland_core::{
+        category, component_type, init_memory, parameter, tree, value_type, Frame, Guest, Host,
+        MemoryLayout, Opcode,
+    };
     use pathland_engine::Engine;
     use pathland_view::{assign_ids, text, vstack, Configurable, Node, Padding, View, ViewExt};
 
@@ -501,6 +528,91 @@ mod tests {
 
         // Identical lists emit nothing.
         assert!(children_diff(1, &[2, 3], &[2, 3]).is_empty());
+    }
+
+    /// A decoded `SET_DATE` is forwarded to the C++ layer exactly once.
+    #[test]
+    fn date_change_is_forwarded_once() {
+        let ops = [
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                1,
+                component_type::DATE_PICKER as u32,
+                0,
+            ),
+            Opcode::new(category::PARAMETER, parameter::SET_DATE, 0, 1, 19_723, 0),
+        ];
+        let slots: Vec<u8> = ops.iter().flat_map(|o| o.to_bytes()).collect();
+        let frame = Frame::from_parts(&slots, &[], 0, slots.len());
+
+        let mut r = QtRenderer::new();
+        r.tree.apply_frame(&frame);
+        let cmds = r.diff();
+        let date = cmds.iter().find(|c| c.kind == Command::SET_DATE);
+        let date = date.expect("SET_DATE forwarded");
+        assert_eq!(date.a, 1);
+        assert_eq!(date.b, 19_723);
+        assert_eq!(date.c, 0);
+
+        // Re-applying the same frame sends no date command.
+        r.tree.apply_frame(&frame);
+        let again = r.diff();
+        assert!(!again.iter().any(|c| c.kind == Command::SET_DATE));
+    }
+
+    /// A `LIST` property (a `FIT_QUERY` threshold table) is forwarded to the C++
+    /// layer as a CSV string the fit slot parses (spec/PRIMITIVES.md).
+    #[test]
+    fn list_property_is_forwarded_as_csv() {
+        // Ring arena entry: [u32 byteLen][payload], payload = [u32 count][f32 × count].
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&2u32.to_le_bytes());
+        payload.extend_from_slice(&0.0f32.to_bits().to_le_bytes());
+        payload.extend_from_slice(&640.0f32.to_bits().to_le_bytes());
+        let mut arena = Vec::new();
+        arena.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        arena.extend_from_slice(&payload);
+
+        let ops = [
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                1,
+                component_type::SIZE_THAT_FITS as u32,
+                0,
+            ),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::LIST as u32) << 16) | pathland_core::property_id::FIT_QUERY as u32,
+                0,
+            ),
+        ];
+        let slots: Vec<u8> = ops.iter().flat_map(|o| o.to_bytes()).collect();
+        let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+
+        let mut r = QtRenderer::new();
+        r.tree.apply_frame(&frame);
+        let cmds = r.diff();
+
+        let csv = cmds
+            .iter()
+            .find(|c| {
+                c.kind == Command::SET_STRING_PROPERTY
+                    && (c.b as u16) == pathland_core::property_id::FIT_QUERY
+            })
+            .map(|c| {
+                assert!(!c.str_.is_null());
+                let bytes =
+                    unsafe { std::slice::from_raw_parts(c.str_ as *const u8, c.str_len as usize) };
+                std::str::from_utf8(bytes).unwrap().to_string()
+            });
+        assert_eq!(csv.as_deref(), Some("0,640"));
     }
 
     #[test]

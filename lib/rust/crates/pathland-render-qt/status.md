@@ -137,6 +137,24 @@ Design-token contract: `spec/TOKENS.md`.
     fills it.
   - `GRID_ROW` (0x1D) → a `RowLayout` cell (renders; cross-row column
     alignment is still a gap).
+- **Shared decode parity** (`pathland-render-core`): `LIST`-typed properties
+  (`FIT_QUERY`) decode into `HostNode::lists`, and `PARAMETER::SET_DATE` into
+  `HostNode::date` — so the Qt layer can measure fit slots and format dates.
+- **`SIZE_THAT_FITS` fit measurement**: the slot's `FIT_QUERY` thresholds reach
+  the C++ layer as CSV; a width change derives the fit index (largest
+  `minWidth` ≤ allocated width) and reports `FIT_CHANGED` (only when it
+  changes).
+- **`GRID_ROW` flattening**: a row's cells attach directly to the parent Grid
+  (row-major), so columns align across rows; the row item takes no cell.
+- **`DATE_PICKER`**: `SET_DATE` (days since epoch + millis of day) renders as an
+  ISO date (with time when nonzero) in a QML text field — a QML approximation
+  (Qt Quick has no native date picker).
+- **Events** (spec/EVENTS.md): pointer `hover`/`leave` (`POINTER_MOVE`
+  hovering/leaving) from the listener `MouseArea`; `KEY_DOWN`/`KEY_UP` for the
+  focused text input (component-type/key-listener gated); `FOCUS_CHANGED` /
+  `EDITING_CHANGED` / `SUBMIT` for text inputs (gated by the matching
+  `EVENT_LISTENERS` bits); BackSpace is native back unless a text input is
+  focused (focus-aware, no longer deferred).
 - **Media transport** (spec/MEDIA.md): `MEDIA_SOURCE`, `PLAYBACK_STATE`
   (play/pause), `MEDIA_POSITION` (seek, seconds→ms), `MEDIA_VOLUME` /
   `MEDIA_MUTED` (via `AudioOutput`), `MEDIA_LOOP`, `MEDIA_RATE`, and the
@@ -158,38 +176,32 @@ Design-token contract: `spec/TOKENS.md`.
 
 ## Not implemented / gaps
 
-- **`SIZE_THAT_FITS` fit measurement**: the slot renders greedily and shows
-  its selected child, but `FIT_QUERY` (a `LIST` value) is not yet decoded into
-  the Qt layer, so the renderer does not derive/report `FIT_CHANGED`. The app
-  must keep emitting the selected candidate until this lands.
-- **`GRID_ROW` cross-row alignment**: each row renders as one `RowLayout` cell;
-  columns are not aligned across rows (the flatten-into-the-grid form is a
-  follow-up).
-- Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving), `KEY_DOWN`/
-  `KEY_UP`, `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, and BackSpace as native
-  back (text-focus detection) are not yet reported.
-- The Rust DSL does not yet expose signal property bindings (the Java DSL
-  does), so the demo marks the slider bound via a `BINDING_ID` on the retained
-  tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.
-- The Rust DSL has no `NavigationContainer` either (the spec table is
-  aspirational) — the renderer consumes ROUTE/NAV_DEPTH, but the Rust demo
-  can't exercise nav without a DSL feature; Java/SplitNavDemo is the nav demo
-  vehicle (Phase D).
-- `TRANSITION`-hint animation, back-swipe gestures, multi-step deep-link
-  intermediate pages (same gaps as the GTK renderer).
-- `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their
-  background delegate; border mapping now covers `Rectangle`-backed nodes only),
-  `SHAPE` path approximation, `MENU` popup item list, `DATE_PICKER`/
-  `COLOR_PICKER` native dialogs, and `PICKER` option styling not yet mapped.
+- **`MENU` popup item list**: Qt 6 has no `MenuButton`; the trigger is a
+  `Button` and the action-item popup is not built (documented gap).
+- **`COLOR_PICKER`** remains a `Button` approximation (a QML color-swatch popup
+  is a follow-up); `DATE_PICKER` is an ISO-text QML approximation, not a native
+  dialog.
+- **`PICKER` option styling**, `BACKGROUND_COLOR`/border on Qt Quick Controls
+  (they own their background delegate; border mapping covers `Rectangle`-backed
+  nodes only), and `SHAPE` path approximation.
+- **Keys/events beyond the focused text input**: keys are reported for a focused
+  text input; keys on other focused controls, `SCROLL`/`WHEEL`, and
+  `DATE_CHANGED` are not yet reported. Hover/leave use `POINTER_MOVE` (the
+  listener mask bit).
 - **FILL inside plain positioners**: `GRID` (a `QQuickGrid`) rejects
   `anchors.fill` on its children, so a `WIDTH`/`HEIGHT` `FILL` inside a Grid
   defers and is skipped (the positioner sizes it). Stacks use `RowLayout`/
-  `ColumnLayout` so FILL children stretch properly; `Row`/`Column`/`Grid`
-  plain-positioner stretch would need `QtQuick.Layouts` everywhere.
+  `ColumnLayout` so FILL children stretch properly.
+- The Rust DSL does not yet expose signal property bindings (the Java DSL
+  does), so the demo marks the slider bound via a `BINDING_ID` on the retained
+  tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.
+- The Rust DSL has no `NavigationContainer` (the spec table is aspirational) —
+  the renderer consumes ROUTE/NAV_DEPTH; Java/SplitNavDemo is the nav demo
+  vehicle.
+- `TRANSITION`-hint animation, back-swipe gestures, multi-step deep-link
+  intermediate pages (same gaps as the GTK renderer).
 - **Java JNA demo** (`lib/java/pathland-qt-demo`) runs the shared
-  `SplitNavDemo` (incl. native navigation) via `pathland_qt_run_ring` — the
-  cross-language nav demo vehicle, since the Rust DSL lacks a
-  `NavigationContainer`.
+  `SplitNavDemo` (incl. native navigation) via `pathland_qt_run_ring`.
 - Lazy views render eagerly.
 
 ## Verified by
@@ -212,8 +224,14 @@ and the nav adapter (`nav_slot_promotes_and_pushes_root_page`,
 `nav_depth_push_and_pop`, `nav_replace_same_depth_new_route`,
 `nav_custom_chrome_bare_pages`), plus post-merge parity
 (`new_components_and_media_binding`: ICON glyph resolution, a layout-transparent
-MEDIA_CONTROLLER, and a VIDEO surface bound to its controller) and media event
-decoding (`decode_maps_media_reports`). `cargo test -p pathland-render-qt` now
+MEDIA_CONTROLLER, and a VIDEO surface bound to its controller) media event
+decoding (`decode_maps_media_reports`), the shared decode parity
+(`decodes_list_and_date_values` in `pathland-render-core`; `list_property_is_forwarded_as_csv`,
+`date_change_is_forwarded_once`), `SIZE_THAT_FITS`
+(`size_that_fits_derives_index_from_width`), `GRID_ROW`
+(`grid_row_flattens_into_the_grid`), `DATE_PICKER`
+(`date_picker_formats_set_date`), and the event family
+(`decode_maps_hover_key_and_focus`). `cargo test -p pathland-render-qt` now
 completes directly (the import-path fix). Full workspace: `cd lib/rust && cargo test`.
 Java JNA demo: `scripts/run-java-qt-demo.sh` (headless `RingEventReaderTest`
 runs in the Maven reactor; the live host mounts `SplitNavDemo`).

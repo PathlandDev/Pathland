@@ -126,6 +126,96 @@ void Bridge::mediaDuration(quint32 nodeId, qreal seconds) {
     fireMedia(this, ev);
 }
 
+void Bridge::fitChanged(quint32 nodeId, int index) {
+    // A fit report targets the slot (by component type), not gated by BINDING_ID.
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_FIT_CHANGED;
+    ev.node_id = nodeId;
+    ev.value = static_cast<float>(index);
+    fireMedia(this, ev);
+}
+
+namespace {
+bool wants(Bridge *b, quint32 id, uint32_t bit) {
+    if (!b->listeners) {
+        return false;
+    }
+    auto it = b->listeners->find(id);
+    return it != b->listeners->end() && (it->second & bit) != 0;
+}
+} // namespace
+
+void Bridge::hover(quint32 nodeId, bool entering) {
+    // The listener MouseArea (and its enter/exit handlers) is only attached when
+    // POINTER_MOVE is requested, so no extra gate here.
+    if (suppress && *suppress) {
+        return;
+    }
+    PathlandQtEvent ev{};
+    ev.kind = entering ? PLQT_EV_POINTER_ENTER : PLQT_EV_POINTER_LEAVE;
+    ev.node_id = nodeId;
+    if (event_fn) {
+        event_fn(&ev, user);
+    }
+}
+
+void Bridge::key(quint32 nodeId, quint32 keyCode, quint32 modifiers, bool repeat, bool down) {
+    const uint32_t bit = down ? PL_LISTENER_KEY_DOWN : PL_LISTENER_KEY_UP;
+    if (!wants(this, nodeId, bit)) {
+        return;
+    }
+    if (suppress && *suppress) {
+        return;
+    }
+    PathlandQtEvent ev{};
+    ev.kind = down ? PLQT_EV_KEY_DOWN : PLQT_EV_KEY_UP;
+    ev.node_id = nodeId;
+    ev.key_code = static_cast<uint16_t>(keyCode & 0xFFFF);
+    ev.modifiers = static_cast<uint8_t>(modifiers & 0xFF);
+    ev.repeat = repeat ? 1 : 0;
+    if (event_fn) {
+        event_fn(&ev, user);
+    }
+}
+
+void Bridge::focusChanged(quint32 nodeId, bool focused) {
+    if (!wants(this, nodeId, PL_LISTENER_FOCUS)) {
+        return;
+    }
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_FOCUS;
+    ev.node_id = nodeId;
+    ev.value = focused ? 1.0f : 0.0f;
+    if (event_fn) {
+        event_fn(&ev, user);
+    }
+}
+
+void Bridge::editingChanged(quint32 nodeId, bool editing) {
+    if (!wants(this, nodeId, PL_LISTENER_EDITING)) {
+        return;
+    }
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_EDITING;
+    ev.node_id = nodeId;
+    ev.value = editing ? 1.0f : 0.0f;
+    if (event_fn) {
+        event_fn(&ev, user);
+    }
+}
+
+void Bridge::submit(quint32 nodeId) {
+    if (!wants(this, nodeId, PL_LISTENER_SUBMIT)) {
+        return;
+    }
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_SUBMIT;
+    ev.node_id = nodeId;
+    if (event_fn) {
+        event_fn(&ev, user);
+    }
+}
+
 void Bridge::schemeChanged(quint32 scheme) {
     PathlandQtEvent ev{};
     ev.kind = PLQT_EV_SCHEME_CHANGED;

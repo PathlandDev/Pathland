@@ -37,6 +37,15 @@ pub struct HostNode {
     /// [`RenderTree::resolve_tokens`]); the path is kept so it can be
     /// re-resolved when the scheme changes.
     pub token_refs: BTreeMap<u16, String>,
+    /// `LIST`-typed properties decoded from the arena (propertyId → f32 values).
+    ///
+    /// Today the only list is a `SIZE_THAT_FITS` slot's `FIT_QUERY` threshold
+    /// table (ascending `f32`s, spec/PRIMITIVES.md). The renderer measures its
+    /// allocated width and derives the fit index.
+    pub lists: HashMap<u16, Vec<f32>>,
+    /// A `DATE_PICKER`'s last `PARAMETER::SET_DATE` value: (days since the Unix
+    /// epoch, millis of day).
+    pub date: Option<(i32, u32)>,
 }
 
 impl HostNode {
@@ -63,6 +72,11 @@ impl HostNode {
     pub fn checked(&self) -> bool {
         self.u32_property(pathland_core::property_id::SELECTED, 0) != 0
     }
+
+    /// A decoded `LIST` property (today a `FIT_QUERY` threshold table).
+    pub fn list_property(&self, prop: u16) -> Option<&[f32]> {
+        self.lists.get(&prop).map(Vec::as_slice)
+    }
 }
 
 impl Default for HostNode {
@@ -76,6 +90,8 @@ impl Default for HostNode {
             properties: HashMap::new(),
             strings: HashMap::new(),
             token_refs: BTreeMap::new(),
+            lists: HashMap::new(),
+            date: None,
         }
     }
 }
@@ -234,6 +250,14 @@ impl RenderTree {
                             if let Ok(path) = frame.arena_str(op.c()) {
                                 n.token_refs.insert(prop_id, path.to_string());
                             }
+                        } else if vt == value_type::LIST {
+                            // An arena-backed `[u32 count][f32 × count]` array —
+                            // today a SIZE_THAT_FITS `FIT_QUERY` table.
+                            if let Ok(bytes) = frame.arena_get(op.c()) {
+                                if let Some(values) = list_f32(bytes) {
+                                    n.lists.insert(prop_id, values);
+                                }
+                            }
                         } else {
                             n.properties.insert(prop_id, op.c());
                         }
@@ -242,6 +266,12 @@ impl RenderTree {
                 (category::PARAMETER, parameter::SET_TEXT) => {
                     if let Some(n) = self.nodes.get_mut(&op.a()) {
                         n.text = frame.arena_str(op.b()).ok().map(|s| s.to_string());
+                    }
+                }
+                (category::PARAMETER, parameter::SET_DATE) => {
+                    // A = node, B = days since epoch (I32), C = millis of day.
+                    if let Some(n) = self.nodes.get_mut(&op.a()) {
+                        n.date = Some((op.b() as i32, op.c()));
                     }
                 }
                 (category::PARAMETER, parameter::SET_DESIGN_TOKEN) => {
@@ -279,6 +309,25 @@ impl RenderTree {
     pub fn root(&self) -> Option<&HostNode> {
         self.nodes.values().find(|n| n.parent.is_none())
     }
+}
+
+/// Read a length-prefixed f32 array (`[u32 count][f32 × count]`) from an arena
+/// entry — the numeric form of a `LIST`-typed value (spec/OPCODE.md).
+fn list_f32(entry: &[u8]) -> Option<Vec<f32>> {
+    if entry.len() < 4 {
+        return None;
+    }
+    let count = u32::from_le_bytes(entry[..4].try_into().ok()?) as usize;
+    let start = 4;
+    if start + count * 4 > entry.len() {
+        return None;
+    }
+    let mut values = Vec::with_capacity(count);
+    for i in 0..count {
+        let bits = u32::from_le_bytes(entry[start + i * 4..start + i * 4 + 4].try_into().ok()?);
+        values.push(f32::from_bits(bits));
+    }
+    Some(values)
 }
 
 /// Decode a frame into a fresh `RenderTree`.
@@ -544,6 +593,52 @@ mod tests {
             controller.id,
             "the surface points at the controller's node"
         );
+    }
+
+    /// `LIST` (`FIT_QUERY`) and `SET_DATE` decode into the shared tree, so the
+    /// Qt renderer can measure a fit slot and format a date (spec/PRIMITIVES.md).
+    #[test]
+    fn decodes_list_and_date_values() {
+        // The ring arena entry is `[u32 byteLen][payload]` (Guest::alloc); a
+        // LIST payload is `[u32 count][f32 × count]` (spec/OPCODE.md).
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&2u32.to_le_bytes());
+        payload.extend_from_slice(&320.0f32.to_bits().to_le_bytes());
+        payload.extend_from_slice(&640.0f32.to_bits().to_le_bytes());
+        let mut arena = Vec::new();
+        arena.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        arena.extend_from_slice(&payload);
+
+        let ops = [
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                1,
+                component_type::SIZE_THAT_FITS as u32,
+                0,
+            ),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::LIST as u32) << 16)
+                    | pathland_core::property_id::FIT_QUERY as u32,
+                0,
+            ),
+            Opcode::new(category::PARAMETER, parameter::SET_DATE, 0, 1, 19_723, 3_600_000),
+        ];
+        let slots: Vec<u8> = ops.iter().flat_map(|o| o.to_bytes()).collect();
+        let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+        let tree = render_tree_from_frame(&frame);
+
+        let node = tree.node(1).unwrap();
+        assert_eq!(
+            node.list_property(pathland_core::property_id::FIT_QUERY),
+            Some([320.0f32, 640.0].as_slice())
+        );
+        assert_eq!(node.date, Some((19_723, 3_600_000)));
     }
 
     #[test]

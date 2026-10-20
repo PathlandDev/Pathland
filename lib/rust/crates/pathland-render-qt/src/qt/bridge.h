@@ -12,6 +12,7 @@
 
 #include <QtCore/QObject>
 #include <cstdint>
+#include <unordered_map>
 #include <unordered_set>
 #include "pathland_qt.h"
 
@@ -24,6 +25,8 @@ public:
     void *user = nullptr;
     // Shared renderer state (owned by qt_layer.cpp).
     std::unordered_set<uint32_t> *gated = nullptr;
+    // Full EVENT_LISTENERS mask per node (gates focus/editing/submit reports).
+    std::unordered_map<uint32_t, uint32_t> *listeners = nullptr;
     bool *suppress = nullptr;
 
 public slots:
@@ -46,6 +49,16 @@ public slots:
     void mediaEnded(quint32 nodeId);
     void mediaVolume(quint32 nodeId, qreal volume);
     void mediaDuration(quint32 nodeId, qreal seconds);
+    // SIZE_THAT_FITS: the derived fit index (spec/PRIMITIVES.md).
+    void fitChanged(quint32 nodeId, int index);
+    // Hover enter/leave from a listener MouseArea (spec/EVENTS.md).
+    void hover(quint32 nodeId, bool entering);
+    // Key down/up on the focused node.
+    void key(quint32 nodeId, quint32 keyCode, quint32 modifiers, bool repeat, bool down);
+    // Focus / editing / submit on a text input (gated by EVENT_LISTENERS bits).
+    void focusChanged(quint32 nodeId, bool focused);
+    void editingChanged(quint32 nodeId, bool editing);
+    void submit(quint32 nodeId);
 };
 
 #endif // PATHLAND_QT_BRIDGE_H
