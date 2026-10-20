@@ -93,9 +93,31 @@ fn decode_event(raw: &QtEvent) -> QtAction {
             })
         }
         ev::NAVIGATE_BACK => QtAction::Send(Event::Navigate { url: None }),
-        ev::SCHEME_CHANGED => {
-            QtAction::Scheme(if raw.value >= 0.5 { Scheme::Dark } else { Scheme::Light })
-        }
+        // Media transport reports target the MEDIA_CONTROLLER (spec/MEDIA.md).
+        ev::MEDIA_PLAY_STATE => QtAction::Send(Event::MediaPlayStateChanged {
+            target: raw.node_id,
+            playing: raw.value >= 0.5,
+        }),
+        ev::MEDIA_TIME => QtAction::Send(Event::MediaTimeUpdated {
+            target: raw.node_id,
+            seconds: raw.value,
+        }),
+        ev::MEDIA_ENDED => QtAction::Send(Event::MediaEnded {
+            target: raw.node_id,
+        }),
+        ev::MEDIA_VOLUME => QtAction::Send(Event::MediaVolumeChanged {
+            target: raw.node_id,
+            volume: raw.value,
+        }),
+        ev::MEDIA_DURATION => QtAction::Send(Event::MediaDurationChanged {
+            target: raw.node_id,
+            seconds: raw.value,
+        }),
+        ev::SCHEME_CHANGED => QtAction::Scheme(if raw.value >= 0.5 {
+            Scheme::Dark
+        } else {
+            Scheme::Light
+        }),
         _ => QtAction::None,
     }
 }
@@ -364,7 +386,12 @@ mod tests {
     fn decode_maps_pointer_and_global_events() {
         // Pointer down/move/up -> raw pointer events.
         match decode_event(&qt_event(ev::POINTER_DOWN, 7, 0.0)) {
-            QtAction::Send(Event::PointerDown { target, x, y, secondary }) => {
+            QtAction::Send(Event::PointerDown {
+                target,
+                x,
+                y,
+                secondary,
+            }) => {
                 assert_eq!(target, 7);
                 assert_eq!((x, y), (3.0, 4.0));
                 assert!(!secondary);
@@ -393,7 +420,46 @@ mod tests {
             decode_event(&qt_event(ev::SCHEME_CHANGED, 0, 0.0)),
             QtAction::Scheme(Scheme::Light)
         ));
-        assert!(matches!(decode_event(&qt_event(99, 0, 0.0)), QtAction::None));
+        assert!(matches!(
+            decode_event(&qt_event(99, 0, 0.0)),
+            QtAction::None
+        ));
+    }
+
+    #[test]
+    fn decode_maps_media_reports() {
+        match decode_event(&qt_event(ev::MEDIA_PLAY_STATE, 4, 1.0)) {
+            QtAction::Send(Event::MediaPlayStateChanged { target, playing }) => {
+                assert_eq!(target, 4);
+                assert!(playing);
+            }
+            _ => panic!("MEDIA_PLAY_STATE must map to Event::MediaPlayStateChanged"),
+        }
+        match decode_event(&qt_event(ev::MEDIA_TIME, 4, 12.5)) {
+            QtAction::Send(Event::MediaTimeUpdated { target, seconds }) => {
+                assert_eq!(target, 4);
+                assert_eq!(seconds, 12.5);
+            }
+            _ => panic!("MEDIA_TIME must map to Event::MediaTimeUpdated"),
+        }
+        assert!(matches!(
+            decode_event(&qt_event(ev::MEDIA_ENDED, 4, 0.0)),
+            QtAction::Send(Event::MediaEnded { target: 4 })
+        ));
+        match decode_event(&qt_event(ev::MEDIA_VOLUME, 4, 0.25)) {
+            QtAction::Send(Event::MediaVolumeChanged { target, volume }) => {
+                assert_eq!(target, 4);
+                assert_eq!(volume, 0.25);
+            }
+            _ => panic!("MEDIA_VOLUME must map to Event::MediaVolumeChanged"),
+        }
+        match decode_event(&qt_event(ev::MEDIA_DURATION, 4, 210.0)) {
+            QtAction::Send(Event::MediaDurationChanged { target, seconds }) => {
+                assert_eq!(target, 4);
+                assert_eq!(seconds, 210.0);
+            }
+            _ => panic!("MEDIA_DURATION must map to Event::MediaDurationChanged"),
+        }
     }
 
     #[test]
@@ -414,10 +480,7 @@ mod tests {
         assert_eq!(wakes(), 1);
         let events = ring.borrow_mut().drain_events();
         assert_eq!(events.len(), 1);
-        assert!(matches!(
-            &events[0],
-            Event::PointerDown { target: 7, .. }
-        ));
+        assert!(matches!(&events[0], Event::PointerDown { target: 7, .. }));
     }
 
     #[test]
@@ -476,7 +539,22 @@ mod tests {
         use pathland_core::Opcode;
 
         let reset = Opcode::from_bytes(&[
-            category::META, meta::RESET, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            category::META,
+            meta::RESET,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
         ]);
         let mut slots = Vec::new();
         slots.extend_from_slice(&reset.to_bytes());
@@ -484,7 +562,22 @@ mod tests {
         assert!(frame_has_reset(&frame), "META::RESET must be detected");
 
         let create = Opcode::from_bytes(&[
-            category::TREE, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            category::TREE,
+            0x01,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
         ]);
         let mut slots2 = Vec::new();
         slots2.extend_from_slice(&create.to_bytes());

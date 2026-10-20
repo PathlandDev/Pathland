@@ -110,10 +110,7 @@ impl QtRenderer {
             }
             let node = self.tree.node(id).unwrap();
             cmds.push(Command::create_node(id, node.component_type));
-            self.sent.insert(
-                id,
-                SentNode::default(),
-            );
+            self.sent.insert(id, SentNode::default());
         }
 
         // 3. Child order (parents before children already exist), THEN props:
@@ -244,6 +241,26 @@ fn is_f32_property(prop: u16) -> bool {
             | pathland_core::property_id::PROGRESS
             | pathland_core::property_id::NAV_CHROME
             | pathland_core::property_id::TRANSITION
+            | pathland_core::property_id::OFFSET_X
+            | pathland_core::property_id::OFFSET_Y
+            | pathland_core::property_id::POSITION_X
+            | pathland_core::property_id::POSITION_Y
+            | pathland_core::property_id::MIN_WIDTH
+            | pathland_core::property_id::IDEAL_WIDTH
+            | pathland_core::property_id::MAX_WIDTH
+            | pathland_core::property_id::MIN_HEIGHT
+            | pathland_core::property_id::IDEAL_HEIGHT
+            | pathland_core::property_id::MAX_HEIGHT
+            | pathland_core::property_id::LAYOUT_PRIORITY
+            | pathland_core::property_id::ASPECT_RATIO
+            | pathland_core::property_id::CONTENT_MODE
+            | pathland_core::property_id::MINIMUM_SCALE_FACTOR
+            | pathland_core::property_id::GRID_COLUMNS
+            | pathland_core::property_id::GRID_ROWS
+            | pathland_core::property_id::TEXT_ALIGNMENT
+            | pathland_core::property_id::MEDIA_POSITION
+            | pathland_core::property_id::MEDIA_VOLUME
+            | pathland_core::property_id::MEDIA_RATE
     )
 }
 
@@ -329,7 +346,12 @@ mod tests {
 
     #[test]
     fn first_frame_creates_tree_and_props() {
-        let mut view = vstack![text("ab"), text("cd")].with(|v| { v.spacing(4.0); }).modifiers(Padding(8.0)).build();
+        let mut view = vstack![text("ab"), text("cd")]
+            .with(|v| {
+                v.spacing(4.0);
+            })
+            .modifiers(Padding(8.0))
+            .build();
         assign_ids(&mut view, &mut 1);
 
         let mut h = Harness::new();
@@ -358,7 +380,11 @@ mod tests {
 
     #[test]
     fn unchanged_frame_emits_zero_commands() {
-        let mut view = vstack![text("ab")].with(|v| { v.spacing(4.0); }).build();
+        let mut view = vstack![text("ab")]
+            .with(|v| {
+                v.spacing(4.0);
+            })
+            .build();
         assign_ids(&mut view, &mut 1);
         let mut h = Harness::new();
         let mut r = QtRenderer::new();
@@ -374,14 +400,22 @@ mod tests {
 
     #[test]
     fn spacing_delta_emits_only_root_reset_and_prop() {
-        let mut a = vstack![text("ab")].with(|v| { v.spacing(4.0); }).build();
+        let mut a = vstack![text("ab")]
+            .with(|v| {
+                v.spacing(4.0);
+            })
+            .build();
         assign_ids(&mut a, &mut 1);
         let mut h = Harness::new();
         let mut r = QtRenderer::new();
         apply_emit(&mut r, &mut h, &a);
         let _ = r.diff();
 
-        let mut b = vstack![text("ab")].with(|v| { v.spacing(12.0); }).build();
+        let mut b = vstack![text("ab")]
+            .with(|v| {
+                v.spacing(12.0);
+            })
+            .build();
         assign_ids(&mut b, &mut 1);
         apply_emit(&mut r, &mut h, &b);
         let cmds = r.diff();
@@ -432,11 +466,13 @@ mod tests {
         let cmds = r.diff();
 
         assert!(
-            cmds.iter().any(|c| c.kind == Command::DELETE_NODE && c.a == 3),
+            cmds.iter()
+                .any(|c| c.kind == Command::DELETE_NODE && c.a == 3),
             "removed text node 3 is deleted"
         );
         assert!(
-            cmds.iter().any(|c| c.kind == Command::REMOVE_CHILD && c.a == 1 && c.b == 3),
+            cmds.iter()
+                .any(|c| c.kind == Command::REMOVE_CHILD && c.a == 1 && c.b == 3),
             "child 3 removed from root 1"
         );
     }
@@ -448,15 +484,18 @@ mod tests {
         // delta directly.
         let cmds = children_diff(1, &[2, 3], &[3, 2, 4]);
         assert!(
-            cmds.iter().any(|c| c.kind == Command::REMOVE_CHILD && c.a == 1 && c.b == 2),
+            cmds.iter()
+                .any(|c| c.kind == Command::REMOVE_CHILD && c.a == 1 && c.b == 2),
             "2 moved out"
         );
         assert!(
-            cmds.iter().any(|c| c.kind == Command::INSERT_CHILD && c.a == 1 && c.b == 2 && c.c == 1),
+            cmds.iter()
+                .any(|c| c.kind == Command::INSERT_CHILD && c.a == 1 && c.b == 2 && c.c == 1),
             "2 reinserted at index 1"
         );
         assert!(
-            cmds.iter().any(|c| c.kind == Command::INSERT_CHILD && c.a == 1 && c.b == 4 && c.c == 2),
+            cmds.iter()
+                .any(|c| c.kind == Command::INSERT_CHILD && c.a == 1 && c.b == 4 && c.c == 2),
             "4 appended at index 2"
         );
 
@@ -473,7 +512,8 @@ mod tests {
         apply_emit(&mut r, &mut h, &view);
         let cmds = r.diff();
         assert!(
-            cmds.iter().any(|c| c.kind == Command::INSERT_CHILD && c.a == CONTENT_ITEM && c.b == 1),
+            cmds.iter()
+                .any(|c| c.kind == Command::INSERT_CHILD && c.a == CONTENT_ITEM && c.b == 1),
             "root 1 is inserted into the content item"
         );
     }

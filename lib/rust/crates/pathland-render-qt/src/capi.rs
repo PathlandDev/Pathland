@@ -68,13 +68,7 @@ pub unsafe extern "C" fn pathland_qt_run(host: *mut c_void, on_event: Option<Eve
         return;
     }
     let pump: Box<dyn Pump> = Box::new(NativeHostHandle(host as *mut NativeHost));
-    run_with_pump_sized(
-        "Pathland Qt Demo",
-        pump,
-        on_event,
-        420,
-        220,
-    );
+    run_with_pump_sized("Pathland Qt Demo", pump, on_event, 420, 220);
 }
 
 /// Run the Qt renderer over a `libpathland_core` ring borrowed in-process.

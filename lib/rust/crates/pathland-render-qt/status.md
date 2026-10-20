@@ -1,6 +1,6 @@
 # pathland-render-qt — implementation status
 
-**Last updated:** September 28, 2026
+**Last updated:** October 20, 2026
 
 The **Qt Quick renderer**: maps opcode frames incrementally onto a Qt Quick
 scene graph (shared-memory desktop path). Protocol contract: `spec/`.
@@ -14,7 +14,7 @@ Design-token contract: `spec/TOKENS.md`.
 - **C++** (in `src/qt/`) owns the Qt application shell (QGuiApplication +
   QQuickWindow + QQmlEngine + a QML-facing `Bridge` QObject) and applies the
   delta command batch to QML items. Built via `cc` + `moc` in `build.rs`;
-  needs Qt6 dev libs (Homebrew: `qtbase qtdeclarative`).
+  needs Qt6 dev libs (Homebrew: `qtbase qtdeclarative qtmultimedia`).
 
 ## Implemented
 
@@ -116,11 +116,57 @@ Design-token contract: `spec/TOKENS.md`.
   container is a plain `Item` whose pages the renderer manages (only the top
   visible) — a renderer-owned page cache, same statelessness contract.
 
+- **Post-merge protocol parity (October 2026)**: the crate was merged onto the
+  shared `PARAMETER` rename and now maps the protocol surface added on `main`:
+  - `ICON` (0x0B) → a `Text` item whose glyph is resolved from `ICON_NAME` by a
+    renderer-owned canonical-name map (unknown names fall back to a dot), with
+    `COLOR`/`FONT_SIZE` reuse (spec/ICONS.md).
+  - `MEDIA_CONTROLLER` (0x30) → **non-visual** (layout-transparent: created but
+    never attached) hosting a QML `MediaPlayer` + `AudioOutput`
+    (spec/MEDIA.md).
+  - `VIDEO` (0x0A) → a `VideoOutput` surface; `MEDIA_CONTROLLER_ID` binds its
+    `source` to the referenced controller's `MediaPlayer` (a reference, not a
+    parent/child edge).
+  - `PROXY_VIEW` (0x1E) → a transparent vertical container.
+  - `SIZE_THAT_FITS` (0x17) → a greedy two-axis slot; its one selected child
+    fills it.
+  - `GRID_ROW` (0x1D) → a `RowLayout` cell (renders; cross-row column
+    alignment is still a gap).
+- **Media transport** (spec/MEDIA.md): `MEDIA_SOURCE`, `PLAYBACK_STATE`
+  (play/pause), `MEDIA_POSITION` (seek, seconds→ms), `MEDIA_VOLUME` /
+  `MEDIA_MUTED` (via `AudioOutput`), `MEDIA_LOOP`, `MEDIA_RATE`, and the
+  `MEDIA_PLAY_STATE_CHANGED` / `MEDIA_TIME_UPDATED` / `MEDIA_ENDED` /
+  `MEDIA_VOLUME_CHANGED` / `MEDIA_DURATION_CHANGED` reports (reported by the
+  controller's component type, not gated by `BINDING_ID`; programmatic sets are
+  echo-suppressed). A play/pause declared before the source is re-applied when
+  the source lands.
+- **Layout/property parity**: `OFFSET_X/Y`, `POSITION_X/Y`, `MIN/IDEAL/MAX_*`,
+  `CONTENT_MODE` (image fit/fill), `CLIPS_TO_BOUNDS`, `BORDER_COLOR` /
+  `BORDER_WIDTH` / `BORDER_RADIUS`, `TEXT_ALIGNMENT`, `LINE_LIMIT`,
+  `TRUNCATION_MODE`, and `GRID_COLUMNS` (via the `Layout` attached properties
+  where applicable).
+- **Headless test hang fixed**: Qt adds the executable's directory to QML's
+  implicit import path; a `cargo test` binary lives in a huge `target/debug/deps`
+  and plugin resolution scanned it for minutes. The shell now drops the
+  application directory from the engine's import path at init, so
+  `cargo test -p pathland-render-qt` completes in ~2s (no copy-to-temp workaround).
+
 ## Not implemented / gaps
 
-- Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving) and
-  `KEY_DOWN`/`KEY_UP` listener bits are not yet reported; BackSpace as native
-  back (text-focus detection) is deferred.
+- **`SIZE_THAT_FITS` fit measurement**: the slot renders greedily and shows
+  its selected child, but `FIT_QUERY` (a `LIST` value) is not yet decoded into
+  the Qt layer, so the renderer does not derive/report `FIT_CHANGED`. The app
+  must keep emitting the selected candidate until this lands.
+- **`GRID_ROW` cross-row alignment**: each row renders as one `RowLayout` cell;
+  columns are not aligned across rows (the flatten-into-the-grid form is a
+  follow-up).
+- Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving), `KEY_DOWN`/
+  `KEY_UP`, `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, and BackSpace as native
+  back (text-focus detection) are not yet reported.
+- Asset resolution: `MEDIA_SOURCE`/`IMAGE_SOURCE` are passed to Qt as written;
+  web-style `/_pathland/assets/...` paths are not remapped to a local asset
+  root (the GTK renderer has `pathland_gtk_set_asset_root`; a Qt analogue is a
+  follow-up).
 - The Rust DSL does not yet expose signal property bindings (the Java DSL
   does), so the demo marks the slider bound via a `BINDING_ID` on the retained
   tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.
@@ -131,9 +177,9 @@ Design-token contract: `spec/TOKENS.md`.
 - `TRANSITION`-hint animation, back-swipe gestures, multi-step deep-link
   intermediate pages (same gaps as the GTK renderer).
 - `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their
-  background delegate; mapping is a follow-up), `SHAPE` path approximation,
-  `MENU` popup item list, `DATE_PICKER`/`COLOR_PICKER` native dialogs, and
-  `PICKER` option styling not yet mapped.
+  background delegate; border mapping now covers `Rectangle`-backed nodes only),
+  `SHAPE` path approximation, `MENU` popup item list, `DATE_PICKER`/
+  `COLOR_PICKER` native dialogs, and `PICKER` option styling not yet mapped.
 - **FILL inside plain positioners**: `GRID` (a `QQuickGrid`) rejects
   `anchors.fill` on its children, so a `WIDTH`/`HEIGHT` `FILL` inside a Grid
   defers and is skipped (the positioner sizes it). Stacks use `RowLayout`/
@@ -163,7 +209,11 @@ anchored to the window), pointer-listener MouseArea attachment
 (`control_widgets_construct_and_apply_props`, `picker_builds_model_from_option_children`),
 and the nav adapter (`nav_slot_promotes_and_pushes_root_page`,
 `nav_depth_push_and_pop`, `nav_replace_same_depth_new_route`,
-`nav_custom_chrome_bare_pages`). Full workspace: `cd lib/rust && cargo test`.
+`nav_custom_chrome_bare_pages`), plus post-merge parity
+(`new_components_and_media_binding`: ICON glyph resolution, a layout-transparent
+MEDIA_CONTROLLER, and a VIDEO surface bound to its controller) and media event
+decoding (`decode_maps_media_reports`). `cargo test -p pathland-render-qt` now
+completes directly (the import-path fix). Full workspace: `cd lib/rust && cargo test`.
 Java JNA demo: `scripts/run-java-qt-demo.sh` (headless `RingEventReaderTest`
 runs in the Maven reactor; the live host mounts `SplitNavDemo`).
 Demo: `scripts/run-rust-qt-demo.sh`.

@@ -18,11 +18,12 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 use std::time::Instant;
 
-use pathland_engine::Engine;
 use pathland_core::listener;
 use pathland_core_transport::RingTransport;
+use pathland_engine::Engine;
 use pathland_view::{
-    assign_ids, button, hstack, text, vstack, Color, Node, Slider, View, ViewExt,
+    assign_ids, button, hstack, text, vstack, Color, Configurable, ForegroundStyle, Node, Padding,
+    PointerEvents, Slider, TapGesture, View, ViewExt,
 };
 
 const APP_ID: &str = "org.pathland.QtDemo";
@@ -51,32 +52,34 @@ fn build_tree(count: &Rc<RefCell<u32>>, slider_value: &Rc<RefCell<f32>>) -> Node
     let mut tree = vstack![
         hstack![
             text(format!("Count: {}", *count.borrow()).as_str()),
-            button("Increment").on_tap_gesture(move || *tap_count.borrow_mut() += 1),
+            button("Increment").modifiers(TapGesture::new(move || *tap_count.borrow_mut() += 1)),
         ]
-        .spacing(8.0)
-        .padding(16.0),
-        text("Pathland · Qt Quick · shared ring").foreground_style(Color::argb(0xFF_888888)),
+        .with(|h| {
+            h.spacing(8.0);
+        })
+        .modifiers(Padding(16.0)),
+        text("Pathland · Qt Quick · shared ring")
+            .modifiers(ForegroundStyle(Color::argb(0xFF_888888))),
         // A non-button view (Text) declaring raw pointer listeners — proving any
         // element can emit events via the `EVENT_LISTENERS` property.
-        text("I am a Text with raw pointer listeners")
-            .pointer_events(listener::POINTER_DOWN | listener::POINTER_UP)
-            .foreground_style(Color::argb(0xFF_0000AA)),
+        text("I am a Text with raw pointer listeners").modifiers((
+            PointerEvents(listener::POINTER_DOWN | listener::POINTER_UP),
+            ForegroundStyle(Color::argb(0xFF_0000AA)),
+        )),
         text(format!("Slider: {:.1}", *slider_value.borrow()).as_str()),
-        Slider {
-            value: *slider_value.borrow(),
-            min: 0.0,
-            max: 10.0,
-        },
-        vstack![
-            text("short"),
-            text("a much longer label"),
-            text("x"),
-        ]
-        .spacing(4.0)
-        .padding(16.0),
+        Slider::with(|s| {
+            s.value(*slider_value.borrow()).min(0.0).max(10.0);
+        }),
+        vstack![text("short"), text("a much longer label"), text("x"),]
+            .with(|v| {
+                v.spacing(4.0);
+            })
+            .modifiers(Padding(16.0)),
     ]
-    .spacing(12.0)
-    .padding(24.0)
+    .with(|v| {
+        v.spacing(12.0);
+    })
+    .modifiers(Padding(24.0))
     .build();
     mark_value_bound(&mut tree);
     tree

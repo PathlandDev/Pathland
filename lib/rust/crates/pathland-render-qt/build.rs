@@ -25,7 +25,12 @@ fn qmake_bin() -> PathBuf {
     }
     // Fall back to qmake6/qmake on PATH (Linux CI, other installs).
     for name in ["qmake6", "qmake"] {
-        if Command::new(name).arg("-query").arg("QT_VERSION").output().is_ok() {
+        if Command::new(name)
+            .arg("-query")
+            .arg("QT_VERSION")
+            .output()
+            .is_ok()
+        {
             return PathBuf::from(name);
         }
     }
@@ -94,7 +99,17 @@ fn main() {
     // moc-generated meta-object code are required (no Controls C++ libs).
     // QtQuickLayouts provides the Layout attached properties (`Layout.fillWidth`
     // etc.) used to stretch FILL children inside RowLayout/ColumnLayout stacks.
-    let modules = ["QtCore", "QtGui", "QtQml", "QtQuick", "QtQuickLayouts"];
+    // QtMultimedia provides the QML `MediaPlayer`/`VideoOutput` types the media
+    // kit (`VIDEO` surface + `MEDIA_CONTROLLER`, spec/MEDIA.md) instantiates.
+    let modules = [
+        "QtCore",
+        "QtGui",
+        "QtQml",
+        "QtQuick",
+        "QtQuickLayouts",
+        "QtMultimedia",
+        "QtMultimediaQuick",
+    ];
 
     let framework_dir = |m: &str| PathBuf::from(&libs).join(format!("{m}.framework"));
     let frameworks = modules
@@ -132,10 +147,7 @@ fn main() {
     let mut build = cc::Build::new();
     build
         .cpp(true)
-        .files([
-            "src/qt/qt_layer.cpp",
-            "src/qt/bridge.cpp",
-        ])
+        .files(["src/qt/qt_layer.cpp", "src/qt/bridge.cpp"])
         .std("c++17");
     build.include(&headers);
     build.include("src/qt"); // so `#include "bridge.h"` / "pathland_qt.h" resolve

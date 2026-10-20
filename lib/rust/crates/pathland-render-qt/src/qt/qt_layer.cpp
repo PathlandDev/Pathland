@@ -22,6 +22,7 @@
 #include <QtQml/QQmlComponent>
 #include <QtQml/QQmlContext>
 #include <QtCore/QTimer>
+#include <QtCore/QCoreApplication>
 #include <QtCore/QUrl>
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
@@ -53,6 +54,8 @@ enum {
     PL_COMP_SPACER = 0x06,
     PL_COMP_PROGRESS = 0x07,
     PL_COMP_GAUGE = 0x08,
+    PL_COMP_VIDEO = 0x0A,
+    PL_COMP_ICON = 0x0B,
     PL_COMP_VSTACK = 0x10,
     PL_COMP_HSTACK = 0x11,
     PL_COMP_ZSTACK = 0x12,
@@ -60,8 +63,11 @@ enum {
     PL_COMP_SCROLL = 0x14,
     PL_COMP_LAZY_VGRID = 0x15,
     PL_COMP_LAZY_HGRID = 0x16,
+    PL_COMP_SIZE_THAT_FITS = 0x17,
     PL_COMP_LAZY_VSTACK = 0x1B,
     PL_COMP_LAZY_HSTACK = 0x1C,
+    PL_COMP_GRID_ROW = 0x1D,
+    PL_COMP_PROXY_VIEW = 0x1E,
     PL_COMP_BUTTON = 0x20,
     PL_COMP_TEXT_FIELD = 0x21,
     PL_COMP_TEXT_EDITOR = 0x22,
@@ -72,6 +78,7 @@ enum {
     PL_COMP_PICKER = 0x28,
     PL_COMP_MENU = 0x29,
     PL_COMP_COLOR_PICKER = 0x2A,
+    PL_COMP_MEDIA_CONTROLLER = 0x30,
     PL_COMP_COMMENT = 0x7F,
 };
 
@@ -80,10 +87,43 @@ enum {
     PL_PROP_SPACING = 0x0001,
     PL_PROP_ALIGNMENT = 0x0002,
     PL_PROP_TEXT_ALIGNMENT = 0x000C,
+    PL_PROP_LINE_LIMIT = 0x000B,
+    PL_PROP_TRUNCATION = 0x000D,
+    PL_PROP_OFFSET_X = 0x000E,
+    PL_PROP_OFFSET_Y = 0x000F,
+    PL_PROP_POSITION_X = 0x0010,
+    PL_PROP_POSITION_Y = 0x0011,
+    PL_PROP_MIN_WIDTH = 0x0012,
+    PL_PROP_IDEAL_WIDTH = 0x0013,
+    PL_PROP_MAX_WIDTH = 0x0014,
+    PL_PROP_MIN_HEIGHT = 0x0015,
+    PL_PROP_IDEAL_HEIGHT = 0x0016,
+    PL_PROP_MAX_HEIGHT = 0x0017,
+    PL_PROP_FIXED_SIZE_HORIZONTAL = 0x0018,
+    PL_PROP_FIXED_SIZE_VERTICAL = 0x0019,
+    PL_PROP_LAYOUT_PRIORITY = 0x001A,
+    PL_PROP_ASPECT_RATIO = 0x001B,
+    PL_PROP_CONTENT_MODE = 0x001C,
+    PL_PROP_MINIMUM_SCALE_FACTOR = 0x001D,
+    PL_PROP_GRID_COLUMNS = 0x001E,
+    PL_PROP_GRID_ROWS = 0x001F,
     PL_PROP_BACKGROUND = 0x1001,
     PL_PROP_IMAGE_SOURCE = 0x1002,
     PL_PROP_BORDER_WIDTH = 0x1003,
+    PL_PROP_BORDER_COLOR = 0x1004,
     PL_PROP_BORDER_RADIUS = 0x1005,
+    PL_PROP_CLIPS_TO_BOUNDS = 0x1010,
+    PL_PROP_ICON_NAME = 0x1038,
+    PL_PROP_FIT_QUERY = 0x1039,
+    PL_PROP_TEXT_STYLE = 0x1032,
+    PL_PROP_MEDIA_SOURCE = 0x103B,
+    PL_PROP_MEDIA_CONTROLLER_ID = 0x103A,
+    PL_PROP_PLAYBACK_STATE = 0x1035,
+    PL_PROP_MEDIA_POSITION = 0x1036,
+    PL_PROP_MEDIA_VOLUME = 0x1037,
+    PL_PROP_MEDIA_MUTED = 0x103C,
+    PL_PROP_MEDIA_LOOP = 0x103D,
+    PL_PROP_MEDIA_RATE = 0x103E,
     PL_PROP_FONT_SIZE = 0x1007,
     PL_PROP_FONT_WEIGHT = 0x1008,
     PL_PROP_FONT_FAMILY = 0x1009,
@@ -127,6 +167,80 @@ float f32(uint32_t bits) {
     return f;
 }
 
+// Pathland TEXT_ALIGNMENT enum -> Qt::Alignment (Leading=0, Center=1,
+// Trailing=2, Fill/Justify=3).
+int alignmentFor(float code) {
+    switch (static_cast<int>(code + 0.5f)) {
+    case 1:
+        return int(Qt::AlignHCenter);
+    case 2:
+        return int(Qt::AlignRight);
+    case 3:
+        return int(Qt::AlignJustify);
+    default:
+        return int(Qt::AlignLeft);
+    }
+}
+
+// Canonical icon name -> glyph (spec/ICONS.md). The vocabulary is the protocol
+// contract; the concrete glyph is renderer-owned. Unknown names fall back to a
+// neutral dot so the node still renders.
+QString iconGlyph(const QString &name) {
+    static const std::unordered_map<QString, QString> glyphs = {
+        {QStringLiteral("home"), QStringLiteral("\u2302")},
+        {QStringLiteral("search"), QStringLiteral("\u2315")},
+        {QStringLiteral("menu"), QStringLiteral("\u2630")},
+        {QStringLiteral("close"), QStringLiteral("\u2715")},
+        {QStringLiteral("chevron-left"), QStringLiteral("\u2039")},
+        {QStringLiteral("chevron-right"), QStringLiteral("\u203A")},
+        {QStringLiteral("chevron-up"), QStringLiteral("\u2303")},
+        {QStringLiteral("chevron-down"), QStringLiteral("\u2304")},
+        {QStringLiteral("arrow-left"), QStringLiteral("\u2190")},
+        {QStringLiteral("arrow-right"), QStringLiteral("\u2192")},
+        {QStringLiteral("add"), QStringLiteral("+")},
+        {QStringLiteral("remove"), QStringLiteral("\u2212")},
+        {QStringLiteral("check"), QStringLiteral("\u2713")},
+        {QStringLiteral("edit"), QStringLiteral("\u270E")},
+        {QStringLiteral("delete"), QStringLiteral("\u2717")},
+        {QStringLiteral("save"), QStringLiteral("\U0001F4BE")},
+        {QStringLiteral("share"), QStringLiteral("\u21AA")},
+        {QStringLiteral("download"), QStringLiteral("\u21E9")},
+        {QStringLiteral("upload"), QStringLiteral("\u21E7")},
+        {QStringLiteral("refresh"), QStringLiteral("\u21BB")},
+        {QStringLiteral("lock"), QStringLiteral("\U0001F512")},
+        {QStringLiteral("logout"), QStringLiteral("\u21B5")},
+        {QStringLiteral("play"), QStringLiteral("\u25B6")},
+        {QStringLiteral("pause"), QStringLiteral("\u2016")},
+        {QStringLiteral("stop"), QStringLiteral("\u25A0")},
+        {QStringLiteral("skip-back"), QStringLiteral("\u23EE")},
+        {QStringLiteral("skip-forward"), QStringLiteral("\u23ED")},
+        {QStringLiteral("volume"), QStringLiteral("\U0001F50A")},
+        {QStringLiteral("volume-mute"), QStringLiteral("\U0001F507")},
+        {QStringLiteral("shuffle"), QStringLiteral("\U0001F500")},
+        {QStringLiteral("repeat"), QStringLiteral("\U0001F501")},
+        {QStringLiteral("music"), QStringLiteral("\u266B")},
+        {QStringLiteral("info"), QStringLiteral("\u2139")},
+        {QStringLiteral("warning"), QStringLiteral("\u26A0")},
+        {QStringLiteral("error"), QStringLiteral("\u26D4")},
+        {QStringLiteral("success"), QStringLiteral("\u2714")},
+        {QStringLiteral("heart"), QStringLiteral("\u2665")},
+        {QStringLiteral("star"), QStringLiteral("\u2605")},
+        {QStringLiteral("bell"), QStringLiteral("\U0001F514")},
+        {QStringLiteral("cloud"), QStringLiteral("\u2601")},
+        {QStringLiteral("user"), QStringLiteral("\U0001F464")},
+        {QStringLiteral("users"), QStringLiteral("\U0001F465")},
+        {QStringLiteral("settings"), QStringLiteral("\u2699")},
+        {QStringLiteral("grid"), QStringLiteral("\u25A6")},
+        {QStringLiteral("list"), QStringLiteral("\u2637")},
+        {QStringLiteral("filter"), QStringLiteral("\u2630")},
+        {QStringLiteral("folder"), QStringLiteral("\U0001F4C1")},
+        {QStringLiteral("file"), QStringLiteral("\U0001F4C4")},
+        {QStringLiteral("image"), QStringLiteral("\U0001F5BC")},
+    };
+    auto it = glyphs.find(name);
+    return it == glyphs.end() ? QStringLiteral("\u2022") : it->second;
+}
+
 struct LayerState {
     QGuiApplication *app = nullptr;
     QQmlEngine *engine = nullptr;
@@ -162,6 +276,9 @@ struct LayerState {
     std::unordered_map<uint32_t, uint32_t> stack_align;
     // EVENT_LISTENERS mask per node (raw pointer stream gating).
     std::unordered_map<uint32_t, uint32_t> listener_masks;
+    // MEDIA_CONTROLLER: the last app-declared playback state (0 pause, 1 play),
+    // re-applied when MEDIA_SOURCE lands after the transport props.
+    std::unordered_map<uint32_t, uint32_t> media_play_state;
     // EVENT_LISTENERS MouseArea overlay per node (id -> MouseArea item).
     std::unordered_map<uint32_t, QQuickItem *> mouse_areas;
     // Deferred FILL dimensions (bit0=width, bit1=height) for widgets whose
@@ -207,6 +324,7 @@ QQuickItem *createComponent(QQmlEngine *engine, QQuickItem *parent, const char *
 // their signal handlers can report it).
 QString qmlFor(uint16_t component, uint32_t id) {
     switch (component) {
+    case PL_COMP_PROXY_VIEW:
     case PL_COMP_VSTACK:
     case PL_COMP_LAZY_VSTACK:
         // A stack renders as a wrapper Item holding an inner ColumnLayout (the
@@ -276,6 +394,55 @@ QString qmlFor(uint16_t component, uint32_t id) {
         return QStringLiteral(
                    "import QtQuick 2.15\nImage { objectName: \"pl%1\"; "
                    "fillMode: Image.PreserveAspectFit }")
+            .arg(id);
+    case PL_COMP_ICON:
+        // A semantic icon: a Text item whose glyph is resolved from ICON_NAME
+        // by the renderer (spec/ICONS.md — the glyph mapping is renderer-owned).
+        return QStringLiteral("import QtQuick 2.15\nText { objectName: \"pl%1\" }").arg(id);
+    case PL_COMP_SIZE_THAT_FITS:
+        // A fit slot: stretches to its parent and shows the one selected child.
+        return QStringLiteral(
+                   "import QtQuick 2.15\nItem { objectName: \"pl%1\"; clip: true }")
+            .arg(id);
+    case PL_COMP_GRID_ROW:
+        // Explicit row grouping inside a Grid (spec/PRIMITIVES.md): a RowLayout
+        // keeps its cells together; cross-row column alignment is a follow-up.
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtQuick.Layouts 1.15\n"
+                   "RowLayout { objectName: \"pl%1\" }")
+            .arg(id);
+    case PL_COMP_VIDEO:
+        // Video surface: renders the referenced MEDIA_CONTROLLER's output
+        // (spec/MEDIA.md). The controller owns the playback; this is just the
+        // VideoOutput that displays it.
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtMultimedia\n"
+                   "Item { objectName: \"pl%1\"; "
+                   "VideoOutput { objectName: \"pl%1out\"; anchors.fill: parent } }")
+            .arg(id);
+    case PL_COMP_MEDIA_CONTROLLER:
+        // Non-visual: owns the media resource + transport (spec/MEDIA.md). The
+        // item is never attached to the visual tree (layout-transparent); it
+        // hosts the QML MediaPlayer that VIDEO surfaces bind to.
+        return QStringLiteral(
+                   "import QtQuick 2.15\nimport QtMultimedia\n"
+                   "Item {\n"
+                   "  objectName: \"pl%1\"\n"
+                   "  visible: false\n"
+                   "  width: 0\n"
+                   "  height: 0\n"
+                   "  MediaPlayer {\n"
+                   "    objectName: \"pl%1player\"\n"
+                   "    onPlaybackStateChanged: bridge.mediaPlayState(%1, playbackState === MediaPlayer.PlayingState)\n"
+                   "    onPositionChanged: bridge.mediaTime(%1, position / 1000.0)\n"
+                   "    onDurationChanged: bridge.mediaDuration(%1, duration / 1000.0)\n"
+                   "    onMediaStatusChanged: { if (mediaStatus === MediaPlayer.EndOfMedia) bridge.mediaEnded(%1) }\n"
+                   "    audioOutput: AudioOutput {\n"
+                   "      objectName: \"pl%1audio\"\n"
+                   "      onVolumeChanged: bridge.mediaVolume(%1, volume)\n"
+                   "    }\n"
+                   "  }\n"
+                   "}")
             .arg(id);
     case PL_COMP_PROGRESS:
     case PL_COMP_GAUGE:
@@ -354,6 +521,25 @@ QQuickItem *findWidget(uint32_t id) {
     return it == g.widgets.end() ? nullptr : it->second;
 }
 
+// The QML MediaPlayer owned by a MEDIA_CONTROLLER node (spec/MEDIA.md).
+QObject *mediaPlayerFor(uint32_t controllerId) {
+    QQuickItem *item = findWidget(controllerId);
+    if (!item) {
+        return nullptr;
+    }
+    return item->findChild<QObject *>(QStringLiteral("pl%1player").arg(controllerId));
+}
+
+// The QML AudioOutput owned by a MEDIA_CONTROLLER (Qt 6 routes volume/mute
+// through AudioOutput, not the MediaPlayer itself).
+QObject *mediaAudioFor(uint32_t controllerId) {
+    QQuickItem *item = findWidget(controllerId);
+    if (!item) {
+        return nullptr;
+    }
+    return item->findChild<QObject *>(QStringLiteral("pl%1audio").arg(controllerId));
+}
+
 // ---------------------------------------------------------------------------
 // Navigation adapter (spec DSL.md §4.5): a VSTACK/HSTACK slot carrying ROUTE
 // renders as a StackView; the adapter reconciles its page stack by NAV_DEPTH.
@@ -361,7 +547,14 @@ QQuickItem *findWidget(uint32_t id) {
 
 bool isStackComponent(uint16_t component) {
     return component == PL_COMP_VSTACK || component == PL_COMP_HSTACK ||
-           component == PL_COMP_LAZY_VSTACK || component == PL_COMP_LAZY_HSTACK;
+           component == PL_COMP_LAZY_VSTACK || component == PL_COMP_LAZY_HSTACK ||
+           component == PL_COMP_PROXY_VIEW;
+}
+
+// Layout-transparent nodes occupy no visual slot (spec/MEDIA.md): a
+// MEDIA_CONTROLLER owns playback but renders no element.
+bool isNonVisual(uint16_t component) {
+    return component == PL_COMP_MEDIA_CONTROLLER;
 }
 
 // Whether a parent item is a Qt Quick positioner (Row/Column/Grid). Positioners
@@ -958,6 +1151,116 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
     case PL_PROP_BINDING_ID:
         g.gated_ids.insert(id);
         break;
+    case PL_PROP_CLIPS_TO_BOUNDS:
+        item->setProperty("clip", value != 0);
+        break;
+    case PL_PROP_BORDER_WIDTH:
+    case PL_PROP_BORDER_COLOR: {
+        QObject *border = item->property("border").value<QObject *>();
+        if (border) {
+            if (prop == PL_PROP_BORDER_WIDTH) {
+                border->setProperty("width", static_cast<int>(f32(value)));
+            } else {
+                border->setProperty("color", QColor::fromRgba(value));
+            }
+        }
+        break;
+    }
+    case PL_PROP_BORDER_RADIUS:
+        item->setProperty("radius", static_cast<double>(f32(value)));
+        break;
+    case PL_PROP_TEXT_ALIGNMENT:
+        item->setProperty("horizontalAlignment", alignmentFor(f32(value)));
+        break;
+    case PL_PROP_LINE_LIMIT:
+        item->setProperty("maximumLineCount", static_cast<int>(value));
+        break;
+    case PL_PROP_TRUNCATION:
+        item->setProperty("elide", value != 0 ? 2 /* ElideRight */ : 0 /* ElideNone */);
+        break;
+    case PL_PROP_CONTENT_MODE:
+        if (item->property("fillMode").isValid()) {
+            item->setProperty("fillMode",
+                              f32(value) >= 0.5f ? 2 /* PreserveAspectCrop */
+                                                 : 1 /* PreserveAspectFit */);
+        }
+        break;
+    case PL_PROP_OFFSET_X:
+    case PL_PROP_POSITION_X:
+        item->setProperty("x", static_cast<double>(f32(value)));
+        break;
+    case PL_PROP_OFFSET_Y:
+    case PL_PROP_POSITION_Y:
+        item->setProperty("y", static_cast<double>(f32(value)));
+        break;
+    case PL_PROP_MIN_WIDTH:
+    case PL_PROP_IDEAL_WIDTH:
+    case PL_PROP_MAX_WIDTH:
+    case PL_PROP_MIN_HEIGHT:
+    case PL_PROP_IDEAL_HEIGHT:
+    case PL_PROP_MAX_HEIGHT: {
+        QQuickLayoutAttached *a = layoutAttached(item);
+        if (a) {
+            const double v = static_cast<double>(f32(value));
+            switch (prop) {
+            case PL_PROP_MIN_WIDTH: a->setMinimumWidth(v); break;
+            case PL_PROP_IDEAL_WIDTH: a->setPreferredWidth(v); break;
+            case PL_PROP_MAX_WIDTH: a->setMaximumWidth(v); break;
+            case PL_PROP_MIN_HEIGHT: a->setMinimumHeight(v); break;
+            case PL_PROP_IDEAL_HEIGHT: a->setPreferredHeight(v); break;
+            case PL_PROP_MAX_HEIGHT: a->setMaximumHeight(v); break;
+            }
+        }
+        break;
+    }
+    case PL_PROP_GRID_COLUMNS:
+        if (item->property("columns").isValid()) {
+            item->setProperty("columns", static_cast<int>(f32(value)));
+        }
+        break;
+    // ── Media transport (spec/MEDIA.md) ────────────────────────────────
+    case PL_PROP_PLAYBACK_STATE: {
+        g.media_play_state[id] = value;
+        if (QObject *player = mediaPlayerFor(id)) {
+            QMetaObject::invokeMethod(player, value != 0 ? "play" : "pause");
+        }
+        break;
+    }
+    case PL_PROP_MEDIA_POSITION:
+        if (QObject *player = mediaPlayerFor(id)) {
+            QMetaObject::invokeMethod(
+                player, "setPosition",
+                Q_ARG(qint64, static_cast<qint64>(f32(value) * 1000.0f)));
+        }
+        break;
+    case PL_PROP_MEDIA_VOLUME:
+        if (QObject *audio = mediaAudioFor(id)) {
+            audio->setProperty("volume", static_cast<double>(f32(value)));
+        }
+        break;
+    case PL_PROP_MEDIA_MUTED:
+        if (QObject *audio = mediaAudioFor(id)) {
+            audio->setProperty("muted", value != 0);
+        }
+        break;
+    case PL_PROP_MEDIA_LOOP:
+        if (QObject *player = mediaPlayerFor(id)) {
+            player->setProperty("loops", value != 0 ? -1 : 1); // -1 = Infinite
+        }
+        break;
+    case PL_PROP_MEDIA_RATE:
+        if (QObject *player = mediaPlayerFor(id)) {
+            player->setProperty("playbackRate", static_cast<double>(f32(value)));
+        }
+        break;
+    case PL_PROP_MEDIA_CONTROLLER_ID: {
+        QQuickItem *out = item->findChild<QQuickItem *>(QStringLiteral("pl%1out").arg(id));
+        QObject *player = mediaPlayerFor(value);
+        if (out && player) {
+            out->setProperty("source", QVariant::fromValue(player));
+        }
+        break;
+    }
     default:
         break; // unknown/unsupported props are ignored (Qt setProperty is guarded by the switch)
     }
@@ -971,6 +1274,20 @@ void applyStringProperty(uint32_t id, uint16_t prop, const char *str, uint32_t l
     }
     const QString value = QString::fromUtf8(str, static_cast<int>(len));
     switch (prop) {
+    case PL_PROP_ICON_NAME:
+        item->setProperty("text", iconGlyph(value));
+        break;
+    case PL_PROP_MEDIA_SOURCE:
+        if (QObject *player = mediaPlayerFor(id)) {
+            player->setProperty("source", QUrl(value));
+            // Re-apply the app's declared transport state: a play() that landed
+            // before the source was known would otherwise stay silent.
+            auto st = g.media_play_state.find(id);
+            if (st != g.media_play_state.end()) {
+                QMetaObject::invokeMethod(player, st->second != 0 ? "play" : "pause");
+            }
+        }
+        break;
     case PL_PROP_IMAGE_SOURCE:
         item->setProperty("source", value);
         break;
@@ -1067,6 +1384,14 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
         siblings.insert(siblings.begin() + index, childId);
     }
 
+    if (isNonVisual(g.components[childId])) {
+        // Layout-transparent: it exists (owns playback), but no visual slot.
+        // CREATE_NODE parented it to the content item as a placeholder; detach.
+        if (QQuickItem *nv = findWidget(childId)) {
+            nv->setParentItem(nullptr);
+        }
+        return;
+    }
     if (g.components[parentId] == PL_COMP_PICKER) {
         rebuildPickerModel(parentId); // options drive the model, not the visual tree
         return;
@@ -1108,8 +1433,10 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
     }
     applyStackAlignment(parentId, child);
     // A ScrollView fills its parent by default (GTK: halign/valign = Fill), so a
-    // scroll content area stretches instead of collapsing to its content.
-    if (g.components[childId] == PL_COMP_SCROLL) {
+    // scroll content area stretches instead of collapsing to its content. A
+    // SIZE_THAT_FITS slot is likewise greedy on both axes (spec/LAYOUT.md).
+    if (g.components[childId] == PL_COMP_SCROLL ||
+        g.components[childId] == PL_COMP_SIZE_THAT_FITS) {
         if (isLayout(attach)) {
             QQuickLayoutAttached *a = layoutAttached(child);
             if (a) {
@@ -1121,6 +1448,13 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
             if (anchors) {
                 anchors->setProperty("fill", QVariant::fromValue(attach));
             }
+        }
+    }
+    // A fit slot's one selected child occupies the whole slot.
+    if (g.components[parentId] == PL_COMP_SIZE_THAT_FITS) {
+        QObject *anchors = child->property("anchors").value<QObject *>();
+        if (anchors) {
+            anchors->setProperty("fill", QVariant::fromValue(attach));
         }
     }
     flushFill(child, attach);
@@ -1221,6 +1555,16 @@ int pathland_qt_layer_init(PathlandQtWake wake, PathlandQtTick tick,
     g.bridge->suppress = &g.suppress;
 
     g.engine = new QQmlEngine(g.app);
+    // Qt adds the executable's directory to QML's implicit import path. A
+    // `cargo test` binary lives in `target/debug/deps`, which can hold tens of
+    // thousands of files; resolving a QML plugin then scans that directory and
+    // can take minutes (the headless-test "hang"). We ship no QML there, so
+    // drop it and keep only the genuine Qt import paths.
+    {
+        QStringList imports = g.engine->importPathList();
+        imports.removeAll(QCoreApplication::applicationDirPath());
+        g.engine->setImportPathList(imports);
+    }
     g.engine->rootContext()->setContextProperty("bridge", g.bridge);
 
     g.window = new QQuickWindow();
@@ -1380,6 +1724,7 @@ void pathland_qt_layer_reset(void) {
     g.listener_masks.clear();
     g.mouse_areas.clear();
     g.pending_fill.clear();
+    g.media_play_state.clear();
     g.apply_count = 0;
     g.last_text_len = 0;
     g.last_text[0] = '\0';
@@ -1477,6 +1822,18 @@ uint32_t pathland_qt_layer_anchors_fill(uint32_t id) {
     QQuickItem *target = fill.value<QQuickItem *>();
     return target == g.root ? 1 : 0;
 }
+uint32_t pathland_qt_layer_video_source(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return 0;
+    }
+    QQuickItem *out = item->findChild<QQuickItem *>(QStringLiteral("pl%1out").arg(id));
+    if (!out) {
+        return 0;
+    }
+    return out->property("source").value<QObject *>() ? 1 : 0;
+}
+
 
 // Test hook: force one synchronous render pass (grabWindow) so anchors/layout
 // geometry is computed without entering the event loop. Offscreen + software

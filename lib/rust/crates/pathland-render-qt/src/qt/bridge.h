@@ -39,6 +39,13 @@ public slots:
     void navigateBack();
     // Platform color-scheme changed (value 0 = light, 1 = dark).
     void schemeChanged(quint32 scheme);
+    // Media transport reports (spec/MEDIA.md): owned by a MEDIA_CONTROLLER and
+    // reported by component type, not gated by BINDING_ID.
+    void mediaPlayState(quint32 nodeId, bool playing);
+    void mediaTime(quint32 nodeId, qreal seconds);
+    void mediaEnded(quint32 nodeId);
+    void mediaVolume(quint32 nodeId, qreal volume);
+    void mediaDuration(quint32 nodeId, qreal seconds);
 };
 
 #endif // PATHLAND_QT_BRIDGE_H

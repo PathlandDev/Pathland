@@ -41,10 +41,12 @@ jobs:
           sudo apt-get install -y \
             qt6-base-dev \
             qt6-declarative-dev \
+            qt6-multimedia-dev \
             qml6-module-qtquick \
             qml6-module-qtquick-controls \
             qml6-module-qtquick-templates \
-            qml6-module-qtquick-window2
+            qml6-module-qtquick-window2 \
+            qml6-module-qtmultimedia
         # The dev headers alone don't ship the QML runtime modules; the Qt
         # renderer's offscreen tests instantiate Qt Quick Controls via
         # QQmlComponent, so the qml6-module-* runtime files are required too.

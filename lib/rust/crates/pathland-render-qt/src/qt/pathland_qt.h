@@ -50,6 +50,11 @@ typedef enum PathlandQtEventKind {
     PLQT_EV_POINTER_MOVE = 5, /* pointer moved on a listener node (x,y)         */
     PLQT_EV_NAVIGATE_BACK = 6, /* native back request (Escape), global           */
     PLQT_EV_SCHEME_CHANGED = 7, /* platform color scheme changed (value 0/1)     */
+    PLQT_EV_MEDIA_PLAY_STATE = 8, /* controller playback state (value 0/1)       */
+    PLQT_EV_MEDIA_TIME = 9,       /* controller position, seconds (value)         */
+    PLQT_EV_MEDIA_ENDED = 10,     /* controller reached the end (no value)        */
+    PLQT_EV_MEDIA_VOLUME = 11,    /* controller volume 0..1 (value)               */
+    PLQT_EV_MEDIA_DURATION = 12,  /* controller duration, seconds (value)         */
 } PathlandQtEventKind;
 
 typedef struct PathlandQtEvent {
@@ -102,6 +107,7 @@ uint32_t pathland_qt_layer_widget_fill(uint32_t id, uint32_t which);
 double pathland_qt_layer_widget_preferred(uint32_t id, uint32_t which);
 double pathland_qt_layer_widget_size(uint32_t id, uint32_t which);
 uint32_t pathland_qt_layer_anchors_fill(uint32_t id);
+uint32_t pathland_qt_layer_video_source(uint32_t id);
 int pathland_qt_layer_render_once(void);
 
 #ifdef __cplusplus

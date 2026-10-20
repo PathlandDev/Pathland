@@ -92,9 +92,10 @@ crates/pathland-render-qt/ # RENDERER (hybrid Rust + C++) — maps opcode frames
                           #   scene graph (Row/Column/Text + Qt Quick Controls). Rust owns the
                           #   shared decode core + a sent-state delta diff + the Pump/C ABI;
                           #   a thin C++ layer (src/qt/, built via cc + moc) owns the Qt shell
-                          #   and applies the delta command batch to QML items. The crate needs
-                          #   Qt6 dev libs (Homebrew: qtbase qtdeclarative) to build/test; its
-                          #   headless tests use QT_QPA_PLATFORM=offscreen.
+                          #   and applies the delta command batch to QML items (incl. media via
+                          #   QtMultimedia). The crate needs Qt6 dev libs (Homebrew: qtbase
+                          #   qtdeclarative qtmultimedia) to build/test; its headless tests use
+                          #   QT_QPA_PLATFORM=offscreen.
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
 #   stacks, spans, buttons) as a pure function of the stream; the
                            #   server-side/remote-projection target (Goal #15).

@@ -76,7 +76,12 @@ impl Command {
     /// `b = (valueType << 16) | propertyId`, `c = raw value` — the same
     /// encoding the opcode wire uses.
     pub fn set_property(id: u32, prop: u16, value_type: u8, value: u32) -> Self {
-        Self::new(Self::SET_PROPERTY, id, ((value_type as u32) << 16) | prop as u32, value)
+        Self::new(
+            Self::SET_PROPERTY,
+            id,
+            ((value_type as u32) << 16) | prop as u32,
+            value,
+        )
     }
     pub fn set_string_property(id: u32, prop: u16, value: &str) -> Self {
         Self {
@@ -121,6 +126,11 @@ pub mod ev {
     pub const POINTER_MOVE: u8 = 5;
     pub const NAVIGATE_BACK: u8 = 6;
     pub const SCHEME_CHANGED: u8 = 7;
+    pub const MEDIA_PLAY_STATE: u8 = 8;
+    pub const MEDIA_TIME: u8 = 9;
+    pub const MEDIA_ENDED: u8 = 10;
+    pub const MEDIA_VOLUME: u8 = 11;
+    pub const MEDIA_DURATION: u8 = 12;
 }
 
 extern "C" {
@@ -178,6 +188,8 @@ extern "C" {
     #[allow(dead_code)]
     pub fn pathland_qt_layer_anchors_fill(id: u32) -> u32;
     #[allow(dead_code)]
+    pub fn pathland_qt_layer_video_source(id: u32) -> u32;
+    #[allow(dead_code)]
     pub fn pathland_qt_layer_render_once() -> i32;
     #[allow(dead_code)] // test-only hook
     pub fn pathland_qt_layer_shutdown();
@@ -197,12 +209,12 @@ pub fn apply(cmds: &[Command]) {
 mod tests {
     use super::*;
     use crate::{renderer::QtRenderer, CONTENT_ITEM};
+    use pathland_core::{component_type, listener, property_id, value_type};
     use pathland_core::{init_memory, Frame, Guest, Host, MemoryLayout};
     use pathland_engine::Engine;
     use pathland_view::{
         assign_ids, button, text, vstack, Configurable, Node, PointerEvents, Slider, View, ViewExt,
     };
-    use pathland_core::{component_type, listener, property_id, value_type};
     use pathland_view::{Component, Gauge, Menu, ProgressView, Stepper};
     use std::ffi::CStr;
     use std::sync::Mutex;
@@ -276,7 +288,9 @@ mod tests {
         if n == 0 {
             return String::new();
         }
-        unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy().into_owned()
+        unsafe { CStr::from_ptr(buf.as_ptr()) }
+            .to_string_lossy()
+            .into_owned()
     }
 
     /// End-to-end FFI: a Rust command batch (create / insert / set_text with a
@@ -343,17 +357,33 @@ mod tests {
             assert_eq!(read_text(4), ""); // Slider has no text
             let mut buf = [0i8; 64];
             let n = unsafe {
-                pathland_qt_layer_widget_prop_text(4, c"value".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
+                pathland_qt_layer_widget_prop_text(
+                    4,
+                    c"value".as_ptr(),
+                    buf.as_mut_ptr(),
+                    buf.len() as u32,
+                )
             };
-            assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "5");
+            assert_eq!(
+                unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(),
+                "5"
+            );
             assert_eq!(n, 1);
 
             // Root spacing applied.
             let mut buf2 = [0i8; 64];
             unsafe {
-                pathland_qt_layer_widget_prop_text(1, c"spacing".as_ptr(), buf2.as_mut_ptr(), buf2.len() as u32)
+                pathland_qt_layer_widget_prop_text(
+                    1,
+                    c"spacing".as_ptr(),
+                    buf2.as_mut_ptr(),
+                    buf2.len() as u32,
+                )
             };
-            assert_eq!(unsafe { CStr::from_ptr(buf2.as_ptr()) }.to_string_lossy(), "8");
+            assert_eq!(
+                unsafe { CStr::from_ptr(buf2.as_ptr()) }.to_string_lossy(),
+                "8"
+            );
 
             // Delta: spacing 8 -> 16 only re-sends the root's prop.
             let mut view2 = vstack![text("hello"), button("Press")]
@@ -369,9 +399,17 @@ mod tests {
             assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 2);
             let mut buf3 = [0i8; 64];
             unsafe {
-                pathland_qt_layer_widget_prop_text(1, c"spacing".as_ptr(), buf3.as_mut_ptr(), buf3.len() as u32)
+                pathland_qt_layer_widget_prop_text(
+                    1,
+                    c"spacing".as_ptr(),
+                    buf3.as_mut_ptr(),
+                    buf3.len() as u32,
+                )
             };
-            assert_eq!(unsafe { CStr::from_ptr(buf3.as_ptr()) }.to_string_lossy(), "16");
+            assert_eq!(
+                unsafe { CStr::from_ptr(buf3.as_ptr()) }.to_string_lossy(),
+                "16"
+            );
         });
     }
 
@@ -389,29 +427,31 @@ mod tests {
                 Command::insert_child(1, 2, u32::MAX),
                 Command::insert_child(1, 3, u32::MAX),
                 Command::insert_child(0, 1, u32::MAX),
-                Command::set_property(
-                    1,
-                    property_id::ALIGNMENT,
-                    value_type::F32,
-                    3.0f32.to_bits(),
-                ),
+                Command::set_property(1, property_id::ALIGNMENT, value_type::F32, 3.0f32.to_bits()),
                 Command::set_property(2, property_id::WIDTH, value_type::F32, 100.0f32.to_bits()),
-                Command::set_property(
-                    3,
-                    property_id::WIDTH,
-                    value_type::F32,
-                    (-1.0f32).to_bits(),
-                ),
+                Command::set_property(3, property_id::WIDTH, value_type::F32, (-1.0f32).to_bits()),
                 Command::set_text(2, "a"),
                 Command::set_text(3, "b"),
             ];
             pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
 
-            assert_eq!(pathland_qt_layer_root_child_count(), 1, "root fills the window");
-            assert_eq!(pathland_qt_layer_widget_child_count(1), 2, "both children in the stack");
+            assert_eq!(
+                pathland_qt_layer_root_child_count(),
+                1,
+                "root fills the window"
+            );
+            assert_eq!(
+                pathland_qt_layer_widget_child_count(1),
+                2,
+                "both children in the stack"
+            );
             // The root HSTACK wrapper is anchored to the window content (the
             // "sliver" fix) instead of hugging its content.
-            assert_eq!(pathland_qt_layer_anchors_fill(1), 1, "root anchored to the window");
+            assert_eq!(
+                pathland_qt_layer_anchors_fill(1),
+                1,
+                "root anchored to the window"
+            );
             // Child 2 (fixed width 100) -> Layout.preferredWidth 100.
             assert_eq!(pathland_qt_layer_widget_preferred(2, 0), 100.0);
             // Child 3 (WIDTH FILL) -> Layout.fillWidth set.
@@ -422,14 +462,53 @@ mod tests {
         });
     }
 
+    /// Phase-1 component parity: ICON resolves its canonical name to a glyph,
+    /// a MEDIA_CONTROLLER is layout-transparent (no visual slot), and a VIDEO
+    /// surface binds to the controller's MediaPlayer (spec/ICONS.md, MEDIA.md).
+    #[test]
+    fn new_components_and_media_binding() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, 0x10), // VSTACK
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::create_node(2, 0x0B), // ICON
+                Command::insert_child(1, 2, u32::MAX),
+                Command::set_string_property(2, 0x1038, "play"), // ICON_NAME
+                Command::create_node(4, 0x30),                   // MEDIA_CONTROLLER (non-visual)
+                Command::insert_child(1, 4, u32::MAX),
+                Command::create_node(3, 0x0A), // VIDEO surface
+                Command::insert_child(1, 3, u32::MAX),
+                Command::set_property(3, 0x103A, value_type::U32, 4), // MEDIA_CONTROLLER_ID
+                Command::set_string_property(4, 0x103B, "file:///tmp/clip.mp4"), // MEDIA_SOURCE
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+
+            // The root stack hosts the ICON + VIDEO; the controller takes no slot.
+            assert_eq!(
+                pathland_qt_layer_widget_child_count(1),
+                2,
+                "controller is layout-transparent"
+            );
+            assert_eq!(
+                read_text(2),
+                "\u{25B6}",
+                "canonical 'play' name resolved to a glyph"
+            );
+            assert_eq!(
+                pathland_qt_layer_video_source(3),
+                1,
+                "video surface bound to its controller"
+            );
+        });
+    }
+
     /// EVENT_LISTENERS pointer bits attach a MouseArea overlay to the node's
     /// QML item (spec/EVENTS.md: any element can emit raw inputs).
     #[test]
     fn pointer_listeners_attach_mousearea() {
         with_qt(|| {
-            let mut view = vstack![
-                text("listener").modifiers(PointerEvents(listener::POINTER_DOWN | listener::POINTER_UP))
-            ]
+            let mut view = vstack![text("listener")
+                .modifiers(PointerEvents(listener::POINTER_DOWN | listener::POINTER_UP))]
             .build();
             assign_ids(&mut view, &mut 1);
 
@@ -481,14 +560,30 @@ mod tests {
             // node 2 = ProgressBar with the fraction applied.
             let mut buf = [0i8; 64];
             unsafe {
-                pathland_qt_layer_widget_prop_text(2, c"value".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
+                pathland_qt_layer_widget_prop_text(
+                    2,
+                    c"value".as_ptr(),
+                    buf.as_mut_ptr(),
+                    buf.len() as u32,
+                )
             };
-            assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "0.5");
+            assert_eq!(
+                unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(),
+                "0.5"
+            );
             // node 3 = SpinBox with the (int-cast) value applied.
             unsafe {
-                pathland_qt_layer_widget_prop_text(3, c"value".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
+                pathland_qt_layer_widget_prop_text(
+                    3,
+                    c"value".as_ptr(),
+                    buf.as_mut_ptr(),
+                    buf.len() as u32,
+                )
             };
-            assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "3");
+            assert_eq!(
+                unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(),
+                "3"
+            );
             // node 5 = MenuButton (has no text by default).
             assert_eq!(read_text(5), "");
         });
@@ -517,9 +612,17 @@ mod tests {
             // node 2 = Picker; its ComboBox model has both options.
             let mut buf = [0i8; 64];
             unsafe {
-                pathland_qt_layer_widget_prop_text(2, c"count".as_ptr(), buf.as_mut_ptr(), buf.len() as u32)
+                pathland_qt_layer_widget_prop_text(
+                    2,
+                    c"count".as_ptr(),
+                    buf.as_mut_ptr(),
+                    buf.len() as u32,
+                )
             };
-            assert_eq!(unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(), "2");
+            assert_eq!(
+                unsafe { CStr::from_ptr(buf.as_ptr()) }.to_string_lossy(),
+                "2"
+            );
         });
     }
 
@@ -548,8 +651,16 @@ mod tests {
             ];
             unsafe { pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32) };
 
-            assert_eq!(nav_depth(), 1, "slot promoted to a nav container with one page");
-            assert_eq!(read_text(3), "hello", "destination subtree alive in the page");
+            assert_eq!(
+                nav_depth(),
+                1,
+                "slot promoted to a nav container with one page"
+            );
+            assert_eq!(
+                read_text(3),
+                "hello",
+                "destination subtree alive in the page"
+            );
         });
     }
 
@@ -657,7 +768,12 @@ mod tests {
                 Command::create_node(3, component_type::TEXT),
                 Command::set_string_property(1, property_id::ROUTE, "/custom"),
                 Command::set_property(1, property_id::NAV_DEPTH, value_type::U32, 1),
-                Command::set_property(1, property_id::NAV_CHROME, value_type::F32, 1.0f32.to_bits()),
+                Command::set_property(
+                    1,
+                    property_id::NAV_CHROME,
+                    value_type::F32,
+                    1.0f32.to_bits(),
+                ),
                 Command::insert_child(2, 3, u32::MAX),
                 Command::insert_child(1, 2, u32::MAX),
                 Command::insert_child(0, 1, u32::MAX),

@@ -73,6 +73,59 @@ void Bridge::navigateBack() {
     }
 }
 
+namespace {
+// A media report targets a controller and is reported by component type
+// (spec/EVENTS.md), so it bypasses the BINDING_ID gate; programmatic sources
+// are still suppressed.
+void fireMedia(Bridge *b, PathlandQtEvent &ev) {
+    if (b->suppress && *b->suppress) {
+        return;
+    }
+    if (b->event_fn) {
+        b->event_fn(&ev, b->user);
+    }
+}
+} // namespace
+
+void Bridge::mediaPlayState(quint32 nodeId, bool playing) {
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_MEDIA_PLAY_STATE;
+    ev.node_id = nodeId;
+    ev.value = playing ? 1.0f : 0.0f;
+    fireMedia(this, ev);
+}
+
+void Bridge::mediaTime(quint32 nodeId, qreal seconds) {
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_MEDIA_TIME;
+    ev.node_id = nodeId;
+    ev.value = static_cast<float>(seconds);
+    fireMedia(this, ev);
+}
+
+void Bridge::mediaEnded(quint32 nodeId) {
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_MEDIA_ENDED;
+    ev.node_id = nodeId;
+    fireMedia(this, ev);
+}
+
+void Bridge::mediaVolume(quint32 nodeId, qreal volume) {
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_MEDIA_VOLUME;
+    ev.node_id = nodeId;
+    ev.value = static_cast<float>(volume);
+    fireMedia(this, ev);
+}
+
+void Bridge::mediaDuration(quint32 nodeId, qreal seconds) {
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_MEDIA_DURATION;
+    ev.node_id = nodeId;
+    ev.value = static_cast<float>(seconds);
+    fireMedia(this, ev);
+}
+
 void Bridge::schemeChanged(quint32 scheme) {
     PathlandQtEvent ev{};
     ev.kind = PLQT_EV_SCHEME_CHANGED;
