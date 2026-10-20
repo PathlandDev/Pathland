@@ -23,6 +23,10 @@ grid rows). Remaining work is tracked here and in `status.md`.
 - **Layout/property parity**: offsets/positions, min/ideal/max sizes,
   content mode, clipping, border color/width/radius, text alignment/line
   limit/truncation, grid columns.
+- **Asset root** (`pathland_qt_set_asset_root`): `/_pathland/...` sources
+  resolve against a host-extracted local directory.
+- **Java Qt demo migrated** to `dev.pathland.demo.qt` (view/demo package
+  renames, `environmentBinding` mount, `DemoAssets` extraction).
 - **Headless test hang fixed**: the shell drops the executable directory from
   the QML import path at init, so `cargo test -p pathland-render-qt` runs
   directly (~2s) instead of scanning `target/debug/deps` for minutes.
@@ -41,9 +45,6 @@ grid rows). Remaining work is tracked here and in `status.md`.
       (instead of one `RowLayout` cell) so columns align across rows.
 - [ ] **Events**: pointer `hover`/`leave`, `KEY_DOWN`/`KEY_UP`,
       `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, BackSpace native back.
-- [ ] **Asset root**: resolve `/_pathland/assets/...` to a local root for
-      `MEDIA_SOURCE`/`IMAGE_SOURCE` (a `pathland_qt_set_asset_root` analogue of
-      GTK's).
 - [ ] **Controls gaps**: `MENU` popup item list, native `DATE_PICKER`/
       `COLOR_PICKER`, `PICKER` option styling, `BACKGROUND_COLOR`/border on
       Qt Quick Controls, `SHAPE` paths.

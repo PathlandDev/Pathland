@@ -92,6 +92,11 @@ Design-token contract: `spec/TOKENS.md`.
 - **Qt shell**: init/run split (headless tests drive `init` + `apply` without
   an event loop); `pathland_qt_layer_run` owns the window + a zero-millisecond
   idle `QTimer` that ticks Rust's pump (Qt analogue of GTK's idle pump).
+- **Asset root** (`pathland_qt_set_asset_root` /
+  `pathland_qt_layer_set_asset_root`): web-style `/_pathland/...` image/media
+  sources resolve against a host-extracted local directory (the Qt analogue of
+  `pathland_gtk_set_asset_root`); the Java Qt host extracts `DemoAssets` and
+  sets it before `runRing`.
 - **C ABI for foreign hosts** (`src/capi.rs`): `pathland_qt_run(host,
   on_event)` (over a `pathland-view-native` `NativeHost`) and
   `pathland_qt_run_ring(ring, on_event, width, height)` (over a borrowed
@@ -163,10 +168,6 @@ Design-token contract: `spec/TOKENS.md`.
 - Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving), `KEY_DOWN`/
   `KEY_UP`, `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, and BackSpace as native
   back (text-focus detection) are not yet reported.
-- Asset resolution: `MEDIA_SOURCE`/`IMAGE_SOURCE` are passed to Qt as written;
-  web-style `/_pathland/assets/...` paths are not remapped to a local asset
-  root (the GTK renderer has `pathland_gtk_set_asset_root`; a Qt analogue is a
-  follow-up).
 - The Rust DSL does not yet expose signal property bindings (the Java DSL
   does), so the demo marks the slider bound via a `BINDING_ID` on the retained
   tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.
