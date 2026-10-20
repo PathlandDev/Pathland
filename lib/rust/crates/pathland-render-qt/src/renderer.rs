@@ -170,7 +170,11 @@ impl QtRenderer {
                 // configured yet, so min/max must land before the value.
                 let mut props: Vec<(u16, u32)> =
                     node.properties.iter().map(|(k, v)| (*k, *v)).collect();
-                props.sort_by_key(|(p, _)| (*p == pathland_core::property_id::VALUE, *p));
+                // Order: TEXT_STYLE first (a base typography), then the rest
+                // (raw font modifiers override it), with VALUE last (Qt Quick
+                // clamps a control's value when from/to aren't configured yet).
+                use pathland_core::property_id::{TEXT_STYLE, VALUE};
+                props.sort_by_key(|(p, _)| (*p == VALUE, *p != TEXT_STYLE, *p));
                 for (prop, value) in &props {
                     let vt = value_type_for(*prop);
                     cmds.push(Command::set_property(id, *prop, vt, *value));

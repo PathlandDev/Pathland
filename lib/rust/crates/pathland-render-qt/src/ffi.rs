@@ -214,6 +214,20 @@ extern "C" {
     #[allow(dead_code)]
     pub fn pathland_qt_layer_report_fit(id: u32, width: f64);
     #[allow(dead_code)]
+    pub fn pathland_qt_layer_background_color(id: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_background_radius(id: u32) -> f64;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_background_border_width(id: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_text_color(id: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_text_pixel_size(id: u32) -> i32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_shadow_color(id: u32) -> u32;
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_shadow_x(id: u32) -> f64;
+    #[allow(dead_code)]
     pub fn pathland_qt_layer_render_once() -> i32;
     #[allow(dead_code)] // test-only hook
     pub fn pathland_qt_layer_shutdown();
@@ -544,6 +558,159 @@ mod tests {
             assert_eq!(pathland_qt_layer_fit_index(2), 0, "500 < 640 -> compact");
             pathland_qt_layer_report_fit(2, 640.0);
             assert_eq!(pathland_qt_layer_fit_index(2), 1, "640 >= 640 -> wide");
+        });
+    }
+
+    /// BACKGROUND_COLOR / BORDER_* / BORDER_RADIUS land on a container's
+    /// background rectangle (CSS-like background + rounded border).
+    #[test]
+    fn container_background_border_and_radius() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, 0x10), // VSTACK
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::set_property(1, 0x1001, value_type::COLOR, 0xFFF2F3F7), // BACKGROUND
+                Command::set_property(1, 0x1005, value_type::F32, 8.0f32.to_bits()), // RADIUS
+                Command::set_property(1, 0x1003, value_type::F32, 1.0f32.to_bits()), // BORDER WIDTH
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+
+            assert_eq!(pathland_qt_layer_background_color(1), 0xFFF2F3F7);
+            assert_eq!(pathland_qt_layer_background_radius(1), 8.0);
+            assert_eq!(pathland_qt_layer_background_border_width(1), 1);
+        });
+    }
+
+    /// A container's COLOR inherits to descendant Text (CSS color inheritance),
+    /// and a Text's own COLOR wins.
+    #[test]
+    fn foreground_color_inherits_to_text() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, 0x11), // HSTACK (container)
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::create_node(2, 0x01), // TEXT
+                Command::insert_child(1, 2, u32::MAX),
+                Command::set_text(2, "hi"),
+                Command::set_property(1, 0x100A, value_type::COLOR, 0xFF0000FF), // container COLOR
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            assert_eq!(pathland_qt_layer_text_color(2), 0xFF0000FF, "inherited");
+
+            let own = [Command::set_property(
+                2,
+                0x100A,
+                value_type::COLOR,
+                0xFFFF0000,
+            )];
+            pathland_qt_layer_apply(own.as_ptr(), own.len() as u32);
+            assert_eq!(pathland_qt_layer_text_color(2), 0xFFFF0000, "own wins");
+        });
+    }
+
+    /// Default stack alignment is stretch (CSS align-items:stretch): a child
+    /// fills the cross axis, a Spacer expands on the main axis, and an explicit
+    /// ALIGNMENT suppresses the default.
+    #[test]
+    fn default_stack_stretch_and_spacer() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, 0x11), // HSTACK
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::create_node(2, 0x01), // TEXT
+                Command::insert_child(1, 2, u32::MAX),
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            assert_eq!(
+                pathland_qt_layer_widget_fill(2, 1),
+                1,
+                "HSTACK child stretches on the cross axis (height)"
+            );
+
+            let spacer = [
+                Command::create_node(10, 0x10), // VSTACK
+                Command::insert_child(CONTENT_ITEM, 10, u32::MAX),
+                Command::create_node(11, 0x06), // SPACER
+                Command::insert_child(10, 11, u32::MAX),
+            ];
+            pathland_qt_layer_apply(spacer.as_ptr(), spacer.len() as u32);
+            assert_eq!(
+                pathland_qt_layer_widget_fill(11, 1),
+                1,
+                "spacer expands on the main axis (height)"
+            );
+
+            // Explicit ALIGNMENT (Center = 1) suppresses the default stretch.
+            let aligned = [
+                Command::create_node(20, 0x11), // HSTACK
+                Command::insert_child(CONTENT_ITEM, 20, u32::MAX),
+                Command::set_property(20, 0x0002, value_type::F32, 1.0f32.to_bits()), // ALIGNMENT
+                Command::create_node(21, 0x01),                                       // TEXT
+                Command::insert_child(20, 21, u32::MAX),
+            ];
+            pathland_qt_layer_apply(aligned.as_ptr(), aligned.len() as u32);
+            assert_eq!(
+                pathland_qt_layer_widget_fill(21, 1),
+                0,
+                "explicit alignment is not overwritten by the stretch default"
+            );
+        });
+    }
+
+    /// TEXT_STYLE applies a base font; an explicit FONT_SIZE overrides it. A
+    /// shadow lands on an offset layer behind the node.
+    #[test]
+    fn text_style_and_shadow() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, 0x01), // TEXT
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::set_text(1, "Title"),
+                Command::set_property(1, 0x1032, value_type::F32, 1.0f32.to_bits()), // TEXT_STYLE=Title
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            assert_eq!(pathland_qt_layer_text_pixel_size(1), 28, "Title base size");
+
+            let override_size = [Command::set_property(
+                1,
+                0x1007,
+                value_type::F32,
+                12.0f32.to_bits(),
+            )];
+            pathland_qt_layer_apply(override_size.as_ptr(), override_size.len() as u32);
+            assert_eq!(
+                pathland_qt_layer_text_pixel_size(1),
+                12,
+                "explicit FONT_SIZE wins"
+            );
+
+            let shadow = [
+                Command::create_node(2, 0x10), // VSTACK
+                Command::insert_child(CONTENT_ITEM, 2, u32::MAX),
+                Command::set_property(2, 0x1021, value_type::COLOR, 0x33000000), // SHADOW_COLOR
+                Command::set_property(2, 0x1023, value_type::F32, 2.0f32.to_bits()), // SHADOW_X
+            ];
+            pathland_qt_layer_apply(shadow.as_ptr(), shadow.len() as u32);
+            assert_eq!(pathland_qt_layer_shadow_color(2), 0x33000000);
+            assert_eq!(pathland_qt_layer_shadow_x(2), 2.0);
+        });
+    }
+
+    /// A Button with children renders in composite mode: the style body (child)
+    /// replaces the native chrome and lives in the composite layout.
+    #[test]
+    fn button_with_child_renders_composite() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, 0x20), // BUTTON
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::create_node(2, 0x01), // TEXT (the ButtonStyle body)
+                Command::insert_child(1, 2, u32::MAX),
+                Command::set_text(2, "Home"),
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            assert_eq!(pathland_qt_layer_widget_child_count(1), 1);
+            assert_eq!(read_text(2), "Home");
         });
     }
 

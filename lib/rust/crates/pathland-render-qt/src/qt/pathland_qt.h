@@ -142,6 +142,13 @@ uint32_t pathland_qt_layer_anchors_fill(uint32_t id);
 uint32_t pathland_qt_layer_video_source(uint32_t id);
 int pathland_qt_layer_fit_index(uint32_t id);
 void pathland_qt_layer_report_fit(uint32_t id, double width);
+uint32_t pathland_qt_layer_background_color(uint32_t id);
+double pathland_qt_layer_background_radius(uint32_t id);
+uint32_t pathland_qt_layer_background_border_width(uint32_t id);
+uint32_t pathland_qt_layer_text_color(uint32_t id);
+int pathland_qt_layer_text_pixel_size(uint32_t id);
+uint32_t pathland_qt_layer_shadow_color(uint32_t id);
+double pathland_qt_layer_shadow_x(uint32_t id);
 int pathland_qt_layer_render_once(void);
 
 #ifdef __cplusplus

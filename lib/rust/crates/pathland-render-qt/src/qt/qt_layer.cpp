@@ -87,6 +87,7 @@ enum {
 enum {
     PL_PROP_SPACING = 0x0001,
     PL_PROP_ALIGNMENT = 0x0002,
+    PL_PROP_CONTENT_MARGINS = 0x0005,
     PL_PROP_TEXT_ALIGNMENT = 0x000C,
     PL_PROP_LINE_LIMIT = 0x000B,
     PL_PROP_TRUNCATION = 0x000D,
@@ -114,6 +115,10 @@ enum {
     PL_PROP_BORDER_COLOR = 0x1004,
     PL_PROP_BORDER_RADIUS = 0x1005,
     PL_PROP_CLIPS_TO_BOUNDS = 0x1010,
+    PL_PROP_SHADOW_COLOR = 0x1021,
+    PL_PROP_SHADOW_RADIUS = 0x1022,
+    PL_PROP_SHADOW_X = 0x1023,
+    PL_PROP_SHADOW_Y = 0x1024,
     PL_PROP_ICON_NAME = 0x1038,
     PL_PROP_FIT_QUERY = 0x1039,
     PL_PROP_TEXT_STYLE = 0x1032,
@@ -308,7 +313,18 @@ struct LayerState {
     // GRID_ROW -> its parent Grid (rows are flattened; cells attach to the grid).
     std::unordered_map<uint32_t, uint32_t> grid_of;
     // Full EVENT_LISTENERS mask per node (gates focus/editing/submit reports).
+    // Controls promoted to composite-override mode (children replace native chrome).
+    std::unordered_set<uint32_t> composite;
     std::unordered_map<uint32_t, uint32_t> node_listeners;
+    // CSS-like foreground context: a container's COLOR inherited by descendant
+    // Text/Icon, and which nodes set their own color.
+    std::unordered_map<uint32_t, uint32_t> fg_colors;
+    std::unordered_set<uint32_t> fg_own;
+    // `.shadow(...)` — a best-effort offset rectangle behind the node.
+    std::unordered_map<uint32_t, QColor> shadow_color;
+    std::unordered_map<uint32_t, double> shadow_radius;
+    std::unordered_map<uint32_t, double> shadow_dx;
+    std::unordered_map<uint32_t, double> shadow_dy;
     // The focused text-input node (keys are reported against it) + its component.
     uint32_t focused_id = 0;
     uint16_t focused_component = 0;
@@ -373,6 +389,12 @@ QString qmlFor(uint16_t component, uint32_t id) {
                    "  property real plPad: 0\n"
                    "  implicitWidth: lay ? lay.implicitWidth + 2 * plPad : 0\n"
                    "  implicitHeight: lay ? lay.implicitHeight + 2 * plPad : 0\n"
+                   "  Rectangle {\n"
+                   "    objectName: \"pl%1bg\"\n"
+                   "    anchors.fill: parent\n"
+                   "    color: \"transparent\"\n"
+                   "    z: -1\n"
+                   "  }\n"
                    "  ColumnLayout {\n"
                    "    id: lay\n"
                    "    objectName: \"pl%1lay\"\n"
@@ -391,6 +413,12 @@ QString qmlFor(uint16_t component, uint32_t id) {
                    "  property real plPad: 0\n"
                    "  implicitWidth: lay ? lay.implicitWidth + 2 * plPad : 0\n"
                    "  implicitHeight: lay ? lay.implicitHeight + 2 * plPad : 0\n"
+                   "  Rectangle {\n"
+                   "    objectName: \"pl%1bg\"\n"
+                   "    anchors.fill: parent\n"
+                   "    color: \"transparent\"\n"
+                   "    z: -1\n"
+                   "  }\n"
                    "  RowLayout {\n"
                    "    id: lay\n"
                    "    objectName: \"pl%1lay\"\n"
@@ -556,6 +584,151 @@ QQuickItem *findWidget(uint32_t id) {
 }
 
 // The QML MediaPlayer owned by a MEDIA_CONTROLLER node (spec/MEDIA.md).
+// Direct visual child with the given objectName. (A lazily created item's QML
+// `objectName` is reliable, but its QObject parent isn't always the visual
+// parent, so search childItems() rather than findChild().)
+QQuickItem *childItemNamed(QQuickItem *parent, const QString &name) {
+    if (!parent) {
+        return nullptr;
+    }
+    for (QQuickItem *c : parent->childItems()) {
+        if (c->objectName() == name) {
+            return c;
+        }
+    }
+    return nullptr;
+}
+
+// The background/border rectangle for a node: the injected `pl<id>bg` (stacks)
+// or a lazily created child Rectangle for plain containers. Null when the node
+// is a positioner/control/leaf (those own their visuals or can't host a child).
+QQuickItem *ensureBackground(uint32_t id, QQuickItem *item) {
+    if (!item) {
+        return nullptr;
+    }
+    const QString name = QStringLiteral("pl%1bg").arg(id);
+    if (QQuickItem *existing = childItemNamed(item, name)) {
+        return existing;
+    }
+    const char *cls = item->metaObject()->className();
+    if (cls && (strstr(cls, "QQuickGrid") || strstr(cls, "QQuickScrollView") ||
+                strstr(cls, "QQuickControl") || strstr(cls, "QQuickText") ||
+                strstr(cls, "QQuickImage"))) {
+        return nullptr; // positioner/control/leaf: no generic background slot
+    }
+    const QString qml =
+        QStringLiteral(
+            "import QtQuick 2.15\nRectangle { objectName: \"pl%1bg\"; "
+            "color: \"transparent\"; z: -1 }")
+            .arg(id);
+    QQuickItem *bg = createComponent(g.engine, item, qml.toUtf8());
+    if (bg) {
+        QObject *anchors = bg->property("anchors").value<QObject *>();
+        if (anchors) {
+            anchors->setProperty("fill", QVariant::fromValue(item));
+        }
+    }
+    return bg;
+}
+
+// TEXT_STYLE enum (pathland_core::text_style) -> a base pixel size + weight.
+// Raw FONT_SIZE/FONT_WEIGHT modifiers are applied after it and override it.
+bool textStyleFont(uint32_t code, int *px, QFont::Weight *weight) {
+    switch (code) {
+    case 0: *px = 34; *weight = QFont::Bold; return true;      // LargeTitle
+    case 1: *px = 28; *weight = QFont::Bold; return true;      // Title
+    case 2: *px = 22; *weight = QFont::DemiBold; return true;  // Title2
+    case 3: *px = 20; *weight = QFont::DemiBold; return true;  // Title3
+    case 4: *px = 17; *weight = QFont::DemiBold; return true;  // Headline
+    case 5: *px = 15; *weight = QFont::Normal; return true;    // Subheadline
+    case 6: *px = 14; *weight = QFont::Normal; return true;    // Body
+    case 7: *px = 16; *weight = QFont::Normal; return true;    // Callout
+    case 8: *px = 13; *weight = QFont::Normal; return true;    // Footnote
+    case 9: *px = 12; *weight = QFont::Normal; return true;    // Caption
+    case 10: *px = 11; *weight = QFont::Normal; return true;   // Caption2
+    default: return false;
+    }
+}
+
+// The shadow layer for a node (lazily created). Null for nodes that cannot host
+// one (same restrictions as the background layer).
+QQuickItem *ensureShadow(uint32_t id, QQuickItem *item) {
+    if (!item) {
+        return nullptr;
+    }
+    const QString name = QStringLiteral("pl%1shadow").arg(id);
+    if (QQuickItem *existing = childItemNamed(item, name)) {
+        return existing;
+    }
+    const char *cls = item->metaObject()->className();
+    if (cls && (strstr(cls, "QQuickGrid") || strstr(cls, "QQuickScrollView") ||
+                strstr(cls, "QQuickControl") || strstr(cls, "QQuickText") ||
+                strstr(cls, "QQuickImage"))) {
+        return nullptr;
+    }
+    const QString qml =
+        QStringLiteral(
+            "import QtQuick 2.15\nRectangle { objectName: \"pl%1shadow\"; z: -2; "
+            "color: \"transparent\"; width: parent ? parent.width : 0; "
+            "height: parent ? parent.height : 0 }")
+            .arg(id);
+    return createComponent(g.engine, item, qml.toUtf8());
+}
+
+void applyShadow(uint32_t id, QQuickItem *item) {
+    auto cit = g.shadow_color.find(id);
+    if (cit == g.shadow_color.end() || cit->second.alpha() == 0) {
+        return;
+    }
+    QQuickItem *sh = ensureShadow(id, item);
+    if (!sh) {
+        return;
+    }
+    sh->setProperty("color", cit->second);
+    sh->setProperty("radius", g.shadow_radius.count(id) ? g.shadow_radius[id] : 0.0);
+    sh->setProperty("x", g.shadow_dx.count(id) ? g.shadow_dx[id] : 0.0);
+    sh->setProperty("y", g.shadow_dy.count(id) ? g.shadow_dy[id] : 0.0);
+}
+
+// Whether an item renders text (TEXT/ICON both map to a QML Text item).
+bool isTextual(QQuickItem *item) {
+    const char *cls = item ? item->metaObject()->className() : nullptr;
+    return cls && strstr(cls, "QQuickText") != nullptr;
+}
+
+// The nearest inherited foreground color for a node (walking its ancestors).
+bool inheritedForeground(uint32_t id, uint32_t *out) {
+    auto pit = g.parents.find(id);
+    while (pit != g.parents.end()) {
+        const uint32_t p = pit->second;
+        auto it = g.fg_colors.find(p);
+        if (it != g.fg_colors.end()) {
+            *out = it->second;
+            return true;
+        }
+        pit = g.parents.find(p);
+    }
+    return false;
+}
+
+// Apply an inherited foreground to a subtree's text items that don't own a color.
+void applyForegroundDescendants(uint32_t id, bool have, uint32_t color) {
+    auto it = g.children_of.find(id);
+    if (it == g.children_of.end()) {
+        return;
+    }
+    for (uint32_t child : it->second) {
+        if (isTextual(findWidget(child)) && !g.fg_own.count(child)) {
+            QQuickItem *t = findWidget(child);
+            if (t) {
+                t->setProperty("color",
+                               have ? QColor::fromRgba(color) : QColor(Qt::black));
+            }
+        }
+        applyForegroundDescendants(child, have, color);
+    }
+}
+
 QObject *mediaPlayerFor(uint32_t controllerId) {
     QQuickItem *item = findWidget(controllerId);
     if (!item) {
@@ -621,6 +794,23 @@ bool isStackComponent(uint16_t component) {
 // MEDIA_CONTROLLER owns playback but renders no element.
 bool isNonVisual(uint16_t component) {
     return component == PL_COMP_MEDIA_CONTROLLER;
+}
+
+// A vertical/horizontal layout host: a stack, a proxy view, or a composite
+// control (which uses the same ColumnLayout wrapper).
+bool isVerticalContainer(uint32_t id) {
+    if (g.composite.count(id)) {
+        return true;
+    }
+    const uint16_t c = g.components[id];
+    return c == PL_COMP_VSTACK || c == PL_COMP_LAZY_VSTACK || c == PL_COMP_PROXY_VIEW;
+}
+bool isHorizontalContainer(uint32_t id) {
+    const uint16_t c = g.components[id];
+    return c == PL_COMP_HSTACK || c == PL_COMP_LAZY_HSTACK;
+}
+bool isContainer(uint32_t id) {
+    return isVerticalContainer(id) || isHorizontalContainer(id);
 }
 
 // A component that consumes BackSpace (so it must not trigger native back).
@@ -973,6 +1163,59 @@ void attachPointerArea(uint32_t id, uint32_t mask) {
     }
 }
 
+// A semantic control with children renders in Composite Override Mode: the
+// native chrome is suppressed and the app's child tree is laid out in its place
+// (spec/PRIMITIVES.md §2). The ButtonStyle body is ordinary child content, so
+// this is what makes styled buttons look like the web/GTK demos. The shell is
+// the same Item+ColumnLayout wrapper a VStack uses (so it hugs its content and
+// Layout stretch works); raw pointer listeners re-attach to it.
+void promoteComposite(uint32_t id) {
+    if (g.composite.count(id)) {
+        return;
+    }
+    QQuickItem *old = findWidget(id);
+    if (!old) {
+        return;
+    }
+    QQuickItem *parent = old->parentItem();
+    const QSizeF size = old->size();
+    const QPointF pos(old->x(), old->y());
+    const bool visible = old->isVisible();
+    QQuickItem *item =
+        createComponent(g.engine, parent, qmlFor(PL_COMP_VSTACK, id).toUtf8());
+    if (!item) {
+        return;
+    }
+    // The old native control's children are its internal chrome (background /
+    // contentItem / indicator), not app content: discard them with the control.
+    item->setWidth(size.width());
+    item->setHeight(size.height());
+    item->setX(pos.x());
+    item->setY(pos.y());
+    item->setVisible(visible);
+    // Preserve root fill / any deferred FILL the old widget carried.
+    if (parent == g.root) {
+        QObject *anchors = item->property("anchors").value<QObject *>();
+        if (anchors) {
+            anchors->setProperty("fill", QVariant::fromValue(g.root));
+        }
+    }
+    auto pf = g.pending_fill.find(old);
+    if (pf != g.pending_fill.end()) {
+        g.pending_fill[item] = pf->second;
+        g.pending_fill.erase(pf);
+    }
+    old->setParentItem(nullptr);
+    old->deleteLater();
+    g.widgets[id] = item;
+    g.composite.insert(id);
+    // The old widget's listener overlay went with it; re-attach from the mask.
+    auto it = g.node_listeners.find(id);
+    if (it != g.node_listeners.end()) {
+        attachPointerArea(id, it->second);
+    }
+}
+
 int weightFor(float weight) {
     const int w = static_cast<int>(weight + 0.5f);
     switch (w) {
@@ -1148,6 +1391,7 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
         g.stack_align[id] = value;
         reapplyStackAlignment(id);
         break;
+    case PL_PROP_CONTENT_MARGINS:
     case PL_PROP_PADDING:
         applyPadding(item, nullptr, f32(value));
         break;
@@ -1170,13 +1414,49 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
         applySize(item, "height", f32(value));
         break;
     case PL_PROP_COLOR:
-        item->setProperty("color", QColor::fromRgba(value));
+        if (isTextual(item)) {
+            item->setProperty("color", QColor::fromRgba(value));
+            g.fg_own.insert(id);
+        } else {
+            // CSS `color` inheritance: store on the container and push down.
+            g.fg_colors[id] = value;
+            applyForegroundDescendants(id, true, value);
+        }
         break;
     case PL_PROP_FONT_SIZE:
         applyFont(item, prop, value);
         break;
     case PL_PROP_FONT_WEIGHT:
         applyFont(item, prop, value);
+        break;
+    case PL_PROP_TEXT_STYLE: {
+        // ENUM values ride as F32 bit patterns (spec/OPCODE.md).
+        const uint32_t code = static_cast<uint32_t>(f32(value) + 0.5f);
+        int px = 0;
+        QFont::Weight weight = QFont::Normal;
+        if (isTextual(item) && textStyleFont(code, &px, &weight)) {
+            QFont font = item->property("font").value<QFont>();
+            font.setPixelSize(px);
+            font.setWeight(weight);
+            item->setProperty("font", QVariant::fromValue(font));
+        }
+        break;
+    }
+    case PL_PROP_SHADOW_COLOR:
+        g.shadow_color[id] = QColor::fromRgba(value);
+        applyShadow(id, item);
+        break;
+    case PL_PROP_SHADOW_RADIUS:
+        g.shadow_radius[id] = static_cast<double>(f32(value));
+        applyShadow(id, item);
+        break;
+    case PL_PROP_SHADOW_X:
+        g.shadow_dx[id] = static_cast<double>(f32(value));
+        applyShadow(id, item);
+        break;
+    case PL_PROP_SHADOW_Y:
+        g.shadow_dy[id] = static_cast<double>(f32(value));
+        applyShadow(id, item);
         break;
     case PL_PROP_OPACITY:
         item->setProperty("opacity", static_cast<double>(f32(value)));
@@ -1240,21 +1520,38 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
     case PL_PROP_CLIPS_TO_BOUNDS:
         item->setProperty("clip", value != 0);
         break;
+    case PL_PROP_BACKGROUND: {
+        // A Rectangle-backed node is its own fill; a container gets a background
+        // Rectangle behind its content (CSS background).
+        QQuickItem *target =
+            item->property("radius").isValid() ? item : ensureBackground(id, item);
+        if (target) {
+            target->setProperty("color", QColor::fromRgba(value));
+        }
+        break;
+    }
     case PL_PROP_BORDER_WIDTH:
-    case PL_PROP_BORDER_COLOR: {
-        QObject *border = item->property("border").value<QObject *>();
-        if (border) {
-            if (prop == PL_PROP_BORDER_WIDTH) {
-                border->setProperty("width", static_cast<int>(f32(value)));
-            } else {
-                border->setProperty("color", QColor::fromRgba(value));
+    case PL_PROP_BORDER_COLOR:
+    case PL_PROP_BORDER_RADIUS: {
+        QQuickItem *target =
+            item->property("radius").isValid() ? item : ensureBackground(id, item);
+        if (!target) {
+            break;
+        }
+        if (prop == PL_PROP_BORDER_RADIUS) {
+            target->setProperty("radius", static_cast<double>(f32(value)));
+        } else {
+            QObject *border = target->property("border").value<QObject *>();
+            if (border) {
+                if (prop == PL_PROP_BORDER_WIDTH) {
+                    border->setProperty("width", static_cast<int>(f32(value)));
+                } else {
+                    border->setProperty("color", QColor::fromRgba(value));
+                }
             }
         }
         break;
     }
-    case PL_PROP_BORDER_RADIUS:
-        item->setProperty("radius", static_cast<double>(f32(value)));
-        break;
     case PL_PROP_TEXT_ALIGNMENT:
         item->setProperty("horizontalAlignment", alignmentFor(f32(value)));
         break;
@@ -1340,7 +1637,7 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
         }
         break;
     case PL_PROP_MEDIA_CONTROLLER_ID: {
-        QQuickItem *out = item->findChild<QQuickItem *>(QStringLiteral("pl%1out").arg(id));
+        QQuickItem *out = childItemNamed(item, QStringLiteral("pl%1out").arg(id));
         QObject *player = mediaPlayerFor(value);
         if (out && player) {
             out->setProperty("source", QVariant::fromValue(player));
@@ -1426,6 +1723,18 @@ void resetNode(uint32_t id) {
     // Listener overlays are renderer-owned; the full property set that follows
     // RESET re-attaches them from the (re-sent) EVENT_LISTENERS value.
     detachPointerArea(id);
+    g.fg_colors.erase(id);
+    g.fg_own.erase(id);
+    if (isTextual(item)) {
+        uint32_t inherited = 0;
+        item->setProperty("color", inheritedForeground(id, &inherited)
+                                       ? QColor::fromRgba(inherited)
+                                       : QColor(Qt::black));
+    } else {
+        uint32_t inherited = 0;
+        const bool have = inheritedForeground(id, &inherited);
+        applyForegroundDescendants(id, have, inherited);
+    }
     g.stack_align.erase(id);
     item->setProperty("opacity", 1.0);
     item->setProperty("visible", true);
@@ -1448,6 +1757,25 @@ void resetNode(uint32_t id) {
                 a->setPreferredHeight(-1);
             }
         }
+    }
+    // Reset the renderer-owned background/border layer.
+    QQuickItem *bg = childItemNamed(item, QStringLiteral("pl%1bg").arg(id));
+    if (!bg && item->property("radius").isValid()) {
+        bg = item;
+    }
+    if (bg) {
+        bg->setProperty("color", QColor(Qt::transparent));
+        bg->setProperty("radius", 0.0);
+        if (QObject *border = bg->property("border").value<QObject *>()) {
+            border->setProperty("width", 0);
+        }
+    }
+    g.shadow_color.erase(id);
+    g.shadow_radius.erase(id);
+    g.shadow_dx.erase(id);
+    g.shadow_dy.erase(id);
+    if (QQuickItem *sh = childItemNamed(item, QStringLiteral("pl%1shadow").arg(id))) {
+        sh->setProperty("color", QColor(Qt::transparent));
     }
 }
 
@@ -1540,6 +1868,10 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
         }
     }
 
+    if (g.components[visualParentId] == PL_COMP_BUTTON && !isNonVisual(g.components[childId])) {
+        promoteComposite(visualParentId); // children => composite override mode
+    }
+
     QQuickItem *parent = findWidget(visualParentId);
     if (!parent) {
         return;
@@ -1547,7 +1879,7 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
     // Stacks attach children to their inner layout (so `Layout` stretch works);
     // a ScrollView attaches to its contentItem (so content sizes/scrolls it).
     QQuickItem *attach = parent;
-    if (isStackComponent(g.components[visualParentId])) {
+    if (isStackComponent(g.components[visualParentId]) || g.composite.count(visualParentId)) {
         attach = layoutOf(parent);
         if (!attach) {
             attach = parent;
@@ -1571,6 +1903,29 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
         }
     }
     applyStackAlignment(parentId, child);
+    // Default stack alignment is stretch (CSS `align-items:stretch`): with no
+    // explicit ALIGNMENT, a child fills the container's cross axis.
+    if (isContainer(visualParentId) && isLayout(attach) &&
+        !g.stack_align.count(visualParentId)) {
+        if (QQuickLayoutAttached *a = layoutAttached(child)) {
+            if (isVerticalContainer(visualParentId)) {
+                a->setFillWidth(true);
+            } else {
+                a->setFillHeight(true);
+            }
+        }
+    }
+    // A Spacer expands along the container's main axis.
+    if (g.components[childId] == PL_COMP_SPACER && isContainer(visualParentId) &&
+        isLayout(attach)) {
+        if (QQuickLayoutAttached *a = layoutAttached(child)) {
+            if (isVerticalContainer(visualParentId)) {
+                a->setFillHeight(true);
+            } else {
+                a->setFillWidth(true);
+            }
+        }
+    }
     // A ScrollView fills its parent by default (GTK: halign/valign = Fill), so a
     // scroll content area stretches instead of collapsing to its content. A
     // SIZE_THAT_FITS slot is likewise greedy on both axes (spec/LAYOUT.md).
@@ -1587,6 +1942,13 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
             if (anchors) {
                 anchors->setProperty("fill", QVariant::fromValue(attach));
             }
+        }
+    }
+    // Inherit a container's foreground color (CSS `color` inheritance).
+    if (isTextual(child) && !g.fg_own.count(childId)) {
+        uint32_t color = 0;
+        if (inheritedForeground(childId, &color)) {
+            child->setProperty("color", QColor::fromRgba(color));
         }
     }
     // A fit slot's one selected child occupies the whole slot.
@@ -1639,6 +2001,13 @@ void deleteNode(uint32_t id) {
     g.fit_queries.erase(id);
     g.fit_index.erase(id);
     g.grid_of.erase(id);
+    g.fg_colors.erase(id);
+    g.fg_own.erase(id);
+    g.shadow_color.erase(id);
+    g.shadow_radius.erase(id);
+    g.shadow_dx.erase(id);
+    g.shadow_dy.erase(id);
+    g.composite.erase(id);
     g.node_listeners.erase(id);
     if (g.focused_id == id) {
         g.focused_id = 0;
@@ -1935,6 +2304,13 @@ void pathland_qt_layer_reset(void) {
     g.fit_queries.clear();
     g.fit_index.clear();
     g.grid_of.clear();
+    g.fg_colors.clear();
+    g.fg_own.clear();
+    g.shadow_color.clear();
+    g.shadow_radius.clear();
+    g.shadow_dx.clear();
+    g.shadow_dy.clear();
+    g.composite.clear();
     g.node_listeners.clear();
     g.focused_id = 0;
     g.focused_component = 0;
@@ -2041,6 +2417,63 @@ uint32_t pathland_qt_layer_anchors_fill(uint32_t id) {
 }
 void pathland_qt_layer_report_fit(uint32_t id, double width) { reportFit(id, width); }
 
+namespace {
+QQuickItem *backgroundOf(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return nullptr;
+    }
+    if (QQuickItem *bg = childItemNamed(item, QStringLiteral("pl%1bg").arg(id))) {
+        return bg;
+    }
+    return item->property("radius").isValid() ? item : nullptr;
+}
+} // namespace
+
+uint32_t pathland_qt_layer_background_color(uint32_t id) {
+    QQuickItem *bg = backgroundOf(id);
+    if (!bg) {
+        return 0;
+    }
+    return bg->property("color").value<QColor>().rgba();
+}
+
+uint32_t pathland_qt_layer_text_color(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    return item ? item->property("color").value<QColor>().rgba() : 0;
+}
+
+int pathland_qt_layer_text_pixel_size(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    return item ? item->property("font").value<QFont>().pixelSize() : -1;
+}
+
+uint32_t pathland_qt_layer_shadow_color(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    QQuickItem *sh = childItemNamed(item, QStringLiteral("pl%1shadow").arg(id));
+    return sh ? sh->property("color").value<QColor>().rgba() : 0;
+}
+
+double pathland_qt_layer_shadow_x(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    QQuickItem *sh = childItemNamed(item, QStringLiteral("pl%1shadow").arg(id));
+    return sh ? sh->property("x").toDouble() : 0.0;
+}
+
+double pathland_qt_layer_background_radius(uint32_t id) {
+    QQuickItem *bg = backgroundOf(id);
+    return bg ? bg->property("radius").toDouble() : -1.0;
+}
+
+uint32_t pathland_qt_layer_background_border_width(uint32_t id) {
+    QQuickItem *bg = backgroundOf(id);
+    if (!bg) {
+        return 0;
+    }
+    QObject *border = bg->property("border").value<QObject *>();
+    return border ? static_cast<uint32_t>(border->property("width").toInt()) : 0;
+}
+
 int pathland_qt_layer_fit_index(uint32_t id) {
     auto it = g.fit_index.find(id);
     return it == g.fit_index.end() ? -1 : it->second;
@@ -2051,7 +2484,7 @@ uint32_t pathland_qt_layer_video_source(uint32_t id) {
     if (!item) {
         return 0;
     }
-    QQuickItem *out = item->findChild<QQuickItem *>(QStringLiteral("pl%1out").arg(id));
+    QQuickItem *out = childItemNamed(item, QStringLiteral("pl%1out").arg(id));
     if (!out) {
         return 0;
     }

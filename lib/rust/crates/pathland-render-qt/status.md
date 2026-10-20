@@ -135,8 +135,8 @@ Design-token contract: `spec/TOKENS.md`.
   - `PROXY_VIEW` (0x1E) → a transparent vertical container.
   - `SIZE_THAT_FITS` (0x17) → a greedy two-axis slot; its one selected child
     fills it.
-  - `GRID_ROW` (0x1D) → a `RowLayout` cell (renders; cross-row column
-    alignment is still a gap).
+  - `GRID_ROW` (0x1D) → a row-grouping container whose cells flatten into
+    the parent Grid.
 - **Shared decode parity** (`pathland-render-core`): `LIST`-typed properties
   (`FIT_QUERY`) decode into `HostNode::lists`, and `PARAMETER::SET_DATE` into
   `HostNode::date` — so the Qt layer can measure fit slots and format dates.
@@ -155,6 +155,23 @@ Design-token contract: `spec/TOKENS.md`.
   `EDITING_CHANGED` / `SUBMIT` for text inputs (gated by the matching
   `EVENT_LISTENERS` bits); BackSpace is native back unless a text input is
   focused (focus-aware, no longer deferred).
+- **Visual styling layer** (parity with the web/GTK demos):
+  - `BACKGROUND_COLOR` / `BORDER_*` / `BORDER_RADIUS` render on a background
+    `Rectangle` behind a container's content (stacks reuse an injected
+    `pl<id>bg`; plain containers create one lazily); `Rectangle`-backed nodes
+    set them directly. `RESET_NODE` clears them.
+  - **Composite control mode** (spec/PRIMITIVES.md §2): a `Button` that gains
+    children is promoted from the native widget to a bare `Item`+`ColumnLayout`
+    shell that renders the app's `ButtonStyle` body, so `PlainButtonStyle` /
+    `BorderedButtonStyle` buttons look like the web/GTK ones. Leaf buttons stay
+    native.
+  - **Foreground inheritance** (CSS `color`): a container's `COLOR` is inherited
+    by descendant `Text`/`Icon` that don't set their own.
+  - **Layout defaults**: cross-axis stretch (`align-items:stretch`) when no
+    `ALIGNMENT` is set; `Spacer` expands on the main axis; `CONTENT_MARGINS`.
+  - **`TEXT_STYLE`** applies a base typography (size + weight) that raw
+    `FONT_SIZE`/`FONT_WEIGHT` override; **`SHADOW_*`** draws a best-effort
+    offset shadow layer.
 - **Media transport** (spec/MEDIA.md): `MEDIA_SOURCE`, `PLAYBACK_STATE`
   (play/pause), `MEDIA_POSITION` (seek, seconds→ms), `MEDIA_VOLUME` /
   `MEDIA_MUTED` (via `AudioOutput`), `MEDIA_LOOP`, `MEDIA_RATE`, and the
@@ -181,9 +198,13 @@ Design-token contract: `spec/TOKENS.md`.
 - **`COLOR_PICKER`** remains a `Button` approximation (a QML color-swatch popup
   is a follow-up); `DATE_PICKER` is an ISO-text QML approximation, not a native
   dialog.
-- **`PICKER` option styling**, `BACKGROUND_COLOR`/border on Qt Quick Controls
-  (they own their background delegate; border mapping covers `Rectangle`-backed
-  nodes only), and `SHAPE` path approximation.
+- **`PICKER` option styling** and `SHAPE` path approximation. Native **leaf**
+  controls keep Qt Quick Controls' own chrome (background/border); the styling
+  layer covers containers, composite controls, and `Rectangle`-backed nodes.
+- **Icons** are renderer-owned glyphs (the canonical `ICON_NAME` → a Unicode
+  symbol), not the web's SVG/Lucide set — recognizable but not pixel-identical.
+- **Shadows** are an offset rectangle approximation, not a blurred
+  `MultiEffect` shadow.
 - **Keys/events beyond the focused text input**: keys are reported for a focused
   text input; keys on other focused controls, `SCROLL`/`WHEEL`, and
   `DATE_CHANGED` are not yet reported. Hover/leave use `POINTER_MOVE` (the
@@ -231,7 +252,10 @@ decoding (`decode_maps_media_reports`), the shared decode parity
 (`size_that_fits_derives_index_from_width`), `GRID_ROW`
 (`grid_row_flattens_into_the_grid`), `DATE_PICKER`
 (`date_picker_formats_set_date`), and the event family
-(`decode_maps_hover_key_and_focus`). `cargo test -p pathland-render-qt` now
+(`decode_maps_hover_key_and_focus`), and the visual styling layer
+(`container_background_border_and_radius`, `button_with_child_renders_composite`,
+`foreground_color_inherits_to_text`, `default_stack_stretch_and_spacer`,
+`text_style_and_shadow`). `cargo test -p pathland-render-qt` now
 completes directly (the import-path fix). Full workspace: `cd lib/rust && cargo test`.
 Java JNA demo: `scripts/run-java-qt-demo.sh` (headless `RingEventReaderTest`
 runs in the Maven reactor; the live host mounts `SplitNavDemo`).
