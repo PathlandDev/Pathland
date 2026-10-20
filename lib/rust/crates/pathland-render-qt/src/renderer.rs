@@ -273,7 +273,7 @@ mod tests {
     use super::*;
     use pathland_core::{init_memory, Frame, Guest, Host, MemoryLayout};
     use pathland_engine::Engine;
-    use pathland_view::{assign_ids, text, vstack, Node, View, ViewExt};
+    use pathland_view::{assign_ids, text, vstack, Configurable, Node, Padding, View, ViewExt};
 
     /// One persistent engine + ring memory, so consecutive emits are **deltas**
     /// (like a live app) rather than full snapshots.
@@ -329,7 +329,7 @@ mod tests {
 
     #[test]
     fn first_frame_creates_tree_and_props() {
-        let mut view = vstack![text("ab"), text("cd")].spacing(4.0).padding(8.0).build();
+        let mut view = vstack![text("ab"), text("cd")].with(|v| { v.spacing(4.0); }).modifiers(Padding(8.0)).build();
         assign_ids(&mut view, &mut 1);
 
         let mut h = Harness::new();
@@ -358,7 +358,7 @@ mod tests {
 
     #[test]
     fn unchanged_frame_emits_zero_commands() {
-        let mut view = vstack![text("ab")].spacing(4.0).build();
+        let mut view = vstack![text("ab")].with(|v| { v.spacing(4.0); }).build();
         assign_ids(&mut view, &mut 1);
         let mut h = Harness::new();
         let mut r = QtRenderer::new();
@@ -374,14 +374,14 @@ mod tests {
 
     #[test]
     fn spacing_delta_emits_only_root_reset_and_prop() {
-        let mut a = vstack![text("ab")].spacing(4.0).build();
+        let mut a = vstack![text("ab")].with(|v| { v.spacing(4.0); }).build();
         assign_ids(&mut a, &mut 1);
         let mut h = Harness::new();
         let mut r = QtRenderer::new();
         apply_emit(&mut r, &mut h, &a);
         let _ = r.diff();
 
-        let mut b = vstack![text("ab")].spacing(12.0).build();
+        let mut b = vstack![text("ab")].with(|v| { v.spacing(12.0); }).build();
         assign_ids(&mut b, &mut 1);
         apply_emit(&mut r, &mut h, &b);
         let cmds = r.diff();

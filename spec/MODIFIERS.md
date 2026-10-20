@@ -2,15 +2,15 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 3, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
 ## Purpose
 
 This document is the **catalog of core modifiers** the Pathland protocol must
-support. In the protocol these are the **`STYLE` properties**: the constraint
-properties and visual decorations carried by `STYLE::SET_PROPERTY`. The set
+support. In the protocol these are the **`PARAMETER` properties**: the constraint
+properties and visual decorations carried by `PARAMETER::SET_PROPERTY`. The set
 mirrors SwiftUI's core modifiers so that any SwiftUI-shaped UI can be expressed.
 
 Like SwiftUI, modifiers in Pathland are **decoupled from views**: any modifier
@@ -29,7 +29,7 @@ custom modifiers from these core ones.
 
 ### Emission rules
 
-Each modifier emits **one or more** `STYLE::SET_PROPERTY` opcodes — one per
+Each modifier emits **one or more** `PARAMETER::SET_PROPERTY` opcodes — one per
 underlying property. There is no compound-modifier opcode. Compound SwiftUI
 modifiers (`.frame(width:height:alignment:)`, `.shadow(color:radius:x:y:)`,
 `.border(_:width:)`) are expanded into several `SET_PROPERTY` opcodes, exactly
@@ -64,6 +64,12 @@ the frame's string section; `C` holds the arena offset.
 Special `WIDTH`/`HEIGHT` values: `-1.0` = `FILL` (expand to available), `-2.0` =
 `HUG_CONTENT` (native intrinsic size).
 
+> **`maxWidth`/`maxHeight: .infinity`**: SwiftUI's flexible frame is expressed as
+> the `FILL` sentinel on `WIDTH`/`HEIGHT`. DSLs accept `∞` (e.g. Rust
+> `f32::INFINITY`, Java `Float.POSITIVE_INFINITY`) and normalize it to `FILL`
+> before emission, so `.frame(maxWidth: .infinity)` ⇔ `WIDTH = FILL`. The
+> renderer then expands the element to the available space.
+
 > **Token references**: every property typed `COLOR` / `F32` / `STRING` / `ENUM`
 > in the tables below MAY instead carry the `DESIGN_TOKEN` value type (`0x08`),
 > with `C` = arenaRef to a token path — so modifiers like `.foregroundStyle`,
@@ -87,10 +93,19 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 | `.position(x:y:)` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 | F32 | two |
 | `.fixedSize()` / `.fixedSize(horizontal:vertical:)` | `FIXED_SIZE_HORIZONTAL` 0x0018, `FIXED_SIZE_VERTICAL` 0x0019 | U8 (0/1) | two (or one when axis-limited) |
 | `.layoutPriority(_:)` | `LAYOUT_PRIORITY` 0x001A | F32 | one |
-| `.zIndex(_:)` | `Z_INDEX` 0x100F | F32 | one |
+| `.zIndex(_:)` | `Z_INDEX` 0x100F | F32 | one | Draw-order override in an overlapping container (`ZStack`/grid): higher = on top, equal → child index (spec/PRIMITIVES.md §ZStack) |
 | `.aspectRatio(_:contentMode:)` | `ASPECT_RATIO` 0x001B, `CONTENT_MODE` 0x001C | F32, ENUM | two |
 | `.scaledToFit()` | `CONTENT_MODE` 0x001C | ENUM (`Fit`=0) | one |
 | `.scaledToFill()` | `CONTENT_MODE` 0x001C | ENUM (`Fill`=1) | one |
+| `.imageSource(_:)` | `IMAGE_SOURCE` 0x1002 | STRING (asset reference) | one (arenaRef) |
+| `.mediaSource(_:)` (MediaController) | `MEDIA_SOURCE` 0x103B | STRING (asset reference) | one (arenaRef) |
+| `.mediaController(_:)` (Video) | `MEDIA_CONTROLLER_ID` 0x103A | U32 (the controller node id) | one |
+| `.playback(_:)` (MediaController) | `PLAYBACK_STATE` 0x1035 | U32 (0 pause, 1 play) | one |
+| `.mediaPosition(_:)` (MediaController) | `MEDIA_POSITION` 0x1036 | F32 (seconds; change = seek) | one |
+| `.mediaVolume(_:)` (MediaController) | `MEDIA_VOLUME` 0x1037 | F32 (0..1) | one |
+| `.mediaMuted(_:)` (MediaController) | `MEDIA_MUTED` 0x103C | U8 (0/1) | one |
+| `.mediaLoop(_:)` (MediaController) | `MEDIA_LOOP` 0x103D | U8 (0/1) | one |
+| `.mediaRate(_:)` (MediaController) | `MEDIA_RATE` 0x103E | F32 (1.0 = normal) | one |
 | `.minimumScaleFactor(_:)` | `MINIMUM_SCALE_FACTOR` 0x001D | F32 | one |
 | `.spacing(_:)` (stacks) | `SPACING` 0x0001 | F32 | one |
 | `Spacer` | — (implied by component) | — | none |
@@ -100,21 +115,37 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 - **`WIDTH` / `HEIGHT`**: size hints; the renderer maps them to its size
   request / `width`/`height` style. `FILL` (-1.0) expands to available space;
   `HUG_CONTENT` (-2.0) sizes to intrinsic content. Absence of a property leaves
-  that axis to the native default.
+  that axis to the native default. The full allocation contract — Fixed = an
+  exact points box, container space distribution, cross-axis hug-not-stretch,
+  content fitting — is in [LAYOUT.md](./LAYOUT.md).
 - **`frame(min/ideal/max)`**: each provided bound emits its own property.
-  Renderers map them to min/max/ideal size (GTK `set_size_request`, CSS
-  `min-width`/`max-width`/`width`).
+  Renderers map them to the native min/ideal/max size.
+- **`GRID_COLUMNS` / `GRID_ROWS`** (`0x001E` / `0x001F`, F32) are **constructor
+  properties** on grids (never chainable modifiers): the column/row track
+  counts. A positive value pins the count (equal `1fr` tracks); `FILL` or absent
+  = auto-fit. They never size the grid — the grid's box comes from `WIDTH`/
+  `HEIGHT`. See [PRIMITIVES.md §Grid](./PRIMITIVES.md#grid--grid-0x13).
+- **`GRID_TRACKS`** (`0x0020`, STRING) is the per-track spec — a comma-separated
+  `flex` | `fixed:<points>` | `adaptive:<points>` list that takes precedence
+  over the counts (the count is `N`×`flex` sugar). CSS-grid-native: renderers
+  without a native equivalent size tracks naturally. See PRIMITIVES.md §grid
+  model.
 - **`PADDING` vs per-edge**: `PADDING` is uniform and shorthand; a per-edge
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.
-- **`ALIGNMENT` enum**: `Leading`=0, `Center`=1, `Trailing`=2, `Fill`=3.
+- **`ALIGNMENT` code** (2D position, `0`–`8`): a stack reads a single axis (a
+  `VStack` the horizontal component — `0/1/2` = leading/center/trailing — an
+  `HStack` the vertical — `0/1/2` = top/center/bottom), a `ZStack`/grid both
+  axes (full table in [PRIMITIVES.md §ZStack](./PRIMITIVES.md#zstack--zstack-0x12)).
+  `ALIGNMENT` **positions** children in the leftover cross-axis space; it never
+  resizes them. The cross-axis default is *hug* (children keep their size;
+  only `FILL`-sized children stretch). Full contract: [LAYOUT.md](./LAYOUT.md).
 - **`CONTENT_MODE` enum**: `Fit`=0 (aspect-fit within the bounds),
   `Fill`=1 (aspect-fill, cropped).
 - **`OFFSET`** moves the element **after** layout without affecting layout
-  (post-layout translation; GTK margins/translation, CSS `transform:
-  translate`).
-- **`POSITION`** is absolute placement within the parent (CSS `position:
-  absolute; left/top`); the renderer resolves the anchor.
+  (post-layout translation).
+- **`POSITION`** is absolute placement within the parent; the renderer resolves
+  the anchor.
 
 ---
 
@@ -126,8 +157,10 @@ map them to their native text attributes.
 | SwiftUI modifier | Protocol property(ies) | Type | Emission |
 | ------------------ | ------------------------ | ------ | ---------- |
 | `.font(.system(size:))` | `FONT_SIZE` 0x1007 | F32 | one |
+| `.font(.headline)` / `.font(TextStyle)` | `TEXT_STYLE` 0x1032 | ENUM (`LargeTitle`=0 … `Caption2`=10) | one |
+| `.font(.custom(name:size:))` | `FONT_FAMILY` 0x1009 + `FONT_SIZE` 0x1007 | STRING + F32 | two |
+| `.font(.system(size:weight:design:))` | `FONT_SIZE` + `FONT_WEIGHT` + `FONT_DESIGN` | F32 × 3 | three |
 | `.fontWeight(_:)` | `FONT_WEIGHT` 0x1008 | F32 (100–900) | one |
-| `.font(.custom(name:size:))` | `FONT_FAMILY` 0x1009 | STRING | one (arenaRef) |
 | `.italic()` / `.fontStyle(_:)` | `FONT_STYLE` 0x1017 | ENUM (`Normal`=0, `Italic`=1) | one |
 | `.fontDesign(_:)` | `FONT_DESIGN` 0x1018 | ENUM (`Default`=0, `Serif`=1, `Rounded`=2, `Monospaced`=3) | one |
 | `.fontWidth(_:)` | `FONT_WIDTH` 0x1019 | F32 (0.5–1.5, 1.0 default) | one |
@@ -160,9 +193,18 @@ passes font families as string names (`.font(.custom("Georgia", size:))`).
   `bold`≈700). Renderers map it to the nearest native weight.
 - **`KERNING` vs `TRACKING`**: kerning adjusts per-glyph spacing at a
   point/em scale; tracking adds uniform letter spacing. Both are F32 points.
-- **`LINE_LIMIT`** of 0 means unlimited.
+- **`LINE_LIMIT`**: a positive value clamps the rendered text to **at most N
+  lines**, any overflow replaced by an ellipsis `…` at the end of the last
+  visible line (tail truncation); `0`/absent = unlimited. It does not force a
+  single line — lines form by wrapping at the available width and by explicit
+  line breaks.
+- **`TRUNCATION_MODE`** (`Head`=0, `Middle`=1, `Tail`=2) **positions the
+  ellipsis** (start / middle / end of the last visible line) whenever a
+  `LINE_LIMIT` clamp truncates. On its own it has **no observable effect**
+  (SwiftUI-aligned) — it never forces a single line and never truncates by
+  itself. Full contract: [LAYOUT.md](./LAYOUT.md#content-fitting-truncation--clipping).
 - **`TEXT_ALIGNMENT`** differs from stack `ALIGNMENT`: it aligns the text block
-  inside its own bounds (CSS `text-align`), not children of a stack.
+  inside its own bounds, not children of a stack.
 
 ---
 
@@ -202,10 +244,13 @@ Visual decoration. These never change layout; they decorate the element.
 - **`clipShape`**: `SHAPE_KIND` (0x0006, defined in
   [PRIMITIVES.md](./PRIMITIVES.md#5-shapes--paints)) selects the clip geometry;
   `CLIPS_TO_BOUNDS` (1) turns clipping on. A bare `.clipped()` is
-  `CLIPS_TO_BOUNDS` with no shape.
+  `CLIPS_TO_BOUNDS` with no shape (the clip is the bounds box). `CLIPS_TO_BOUNDS`
+  is a **post-layout visual clip** to the node's allocated bounds box (both
+  axes): layout is unaffected, only painting is clipped — see
+  [LAYOUT.md](./LAYOUT.md#clipping--clips_to_bounds).
 - **Color effects** (`SATURATION`, `CONTRAST`, …) are renderer-owned filters;
-  the renderer maps them to native filter APIs (CSS `filter`, GTK
-  `GtkSnapshot` effects). They compose in the order applied.
+  the renderer maps them to its native filter APIs. They compose in the order
+  applied.
 - **`TRANSITION`** is a presentation hint on a container: when its child
   subtree is structurally replaced (a `NavigationContainer` destination swap, a
   `Conditional.when` branch change) the renderer **may** animate the swap with
@@ -228,8 +273,7 @@ Geometric transforms applied after layout.
 ### Semantics
 
 - Transforms do **not** affect layout; the renderer applies them as a
-  post-layout visual transform (CSS `transform`, GTK `gtk_widget_allocate`
-  transform).
+  post-layout visual transform.
 - **Anchor** is renderer-token-owned (`.center` default); the protocol does not
   transmit anchors — the renderer owns presentation (see OPCODE.md design
   tokens). Non-uniform scale / 3D rotation are future extensions.
@@ -259,14 +303,59 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
   visibility emits a single `SET_PROPERTY`.
 - **`ENABLED`** is the inverse of SwiftUI `.disabled()`: 1 = interactive, 0 =
   disabled. Disabled controls do not emit events.
+- **Icons** ([`ICON`](./PRIMITIVES.md#icon--icon-0x0b), spec/ICONS.md): the
+  `ICON_NAME` string selects a renderer-native symbol; it is **not** an asset
+  reference (`IMAGE_SOURCE`). `COLOR`/`FONT_SIZE`
+  size and tint it like text; `LABEL` makes it presentable.
 - **`.focusable`** has no property: the app requests focus events via the
   `FOCUS` listener bit (`EVENT_LISTENERS`, bit 5) and observes
   `EVENT::FOCUS_CHANGED` — see [EVENTS.md](./EVENTS.md).
-- **`ROLE`/`STATE`** are accessibility enums; their enumerated values are
-  defined in [OPCODE.md](./OPCODE.md#semantic-properties), not here. `STATE` is
-  a semantic accessibility property — it never describes visual styling.
+- **`ROLE`** is **semantic structure only** — its enumerated values are defined
+  in [OPCODE.md](./OPCODE.md#semantic-properties), not here. Interactive/control
+  roles (button, link, checkbox, …) are **not roles**: they are intrinsic to the
+  control components (a `BUTTON` is an interactive button element, a `TOGGLE` a
+  checkbox/switch, a `MENU` a menu), and a custom-looking button uses `Button` +
+  `ButtonStyle`. The DSL rejects role codes outside the semantic catalog.
+- **`STATE`** is a semantic accessibility property — it never describes visual
+  styling.
+- **`.font(_:)`** is the single font modifier (SwiftUI `Font`): a predefined
+  typography (`Font.headline()` → `TEXT_STYLE`), a custom family + size
+  (`Font.custom(name, size)` → `FONT_FAMILY` + `FONT_SIZE`), or a system
+  size/weight/design (`Font.system(size, weight, design)` → `FONT_SIZE` +
+  `FONT_WEIGHT` + `FONT_DESIGN`). A fully-custom typography may set every axis
+  at once (`Font.custom(name, size, weight, design)` → all four). A heading
+  typography (LargeTitle…Headline) implies a heading element on a `TEXT`; a
+  custom/system font never implies a heading — it only styles the text.
+  Individual raw modifiers (`FontSize`, `FontWeight`, …) layer on top.
 - **`LABEL`** is a `STRING` property (the accessibility label), distinct from a
   `TEXT_FIELD`'s caption label.
+
+### Renderer default typography scale
+
+A `TEXT_STYLE` selects a whole typography; the **renderer owns the concrete
+values** so the same application looks native on every platform. The reference
+scale below is **baked per renderer** (each renderer MAY tune it to its
+platform's HIG). Size is points on native renderers / CSS px on the web.
+
+| Code | Style | Size | Weight |
+|------|-------|------|--------|
+| 0 | `LargeTitle` | 34 | 700 |
+| 1 | `Title` | 28 | 700 |
+| 2 | `Title2` | 22 | 700 |
+| 3 | `Title3` | 20 | 600 |
+| 4 | `Headline` | 17 | 600 |
+| 5 | `Subheadline` | 15 | 400 |
+| 6 | `Body` | 15 | 400 |
+| 7 | `Callout` | 14 | 400 |
+| 8 | `Footnote` | 13 | 400 |
+| 9 | `Caption` | 12 | 400 |
+| 10 | `Caption2` | 11 | 400 |
+
+A predefined `TEXT_STYLE` supplies the default size and weight; an explicit
+`FONT_SIZE`/`FONT_WEIGHT` (a raw `.fontSize`/`.fontWeight`, or a
+`Font.system(size:weight:)`) **overrides** that axis and wins **regardless of
+emit order**. Likewise `FONT_FAMILY` overrides a family derived from
+`FONT_DESIGN`. An unknown `TEXT_STYLE` code is ignored (forward compatible).
 
 ---
 
@@ -317,16 +406,21 @@ are never chainable modifiers.
 | `0x0001`–`0x0005` | Stack constraint (SPACING, ALIGNMENT, …, CONTENT_MARGINS) |
 | `0x0006` | `SHAPE_KIND` (ENUM; view-specific, see PRIMITIVES.md) |
 | `0x000A`–`0x000D` | Text (TEXT, LINE_LIMIT, TEXT_ALIGNMENT, TRUNCATION_MODE) |
-| `0x000E`–`0x001D` | Layout properties (allocated: OFFSET, POSITION, frame bounds, FIXED_SIZE, LAYOUT_PRIORITY, ASPECT_RATIO/CONTENT_MODE, MINIMUM_SCALE_FACTOR) |
-| `0x001E`–`0x00FF` | Future layout/format properties (unallocated) |
+| `0x000E`–`0x0020` | Layout properties (allocated: OFFSET, POSITION, frame bounds, FIXED_SIZE, LAYOUT_PRIORITY, ASPECT_RATIO/CONTENT_MODE, MINIMUM_SCALE_FACTOR, GRID_COLUMNS, GRID_ROWS, GRID_TRACKS) |
+| `0x0021`–`0x00FF` | Future layout/format properties (unallocated) |
 | `0x1001`–`0x1016` | Styling (BACKGROUND_COLOR, BORDER_*, FONT_SIZE/WEIGHT/FAMILY, COLOR, WIDTH, HEIGHT, OPACITY, VISIBLE, Z_INDEX, CLIPS_TO_BOUNDS, PADDING_*, BORDER_EDGES) |
 | `0x1002` | `IMAGE_SOURCE` (STRING; view-specific, see PRIMITIVES.md) |
 | `0x1017`–`0x102F` | Text-format properties (allocated: FONT_STYLE/DESIGN/WIDTH, KERNING, TRACKING, BASELINE_OFFSET, LINE_SPACING, TEXT_CASE, UNDERLINE, STRIKETHROUGH), effect properties (SHADOW_*, BLUR, SATURATION, CONTRAST, BRIGHTNESS, GRAYSCALE, HUE_ROTATION, COLOR_MULTIPLY, COLOR_INVERT), ROTATION_DEGREES, SCALE, ALLOWS_HIT_TESTING |
 | `0x1030` | `TINT` (COLOR) | — |
 | `0x1031` | `TRANSITION` (ENUM; navigation swap hint) | — |
-| `0x1032`–`0x10FF` | Future styling properties (unallocated) |
+| `0x1032` | `TEXT_STYLE` (ENUM; predefined typography) | — |
+| `0x1035`–`0x1037`, `0x103A`–`0x103E` | Media — `PLAYBACK_STATE` (U32), `MEDIA_POSITION` (F32), `MEDIA_VOLUME` (F32), `MEDIA_CONTROLLER_ID` (U32), `MEDIA_SOURCE` (STRING), `MEDIA_MUTED`/`MEDIA_LOOP` (U8), `MEDIA_RATE` (F32) — see PRIMITIVES.md + spec/MEDIA.md |
+| `0x1033`, `0x1034` | Unallocated (formerly `AUDIO_SOURCE`/`VIDEO_SOURCE`) |
+| `0x1038` | `ICON_NAME` (STRING; the canonical icon name — spec/ICONS.md) on an `ICON` node |
+| `0x1039` | `FIT_QUERY` (LIST of F32; a `SIZE_THAT_FITS` slot's candidate thresholds) — CONFORMANCE.md vector 28a |
+| `0x103F`–`0x10FF` | Future styling properties (unallocated) |
 | `0x2001`–`0x200B` | Semantic (ROLE, STATE, ENABLED, SELECTED, EVENT_LISTENERS, VALUE, MIN_VALUE, MAX_VALUE, LABEL, PROMPT) |
-| `0x2009`, `0x200C`–`0x2014` | Control properties (allocated: STEP_VALUE, CONTROL_SIZE, IS_SECURE, PROGRESS, IS_INDETERMINATE, SELECTION, COLOR_VALUE, DATE_PICKER_MODE, PICKER_STYLE) — defined in PRIMITIVES.md controls. Note: a `DATE_PICKER`'s date is set via the `STYLE::SET_DATE` command (0x04), not a property; **`0x2011` is unallocated/reserved** (its former `DATE_VALUE` draft was dropped) |
+| `0x2009`, `0x200C`–`0x2014` | Control properties (allocated: STEP_VALUE, CONTROL_SIZE, IS_SECURE, PROGRESS, IS_INDETERMINATE, SELECTION, COLOR_VALUE, DATE_PICKER_MODE, PICKER_STYLE) — defined in PRIMITIVES.md controls. Note: a `DATE_PICKER`'s date is set via the `PARAMETER::SET_DATE` command (0x04), not a property; **`0x2011` is unallocated/reserved** (its former `DATE_VALUE` draft was dropped) |
 | `0x2016`–`0x2018` | Binding/action properties (allocated: `ACTION_ID`, `BINDING_ID`, `TOGGLE_STYLE`) — defined in PRIMITIVES.md semantic controls |
 | `0x2019` | `ROUTE` (STRING; navigation current path) — see §6 |
 | `0x201A` | `NAV_DEPTH` (U32; navigation back-stack depth) — see §6 |
@@ -352,9 +446,11 @@ The canonical value type per property (the protocol's authoritative mapping):
 - `EVENT_LISTENERS`, `BORDER_EDGES` → `U32`
 - `SELECTED`, `VISIBLE`, `ENABLED`, `UNDERLINE`, `STRIKETHROUGH`,
   `COLOR_INVERT`, `CLIPS_TO_BOUNDS`, `ALLOWS_HIT_TESTING`, `IS_SECURE`,
-  `IS_INDETERMINATE`, `FIXED_SIZE_*` → `U8`
-- `LABEL`, `PROMPT`, `FONT_FAMILY`, `IMAGE_SOURCE`, `ROUTE` → `STRING`
-- `LINE_LIMIT`, `SELECTION`, `ACTION_ID`, `BINDING_ID` → `U32`
+  `IS_INDETERMINATE`, `FIXED_SIZE_*`, `MEDIA_MUTED`, `MEDIA_LOOP` → `U8`
+- `LABEL`, `PROMPT`, `FONT_FAMILY`, `IMAGE_SOURCE`,
+  `MEDIA_SOURCE`, `ICON_NAME`, `ROUTE` → `STRING`
+- `LINE_LIMIT`, `SELECTION`, `ACTION_ID`, `BINDING_ID`,
+  `MEDIA_CONTROLLER_ID` → `U32`
 - `ALIGNMENT`, `TEXT_ALIGNMENT`, `TRUNCATION_MODE`, `TEXT_CASE`, `FONT_STYLE`,
   `FONT_DESIGN`, `CONTENT_MODE`, `CONTROL_SIZE`, `SHAPE_KIND`,
   `DATE_PICKER_MODE`, `PICKER_STYLE`, `TOGGLE_STYLE`, `TRANSITION` → `F32`
@@ -374,7 +470,7 @@ resolution](#default-value-type-resolution).
 
 | Property | ID | Values |
 |----------|----|--------|
-| `ALIGNMENT` | 0x0002 | `Leading`=0, `Center`=1, `Trailing`=2, `Fill`=3 |
+| `ALIGNMENT` | 0x0002 | 2D position code `0`–`8` (see PRIMITIVES.md §ZStack); stacks read one axis |
 | `SHAPE_KIND` | 0x0006 | `Circle`=0, `Rectangle`=1, `RoundedRectangle`=2, `Capsule`=3, `Ellipse`=4, `Path`=5 |
 | `TEXT_ALIGNMENT` | 0x000C | `Leading`=0, `Center`=1, `Trailing`=2 |
 | `TRUNCATION_MODE` | 0x000D | `Head`=0, `Middle`=1, `Tail`=2 |

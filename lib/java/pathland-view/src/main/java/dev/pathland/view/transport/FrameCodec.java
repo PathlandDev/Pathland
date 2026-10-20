@@ -1,0 +1,385 @@
+package dev.pathland.view.transport;
+
+import dev.pathland.view.Categories;
+import dev.pathland.view.Commands;
+import dev.pathland.view.emit.ProtocolFrame;
+import dev.pathland.view.emit.Opcode;
+
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * The network batch codec — mirrors {@code pathland_core_transport} in Java.
+ *
+ * <p>Batch wire format (both directions share the header):
+ * <pre>
+ * magic "PLPL" (u32 LE) | version (u16) | flags (u16) | sequence (u32)
+ * | opcodeCount (u32) | opcodes (16 B × count) | stringsLen (u32) | string bytes
+ * </pre>
+ *
+ * <p>The header's {@code sequence} is the per-stream monotonic message sequence
+ * (guest → host delta batches only; heartbeat/request batches carry {@code 0}).
+ * A consumer detects a lost batch by a sequence gap and recovers with
+ * {@code META::RESYNC} — see {@code spec/OPCODE.md} §Sequence gap detection.
+ *
+ * <p>Frames are self-contained (relative string offsets, no mirrored arena), so each
+ * WebSocket message is independent. Events flow host → guest with the
+ * {@code HOST_TO_GUEST} direction flag; {@code TEXT_CHANGED} carries its text in the
+ * string section referenced by a relative offset.
+ */
+public final class FrameCodec {
+
+    public static final int MAGIC = 0x504C_504C;
+    public static final int VERSION = 1;
+    public static final int GUEST_TO_HOST = 0x0000;
+    public static final int HOST_TO_GUEST = 0x0001;
+    public static final int HEADER = 16;
+
+    private FrameCodec() {}
+
+    /** Encode a self-contained frame as a network batch (sequence 0 — not a delta batch). */
+    public static byte[] encodeFrame(ProtocolFrame frame) {
+        return encodeFrame(frame, 0);
+    }
+
+    /**
+     * Encode a self-contained frame as a guest → host network batch with the
+     * given per-stream message {@code sequence}. A producer increments the
+     * sequence by one for each delta batch it encodes so a consumer can detect
+     * a lost batch (spec/OPCODE.md §Sequence gap detection).
+     */
+    public static byte[] encodeFrame(ProtocolFrame frame, int sequence) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, GUEST_TO_HOST, sequence, frame.opcodes().size());
+        for (Opcode op : frame.opcodes()) {
+            writeBytes(out, op.toBytes());
+        }
+        writeIntLE(out, frame.strings().length);
+        writeBytes(out, frame.strings());
+        return out.toByteArray();
+    }
+
+    /** Decode a self-contained frame batch into opcodes + string section. */
+    public static ProtocolFrame decodeFrame(byte[] bytes) {
+        Parsed parsed = parse(bytes);
+        return new ProtocolFrame(parsed.opcodes(), parsed.strings());
+    }
+
+    /** The per-stream message sequence encoded in a batch header (offset 8). */
+    public static int sequence(byte[] bytes) {
+        if (bytes.length < HEADER) {
+            throw new IllegalArgumentException("batch truncated");
+        }
+        return readIntLE(bytes, 8);
+    }
+
+    /** Encode a `META::RESYNC` request batch (host → guest): ask the guest for a full snapshot. */
+    public static byte[] encodeResync() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, HOST_TO_GUEST, 0, 1);
+        writeBytes(out, new Opcode(Categories.META, Commands.Meta.RESYNC, 0, 0, 0, 0).toBytes());
+        writeIntLE(out, 0); // empty string section
+        return out.toByteArray();
+    }
+
+    /** Encode a `META::PONG` reply batch (host → guest): the heartbeat reply to a `META::PING`. */
+    public static byte[] encodePong() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, HOST_TO_GUEST, 0, 1);
+        writeBytes(out, new Opcode(Categories.META, Commands.Meta.PONG, 0, 0, 0, 0).toBytes());
+        writeIntLE(out, 0); // empty string section
+        return out.toByteArray();
+    }
+
+    /** Encode a `META::PING` heartbeat probe batch (guest → host), the vector-16a bytes. */
+    public static byte[] encodePing() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, GUEST_TO_HOST, 0, 1);
+        writeBytes(out, new Opcode(Categories.META, Commands.Meta.PING, 0, 0, 0, 0).toBytes());
+        writeIntLE(out, 0); // empty string section
+        return out.toByteArray();
+    }
+
+    /** Encode a `META::ENVIRONMENT` field batch (viewport + route), as the DOM client sends it. */
+    public static byte[] encodeEnvironment(EnvironmentData env) {
+        byte[] route = env.route().getBytes(StandardCharsets.UTF_8);
+        List<Opcode> ops = new ArrayList<>(3);
+        if (env.viewportWidth() > 0) {
+            ops.add(new Opcode(Categories.META, Commands.Meta.ENVIRONMENT, 0,
+                    Commands.Environment.VIEWPORT_WIDTH, Float.floatToIntBits(env.viewportWidth()), 0));
+        }
+        if (env.viewportHeight() > 0) {
+            ops.add(new Opcode(Categories.META, Commands.Meta.ENVIRONMENT, 0,
+                    Commands.Environment.VIEWPORT_HEIGHT, Float.floatToIntBits(env.viewportHeight()), 0));
+        }
+        // The route string rides the batch's string section at relative offset 0.
+        ops.add(new Opcode(Categories.META, Commands.Meta.ENVIRONMENT, 0,
+                Commands.Environment.ROUTE, 0, 0));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, HOST_TO_GUEST, 0, ops.size());
+        for (Opcode op : ops) {
+            writeBytes(out, op.toBytes());
+        }
+        writeIntLE(out, 4 + route.length);
+        writeIntLE(out, route.length);
+        out.writeBytes(route);
+        return out.toByteArray();
+    }
+
+    /** True when the batch is a `META::RESYNC` request (host → guest). */
+    public static boolean isResync(byte[] bytes) {
+        Parsed parsed = parse(bytes);
+        for (Opcode op : parsed.opcodes()) {
+            if (op.category() == Categories.META && op.command() == Commands.Meta.RESYNC) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when the batch carries a `META::PING` heartbeat probe (guest → host). */
+    public static boolean isPing(byte[] bytes) {
+        Parsed parsed = parse(bytes);
+        for (Opcode op : parsed.opcodes()) {
+            if (op.category() == Categories.META && op.command() == Commands.Meta.PING) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when the batch carries `META::ENVIRONMENT` fields (host → guest). */
+    public static boolean isEnvironment(byte[] bytes) {
+        Parsed parsed = parse(bytes);
+        for (Opcode op : parsed.opcodes()) {
+            if (op.category() == Categories.META && op.command() == Commands.Meta.ENVIRONMENT) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Decode a `META::ENVIRONMENT` field batch into {@link EnvironmentData}. */
+    public static EnvironmentData decodeEnvironment(byte[] bytes) {
+        Parsed parsed = parse(bytes);
+        String route = null;
+        float width = -1f;
+        float height = -1f;
+        for (Opcode op : parsed.opcodes()) {
+            if (op.category() != Categories.META || op.command() != Commands.Meta.ENVIRONMENT) {
+                continue;
+            }
+            switch (op.a() & 0xFFFF) {
+                case Commands.Environment.VIEWPORT_WIDTH ->
+                        width = Float.intBitsToFloat(op.b());
+                case Commands.Environment.VIEWPORT_HEIGHT ->
+                        height = Float.intBitsToFloat(op.b());
+                case Commands.Environment.ROUTE ->
+                        route = parsed.stringAt(op.b());
+                default -> { }
+            }
+        }
+        return new EnvironmentData(route, width, height);
+    }
+
+    /** Encode host → guest events as a batch (binary EVENT opcodes + string section). */
+    public static byte[] encodeEvents(List<Event> events) {
+        List<Opcode> opcodes = new ArrayList<>(events.size());
+        ByteArrayOutputStream strings = new ByteArrayOutputStream();
+        for (Event event : events) {
+            if (event.isTextChanged()) {
+                int offset = strings.size();
+                byte[] utf8 = event.text().getBytes(StandardCharsets.UTF_8);
+                writeIntLE(strings, utf8.length);
+                strings.writeBytes(utf8);
+                opcodes.add(new Opcode(
+                        Categories.EVENT, Commands.Event.TEXT_CHANGED, 0, event.target(), offset, 0));
+            } else if (event.isNavigate()) {
+                if (event.isNavigateBack()) {
+                    opcodes.add(new Opcode(Categories.EVENT, Commands.Event.NAVIGATE, 0, 0, 0, 0));
+                } else {
+                    int offset = strings.size();
+                    byte[] utf8 = event.url().getBytes(StandardCharsets.UTF_8);
+                    writeIntLE(strings, utf8.length);
+                    strings.writeBytes(utf8);
+                    opcodes.add(new Opcode(
+                            Categories.EVENT, Commands.Event.NAVIGATE, Commands.Flags.NAVIGATE_URL, 0, offset, 0));
+                }
+            } else if (event.isValueChanged()) {
+                opcodes.add(new Opcode(
+                        Categories.EVENT,
+                        Commands.Event.VALUE_CHANGED,
+                        0,
+                        event.target(),
+                        Float.floatToRawIntBits(event.value()),
+                        0));
+            } else if (event.isKeyDown() || event.isKeyUp()) {
+                opcodes.add(new Opcode(
+                        Categories.EVENT, event.command(), event.flags(), event.target(), event.b(), event.c()));
+            } else if (event.isDateChanged()) {
+                opcodes.add(new Opcode(
+                        Categories.EVENT, Commands.Event.DATE_CHANGED, 0, event.target(), event.b(), event.c()));
+            } else if (event.isFocusChanged() || event.isEditingChanged() || event.isSubmit()) {
+                opcodes.add(new Opcode(
+                        Categories.EVENT, event.command(), 0, event.target(), event.b(), 0));
+            } else if (event.isMediaTimeUpdated() || event.isMediaVolumeChanged()
+                    || event.isMediaDurationChanged() || event.isFitChanged()) {
+                // Media/fit reports carry their float value in field B (the value
+                // bits), NOT in the pointer x/y fields — the decode
+                // (`decodeEvents`) reads `Float.intBitsToFloat(op.b())`.
+                opcodes.add(new Opcode(
+                        Categories.EVENT,
+                        event.command(),
+                        0,
+                        event.target(),
+                        Float.floatToRawIntBits(event.value()),
+                        0));
+            } else if (event.isMediaPlayStateChanged() || event.isMediaEnded()) {
+                // A play-state bit / a fieldless ended marker.
+                opcodes.add(new Opcode(
+                        Categories.EVENT, event.command(), 0, event.target(), event.b(), 0));
+            } else {
+                opcodes.add(new Opcode(
+                        Categories.EVENT,
+                        event.command(),
+                        event.flags(),
+                        event.target(),
+                        Float.floatToRawIntBits(event.x()),
+                        Float.floatToRawIntBits(event.y())));
+            }
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeHeader(out, HOST_TO_GUEST, 0, opcodes.size());
+        for (Opcode op : opcodes) {
+            writeBytes(out, op.toBytes());
+        }
+        writeIntLE(out, strings.size());
+        writeBytes(out, strings.toByteArray());
+        return out.toByteArray();
+    }
+
+    /** Decode a host → guest event batch into typed events. */
+    public static List<Event> decodeEvents(byte[] bytes) {
+        Parsed parsed = parse(bytes);
+        List<Event> events = new ArrayList<>();
+        for (Opcode op : parsed.opcodes()) {
+            if (op.category() != Categories.EVENT) {
+                continue;
+            }
+            int command = op.command();
+            switch (command) {
+                case Commands.Event.TEXT_CHANGED -> events.add(Event.textChanged(op.a(), parsed.stringAt(op.b())));
+                case Commands.Event.NAVIGATE -> {
+                    if ((op.flags() & Commands.Flags.NAVIGATE_URL) != 0) {
+                        events.add(Event.navigate(parsed.stringAt(op.b())));
+                    } else {
+                        events.add(Event.navigateBack());
+                    }
+                }
+                case Commands.Event.VALUE_CHANGED -> events.add(Event.valueChanged(op.a(), Float.intBitsToFloat(op.b())));
+                case Commands.Event.KEY_DOWN -> events.add(Event.keyDown(op.a(), op.b(), op.c(), op.flags()));
+                case Commands.Event.KEY_UP -> events.add(Event.keyUp(op.a(), op.b(), op.c()));
+                case Commands.Event.DATE_CHANGED -> events.add(Event.dateChanged(op.a(), op.b(), op.c()));
+                case Commands.Event.FOCUS_CHANGED -> events.add(Event.focusChanged(op.a(), op.b() != 0));
+                case Commands.Event.EDITING_CHANGED -> events.add(Event.editingChanged(op.a(), op.b() != 0));
+                case Commands.Event.SUBMIT -> events.add(Event.submit(op.a()));
+                case Commands.Event.SCROLL -> events.add(Event.scroll(
+                        op.a(), Float.intBitsToFloat(op.b()), Float.intBitsToFloat(op.c())));
+                case Commands.Event.WHEEL -> events.add(Event.wheel(
+                        op.a(), Float.intBitsToFloat(op.b()), Float.intBitsToFloat(op.c())));
+                case Commands.Event.MEDIA_PLAY_STATE_CHANGED -> events.add(
+                        Event.mediaPlayStateChanged(op.a(), op.b() != 0));
+                case Commands.Event.MEDIA_TIME_UPDATED -> events.add(
+                        Event.mediaTimeUpdated(op.a(), Float.intBitsToFloat(op.b())));
+                case Commands.Event.MEDIA_ENDED -> events.add(Event.mediaEnded(op.a()));
+                case Commands.Event.MEDIA_VOLUME_CHANGED -> events.add(
+                        Event.mediaVolumeChanged(op.a(), Float.intBitsToFloat(op.b())));
+                case Commands.Event.MEDIA_DURATION_CHANGED -> events.add(
+                        Event.mediaDurationChanged(op.a(), Float.intBitsToFloat(op.b())));
+                case Commands.Event.FIT_CHANGED -> events.add(
+                        Event.fitChanged(op.a(), Float.intBitsToFloat(op.b())));
+                case Commands.Event.POINTER_DOWN, Commands.Event.POINTER_MOVE, Commands.Event.POINTER_UP -> events.add(
+                        new Event(command, op.a(), op.flags(), Float.intBitsToFloat(op.b()),
+                                Float.intBitsToFloat(op.c()), 0, null, 0, 0));
+                default -> { }
+            }
+        }
+        return events;
+    }
+
+    private record Parsed(List<Opcode> opcodes, byte[] strings) {
+        String stringAt(int offset) {
+            int len = (strings[offset] & 0xFF)
+                    | ((strings[offset + 1] & 0xFF) << 8)
+                    | ((strings[offset + 2] & 0xFF) << 16)
+                    | ((strings[offset + 3] & 0xFF) << 24);
+            return new String(strings, offset + 4, len, StandardCharsets.UTF_8);
+        }
+    }
+
+    private static Parsed parse(byte[] bytes) {
+        if (bytes.length < HEADER) {
+            throw new IllegalArgumentException("batch truncated");
+        }
+        int magic = readIntLE(bytes, 0);
+        if (magic != MAGIC) {
+            throw new IllegalArgumentException("bad batch magic 0x" + Integer.toHexString(magic));
+        }
+        int version = (bytes[4] & 0xFF) | ((bytes[5] & 0xFF) << 8);
+        if (version != VERSION) {
+            throw new IllegalArgumentException("unsupported batch version " + version);
+        }
+        int opcodeCount = readIntLE(bytes, 12);
+        int opcodesEnd = HEADER + opcodeCount * Opcode.SIZE;
+        if (opcodesEnd + 4 > bytes.length) {
+            throw new IllegalArgumentException("batch truncated (opcodes)");
+        }
+        List<Opcode> opcodes = new ArrayList<>(opcodeCount);
+        for (int i = 0; i < opcodeCount; i++) {
+            byte[] slot = new byte[Opcode.SIZE];
+            System.arraycopy(bytes, HEADER + i * Opcode.SIZE, slot, 0, Opcode.SIZE);
+            opcodes.add(Opcode.fromBytes(slot));
+        }
+        int stringsLen = readIntLE(bytes, opcodesEnd);
+        int stringsStart = opcodesEnd + 4;
+        if (stringsStart + stringsLen > bytes.length) {
+            throw new IllegalArgumentException("batch truncated (strings)");
+        }
+        byte[] strings = new byte[stringsLen];
+        System.arraycopy(bytes, stringsStart, strings, 0, stringsLen);
+        return new Parsed(opcodes, strings);
+    }
+
+    private static void writeHeader(ByteArrayOutputStream out, int flags, int sequence, int opcodeCount) {
+        writeIntLE(out, MAGIC);
+        writeShortLE(out, VERSION);
+        writeShortLE(out, flags);
+        writeIntLE(out, sequence);
+        writeIntLE(out, opcodeCount);
+    }
+
+    private static void writeIntLE(ByteArrayOutputStream out, int value) {
+        out.write(value & 0xFF);
+        out.write((value >>> 8) & 0xFF);
+        out.write((value >>> 16) & 0xFF);
+        out.write((value >>> 24) & 0xFF);
+    }
+
+    private static void writeShortLE(ByteArrayOutputStream out, int value) {
+        out.write(value & 0xFF);
+        out.write((value >>> 8) & 0xFF);
+    }
+
+    private static void writeBytes(ByteArrayOutputStream out, byte[] bytes) {
+        out.writeBytes(bytes);
+    }
+
+    private static int readIntLE(byte[] bytes, int offset) {
+        return (bytes[offset] & 0xFF)
+                | ((bytes[offset + 1] & 0xFF) << 8)
+                | ((bytes[offset + 2] & 0xFF) << 16)
+                | ((bytes[offset + 3] & 0xFF) << 24);
+    }
+}

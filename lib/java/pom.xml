@@ -4,19 +4,45 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.pathland</groupId>
+    <groupId>dev.pathland</groupId>
     <artifactId>pathland-parent</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.5</version>
     <packaging>pom</packaging>
 
     <name>Pathland Java</name>
     <description>
-        Framework-agnostic Java libraries for the Pathland UI protocol: a SwiftUI-like
+        Framework-agnostic Java libraries for the Pathland UI protocol: a declarative
         view DSL with Angular-style signals/computed/effects, a fine-grained opcode
         emitter, the wire codec, JNA ring interop, a reusable HTML renderer, and
         cross-platform state stores. Usable from Spring Boot, Quarkus, or desktop apps.
         Runs on every LTS from Java 17.
     </description>
+
+    <url>https://github.com/PathlandDev/Pathland</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>michaelkrog</id>
+            <name>Michael Krog</name>
+            <email>mic@apaq.dk</email>
+            <url>https://github.com/michaelkrog</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/PathlandDev/Pathland.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/PathlandDev/Pathland.git</developerConnection>
+        <url>https://github.com/PathlandDev/Pathland</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <modules>
         <module>pathland-view</module>
@@ -24,6 +50,8 @@
         <module>pathland-render-html</module>
         <module>pathland-state-redis</module>
         <module>pathland-server-core</module>
+        <module>pathland-observability</module>
+        <module>pathland-test-kit</module>
         <module>pathland-spring-boot-starter</module>
         <module>pathland-quarkus-starter</module>
         <module>pathland-demo-views</module>
@@ -94,8 +122,10 @@
                     <version>3.3.1</version>
                     <configuration>
                         <!-- Re-copy static resources (e.g. the rebuilt
-                             pathland-dom-renderer.js) over existing target files instead
-                             of failing with FileAlreadyExistsException on repeat builds. -->
+                             content-hashed dom-renderer bundle and its
+                             dom-renderer.current manifest) over existing target
+                             files instead of failing with FileAlreadyExistsException
+                             on repeat builds. -->
                         <overwrite>true</overwrite>
                     </configuration>
                 </plugin>
@@ -112,4 +142,136 @@
             </plugins>
         </pluginManagement>
     </build>
+
+    <!-- Run BEFORE an IntelliJ IDE run: refreshes the two layers the IDE cannot rebuild
+         itself — the Rust cdylib (cargo) and the DOM bundle (npm build:all) — plus the
+         render-html module's embedded dylib (its antrun embed step only runs under Maven,
+         NOT under IntelliJ's own build). IntelliJ then compiles the Java modules from its
+         module outputs (the pathland modules are imported, so no ~/.m2 is used) and copies
+         the refreshed bundle + its dom-renderer.current manifest into target/classes on
+         Build Project. Invoke with `mvn -P refresh-ide validate`, then Reload All Maven
+         Projects → Build → Run → reload. The bundle is content-hashed
+         (dom-renderer-<sha256>.js) so a rebuilt bundle busts the immutable asset cache by
+         URL — a normal reload after restart is enough, no hard refresh. -->
+    <profiles>
+    <!-- Maven Central publishing (`mvn -P release deploy`). Normal builds/tests are
+         unaffected: this profile only activates on demand. -->
+    <profile>
+        <id>release</id>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <goals><goal>jar-no-fork</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.6.3</version>
+                    <configuration>
+                        <!-- Central requires a -javadoc jar; disable strict doclint so
+                             existing doc comments don't fail the release build. -->
+                        <doclint>none</doclint>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals><goal>jar</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.4</version>
+                    <executions>
+                        <execution>
+                            <id>sign-artifacts</id>
+                            <phase>verify</phase>
+                            <goals><goal>sign</goal></goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <!-- Uploads the whole reactor to the Sonatype Central Portal as one
+                     deployment (auto-published after validation). Credentials come
+                     from the `central` server in ~/.m2/settings.xml. -->
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.6.0</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <publishingServerId>central</publishingServerId>
+                        <autoPublish>true</autoPublish>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
+    <profile>
+        <id>refresh-ide</id>
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.1.0</version>
+                    <!-- Runs ONLY at the aggregator (parent); the refresh steps must
+                         not repeat once per child module. -->
+                    <inherited>false</inherited>
+                    <executions>
+                        <execution>
+                            <id>refresh-rust</id>
+                            <phase>validate</phase>
+                            <goals><goal>exec</goal></goals>
+                            <configuration>
+                                <workingDirectory>${session.executionRootDirectory}/../rust</workingDirectory>
+                                <executable>cargo</executable>
+                                <arguments>
+                                    <argument>build</argument>
+                                    <argument>--package=pathland-render-html</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>refresh-ts</id>
+                            <phase>validate</phase>
+                            <goals><goal>exec</goal></goals>
+                            <configuration>
+                                <workingDirectory>${session.executionRootDirectory}/../typescript</workingDirectory>
+                                <executable>npm</executable>
+                                <arguments>
+                                    <argument>run</argument>
+                                    <argument>build:all</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>refresh-render-html</id>
+                            <phase>validate</phase>
+                            <goals><goal>exec</goal></goals>
+                            <configuration>
+                                <workingDirectory>${session.executionRootDirectory}</workingDirectory>
+                                <executable>mvn</executable>
+                                <arguments>
+                                    <argument>-q</argument>
+                                    <argument>-pl</argument>
+                                    <argument>pathland-render-html</argument>
+                                    <argument>process-resources</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </build>
+    </profile>
+    </profiles>
 </project>

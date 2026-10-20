@@ -1,48 +1,148 @@
 # pathland-view (Rust DSL) — implementation status
 
-**Last updated:** September 2, 2026
+**Last updated:** October 9, 2026
 
 The SwiftUI-style **view DSL** (`no_std`) building `pathland_engine::Node`
-trees. Protocol contract: `spec/`.
+trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 
 ## Implemented
 
+- **The three authoring operations** (spec/DSL.md §2): every concrete view
+  exposes **values** (`Type::with(|c| …)` static / `view.with(|c| …)` chained),
+  **modifiers** (`Type::modifiers((A, B))` / `view.modifiers((A, B))`, single or
+  tuple list) and, for content-bearing views, **children**
+  (`Type::children(vec![…])` / `view.children(vec![…])`). The three may be used
+  at creation or chained, in any order.
+- **Per-view `Config`** (`TextConfig`, `StackConfig`, `GridConfig`,
+  `RangeConfig`, …) with fluent setters, consumed by the value builders. Values
+  move structural properties (`spacing`/`alignment`/grid counts) into the config
+  (no longer modifiers).
 - **Views**: `VStack`, `HStack`, `ZStack`, `Grid`, `ScrollView`, `LazyVGrid`,
   `LazyHGrid`, `LazyVStack`, `LazyHStack`, `Text`, `Button`, `Spacer`,
-  `Image`, `Color` (dual identity: a layout-greedy View *and* a value passed
-  into style modifiers), `Shape`, `Divider`, `ProgressView`, `Gauge`,
-  `Toggle`, `Slider`, `TextField`, `TextEditor`, `Stepper`, `DatePicker`,
-  `Picker`, `Menu`, `ColorPicker` (+ the `vstack!`/`hstack!` macros and
-  `text`/`spacer`/`button` free functions).
-- **Modifiers** (chainable, decoupled): `spacing`, `padding`, `font_size`,
-  `font_weight`, `foreground_style(Color)` (no `.color()`), `background(Color)`,
-  `border(Color, width)`, `tint(Color)`, `frame(width/height/alignment)`,
-  `opacity`, `hidden`, `corner_radius`, `line_limit`, `text_alignment`,
-  `truncation_mode`, `offset`, `position`, `z_index`, `pointer_events`,
-  `on_tap_gesture`.
-- **Composition**: blanket `ViewExt::modifier` + `ViewModifier` for custom
-  modifiers; `Modified<V, M>` wrapper.
-- **Alignment enum** (`Align`): Leading/Center/Trailing/Fill.
-- **`Color` rules**: no `.color()` modifier; foreground is `.foreground_style(_:)`.
+  `Icon` (semantic symbols via `IconName` + `icon(…)`), `Image` (sets
+  `IMAGE_SOURCE`), `Color` (dual identity: a layout-greedy View *and* a value
+  passed into style modifiers), `Shape` + named `Rectangle`/`Circle`/`Capsule`/
+  `Ellipse`, `Divider`, `ProgressView`, `Gauge`, `Toggle`, `Slider`,
+  `TextField` (sets `PROMPT`), `TextEditor`, `Stepper`, `DatePicker`, `Picker`,
+  `Menu`, `ColorPicker` (+ the `vstack!`/`hstack!` macros and
+  `text`/`spacer`/`button`/`icon`/`image` free functions).
+- **Modifiers** (decoupled values applied via `modifiers(...)`): `Padding`,
+  `FontSize`, `FontWeight`, `Font(Font)`, `FontFamily`, `FontDesign` (the enum
+  *is* the modifier), `ForegroundStyle` (no `.color()`), `Background`, `Border`,
+  `Tint`, `Frame`, `Opacity`, `Hidden`, `CornerRadius`, `LineLimit`,
+  `TextAlignment`, `TruncationMode`, `Offset`, `Position`, `ZIndex`,
+  `PointerEvents`, `TapGesture` (`TapGesture::new(f)`).
+- **No `Mod` suffix**: modifiers are named for the modifier they apply;
+  `FontDesignMod` is gone (`FontDesign` is the modifier).
+- **Typography** (`Font` + `TextStyle`): `Font::large_title()`…`caption2()` emit
+  the predefined `TEXT_STYLE` (renderer-owned size/weight); `Font::custom(name,
+  size)`, `Font::system(size)`, `Font::system_weight(size, weight)`, and
+  `Font::custom_full(name, size, weight, design)` emit the raw
+  `FONT_FAMILY`/`FONT_SIZE`/`FONT_WEIGHT`/`FONT_DESIGN` axes.
+- **`Frame` infinity**: infinite `width`/`height` hints (`f32::INFINITY`,
+  SwiftUI `maxWidth/maxHeight: .infinity`) normalize to the `size::FILL`
+  sentinel on emission.
+- **Composition**: blanket `ViewExt::modifiers` + `ViewModifier` for custom
+  modifiers; `Modified<V>` wrapper (applies its modifier list at `build`).
+  `Modified<V>` implements `Configurable`/`Children` (delegating) so the three
+  operations are order-independent.
+- **Alignment enum** (`Align`): Leading/Center/Trailing.
 - **Design tokens**: `Color` is `Literal(u32)` | `Token(&'static str)` —
   `Color::token("color.primary")` (and `dark.*` paths) usable as a View and in
-  every color-taking modifier (`foreground_style`, `background`, `border`,
-  `tint`); token refs emit as the `DESIGN_TOKEN` value type via
-  `Node::token_properties` (spec/TOKENS.md).
+  every color-taking modifier; token refs emit as the `DESIGN_TOKEN` value type
+  via `Node::token_properties` (spec/TOKENS.md).
 - **`Theme` / `AdaptiveTheme` (global overrides)**: re-exports
-  `pathland_engine::Theme` (single-value builders `color`/`f32`/`string`/… for
-  one scheme) and `AdaptiveTheme { light, dark }`. Emit once at mount via
-  `Engine::apply_theme` (light) / `Engine::apply_adaptive_theme` (light + the
-  `dark.`-prefixed dark theme; STRING values arena-alloc'd).
+  `pathland_engine::Theme` and `AdaptiveTheme { light, dark }`. Emit once at
+  mount via `Engine::apply_theme` / `Engine::apply_adaptive_theme`.
+- **Reactive signals (Phase 1)**: a shared `Runtime`
+  (`Rc<RefCell<Store>>`, `no_std` — no thread-local) with typed handles
+  (`Signal<T>`/`WritableSignal<T>`, `SignalValueKind`/`IntoSignalId`), value
+  signals, **computed** (lazy, memoized, equality-suppressed, chained) and
+  **effect** (runs immediately, then on dependency change) signals, and
+  `untracked` reads; `Engine::signal`/`computed`/`effect`/`read`/`set`. The DSL
+  binds a node's **text** (`Text::with(|t| { t.text_signal(sig); })`) and a
+  **property** — **every value member accepts a raw value or a signal**
+  (`Reactive<T>`/`IntoReactive<T>`, spec DSL.md §2): a signal is a node-level
+  binding, so a change re-emits only that node's `SET_PROPERTY`. Modifiers spell
+  this `Padding(16.0)` (static) vs `Padding(sig)` (bound) — `FontSize(sig)`,
+  `ForegroundStyle(sig)`, `Background(sig)`, `Opacity(sig)`,
+  `Border::new(color, width)`, `CornerRadius(sig)`, `FontWeight(sig)`,
+  `LineLimit(sig)`, `Offset::new(x, y)`, `Position::new(x, y)`, `ZIndex(sig)` …
+  the former `Bound`/`*.bound` modifier surface is **removed**. View configs
+  take signals the same way (`VStack::with(|v| { v.spacing(sig); })`, «Grid»:
+  `columns`/`rows`/`spacing`, `ProgressView::value`, `Gauge` value/min/max).
+  Reactive values cover the engine's `SignalValueKind`s (`f32`/`u32`/`u8`/
+  `bool`); `Align` and token colors remain static (no typed signal kind yet).
+- **Two-way bindings + actions (Phase 2)**: a control binds a writable signal
+  and records an app-side **input sink** (a `Gesture::TextInput`/`ValueInput`/
+  `DateInput` on the node, never serialized) plus the `BINDING_ID` event gate —
+  `TextField`/`TextEditor` (`t.text(sig)`), `Toggle` (`t.is_on(sig)`),
+  `Slider`/`Stepper` (`s.bind(sig)`, initial from the signal), `Picker`
+  (`p.bind(sig)`). `Button::action(f)` wires the tap. A host collects the sinks
+  with `collect_input_handlers` and routes `TEXT_CHANGED`/`VALUE_CHANGED`/
+  `DATE_CHANGED` into them (the sink writes the signal; the host re-emits the
+  tree to flush the delta).
+- **Styles + environment (Phase 3)**: an [`Environment`] threaded through
+  `View::build_env` (the `no_std` equivalent of the Java thread-local) scopes a
+  subtree; `ButtonStyle` (`make_body(&ButtonConfig) -> Option<Box<dyn View>>`)
+  supplies a button's content (Composite Override Mode), applied with
+  `ViewExt::button_style(style)`. Built-ins `PlainButtonStyle` (native path) and
+  `BorderedButtonStyle`; custom styles implement the trait.
+- **Structural reactivity + navigation (Phase 4)**: `Conditional::when(signal,
+  then, else)` builds the selected branch (the host rebuilds + re-emits; the
+  engine reconciles into `TREE` deltas). Navigation: `Params` + `RouteTable`
+  (`/users/:id` matching + fallback), `Router` (path signal + back-stack:
+  `navigate`/`push`/`pop`/`replace`), `NavigationContainer` (builds the current
+  destination and carries `ROUTE`/`NAV_DEPTH`/`NAV_CHROME` on a container slot),
+  and `NavigationLink` (a button that changes the route via a router).
+- **Media (Phase 6)**: `Video` — the video playback **surface**
+  (`Video::new(Rc<MediaController>)` / `video(rc)`) referencing a
+  `pathland_engine::MediaController`; `MediaControllerExt::attach()` on a
+  controller (`Rc`) is the **non-visual marker** that materializes its
+  `MEDIA_CONTROLLER` node with the transport bound (`MEDIA_SOURCE` as a reactive
+  STRING binding, `PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`/`MEDIA_MUTED`/
+  `MEDIA_LOOP`/`MEDIA_RATE` as property bindings). `assign_ids` pins the
+  controller's id and links each surface's `MEDIA_CONTROLLER_ID`. A **`VideoStyle`**
+  (`ViewExt::video_style`) supplies the surface's control content — the style reads
+  the surface's controller through `VideoStyleConfig` — while the default
+  `NativeVideoStyle` keeps the surface a leaf with renderer-native controls.
+  **Audio has no view** — bind ordinary views to the controller's signals.
+- **Persisted state (Phase 5)**: `pathland_view::state` — a platform-neutral
+  `StateStore` trait (`get`/`set` by key over `SignalValue`) + the in-process
+  `InMemoryStateStore`; `PersistentState::state(name, initial)` returns a
+  `State<T>` that auto-loads (or the initial) and auto-saves on change (via a
+  runtime effect), keyed `"{name}:{scope}"`. Rust has no annotation processor, so
+  fields are wired explicitly.
 
 ## Not implemented / gaps
 
-- No `strings` plumbing for STRING-valued properties — `TextField`'s
-  `PROMPT` and `Color`/`Image` sources are stored as placeholder values only;
-  `FONT_FAMILY`/`LABEL`/`IMAGE_SOURCE` need an engine `Node` strings map.
-- No `ACTION_ID`/`BINDING_ID` helpers, no `TOGGLE_STYLE`-typed API (raw u8).
+- **Renderer coverage**: the GTK renderer reports `VALUE_CHANGED`/`TEXT_CHANGED`
+  for Toggle/Slider/TextField/Picker; Stepper/TextEditor/DatePicker/ColorPicker
+  sink wiring lands in the DSL but the renderer side for some controls is still
+  to come. Date/color two-way is not wired (needs `SET_DATE`).
+- **Styles**: `ButtonStyle` + `VideoStyle` (there is no `Label` view in the Rust
+  DSL, so `LabelStyle` has no target). The environment carries the button- and
+  video-style slots (no arbitrary typed keys).
+- **Navigation**: links hold a router explicitly (no nearest-enclosing-router
+  resolution / `NavigationIntent`); `NAVIGATE` event routing is app-side; no
+  `Label`/`GridRow` components.
+- **State backends**: only the in-memory `StateStore` ships in Rust (the Java
+  library has Redis + in-memory; File/SQLite/LocalStorage/NVS are future).
+- **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED)** is
+  **authored** (`SizeThatFits::new(Vec<Fit>)` + `Fit::new(view, minWidth)` /
+  `Fit::any`) emitting the slot + its single selected child + the `FIT_QUERY`
+  list; **reactive selection is fixed** — only the Java DSL's structural slot
+  reacts to `FIT_CHANGED`.
+- No `ACTION_ID`/`BINDING_ID` helpers; `Toggle`/`Picker`/`Menu` lack typed
+  value APIs (raw tokens only).
 
 ## Verified by
 
-`cargo test -p pathland-view` — builder, modifier chaining, `assign_ids`,
-tap-gesture listener wiring, new-component building.
+`cargo test -p pathland-view` — the three operations (static + chained, any
+order), per-view config, tuple/single modifier lists, custom modifiers,
+`assign_ids`, tap-gesture listener wiring, token refs, grid counts, named
+shapes, `SizeThatFits`, and the media surface (`Video` + `attach()`: the
+controller's node + transport bindings, the pinned/stable controller id across a
+structural swap, and its `MEDIA_CONTROLLER_ID` link, plus the reactive
+`MEDIA_SOURCE` re-emit). Workspace `cargo test` green; `lib/rust/check-wasm.sh`
+(`no_std` preserved).

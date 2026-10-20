@@ -20,7 +20,7 @@ use std::ffi::{c_char, c_void, CStr};
 
 use pathland_engine::{SignalId, SignalValue};
 
-use super::{component_from_id, NativeHost};
+use super::{component_from_id, MediaControllerSlot, NativeHost};
 
 /// Opaque handle to a [`NativeHost`].
 pub type HostHandle = *mut c_void;
@@ -326,4 +326,84 @@ pub unsafe extern "C" fn pathland_native_node_bind_property(
     signal: u32,
 ) -> u8 {
     u8::from(as_host(host).bind_property(node, prop as u16, as_signal_id(signal)))
+}
+
+// ---------------------------------------------------------------------------
+// Media controllers (spec/MEDIA.md)
+// ---------------------------------------------------------------------------
+
+/// Create a media controller; returns its handle (0 on failure). The controller
+/// owns its transport signals — reach them with
+/// [`pathland_native_media_controller_signal`] and drive them with
+/// `pathland_native_signal_set_*`.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_native_media_controller_create(host: HostHandle) -> u32 {
+    as_host(host).media_controller_create()
+}
+
+/// Set a controller's resource from a NUL-terminated UTF-8 C string. Returns 1
+/// on success.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_native_media_controller_source(
+    host: HostHandle,
+    handle: u32,
+    source: *const c_char,
+) -> u8 {
+    if source.is_null() {
+        return 0;
+    }
+    let source = CStr::from_ptr(source).to_string_lossy().into_owned();
+    u8::from(as_host(host).media_controller_source(handle, &source))
+}
+
+/// A controller's transport signal for `slot` (0 = invalid). The slot codes are
+/// the [`MediaControllerSlot`] order.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_native_media_controller_signal(
+    host: HostHandle,
+    handle: u32,
+    slot: u32,
+) -> u32 {
+    let slot = match slot {
+        0 => MediaControllerSlot::Playing,
+        1 => MediaControllerSlot::Position,
+        2 => MediaControllerSlot::Volume,
+        3 => MediaControllerSlot::Muted,
+        4 => MediaControllerSlot::Loop,
+        5 => MediaControllerSlot::Rate,
+        6 => MediaControllerSlot::Time,
+        7 => MediaControllerSlot::Duration,
+        8 => MediaControllerSlot::VolumeReport,
+        _ => return 0,
+    };
+    match as_host(host).media_controller_signal(handle, slot) {
+        Some(id) => id.0,
+        None => 0,
+    }
+}
+
+/// Mark a node as referencing a media controller: a marker node (created as
+/// `COMMENT`) becomes the controller's non-visual `MEDIA_CONTROLLER` node in
+/// place; a `VIDEO` node becomes one of its surfaces. Returns 1 if the node and
+/// handle exist.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_native_node_media_controller(
+    host: HostHandle,
+    node: u32,
+    handle: u32,
+) -> u8 {
+    u8::from(as_host(host).node_media_controller(node, handle))
+}
+
+/// Bind a node's **`STRING`**-valued property to a signal (e.g. a controller's
+/// `MEDIA_SOURCE`). A change re-emits only that property. Returns 1 if the node
+/// exists.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_native_node_bind_string_property(
+    host: HostHandle,
+    node: u32,
+    prop: u32,
+    signal: u32,
+) -> u8 {
+    u8::from(as_host(host).bind_string_property(node, prop as u16, as_signal_id(signal)))
 }

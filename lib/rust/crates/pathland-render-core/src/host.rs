@@ -1,7 +1,7 @@
 //! Host-side reader: opcode frames -> native-element description.
 //!
 //! Consumes frames and builds a **native-element description**: the tree
-//! structure (`TREE`) plus constraint properties (`STYLE`) a renderer maps onto
+//! structure (`TREE`) plus constraint properties (`PARAMETER`) a renderer maps onto
 //! that platform's native elements (GTK widgets, DOM elements, HTML).
 //!
 //! The engine does not compute layout; this stores only what the renderer needs
@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use pathland_core::tokens::{resolve as resolve_token, Scheme, TokenTables, TokenValue};
-use pathland_core::{category, component_type, style, tree, value_type, Frame, Opcode};
+use pathland_core::{category, component_type, parameter, tree, value_type, Frame, Opcode};
 
 /// A decoded node in the host's native-element description.
 #[derive(Debug, Clone, PartialEq)]
@@ -85,7 +85,7 @@ impl Default for HostNode {
 pub struct RenderTree {
     /// nodeId -> node.
     pub nodes: HashMap<u32, HostNode>,
-    /// Design-token overrides (`STYLE::SET_DESIGN_TOKEN`), base (light) values
+    /// Design-token overrides (`PARAMETER::SET_DESIGN_TOKEN`), base (light) values
     /// keyed by full path.
     overrides: BTreeMap<String, TokenValue>,
     /// `dark.*` overrides keyed by the bare path (the prefix stripped).
@@ -218,7 +218,7 @@ impl RenderTree {
                         p.children.insert(idx, child);
                     }
                 }
-                (category::STYLE, style::SET_PROPERTY) => {
+                (category::PARAMETER, parameter::SET_PROPERTY) => {
                     let prop_id = op.b() as u16;
                     let vt = (op.b() >> 16) as u8;
                     if let Some(n) = self.nodes.get_mut(&op.a()) {
@@ -239,12 +239,12 @@ impl RenderTree {
                         }
                     }
                 }
-                (category::STYLE, style::SET_TEXT) => {
+                (category::PARAMETER, parameter::SET_TEXT) => {
                     if let Some(n) = self.nodes.get_mut(&op.a()) {
                         n.text = frame.arena_str(op.b()).ok().map(|s| s.to_string());
                     }
                 }
-                (category::STYLE, style::SET_DESIGN_TOKEN) => {
+                (category::PARAMETER, parameter::SET_DESIGN_TOKEN) => {
                     // Global override: A = arenaRef (token path), B = valueType,
                     // C = value (for STRING, an arenaRef to the value string).
                     if let Ok(path) = frame.arena_str(op.a()) {
@@ -291,7 +291,7 @@ pub fn render_tree_from_frame(frame: &Frame<'_>) -> RenderTree {
 /// Concrete Tier-1 design-token defaults (light + dark) — platform-appropriate
 /// fallbacks used headless and as the base a renderer's native enrichment
 /// (e.g. GTK theme colors) overwrites. Values are renderer-owned; apps override
-/// via `STYLE::SET_DESIGN_TOKEN` (spec/TOKENS.md).
+/// via `PARAMETER::SET_DESIGN_TOKEN` (spec/TOKENS.md).
 pub fn concrete_default_tables() -> (
     BTreeMap<String, TokenValue>,
     BTreeMap<String, TokenValue>,
@@ -418,17 +418,17 @@ pub fn describe(op: &Opcode) -> String {
             op.b(),
             op.c()
         ),
-        (category::STYLE, style::SET_PROPERTY) => format!(
-            "STYLE:SET_PROPERTY id={} prop=0x{:04x} value=0x{:08x}",
+        (category::PARAMETER, parameter::SET_PROPERTY) => format!(
+            "PARAMETER:SET_PROPERTY id={} prop=0x{:04x} value=0x{:08x}",
             op.a(),
             op.b() as u16,
             op.c()
         ),
-        (category::STYLE, style::SET_TEXT) => {
-            format!("STYLE:SET_TEXT id={} arenaRef={}", op.a(), op.b())
+        (category::PARAMETER, parameter::SET_TEXT) => {
+            format!("PARAMETER:SET_TEXT id={} arenaRef={}", op.a(), op.b())
         }
-        (category::STYLE, style::SET_DESIGN_TOKEN) => format!(
-            "STYLE:SET_DESIGN_TOKEN pathArenaRef={} valueType=0x{:02x} value=0x{:08x}",
+        (category::PARAMETER, parameter::SET_DESIGN_TOKEN) => format!(
+            "PARAMETER:SET_DESIGN_TOKEN pathArenaRef={} valueType=0x{:02x} value=0x{:08x}",
             op.a(),
             op.b() & 0xFF,
             op.c()
@@ -442,7 +442,11 @@ mod tests {
     use super::*;
     use pathland_engine::Engine;
     use pathland_core::{init_memory, Guest, MemoryLayout};
-    use pathland_view::{assign_ids, text, vstack, View, ViewExt};
+    use pathland_view::{
+        assign_ids, text, vstack, Configurable, MediaController, MediaControllerExt, Padding,
+        Video, View, ViewExt,
+    };
+    use std::rc::Rc;
 
     #[test]
     fn decodes_a_declarative_frame() {
@@ -451,8 +455,10 @@ mod tests {
         init_memory(&mut mem, &layout);
 
         let mut root = vstack![text("ab"), text("cd")]
-            .spacing(4.0)
-            .padding(8.0)
+            .with(|v| {
+                v.spacing(4.0);
+            })
+            .modifiers(Padding(8.0))
             .build();
         assign_ids(&mut root, &mut 1);
 
@@ -482,6 +488,64 @@ mod tests {
         assert!(!child.properties.contains_key(&pathland_core::property_id::WIDTH));
     }
 
+    /// The Rust view DSL's media kit, end to end into the renderer's tree
+    /// (spec/MEDIA.md): a `MediaController` + `attach()` + a `Video` surface emit
+    /// a non-visual `MEDIA_CONTROLLER` node carrying its transport, and the
+    /// surface is linked to it by `MEDIA_CONTROLLER_ID`.
+    #[test]
+    fn media_surface_from_the_view_dsl_reaches_the_render_tree() {
+        let layout = MemoryLayout::default();
+        let mut mem = vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        let mut engine = Engine::new();
+        let player = Rc::new(MediaController::with_source(
+            &engine.runtime(),
+            "/assets/clip.mp4",
+        ));
+        player.play();
+
+        let mut root = vstack![player.attach(), Video::new(player.clone())].build();
+        assign_ids(&mut root, &mut 1);
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&root, &mut guest).unwrap();
+            guest.end_frame();
+        }
+
+        let mut host = pathland_core::Host::new(&mut mem, &layout);
+        let tree = render_tree_from_frame(&host.frames()[0]);
+
+        let controller = tree
+            .nodes
+            .values()
+            .find(|n| n.component_type == component_type::MEDIA_CONTROLLER)
+            .expect("the controller's non-visual node");
+        // The controller carries the resource and the transport (the app drives
+        // playback through them).
+        assert_eq!(
+            controller.string_property(pathland_core::property_id::MEDIA_SOURCE),
+            Some("/assets/clip.mp4")
+        );
+        assert_eq!(
+            controller.u32_property(pathland_core::property_id::PLAYBACK_STATE, 0),
+            1,
+            "playing was set before the emit"
+        );
+
+        let surface = tree
+            .nodes
+            .values()
+            .find(|n| n.component_type == component_type::VIDEO)
+            .expect("the video surface");
+        assert_eq!(
+            surface.u32_property(pathland_core::property_id::MEDIA_CONTROLLER_ID, 0),
+            controller.id,
+            "the surface points at the controller's node"
+        );
+    }
+
     #[test]
     fn applies_a_delta_frame() {
         let layout = MemoryLayout::default();
@@ -492,8 +556,10 @@ mod tests {
         let mut tree = RenderTree::default();
 
         let mut a = vstack![text("ab")]
-            .spacing(4.0)
-            .padding(8.0)
+            .with(|v| {
+                v.spacing(4.0);
+            })
+            .modifiers(Padding(8.0))
             .build();
         assign_ids(&mut a, &mut 1);
         {
@@ -509,8 +575,10 @@ mod tests {
 
         // Delta: spacing 4 -> 12.
         let mut b = vstack![text("ab")]
-            .spacing(12.0)
-            .padding(8.0)
+            .with(|v| {
+                v.spacing(12.0);
+            })
+            .modifiers(Padding(8.0))
             .build();
         assign_ids(&mut b, &mut 1);
         {

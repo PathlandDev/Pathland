@@ -200,8 +200,8 @@ mod tests {
     use pathland_core::{init_memory, Frame, Guest, Host, MemoryLayout};
     use pathland_engine::Engine;
     use pathland_view::{
-    assign_ids, button, text, vstack, Node, Slider, View, ViewExt,
-};
+        assign_ids, button, text, vstack, Configurable, Node, PointerEvents, Slider, View, ViewExt,
+    };
     use pathland_core::{component_type, listener, property_id, value_type};
     use pathland_view::{Component, Gauge, Menu, ProgressView, Stepper};
     use std::ffi::CStr;
@@ -313,13 +313,13 @@ mod tests {
             let mut view = vstack![
                 text("hello"),
                 button("Press"),
-                Slider {
-                    value: 5.0,
-                    min: 0.0,
-                    max: 10.0,
-                }
+                Slider::with(|s| {
+                    s.value(5.0).min(0.0).max(10.0);
+                })
             ]
-            .spacing(8.0)
+            .with(|v| {
+                v.spacing(8.0);
+            })
             .build();
             assign_ids(&mut view, &mut 1);
 
@@ -357,7 +357,9 @@ mod tests {
 
             // Delta: spacing 8 -> 16 only re-sends the root's prop.
             let mut view2 = vstack![text("hello"), button("Press")]
-                .spacing(16.0)
+                .with(|v| {
+                    v.spacing(16.0);
+                })
                 .build();
             assign_ids(&mut view2, &mut 1);
             let (slots, arena) = h.emit(&view2);
@@ -426,7 +428,7 @@ mod tests {
     fn pointer_listeners_attach_mousearea() {
         with_qt(|| {
             let mut view = vstack![
-                text("listener").pointer_events(listener::POINTER_DOWN | listener::POINTER_UP)
+                text("listener").modifiers(PointerEvents(listener::POINTER_DOWN | listener::POINTER_UP))
             ]
             .build();
             assign_ids(&mut view, &mut 1);
@@ -453,18 +455,16 @@ mod tests {
     fn control_widgets_construct_and_apply_props() {
         with_qt(|| {
             let mut view = vstack![
-                ProgressView(Some(0.5)),
-                Stepper {
-                    value: 3.0,
-                    min: 0.0,
-                    max: 10.0,
-                },
-                Gauge {
-                    value: 4.0,
-                    min: 0.0,
-                    max: 10.0,
-                },
-                Menu,
+                ProgressView::with(|p| {
+                    p.value(0.5);
+                }),
+                Stepper::with(|s| {
+                    s.value(3.0).min(0.0).max(10.0);
+                }),
+                Gauge::with(|g| {
+                    g.value(4.0).min(0.0).max(10.0);
+                }),
+                Menu::new(),
             ]
             .build();
             assign_ids(&mut view, &mut 1);

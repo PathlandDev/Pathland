@@ -11,16 +11,20 @@ import {
   COMPONENT_DIVIDER,
   COMPONENT_GAUGE,
   COMPONENT_GRID,
+  COMPONENT_GRID_ROW,
   COMPONENT_HSTACK,
+  COMPONENT_ICON,
   COMPONENT_IMAGE,
   COMPONENT_LAZY_HGRID,
   COMPONENT_LAZY_HSTACK,
   COMPONENT_LAZY_VGRID,
   COMPONENT_LAZY_VSTACK,
   COMPONENT_MENU,
+  COMPONENT_MEDIA_CONTROLLER,
   COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_SCROLLVIEW,
+  COMPONENT_SIZE_THAT_FITS,
   COMPONENT_SHAPE,
   COMPONENT_SLIDER,
   COMPONENT_SPACER,
@@ -29,6 +33,7 @@ import {
   COMPONENT_TEXT_EDITOR,
   COMPONENT_TEXT_FIELD,
   COMPONENT_TOGGLE,
+  COMPONENT_VIDEO,
   COMPONENT_VSTACK,
   COMPONENT_ZSTACK,
 } from "./constants";
@@ -43,8 +48,18 @@ export function createElement(component: number): Node {
     case COMPONENT_LAZY_HSTACK:
       return flexBox("row");
     case COMPONENT_ZSTACK: {
+      // ZStack (SwiftUI ZStack / Compose Box): an overlapping grid — children
+      // share one cell (`grid-area:1/1`) and are positioned per ALIGNMENT
+      // (mirrors the Rust SSR renderer). The container's size (hug-to-largest-
+      // child / Fixed / FILL / fill-propagation) is resolved by the layout pass.
       const el = document.createElement("div");
-      el.style.position = "relative";
+      el.style.display = "grid";
+      el.style.isolation = "isolate";
+      el.style.gridTemplateColumns = "minmax(0,1fr)";
+      el.style.gridTemplateRows = "minmax(0,1fr)";
+      // Position children on both axes per the ZSTACK ALIGNMENT (default start).
+      el.style.justifyItems = "start";
+      el.style.alignItems = "start";
       return el;
     }
     case COMPONENT_GRID:
@@ -52,11 +67,53 @@ export function createElement(component: number): Node {
     case COMPONENT_LAZY_HGRID: {
       const el = document.createElement("div");
       el.style.display = "grid";
+      // Cells keep their size and position within their tracks (spec §grid
+      // model); `justify-items`/`align-items` come from the grid ALIGNMENT.
+      el.style.justifyItems = "start";
+      el.style.alignItems = "start";
+      // Lazy horizontal grids flow into auto columns (mirrors the Rust SSR
+      // renderer's `grid-auto-flow:column;grid-auto-columns:1fr`).
+      if (component === COMPONENT_LAZY_HGRID) {
+        el.style.gridAutoFlow = "column";
+        el.style.gridAutoColumns = "minmax(0,1fr)";
+      }
+      return el;
+    }
+    case COMPONENT_GRID_ROW: {
+      // A grid's explicit row grouping (spec §GridRow): transparent
+      // (`display:contents`) — its cell children participate in the parent
+      // GRID's layout (mirrors the Rust SSR renderer). Renders nothing outside
+      // a GRID.
+      const el = document.createElement("div");
+      el.style.display = "contents";
       return el;
     }
     case COMPONENT_SCROLLVIEW: {
       const el = document.createElement("div");
+      // Layout-greedy on both axes (LAYOUT.md): a scroll region fills the
+      // available space (mirrors the Rust SSR renderer).
+      el.style.flex = "1 1 auto";
+      el.style.alignSelf = "stretch";
       el.style.overflow = "auto";
+      return el;
+    }
+    case COMPONENT_SIZE_THAT_FITS: {
+      // A fit slot: size-taking (fills the parent's proposal — the measured width
+      // is the fitting unit) with a `data-pathland-fit`-reflected threshold table.
+      // Layout-transparent: forwards the parent flex container's settings
+      // (`inherit`) so the sole candidate is laid out as if it sat directly in the
+      // parent (e.g. a centered VStack keeps centering a slot-wrapped HSTACK);
+      // mirrors the Rust SSR renderer's slot styles.
+      const el = document.createElement("div");
+      el.className = "pathland-ftf";
+      el.style.display = "flex";
+      el.style.flexDirection = "inherit";
+      el.style.alignItems = "inherit";
+      el.style.justifyContent = "inherit";
+      el.style.flex = "1 1 auto";
+      el.style.alignSelf = "stretch";
+      el.style.minWidth = "0";
+      el.style.minHeight = "0";
       return el;
     }
     case COMPONENT_TEXT:
@@ -71,7 +128,56 @@ export function createElement(component: number): Node {
       el.alt = "";
       return el;
     }
-    case COMPONENT_COLOR:
+    case COMPONENT_ICON: {
+      // A semantic icon: a **filled** Remix-style inline SVG shell (mirrors the
+      // Rust SSR's `WEB_SVG_OPEN`). The inner markup + aria come from the
+      // ICON_NAME / LABEL deltas.
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      el.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      el.setAttribute("class", "pathland-icon");
+      el.setAttribute("viewBox", "0 0 24 24");
+      el.setAttribute("fill", "currentColor");
+      el.setAttribute("aria-hidden", "true");
+      el.setAttribute("focusable", "false");
+      return el;
+    }
+    case COMPONENT_MEDIA_CONTROLLER: {
+      // A non-visual, layout-transparent playback owner (spec/MEDIA.md): an
+      // off-flow container holding the control-less playback element, which the
+      // apply layer materializes from `MEDIA_SOURCE`. A `VIDEO` surface that
+      // references this controller shows its video output.
+      //
+      // NOT `display:none`: a browser refuses to route a `<video>`'s **audio** to
+      // the output when its ancestor is `display:none` (the media pipeline still
+      // runs — `currentTime` advances — so the failure is silent). Absolutely
+      // positioning a 1×1 transparent box keeps it rendered (audio flows) while
+      // contributing no spacing.
+      const el = document.createElement("div");
+      el.style.position = "absolute";
+      el.style.width = "1px";
+      el.style.height = "1px";
+      el.style.opacity = "0";
+      el.style.overflow = "hidden";
+      el.style.pointerEvents = "none";
+      return el;
+    }
+    case COMPONENT_VIDEO: {
+      // A bare video surface renders renderer-native controls (the default
+      // `VideoStyle`, spec/MEDIA.md); a surface that gains custom control children
+      // is morphed to a `.pathland-media` wrapper on first insert, which drops them.
+      const el = document.createElement("video");
+      el.controls = true;
+      return el;
+    }
+    case COMPONENT_COLOR: {
+      // Layout-greedy (SwiftUI Color): expands to the available space unless a
+      // size modifier constrains it (mirrors the Rust SSR renderer's
+      // `flex:1 1 auto;align-self:stretch`).
+      const el = document.createElement("div");
+      el.style.flex = "1 1 auto";
+      el.style.alignSelf = "stretch";
+      return el;
+    }
     case COMPONENT_SHAPE:
       return document.createElement("div");
     case COMPONENT_GAUGE: {
@@ -82,8 +188,16 @@ export function createElement(component: number): Node {
       el.append(document.createElement("div"));
       return el;
     }
-    case COMPONENT_DIVIDER:
-      return document.createElement("hr");
+    case COMPONENT_DIVIDER: {
+      // `<div style="height:0;width:100%;border-top:1px solid rgba(0,0,0,0.2)">`
+      // — mirrors the Rust SSR renderer's default divider (greedy on the cross
+      // axis, LAYOUT.md). BORDER_WIDTH / COLOR deltas override border-top.
+      const el = document.createElement("div");
+      el.style.height = "0";
+      el.style.width = "100%";
+      el.style.borderTop = "1px solid rgba(0,0,0,0.2)";
+      return el;
+    }
     case COMPONENT_SPACER: {
       const el = document.createElement("div");
       el.style.flex = "1";
@@ -97,6 +211,7 @@ export function createElement(component: number): Node {
     case COMPONENT_TEXT_EDITOR: {
       const el = document.createElement("textarea");
       el.className = "pathland-input";
+      el.setAttribute("rows", "4"); // mirrors the Rust SSR renderer
       return el;
     }
     case COMPONENT_TEXT_FIELD:
@@ -132,6 +247,10 @@ function flexBox(direction: "column" | "row"): HTMLElement {
   const el = document.createElement("div");
   el.style.display = "flex";
   el.style.flexDirection = direction;
+  // Cross-axis default is hug (flex-start) — mirrors the Rust SSR renderer's
+  // `align-items` when no ALIGNMENT property is set (LAYOUT.md: never CSS
+  // stretch; only FILL-sized children stretch). An ALIGNMENT delta overrides it.
+  el.style.alignItems = "flex-start";
   return el;
 }
 
@@ -197,6 +316,9 @@ function stepperShell(): HTMLElement {
 function menuShell(): HTMLElement {
   const el = document.createElement("div");
   el.className = "pathland-menu";
+  // `role="menu"` is the control's intrinsic semantics (mirrors the Rust SSR
+  // renderer); the `ROLE` property no longer carries control roles.
+  el.setAttribute("role", "menu");
   const trigger = document.createElement("div");
   trigger.className = "pathland-menu-trigger";
   const items = document.createElement("div");

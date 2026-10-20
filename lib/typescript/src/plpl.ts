@@ -12,7 +12,8 @@ export interface Opcode {
 export interface Batch {
   readonly version: number;
   readonly flags: number;
-  readonly frameCount: number;
+  /** Per-stream monotonic message sequence (guest → host delta batches; 0 for heartbeat/requests). */
+  readonly sequence: number;
   readonly opcodes: Opcode[];
   readonly strings: Uint8Array;
 }
@@ -26,7 +27,7 @@ function dv(bytes: Uint8Array): DataView {
 
 /**
  * Parse a self-contained PLPL batch:
- * `[magic u32][version u16][flags u16][frameCount u32][opcodeCount u32]`,
+ * `[magic u32][version u16][flags u16][sequence u32][opcodeCount u32]`,
  * then `opcodeCount × 16-byte opcodes`, then `[stringsLen u32][strings…]`.
  * Every read is bounds-checked.
  */
@@ -43,7 +44,7 @@ export function parseBatch(bytes: Uint8Array): Batch {
     throw new ProtocolError(`unsupported batch version ${version}`);
   }
   const flags = view.getUint16(6, true);
-  const frameCount = view.getUint32(8, true);
+  const sequence = view.getUint32(8, true);
   const opcodeCount = view.getUint32(12, true);
   const opcodesEnd = HEADER_SIZE + opcodeCount * OPCODE_SIZE;
   if (opcodesEnd + 4 > bytes.length) {
@@ -69,7 +70,7 @@ export function parseBatch(bytes: Uint8Array): Batch {
   return {
     version,
     flags,
-    frameCount,
+    sequence,
     opcodes,
     strings: bytes.subarray(stringsStart, stringsStart + stringsLen),
   };
@@ -87,4 +88,24 @@ export function readString(strings: Uint8Array, offset: number): string {
     throw new ProtocolError("string length out of bounds");
   }
   return new TextDecoder().decode(strings.subarray(start, start + len));
+}
+
+/** Read a length-prefixed f32 array (`[u32 count][f32 × count]`) at a relative
+ *  offset into the string section (the `LIST` value type — e.g. a `FIT_QUERY`
+ *  threshold table). */
+export function readList(strings: Uint8Array, offset: number): number[] {
+  if (offset + 4 > strings.length) {
+    throw new ProtocolError("list offset out of bounds");
+  }
+  const view = dv(strings);
+  const count = view.getUint32(offset, true);
+  const start = offset + 4;
+  if (start + count * 4 > strings.length) {
+    throw new ProtocolError("list length out of bounds");
+  }
+  const out: number[] = new Array(count);
+  for (let i = 0; i < count; i++) {
+    out[i] = view.getFloat32(start + i * 4, true);
+  }
+  return out;
 }

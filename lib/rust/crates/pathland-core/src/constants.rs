@@ -8,10 +8,10 @@
 pub mod category {
     /// Tree mutations (guest → host): node create/delete/insert/remove/move.
     pub const TREE: u8 = 0x01;
-    /// Properties and design tokens (guest → host): the constraint properties
-    /// (spacing, padding, alignment, …) that native renderers use to lay out
-    /// native elements. The engine does NOT emit rects.
-    pub const STYLE: u8 = 0x02;
+    /// Parameters and design tokens (guest → host): the constraint properties
+    /// (spacing, padding, alignment, …) and content that native renderers use
+    /// to lay out and style native elements. The engine does NOT emit rects.
+    pub const PARAMETER: u8 = 0x02;
     /// Raw input events (host → guest): pointer down/move/up, key down/up.
     pub const EVENT: u8 = 0x03;
     /// Control (both directions): reset, environment, custom data.
@@ -32,8 +32,8 @@ pub mod tree {
     pub const MOVE_CHILD: u8 = 0x05;
 }
 
-/// Commands within the `STYLE` category.
-pub mod style {
+/// Commands within the `PARAMETER` category.
+pub mod parameter {
     /// `A=nodeId, B=(valueType << 16) | propertyId, C=value`
     pub const SET_PROPERTY: u8 = 0x01;
     /// `A=arenaRef (path), B=valueType (u8), C=value`
@@ -68,7 +68,7 @@ pub mod event {
     pub const VALUE_CHANGED: u8 = 0x06;
     /// `A=targetId, B=string offset` — a text field's value changed (host →
     /// guest). The new text lives in the batch's string section, referenced by
-    /// the *relative* offset in `B` (the same convention as `STYLE::SET_TEXT`).
+    /// the *relative* offset in `B` (the same convention as `PARAMETER::SET_TEXT`).
     pub const TEXT_CHANGED: u8 = 0x07;
     /// **Draft.** `A=targetId, B=focused (0/1)` — a node gained/lost focus.
     pub const FOCUS_CHANGED: u8 = 0x08;
@@ -81,13 +81,32 @@ pub mod event {
     /// **Draft.** `A=targetId, B=deltaX (f32), C=deltaY (f32)` — wheel/trackpad.
     pub const WHEEL: u8 = 0x0C;
     /// **Draft.** `A=targetId, B=days since epoch (I32), C=millis of day (U32)`
-    /// — a `DATE_PICKER`'s value changed (matches `STYLE::SET_DATE`).
+    /// — a `DATE_PICKER`'s value changed (matches `PARAMETER::SET_DATE`).
     pub const DATE_CHANGED: u8 = 0x0D;
     /// **Draft.** Global navigation request (host → guest), never node-keyed.
     /// With the `NAVIGATE_URL` flag, `B` is a string offset (event arena /
     /// batch string section) to the destination URL; without it, the event means
     /// "back one step" (native back affordance) and `B`/`C` are ignored.
     pub const NAVIGATE: u8 = 0x0E;
+    /// **Draft.** A bound `MEDIA_CONTROLLER`'s playback state changed
+    /// (host → guest); `B` = 0/1. Reported only when `PLAYBACK_STATE` is bound.
+    pub const MEDIA_PLAY_STATE_CHANGED: u8 = 0x0F;
+    /// **Draft.** A bound controller's current position (host → guest); `B` =
+    /// seconds (f32). Reported while playing; an app-initiated seek is not echoed.
+    pub const MEDIA_TIME_UPDATED: u8 = 0x10;
+    /// **Draft.** A bound controller reached the end of its media (host → guest).
+    pub const MEDIA_ENDED: u8 = 0x11;
+    /// **Draft.** A bound controller's volume changed (host → guest); `B` =
+    /// volume (f32, 0..1).
+    pub const MEDIA_VOLUME_CHANGED: u8 = 0x12;
+    /// **Draft.** A `SIZE_THAT_FITS` slot's selected candidate index changed
+    /// (host → guest); `B` = index (f32). Reported once after the first measure,
+    /// then only when the derived fit index changes.
+    pub const FIT_CHANGED: u8 = 0x13;
+    /// **Draft.** A bound controller's media duration became known/changed
+    /// (host → guest); `B` = seconds (f32). Reported when the resource loads and
+    /// only when the value changes — never a stream.
+    pub const MEDIA_DURATION_CHANGED: u8 = 0x14;
 }
 
 /// Commands within the `META` category.
@@ -101,6 +120,13 @@ pub mod meta {
     /// The host (renderer) requests a full snapshot of the current tree
     /// (host → guest). `A/B/C = 0`. Used for reconnect/gap recovery.
     pub const RESYNC: u8 = 0x03;
+    /// A transport-liveness heartbeat probe (guest → host). `A/B/C = 0`, no
+    /// payload. **Network batch transport only** (spec/OPCODE.md §Transport —
+    /// heartbeat): the shared-memory ring MUST NOT emit, expect, or relay it.
+    pub const PING: u8 = 0x04;
+    /// The reply to `META::PING` (host → guest). `A/B/C = 0`, no payload.
+    /// Network batch transport only (see [`PING`]).
+    pub const PONG: u8 = 0x05;
 }
 
 /// Environment field ids for `META::ENVIRONMENT` (host → guest).
@@ -183,7 +209,7 @@ pub mod border_edges {
     pub const ALL: u32 = TOP | LEADING | BOTTOM | TRAILING;
 }
 
-/// Value types for `STYLE` properties (u8, encoded in the high byte of `B`).
+/// Value types for `PARAMETER` properties (u8, encoded in the high byte of `B`).
 pub mod value_type {
     pub const U8: u8 = 0x01;
     pub const U32: u8 = 0x02;
@@ -193,6 +219,10 @@ pub mod value_type {
     pub const ENUM: u8 = 0x06;
     pub const COLOR: u8 = 0x07;
     pub const DESIGN_TOKEN: u8 = 0x08;
+    /// **Draft.** Arena-backed length-prefixed array: `[u32 count][element × count]`
+    /// in the string arena (each element holds the value-type's bit pattern —
+    /// today `F32`s, e.g. the `FIT_QUERY` threshold table).
+    pub const LIST: u8 = 0x09;
 }
 
 /// Component types (u16, encoded in the low half of `B` of `TREE::CREATE_NODE`).
@@ -219,7 +249,15 @@ pub mod component_type {
     pub const PROGRESS_VIEW: u16 = 0x07;
     /// **Draft.** Range meter against a scale (read-only).
     pub const GAUGE: u16 = 0x08;
-    // 0x09–0x0F reserved (future drawing nodes).
+    // 0x09 freed (formerly AUDIO — audio now has no view; see MEDIA_CONTROLLER).
+    /// **Draft.** Video playback **surface** — renders a `MEDIA_CONTROLLER`'s
+    /// video output; it references the controller via `MEDIA_CONTROLLER_ID` and
+    /// carries no source of its own (spec/MEDIA.md).
+    pub const VIDEO: u16 = 0x0A;
+    /// **Draft.** Semantic icon (`ICON_NAME` selects a renderer-native symbol —
+    /// Adwaita on GTK, Lucide on the web; spec/ICONS.md).
+    pub const ICON: u16 = 0x0B;
+    // 0x0C–0x0F reserved (future drawing nodes).
 
     // ── Layout & Container Primitives (0x10–0x1F) ───────────────────────────
     /// Vertical flex stack.
@@ -236,12 +274,26 @@ pub mod component_type {
     pub const LAZY_VGRID: u16 = 0x15;
     /// **Draft.** Virtualized horizontal grid.
     pub const LAZY_HGRID: u16 = 0x16;
-    // 0x17–0x1A reserved (formerly composite views, removed).
+    /// **Draft.** Fit slot (`SizeThatFits`): shows its single selected child —
+    /// only the selected candidate is ever transmitted. The renderer measures
+    /// its own allocated width against `FIT_QUERY` and reports `FIT_CHANGED`.
+    pub const SIZE_THAT_FITS: u16 = 0x17;
+    // 0x18–0x1A reserved (formerly composite views, removed).
     /// **Draft.** Virtualized vertical stack.
     pub const LAZY_VSTACK: u16 = 0x1B;
     /// **Draft.** Virtualized horizontal stack.
     pub const LAZY_HSTACK: u16 = 0x1C;
-    // 0x1D–0x1F reserved (future layout nodes).
+    /// **Draft.** Explicit row grouping for a `GRID`: a grid child whose children
+    /// are one row's cells (the SwiftUI `GridRow` surface). Renders nothing
+    /// outside a `GRID`.
+    pub const GRID_ROW: u16 = 0x1D;
+    /// **Draft.** Proxy view (`spec/PROXY.md`): a transparent single-child
+    /// container whose child subtree is served by **another** Pathland server.
+    /// Renderers render it as a plain container; the proxying server remaps the
+    /// foreign subtree's node ids into a disjoint high range and routes its
+    /// events back to the origin server.
+    pub const PROXY_VIEW: u16 = 0x1E;
+    // 0x1F reserved (future layout nodes).
 
     // ── Semantic Control Nodes (0x20–0x2F) ──────────────────────────────────
     /// Action trigger control.
@@ -258,7 +310,7 @@ pub mod component_type {
     pub const SLIDER: u16 = 0x25;
     /// **Draft.** Discrete increment/decrement control.
     pub const STEPPER: u16 = 0x26;
-    /// **Draft.** Date & time selection control (`STYLE::SET_DATE` value).
+    /// **Draft.** Date & time selection control (`PARAMETER::SET_DATE` value).
     pub const DATE_PICKER: u16 = 0x27;
     /// **Draft.** Selection control (options are child nodes).
     pub const PICKER: u16 = 0x28;
@@ -268,11 +320,21 @@ pub mod component_type {
     pub const COLOR_PICKER: u16 = 0x2A;
     // 0x2B–0x2F reserved (future semantic controls).
 
+    // ── Non-visual / Resource Nodes (0x30–0x3F) ─────────────────────────────
+    /// **Draft.** Media controller — a **non-visual** node that owns a media
+    /// resource (`MEDIA_SOURCE`) and its transport state (`PLAYBACK_STATE`,
+    /// `MEDIA_POSITION`, `MEDIA_VOLUME`, `MEDIA_MUTED`, `MEDIA_LOOP`,
+    /// `MEDIA_RATE`). A `VIDEO` surface references it by id
+    /// (`MEDIA_CONTROLLER_ID`); audio has no view and is controlled by the
+    /// application's own views. Layout-transparent (spec/MEDIA.md).
+    pub const MEDIA_CONTROLLER: u16 = 0x30;
+    // 0x31–0x3F reserved (future non-visual/resource nodes).
+
     /// Opaque/debug node; renderers ignore it (no native element).
     pub const COMMENT: u16 = 0x7F;
 }
 
-/// Property IDs (u16, encoded in the low half of `B` of `STYLE::SET_PROPERTY`).
+/// Property IDs (u16, encoded in the low half of `B` of `PARAMETER::SET_PROPERTY`).
 ///
 /// IDs are specified in `spec/OPCODE.md` (carried forward from the historical protocol).
 pub mod property_id {
@@ -324,10 +386,53 @@ pub mod property_id {
     pub const CONTENT_MODE: u16 = 0x001C;
     /// **Draft.** Minimum scale factor (F32). `.minimumScaleFactor(_:)`.
     pub const MINIMUM_SCALE_FACTOR: u16 = 0x001D;
+    /// **Draft.** Grid column count (F32, constructor property): a positive value
+    /// pins the count (equal `1fr` tracks); `FILL`/absent = auto-fit. Never a
+    /// pixel width — the grid's box comes from `WIDTH`/`HEIGHT`.
+    pub const GRID_COLUMNS: u16 = 0x001E;
+    /// **Draft.** Grid row count (F32, constructor property): the `LAZY_HGRID`
+    /// fixed track; positive = count, `FILL`/absent = auto-fit.
+    pub const GRID_ROWS: u16 = 0x001F;
+    /// **Draft.** Grid track spec (STRING, constructor property): a comma-
+    /// separated list of per-track sizes — `flex` | `fixed:<points>` |
+    /// `adaptive:<points>` — taking precedence over `GRID_COLUMNS`/`GRID_ROWS`
+    /// (the equal-`1fr` count is `N`×`flex` sugar). CSS-grid-native: renderers
+    /// without a native equivalent (GTK `GtkGrid`) fall back to natural sizing.
+    pub const GRID_TRACKS: u16 = 0x0020;
     // Style (0x1000 range)
     pub const BACKGROUND_COLOR: u16 = 0x1001;
-    /// **Draft.** Image source (STRING: a resource name, file path, or URL).
+    /// **Draft.** Image source (STRING: a resource name, file path, or URL —
+    /// an **asset reference**, resolved and loaded by the renderer/host; never
+    /// embedded in the opcode stream).
     pub const IMAGE_SOURCE: u16 = 0x1002;
+    // 0x1033, 0x1034 freed (formerly AUDIO_SOURCE / VIDEO_SOURCE).
+    /// **Draft.** Media playback state (U32 0=pause, 1=play) on a
+    /// `MEDIA_CONTROLLER`. When bound, the renderer reports
+    /// `MEDIA_PLAY_STATE_CHANGED`.
+    pub const PLAYBACK_STATE: u16 = 0x1035;
+    /// **Draft.** Media position in seconds (F32) on a `MEDIA_CONTROLLER`; a
+    /// change seeks. When bound, the renderer reports `MEDIA_TIME_UPDATED`.
+    pub const MEDIA_POSITION: u16 = 0x1036;
+    /// **Draft.** Media volume (F32 0..1) on a `MEDIA_CONTROLLER`. When bound,
+    /// the renderer reports `MEDIA_VOLUME_CHANGED`.
+    pub const MEDIA_VOLUME: u16 = 0x1037;
+    /// **Draft.** The referenced `MEDIA_CONTROLLER`'s node id (U32) on a `VIDEO`
+    /// surface — the binding that connects the surface to its playback.
+    pub const MEDIA_CONTROLLER_ID: u16 = 0x103A;
+    /// **Draft.** Media resource (STRING asset reference, see `IMAGE_SOURCE`) on
+    /// a `MEDIA_CONTROLLER`.
+    pub const MEDIA_SOURCE: u16 = 0x103B;
+    /// **Draft.** Mute (U8 0/1) on a `MEDIA_CONTROLLER`; independent of
+    /// `MEDIA_VOLUME`.
+    pub const MEDIA_MUTED: u16 = 0x103C;
+    /// **Draft.** Loop the resource on end (U8 0/1) on a `MEDIA_CONTROLLER`.
+    pub const MEDIA_LOOP: u16 = 0x103D;
+    /// **Draft.** Playback rate (F32, 1.0 = normal) on a `MEDIA_CONTROLLER`.
+    pub const MEDIA_RATE: u16 = 0x103E;
+    /// **Draft.** Semantic icon name (STRING, canonical; spec/ICONS.md) on an
+    /// `ICON` node. The renderer maps it to its native icon set and falls back
+    /// to a renderer-default visual for unknown names.
+    pub const ICON_NAME: u16 = 0x1038;
     pub const BORDER_WIDTH: u16 = 0x1003;
     pub const BORDER_COLOR: u16 = 0x1004;
     pub const BORDER_RADIUS: u16 = 0x1005;
@@ -412,6 +517,16 @@ pub mod property_id {
     /// by a `NavigationContainer`/`Conditional.when` slot; the renderer may
     /// animate the swap and must render normally when it ignores the hint.
     pub const TRANSITION: u16 = 0x1031;
+    /// **Draft.** A `SIZE_THAT_FITS` slot's candidate fit-query (LIST): the
+    /// candidates' `minWidth` thresholds, ascending. The renderer measures its
+    /// allocated width and reports the derived fit index (`FIT_CHANGED`).
+    pub const FIT_QUERY: u16 = 0x1039;
+    /// **Draft.** Predefined typography (ENUM code, see [`crate::text_style`]):
+    /// `.font(.title2)` picks a whole design-system typography; the heading
+    /// styles (LargeTitle…Headline) imply a heading element on a `TEXT`.
+    /// Raw font modifiers (`FONT_SIZE`/`FONT_WEIGHT`/`FONT_FAMILY`/…) override
+    /// the visual on top and never imply a heading.
+    pub const TEXT_STYLE: u16 = 0x1032;
     // Semantic (0x2000 range)
     pub const ROLE: u16 = 0x2001;
     pub const STATE: u16 = 0x2002;
@@ -509,16 +624,21 @@ pub fn value_type_for(prop: u16) -> u8 {
         | property_id::COLOR_INVERT
         | property_id::ALLOWS_HIT_TESTING
         | property_id::FIXED_SIZE_HORIZONTAL
-        | property_id::FIXED_SIZE_VERTICAL => value_type::U8,
+        | property_id::FIXED_SIZE_VERTICAL
+        | property_id::MEDIA_MUTED
+        | property_id::MEDIA_LOOP => value_type::U8,
         property_id::LABEL
         | property_id::PROMPT
         | property_id::FONT_FAMILY
         | property_id::IMAGE_SOURCE
+        | property_id::MEDIA_SOURCE
+        | property_id::ICON_NAME
         | property_id::ROUTE => value_type::STRING,
         property_id::LINE_LIMIT
         | property_id::SELECTION
         | property_id::ACTION_ID
         | property_id::BINDING_ID
+        | property_id::MEDIA_CONTROLLER_ID
         | property_id::NAV_DEPTH => value_type::U32,
         _ => value_type::F32,
     }
@@ -530,6 +650,155 @@ pub mod size {
     pub const FILL: f32 = -1.0;
     /// Hug content (size to the intrinsic content).
     pub const HUG_CONTENT: f32 = -2.0;
+}
+
+/// Semantic-role codes for the `ROLE` semantic property (`0x2001`).
+///
+/// Roles are protocol-semantic (carried as an `F32` enum code; see
+/// `spec/OPCODE.md` §semantic properties). The catalog is **semantic structure
+/// only** — interactive/control roles (button, link, checkbox, …) are NOT roles:
+/// they are intrinsic to the control components (a `BUTTON` renders as
+/// `<button>`, a `TOGGLE` as `<input type="checkbox">`, a `MENU` as
+/// `role="menu"`), and a custom-looking button is expressed with `Button` +
+/// `ButtonStyle`. The web renderer maps each semantic role onto its native
+/// element. Values MUST NOT be renumbered once released (wire version stays 1).
+pub mod role {
+    /// No semantic role (the default).
+    pub const NONE: u8 = 0;
+    /// A heading (ARIA `heading`; the HTML renderer uses `<hN>`, the level
+    /// driven by a `TEXT_STYLE` typography when present, default `<h2>`).
+    pub const HEADER: u8 = 1;
+    /// A paragraph (HTML `<p>`).
+    pub const PARAGRAPH: u8 = 2;
+    /// A list container (the HTML renderer uses `<ul>`).
+    pub const LIST: u8 = 3;
+    /// An item within a list (HTML `<li>`).
+    pub const LIST_ITEM: u8 = 4;
+    /// A summarising/complementary region (HTML `<section>`).
+    pub const SUMMARY: u8 = 5;
+    /// Site banner (HTML `<header>`).
+    pub const BANNER: u8 = 6;
+    /// Site navigation (HTML `<nav>`).
+    pub const NAVIGATION: u8 = 7;
+    /// The page's main content (HTML `<main>`).
+    pub const MAIN: u8 = 8;
+    /// Site footer / content info (HTML `<footer>`).
+    pub const CONTENT_INFO: u8 = 9;
+    /// Complementary/aside content (HTML `<aside>`).
+    pub const COMPLEMENTARY: u8 = 10;
+    /// A self-contained article (HTML `<article>`).
+    pub const ARTICLE: u8 = 11;
+    /// A thematically grouped section (HTML `<section>`).
+    pub const SECTION: u8 = 12;
+    /// A search region (HTML `<search>`).
+    pub const SEARCH: u8 = 13;
+}
+
+/// Predefined typography codes for the `TEXT_STYLE` property (see
+/// `spec/MODIFIERS.md`). Each value selects a whole typography from the design
+/// system (font size/weight/design). The **heading** styles (LargeTitle through
+/// Headline) imply a heading element when applied to a `TEXT`: the renderer
+/// emits `<h1>`–`<h5>` (the level comes from the style — no `ROLE` needed). The
+/// non-heading styles render as plain `<span>` text. A raw font modifier
+/// (`FONT_SIZE`, `FONT_WEIGHT`, `FONT_FAMILY`, …) never implies a heading — it
+/// only overrides the typography's visual.
+pub mod text_style {
+    /// The largest title style (heading level 1).
+    pub const LARGE_TITLE: u8 = 0;
+    /// A primary title (heading level 2).
+    pub const TITLE: u8 = 1;
+    /// A secondary title (heading level 3).
+    pub const TITLE2: u8 = 2;
+    /// A tertiary title (heading level 4).
+    pub const TITLE3: u8 = 3;
+    /// A headline (heading level 5).
+    pub const HEADLINE: u8 = 4;
+    /// A sub-headline (NOT a heading — plain `<span>` text).
+    pub const SUBHEADLINE: u8 = 5;
+    /// Body text (the default).
+    pub const BODY: u8 = 6;
+    /// A callout (slightly larger than body).
+    pub const CALLOUT: u8 = 7;
+    /// Footnote text.
+    pub const FOOTNOTE: u8 = 8;
+    /// Caption text.
+    pub const CAPTION: u8 = 9;
+    /// A second, smaller caption.
+    pub const CAPTION2: u8 = 10;
+}
+
+/// Canonical icon names (`ICON_NAME` values; spec/ICONS.md).
+///
+/// The spec is the **vocabulary contract only**: these names are the protocol
+/// `ICON_NAME` surface every renderer understands. The canonical-name →
+/// native-glyph mapping is **renderer-owned** (Adwaita on GTK, Remix filled on
+/// the web, SF Symbols on Apple) and lives in each renderer — never here, never
+/// in the spec.
+pub mod icon {
+    pub const HOME: &str = "home";
+    pub const SETTINGS: &str = "settings";
+    pub const SEARCH: &str = "search";
+    pub const MENU: &str = "menu";
+    pub const CLOSE: &str = "close";
+    pub const CLOUD: &str = "cloud";
+    pub const CHEVRON_LEFT: &str = "chevron-left";
+    pub const CHEVRON_RIGHT: &str = "chevron-right";
+    pub const CHEVRON_UP: &str = "chevron-up";
+    pub const CHEVRON_DOWN: &str = "chevron-down";
+    pub const ARROW_LEFT: &str = "arrow-left";
+    pub const ARROW_RIGHT: &str = "arrow-right";
+    pub const ADD: &str = "add";
+    pub const REMOVE: &str = "remove";
+    pub const CHECK: &str = "check";
+    pub const EDIT: &str = "edit";
+    pub const DELETE: &str = "delete";
+    pub const SAVE: &str = "save";
+    pub const SHARE: &str = "share";
+    pub const DOWNLOAD: &str = "download";
+    pub const UPLOAD: &str = "upload";
+    pub const REFRESH: &str = "refresh";
+    pub const PLAY: &str = "play";
+    pub const PAUSE: &str = "pause";
+    pub const STOP: &str = "stop";
+    pub const SKIP_BACK: &str = "skip-back";
+    pub const SKIP_FORWARD: &str = "skip-forward";
+    pub const VOLUME: &str = "volume";
+    pub const VOLUME_MUTE: &str = "volume-mute";
+    pub const SHUFFLE: &str = "shuffle";
+    pub const REPEAT: &str = "repeat";
+    pub const INFO: &str = "info";
+    pub const WARNING: &str = "warning";
+    pub const ERROR: &str = "error";
+    pub const SUCCESS: &str = "success";
+    pub const HEART: &str = "heart";
+    pub const STAR: &str = "star";
+    pub const USER: &str = "user";
+    pub const USERS: &str = "users";
+    pub const LOCK: &str = "lock";
+    pub const LOGOUT: &str = "logout";
+    pub const BELL: &str = "bell";
+    pub const FOLDER: &str = "folder";
+    pub const FILE: &str = "file";
+    pub const IMAGE: &str = "image";
+    pub const MUSIC: &str = "music";
+    pub const GRID: &str = "grid";
+    pub const LIST: &str = "list";
+    pub const FILTER: &str = "filter";
+
+    /// Every canonical name, in deterministic (spec, spec/ICONS.md) order.
+    pub const NAMES: &[&str] = &[
+        HOME, SETTINGS, SEARCH, MENU, CLOSE, CLOUD, CHEVRON_LEFT, CHEVRON_RIGHT,
+        CHEVRON_UP, CHEVRON_DOWN, ARROW_LEFT, ARROW_RIGHT, ADD, REMOVE, CHECK,
+        EDIT, DELETE, SAVE, SHARE, DOWNLOAD, UPLOAD, REFRESH, PLAY, PAUSE, STOP,
+        SKIP_BACK, SKIP_FORWARD, VOLUME, VOLUME_MUTE, SHUFFLE, REPEAT, INFO,
+        WARNING, ERROR, SUCCESS, HEART, STAR, USER, USERS, LOCK, LOGOUT, BELL,
+        FOLDER, FILE, IMAGE, MUSIC, GRID, LIST, FILTER,
+    ];
+
+    /// Whether `name` is a canonical `ICON_NAME` in the spec vocabulary.
+    pub fn is_canonical(name: &str) -> bool {
+        NAMES.contains(&name)
+    }
 }
 
 /// Sentinel for append positions (`index = u32::MAX`).

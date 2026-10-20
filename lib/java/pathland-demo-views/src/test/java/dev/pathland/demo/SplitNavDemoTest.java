@@ -1,0 +1,260 @@
+package dev.pathland.demo;
+
+import dev.pathland.view.Categories;
+import dev.pathland.view.Commands;
+import dev.pathland.view.Components;
+import dev.pathland.view.Environment;
+import dev.pathland.view.EnvironmentBinding;
+import dev.pathland.view.Platform;
+import dev.pathland.view.Properties;
+import dev.pathland.view.emit.Emitter;
+import dev.pathland.view.emit.ProtocolFrame;
+import dev.pathland.view.emit.FrameOpcodeSink;
+import dev.pathland.view.emit.Opcode;
+import dev.pathland.view.emit.RenderResult;
+import static dev.pathland.view.signal.Signals.*;
+import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.state.InMemoryStateStore;
+import dev.pathland.view.state.PersistentState;
+import dev.pathland.view.state.StateStore;
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static dev.pathland.view.Modifiers.*;
+
+/**
+ * The split navigation demo (spec PRIMITIVES.md — `NavigationSplitView` → `HStack`
+ * sidebar + detail): a fixed menu column on the left with three items and a
+ * `NavigationContainer` content area on the right. The host provides the active path
+ * ({@code Platform.ACTIVE_PATH}); {@code SplitNavDemo.body()} builds a **bound** router
+ * from it. Menu clicks navigate (direct selection — no back-stack growth), the
+ * `/kitchen` content is the full `KitchenSinkView`, and the active menu row is
+ * highlighted reactively.
+ */
+class SplitNavDemoTest {
+
+    private static final int ACTIVE_BG = 0xFF_DCE4FF; // SplitNavDemo.ACTIVE_BG
+
+    /** A session environment so the kitchen-sink content's `State` fields wire up. */
+    private static Environment env() {
+        StateStore store = new InMemoryStateStore();
+        return new Environment(new PersistentState(store, "session-1"));
+    }
+
+    /** The host pattern: provide the active path, mount the demo root. */
+    private static Mount mount(FrameOpcodeSink sink, String initialPath) {
+        var activePath = signal(initialPath);
+        RenderResult result = new Emitter(sink).mount(
+                new SplitNavDemo().modifiers(
+                        environmentBinding(e -> e.key(Platform.ACTIVE_PATH).value(activePath))), env());
+        return new Mount(result, activePath);
+    }
+
+    private record Mount(RenderResult result, WritableSignal<String> activePath) {}
+
+    @Test
+    void hostSeedRendersTheSidebarAndTheContent() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        mount(sink, "/home");
+
+        ProtocolFrame frame = sink.frame();
+        assertTrue(anySetText(frame, "Home"), "the home menu row is rendered");
+        assertTrue(anySetText(frame, "Kitchen sink"), "the kitchen sink menu row is rendered");
+        assertTrue(anySetText(frame, "Settings"), "the settings menu row is rendered");
+        assertTrue(anyCreateNode(frame, Components.ICON), "the menu rows render their Label icons");
+        assertTrue(anySetPropertyString(frame, Properties.LABEL, "Home"),
+                "a menu row carries its title as the accessibility label");
+        assertTrue(anySetText(frame,
+                "A master-detail (split) navigation demo: the menu on the left drives the content area on the right."),
+                "the home content area rendered on the right");
+        assertEquals("/home", routeOf(frame));
+    }
+
+    @Test
+    void kitchenSinkRendersAsAContentArea() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        mount(sink, "/kitchen");
+
+        ProtocolFrame frame = sink.frame();
+        assertTrue(anySetText(frame, "Pathland Kitchensink"),
+                "the /kitchen content area is the full KitchenSinkView");
+        assertEquals("/kitchen", routeOf(frame));
+    }
+
+    /**
+     * The media section's controller must keep the **same node id** (its playback
+     * key) across a content swap — otherwise re-creating the destination restarts
+     * playback and re-emits a wrenching `MEDIA_CONTROLLER`/`MEDIA_CONTROLLER_ID`
+     * pair (spec/MEDIA.md). This holds because the destination view that owns the
+     * controller is constructed **once** (the route table holds an instance), not
+     * inline on every render.
+     */
+    @Test
+    void mediaControllerKeepsItsNodeIdAcrossAContentSwap() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Mount mount = mount(sink, "/kitchen");
+        long first = controllerNodeId(sink.frame());
+
+        mount.activePath().set("/home");
+        assertTrue(anySetText(sink.frame(), "Home"), "swapped to the home content");
+
+        mount.activePath().set("/kitchen");
+        ProtocolFrame back = sink.frame();
+        assertTrue(anySetText(back, "Pathland Kitchensink"), "swapped back to the kitchen sink");
+        assertEquals(first, controllerNodeId(back),
+                "the controller's playback key is stable across a content swap");
+    }
+
+    /** The `MEDIA_CONTROLLER` node id created in this frame. */
+    private static long controllerNodeId(ProtocolFrame frame) {
+        return frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE)
+                .filter(o -> o.b() == Components.MEDIA_CONTROLLER)
+                .mapToLong(Opcode::a).findFirst().orElseThrow(
+                        () -> new AssertionError("no MEDIA_CONTROLLER node in the frame"));
+    }
+
+    @Test
+    void declarativeNavButtonInsideAContentAreaChangesTheRoute() {
+        // HomeView's "Open kitchen sink" button declares `.navigate("/kitchen")` — a
+        // component *inside* the NavigationContainer, so the emitter resolves it to the
+        // nearest enclosing router and registers it in navigateActions (spec DSL.md §4.5).
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Mount mount = mount(sink, "/home");
+
+        assertTrue(mount.result().navigateActions().size() >= 1,
+                "the declarative button inside the content area registers a nav intent");
+        mount.result().navigateActions().values().iterator().next().run();
+        assertEquals("/kitchen", mount.activePath().get(),
+                "the declarative .navigate button changed the route (mirrored into the active path)");
+        assertTrue(anySetText(sink.frame(), "Pathland Kitchensink"),
+                "the content area swapped to the kitchen sink");
+    }
+
+    @Test
+    void menuClickSwapsTheContentArea() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Mount mount = mount(sink, "/home");
+
+        // The menu rows capture the router explicitly (the sidebar sits outside the
+        // NavigationContainer), so they navigate via the tap registry — clicking them in
+        // order reaches /kitchen on the second row. Snapshot the live map first (a tap
+        // re-renders and repopulates it).
+        boolean reachedKitchen = false;
+        for (Map.Entry<Integer, Runnable> tap : new ArrayList<>(mount.result().tapActions().entrySet())) {
+            tap.getValue().run();
+            if ("/kitchen".equals(mount.activePath().get())) {
+                reachedKitchen = true;
+                break;
+            }
+        }
+        assertTrue(reachedKitchen, "clicking the Kitchen sink menu row navigates the content area");
+        ProtocolFrame delta = sink.frame();
+        assertTrue(anySetText(delta, "Pathland Kitchensink"),
+                "the kitchen sink content swap is emitted as deltas");
+        assertEquals("/kitchen", routeOf(delta));
+    }
+
+    @Test
+    void activeRowHighlightTracksTheRoute() {
+        RecordingSink sink = new RecordingSink();
+        Mount mount = mount(sink, "/home");
+
+        // Seeded at /home: the Home row carries the active background color.
+        assertTrue(anyFrame(sink, f -> anySetPropertyBits(f, Properties.BACKGROUND_COLOR, ACTIVE_BG)),
+                "the active menu row emits the highlight color");
+
+        // An external path change (the host setting Platform.ACTIVE_PATH, e.g. a deep
+        // link) re-routes the bound router; the row's reactive background re-emits.
+        // A single flush can produce several frames (the swap + each binding effect),
+        // so capture them all.
+        sink.frames.clear();
+        mount.activePath().set("/settings");
+        assertTrue(anyFrame(sink, f -> anySetPropertyBits(f, Properties.BACKGROUND_COLOR, ACTIVE_BG)),
+                "the highlight re-emits for the newly active row");
+        assertTrue(anyFrame(sink, f -> "/settings".equals(routeOfOrNull(f))),
+                "the external path change re-routed the content area");
+    }
+
+    /** A sink that records every completed frame (a flush can emit several). */
+    private static final class RecordingSink extends FrameOpcodeSink {
+        final List<ProtocolFrame> frames = new ArrayList<>();
+
+        @Override
+        public void endFrame() {
+            super.endFrame();
+            frames.add(frame());
+        }
+    }
+
+    private static boolean anyFrame(RecordingSink sink, java.util.function.Predicate<ProtocolFrame> test) {
+        return sink.frames.stream().anyMatch(test);
+    }
+
+    private static String routeOf(ProtocolFrame frame) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == Properties.ROUTE) {
+                return frame.stringAt(op.c());
+            }
+        }
+        throw new AssertionError("no ROUTE property in frame");
+    }
+
+    /** The ROUTE path in a frame, or null when the frame carries no ROUTE. */
+    private static String routeOfOrNull(ProtocolFrame frame) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == Properties.ROUTE) {
+                return frame.stringAt(op.c());
+            }
+        }
+        return null;
+    }
+
+    private static boolean anySetText(ProtocolFrame frame, String text) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_TEXT
+                    && text.equals(frame.stringAt(op.b()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean anyCreateNode(ProtocolFrame frame, int component) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.TREE && op.command() == Commands.Tree.CREATE_NODE
+                    && op.b() == component) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean anySetPropertyString(ProtocolFrame frame, int property, String value) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == property
+                    && value.equals(frame.stringAt(op.c()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean anySetPropertyBits(ProtocolFrame frame, int property, int bits) {
+        for (Opcode op : frame.opcodes()) {
+            if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
+                    && (op.b() & 0xFFFF) == property && (int) op.c() == bits) {
+                return true;
+            }
+        }
+        return false;
+    }
+}

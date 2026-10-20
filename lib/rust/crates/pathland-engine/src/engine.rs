@@ -1,7 +1,7 @@
 //! Diff-based reactive emitter.
 //!
 //! The engine holds the application's retained view tree and emits the
-//! declarative structure as `TREE`/`STYLE` opcodes into the 16-byte ring
+//! declarative structure as `TREE`/`PARAMETER` opcodes into the 16-byte ring
 //! buffer (VStack, HStack, Text, spacing, padding, alignment). It does not
 //! compute rects or layout; native renderers lay out their own elements.
 //!
@@ -20,13 +20,26 @@
 use alloc::borrow::ToOwned;
 use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 
 use pathland_core::{value_type, value_type_for};
 use pathland_core::Guest;
 
 use crate::node::{component_type_id, Component, Node};
-use crate::signal::{Dep, SignalId, SignalStore, SignalValue};
+use crate::signal::{Dep, Runtime, Signal, SignalId, SignalValue, SignalValueKind, WritableSignal};
+
+/// Encode a `LIST` property's arena entry: `[u32 count][f32 × count]`
+/// (spec/OPCODE.md §Value types — a `FIT_QUERY` threshold table).
+fn encode_list(values: &[f32]) -> Vec<u8> {
+    let mut bytes = vec![0u8; 4 + 4 * values.len()];
+    bytes[0..4].copy_from_slice(&(values.len() as u32).to_le_bytes());
+    for (i, value) in values.iter().enumerate() {
+        let o = 4 + 4 * i;
+        bytes[o..o + 4].copy_from_slice(&value.to_bits().to_le_bytes());
+    }
+    bytes
+}
 
 /// Per-node state the engine remembers from the last emission.
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +49,14 @@ struct SnapshotNode {
     index: usize,
     text: Option<String>,
     properties: BTreeMap<u16, u32>,
+    /// Last-emitted `STRING` properties: property → (value, arena offset). The
+    /// arena offset is reused across passes so an unchanged string never
+    /// re-allocates into the bump arena.
+    string_properties: BTreeMap<u16, (String, u32)>,
+    /// Last-emitted `LIST` properties: property → (values, arena offset). The
+    /// arena offset is reused across passes so an unchanged list never
+    /// re-allocates into the bump arena.
+    list_properties: BTreeMap<u16, (Vec<f32>, u32)>,
     /// Last-emitted `DESIGN_TOKEN` refs: property → (token path, arena offset).
     /// The arena offset is reused across passes so an unchanged ref never
     /// re-allocates into the bump arena.
@@ -61,8 +82,8 @@ pub struct Engine {
     snapshot: Vec<Option<SnapshotNode>>,
     /// Monotonic generation stamp for the current pass.
     gen: u64,
-    /// Reactive signal store (owns values + the reverse dependency index).
-    store: SignalStore,
+    /// Reactive signal runtime (values + computed/effects + node dependencies).
+    store: Runtime,
 }
 
 impl Default for Engine {
@@ -76,8 +97,13 @@ impl Engine {
         Self {
             snapshot: Vec::new(),
             gen: 0,
-            store: SignalStore::default(),
+            store: Runtime::new(),
         }
+    }
+
+    /// The shared reactive runtime (for creating typed signals / computeds).
+    pub fn runtime(&self) -> Runtime {
+        self.store.clone()
     }
 
     /// Reconcile `root` against the snapshot, emitting only changed opcodes.
@@ -87,9 +113,10 @@ impl Engine {
         guest: &mut Guest<'_>,
     ) -> Result<EmitResult, pathland_core::RingError> {
         self.gen = self.gen.wrapping_add(1);
-        // Rebuild the signal dependency index from scratch; reconcile re-adds
-        // the bindings this tree actually uses, so stale subscriptions vanish.
-        self.store.clear_deps();
+        // Rebuild the signal->node dependency index from scratch; reconcile
+        // re-adds the bindings this tree actually uses, so stale subscriptions
+        // vanish.
+        self.store.clear_node_deps();
         let mut out = 0usize;
         self.reconcile_node(root, None, 0, guest, &mut out)?;
 
@@ -110,7 +137,7 @@ impl Engine {
         self.snapshot.iter().filter(|s| s.is_some()).count()
     }
 
-    /// Emit a global design-token override (`STYLE::SET_DESIGN_TOKEN`).
+    /// Emit a global design-token override (`PARAMETER::SET_DESIGN_TOKEN`).
     /// Overrides are renderer-global and apply everywhere the renderer resolves
     /// tokens; a `dark.`-prefixed path overrides the dark variant
     /// (spec/TOKENS.md). Returns the arena offset of the token path.
@@ -125,7 +152,7 @@ impl Engine {
     }
 
     /// Emit a batch of global design-token overrides ([`Theme`](crate::Theme))
-    /// as `STYLE::SET_DESIGN_TOKEN` opcodes. `STRING`-valued overrides allocate
+    /// as `PARAMETER::SET_DESIGN_TOKEN` opcodes. `STRING`-valued overrides allocate
     /// their value into the guest arena first (the wire carries an arena ref).
     ///
     /// Overrides are renderer-global: they never re-emit nodes and are not part
@@ -187,17 +214,48 @@ impl Engine {
 
     // --- Signals ---
 
-    /// Create a new signal with an initial value.
+    /// Create a new (untyped) signal with an initial value.
     pub fn create_signal(&mut self, value: SignalValue) -> SignalId {
         self.store.create(value)
     }
 
-    /// Read a signal's current value.
-    pub fn get_signal(&self, id: SignalId) -> Option<&SignalValue> {
-        self.store.get(id)
+    /// Create a typed writable signal with an initial value.
+    pub fn signal<T: SignalValueKind>(&self, initial: T) -> WritableSignal<T> {
+        self.store.signal(initial)
     }
 
-    /// Replace a signal's value and re-emit only the nodes that depend on it.
+    /// Create a typed **computed** signal (lazily evaluated, memoized).
+    pub fn computed<T: SignalValueKind>(&self, compute: impl Fn() -> T + 'static) -> Signal<T> {
+        self.store.computed(compute)
+    }
+
+    /// Register an **effect** (runs immediately, then on dependency change).
+    pub fn effect(&self, run: impl Fn() + 'static) {
+        self.store.effect(run);
+    }
+
+    /// Read a typed signal's current value.
+    pub fn read<T: SignalValueKind>(&self, signal: Signal<T>) -> Option<T> {
+        signal.get()
+    }
+
+    /// Write a typed writable signal and re-emit only the nodes bound to it.
+    pub fn set<T: SignalValueKind>(
+        &mut self,
+        signal: WritableSignal<T>,
+        value: T,
+        guest: &mut Guest<'_>,
+    ) -> Result<usize, pathland_core::RingError> {
+        self.set_signal(signal.id(), value.into_signal_value(), guest)
+    }
+
+    /// Read a signal's current value.
+    pub fn get_signal(&self, id: SignalId) -> Option<SignalValue> {
+        Some(self.store.get(id))
+    }
+
+    /// Replace a signal's value and re-emit only the nodes that depend on it
+    /// (including nodes bound to any computed signal it feeds).
     ///
     /// Writes `SET_PROPERTY` / `SET_TEXT` deltas for the bound nodes whose
     /// materialized value changed. Returns the number of opcodes written.
@@ -207,19 +265,30 @@ impl Engine {
         value: SignalValue,
         guest: &mut Guest<'_>,
     ) -> Result<usize, pathland_core::RingError> {
-        if !self.store.set(id, value) {
+        let changed = self.store.set(id, value);
+        let mut out = 0usize;
+        for cell in changed {
+            out += self.emit_cell(cell, guest)?;
+        }
+        Ok(out)
+    }
+
+    /// Re-emit the node bindings on one (changed) signal.
+    fn emit_cell(
+        &mut self,
+        id: SignalId,
+        guest: &mut Guest<'_>,
+    ) -> Result<usize, pathland_core::RingError> {
+        let deps: Vec<Dep> = self.store.node_deps(id);
+        if deps.is_empty() {
             return Ok(0);
         }
+        let value = self.store.get(id);
         let mut out = 0usize;
-        let deps: Vec<Dep> = self.store.deps(id).to_vec();
         for dep in deps {
             match dep {
                 Dep::Text { node } => {
-                    let new_text: Option<String> = self
-                        .store
-                        .get(id)
-                        .and_then(SignalValue::to_text)
-                        .map(ToOwned::to_owned);
+                    let new_text: Option<String> = value.to_text().map(ToOwned::to_owned);
                     let prev_text = self.snapshot_text(node);
                     if new_text.as_deref() != prev_text {
                         if let Some(t) = new_text.as_deref() {
@@ -232,10 +301,7 @@ impl Engine {
                     }
                 }
                 Dep::Property { node, prop } => {
-                    let new_value = self
-                        .store
-                        .get(id)
-                        .and_then(SignalValue::to_property_u32);
+                    let new_value = value.to_property_u32();
                     let prev_value = self.snapshot_property(node, prop);
                     if new_value != prev_value {
                         if let Some(v) = new_value {
@@ -249,6 +315,33 @@ impl Engine {
                                 }
                                 None => {
                                     s.properties.remove(&prop);
+                                }
+                            }
+                        }
+                    }
+                }
+                Dep::StringProperty { node, prop } => {
+                    let new_text: Option<String> = value.to_text().map(ToOwned::to_owned);
+                    let prev_text = self.snapshot_string(node, prop).map(ToOwned::to_owned);
+                    if new_text != prev_text {
+                        let emitted = match new_text.as_deref() {
+                            Some(t) => {
+                                let arena = guest
+                                    .alloc_str(t)
+                                    .map_err(|_| pathland_core::RingError::Full)?;
+                                guest.set_property(node, prop, value_type::STRING, arena)?;
+                                out += 1;
+                                Some((t.to_string(), arena))
+                            }
+                            None => None,
+                        };
+                        if let Some(s) = self.snapshot_mut(node) {
+                            match emitted {
+                                Some((v, arena)) => {
+                                    s.string_properties.insert(prop, (v, arena));
+                                }
+                                None => {
+                                    s.string_properties.remove(&prop);
                                 }
                             }
                         }
@@ -279,6 +372,14 @@ impl Engine {
             .and_then(|s| s.properties.get(&prop).copied())
     }
 
+    fn snapshot_string(&self, node: u32, prop: u16) -> Option<&str> {
+        self.snapshot
+            .get(node as usize)
+            .and_then(|s| s.as_ref())
+            .and_then(|s| s.string_properties.get(&prop))
+            .map(|(value, _)| value.as_str())
+    }
+
     fn slot_mut(&mut self, id: u32) -> &mut Option<SnapshotNode> {
         let idx = id as usize;
         if self.snapshot.len() <= idx {
@@ -301,17 +402,30 @@ impl Engine {
         // Resolve bindings (owned) before taking the mutable snapshot borrow.
         let bound_text: Option<String> = node
             .text_binding
-            .and_then(|sid| self.store.get(sid))
-            .and_then(SignalValue::to_text)
-            .map(ToOwned::to_owned);
+            .map(|sid| self.store.get(sid))
+            .and_then(|v| v.to_text().map(ToOwned::to_owned));
 
         let merged_props: Option<BTreeMap<u16, u32>> = if node.property_bindings.is_empty() {
             None
         } else {
             let mut m = node.properties.clone();
             for (prop, sid) in &node.property_bindings {
-                if let Some(v) = self.store.get(*sid).and_then(SignalValue::to_property_u32) {
+                if let Some(v) = self.store.get(*sid).to_property_u32() {
                     m.insert(*prop, v);
+                }
+            }
+            Some(m)
+        };
+
+        // `STRING`-valued property bindings (e.g. a media controller's
+        // `MEDIA_SOURCE`) resolve on top of the static string properties.
+        let merged_strings: Option<BTreeMap<u16, String>> = if node.string_bindings.is_empty() {
+            None
+        } else {
+            let mut m = node.string_properties.clone();
+            for (prop, sid) in &node.string_bindings {
+                if let Some(v) = self.store.get(*sid).to_text() {
+                    m.insert(*prop, v.to_string());
                 }
             }
             Some(m)
@@ -325,6 +439,10 @@ impl Engine {
         };
         let props: &BTreeMap<u16, u32> = merged_props.as_ref().unwrap_or(&node.properties);
         let token_refs = &node.token_properties;
+        let strings: &BTreeMap<u16, String> = merged_strings
+            .as_ref()
+            .unwrap_or(&node.string_properties);
+        let lists = &node.list_properties;
 
         let prev = self.slot_mut(node.id).take();
         let token_changed = match &prev {
@@ -334,9 +452,27 @@ impl Engine {
                     .any(|(prop, (old, _))| token_refs.get(prop) != Some(old)),
             None => !token_refs.is_empty(),
         };
+        let strings_changed = match &prev {
+            Some(p) => {
+                p.string_properties.len() != strings.len()
+                    || p.string_properties
+                        .iter()
+                        .any(|(prop, (old, _))| strings.get(prop) != Some(old))
+            }
+            None => !strings.is_empty(),
+        };
+        let lists_changed = match &prev {
+            Some(p) => {
+                p.list_properties.len() != lists.len()
+                    || p.list_properties
+                        .iter()
+                        .any(|(prop, (old, _))| lists.get(prop) != Some(old))
+            }
+            None => !lists.is_empty(),
+        };
         let props_changed = match &prev {
-            Some(p) => &p.properties != props || token_changed,
-            None => !props.is_empty() || !token_refs.is_empty(),
+            Some(p) => &p.properties != props || token_changed || strings_changed || lists_changed,
+            None => !props.is_empty() || !token_refs.is_empty() || !strings.is_empty() || !lists.is_empty(),
         };
         let text_changed = match &prev {
             Some(p) => p.text.as_deref() != text_borrowed,
@@ -347,6 +483,12 @@ impl Engine {
         // steady-state pass performs no heap allocations (the unchanged refs'
         // arena offsets are reused from the previous snapshot below).
         let mut token_emit: Option<BTreeMap<u16, (String, u32)>> = None;
+        // String-property emission, built only on mount / when a value changed
+        // (arena offsets reused from the previous snapshot otherwise).
+        let mut string_emit: Option<BTreeMap<u16, (String, u32)>> = None;
+        // List-property emission, built only on mount / when a value changed
+        // (arena offsets reused from the previous snapshot otherwise).
+        let mut list_emit: Option<BTreeMap<u16, (Vec<f32>, u32)>> = None;
 
         // Properties in two passes — literals (skipping token-ref'd ids) then
         // token refs — so the steady-state emit performs no heap allocations.
@@ -376,6 +518,31 @@ impl Engine {
                         m.insert(*prop, (path.clone(), arena));
                     }
                     token_emit = Some(m);
+                }
+                if !strings.is_empty() {
+                    let mut m = BTreeMap::new();
+                    for (prop, value) in strings {
+                        let arena = guest
+                            .alloc_str(value)
+                            .map_err(|_| pathland_core::RingError::Full)?;
+                        guest.set_property(node.id, *prop, value_type::STRING, arena)?;
+                        *out += 1;
+                        m.insert(*prop, (value.clone(), arena));
+                    }
+                    string_emit = Some(m);
+                }
+                if !lists.is_empty() {
+                    let mut m = BTreeMap::new();
+                    for (prop, values) in lists {
+                        let bytes = encode_list(values);
+                        let arena = guest
+                            .alloc(&bytes)
+                            .map_err(|_| pathland_core::RingError::Full)?;
+                        guest.set_property(node.id, *prop, value_type::LIST, arena)?;
+                        *out += 1;
+                        m.insert(*prop, (values.clone(), arena));
+                    }
+                    list_emit = Some(m);
                 }
                 if let Some(t) = text_borrowed {
                     guest.set_text(node.id, t)?;
@@ -437,12 +604,59 @@ impl Engine {
                     }
                     token_emit = Some(m);
                 }
+                if strings_changed {
+                    let mut m = BTreeMap::new();
+                    for (prop, value) in strings {
+                        let (arena, changed) = match p.string_properties.get(prop) {
+                            Some((old_value, old_offset)) if old_value == value => {
+                                (*old_offset, false)
+                            }
+                            _ => {
+                                let offset = guest
+                                    .alloc_str(value)
+                                    .map_err(|_| pathland_core::RingError::Full)?;
+                                (offset, true)
+                            }
+                        };
+                        m.insert(*prop, (value.clone(), arena));
+                        if changed {
+                            guest.set_property(node.id, *prop, value_type::STRING, arena)?;
+                            *out += 1;
+                        }
+                    }
+                    string_emit = Some(m);
+                }
+                if lists_changed {
+                    let mut m = BTreeMap::new();
+                    for (prop, values) in lists {
+                        let (arena, changed) = match p.list_properties.get(prop) {
+                            Some((old_values, old_offset)) if old_values == values => {
+                                (*old_offset, false)
+                            }
+                            _ => {
+                                let bytes = encode_list(values);
+                                let offset = guest
+                                    .alloc(&bytes)
+                                    .map_err(|_| pathland_core::RingError::Full)?;
+                                (offset, true)
+                            }
+                        };
+                        m.insert(*prop, (values.clone(), arena));
+                        if changed {
+                            guest.set_property(node.id, *prop, value_type::LIST, arena)?;
+                            *out += 1;
+                        }
+                    }
+                    list_emit = Some(m);
+                }
             }
         }
 
         let mut prev_props = None;
         let mut prev_text = None;
         let mut prev_token_refs = None;
+        let mut prev_strings = None;
+        let mut prev_lists = None;
         if let Some(p) = prev {
             if !props_changed {
                 prev_props = Some(p.properties);
@@ -452,6 +666,12 @@ impl Engine {
             }
             if !token_changed {
                 prev_token_refs = Some(p.token_refs);
+            }
+            if !strings_changed {
+                prev_strings = Some(p.string_properties);
+            }
+            if !lists_changed {
+                prev_lists = Some(p.list_properties);
             }
             let _ = p;
         }
@@ -467,22 +687,37 @@ impl Engine {
             Some(m) => m,
             None => prev_token_refs.unwrap_or_default(),
         };
+        let string_properties = match string_emit {
+            Some(m) => m,
+            None => prev_strings.unwrap_or_default(),
+        };
+        let list_properties = match list_emit {
+            Some(m) => m,
+            None => prev_lists.unwrap_or_default(),
+        };
         *self.slot_mut(node.id) = Some(SnapshotNode {
             component_type,
             parent,
             index,
             text,
             properties,
+            string_properties,
+            list_properties,
             token_refs: token_refs_snapshot,
             gen: self.gen,
         });
 
         // Record signal dependencies for this node.
         if let Some(sid) = node.text_binding {
-            self.store.add_dep(sid, Dep::Text { node: node.id });
+            self.store.add_node_dep(sid, Dep::Text { node: node.id });
         }
         for (prop, sid) in &node.property_bindings {
-            self.store.add_dep(*sid, Dep::Property { node: node.id, prop: *prop });
+            self.store
+                .add_node_dep(*sid, Dep::Property { node: node.id, prop: *prop });
+        }
+        for (prop, sid) in &node.string_bindings {
+            self.store
+                .add_node_dep(*sid, Dep::StringProperty { node: node.id, prop: *prop });
         }
 
         for (i, child) in node.children.iter().enumerate() {

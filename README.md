@@ -32,6 +32,26 @@ That makes Pathland **language- and renderer-agnostic**:
 getting-started path — **not the whole story**. It's the on-ramp that's useful
 today; the protocol underneath is where the portability comes from.
 
+## See it in action
+
+The same shared demo views, rendered by two of Pathland's surfaces — server-side
+HTML in the browser and native GTK4 widgets on the desktop:
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshot_browser.png" alt="Pathland demo in the browser — SSR + live WebSocket deltas" width="420"><br/>
+      <b>Browser</b> — SSR + live WebSocket deltas
+    </td>
+    <td align="center">
+      <img src="docs/screenshot_gtk.png" alt="Pathland demo in the native GTK4 desktop renderer" width="420"><br/>
+      <b>Desktop</b> — native GTK4 renderer
+    </td>
+  </tr>
+</table>
+
+Try the hosted Quarkus demo live: **[pathland.onrender.com](https://pathland.onrender.com)**.
+
 ## The flagship path today: SSR
 
 The fastest way to replace a BFF + JavaScript-frontend stack. You write the **whole
@@ -97,16 +117,18 @@ public final class MyHomeView implements View {
 
     @Override
     public View body() {
-        return VStack.of(
-                Text.of(Signals.computed(() -> "Clicked " + count.get() + " times")),
-                Button.of("Click me", () -> count.update(v -> v + 1))
-        ).modifier(Padding.of(24));
+        return VStack.make(v -> v.alignment(HorizontalAlignment.CENTER).spacing(8))
+                .modifiers(padding(24))
+                .children(
+                        Text.make(Signals.computed(() -> "Clicked " + count.get() + " times")),
+                        Button.make(b -> b.title("Click me").action(() -> count.update(v -> v + 1))));
     }
 }
 ```
 
 That's it — SSR at any path, live updates over `/ws`, per-session state.
-*(Imports omitted: `com.pathland.server.PathlandApp`, `com.pathland.view.*`.)*
+*(Imports omitted: `com.pathland.server.PathlandApp`, `com.pathland.view.*`,
+and `import static com.pathland.view.Modifiers.*;` for the modifier function.)*
 
 ## What it removes
 

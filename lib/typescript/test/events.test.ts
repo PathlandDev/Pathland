@@ -6,8 +6,13 @@ import {
   encodeFocusChanged,
   encodeKeyDown,
   encodeKeyUp,
+  encodeMediaEnded,
+  encodeMediaPlayStateChanged,
+  encodeMediaTimeUpdated,
+  encodeMediaVolumeChanged,
   encodeNavigate,
   encodeNavigateBack,
+  encodePing,
   encodePointerDown,
   encodePointerMove,
   encodePointerUp,
@@ -28,6 +33,10 @@ import {
   CMD_FOCUS_CHANGED,
   CMD_KEY_DOWN,
   CMD_KEY_UP,
+  CMD_MEDIA_ENDED,
+  CMD_MEDIA_PLAY_STATE_CHANGED,
+  CMD_MEDIA_TIME_UPDATED,
+  CMD_MEDIA_VOLUME_CHANGED,
   CMD_NAVIGATE,
   CMD_POINTER_DOWN,
   CMD_POINTER_UP,
@@ -148,6 +157,28 @@ describe("event encoders", () => {
     expect(batch.opcodes[0]?.c).toBe(0);
   });
 
+  it("encodePing is a guest->host META::PING heartbeat batch (spec vector 16a)", () => {
+    const bytes = encodePing();
+    expect(bytes.length).toBe(HEADER_SIZE + 16 + 4);
+    const view = new DataView(bytes.buffer);
+    expect(view.getUint32(0, true)).toBe(MAGIC);
+    expect(view.getUint16(4, true)).toBe(VERSION);
+    expect(view.getUint16(6, true)).toBe(0x0000); // GUEST_TO_HOST
+    expect(view.getUint32(12, true)).toBe(1); // opcodeCount
+    const batch = parseBatch(bytes);
+    expect(batch.opcodes[0]?.category).toBe(0x04); // META
+    expect(batch.opcodes[0]?.command).toBe(0x04); // PING
+    expect(batch.opcodes[0]?.a).toBe(0);
+    expect(batch.opcodes[0]?.b).toBe(0);
+    expect(batch.opcodes[0]?.c).toBe(0);
+    // byte-exact vs spec/CONFORMANCE.md vector 16a
+    expect([...bytes]).toEqual([
+      0x4c, 0x50, 0x4c, 0x50, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x04, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+    ]);
+  });
+
   it("encodeNavigate rides the URL in the string section (no target, global)", () => {
     const batch = parseBatch(encodeNavigate("https://example.com/users/7"));
     const op = batch.opcodes[0]!;
@@ -177,5 +208,25 @@ describe("event encoders", () => {
     expect(new Float32Array(new Uint32Array([width.b]).buffer)[0]).toBe(800);
     expect(new Float32Array(new Uint32Array([height.b]).buffer)[0]).toBe(600);
     expect(readString(batch.strings, route.b)).toBe("/users/42");
+  });
+
+  it("media event encoders carry the media node id + payload", () => {
+    const play = eventOf(encodeMediaPlayStateChanged(7, true));
+    expect(play.command).toBe(CMD_MEDIA_PLAY_STATE_CHANGED);
+    expect(play.a).toBe(7);
+    expect(play.b).toBe(1);
+
+    const time = eventOf(encodeMediaTimeUpdated(7, 12.5));
+    expect(time.command).toBe(CMD_MEDIA_TIME_UPDATED);
+    expect(time.a).toBe(7);
+    expect(new Float32Array(new Uint32Array([time.b]).buffer)[0]).toBe(12.5);
+
+    const ended = eventOf(encodeMediaEnded(7));
+    expect(ended.command).toBe(CMD_MEDIA_ENDED);
+    expect(ended.a).toBe(7);
+
+    const volume = eventOf(encodeMediaVolumeChanged(7, 0.5));
+    expect(volume.command).toBe(CMD_MEDIA_VOLUME_CHANGED);
+    expect(new Float32Array(new Uint32Array([volume.b]).buffer)[0]).toBe(0.5);
   });
 });

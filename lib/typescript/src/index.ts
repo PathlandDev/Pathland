@@ -4,9 +4,10 @@
 // SSR HTML carries a `data-event-listeners` mask). Bundle: dist/pathland-dom-renderer.js
 
 import type { DomRenderer } from "./apply";
-import { updateNavBackButtons } from "./apply";
-import { Transport } from "./transport";
+import { hydrateFitElement, refreshFitSlots, retryPendingPlay, setupMediaElement, unlockMedia, updateNavBackButtons } from "./apply";
+import { Transport, shouldInitialResync } from "./transport";
 import { log } from "./log";
+import { clearInFlightRange, markRangeInFlight } from "./inFlight";
 import {
   encodeDateChanged,
   encodeEditingChanged,
@@ -19,6 +20,7 @@ import {
   encodePointerDown,
   encodePointerMove,
   encodePointerUp,
+  encodeResync,
   encodeScroll,
   encodeTextChanged,
   encodeValueBits,
@@ -39,35 +41,8 @@ import {
   LISTEN_SCROLL,
   LISTEN_WHEEL,
 } from "./constants";
-
-/** The owning Pathland node (the closest `[data-pathland-id]` ancestor). */
-function nodeOf(el: Element | null): HTMLElement | null {
-  return el ? el.closest<HTMLElement>("[data-pathland-id]") : null;
-}
-
-/**
- * The element an input event belongs to: the nearest element (self or ancestor)
- * that has a `data-pathland-id` AND a `data-event-listeners` mask including `bit`.
- * Unlike {@link nodeOf} (which returns the deepest id-bearing element), this walks
- * up so a gesture declared on a container (e.g. a tap on a `VStack` row whose child
- * `Text` is what's actually clicked) is attributed to the node that listens — the
- * contract the GTK renderer follows (gesture attached to any widget with the bits).
- * Elements that declare no listeners are skipped, so non-listening children never
- * steal an event from a listening ancestor.
- */
-function eventNodeOf(target: Element | null, bit: number): HTMLElement | null {
-  let el: Element | null = target;
-  while (el && el !== document.body) {
-    if (el.hasAttribute("data-pathland-id")) {
-      const raw = el.getAttribute("data-event-listeners");
-      if (raw !== null && (Number(raw) & bit) !== 0) {
-        return el as HTMLElement;
-      }
-    }
-    el = el.parentElement;
-  }
-  return null;
-}
+import { eventNodeOf, nodeOf } from "./dom-target";
+import { setupServiceWorker } from "./service-worker";
 
 /**
  * EVENT_LISTENERS gating: emit an event only if the node's `data-event-listeners`
@@ -104,9 +79,51 @@ function boot(): void {
     byId.set(Number(el.getAttribute("data-pathland-id")), el);
   }
   log.info(undefined, `dom-renderer boot — hydrated ${byId.size} nodes`);
+  // The reserved framework path prefix (spec — host system endpoints live under
+  // `/_pathland/**`). The SSR page carries it as `data-pathland-base` so a host
+  // can relocate it (e.g. behind a proxy); defaults to `/_pathland`.
+  const base = document.documentElement.dataset.pathlandBase ?? "/_pathland";
+  // The app's mount prefix, derived from its framework base (`/<mount>/_pathland`,
+  // `/_pathland` for the root app). The server emits app-relative ROUTEs; the browser
+  // URL is the app's real address, so URL mirroring must prepend the mount
+  // (`/app2` app navigating to `/home` → the URL `/app2/home`). The root app (mount
+  // "") is unchanged.
+  const mount =
+    base === "/_pathland" ? "" : base.slice(0, -"/_pathland".length);
+  // Per-window identity (the server's persisted-state scope): kept in sessionStorage so
+  // a reload of THIS tab keeps its state, while a NEW window/tab gets a fresh id — two
+  // windows never share a UI model or state. The server reads it as the `wid` query
+  // param on the WebSocket URL ONLY — it is deliberately never reflected into the page
+  // URL, so the address bar/history/referrer stay clean. The SSR request therefore has
+  // no wid: it renders defaults, and a same-tab reload re-syncs this window's state
+  // over the WebSocket (see `onOpen` below).
+  const storageKey = "pathland.wid";
+  let wid = sessionStorage.getItem(storageKey);
+  const isReload = wid != null;
+  if (wid == null) {
+    wid = crypto.randomUUID();
+    sessionStorage.setItem(storageKey, wid);
+  }
+  // Opt into (or out of) the per-window-id service worker (issue #155) before anything
+  // else: the server decides, via `data-pathland-service-worker` on <html>.
+  setupServiceWorker(wid, base);
+  // Strip a stale `?wid=` a shared/bookmarked URL may carry (from before the id left
+  // the URL): the SSR already used it, so it also forces a re-sync below. Keeping the
+  // search otherwise intact preserves other params and the route-mirror closure.
+  const urlParams = new URLSearchParams(location.search);
+  const urlHadWid = urlParams.has("wid");
+  if (urlHadWid) {
+    urlParams.delete("wid");
+    const search = urlParams.toString();
+    history.replaceState(null, "", location.pathname + (search ? `?${search}` : ""));
+  }
+  // The server marks whether this document was rendered with this window's persisted
+  // state (its request carried a wid — e.g. the service worker attached it). When it
+  // was, no initial snapshot is needed (see shouldInitialResync).
+  const ssrScoped = document.documentElement.dataset.pathlandSsrScoped != null;
   const renderer: DomRenderer = { byId };
   const transport = new Transport({
-    url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`,
+    url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${base}/ws?wid=${wid}`,
     renderer,
     // The platform environment (viewport + current route) is the FIRST message:
     // the server session seeds its router from the ROUTE field before mount, so a
@@ -115,9 +132,72 @@ function boot(): void {
       const { innerWidth: w, innerHeight: h } = window;
       log.info("route", `environment: viewport ${w}x${h}, route "${location.pathname}"`);
       t.send(encodeEnvironment(w, h, location.pathname));
+      // Re-report every fitted slot's CURRENT fit now the socket is open — a
+      // fit report emitted at boot (before the WS handshake) is dropped, so
+      // without this a wide first load would never switch to the wide candidate.
+      refreshFitSlots(renderer);
+      // Request a full snapshot only when the SSR could not render this window's
+      // persisted state — a reload whose SSR was unscoped (no wid reached the server,
+      // e.g. no service worker), or a stale ?wid= the SSR used but this window did not
+      // adopt. A scoped SSR (e.g. the service worker attached the wid) needs none: the
+      // live session shares the same scope.
+      if (shouldInitialResync(isReload, urlHadWid, ssrScoped)) {
+        log.debug("route", "unscoped SSR — requesting RESYNC for this window's persisted state");
+        t.send(encodeResync());
+      }
     },
   });
   transport.start();
+
+  // Media events from app-driven AUDIO/VIDEO nodes (spec/EVENTS.md Media) ride
+  // the same WebSocket as every raw input.
+  renderer.onMediaEvent = (batch) => {
+    if (transport.open) {
+      transport.send(batch);
+    }
+  };
+  // Fit changes from SIZE_THAT_FITS slots (spec/PRIMITIVES.md §SizeThatFits):
+  // the slotted candidate index reported only on transitions.
+  renderer.onFitEvent = (batch) => {
+    if (transport.open) {
+      transport.send(batch);
+    }
+  };
+  // Wire app-driven media nodes hydrated from the SSR HTML (they carry the
+  // `data-pathland-media` marker) so playback state reports to the app.
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
+    setupMediaElement(el, renderer);
+  }
+
+  // Autoplay policy: a browser accepts an unmuted `play()` only inside a
+  // **trusted user gesture**, but the play/pause action is a server round-trip
+  // (`PLAYBACK_STATE` arrives over the WebSocket after the click's activation has
+  // expired — spec/EVENTS.md Media). So every trusted gesture (a) unlocks the
+  // controller's playback element — an inaudible muted play→pause that earns it
+  // permission — and (b) replays any `play()` the policy blocked. Cheap and
+  // idempotent; a not-yet-loaded element is simply retried on the next gesture.
+  const onGesture = (event: Event) => {
+    if (!event.isTrusted) {
+      return;
+    }
+    unlockMedia();
+    retryPendingPlay();
+  };
+  for (const type of ["pointerdown", "keydown", "touchend"] as const) {
+    document.addEventListener(type, onGesture, { capture: true, passive: true });
+  }
+
+  // Hydrate fitted slots from the SSR HTML (they carry `data-pathland-fit`): an
+  // initial measure reports the first derived index once; subsequent reports
+  // arrive only on band crossings. The slot's own ResizeObserver detects width
+  // changes locally (spec/PRIMITIVES.md). A slot with `data-pathland-fit-cands`
+  // is the SSR full-snapshot form (issue #141): ALL candidates are present and
+  // CSS `@container` band rules already gate the visible one, so no JS toggle is
+  // needed for the first paint — the observer still reports FIT_CHANGED so the
+  // live tree can downgrade to a single selected child (the N→1 reconcile).
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-fit]")) {
+    hydrateFitElement(el, renderer);
+  }
 
   // Enrich the environment after connect: a window resize re-emits the viewport
   // fields (the mechanism future platform fields ride too).
@@ -128,12 +208,14 @@ function boot(): void {
     }
   });
 
-  // URL mirroring (spec DSL.md §4.5): the server emits the route as ROUTE; we push
-  // it into the history so the browser URL follows the app. pushState never fires
+  // URL mirroring (spec DSL.md §4.5): the server emits the app-relative route as ROUTE;
+  // we push the app's real URL (mount prefix prepended) so the browser URL follows the
+  // app — a reload of `/app2/home` reaches the `/app2` app. pushState never fires
   // popstate, so server-originated navigation can't loop back into NAVIGATE events.
+  // The wid query param is preserved so a reload after navigation still reaches SSR.
   renderer.onRoute = (path) => {
-    log.info("route", `server navigated -> pushState("${path}")`);
-    history.pushState(null, "", path);
+    log.info("route", `server navigated -> pushState("${mount}${path}")`);
+    history.pushState(null, "", `${mount}${path}?${urlParams.toString()}`);
   };
 
   // Renderer-provided navigation chrome (spec DSL.md §4.5): a PlatformDefault nav
@@ -170,6 +252,47 @@ function boot(): void {
     const secondary = event.button !== 0 ? FLAG_POINTER_SECONDARY : 0;
     transport.send(encodePointerDown(id, event.clientX, event.clientY, secondary));
   });
+
+  // In-flight interaction (spec EVENTS.md): while a range slider is being
+  // dragged, inbound VALUE deltas are suppressed (the thumb is
+  // user-authoritative until release), so a server echo can't cause flicker.
+  // Sliders that declared the EDITING listener bit also get EDITING_CHANGED
+  // boundaries (drag start/end) — e.g. a seek bar that commits on release.
+  let activeEditingNode: HTMLElement | null = null;
+  const endSliderEditing = () => {
+    if (activeEditingNode) {
+      transport.send(encodeEditingChanged(Number(activeEditingNode.getAttribute("data-pathland-id")), false));
+      activeEditingNode = null;
+    }
+  };
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const target = event.target as Element | null;
+      const range = target?.closest<HTMLInputElement>("input[type=range]");
+      if (range) {
+        markRangeInFlight(range);
+        const node = range.closest<HTMLElement>("[data-pathland-id]");
+        if (node && listens(node, LISTEN_EDITING)) {
+          activeEditingNode = node;
+          transport.send(encodeEditingChanged(Number(node.getAttribute("data-pathland-id")), true));
+        }
+      }
+    },
+    true,
+  );
+  document.addEventListener("pointerup", () => {
+    endSliderEditing();
+    clearInFlightRange();
+  });
+  document.addEventListener("pointercancel", () => {
+    endSliderEditing();
+    clearInFlightRange();
+  });
+  document.addEventListener("blur", () => {
+    endSliderEditing();
+    clearInFlightRange();
+  }, true);
 
   document.addEventListener("pointermove", (event) => {
     const target = event.target as Element;

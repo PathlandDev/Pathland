@@ -157,7 +157,7 @@ fn event_ring_reports_full() {
 
     #[test]
     fn guest_set_date_emits_the_set_date_command() {
-        use pathland_core::{component_type, style};
+        use pathland_core::{component_type, parameter};
 
         let mut m = Memory::new(MemoryLayout::default());
         {
@@ -173,8 +173,8 @@ fn event_ring_reports_full() {
         };
         assert_eq!(ops.len(), 2);
         let date = &ops[1];
-        assert_eq!(date.category(), pathland_core::category::STYLE);
-        assert_eq!(date.command(), style::SET_DATE);
+        assert_eq!(date.category(), pathland_core::category::PARAMETER);
+        assert_eq!(date.command(), parameter::SET_DATE);
         assert_eq!(date.a(), 1);
         assert_eq!(date.b() as i32, -1);
         assert_eq!(date.c(), 3_600_000);

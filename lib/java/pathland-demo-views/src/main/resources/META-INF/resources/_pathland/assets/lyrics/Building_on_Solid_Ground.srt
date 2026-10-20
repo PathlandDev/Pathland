@@ -1,0 +1,254 @@
+1
+00:00:00,000 --> 00:00:09,600
+♪ (Yeah, let's talk about Pathland.)
+Tired of building bridge after bridge to cross ♪
+
+2
+00:00:09,600 --> 00:00:14,400
+♪ (Yeah, let's talk about Pathland.)
+Tired of building bridge after bridge to cross
+Tired of counting every single payload loss ♪
+
+3
+00:00:14,400 --> 00:00:19,200
+♪ Tired of building bridge after bridge to cross
+Tired of counting every single payload loss
+Tired of managing frameworks that just expand ♪
+
+4
+00:00:19,200 --> 00:00:24,000
+♪ Tired of counting every single payload loss
+Tired of managing frameworks that just expand
+Tired of building on a shifting sand ♪
+
+5
+00:00:24,000 --> 00:00:28,800
+♪ Tired of managing frameworks that just expand
+Tired of building on a shifting sand
+You're caught between the logic and the view ♪
+
+6
+00:00:28,800 --> 00:00:33,600
+♪ Tired of building on a shifting sand
+You're caught between the logic and the view
+Just trying to make that old backend speak anew ♪
+
+7
+00:00:33,600 --> 00:00:38,400
+♪ You're caught between the logic and the view
+Just trying to make that old backend speak anew
+Say hello to a brand new protocol ♪
+
+8
+00:00:38,400 --> 00:00:41,600
+♪ Just trying to make that old backend speak anew
+Say hello to a brand new protocol
+It lets your server do it all ♪
+
+9
+00:00:41,600 --> 00:00:44,800
+♪ Say hello to a brand new protocol
+It lets your server do it all
+No more fighting with that frontend bloat ♪
+
+10
+00:00:44,800 --> 00:00:48,000
+♪ It lets your server do it all
+No more fighting with that frontend bloat
+Keep your ship afloat and take note ♪
+
+11
+00:00:48,000 --> 00:00:51,200
+♪ No more fighting with that frontend bloat
+Keep your ship afloat and take note
+Pathland lets your real logic shine through ♪
+
+12
+00:00:51,200 --> 00:00:54,400
+♪ Keep your ship afloat and take note
+Pathland lets your real logic shine through
+A declarative UI that works for you ♪
+
+13
+00:00:54,400 --> 00:00:57,600
+♪ Pathland lets your real logic shine through
+A declarative UI that works for you
+It's all declarative, just say what you need ♪
+
+14
+00:00:57,600 --> 00:01:02,400
+♪ A declarative UI that works for you
+It's all declarative, just say what you need
+Let the system handle the rendering speed ♪
+
+15
+00:01:02,400 --> 00:01:07,200
+♪ It's all declarative, just say what you need
+Let the system handle the rendering speed
+Write once in Java, or C#, or Rust ♪
+
+16
+00:01:07,200 --> 00:01:12,000
+♪ Let the system handle the rendering speed
+Write once in Java, or C#, or Rust
+Build a system you can truly trust ♪
+
+17
+00:01:12,000 --> 00:01:16,800
+♪ Write once in Java, or C#, or Rust
+Build a system you can truly trust
+Those fixed 16-byte opcodes fly so fast ♪
+
+18
+00:01:16,800 --> 00:01:21,600
+♪ Build a system you can truly trust
+Those fixed 16-byte opcodes fly so fast
+A protocol designed to stand and last ♪
+
+19
+00:01:21,600 --> 00:01:26,400
+♪ Those fixed 16-byte opcodes fly so fast
+A protocol designed to stand and last
+No more virtual DOMs or re-render pain ♪
+
+20
+00:01:26,400 --> 00:01:31,200
+♪ A protocol designed to stand and last
+No more virtual DOMs or re-render pain
+Just smooth 60 frames again and again ♪
+
+21
+00:01:31,200 --> 00:01:36,000
+♪ No more virtual DOMs or re-render pain
+Just smooth 60 frames again and again
+Say hello to a brand new protocol ♪
+
+22
+00:01:36,000 --> 00:01:39,200
+♪ Just smooth 60 frames again and again
+Say hello to a brand new protocol
+It lets your server do it all ♪
+
+23
+00:01:39,200 --> 00:01:42,400
+♪ Say hello to a brand new protocol
+It lets your server do it all
+No more fighting with that frontend bloat ♪
+
+24
+00:01:42,400 --> 00:01:45,600
+♪ It lets your server do it all
+No more fighting with that frontend bloat
+Keep your ship afloat and take note ♪
+
+25
+00:01:45,600 --> 00:01:48,800
+♪ No more fighting with that frontend bloat
+Keep your ship afloat and take note
+Pathland lets your real logic shine through ♪
+
+26
+00:01:48,800 --> 00:01:52,000
+♪ Keep your ship afloat and take note
+Pathland lets your real logic shine through
+A declarative UI that works for you ♪
+
+27
+00:01:52,000 --> 00:01:55,200
+♪ Pathland lets your real logic shine through
+A declarative UI that works for you
+It's starting out on the server side today ♪
+
+28
+00:01:55,200 --> 00:02:04,800
+♪
+
+29
+00:02:04,800 --> 00:02:08,000
+♪ A declarative UI that works for you
+It's starting out on the server side today
+But that's just the on-ramp, the very first way ♪
+
+30
+00:02:08,000 --> 00:02:11,200
+♪ It's starting out on the server side today
+But that's just the on-ramp, the very first way
+It's headed for embedded, mobile, and more ♪
+
+31
+00:02:11,200 --> 00:02:14,400
+♪ But that's just the on-ramp, the very first way
+It's headed for embedded, mobile, and more
+Opening up a whole new brand new door ♪
+
+32
+00:02:14,400 --> 00:02:17,600
+♪ It's headed for embedded, mobile, and more
+Opening up a whole new brand new door
+Imagine the power and imagine the speed ♪
+
+33
+00:02:17,600 --> 00:02:20,800
+♪ Opening up a whole new brand new door
+Imagine the power and imagine the speed
+It's truly the only protocol that you'll need ♪
+
+34
+00:02:20,800 --> 00:02:24,000
+♪ Imagine the power and imagine the speed
+It's truly the only protocol that you'll need
+Say hello to a brand new protocol ♪
+
+35
+00:02:24,000 --> 00:02:27,200
+♪ It's truly the only protocol that you'll need
+Say hello to a brand new protocol
+It lets your server do it all ♪
+
+36
+00:02:27,200 --> 00:02:30,400
+♪ Say hello to a brand new protocol
+It lets your server do it all
+No more fighting with that frontend bloat ♪
+
+37
+00:02:30,400 --> 00:02:33,600
+♪ It lets your server do it all
+No more fighting with that frontend bloat
+Keep your ship afloat and take note ♪
+
+38
+00:02:33,600 --> 00:02:36,800
+♪ No more fighting with that frontend bloat
+Keep your ship afloat and take note
+Pathland lets your real logic shine through ♪
+
+39
+00:02:36,800 --> 00:02:40,000
+♪ Keep your ship afloat and take note
+Pathland lets your real logic shine through
+A declarative UI that works for you ♪
+
+40
+00:02:40,000 --> 00:02:43,200
+♪ Pathland lets your real logic shine through
+A declarative UI that works for you
+So keep the tests green and let the code flow ♪
+
+41
+00:02:43,200 --> 00:02:46,467
+♪ A declarative UI that works for you
+So keep the tests green and let the code flow
+Pathland's the protocol that's ready to go ♪
+
+42
+00:02:46,467 --> 00:02:49,733
+♪ So keep the tests green and let the code flow
+Pathland's the protocol that's ready to go
+(Yeah, ready to go) ♪
+
+43
+00:02:49,733 --> 00:02:53,000
+♪ Pathland's the protocol that's ready to go
+(Yeah, ready to go) ♪
+

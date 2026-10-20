@@ -10,7 +10,14 @@ import {
   CMD_FOCUS_CHANGED,
   CMD_KEY_DOWN,
   CMD_KEY_UP,
+  CMD_MEDIA_ENDED,
+  CMD_MEDIA_DURATION_CHANGED,
+  CMD_MEDIA_PLAY_STATE_CHANGED,
+  CMD_MEDIA_TIME_UPDATED,
+  CMD_MEDIA_VOLUME_CHANGED,
+  CMD_FIT_CHANGED,
   CMD_NAVIGATE,
+  CMD_PING,
   CMD_POINTER_DOWN,
   CMD_POINTER_MOVE,
   CMD_POINTER_UP,
@@ -38,7 +45,7 @@ function eventBatch(command: number, a: number, b: number, c: number, opcodeFlag
   view.setUint32(0, MAGIC, true);
   view.setUint16(4, VERSION, true);
   view.setUint16(6, 0, true); // batch flags = guest -> host
-  view.setUint32(8, 0, true); // frameCount
+  view.setUint32(8, 0, true); // sequence (0: not a delta batch)
   view.setUint32(12, 1, true); // opcodeCount
   const pos = HEADER_SIZE;
   view.setUint8(pos, CAT_EVENT);
@@ -57,11 +64,30 @@ export function encodeResync(): Uint8Array {
   view.setUint32(0, MAGIC, true);
   view.setUint16(4, VERSION, true);
   view.setUint16(6, 0x0001, true); // batch flags = HOST_TO_GUEST
-  view.setUint32(8, 0, true); // frameCount
+  view.setUint32(8, 0, true); // sequence (0: not a delta batch)
   view.setUint32(12, 1, true); // opcodeCount
   const pos = HEADER_SIZE;
   view.setUint8(pos, CAT_META);
   view.setUint8(pos + 1, CMD_RESYNC);
+  view.setUint32(pos + 4, 0, true);
+  view.setUint32(pos + 8, 0, true);
+  view.setUint32(pos + 12, 0, true);
+  return out;
+}
+
+/** A META::PING transport-liveness heartbeat probe (guest → host, spec/OPCODE.md §Transport heartbeat). */
+export function encodePing(): Uint8Array {
+  const out = new Uint8Array(HEADER_SIZE + OPCODE_SIZE + 4);
+  const view = new DataView(out.buffer);
+  view.setUint32(0, MAGIC, true);
+  view.setUint16(4, VERSION, true);
+  view.setUint16(6, 0x0000, true); // batch flags = guest -> host
+  view.setUint32(8, 0, true); // sequence (0: not a delta batch)
+  view.setUint32(12, 1, true); // opcodeCount
+  const pos = HEADER_SIZE;
+  view.setUint8(pos, CAT_META);
+  view.setUint8(pos + 1, CMD_PING);
+  view.setUint16(pos + 2, 0, true);
   view.setUint32(pos + 4, 0, true);
   view.setUint32(pos + 8, 0, true);
   view.setUint32(pos + 12, 0, true);
@@ -107,6 +133,39 @@ export function encodeValueChanged(target: number, value: number): Uint8Array {
 /** A VALUE_CHANGED EVENT with a raw 32-bit payload (e.g. a packed ARGB color). */
 export function encodeValueBits(target: number, bits: number): Uint8Array {
   return eventBatch(CMD_VALUE_CHANGED, target, bits >>> 0, 0);
+}
+
+// --- media ---
+
+/** A bound media node's play state changed (B = 0/1). */
+export function encodeMediaPlayStateChanged(target: number, playing: boolean): Uint8Array {
+  return eventBatch(CMD_MEDIA_PLAY_STATE_CHANGED, target, playing ? 1 : 0, 0);
+}
+
+/** A bound media node's current position (B = seconds, f32). */
+export function encodeMediaTimeUpdated(target: number, seconds: number): Uint8Array {
+  return eventBatch(CMD_MEDIA_TIME_UPDATED, target, bitsFromF32(seconds), 0);
+}
+
+/** A bound media node reached the end of its media. */
+export function encodeMediaEnded(target: number): Uint8Array {
+  return eventBatch(CMD_MEDIA_ENDED, target, 0, 0);
+}
+
+/** A bound media node's volume changed (B = 0..1, f32). */
+export function encodeMediaVolumeChanged(target: number, volume: number): Uint8Array {
+  return eventBatch(CMD_MEDIA_VOLUME_CHANGED, target, bitsFromF32(volume), 0);
+}
+
+/** `MEDIA_DURATION_CHANGED` (0x14): the media's duration in seconds became
+ *  known / changed (target = the controller node id). */
+export function encodeMediaDurationChanged(target: number, seconds: number): Uint8Array {
+  return eventBatch(CMD_MEDIA_DURATION_CHANGED, target, bitsFromF32(seconds), 0);
+}
+
+/** A `SIZE_THAT_FITS` slot's selected candidate changed (B = index, f32). */
+export function encodeFittedChanged(target: number, index: number): Uint8Array {
+  return eventBatch(CMD_FIT_CHANGED, target, bitsFromF32(index), 0);
 }
 
 /** A DATE_CHANGED EVENT (A=target, B=days, C=millis of day). */

@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** September 3, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -33,8 +33,8 @@ the consumer. Both directions of the protocol are binary and share the same
 
 ### Who emits what
 
-- The **renderer** observes native input (a GTK controller, a DOM listener) and
-  writes raw `EVENT` opcodes. It never interprets them into high-level actions.
+- The **renderer** observes native input and writes raw `EVENT` opcodes. It never
+  interprets them into high-level actions.
 - The **app** drains the events, composes gestures/handlers, and updates its
   bound `State` signals (which in turn re-emit `SET_PROPERTY`/`SET_TEXT`
   deltas).
@@ -61,6 +61,45 @@ never serialized to the event ring or a network batch. This is the wire-level
 guard: a `Button` tap with no `ACTION_ID`, no `BINDING_ID`, and no
 `EVENT_LISTENERS` produces no events.
 
+### In-flight interaction (MUST)
+
+A node with an **active continuous-input session** — a slider being dragged, a
+text input being typed into, a pointer-drag the app is following — is the
+authoritative owner of the state it is editing. Renderers **MUST** honor this
+for the duration of the session:
+
+1. **Do not apply inbound updates to the in-edit state.** While the session is
+   active, a `SET_PROPERTY` of the state under edit (e.g. `VALUE` (0x2006) on a
+   `SLIDER` being dragged) is **skipped at the renderer** — the interaction's
+   position wins, so a server echo cannot fight the pointer and cause flicker.
+   Structural properties (`MIN_VALUE`/`MAX_VALUE`/`STEP_VALUE`, size, style)
+   still apply.
+2. **Do not re-report events for skipped writes.** Because the write was not
+   applied, no change signal fires and no `VALUE_CHANGED` is re-emitted — the
+   echo loop is broken at the source.
+3. **Resume on session end.** When the interaction ends (release / blur), the
+   in-flight state clears and inbound updates apply again; the final position
+   was already reported by the interaction's own events.
+
+This is **renderer state, not application state** (AGENTS.md Principle 1): the
+in-edit value is transient input/rendered-output state, like the scroll offset
+and the text caret.
+
+The session boundaries are also **reported as events** so the application can
+suppress echoes of *derived* state the renderer cannot know about (a custom
+drag offset, a drawn position):
+
+- `FOCUS_CHANGED` (0x08) — the control gained/lost focus.
+- `EDITING_CHANGED` (0x09) — a value/text edit session started/ended.
+
+Both are reported **only when the target declared the matching `EVENT_LISTENERS`
+bit** (`FOCUS` = `1<<5`, `EDITING` = `1<<6`). An application that observes
+`EDITING_CHANGED { editing: true }` should hold back authoritative echoes of the
+edited state until `{ editing: false }`.
+
+The mechanism is **per-state / per-session**: implemented today for value drags
+(`SLIDER`); text editing and other continuous inputs use the same path.
+
 ### Target resolution
 
 The renderer resolves `targetId` from its own rendered-output tree (its
@@ -86,7 +125,7 @@ Every event is a 16-byte opcode:
 `TEXT_CHANGED` is the exception: its payload is an offset into the host → guest
 event arena (shared memory) or the batch's string section (network), so it is
 only fully decodable with that string source (the same convention as
-`STYLE::SET_TEXT`).
+`PARAMETER::SET_TEXT`).
 
 ---
 
@@ -169,7 +208,7 @@ its own native control geometry.
 
 - The date is encoded as two 32-bit fields — `B` = **days since epoch**
   (signed I32; pre-1970 is negative) and `C` = **millis of day** (U32,
-  0..86,400,000) — matching the `STYLE::SET_DATE` command (OPCODE.md). No
+  0..86,400,000) — matching the `PARAMETER::SET_DATE` command (OPCODE.md). No
   string/arena indirection: the event is fully inline. It works over the
   shared-memory ring today and will use the same inline encoding for host →
   guest network batches once that direction lands (see OPCODE.md Transport).
@@ -189,7 +228,7 @@ its own native control geometry.
   (`[u32 byteLength][bytes…]`). Over the **shared-memory ring** the renderer
   bump-allocates it into the host-owned **event arena** and `B` is its absolute
   offset (see OPCODE.md); over the **network** it lives in the batch's string
-  section referenced by a *relative* `B` offset — exactly the `STYLE::SET_TEXT`
+  section referenced by a *relative* `B` offset — exactly the `PARAMETER::SET_TEXT`
   dual convention. A bare opcode cannot resolve the text; batch-aware decoders
   (`pathland-core-transport`, Java `FrameCodec`, TS `decoder.ts`) resolve it.
   The event is reported on **every** edit, including intermediate edits, not
@@ -215,13 +254,79 @@ its own native control geometry.
   reports the absolute offset after each scroll delta.
 - **`WHEEL`**: raw wheel/trackpad deltas (logical points), reported for nodes
   that declared the `WHEEL` listener bit (bit 9). Renderers map native scroll
-  deltas (GTK `GtkEventControllerScroll`, DOM `wheel`) onto x/y deltas.
+  deltas onto x/y deltas.
 
 ### Navigation
 
 | Command | Value | A | B | C | Flags | SwiftUI counterpart |
 | --------- | ------- | --- | --- | --- | ------- | --------------------- |
 | `NAVIGATE` | 0x0E | 0 | URL string offset | 0 | `NAVIGATE_URL` (0x0001) | browser back/forward (`popstate`), a deep link, or a native back affordance |
+
+### Media
+
+Media events report a
+[`MEDIA_CONTROLLER`](./PRIMITIVES.md#media-controller--media_controller-0x30)'s
+playback state back to the app — **`A` = the controller node id**, never a media
+**surface** id. They are reported by the renderer by virtue of the controller's
+component type — no listener bit, mirroring `VALUE_CHANGED` — and only when the
+app has bound the corresponding transport property **on the controller** (so a
+renderer-native playback with default controls reports nothing). Because the
+target is the controller, reporting does not change when a surface is created,
+destroyed, or swapped ([MEDIA.md §5](./MEDIA.md#5-structural-swaps-the-motivating-contract)).
+
+| Command | Value | A | B | C | Flags | SwiftUI counterpart |
+| --------- | ------- | --- | --- | --- | ------- | --------------------- |
+| `MEDIA_PLAY_STATE_CHANGED` | 0x0F | controllerId | playing (0/1) | 0 | — | `AVPlayer` play/pause |
+| `MEDIA_TIME_UPDATED` | 0x10 | controllerId | seconds (f32) | 0 | — | periodic time observer |
+| `MEDIA_ENDED` | 0x11 | controllerId | 0 | 0 | — | `AVPlayerItemDidPlayToEndTime` |
+| `MEDIA_VOLUME_CHANGED` | 0x12 | controllerId | volume (f32, 0..1) | 0 | — | `AVPlayer.volume` |
+| `MEDIA_DURATION_CHANGED` | 0x14 | controllerId | seconds (f32) | 0 | — | `AVPlayerItem.duration` |
+| `FIT_CHANGED` | 0x13 | targetId | fit index (f32) | 0 | — | a `SizeThatFits` slot's selected candidate |
+
+- **`MEDIA_TIME_UPDATED`**: the media's current playback position in seconds.
+  Reported **~30×/s while playing (≈ every 33 ms of playback progress)** —
+  both renderers sample their position source at ~30 Hz (best-effort: browser
+  background-tab and occluded-window timers throttle to worse cadences). A seek
+  initiated by the app (`MEDIA_POSITION` change) is not echoed back.
+- **`MEDIA_DURATION_CHANGED`**: the resource's duration in seconds. Reported when
+  the resource loads (or its duration becomes known), and only when it changes —
+  never a stream. Gates the useful range of a seek control.
+- **`FIT_CHANGED`**: a `SIZE_THAT_FITS` slot's **selected candidate index** —
+  the renderer measures its own allocated width against the slot's `FIT_QUERY`
+  thresholds and reports the derived index. Emitted **once after the first
+  measure, and then only when the derived index changes** (a band crossing) —
+  never a steady size stream. The app swaps the slot's child in response; a
+  `FIT_CHANGED` that maps to the already-shown candidate must re-emit **zero**
+  opcodes. After a **full-snapshot** presentation (the web SSR laid out every
+  candidate behind CSS container queries — issue #141), the app collapses the
+  slot back to the live single-selected-child form: the downgrade **removes the
+  unselected candidates** (`TREE` `REMOVE_CHILD`/`DELETE_NODE`), and that removal —
+  not an arbitrary structural op — is what makes the renderer tear the gate down.
+  A full-snapshot replayed as opcodes (e.g. `META::RESYNC`) does **not** collapse
+  the slot: the renderer keeps its gate and the width-correct candidate. Hosts
+  route it into the slot's fit sink, never as a general size event.
+- **Commands vs reports (MUST)**: `MEDIA_POSITION`/`MEDIA_VOLUME` are **seek /
+  volume commands** the app writes to control playback; `MEDIA_TIME_UPDATED` /
+  `MEDIA_DURATION_CHANGED` / `MEDIA_VOLUME_CHANGED` are **position / duration /
+  volume reports** the renderer emits. An app **MUST NOT** bind a command
+  property to the signal its matching report updates — that echoes every report
+  back as a command (e.g. each second's position report re-emits a
+  `MEDIA_POSITION` seek, causing per-second seek jitter). The app binds the
+  command to a **user-interaction-only** signal and routes the report to a
+  separate display signal.
+- **Renderer echo guard (MUST)**: a renderer **MUST NOT** act on a command write
+  that matches the value it last **reported** (within an epsilon): the app is
+  echoing the report back, not interacting. E.g. a `MEDIA_POSITION` write within
+  `0.25 s` of the last `MEDIA_TIME_UPDATED` must not seek; a `MEDIA_VOLUME`
+  write within `0.01` of the last `MEDIA_VOLUME_CHANGED` must not re-apply. This
+  is defense-in-depth: it holds at **any** network latency (the echo *is* the
+  last-reported value), so a delayed echo cannot fight the playback position.
+  The guard is **per controller** (the playback), not per surface.
+- **Guards**: media events flow only when the app bound the matching transport
+  property (`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`) **on the
+  controller**; a plain renderer-native playback reports nothing. Binding a
+  transport property on a `VIDEO` surface has no effect — the surface only
+  names the controller ([MEDIA.md](./MEDIA.md)).
 
 - **`NAVIGATE` is a global event — never node-gated.** It carries **no
   `targetId`** (`A` = 0) and is **not** subject to `EVENT_LISTENERS` or the

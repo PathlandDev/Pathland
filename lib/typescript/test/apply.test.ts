@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { applyBatch, setNodeText, updateNavBackButtons, type DomRenderer } from "../src/apply";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, unlockMedia, playMedia, retryPendingPlay, __setMediaLastReported, type DomRenderer } from "../src/apply";
+import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
 import {
   CAT_META,
-  CAT_STYLE,
+  CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
+  CMD_DELETE_NODE,
   CMD_INSERT_CHILD,
   CMD_MOVE_CHILD,
   CMD_RESET,
@@ -14,21 +16,46 @@ import {
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
   COMPONENT_BUTTON,
+  COMPONENT_GRID,
+  COMPONENT_LAZY_HGRID,
+  COMPONENT_MENU,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_TEXT,
   COMPONENT_VSTACK,
   COMPONENT_ZSTACK,
+  COMPONENT_ICON,
+  ALIGN_TOP_TRAILING,
+  PROP_ALIGNMENT,
+  PROP_MEDIA_CONTROLLER_ID,
+  PROP_MEDIA_SOURCE,
   PROP_COLOR,
+  PROP_FONT_SIZE,
+  PROP_FONT_WEIGHT,
+  PROP_GRID_COLUMNS,
+  PROP_GRID_ROWS,
+  PROP_ICON_NAME,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
+  PROP_LABEL,
+  PROP_LINE_LIMIT,
+  PROP_MEDIA_POSITION,
   PROP_NAV_CHROME,
+  PROP_PLAYBACK_STATE,
   PROP_NAV_DEPTH,
   PROP_PROGRESS,
   PROP_ROUTE,
   PROP_SELECTED,
   PROP_SPACING,
   PROP_TEXT,
+  PROP_ROLE,
+  PROP_TEXT_STYLE,
   PROP_VALUE,
+  PROP_Z_INDEX,
+  ROLE_BANNER,
+  ROLE_HEADER,
+  TEXT_STYLE_LARGE_TITLE,
+  TEXT_STYLE_SUBHEADLINE,
+  TEXT_STYLE_TITLE2,
   VAL_DESIGN_TOKEN,
   VAL_F32,
   VAL_STRING,
@@ -47,13 +74,299 @@ function renderer(): DomRenderer {
   return { byId: new Map<number, Node>() };
 }
 
+/** The lazy icon resolver must not hit the network in these tests. */
+function noNetworkIcons() {
+  vi.stubGlobal("fetch", async () => ({ ok: false, text: async () => "" }));
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
+/** Drop an SSR-style embedded glyph into the document (what a hydrated page carries). */
+function seedGlyph(name: string, inner: string): void {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "pathland-icon");
+  svg.setAttribute("data-pathland-icon", name);
+  svg.innerHTML = inner;
+  document.body.appendChild(svg);
+}
+
+describe("media autoplay policy", () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  /** A playback element hydrated from the SSR HTML: the controller node is the
+   *  `data-pathland-id` container, and the inner `<video data-pathland-media>`
+   *  is its control-less playback element (the real SSR shape). Wired through the
+   *  **media element** so the report-id derivation is exercised. */
+  function hydratedMedia(id = 1): { media: HTMLMediaElement; element: HTMLElement; r: DomRenderer } {
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-pathland-id", String(id));
+    const media = document.createElement("video");
+    media.setAttribute("data-pathland-media", "");
+    media.setAttribute("src", "/_pathland/assets/audio/track1.mp3");
+    wrapper.appendChild(media);
+    document.body.appendChild(wrapper);
+    const r = renderer();
+    r.byId.set(id, wrapper);
+    setupMediaElement(media, r);
+    return { media, element: wrapper, r };
+  }
+
+  it("keys a controller's media reports to its node id, not 0", async () => {
+    // The controller's `<video>` carries no id of its own — reports must resolve
+    // the id from the nearest `[data-pathland-id]` ancestor (the controller node),
+    // or every MEDIA_TIME_UPDATED goes out as target=0 and progress stalls.
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-pathland-id", "241");
+    const media = document.createElement("video");
+    media.setAttribute("data-pathland-media", "");
+    media.setAttribute("src", "/_pathland/assets/audio/track1.mp3");
+    Object.defineProperty(media, "duration", { value: 120, configurable: true });
+    wrapper.appendChild(media);
+    document.body.appendChild(wrapper);
+
+    const sent: Uint8Array[] = [];
+    const r: DomRenderer = { byId: new Map(), onMediaEvent: (b) => sent.push(b) };
+    setupMediaElement(media, r);
+
+    media.dispatchEvent(new Event("durationchange"));
+    expect(sent.length).toBe(1);
+    // The EVENT opcode's target (A) is the 4th field of the first opcode.
+    const view = new DataView(sent[0]!.buffer, sent[0]!.byteOffset);
+    const opcodePos = 16; // HEADER_SIZE
+    expect(view.getUint32(opcodePos + 4, true)).toBe(241);
+  });
+
+  it("retries a play() the autoplay policy blocked, on the next gesture", async () => {
+    const media = document.createElement("video");
+    document.body.appendChild(media);
+    const play = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        Promise.reject(Object.assign(new Error("blocked"), { name: "NotAllowedError" })),
+      )
+      .mockImplementation(() => Promise.resolve());
+    media.play = play as unknown as HTMLMediaElement["play"];
+
+    // The server-driven play arrives outside a gesture: the browser blocks it.
+    playMedia(media);
+    expect(play).toHaveBeenCalledTimes(1);
+    await flush();
+
+    // The next trusted gesture replays it…
+    retryPendingPlay();
+    expect(play).toHaveBeenCalledTimes(2);
+    // …and it is no longer pending.
+    retryPendingPlay();
+    expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs a non-autoplay play() rejection instead of swallowing it", async () => {
+    const media = document.createElement("video");
+    document.body.appendChild(media);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    media.play = vi.fn(() =>
+      Promise.reject(Object.assign(new Error("bad"), { name: "NotSupportedError" })),
+    ) as unknown as HTMLMediaElement["play"];
+
+    playMedia(media);
+    await flush();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("unlocks the playback element muted inside a gesture, then restores the mute", async () => {
+    const { media } = hydratedMedia();
+    let mutedDuringPlay: boolean | null = null;
+    media.play = vi.fn(() => {
+      mutedDuringPlay = media.muted;
+      return Promise.resolve();
+    }) as unknown as HTMLMediaElement["play"];
+
+    unlockMedia();
+    expect(mutedDuringPlay).toBe(true); // played muted (always permitted)
+    await flush();
+    expect(media.muted).toBe(false); // mute state restored
+  });
+
+  it("does not unlock while the app already wants the element playing", async () => {
+    const { media, r } = hydratedMedia();
+    const play = vi.fn(() => Promise.resolve());
+    media.play = play as unknown as HTMLMediaElement["play"];
+
+    // The app requested playing: a PLAYBACK_STATE apply sets `state.playing`.
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, ((VAL_U8 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry("")),
+      ),
+      r,
+    );
+    expect(play).toHaveBeenCalledTimes(1); // the app's own play
+
+    unlockMedia();
+    await flush();
+    expect(play).toHaveBeenCalledTimes(1); // the unlock leaves it alone
+  });
+});
+
+describe("applyBatch · media", () => {
+  it("seeks only on a meaningful MEDIA_POSITION change (no echo interruption)", () => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const r = renderer();
+    r.byId.set(1, wrapper);
+
+    // A near-identical position (a timeupdate echo) must NOT seek the element —
+    // even when the network delay means the element's currentTime has advanced
+    // past the reported position (the guard compares against the last-reported
+    // position, not currentTime).
+    setupMediaElement(wrapper, r);
+    audio.currentTime = 3.5;
+    __setMediaLastReported(audio, 3);
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_F32 << 16) | PROP_MEDIA_POSITION) >>> 0, f32bits(3.1)]], stringEntry(""))), r);
+    expect(audio.currentTime).toBe(3.5);
+
+    // A real seek (a user drag) does.
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_F32 << 16) | PROP_MEDIA_POSITION) >>> 0, f32bits(120)]], stringEntry(""))), r);
+    expect(audio.currentTime).toBe(120);
+  });
+
+  it("resumes playback when the source changes while playing (a skip keeps playing)", () => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const r = renderer();
+    r.byId.set(1, wrapper);
+
+    // App requests playing -> the element plays.
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_U32 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry(""))), r);
+    expect(audio.paused).toBe(false);
+
+    // A source change (skip/auto-advance) resets the element to paused...
+    audio.pause();
+    // ...and applying the new source resumes playback.
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_STRING << 16) | PROP_MEDIA_SOURCE) >>> 0, 0]], stringEntry("/track2.mp3"))), r);
+    expect(audio.paused).toBe(false);
+  });
+
+  it("binds a VIDEO surface that precedes its controller (order-independent)", () => {
+    // The surface is emitted first: its MEDIA_CONTROLLER_ID references a
+    // controller node that does not exist yet. Binding must not depend on
+    // emission order — a later MEDIA_SOURCE on the controller completes it
+    // (spec/MEDIA.md).
+    const surface = document.createElement("div");
+    surface.setAttribute("data-pathland-id", "2");
+    const surfaceVideo = document.createElement("video");
+    surfaceVideo.setAttribute("data-pathland-media", "");
+    surface.appendChild(surfaceVideo);
+    document.body.appendChild(surface);
+    const r = renderer();
+    r.byId.set(2, surface);
+
+    // The surface binds to controller 1 (which is not in the tree yet).
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 2,
+      ((VAL_U32 << 16) | PROP_MEDIA_CONTROLLER_ID) >>> 0, 1]], stringEntry(""))), r);
+    expect(surfaceVideo.src).toBe("");
+
+    // The controller arrives afterwards with its resource.
+    const controller = document.createElement("div");
+    controller.setAttribute("data-pathland-id", "1");
+    controller.setAttribute("data-pathland-media", "");
+    const controllerVideo = document.createElement("video");
+    controllerVideo.setAttribute("data-pathland-media", "");
+    controller.appendChild(controllerVideo);
+    document.body.appendChild(controller);
+    r.byId.set(1, controller);
+
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_STRING << 16) | PROP_MEDIA_SOURCE) >>> 0, 0]], stringEntry("/track9.mp3"))), r);
+
+    // The surface adopted the resource; the controller element carries no audio.
+    expect(surfaceVideo.getAttribute("src")).toContain("track9.mp3");
+    expect(controllerVideo.muted).toBe(true);
+  });
+
+  it("reports MEDIA_TIME_UPDATED at ~30/s (a 33 ms position sampler)", () => {
+    vi.useFakeTimers();
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const sent: Uint8Array[] = [];
+    const r = renderer();
+    r.byId.set(1, wrapper);
+    r.onMediaEvent = (batch: Uint8Array) => sent.push(batch);
+
+    // Wire the media element and start "playing" (paused=false for the gate).
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_U32 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry(""))), r);
+
+    // The first sample establishes the baseline report (last 0 → 0.04 s).
+    audio.currentTime = 0.04;
+    vi.advanceTimersByTime(40);
+    expect(sent).toHaveLength(1);
+
+    // A sub-step advance (< ~33 ms of progress) is dropped on the next tick.
+    audio.currentTime = 0.05;
+    vi.advanceTimersByTime(40);
+    expect(sent).toHaveLength(1);
+
+    // A real ~1/30 s step per tick reports again (~30 samples/s).
+    audio.currentTime = 0.10;
+    vi.advanceTimersByTime(40);
+    expect(sent).toHaveLength(2);
+  });
+
+  it("removing a media node clears its 30 Hz position sampler", () => {
+    vi.useFakeTimers();
+    const wrapper = document.createElement("div");
+    wrapper.className = "pathland-media";
+    wrapper.setAttribute("data-pathland-id", "1");
+    wrapper.setAttribute("data-pathland-media", "");
+    const audio = document.createElement("audio");
+    wrapper.appendChild(audio);
+    document.body.appendChild(wrapper);
+    const sent: Uint8Array[] = [];
+    const r = renderer();
+    r.byId.set(1, wrapper);
+    r.onMediaEvent = (batch: Uint8Array) => sent.push(batch);
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1,
+      ((VAL_U32 << 16) | PROP_PLAYBACK_STATE) >>> 0, 1]], stringEntry(""))), r);
+
+    // Delete the node: the sampler must stop (no reports after deletion,
+    // even as the position advances and time passes).
+    applyBatch(parseBatch(buildBatch([[CAT_TREE, CMD_DELETE_NODE, 0, 1]])), r);
+    audio.currentTime = 5;
+    vi.advanceTimersByTime(120);
+    expect(sent).toHaveLength(0);
+  });
+});
+
 describe("applyBatch · STYLE", () => {
   it("applies SET_TEXT to a hydrated span", () => {
     const span = document.createElement("span");
     span.setAttribute("data-pathland-id", "1");
     const r = renderer();
     r.byId.set(1, span);
-    const batch = parseBatch(buildBatch([[CAT_STYLE, CMD_SET_TEXT, 0, 1, 0, 0]], stringEntry("hi!")));
+    const batch = parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_TEXT, 0, 1, 0, 0]], stringEntry("hi!")));
     applyBatch(batch, r);
     expect(span.textContent).toBe("hi!");
   });
@@ -66,7 +379,7 @@ describe("applyBatch · STYLE", () => {
     tf.appendChild(input);
     const r = renderer();
     r.byId.set(5, tf);
-    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_TEXT, 0, 5, 0, 0]], stringEntry("ab"))), r);
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_TEXT, 0, 5, 0, 0]], stringEntry("ab"))), r);
     expect(input.value).toBe("ab");
   });
 
@@ -78,7 +391,7 @@ describe("applyBatch · STYLE", () => {
     toggle.appendChild(box);
     const r = renderer();
     r.byId.set(4, toggle);
-    applyBatch(parseBatch(buildBatch([[CAT_STYLE, 1, 0, 4, (0 << 16) | PROP_SELECTED, 1]])), r);
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, 1, 0, 4, (0 << 16) | PROP_SELECTED, 1]])), r);
     expect(box.checked).toBe(true);
   });
 
@@ -91,7 +404,31 @@ describe("applyBatch · STYLE", () => {
     const r = renderer();
     r.byId.set(6, slider);
     const bits = new Uint32Array(new Float32Array([0.75]).buffer)[0]!;
-    applyBatch(parseBatch(buildBatch([[CAT_STYLE, 1, 0, 6, (0 << 16) | PROP_VALUE, bits]])), r);
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, 1, 0, 6, (0 << 16) | PROP_VALUE, bits]])), r);
+    expect(range.value).toBe("0.75");
+  });
+
+  it("suppresses VALUE while a slider is being dragged (in-flight)", () => {
+    const slider = document.createElement("label");
+    slider.className = "pathland-slider";
+    const range = document.createElement("input");
+    range.type = "range";
+    range.value = "0.3";
+    slider.appendChild(range);
+    const r = renderer();
+    r.byId.set(6, slider);
+    const bits = new Uint32Array(new Float32Array([0.75]).buffer)[0]!;
+    const batch = () =>
+      parseBatch(buildBatch([[CAT_PARAMETER, 1, 0, 6, (0 << 16) | PROP_VALUE, bits]]));
+
+    // While the drag is in flight the server echo must not move the thumb.
+    markRangeInFlight(range);
+    applyBatch(batch(), r);
+    expect(range.value).toBe("0.3");
+
+    // On release, inbound VALUE applies again.
+    clearInFlightRange();
+    applyBatch(batch(), r);
     expect(range.value).toBe("0.75");
   });
 });
@@ -105,7 +442,7 @@ describe("applyBatch · TREE", () => {
           [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_VSTACK],
           [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
           [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
-          [CAT_STYLE, CMD_SET_TEXT, 0, 2, 0],
+          [CAT_PARAMETER, CMD_SET_TEXT, 0, 2, 0],
         ],
         stringEntry("x"),
       ),
@@ -198,7 +535,7 @@ describe("applyBatch · META + design tokens + string props", () => {
   it("SET_DESIGN_TOKEN applies a CSS variable via the default token sink", () => {
     // A = token-path string offset (0), B low byte = valueType COLOR (0x07), C = 0xAARRGGBB.
     const batch = parseBatch(
-      buildBatch([[CAT_STYLE, CMD_SET_DESIGN_TOKEN, 0, 0, 0x07, 0xff0000ff]], stringEntry("color.primary")),
+      buildBatch([[CAT_PARAMETER, CMD_SET_DESIGN_TOKEN, 0, 0, 0x07, 0xff0000ff]], stringEntry("color.primary")),
     );
     applyBatch(batch, renderer());
     const style = document.head.querySelector("style[data-pathland-tokens]");
@@ -207,7 +544,7 @@ describe("applyBatch · META + design tokens + string props", () => {
 
   it("SET_DESIGN_TOKEN scopes a dark.* override inside the dark media query", () => {
     const batch = parseBatch(
-      buildBatch([[CAT_STYLE, CMD_SET_DESIGN_TOKEN, 0, 0, 0x07, 0xff60a5fa]], stringEntry("dark.color.primary")),
+      buildBatch([[CAT_PARAMETER, CMD_SET_DESIGN_TOKEN, 0, 0, 0x07, 0xff60a5fa]], stringEntry("dark.color.primary")),
     );
     applyBatch(batch, renderer());
     const style = document.head.querySelector("style[data-pathland-tokens]");
@@ -218,7 +555,7 @@ describe("applyBatch · META + design tokens + string props", () => {
 
   it("SET_DESIGN_TOKEN registers a length token with px", () => {
     const batch = parseBatch(
-      buildBatch([[CAT_STYLE, CMD_SET_DESIGN_TOKEN, 0, 0, 0x04, 0x40800000]], stringEntry("space.base")),
+      buildBatch([[CAT_PARAMETER, CMD_SET_DESIGN_TOKEN, 0, 0, 0x04, 0x40800000]], stringEntry("space.base")),
     );
     applyBatch(batch, renderer());
     const style = document.head.querySelector("style[data-pathland-tokens]");
@@ -234,7 +571,7 @@ describe("applyBatch · META + design tokens + string props", () => {
     strings.set(path, 0);
     strings.set(value, path.length);
     const batch = parseBatch(
-      buildBatch([[CAT_STYLE, CMD_SET_DESIGN_TOKEN, 0, 0, VAL_STRING, 20]], strings),
+      buildBatch([[CAT_PARAMETER, CMD_SET_DESIGN_TOKEN, 0, 0, VAL_STRING, 20]], strings),
     );
     applyBatch(batch, renderer());
     const style = document.head.querySelector("style[data-pathland-tokens]");
@@ -247,7 +584,7 @@ describe("applyBatch · META + design tokens + string props", () => {
     r.byId.set(11, span);
     const batch = parseBatch(
       buildBatch(
-        [[CAT_STYLE, CMD_SET_PROPERTY, 0, 11, (VAL_DESIGN_TOKEN << 16) | PROP_COLOR, 0]],
+        [[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 11, (VAL_DESIGN_TOKEN << 16) | PROP_COLOR, 0]],
         stringEntry("color.primary"),
       ),
     );
@@ -261,7 +598,7 @@ describe("applyBatch · META + design tokens + string props", () => {
     r.byId.set(12, vstack);
     const batch = parseBatch(
       buildBatch(
-        [[CAT_STYLE, CMD_SET_PROPERTY, 0, 12, (VAL_DESIGN_TOKEN << 16) | PROP_SPACING, 0]],
+        [[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 12, (VAL_DESIGN_TOKEN << 16) | PROP_SPACING, 0]],
         stringEntry("space.2"),
       ),
     );
@@ -275,7 +612,7 @@ describe("applyBatch · META + design tokens + string props", () => {
     r.byId.set(8, img);
     applyBatch(
       parseBatch(
-        buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 8, (VAL_STRING << 16) | PROP_IMAGE_SOURCE, 0]], stringEntry("/logo.png")),
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 8, (VAL_STRING << 16) | PROP_IMAGE_SOURCE, 0]], stringEntry("/logo.png")),
       ),
       r,
     );
@@ -288,11 +625,52 @@ describe("applyBatch · META + design tokens + string props", () => {
     r.byId.set(9, span);
     applyBatch(
       parseBatch(
-        buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 9, (VAL_STRING << 16) | PROP_TEXT, 0]], stringEntry("hello")),
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 9, (VAL_STRING << 16) | PROP_TEXT, 0]], stringEntry("hello")),
       ),
       r,
     );
     expect(span.textContent).toBe("hello");
+  });
+
+  it("applying a LABEL to a composite never wipes its children", () => {
+    // A button whose label is a composite (icon + text): re-applying its accessibility
+    // LABEL on a resync must not clobber the children (SSR renders no label on composites).
+    const button = document.createElement("button");
+    const img = document.createElement("img");
+    const span = document.createElement("span");
+    span.textContent = "Home";
+    button.append(img, span);
+    const r = renderer();
+    r.byId.set(4, button);
+    r.byId.set(5, img);
+    r.byId.set(6, span);
+
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 4, (VAL_STRING << 16) | PROP_LABEL, 0]], stringEntry("Home")),
+      ),
+      r,
+    );
+    expect(button.childNodes.length).toBe(2);
+    expect(button.firstChild).toBe(img);
+    expect(button.lastChild).toBe(span);
+    expect(button.textContent).toBe("Home");
+  });
+
+  it("a positive LINE_LIMIT clamps the text via the webkit box model", () => {
+    const span = document.createElement("span");
+    const r = renderer();
+    r.byId.set(11, span);
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 11, (VAL_U32 << 16) | PROP_LINE_LIMIT, 1]]),
+      ),
+      r,
+    );
+    expect(span.style.webkitLineClamp).toBe("1");
+    expect((span.style as unknown as Record<string, string>).boxOrient).toBe("vertical");
+    // `display:-webkit-box` is also set (real browsers reflect it); happy-dom's CSSOM
+    // drops the vendor value, so it can't be asserted here.
   });
 
   it("SET_DATE on a time input writes millis-of-day as HH:MM", () => {
@@ -300,7 +678,7 @@ describe("applyBatch · META + design tokens + string props", () => {
     input.type = "time";
     const r = renderer();
     r.byId.set(10, input);
-    applyBatch(parseBatch(buildBatch([[CAT_STYLE, CMD_SET_DATE, 0, 10, 0, 3600000]])), r);
+    applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_DATE, 0, 10, 0, 3600000]])), r);
     expect(input.value).toBe("01:00");
   });
 });
@@ -328,7 +706,7 @@ describe("applyBatch · hydration reconciliation (no-replay-on-connect)", () => 
           [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_VSTACK],
           [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
           [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
-          [CAT_STYLE, CMD_SET_TEXT, 0, 2, 0],
+          [CAT_PARAMETER, CMD_SET_TEXT, 0, 2, 0],
         ],
         stringEntry("Hello"),
       ),
@@ -376,7 +754,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     r.byId.set(1, slot);
 
     const batch = parseBatch(
-      buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ROUTE, 0]], stringEntry("/users/7")),
+      buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ROUTE, 0]], stringEntry("/users/7")),
     );
     applyBatch(batch, r);
     expect(slot.getAttribute("data-pathland-route")).toBe("/users/7");
@@ -431,7 +809,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
       buildBatch([
         [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
         [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
-        [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_U32 << 16) | PROP_NAV_DEPTH, 2],
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_U32 << 16) | PROP_NAV_DEPTH, 2],
       ]),
     );
     applyBatch(batch, r);
@@ -456,7 +834,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
 
     applyBatch(
       parseBatch(
-        buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_U32 << 16) | PROP_NAV_DEPTH, 2]]),
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_U32 << 16) | PROP_NAV_DEPTH, 2]]),
       ),
       r,
     );
@@ -464,7 +842,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
 
     applyBatch(
       parseBatch(
-        buildBatch([[CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_U32 << 16) | PROP_NAV_DEPTH, 1]]),
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_U32 << 16) | PROP_NAV_DEPTH, 1]]),
       ),
       r,
     );
@@ -481,8 +859,8 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     applyBatch(
       parseBatch(
         buildBatch([
-          [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_NAV_CHROME, f32bits(1)],
-          [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_U32 << 16) | PROP_NAV_DEPTH, 3],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_NAV_CHROME, f32bits(1)],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_U32 << 16) | PROP_NAV_DEPTH, 3],
         ]),
       ),
       r,
@@ -503,7 +881,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     expect(slot.querySelector(".pathland-nav-back")).not.toBeNull();
   });
 
-  it("absolutely positions children inserted into a ZStack (runtime overlap)", () => {
+  it("wraps children inserted into a ZStack in a grid-area cell shell (runtime overlap)", () => {
     const r = renderer();
     const batch = parseBatch(
       buildBatch([
@@ -515,11 +893,120 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
       ]),
     );
     applyBatch(batch, r);
+    const zstack = r.byId.get(1) as HTMLElement;
     const first = r.byId.get(2) as HTMLElement;
     const second = r.byId.get(3) as HTMLElement;
-    expect(first.style.position).toBe("absolute");
-    expect(first.style.inset).toBe("0");
-    expect(second.style.position).toBe("absolute");
+    // Mirrors the Rust SSR renderer's per-child
+    // `<div style="grid-area:1/1;justify-self:...;align-self:...">` shell
+    // (overlap in the ZSTACK grid's single cell). The shell has no explicit
+    // width/height: a FILL child stretches to the track (align-self:stretch),
+    // a Hug child keeps its content size and is positioned per ALIGNMENT.
+    const wrappers = Array.from(zstack.children).filter((el) => el instanceof HTMLElement);
+    expect(wrappers).toHaveLength(2);
+    for (const wrapper of wrappers) {
+      const el = wrapper as HTMLElement;
+      expect(el.style.gridArea).toBe("1/1");
+      expect(el.style.width).toBe("");
+      expect(el.style.height).toBe("");
+      expect(el.tagName).toBe("DIV");
+    }
+    expect(zstack.contains(first)).toBe(true);
+    expect(zstack.contains(second)).toBe(true);
+    expect(first.parentElement).not.toBe(zstack);
+    // Tracks are minmax(0,1fr): a bare 1fr track's auto minimum is the largest
+    // child's min-content size, which would overflow a short viewport and push
+    // an end-aligned child (a player bar) out of view.
+    expect(zstack.style.gridTemplateColumns).toBe("minmax(0,1fr)");
+    expect(zstack.style.gridTemplateRows).toBe("minmax(0,1fr)");
+  });
+
+  it("splits a ZStack 2D ALIGNMENT into justify-self/align-self (topTrailing)", () => {
+    const r = renderer();
+    const batch = parseBatch(
+      buildBatch([
+        [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_ZSTACK],
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_ALIGNMENT, f32bits(ALIGN_TOP_TRAILING)],
+        [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
+        [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
+      ]),
+    );
+    applyBatch(batch, r);
+    const zstack = r.byId.get(1) as HTMLElement;
+    expect(zstack.style.justifyItems).toBe("end"); // horizontal end
+    expect(zstack.style.alignItems).toBe("start"); // vertical start
+    const shell = zstack.children[0] as HTMLElement;
+    expect(shell.style.justifySelf).toBe("end");
+    expect(shell.style.alignSelf).toBe("start");
+  });
+
+  it("applies a ZStack child's Z_INDEX to its wrapper shell (draw-order override)", () => {
+    const r = renderer();
+    const batch = parseBatch(
+      buildBatch([
+        [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_ZSTACK],
+        [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
+        [CAT_TREE, CMD_CREATE_NODE, 0, 3, COMPONENT_TEXT],
+        // The FIRST child has z-index 5 (F32 — the DSL wire type): its shell
+        // must carry it so it draws above the later sibling.
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 2, (VAL_F32 << 16) | PROP_Z_INDEX, f32bits(5)],
+        [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
+        [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 3],
+      ]),
+    );
+    applyBatch(batch, r);
+    const zstack = r.byId.get(1) as HTMLElement;
+    expect(zstack.style.isolation).toBe("isolate"); // scopes shell z-indexes
+    const child = r.byId.get(2) as HTMLElement;
+    const shell = child.parentElement as HTMLElement;
+    expect(shell.parentElement).toBe(zstack); // it is the ZSTACK's grid shell
+    expect(shell.style.zIndex).toBe("5");
+    expect(child.style.zIndex).toBe("5");
+    const sibling = r.byId.get(3) as HTMLElement;
+    expect((sibling.parentElement as HTMLElement).style.zIndex).toBe("0");
+  });
+
+  it("mirrors GRID_COLUMNS/GRID_ROWS into track templates (never pixel sizes) and wraps cells", () => {
+    const r = renderer();
+    const batch = parseBatch(
+      buildBatch([
+        [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_GRID],
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_GRID_COLUMNS, f32bits(2)],
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_GRID_ROWS, f32bits(3)],
+        [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
+        [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2],
+      ]),
+    );
+    applyBatch(batch, r);
+    const grid = r.byId.get(1) as HTMLElement;
+    expect(grid.style.gridTemplateColumns).toBe("repeat(2,minmax(0,1fr))");
+    expect(grid.style.gridTemplateRows).toBe("repeat(3,minmax(0,1fr))");
+    expect(grid.style.width).not.toBe("2px"); // a count, never a pixel box
+    expect(grid.style.height).not.toBe("3px");
+    expect(grid.style.justifyItems).toBe("start");
+    expect(grid.style.alignItems).toBe("start");
+    // A Hug cell is wrapped in an auto-placed shell positioned at start.
+    const cell = r.byId.get(2) as HTMLElement;
+    const wrapper = cell.parentElement as HTMLElement;
+    expect(wrapper.tagName).toBe("DIV");
+    expect(wrapper.style.justifySelf).toBe("start");
+    expect(wrapper.style.alignSelf).toBe("start");
+  });
+
+  it("LAZY_HGRID reads GRID_ROWS (the fixed track) and ignores GRID_COLUMNS", () => {
+    const r = renderer();
+    const batch = parseBatch(
+      buildBatch([
+        [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_LAZY_HGRID],
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_GRID_COLUMNS, f32bits(2)],
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_GRID_ROWS, f32bits(3)],
+      ]),
+    );
+    applyBatch(batch, r);
+    const grid = r.byId.get(1) as HTMLElement;
+    expect(grid.style.gridTemplateRows).toBe("repeat(3,minmax(0,1fr))");
+    expect(grid.style.gridTemplateColumns).toBe("");
+    expect(grid.style.gridAutoFlow).toBe("column");
+    expect(grid.style.gridAutoColumns).toBe("minmax(0,1fr)");
   });
 
   it("morphs a ProgressView between spinner and determinate progress", () => {
@@ -528,7 +1015,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
       parseBatch(
         buildBatch([
           [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_PROGRESS_VIEW],
-          [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_U8 << 16) | PROP_IS_INDETERMINATE, 1],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_U8 << 16) | PROP_IS_INDETERMINATE, 1],
         ]),
       ),
       r,
@@ -540,7 +1027,7 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     applyBatch(
       parseBatch(
         buildBatch([
-          [CAT_STYLE, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_PROGRESS, f32bits(0.5)],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_PROGRESS, f32bits(0.5)],
         ]),
       ),
       r,
@@ -549,5 +1036,228 @@ describe("applyBatch · navigation (spec DSL.md §4.5)", () => {
     expect(progress).toBeInstanceOf(HTMLProgressElement);
     expect((progress as HTMLProgressElement).value).toBeCloseTo(0.5);
     expect((progress as HTMLProgressElement).max).toBe(1);
+  });
+});
+
+describe("applyBatch · semantic roles (generated role-spec)", () => {
+  const roleBatch = (id: number, component: number, role: number) =>
+    buildBatch([
+      [CAT_TREE, CMD_CREATE_NODE, 0, id, component],
+      [CAT_PARAMETER, CMD_SET_PROPERTY, 0, id, (VAL_F32 << 16) | PROP_ROLE, f32bits(role)],
+    ]);
+
+  const styleBatch = (id: number, component: number, style: number) =>
+    buildBatch([
+      [CAT_TREE, CMD_CREATE_NODE, 0, id, component],
+      [CAT_PARAMETER, CMD_SET_PROPERTY, 0, id, (VAL_F32 << 16) | PROP_TEXT_STYLE, f32bits(style)],
+    ]);
+
+  it("retags a generic Text with role=HEADER to an <h2> (no redundant role attr)", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_TEXT, ROLE_HEADER)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("h2");
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("retags a generic stack with role=BANNER to a <header>", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_VSTACK, ROLE_BANNER)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("header");
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("a heading TEXT_STYLE makes a Text a heading even without a role (TITLE2 -> <h3>)", () => {
+    const r = renderer();
+    applyBatch(parseBatch(styleBatch(1, COMPONENT_TEXT, TEXT_STYLE_TITLE2)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("h3");
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("a non-heading TEXT_STYLE (SUBHEADLINE) stays a <span>", () => {
+    const r = renderer();
+    applyBatch(parseBatch(styleBatch(1, COMPONENT_TEXT, TEXT_STYLE_SUBHEADLINE)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("span");
+  });
+
+  it("a heading TEXT_STYLE wins over the role default (LARGE_TITLE + HEADER -> <h1>)", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_TEXT],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_TEXT_STYLE, f32bits(TEXT_STYLE_LARGE_TITLE)],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_ROLE, f32bits(ROLE_HEADER)],
+        ]),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("h1");
+  });
+
+  it("a TEXT_STYLE applies the renderer's default size and weight", () => {
+    const r = renderer();
+    applyBatch(parseBatch(styleBatch(1, COMPONENT_TEXT, TEXT_STYLE_TITLE2)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.style.fontSize).toBe("22px");
+    expect(el.style.fontWeight).toBe("700");
+  });
+
+  it("an explicit FONT_SIZE wins over a TEXT_STYLE even when the style arrives last", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_TEXT],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_FONT_SIZE, f32bits(11)],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_TEXT_STYLE, f32bits(TEXT_STYLE_LARGE_TITLE)],
+        ]),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.style.fontSize).toBe("11px");
+    // The non-overridden axis still comes from the style (LARGE_TITLE is bold).
+    expect(el.style.fontWeight).toBe("700");
+  });
+
+  it("an explicit FONT_WEIGHT wins over a TEXT_STYLE", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_TEXT],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_FONT_WEIGHT, f32bits(400)],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_F32 << 16) | PROP_TEXT_STYLE, f32bits(TEXT_STYLE_LARGE_TITLE)],
+        ]),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.style.fontWeight).toBe("400");
+    expect(el.style.fontSize).toBe("34px");
+  });
+
+  it("a control component keeps its native element and no role attribute", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_BUTTON, ROLE_HEADER)), r);
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("button");
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("a reserved/unknown role code is a no-op on a generic shell", () => {
+    const r = renderer();
+    applyBatch(parseBatch(roleBatch(1, COMPONENT_TEXT, 14)), r); // reserved (was a control role)
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("span");
+    expect(el.getAttribute("role")).toBeNull();
+  });
+
+  it("a MENU renders with its intrinsic role=\"menu\"", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_MENU]]),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.getAttribute("role")).toBe("menu");
+  });
+
+  it("a semantic icon renders a filled Remix svg from its canonical name", () => {
+    noNetworkIcons();
+    // The SSR page embeds the glyph (the DOM-seed the lazy resolver reads) —
+    // here "play" already appears in the document, so the swap is synchronous.
+    seedGlyph("play", '<path d="M19.376 12.4161L8.77735 19.4818"/>');
+
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_ICON],
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ICON_NAME, 0],
+          ],
+          stringEntry("play"),
+        ),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.tagName.toLowerCase()).toBe("svg");
+    expect(el.getAttribute("class")).toContain("pathland-icon");
+    expect(el.getAttribute("fill")).toBe("currentColor");
+    expect(el.getAttribute("aria-hidden")).toBe("true");
+    expect(el.getAttribute("data-pathland-icon")).toBe("play");
+    // The Remix play glyph is a single filled path (no stroke), from the embedded copy.
+    expect(el.innerHTML).toContain('d="M19.376 12.4161L8.77735 19.4818');
+    expect(el.innerHTML).not.toContain("stroke=");
+  });
+
+  it("an unknown icon name and a LABEL adjust the icon's aria", () => {
+    noNetworkIcons();
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_ICON],
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ICON_NAME, 0],
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_LABEL, 16],
+          ],
+          new Uint8Array([...stringEntry("no-such-icon"), ...stringEntry("Playlist")]),
+        ),
+      ),
+      r,
+    );
+    const el = r.byId.get(1) as HTMLElement;
+    expect(el.innerHTML).toContain("circ"); // fallback glyph (no embedded copy, no glyph served)
+    expect(el.getAttribute("role")).toBe("img");
+    expect(el.getAttribute("aria-label")).toBe("Playlist");
+    expect(el.getAttribute("aria-hidden")).toBeNull();
+  });
+
+  it("an ICON_NAME delta swaps a hydrated play button to pause (lazy fetch)", async () => {
+    // The live play/pause toggle: the SSR svg advertises "play" with the play
+    // glyph inline, then a WS delta sets ICON_NAME=pause. The glyph must not be
+    // pasted from the element itself (the play<->pause self-match regression).
+    const PAUSE = '<path d="M6 5H8V19H6V5ZM16 5H18V19H16V5Z"/>';
+    vi.stubGlobal("fetch", async () => ({
+      ok: true,
+      text: async () => '<svg viewBox="0 0 24 24" fill="currentColor">' + PAUSE + "</svg>",
+    }));
+
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    el.setAttribute("data-pathland-id", "1");
+    el.setAttribute("class", "pathland-icon");
+    el.setAttribute("data-pathland-icon", "play");
+    el.innerHTML = '<path d="M19.376 12.4161L8.77735 19.4818"/>';
+    document.body.appendChild(el);
+    const r = renderer();
+    r.byId.set(1, el);
+
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_ICON_NAME, 0],
+          ],
+          stringEntry("pause"),
+        ),
+      ),
+      r,
+    );
+
+    expect(el.getAttribute("data-pathland-icon")).toBe("pause");
+    // Did NOT paste the element's own play glyph back (it shows the fallback
+    // synchronously, then the fetched pause glyph).
+    expect(el.innerHTML).not.toContain('d="M19.376');
+    await vi.waitFor(() => expect(el.innerHTML).toContain('d="M6 5H8V19H6V5'), { timeout: 2000 });
   });
 });

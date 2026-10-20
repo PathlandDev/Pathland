@@ -87,7 +87,7 @@ pub unsafe extern "C" fn pathland_ring_buffer_push(handle: CoreHandle, opcode: *
 }
 
 /// Allocate `len` bytes into the bump arena, returning the absolute arena
-/// offset (a `u32` reference for `STYLE::SET_TEXT` / `STRING` property values).
+/// offset (a `u32` reference for `PARAMETER::SET_TEXT` / `STRING` property values).
 /// Returns `u32::MAX` when the arena is full or `bytes` is null.
 #[no_mangle]
 pub unsafe extern "C" fn pathland_core_arena_alloc(
@@ -168,7 +168,7 @@ pub unsafe extern "C" fn pathland_core_drain_events(
         return 0;
     }
     let mut guest = as_host(handle).ring.producer();
-    let events = guest.drain_event_opcodes();
+    let events = guest.drain_event_opcodes_max(max as usize);
     let n = events.len().min(max as usize);
     for (i, op) in events.into_iter().take(n).enumerate() {
         let bytes = op.to_bytes();
@@ -250,7 +250,7 @@ mod tests {
             assert_ne!(ref_, u32::MAX);
 
             // Push a SET_TEXT referencing the arena ref.
-            let op = Opcode::new(category::STYLE, 0x03, 0, 7, ref_, 0);
+            let op = Opcode::new(category::PARAMETER, 0x03, 0, 7, ref_, 0);
             let bytes = op.to_bytes();
             assert_eq!(pathland_ring_buffer_push(handle, bytes.as_ptr()), 1);
 

@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.pathland</groupId>
+        <groupId>dev.pathland</groupId>
         <artifactId>pathland-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.1.5</version>
     </parent>
 
     <artifactId>pathland-view</artifactId>
@@ -15,11 +15,11 @@
 
     <name>Pathland View</name>
     <description>
-        Framework-agnostic Pathland UI toolkit: SwiftUI-like view DSL (com.pathland.view),
-        Angular-style signals/computed/effects (com.pathland.view.signal), a fine-grained
-        opcode emitter (com.pathland.view.emit), the wire codec (com.pathland.view.transport),
-        lazy JNA ring interop (com.pathland.view.ffm), and cross-platform state
-        (com.pathland.view.state). Runs on every LTS from Java 17; JNA is the only
+        Framework-agnostic Pathland UI toolkit: declarative view DSL (dev.pathland.view),
+        Angular-style signals/computed/effects (dev.pathland.view.signal), a fine-grained
+        opcode emitter (dev.pathland.view.emit), the wire codec (dev.pathland.view.transport),
+        lazy JNA ring interop (dev.pathland.view.ffm), and cross-platform state
+        (dev.pathland.view.state). Runs on every LTS from Java 17; JNA is the only
         runtime dependency.
     </description>
 

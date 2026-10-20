@@ -46,14 +46,28 @@ npm run build     # tsc --noEmit + esbuild -> dist/pathland-dom-renderer.js (IIF
 npm run copy-to-demos   # copy the bundle into both Java demos' static dirs
 ```
 
+The per-window-id service worker has a real-browser E2E (Chromium + WebKit) — the
+worker-engine differences (e.g. WebKit reporting an empty `clientId` on navigations)
+are invisible to jsdom, so they are guarded here:
+
+```bash
+npx playwright install chromium webkit   # one-time
+npm run test:e2e                          # boots a fixture server + the shipped sw.js
+```
+
 ## The bundle
 
-`dist/pathland-dom-renderer.js` is served by the Spring Boot and Quarkus demos
-as `/pathland-dom-renderer.js` (copied into each demo's static resources by
-`npm run copy-to-demos`).
+`dist/pathland-dom-renderer.js` is served by the Spring Boot and Quarkus demos under a
+content-hashed name — `dom-renderer-<sha256>.js` (copied into each demo's static
+resources by `npm run copy-to-demos`, which also prunes stale copies and writes the
+`dom-renderer.current` pointer manifest the SSR layer reads to emit the `<script src>`).
+The fresh URL per build busts the immutable asset cache.
 
-## Transport resilience (P3)
+## Transport resilience
 
-`src/transport.ts` already reconnects with exponential backoff. Session-resync
-and `frameCount` gap detection are the next step (the `onBatch` hook is the
-seam) — see the "Web client: reconnect/resync" milestone issue.
+`src/transport.ts` reconnects with exponential backoff, keeps the connection
+alive with a `META::PING`/`PONG` heartbeat + no-activity watchdog, and recovers
+from lost deltas: a **sequence gap** (a batch whose per-stream `sequence` breaks
+the chain) makes the client skip the gapped batch and request a full snapshot
+(`META::RESYNC`). See `spec/OPCODE.md` §Transport heartbeat and §Sequence gap
+detection.

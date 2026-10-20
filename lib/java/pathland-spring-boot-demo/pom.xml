@@ -5,13 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.pathland</groupId>
+        <groupId>dev.pathland</groupId>
         <artifactId>pathland-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.1.5</version>
     </parent>
 
     <artifactId>pathland-spring-boot-demo</artifactId>
     <packaging>jar</packaging>
+
+    <!-- Demo application — not published to Maven Central. -->
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
 
     <name>Pathland Spring Boot Demo</name>
     <description>
@@ -24,14 +30,25 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-spring-boot-starter</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-demo-views</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- Observability (issue #62): Prometheus scrape at /actuator/prometheus; health at
+             /actuator/health (actuator comes from the starter). OpenTelemetry spans are
+             opt-in via micrometer-tracing-bridge-otel (see the application.properties flag). -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
         </dependency>
     </dependencies>
 

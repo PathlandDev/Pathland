@@ -1,0 +1,14 @@
+[package]
+name = "pathland-html-golden"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Cross-renderer golden conformance fixtures: SSR HTML + PLPL batches shared by the Rust and TypeScript HTML renderers"
+repository = "https://github.com/michaelkrog/Pathland"
+categories = ["rendering", "web-programming"]
+keywords = ["ui", "protocol", "opcode", "html", "ssr", "conformance"]
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+pathland-core-transport = { path = "../pathland-core-transport" }
+pathland-render-html = { path = "../pathland-render-html" }

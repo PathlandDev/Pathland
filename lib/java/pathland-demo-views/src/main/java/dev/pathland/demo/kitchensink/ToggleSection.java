@@ -1,0 +1,39 @@
+package dev.pathland.demo.kitchensink;
+
+import dev.pathland.view.Text;
+import dev.pathland.view.Toggle;
+import dev.pathland.view.ToggleStyle;
+import dev.pathland.view.VStack;
+import dev.pathland.view.View;
+import static dev.pathland.view.signal.Signals.*;
+import dev.pathland.view.state.State;
+import dev.pathland.view.Padding;
+import static dev.pathland.view.Modifiers.*;
+
+
+/**
+ * Toggle section: the same {@code Toggle} control in all three {@code ToggleStyle}
+ * variants ({@code Switch}, {@code Checkbox}, {@code Button}), each bound to a
+ * persisted {@code State<Boolean>}, with a computed summary line.
+ */
+public final class ToggleSection implements View {
+
+    State<Boolean> dark = new State<>(false, "dark");
+    State<Boolean> notify = new State<>(true, "notify");
+    State<Boolean> bold = new State<>(false, "bold");
+
+    @Override
+    public View body() {
+        var summary = computed(() ->
+                "Dark: " + dark.get() + " · Notify: " + notify.get() + " · Bold: " + bold.get());
+        View content = VStack.make()
+                .modifiers(padding(4))
+                .children(
+                        Toggle.make(t -> t.style(ToggleStyle.SWITCH).isOn(dark.signal()).label("Dark mode")),
+                        Toggle.make(t -> t.style(ToggleStyle.CHECKBOX).isOn(notify.signal()).label("Notify me")),
+                        Toggle.make(t -> t.style(ToggleStyle.BUTTON).isOn(bold.signal()).label("Bold toggle")),
+                        Text.make(summary).modifiers(
+                                padding(4)));
+        return SectionCard.make("Toggle · Switch / Checkbox / Button").children(content);
+    }
+}

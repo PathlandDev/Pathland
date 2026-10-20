@@ -3,7 +3,7 @@
 **Wire protocol version:** 1
 **Status:** Draft
 **Format:** Fixed-size (16-byte) opcode engine
-**Last Updated:** September 3, 2026
+**Last Updated:** October 1, 2026
 
 ---
 
@@ -88,7 +88,7 @@ pub struct Opcode {
 | Category | Value | Name | Producer | Description |
 |----------|-------|------|----------|-------------|
 | `TREE` | `0x01` | Tree mutations | Guest engine | Node create/delete/insert/remove/move |
-| `STYLE` | `0x02` | Constraints & tokens | Guest engine | Property values (spacing, padding, …), design tokens |
+| `PARAMETER` | `0x02` | Constraints & tokens | Guest engine | Property values (spacing, padding, …), design tokens |
 | `EVENT` | `0x03` | Raw inputs | Host renderer | Pointer down/move/up, key down/up |
 | `META` | `0x04` | Control | Both | Reset, environment |
 
@@ -111,9 +111,9 @@ the wire-format authority.
 | `REMOVE_CHILD` | `0x04` | parentId | childId | 0 | — | Remove `childId` from `parentId` |
 | `MOVE_CHILD` | `0x05` | parentId | childId | newIndex | — | Move child to `newIndex` (after removal); append is `newIndex = u32::MAX` (`APPEND`) |
 
-### STYLE (0x02)
+### PARAMETER (0x02)
 
-The engine does not emit positions. `STYLE` carries the **constraint properties**
+The engine does not emit positions. `PARAMETER` carries the **constraint properties**
 that native renderers feed to their own layout — spacing, alignment, FILL/HUG
 size hints — plus **styling modifiers** (padding, colors, fonts, borders).
 
@@ -142,6 +142,7 @@ B = (valueType << 16) | propertyId
 | `ENUM` | `0x06` | low byte of C |
 | `COLOR` | `0x07` | packed `0xAARRGGBB` |
 | `DESIGN_TOKEN` | `0x08` | arenaRef (token path) |
+| `LIST` | `0x09` | arenaRef (length-prefixed array, see below) |
 
 > **Enum-valued properties** (`ALIGNMENT`, `TEXT_ALIGNMENT`, `TRUNCATION_MODE`,
 > `ROLE`, `STATE`, and the draft `FONT_*`/`CONTENT_MODE`/`CONTROL_SIZE`/`SHAPE_KIND`
@@ -155,21 +156,46 @@ B = (valueType << 16) | propertyId
 > `STRING` / `ENUM` value MAY instead carry the `DESIGN_TOKEN` value type, with
 > `C` = arenaRef to a token path (see [Design Token System](#design-token-system)
 > and [TOKENS.md](./TOKENS.md)).
+>
+> **`LIST` arrays**: a `LIST` value (`C` = arenaRef) is a length-prefixed array in
+> the string arena: `[u32 count][element × count]`, each element a `u32` holding
+> the value-type's bit pattern — currently produced with each element a `F32`
+> (the `FIT_QUERY` threshold table), so `bytes = 4 + 4·count`. The count is the
+> first `u32` (little-endian); a zero count is an empty list. Decoders read the
+> element count, never infer it from the arena length, so a property can re-emit
+> a shorter list with the arena entry intact.
 
 #### Constraint properties for native layout
 
 The following properties drive native layout; the renderer maps them to its
-native equivalents (e.g. `SPACING` → GTK box spacing / CSS `gap`, `WIDTH`/`HEIGHT`
-→ size requests). Special `WIDTH`/`HEIGHT` values: `-1` = FILL (expand to
-available), `-2` = HUG_CONTENT (native intrinsic size).
+native layout properties (e.g. `SPACING` → a gap between children,
+`WIDTH`/`HEIGHT` → size requests). Special `WIDTH`/`HEIGHT` values: `-1` = FILL
+(expand to available), `-2` = HUG_CONTENT (native intrinsic size).
+
+> **Allocation semantics** — the exact meaning of a Fixed / `FILL` / `HUG_CONTENT`
+> size, how containers distribute space to children (main axis: only `FILL`
+> expands; cross axis: children hug unless `FILL`), and how content fits inside
+> a Fixed box, are defined in [LAYOUT.md](./LAYOUT.md).
+
+> **Units — logical points.** All size properties (`WIDTH`/`HEIGHT`/`SPACING`/
+> `PADDING`/`CONTENT_MARGINS`, …) are expressed in an abstract **logical point**
+> unit — the same abstraction as SwiftUI points, Jetpack Compose `dp`, and CSS
+> pixels. A renderer MUST allocate the requested points box and fit content
+> within it; it must never treat the value as a device-pixel size. Each renderer
+> maps points to its native unit and resolves its own device resolution (logical
+> points × scale factor), so the same value yields the same physical size across
+> renderers.
 
 | Property | Value | Type | Native meaning |
 |----------|-------|------|----------------|
 | `SPACING` | `0x0001` | F32 | Gap between children |
-| `ALIGNMENT` | `0x0002` | F32 (enum code) | Cross-axis alignment |
+| `ALIGNMENT` | `0x0002` | F32 (enum code) | Cross-axis position (never stretches; default = Leading, `Fill`(3) = default hug — see LAYOUT.md) |
 | `CONTENT_MARGINS` | `0x0005` | F32 | Uniform inset between a stack's edge and its content |
 | `WIDTH` | `0x100B` | F32 | Width hint (-1 FILL, -2 HUG) |
 | `HEIGHT` | `0x100C` | F32 | Height hint (-1 FILL, -2 HUG) |
+| `GRID_COLUMNS` | `0x001E` | F32 | Grid column count (positive = count, -1/absent = auto-fit; a count, never a pixel width — see PRIMITIVES.md §Grid) |
+| `GRID_ROWS` | `0x001F` | F32 | Grid row count (positive = count, -1/absent = auto-fit) |
+| `GRID_TRACKS` | `0x0020` | STRING | Per-track grid spec (`flex`/`fixed:<pts>`/`adaptive:<pts>`, comma-separated) — takes precedence over the counts |
 
 #### Text properties
 
@@ -190,7 +216,7 @@ consolidated in [MODIFIERS.md](./MODIFIERS.md#appendix-enumerated-values).
 
 Styling properties are **modifiers** — they apply to any view, not just stacks —
 and map to visual decoration rather than layout. `PADDING` (uniform) and its
-per-edge variants map to widget margins / CSS `padding`, alongside
+per-edge variants map to native padding, alongside
 `COLOR`/`BACKGROUND_COLOR`/`BORDER_*`:
 
 | Property | Value | Type | Native meaning |
@@ -201,6 +227,7 @@ per-edge variants map to widget margins / CSS `padding`, alongside
 | `PADDING_BOTTOM` | `0x1014` | F32 | Bottom padding |
 | `PADDING_LEFT` | `0x1015` | F32 | Left padding |
 | `BORDER_EDGES` | `0x1016` | U32 | Which border edges to draw (bitmask, see [`border_edges`] flags) |
+| `FIT_QUERY` | `0x1039` | LIST | A `SizeThatFits` slot's candidate fit-query: ascending `minWidth` thresholds (F32 elements) — the renderer measures its own allocated width and reports the fit index (see [`SizeThatFits`](./PRIMITIVES.md#size-that-fits--size-that-fits-0x17)) |
 | `TRANSITION` | `0x1031` | F32 (enum code) | Presentation hint for structural swaps (a `NavigationContainer` destination swap, a `Conditional.when` branch change): `None`=0, `PlatformDefault`=1, `Fade`=2, `Slide`=3, `Scale`=4 — the renderer **may** animate, never stores navigation state |
 
 `BORDER_EDGES` is a u32 bitmask (`SET_PROPERTY` with the `U32` value type)
@@ -214,7 +241,7 @@ selecting which edges of a node's border are drawn. Bits are direction-aware:
 | 3 | `0x00000008` | `TRAILING` | right |
 
 Full property catalog: see [MODIFIERS.md](./MODIFIERS.md) — the core modifiers
-(the protocol's `STYLE` properties) grouped by SwiftUI modifier, with the same
+(the protocol's `PARAMETER` properties) grouped by SwiftUI modifier, with the same
 IDs — and the Rust `constants.rs` (carried forward from the historical
 protocol).
 
@@ -244,32 +271,54 @@ delivery (see [EVENTS.md](./EVENTS.md#transport-aware-event-guards-must)).
 | `TOGGLE_STYLE` | `0x2018` | ENUM (F32 code) | Visual style token for a `TOGGLE`: `Switch`=0, `Checkbox`=1, `Button`=2 |
 | `ROUTE` | `0x2019` | STRING | Current navigation path (absolute, e.g. `/users/42`); drives web URL sync — see [DSL.md §4.5](./DSL.md#45-navigation) |
 | `NAV_DEPTH` | `0x201A` | U32 | Navigation back-stack depth (destinations in the app's path incl. current; `push`+1, `pop`−1, `replace` unchanged); lets native navigation adapters reconcile their page stack by depth — see [DSL.md §4.5](./DSL.md#45-navigation) |
-| `NAV_CHROME` | `0x201B` | F32 (enum code) | Navigation chrome mode on a `NavigationContainer` slot: `PlatformDefault`=0 (renderer supplies chrome — native container where one exists, renderer-drawn back affordance on DOM), `Custom`=1 (developer owns all nav UI; renderer adds none). Emitted once at mount; missing = `PlatformDefault` — see [DSL.md §4.5](./DSL.md#45-navigation) |
+| `NAV_CHROME` | `0x201B` | F32 (enum code) | Navigation chrome mode on a `NavigationContainer` slot: `PlatformDefault`=0 (renderer supplies chrome — native container where one exists, renderer-drawn back affordance where none exists), `Custom`=1 (developer owns all nav UI; renderer adds none). Emitted once at mount; missing = `PlatformDefault` — see [DSL.md §4.5](./DSL.md#45-navigation) |
+| `TEXT_STYLE` | `0x1032` | ENUM (F32 code) | Predefined typography from the design system (see below). The heading styles imply a heading element on a `TEXT`; raw font modifiers override the visual on top and never imply a heading |
 
-**`ROLE` enumerated values** (accessibility role; carried as an `F32` numeric code, `value_type::F32`):
+**`TEXT_STYLE` enumerated values** (predefined typography; carried as an `F32` numeric code, `value_type::F32`):
 
-| Value | Role |
-|-------|------|
-| 0 | `None` (no semantic role) |
-| 1 | `Button` |
-| 2 | `Link` |
-| 3 | `Header` |
-| 4 | `Text` |
-| 5 | `Image` |
-| 6 | `TextField` |
-| 7 | `Slider` |
-| 8 | `Toggle` (Switch/Checkbox/Button styles) |
-| 9 | `Checkbox` |
-| 10 | `RadioButton` |
-| 11 | `Stepper` |
-| 12 | `Tab` |
-| 13 | `TabBar` |
-| 14 | `List` |
-| 15 | `Grid` |
-| 16 | `ScrollView` |
-| 17 | `Adjustable` (value the user can adjust) |
-| 18 | `Summary` |
-| 19 | `Menu` / `PopUpButton` |
+| Value | Style | Heading |
+|-------|-------|---------|
+| 0 | `LargeTitle` | `<h1>` |
+| 1 | `Title` | `<h2>` |
+| 2 | `Title2` | `<h3>` |
+| 3 | `Title3` | `<h4>` |
+| 4 | `Headline` | `<h5>` |
+| 5 | `Subheadline` | — (`<span>`) |
+| 6 | `Body` | — (`<span>`) |
+| 7 | `Callout` | — (`<span>`) |
+| 8 | `Footnote` | — (`<span>`) |
+| 9 | `Caption` | — (`<span>`) |
+| 10 | `Caption2` | — (`<span>`) |
+
+**`ROLE` enumerated values** (semantic structure; carried as an `F32` numeric code, `value_type::F32`):
+
+| Value | Role | Element |
+|-------|------|---------|
+| 0 | `None` (no semantic role) | — |
+| 1 | `Header` (a heading) | `<h2>` (raised by a heading `TEXT_STYLE`) |
+| 2 | `Paragraph` | `<p>` |
+| 3 | `List` | `<ul>` |
+| 4 | `ListItem` | `<li>` |
+| 5 | `Summary` | `<section>` |
+| 6 | `Banner` (site header landmark) | `<header>` |
+| 7 | `Navigation` (site nav landmark) | `<nav>` |
+| 8 | `Main` (main content landmark) | `<main>` |
+| 9 | `ContentInfo` (site footer landmark) | `<footer>` |
+| 10 | `Complementary` (aside landmark) | `<aside>` |
+| 11 | `Article` | `<article>` |
+| 12 | `Section` | `<section>` |
+| 13 | `Search` | `<search>` |
+
+> **`ROLE` is semantic structure only.** Interactive/control roles (button, link,
+> checkbox, slider, toggle, menu, text field, …) are **not roles** — they are
+> intrinsic to the control components (a `BUTTON` is an interactive button, a
+> `TOGGLE` a checkbox/switch, a `MENU` a menu), and a custom-looking button is
+> expressed with `Button` + `ButtonStyle`. The renderer maps each semantic role
+> onto a semantically-structured native element; control components keep their
+> native element and never take an ARIA role from `ROLE`. **Headings** come from
+> a heading `TEXT_STYLE` typography (a heading element) or from `ROLE=Header` (a
+> heading); a raw font modifier never implies a heading. Non-heading text
+> defaults to a plain text element.
 
 **`STATE` enumerated values** (control/interaction state; carried as an `F32` numeric code, `value_type::F32`):
 
@@ -349,7 +398,7 @@ element.
 | `KEY_DOWN` | `0x04` | targetId | keyCode (u16, low) | modifiers (u8, low) | `KEY_REPEAT` | Key pressed (bit 1 = auto-repeat) |
 | `KEY_UP` | `0x05` | targetId | keyCode (u16, low) | modifiers (u8, low) | — | Key released |
 | `VALUE_CHANGED` | `0x06` | targetId | value (f32) | 0 | — | A value-bearing control changed (e.g. slider); the renderer resolves the semantic value from its track geometry |
-| `TEXT_CHANGED` | `0x07` | targetId | string offset | 0 | — | A text field's value changed; the new text is a length-prefixed entry in the **event arena** (shared memory, absolute `B` offset) or the batch's string section (network, *relative* `B` offset) — the same dual convention as `STYLE::SET_TEXT` |
+| `TEXT_CHANGED` | `0x07` | targetId | string offset | 0 | — | A text field's value changed; the new text is a length-prefixed entry in the **event arena** (shared memory, absolute `B` offset) or the batch's string section (network, *relative* `B` offset) — the same dual convention as `PARAMETER::SET_TEXT` |
 | `NAVIGATE` | `0x0E` | 0 | URL string offset | 0 | `NAVIGATE_URL` | Global navigation request: with the flag, `B` is the destination URL (browser `popstate`/back/forward/deep-link, same dual string convention as `TEXT_CHANGED`); without the flag, "back one step" (native back affordance). Never node-keyed, never `EVENT_LISTENERS`-gated — see [EVENTS.md](./EVENTS.md#navigation) |
 
 ### META (0x04)
@@ -358,12 +407,14 @@ element.
 |---------|-------|---|---|---|-------------|
 | `RESET` | `0x01` | 0 | 0 | 0 | Host must clear all rendered output |
 | `ENVIRONMENT` | `0x02` | fieldId (u16, low) | field value | 0 | A platform environment field (host → guest) — see [Environment fields](#environment-fields) |
-| `RESYNC` | `0x03` | 0 | 0 | 0 | The host (renderer) requests a **full snapshot** of the current tree (host → guest). The guest answers with a single full-snapshot batch (the same TREE + STYLE stream as a mount). Used for reconnect/gap recovery and no-JS refresh. |
+| `RESYNC` | `0x03` | 0 | 0 | 0 | The host (renderer) requests a **full snapshot** of the current tree (host → guest). The guest answers with a single full-snapshot batch (the same TREE + PARAMETER stream as a mount). Used for reconnect/gap recovery and no-JS refresh. |
+| `PING` | `0x04` | 0 | 0 | 0 | A transport-liveness **heartbeat probe** (guest → host). No payload. **Network batch transport only** — a shared-memory ring consumer MUST NOT expect, emit, or relay it. See [Transport heartbeat](#transport-heartbeat). |
+| `PONG` | `0x05` | 0 | 0 | 0 | The reply to `META::PING` (host → guest). No payload. Network batch transport only. |
 
 #### Environment fields
 
 `META::ENVIRONMENT` is an **extensible field family** (mirroring
-`STYLE::SET_PROPERTY`): each opcode sets one platform environment field, so
+`PARAMETER::SET_PROPERTY`): each opcode sets one platform environment field, so
 any number of fields ride one batch and new fields are new ids — never new
 commands. The platform (renderer / DOM client / SSR host) delivers the
 application's launch context this way; an HTTP request supplies what it offers,
@@ -399,7 +450,7 @@ The engine emits **only what changed** relative to its previous emission:
 
 The **`frame` compound modifier** (width/height/alignment) is not a distinct
 protocol concept: it emits `WIDTH`/`HEIGHT`/`ALIGNMENT` as ordinary
-`STYLE:SET_PROPERTY` deltas, exactly like any other constraint property. There
+`PARAMETER:SET_PROPERTY` deltas, exactly like any other constraint property. There
 is no `frame` opcode or dedicated wire type.
 
 Signals in the application drive this: a signal marks the tree dirty; the
@@ -590,6 +641,14 @@ A frame is a batch of delta opcodes produced by one `emit` pass:
 
 Because the ring and arena are plain memory, the guest publishes via a single release store of `frameCount`; the host acquires on read.
 
+> **Unique node-id invariant.** A frame MUST NOT contain two nodes with the same
+> id. `TREE` and `PARAMETER` opcodes reference each node id for exactly one node,
+> so every id-keyed consumer (the renderer's `id → element` map, `PLAYBACK_STATE`,
+> `MEDIA_*`, proxy remapping, …) stays unambiguous. A full-snapshot emission of a
+> subtree materialized more than once (e.g. a `SIZE_THAT_FITS` candidate shared
+> between branches, spec/PRIMITIVES.md §SizeThatFits) MUST give **every copy a
+> distinct id** — no id is reused between copies, including identity-stable nodes.
+
 ---
 
 ## Transport
@@ -609,7 +668,7 @@ network batch.
 ### Network batch format
 
 ```
-[u32 magic "PLPL"] [u16 version] [u16 flags] [u32 frameCount] [u32 opcodeCount]
+[u32 magic "PLPL"] [u16 version] [u16 flags] [u32 sequence] [u32 opcodeCount]
 [opcode × opcodeCount (16 B each)]
 [u32 arenaDeltaLen] [arena delta bytes]
 ```
@@ -619,8 +678,13 @@ network batch.
 - **flags**: direction. `0x0000` = guest → host (tree/style). Bit `0x0001` =
   host → guest (raw-input events); host → guest batches carry their string
   payloads in the batch's string section.
-- **frameCount**: the guest frame counter of the batch's first frame (opcodes
-  from multiple frames may coalesce into one batch; they remain in order).
+- **sequence**: a **per-stream monotonic message sequence** — the producer
+  increments it by exactly one for each batch it encodes (guest → host delta
+  batches only; heartbeat/request batches carry `0`). It is the network
+  transport's loss detector; see [Sequence gap detection](#sequence-gap-detection).
+  It is **not** the ring header's `frameCount` (a per-frame publish watermark
+  for shared memory): opcodes from several emit-pass frames may coalesce into
+  one batch, so a batch is the network unit, not a frame.
 - **arena delta**: the bytes appended to the bump arena since the previous
   batch. The consumer keeps a **mirrored arena** and appends each delta, so
   absolute `arenaRef` offsets stay valid — identical to shared memory.
@@ -638,6 +702,64 @@ reached (first trigger wins):
 Both thresholds are configurable; a producer MAY flush eagerly (e.g. on the
 first frame after connection).
 
+### Sequence gap detection
+
+The network backend is reliable and ordered **within a connection**, but a
+middlebox can drop a batch while the socket stays "open", and a producer's send
+path can wedge — either way the consumer silently misses deltas. The batch
+`sequence` makes that loss detectable:
+
+- **Producer**: maintain one monotonic `sequence` per stream, incremented by
+  exactly one for **each encoded batch**. Only guest → host delta batches
+  consume a sequence number; heartbeat (`META::PING`/`PONG`) and request
+  batches (`META::RESYNC`, `META::ENVIRONMENT`, events) carry `0` and never
+  advance it.
+- **Consumer**: the first guest → host batch establishes a baseline
+  (`expected = sequence + 1`). Every later guest → host batch MUST satisfy
+  `sequence == expected`; then `expected = sequence + 1`. A batch whose
+  sequence does not match means one or more batches were lost.
+- **Recovery**: on a gap the consumer MUST NOT apply the gapped batch (its
+  deltas assume the lost state) and MUST request a full snapshot
+  (`META::RESYNC`), then re-baseline on the next guest → host batch. The
+  consumer also re-baselines on every (re)connect.
+- **Heartbeat batches are exempt**: a `META::PONG` (host → guest) is not part of
+  the guest → host stream; consumers track only guest → host batches.
+
+The recovery is **always a full snapshot**, never retransmission: the renderer
+is stateless and the application owns the retained tree, so a `META::RESYNC`
+reconverges the consumer regardless of what was lost. **Acknowledgements and a
+retransmit queue are deliberately not part of the protocol** — they would add a
+per-session send buffer and an ack exchange to a design whose recovery is
+already a stateless snapshot.
+
+### Transport heartbeat
+
+The **network batch backend** (a WebSocket / streamed connection) can fail
+silently: a proxy or load balancer may drop the connection without a close
+frame, or the peer's send path may wedge, leaving the socket "open" while
+nothing is delivered. Neither side can detect this from the batch stream alone.
+The heartbeat is the transport-liveness mechanism for this backend:
+
+- **Probe**: the guest (client) sends a `META::PING` batch at a fixed cadence
+  (default **every 5 s**). `A/B/C = 0`, no string section.
+- **Reply**: the host (server) MUST answer each `META::PING` with a `META::PONG`
+  batch as promptly as its send path allows.
+- **Liveness**: a peer's *liveness* is any received batch — deltas, `PONG`, or
+  anything else. A guest that receives no batch for **more than two probe
+  intervals** SHOULD treat the connection as dead: close it and reconnect (the
+  reconnect flow already re-syncs via `META::RESYNC`).
+- **Host-side detection**: a host MAY additionally send WebSocket-protocol-level
+  ping frames (browsers auto-answer) to detect a dead client and keep
+  middleboxes from timing the connection out; a host whose send fails (or a
+  probe that is never answered) SHOULD close the connection so the client
+  reconnects instead of stalling.
+- **Scope**: the heartbeat is **transport liveness only, NOT app state**. A
+  `META::PING`/`META::PONG` batch MUST NOT be routed into the application — it
+  never touches the retained tree, signals, or events. The **shared-memory ring
+  backend MUST NOT use it**: ring peers are co-located and their liveness is the
+  host process's concern, so the ring never carries, expects, or relays
+  `META::PING`/`META::PONG`.
+
 ---
 
 ## Conformance
@@ -646,11 +768,12 @@ Golden byte vectors for this protocol are in [CONFORMANCE.md](./CONFORMANCE.md).
 
 ### Companion specifications
 
-The protocol's semantic surface is catalogued in four companion documents:
+The protocol's semantic surface is catalogued in five companion documents:
 [PRIMITIVES.md](./PRIMITIVES.md) (the primitive views), [MODIFIERS.md](./MODIFIERS.md)
-(the core modifiers, i.e. the `STYLE` properties), [EVENTS.md](./EVENTS.md)
-(the core events, i.e. the raw inputs), and [TOKENS.md](./TOKENS.md) (the design
-tokens / theming contract). IDs are allocated there spec-first;
+(the core modifiers, i.e. the `PARAMETER` properties), [EVENTS.md](./EVENTS.md)
+(the core events, i.e. the raw inputs), [TOKENS.md](./TOKENS.md) (the design
+tokens / theming contract), and [ICONS.md](./ICONS.md) (the canonical icon
+vocabulary for the `ICON` primitive). IDs are allocated there spec-first;
 this file remains the wire-format authority and must be updated when new IDs
 land.
 

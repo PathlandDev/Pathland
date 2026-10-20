@@ -1,12 +1,13 @@
 // Option A styling: the DOM renderer owns a bounded property → style/class map.
 // The protocol stays renderer-agnostic; web-specific Tailwind class resolution
-// is the HTML renderer's job (SSR). At runtime, STYLE deltas are applied as
+// is the HTML renderer's job (SSR). At runtime, PARAMETER deltas are applied as
 // inline style (which overrides the SSR Tailwind class for the current value),
 // literal colors via inline style, and semantic design tokens as CSS variables.
 
 import * as P from "./constants";
 import { argbToHex, argbToRgba, f32FromBits, fmtFloat } from "./format";
 import { resolveTokenCssRef } from "./tokens";
+import { markFontSizeExplicit, markFontWeightExplicit } from "./typography";
 
 type Handler = (el: HTMLElement, valueType: number, c: number) => void;
 
@@ -90,8 +91,10 @@ function decorationOf(el: HTMLElement): DecorationInfo {
 
 function recomposeShadow(el: HTMLElement): void {
   const s = shadowOf(el);
+  // Color first, then the lengths — the canonical order a browser serializes a
+  // `box-shadow` to (matches the SSR output).
   el.style.boxShadow = s.radius > 0 || s.x !== 0 || s.y !== 0
-    ? `${fmtFloat(s.x)}px ${fmtFloat(s.y)}px ${fmtFloat(s.radius)}px ${s.color}`
+    ? `${s.color} ${fmtFloat(s.x)}px ${fmtFloat(s.y)}px ${fmtFloat(s.radius)}px`
     : "";
 }
 function recomposeFilter(el: HTMLElement): void {
@@ -136,11 +139,44 @@ function applyBorderEdges(el: HTMLElement): void {
 // --- enum → CSS ---
 
 export function alignmentCss(code: number): string {
+  // Cross-axis POSITION (LAYOUT.md): positions children, never stretches. A
+  // stack reads one axis of the 2D code (`0/1/2`); the default is start.
   switch (code) {
     case P.ALIGN_LEADING: return "flex-start";
+    case P.ALIGN_CENTER: return "center";
     case P.ALIGN_TRAILING: return "flex-end";
-    case P.ALIGN_FILL: return "stretch";
-    default: return "center";
+    default: return "flex-start";
+  }
+}
+/** The horizontal position of an `ALIGNMENT` 2D code (spec PRIMITIVES.md
+ *  §ZStack): `start`/`center`/`end`. */
+export function alignHCss(code: number): string {
+  switch (code) {
+    case P.ALIGN_CENTER:
+    case P.ALIGN_TOP_CENTER:
+    case P.ALIGN_BOTTOM_CENTER:
+      return "center";
+    case P.ALIGN_TRAILING:
+    case P.ALIGN_CENTER_TRAILING:
+    case P.ALIGN_TOP_TRAILING:
+      return "end";
+    default:
+      return "start";
+  }
+}
+/** The vertical position of an `ALIGNMENT` 2D code: `start`/`center`/`end`. */
+export function alignVCss(code: number): string {
+  switch (code) {
+    case P.ALIGN_CENTER:
+    case P.ALIGN_CENTER_LEADING:
+    case P.ALIGN_CENTER_TRAILING:
+      return "center";
+    case P.ALIGN_TRAILING:
+    case P.ALIGN_BOTTOM_CENTER:
+    case P.ALIGN_BOTTOM_LEADING:
+      return "end";
+    default:
+      return "start";
   }
 }
 function textAlignCss(code: number): string {
@@ -148,12 +184,6 @@ function textAlignCss(code: number): string {
     case P.TEXT_ALIGN_LEADING: return "left";
     case P.TEXT_ALIGN_TRAILING: return "right";
     default: return "center";
-  }
-}
-function truncationCss(code: number): string {
-  switch (code) {
-    case P.TRUNCATION_HEAD: return "clip";
-    default: return "ellipsis";
   }
 }
 function fontStyleCss(code: number): string {
@@ -164,29 +194,6 @@ function textCaseCss(code: number): string {
     case P.TEXT_CASE_UPPERCASE: return "uppercase";
     case P.TEXT_CASE_LOWERCASE: return "lowercase";
     default: return "none";
-  }
-}
-function roleAttr(code: number): string | null {
-  switch (code) {
-    case P.ROLE_BUTTON: return "button";
-    case P.ROLE_LINK: return "link";
-    case P.ROLE_HEADER: return "heading";
-    case P.ROLE_TEXT: return "text";
-    case P.ROLE_IMAGE: return "img";
-    case P.ROLE_TEXT_FIELD: return "textbox";
-    case P.ROLE_SLIDER: return "slider";
-    case P.ROLE_TOGGLE: return "switch";
-    case P.ROLE_CHECKBOX: return "checkbox";
-    case P.ROLE_RADIO_BUTTON: return "radio";
-    case P.ROLE_STEPPER: return "spinbutton";
-    case P.ROLE_TAB: return "tab";
-    case P.ROLE_TAB_BAR: return "tablist";
-    case P.ROLE_LIST: return "list";
-    case P.ROLE_GRID: return "grid";
-    case P.ROLE_SCROLL_VIEW: return "scrollbar";
-    case P.ROLE_SUMMARY: return "region";
-    case P.ROLE_MENU: return "menu";
-    default: return null;
   }
 }
 
@@ -268,6 +275,20 @@ function applyRangeBounds(el: HTMLElement, property: number, value: number): voi
       input.max = String(value);
     }
   }
+  // Range bounds are also mirrored onto the composite shells that carry them as
+  // `data-min`/`data-max` (stepper click math, gauge percentage), matching the
+  // Rust SSR renderer's attributes. A gauge element IS the `.pathland-gauge`, so
+  // the element itself is included alongside any descendant meta spans.
+  const attr = property === P.PROP_MIN_VALUE ? "data-min" : "data-max";
+  const metas: HTMLElement[] = [el];
+  for (const meta of el.querySelectorAll<HTMLElement>(".pathland-stepper-range, .pathland-gauge")) {
+    metas.push(meta);
+  }
+  for (const meta of metas) {
+    if (meta.classList.contains("pathland-stepper-range") || meta.classList.contains("pathland-gauge")) {
+      meta.setAttribute(attr, String(value));
+    }
+  }
 }
 
 // --- the full property table ---
@@ -294,9 +315,26 @@ const HANDLERS: Record<number, Handler> = {
       el.style.display = "-webkit-box";
       el.style.webkitLineClamp = String(n);
       (el.style as unknown as Record<string, string>).boxOrient = "vertical";
+      // overflow:hidden is REQUIRED: -webkit-line-clamp draws the ellipsis but
+      // does not clip the overflow on its own (Safari paints it below the box).
+      el.style.overflow = "hidden";
+    } else {
+      // A removed/zeroed limit restores normal, unbounded text.
+      el.style.webkitLineClamp = "";
+      (el.style as unknown as Record<string, string>).boxOrient = "";
+      el.style.overflow = "";
+      if (el.style.display === "-webkit-box") {
+        el.style.display = "";
+      }
     }
   },
-  [P.PROP_TRUNCATION_MODE]: (el, vt, c) => (el.style.textOverflow = truncationCss(enumCode(vt, c))),
+  [P.PROP_TRUNCATION_MODE]: () => {
+    // TRUNCATION_MODE alone has no observable effect (spec LAYOUT.md §content
+    // fitting, SwiftUI-aligned): it only positions the ellipsis under a
+    // LINE_LIMIT clamp, which the renderer tail-ellipsizes via line-clamp
+    // (renderer-owned fidelity: CSS cannot place a head/middle ellipsis). The
+    // property is consumed and ignored.
+  },
   [P.PROP_OFFSET_X]: (el, vt, c) => {
     transformOf(el).translateX = f32(vt, c);
     recomposeTransform(el);
@@ -328,12 +366,20 @@ const HANDLERS: Record<number, Handler> = {
   [P.PROP_LAYOUT_PRIORITY]: (el, vt, c) => (el.style.flexGrow = fmtFloat(f32(vt, c))),
   [P.PROP_ASPECT_RATIO]: (el, vt, c) => (el.style.aspectRatio = fmtFloat(f32(vt, c))),
   [P.PROP_CONTENT_MODE]: (el, vt, c) => {
-    el.style.objectFit = enumCode(vt, c) === P.CONTENT_MODE_FILL ? "fill" : "contain";
+    // Fit → contain (aspect-fit within bounds); Fill → cover (aspect-fill,
+    // cropped) — mirrors the Rust SSR renderer.
+    el.style.objectFit = enumCode(vt, c) === P.CONTENT_MODE_FILL ? "cover" : "contain";
   },
 
   // Text
-  [P.PROP_FONT_SIZE]: (el, vt, c) => (el.style.fontSize = fmtFloat(f32(vt, c)) + "px"),
-  [P.PROP_FONT_WEIGHT]: (el, vt, c) => (el.style.fontWeight = fmtFloat(f32(vt, c))),
+  [P.PROP_FONT_SIZE]: (el, vt, c) => {
+    el.style.fontSize = fmtFloat(f32(vt, c)) + "px";
+    markFontSizeExplicit(el);
+  },
+  [P.PROP_FONT_WEIGHT]: (el, vt, c) => {
+    el.style.fontWeight = fmtFloat(f32(vt, c));
+    markFontWeightExplicit(el);
+  },
   [P.PROP_FONT_STYLE]: (el, vt, c) => (el.style.fontStyle = fontStyleCss(enumCode(vt, c))),
   [P.PROP_FONT_DESIGN]: (el, vt, c) => {
     const stack =
@@ -362,7 +408,7 @@ const HANDLERS: Record<number, Handler> = {
   },
 
   // Styling
-  [P.PROP_Z_INDEX]: (el, _vt, c) => (el.style.zIndex = String(u32(c))),
+  [P.PROP_Z_INDEX]: (el, vt, c) => (el.style.zIndex = String(Math.round(f32(vt, c)))),
   [P.PROP_CLIPS_TO_BOUNDS]: (el, vt, c) => (el.style.overflow = isOn(vt, c) ? "hidden" : "visible"),
   [P.PROP_TINT]: (el, _vt, c) => (el.style.accentColor = argbToRgba(c)),
   [P.PROP_BORDER_WIDTH]: (el, vt, c) => {
@@ -435,14 +481,8 @@ const HANDLERS: Record<number, Handler> = {
   [P.PROP_ALLOWS_HIT_TESTING]: (el, vt, c) => (el.style.pointerEvents = isOn(vt, c) ? "auto" : "none"),
 
   // Semantic
-  [P.PROP_ROLE]: (el, vt, c) => {
-    const role = roleAttr(enumCode(vt, c));
-    if (role) {
-      el.setAttribute("role", role);
-    } else {
-      el.removeAttribute("role");
-    }
-  },
+  // PROP_ROLE is handled component-aware in apply.ts (semantic-tag retag via
+  // the generated role-spec); the STATE handler below sets the ARIA state attrs.
   [P.PROP_STATE]: (el, vt, c) => {
     const state = enumCode(vt, c);
     el.setAttribute("aria-disabled", String(state === P.STATE_DISABLED));
@@ -479,8 +519,20 @@ const HANDLERS: Record<number, Handler> = {
   [P.PROP_BACKGROUND_COLOR]: (el, _vt, c) => (el.style.backgroundColor = argbToRgba(c)),
   [P.PROP_OPACITY]: (el, vt, c) => (el.style.opacity = fmtFloat(f32(vt, c))),
   [P.PROP_VISIBLE]: (el, vt, c) => (el.style.display = isOn(vt, c) ? "" : "none"),
-  [P.PROP_WIDTH]: (el, vt, c) => (el.style.width = sizeCss(f32(vt, c))),
-  [P.PROP_HEIGHT]: (el, vt, c) => (el.style.height = sizeCss(f32(vt, c))),
+  [P.PROP_WIDTH]: (el, vt, c) => {
+    // HUG_CONTENT (-2) is left to the intrinsic size (the Rust SSR renderer
+    // omits it); FILL/fixed values are applied.
+    const v = f32(vt, c);
+    if (v !== P.WIDTH_HUG) {
+      el.style.width = sizeCss(v);
+    }
+  },
+  [P.PROP_HEIGHT]: (el, vt, c) => {
+    const v = f32(vt, c);
+    if (v !== P.WIDTH_HUG) {
+      el.style.height = sizeCss(v);
+    }
+  },
   [P.PROP_PADDING]: (el, vt, c) => (el.style.padding = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_PADDING_TOP]: (el, vt, c) => (el.style.paddingTop = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_PADDING_RIGHT]: (el, vt, c) => (el.style.paddingRight = fmtFloat(f32(vt, c)) + "px"),
@@ -507,37 +559,56 @@ function setFilterPart(el: HTMLElement, prefix: string, value: number | string):
 // CSS expression (`var(--pl-…)` / `calc(var(--pl-space-base) * N)`) instead of
 // a literal. Only properties that map to a single CSS value are tokenizable
 // here; compound accumulators that need concrete numbers (e.g. BORDER_WIDTH's
-// px suffix, shadow/transform components) are left literal.
-const TOKEN_HANDLERS: Record<number, (el: HTMLElement, css: string) => void> = {
-  [P.PROP_COLOR]: (el, v) => (el.style.color = v),
-  [P.PROP_BACKGROUND_COLOR]: (el, v) => (el.style.backgroundColor = v),
-  [P.PROP_TINT]: (el, v) => (el.style.accentColor = v),
-  [P.PROP_BORDER_COLOR]: (el, v) => {
-    borderOf(el).color = v;
-    applyBorderEdges(el);
-  },
-  [P.PROP_SHADOW_COLOR]: (el, v) => {
-    shadowOf(el).color = v;
-    recomposeShadow(el);
-  },
-  [P.PROP_FONT_SIZE]: (el, v) => (el.style.fontSize = v),
-  [P.PROP_FONT_FAMILY]: (el, v) => (el.style.fontFamily = v),
-  [P.PROP_FONT_WEIGHT]: (el, v) => (el.style.fontWeight = v),
-  [P.PROP_SPACING]: (el, v) => (el.style.gap = v),
-  [P.PROP_PADDING]: (el, v) => (el.style.padding = v),
-  [P.PROP_PADDING_TOP]: (el, v) => (el.style.paddingTop = v),
-  [P.PROP_PADDING_RIGHT]: (el, v) => (el.style.paddingRight = v),
-  [P.PROP_PADDING_BOTTOM]: (el, v) => (el.style.paddingBottom = v),
-  [P.PROP_PADDING_LEFT]: (el, v) => (el.style.paddingLeft = v),
-  [P.PROP_BORDER_RADIUS]: (el, v) => (el.style.borderRadius = v),
-  [P.PROP_OPACITY]: (el, v) => (el.style.opacity = v),
-  [P.PROP_WIDTH]: (el, v) => (el.style.width = v),
-  [P.PROP_HEIGHT]: (el, v) => (el.style.height = v),
+// px suffix, shadow/transform components) are left literal. The value is
+// written into the style *attribute* verbatim (not via the CSSOM) so CSS
+// expressions survive exactly as the SSR renderer emits them.
+const TOKEN_STYLE_PROPS: Record<number, string> = {
+  [P.PROP_COLOR]: "color",
+  [P.PROP_BACKGROUND_COLOR]: "background-color",
+  [P.PROP_TINT]: "accent-color",
+  [P.PROP_FONT_SIZE]: "font-size",
+  [P.PROP_FONT_FAMILY]: "font-family",
+  [P.PROP_FONT_WEIGHT]: "font-weight",
+  [P.PROP_SPACING]: "gap",
+  [P.PROP_PADDING]: "padding",
+  [P.PROP_PADDING_TOP]: "padding-top",
+  [P.PROP_PADDING_RIGHT]: "padding-right",
+  [P.PROP_PADDING_BOTTOM]: "padding-bottom",
+  [P.PROP_PADDING_LEFT]: "padding-left",
+  [P.PROP_BORDER_RADIUS]: "border-radius",
+  [P.PROP_OPACITY]: "opacity",
+  [P.PROP_WIDTH]: "width",
+  [P.PROP_HEIGHT]: "height",
 };
+
+/** Set a single CSS declaration verbatim in the element's style attribute,
+ *  replacing any existing declaration for the same property. */
+function setStyleCss(el: HTMLElement, cssProp: string, value: string): void {
+  const decls = (el.getAttribute("style") ?? "")
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && !s.toLowerCase().startsWith(`${cssProp}:`));
+  decls.push(`${cssProp}:${value}`);
+  el.setAttribute("style", decls.join(";"));
+}
 
 /** Apply a property whose value is a `DESIGN_TOKEN` reference (a token path). */
 export function applyTokenRefProperty(el: HTMLElement, property: number, tokenPath: string): void {
-  TOKEN_HANDLERS[property]?.(el, resolveTokenCssRef(tokenPath));
+  const value = resolveTokenCssRef(tokenPath);
+  if (property === P.PROP_BORDER_COLOR) {
+    borderOf(el).color = value;
+    applyBorderEdges(el);
+    return;
+  }
+  if (property === P.PROP_SHADOW_COLOR) {
+    shadowOf(el).color = value;
+    recomposeShadow(el);
+    return;
+  }
+  const cssProp = TOKEN_STYLE_PROPS[property];
+  if (cssProp) {
+    setStyleCss(el, cssProp, value);
+  }
 }
 
 /** Apply a numeric style/control property to an element via inline style / ARIA / shell reconfiguration. */

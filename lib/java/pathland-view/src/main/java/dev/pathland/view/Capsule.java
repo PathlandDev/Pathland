@@ -1,0 +1,33 @@
+package dev.pathland.view;
+
+import dev.pathland.view.emit.PathlandNode;
+
+/** A capsule shape (a {@code SHAPE} node with {@code SHAPE_KIND = Capsule}). */
+public final class Capsule implements View, Configurable<Capsule.Config> {
+
+    /** {@link Capsule} has no values. */
+    public static final class Config implements View.Config {
+    }
+
+    private final Config config = new Config();
+
+    private Capsule() {
+    }
+
+    /** A capsule. */
+    public static ViewBuilder<Capsule, Config> make() {
+        return new ViewBuilder<>(new Capsule());
+    }
+
+    @Override
+    public Config config() {
+        return config;
+    }
+
+    @Override
+    public PathlandNode render(Environment env) {
+        PathlandNode node = new PathlandNode(Components.SHAPE);
+        node.properties.put(Properties.SHAPE_KIND, (float) ShapeKind.CAPSULE.wire());
+        return node;
+    }
+}

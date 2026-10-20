@@ -18,12 +18,25 @@ ring for foreign hosts (Swift/Java/C# via FFI). Protocol contract: `spec/`.
   (`LABEL`/`PROMPT`/`FONT_FAMILY`/`IMAGE_SOURCE`), U8 (`VISIBLE`/`ENABLED`/
   `SELECTED`/`CLIPS_TO_BOUNDS`/`UNDERLINE`/`STRIKETHROUGH`/`COLOR_INVERT`/
   `ALLOWS_HIT_TESTING`/`IS_SECURE`/`IS_INDETERMINATE`/`FIXED_SIZE_*`), else F32.
-- **Signals** C ABI (`signal_*`, `node_bind_text`/`node_bind_property`).
+- **Signals** C ABI (`signal_*`, `node_bind_text`/`node_bind_property`/
+  `node_bind_string_property`).
+- **Media C ABI** (`media_controller_create`/`_signal`/`_source`,
+  `node_media_controller`) — spec/MEDIA.md.
 
 ## Not implemented / gaps
 
 - STRING-valued properties are typed as STRING but the flat world has no
   arena-alloc helper to emit them (callers must `pathland_core_arena_alloc`).
+- **Media**: `MEDIA_CONTROLLER`/`VIDEO` are mapped in `component_from_id`/
+  `component_id`, and the flat world **authors media**: `media_controller_create`
+  returns a handle (the controller is an engine-side `Rc` held by the host),
+  `media_controller_signal(handle, slot)` addresses each transport slot (driven
+  with `signal_set_*`), `media_controller_source` sets a static resource;
+  `node_media_controller(node, handle)` makes a node the controller's own
+  `MEDIA_CONTROLLER` node or one of its `VIDEO` surfaces, and the generic
+  `node_bind_string_property` binds a reactive `MEDIA_SOURCE`. Materialization
+  links each surface's `MEDIA_CONTROLLER_ID` to the controller's host-supplied
+  node id. (Hosts that supply ids themselves need no pinning.)
 
 ## Verified by
 

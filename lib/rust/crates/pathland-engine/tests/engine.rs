@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    category, init_memory, listener, property_id, size, style, tree, value_type, Guest, Host,
+    category, init_memory, listener, property_id, size, parameter, tree, value_type, Guest, Host,
     MemoryLayout, Opcode,
 };
 use pathland_engine::{assign_ids, component_type_id, Component, Engine, Node};
@@ -42,9 +42,13 @@ fn text_node(text: &str) -> Node {
         component: Component::Text { text: text.into() },
         children: Vec::new(),
         properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
+    list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -55,9 +59,13 @@ fn vstack(children: Vec<Node>) -> Node {
         component: Component::VStack,
         children,
         properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
+    list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -68,9 +76,13 @@ fn hstack(children: Vec<Node>) -> Node {
         component: Component::HStack,
         children,
         properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
+    list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -93,7 +105,7 @@ fn first_emit_produces_full_structure() {
     }));
     assert!(ops
         .iter()
-        .any(|o| o.category() == category::STYLE && o.command() == style::SET_TEXT));
+        .any(|o| o.category() == category::PARAMETER && o.command() == parameter::SET_TEXT));
     assert!(engine.tracked_nodes() == 3);
 }
 
@@ -109,8 +121,8 @@ fn property_change_emits_only_delta() {
     let ops = emit_and_collect(&mut engine, &a);
 
     assert_eq!(ops.len(), 1, "only the spacing delta should emit");
-    assert_eq!(ops[0].category(), category::STYLE);
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].category(), category::PARAMETER);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].a(), 1);
     assert_eq!(ops[0].b() as u16, property_id::SPACING);
     assert_eq!(ops[0].c_f32(), 12.0);
@@ -147,7 +159,7 @@ fn emit_and_read_token(engine: &mut Engine, root: &Node) -> (u16, u8, String) {
     let frames = host.frames();
     let frame = frames.first().unwrap();
     for op in frame.opcodes() {
-        if op.category() == category::STYLE && op.command() == style::SET_PROPERTY {
+        if op.category() == category::PARAMETER && op.command() == parameter::SET_PROPERTY {
             let prop = op.b() as u16;
             let vt = (op.b() >> 16) as u8;
             let path = frame.arena_str(op.c()).map(str::to_owned).unwrap_or_default();
@@ -192,7 +204,7 @@ fn token_ref_change_emits_single_design_token_delta() {
         .insert(property_id::COLOR, "color.secondary".into());
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].b() as u16, property_id::COLOR);
     assert_eq!(ops[0].b() >> 16, value_type::DESIGN_TOKEN as u32);
 }
@@ -206,7 +218,7 @@ fn text_change_emits_single_set_text() {
     root.children[0].component = Component::Text { text: "xy".into() };
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].command(), style::SET_TEXT);
+    assert_eq!(ops[0].command(), parameter::SET_TEXT);
     assert_eq!(ops[0].a(), 2);
 }
 
@@ -289,7 +301,7 @@ fn frame_change_emits_only_size_delta() {
     root.properties.insert(property_id::WIDTH, 120.0f32.to_bits());
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 1, "only the width delta should emit");
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].b() as u16, property_id::WIDTH);
     assert_eq!(ops[0].c_f32(), 120.0);
 }
@@ -355,6 +367,10 @@ fn emit_is_zero_alloc_in_steady_state() {
     root.children[0]
         .token_properties
         .insert(property_id::COLOR, "color.primary".into());
+    // String-valued properties must also be steady-state zero-alloc.
+    root.children[1]
+        .string_properties
+        .insert(property_id::FONT_FAMILY, "Inter".into());
     assign_ids(&mut root, &mut 1);
 
     let mut engine = Engine::new();
@@ -371,4 +387,107 @@ fn emit_is_zero_alloc_in_steady_state() {
     COUNT.with(|c| {
         assert_eq!(c.get(), 0, "steady-state emit must not allocate");
     });
+}
+
+fn emit_and_collect_with_arena(engine: &mut Engine, root: &Node) -> (Vec<Opcode>, Vec<String>) {
+    let (mut mem, layout) = with_guest();
+    {
+        let mut guest = Guest::new(&mut mem, &layout);
+        guest.begin_frame();
+        engine.emit(root, &mut guest).unwrap();
+        guest.end_frame();
+    }
+    let mut host = Host::new(&mut mem, &layout);
+    let frames = host.frames();
+    let frame = match frames.first() {
+        Some(f) => f,
+        None => return (Vec::new(), Vec::new()),
+    };
+    let ops: Vec<Opcode> = frame.opcodes().collect();
+    let strings: Vec<String> = ops
+        .iter()
+        .map(|o| {
+            frame
+                .arena_str(o.c())
+                .map(|s| s.to_string())
+                .unwrap_or_default()
+        })
+        .collect();
+    (ops, strings)
+}
+
+#[test]
+fn string_property_emits_with_string_value_type_and_diffs() {
+    let mut engine = Engine::new();
+    let mut root = text_node("x");
+    root.string_properties
+        .insert(property_id::FONT_FAMILY, "Georgia".into());
+    assign_ids(&mut root, &mut 1);
+
+    let (ops, strings) = emit_and_collect_with_arena(&mut engine, &root);
+    let prop = ops
+        .iter()
+        .position(|o| {
+            o.category() == category::PARAMETER
+                && o.command() == parameter::SET_PROPERTY
+                && o.b() as u16 == property_id::FONT_FAMILY
+        })
+        .expect("FONT_FAMILY SET_PROPERTY emitted");
+    assert_eq!((ops[prop].b() >> 16) & 0xff, value_type::STRING as u32);
+    assert_eq!(strings[prop], "Georgia");
+
+    // An unchanged string property must not re-emit.
+    let (ops2, _) = emit_and_collect_with_arena(&mut engine, &root);
+    assert_eq!(ops2.len(), 0, "unchanged string property must not re-emit");
+
+    // A changed family re-emits one SET_PROPERTY with the new arena string.
+    root.string_properties
+        .insert(property_id::FONT_FAMILY, "Inter".into());
+    let (ops3, strings3) = emit_and_collect_with_arena(&mut engine, &root);
+    assert_eq!(ops3.len(), 1);
+    assert_eq!(strings3[0], "Inter");
+}
+
+#[test]
+fn list_property_emits_fit_query_with_the_list_value_type() {
+    // A SIZE_THAT_FITS slot ({0, 640} thresholds) with its single selected child:
+    // FIT_QUERY rides the LIST value type with a nonzero arena ref; an unchanged
+    // list re-emits nothing on the next pass.
+    let mut engine = Engine::new();
+    let child = text_node("compact");
+    let mut root = built(Node {
+        id: 0,
+        component: Component::SizeThatFits,
+        children: vec![child],
+        properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
+        list_properties: BTreeMap::from([(property_id::FIT_QUERY, vec![0f32, 640.0])]),
+        token_properties: BTreeMap::new(),
+        text_binding: None,
+        property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
+        gestures: Vec::new(),
+    });
+
+    let (ops, _) = emit_and_collect_with_arena(&mut engine, &root);
+    let create = ops
+        .iter()
+        .find(|o| o.category() == category::TREE && o.command() == tree::CREATE_NODE)
+        .expect("slot created");
+    assert_eq!(create.b() as u16, component_type_id(&Component::SizeThatFits));
+
+    let query = ops
+        .iter()
+        .find(|o| {
+            o.category() == category::PARAMETER
+                && o.command() == parameter::SET_PROPERTY
+                && o.b() as u16 == property_id::FIT_QUERY
+        })
+        .expect("FIT_QUERY SET_PROPERTY emitted");
+    assert_eq!((query.b() >> 16) & 0xff, value_type::LIST as u32);
+
+    // An unchanged list must not re-emit.
+    let (ops2, _) = emit_and_collect_with_arena(&mut engine, &root);
+    assert_eq!(ops2.len(), 0, "unchanged list property must not re-emit");
 }

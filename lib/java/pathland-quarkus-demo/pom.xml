@@ -5,13 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.pathland</groupId>
+        <groupId>dev.pathland</groupId>
         <artifactId>pathland-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.1.5</version>
     </parent>
 
     <artifactId>pathland-quarkus-demo</artifactId>
     <packaging>jar</packaging>
+
+    <!-- Demo application — not published to Maven Central. -->
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
 
     <name>Pathland Quarkus Demo</name>
     <description>
@@ -24,23 +30,30 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-quarkus-starter</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-demo-views</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- Observability (issue #62): a Prometheus scrape endpoint at /q/metrics; health
+             at /q/health comes from the starter. OpenTelemetry spans are OPT-IN — add
+             io.quarkus:quarkus-opentelemetry to enable them (see the application.properties
+             note); the starter wires the tracing decorator when the extension is present. -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-logging-json</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -1,0 +1,67 @@
+package dev.pathland.view;
+
+/**
+ * Protocol component type ids (mirrors {@code pathland_core::component_type} and the
+ * grouped ranges in {@code spec/PRIMITIVES.md}).
+ *
+ * <p>Ranges: {@code 0x01–0x0F} primitive drawing nodes, {@code 0x10–0x1F} layout &
+ * container primitives, {@code 0x20–0x2F} semantic control nodes, {@code 0x7F} utility.
+ */
+public final class Components {
+
+    // ── Primitive Drawing & Visual Nodes (0x01–0x0F) ──────────────────────
+    public static final int TEXT = 0x01;
+    public static final int IMAGE = 0x02;
+    public static final int COLOR = 0x03;
+    public static final int SHAPE = 0x04;
+    public static final int DIVIDER = 0x05;
+    public static final int SPACER = 0x06;
+    public static final int PROGRESS_VIEW = 0x07;
+    public static final int GAUGE = 0x08;
+    /** Video playback surface: renders a {@code MEDIA_CONTROLLER}'s video output
+     *  (references it via {@code MEDIA_CONTROLLER_ID}); audio has no view. */
+    public static final int VIDEO = 0x0A;
+    public static final int ICON = 0x0B;
+
+    // ── Layout & Container Primitives (0x10–0x1F) ──────────────────────────
+    public static final int VSTACK = 0x10;
+    public static final int HSTACK = 0x11;
+    public static final int ZSTACK = 0x12;
+    public static final int GRID = 0x13;
+    public static final int SCROLLVIEW = 0x14;
+    public static final int LAZY_VGRID = 0x15;
+    public static final int LAZY_HGRID = 0x16;
+    /** Fit slot: shows its single selected child; the renderer measures its own
+     *  allocated width against {@code FIT_QUERY} and reports {@code FIT_CHANGED}. */
+    public static final int SIZE_THAT_FITS = 0x17;
+    public static final int LAZY_VSTACK = 0x1B;
+    public static final int LAZY_HSTACK = 0x1C;
+    /** Explicit row grouping for a {@code GRID}: a grid child whose children are one row's cells. */
+    public static final int GRID_ROW = 0x1D;
+    /** Proxy view: a transparent container whose child subtree is served by another
+     *  Pathland server (see {@code spec/PROXY.md}). */
+    public static final int PROXY_VIEW = 0x1E;
+
+    // ── Semantic Control Nodes (0x20–0x2F) ─────────────────────────────────
+    public static final int BUTTON = 0x20;
+    public static final int TEXT_FIELD = 0x21;
+    public static final int TEXT_EDITOR = 0x22;
+    public static final int TOGGLE = 0x24;
+    public static final int SLIDER = 0x25;
+    public static final int STEPPER = 0x26;
+    public static final int DATE_PICKER = 0x27;
+    public static final int PICKER = 0x28;
+    public static final int MENU = 0x29;
+    public static final int COLOR_PICKER = 0x2A;
+
+    // ── Non-visual / Resource Nodes (0x30–0x3F) ────────────────────────────
+    /** Media controller: a non-visual, layout-transparent node that owns a media
+     *  resource + transport (spec/MEDIA.md); a {@code VIDEO} surface references it.
+     *  Audio has no view — it is controlled by the application's own views. */
+    public static final int MEDIA_CONTROLLER = 0x30;
+
+    // ── Utility ────────────────────────────────────────────────────────────
+    public static final int COMMENT = 0x7F;
+
+    private Components() {}
+}

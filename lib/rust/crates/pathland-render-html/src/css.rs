@@ -77,7 +77,8 @@ body  {
   /* Typography (Tier 1) */
   --pl-font-body-size: 16px;
   --pl-font-body-weight: 400;
-  --pl-font-body-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --pl-font-body-family: system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif;
   --pl-font-sans: var(--pl-font-body-family);
 
   /* Radius (Tier 1) */
@@ -138,12 +139,6 @@ body  {
   --pl-elevation-high-blur: 12px;
 }
 
-/* InterVariable (variable font, loaded from the rsms.me CDN) for browsers that
-   support it: one file covers every weight. Others fall back to static Inter. */
-@supports (font-variation-settings: normal) {
-  :root { --pl-font-body-family: 'InterVariable', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; }
-}
-
 /* ===== Buttons ===== */
 .pathland-button {
   display: inline-flex; align-items: center; justify-content: center;
@@ -159,6 +154,20 @@ body  {
 .pathland-button:hover { background-color: var(--pl-button-background-hover); }
 .pathland-button:focus-visible { outline: 2px solid var(--pl-control-accent); outline-offset: 2px; }
 .pathland-button:disabled { opacity: 0.5; pointer-events: none; }
+/* Semantic icons (ICON): the inline SVG is sized like text — `1em` follows the
+   resolved font-size (FONT_SIZE on the node, else the inherited/default size)
+   and `currentColor` follows COLOR. */
+.pathland-icon {
+  display: inline-block;
+  width: 1em; height: 1em;
+  min-width: 1em; min-height: 1em;
+  vertical-align: -0.125em;
+  flex: none;
+}
+.pathland-icon path, .pathland-icon circle, .pathland-icon rect, .pathland-icon line,
+.pathland-icon polyline, .pathland-icon polygon {
+  shape-rendering: geometricPrecision;
+}
 @media (prefers-color-scheme: dark) {
   :root {
     --pl-color-background: #0f172a;
@@ -211,6 +220,14 @@ body  {
 .pathland-slider { display: inline-flex; align-items: center; gap: 0.625rem; }
 .pathland-slider input[type='range'] { flex: 1; accent-color: var(--pl-control-accent); }
 .pathland-slider input[type='range']:focus-visible { outline: 2px solid var(--pl-control-accent); outline-offset: 2px; }
+
+/* ===== Media (custom AudioStyle/VideoStyle) ===== */
+/* A media node with custom control children wraps a bare (control-less) media
+   element; the element is the app-driven playback sink, so it stays hidden and
+   only the custom control children are visible. Native media (no children)
+   keep their own `controls` and are not wrapped. */
+.pathland-media audio,
+.pathland-media video { display: none; }
 
 /* ===== Text field / editor ===== */
 .pathland-textfield { display: inline-flex; align-items: center; gap: 0.5rem; }

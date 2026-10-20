@@ -1,8 +1,8 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** September 1, 2026
+**Last updated:** October 2, 2026
 
-The **Java binding to the Rust HTML renderer** (`com.pathland.render.html`) — a
+The **Java binding to the Rust HTML renderer** (`dev.pathland.render.html`) — a
 thin **JNA shim** over `libpathland_render_html`. There is a **single renderer**
 (the Rust crate), reused by every language; the former hand-written retained
 Java renderer is removed. Protocol contract: `spec/`.
@@ -15,19 +15,31 @@ Java renderer is removed. Protocol contract: `spec/`.
   HTML in one pass (no retained tree, no `applyFrame`); `pathland_html_free`
   releases native strings. Lazy-loaded; skipped (test assumption) when the dylib
   is absent from `java.library.path`.
+- **Debug comments**: `renderDebug(frame, root)` / `renderFragmentDebug(...)`
+  bind the Rust `pathland_html_render_debug` exports — each rendered node is
+  prefixed with an HTML comment naming its component type and the modifiers
+  applied (opt-in; the plain `render` output is unchanged).
 - **Full Rust renderer surface** (canonical): all spec components render inline
   (structural + decorative CSS in a single `style` attribute), ARIA/event
   attributes, `IS_SECURE` → password, `TOGGLE_STYLE` variants,
   `DATE_PICKER_MODE`, and literal colors inline. The renderer injects its own
   built-in `<style>` block (preflight reset + design tokens + `.pathland-*`
   component defaults) into every document — no external CSS, no `/tailwind.css`.
+- **Icon glyphs from the shared renderer**: `iconSvg(String name)` binds the
+  Rust `pathland_html_icon_svg` export over the C ABI — the full inline `<svg>`
+  for a canonical `ICON_NAME` (unknown/extension names → the renderer's
+  fallback glyph, never null). Hosts serve `/_pathland/icons/<name>.svg` from
+  it (Spring/Quarkus route a few lines in their starters), so the DOM client's
+  lazy icon fetch gets the same glyph data SSR inlines from — one Rust source,
+  no per-platform static icon files. `HtmlRendererTest` covers it.
 - **Demos use the shim**: `SessionApp` no longer calls `applyFrame`; SSR renders
   the mount frame through `HtmlRenderer.render(sink.frame(), rootId)`. The
   renderer is compiled once at startup.
 - **Text fields share one component class**: `TEXT_FIELD` inputs and `TEXT_EDITOR`
   textareas render with `class="pathland-input"` (Tailwind-style inset-outline
   styling from the Rust renderer's CSS); the copied `@pathland/dom-renderer`
-  bundle mirrors the class so delta-created fields hydrate identically.
+  bundle (content-hashed `dom-renderer-<sha256>.js` in both demos) mirrors the
+  class so delta-created fields hydrate identically.
 
 ## Removed (September 2026)
 
@@ -39,11 +51,21 @@ Java renderer is removed. Protocol contract: `spec/`.
 
 ## Not implemented / gaps
 
-- **Inter is loaded from the rsms.me CDN** (Cloudflare) — the Rust renderer emits
-  the preconnect + stylesheet links in the document head; the demo pages render
-  through it, so no Java-side font serving is needed. The font is **not bundled**
-  with the renderer jar; self-hosting a subsetted, OFL-licensed woff2 is a
-  planned follow-up for offline and enterprise deployments.
+- **Typography uses the platform system font stack** (`system-ui,
+  -apple-system, 'Segoe UI', Roboto, …`) — the Rust renderer's document head
+  makes no external/webfont requests, so the demo pages render without loading
+  any font files and work offline. An app can still override `font.body.family`
+  via a `SET_DESIGN_TOKEN` to any font it hosts.
+- The shim is unaffected by the Rust renderer's September 2026 shell alignment
+  (SPACER/MENU/STEPPER/GAUGE/PICKER markup now matches the DOM client's runtime
+  shells); the demos' SSR output reflects the Rust renderer as-is, pinned by the
+  `pathland-html-golden` conformance harness. `HtmlRendererTest` covers the
+  semantic-role → element mapping (`NAVIGATION`→`<nav>`, `HEADER`→`<h2>`,
+  `TEXT_STYLE` headings) and the DSL's rejection of non-semantic role codes,
+  plus media rendering (a `VIDEO` surface bound to its `MEDIA_CONTROLLER` —
+  native `<video controls>` + `data-pathland-controller`, the non-visual hidden
+  controller shell, image `alt` from the accessibility label,
+  `ContentMode Fill`→`cover`).
 
 ## Verified by
 

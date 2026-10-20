@@ -18,7 +18,6 @@ import {
   PROP_LINE_LIMIT,
   PROP_OPACITY,
   PROP_PROGRESS,
-  PROP_ROLE,
   PROP_ROTATION_DEGREES,
   PROP_SHADOW_COLOR,
   PROP_SHADOW_RADIUS,
@@ -80,10 +79,15 @@ describe("Option A style appliers", () => {
     expect(el.style.textTransform).toBe("uppercase");
   });
 
-  it("line-limit -> webkitLineClamp", () => {
+  it("line-limit -> webkitLineClamp + overflow:hidden (clamp clips)", () => {
     const el = document.createElement("div");
     applyProperty(el, PROP_LINE_LIMIT, VAL_U32, 2);
     expect(el.style.webkitLineClamp).toBe("2");
+    expect(el.style.overflow).toBe("hidden");
+    // A removed limit restores normal, unbounded text.
+    applyProperty(el, PROP_LINE_LIMIT, VAL_U32, 0);
+    expect(el.style.webkitLineClamp).toBe("");
+    expect(el.style.overflow).toBe("");
   });
 
   it("color -> rgba", () => {
@@ -116,6 +120,15 @@ describe("Option A style appliers", () => {
     const el = document.createElement("div");
     applyProperty(el, PROP_Z_INDEX, VAL_U32, 5);
     expect(el.style.zIndex).toBe("5");
+  });
+
+  it("z-index decodes F32 (the DSL wire type) to an integer, incl. negatives", () => {
+    const el = document.createElement("div");
+    applyProperty(el, PROP_Z_INDEX, VAL_F32, bitsFromF32(5));
+    expect(el.style.zIndex).toBe("5");
+    const neg = document.createElement("div");
+    applyProperty(neg, PROP_Z_INDEX, VAL_F32, bitsFromF32(-1));
+    expect(neg.style.zIndex).toBe("-1");
   });
 
   it("border width + color + edges -> per-side borders", () => {
@@ -157,12 +170,6 @@ describe("Option A style appliers", () => {
 });
 
 describe("semantic + control variants", () => {
-  it("role -> role attribute", () => {
-    const el = document.createElement("div");
-    applyProperty(el, PROP_ROLE, VAL_F32, bitsFromF32(1)); // Button
-    expect(el.getAttribute("role")).toBe("button");
-  });
-
   it("state -> aria attributes", () => {
     const el = document.createElement("div");
     applyProperty(el, PROP_STATE, VAL_F32, bitsFromF32(STATE_DISABLED));

@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** September 4, 2026
+**Last updated:** October 15, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -12,22 +12,148 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **Single source, unified**: `src/` is the one client; `npm run build` emits
   `dist/pathland-dom-renderer.js` (IIFE, minified via esbuild), and
   `npm run copy-to-demos` copies it into both the Quarkus and Spring Boot demos'
-  static resource dirs. Both demos serve `/pathland-dom-renderer.js`; the old
-  duplicated `app.js` is removed.
+  static resource dirs under a **content-hashed name** (`dom-renderer-<sha256>.js`),
+  pruning stale `dom-renderer-*.js` and the pre-hash literal `dom-renderer.js` (the old
+  duplicated `app.js` is long since removed). A one-line pointer manifest
+  `dom-renderer.current` sits next to the copies; the SSR layer reads it
+  (`PathlandAssets`) to emit the right `<script src>` — the fresh URL per build busts
+  the immutable asset cache without any hard refresh.
+- **Per-window identity (`wid`)**: the client keeps a window id in `sessionStorage`
+  (fresh per window/tab, kept across reloads of the same tab) and appends it as
+  `?wid=` to the WebSocket URL (the server's per-window persisted-state scope). The
+  id is **never reflected into the page URL** — the address bar/history/referrer stay
+  clean — so the SSR request has no `wid` and always renders defaults. A fresh window
+  needs no re-sync (its defaults match the fresh session's); a same-tab reload (or a
+  load whose URL carried a stale `wid`, which the client strips) requests a
+  `META::RESYNC` to restore the window's persisted state. Two windows therefore never
+  share a UI model or state.
+- **Property application parity**: `setNodeText` only writes `textContent` on leaf nodes
+  — re-applying a composite's `LABEL`/`TEXT` property never wipes its children (SSR
+  renders no label on composites). `LINE_LIMIT` (positive) clamps via the webkit box
+  model (`display:-webkit-box` + `-webkit-line-clamp` **+ `overflow:hidden`** — the
+  clamp draws the ellipsis but does not clip on its own, so Safari would paint the
+  overflowed text below the box; a removed limit restores unbounded text), matching
+  the Rust SSR.
+- **Mounted-app URL mirroring**: the server emits app-relative `ROUTE`s; the client
+  derives the app's mount prefix from `data-pathland-base` (`/<mount>/_pathland`) and
+  pushes the app's <b>real</b> address (`/app2` app navigating to `/home` →
+  `pushState("/app2/home…")`). The root app (base `/_pathland`) is unchanged.
+- **Media** (spec/MEDIA.md): `IMAGE`/`VIDEO` shells (`<img>`,
+  `<video controls>`). **Audio has no view** — a `MEDIA_CONTROLLER` is a
+  non-visual state object the app drives with its own controls.
+  `MEDIA_CONTROLLER` hydrates to an **off-flow** shell (`position:absolute;1px;
+  opacity:0` — deliberately *not* `display:none`, which silences a `<video>`'s
+  audio) holding a control-less `<video data-pathland-media>` (the resource);
+  `MEDIA_SOURCE` drives that element, while `MEDIA_MUTED`/`MEDIA_LOOP`/
+  `MEDIA_RATE` apply to it. A `VIDEO` surface defaults to `controls` and binds to
+  its controller via `MEDIA_CONTROLLER_ID` (`data-pathland-controller`) through a
+  **media registry** keyed by controller id (not by emission order): a surface
+  emitted *before* its controller, or a controller whose `MEDIA_SOURCE` arrives
+  late, still binds — mirroring runs from whichever side lands second, the
+  controller element is silenced whenever it has bound surfaces, and surfaces
+  that left the DOM are pruned (a removed subtree never keeps playing). `IMAGE_SOURCE` applies the asset ref;
+  the `LABEL` accessibility text is set as `alt` on media elements;
+  `CONTENT_MODE` maps `Fit`→`contain`, `Fill`→**`cover`** (matching the Rust SSR).
+  **Autoplay policy**: an unmuted `play()` is only accepted inside a trusted
+  user gesture, but the play action is a server round-trip (`PLAYBACK_STATE`
+  arrives after the click's activation expires), so every trusted gesture
+  (`pointerdown`/`keydown`/`touchend`) unlocks the playback element with an
+  inaudible muted play→pause (`unlockMedia`), a `NotAllowedError` is marked
+  **pending** and replayed on the next gesture (`playMedia`/`retryPendingPlay`),
+  and any other `play()` rejection is `log.warn`ed — media failures are never
+  silent.
+  All media reports are keyed to the **controller** node: `MEDIA_TIME_UPDATED` at
+  **~30/s** (a 33 ms position sampler — the browser's `timeupdate` alone is only
+  ~4 Hz; torn down when the node is removed), `MEDIA_DURATION_CHANGED`
+  (`durationchange`), and `MEDIA_ENDED` at track end.
+  **Media echo guards (spec/EVENTS.md Media)**: a `MEDIA_POSITION` write within
+  `0.25 s` of the **last-reported** position (not `currentTime`) does not seek —
+  so a network-delayed `MEDIA_TIME_UPDATED` echo can't cause per-second seek
+  jitter; a `MEDIA_VOLUME` write within `0.01` of the last-reported volume is
+  likewise skipped.
+  The reserved framework root (`/_pathland/**`) is read from the SSR page's
+  `data-pathland-base` (WS URL + bundle resolved from it).
 - **Hydration**: builds the `data-pathland-id → element` registry from the SSR
   DOM.
+- **Generated protocol constants** (`src/constants.ts`): emitted by
+  `pathland-ts-codegen` from `pathland_core::constants` (wire constants are bound
+  to the Rust consts; enum codes mirror `spec/`). Regenerate with `npm run regen`;
+  CI (`rust` job) runs the generators and fails on any committed-file drift.
+- **Generated token conventions** (`src/generated/tokens-core.ts`): emitted from
+  `pathland-render-html::token_spec`; `src/tokens.ts` imports them, so the
+  `--pl-*` naming, `dark.` prefix, `space.<N>` family, and length-token rules are
+  single-sourced in Rust.
+- **Semantic HTML elements from `ROLE` + typography** (generated
+  `src/generated/role-spec.ts` from `pathland-render-html::role_spec`): a
+  `PROP_ROLE` / `PROP_TEXT_STYLE` delta resolves the effective element via
+  `textTag` (a heading `TEXT_STYLE` LargeTitle…Headline is always `<h1>`–`<h5>`;
+  `ROLE_HEADER` → `<h2>`; `ROLE_PARAGRAPH` → `<p>`; else `<span>`) and
+  **retags a generic `div`/`span` shell** in place (`morphRole`, attributes +
+  children + registry preserved). Control components keep their native element;
+  the MENU shell renders its intrinsic `role="menu"`. `PROP_ROLE`/`PROP_TEXT_STYLE`
+  state is tracked per element so either delta reconciles the tag. The shell kind
+  is derived from the component when known (fresh nodes) and from the element tag
+  when hydrating (SSR nodes have no component). Interactive/control roles are not
+  in the catalog — a reserved code is a graceful no-op.
+- **Predefined typography visual** (`src/typography.ts`): a `PROP_TEXT_STYLE`
+  delta applies the renderer-owned default size/weight (`applyTextStyle`) in
+  addition to the heading semantics above. Explicit `PROP_FONT_SIZE`/
+  `PROP_FONT_WEIGHT` are tracked per element and win over the style regardless
+  of delta order; the tracks survive an element retag (`copyTypography`).
+- **Lazy semantic icons** (`src/icons.ts` + `elements.ts`/`apply.ts`): the
+  canonical icon catalog is **not** shipped in the bundle. `COMPONENT_ICON`
+  builds an `<svg class="pathland-icon">`; `PROP_ICON_NAME` resolves the glyph
+  via `setIcon`: (1) the session memo, (2) an already-embedded
+  `svg[data-pathland-icon=<name>]` in the page (the SSR inline glyph — instant,
+  zero network), else (3) the fallback glyph now + a **deduplicated lazy fetch**
+  of the renderer-owned `/{base}/icons/<name>.svg` (served by the host from the
+  shared Rust renderer, `pathland_html_icon_svg`), memoized thereafter. On a
+  miss the resolver **harvests every embedded glyph into the memo** (SSR seeds
+  are DOM-only), so a toggled-away glyph — e.g. the play icon under a paused
+  button — comes back **instantly on the return trip instead of refetching**.
+  `LABEL` makes it presentable (`role="img"`/`aria-label`, else `aria-hidden`);
+  the runtime mirrors the SSR svg's `data-pathland-icon` (golden `icons`
+  fixture / `ssr-conformance`).
+- **SizeThatFits fit slots** (`src/apply.ts` + `elements.ts` + `src/events.ts`):
+  a `SIZE_THAT_FITS` node is a fill-sized `div.pathland-ftf` that is
+  **layout-transparent**: it forwards the parent flex container's
+  `flex-direction`/`align-items`/`justify-content` (`inherit`) into its own box
+  (mirrors the Rust SSR slot styles), so a slot-wrapped candidate keeps the
+  parent's alignment — e.g. a `VStack(CENTER)` still centers the player bar's
+  `HSTACK` behind a fit slot — while staying size-taking
+  (`flex:1 1 auto;align-self:stretch;min-width/height:0`);
+  `FIT_QUERY` (the `LIST` value type — `readList`) is mirrored to
+  `data-pathland-fit`; a per-slot `ResizeObserver` derives the fit index locally
+  (the spec'd rule) and reports `encodeFittedChanged` **only on transitions**
+  (plus the first measure), torn down on `CMD_DELETE_NODE`. The **web-SSR
+  snapshot form** (issue #141: a slot rendered from a multi-candidate SSR batch
+  carries `data-pathland-fit-cands`) hydrates with every gated branch in place —
+  the SSR `<style data-pathland-fit>` `@container` rules already picked the
+  first paint. The teardown is a **post-batch reconcile** (`reconcileFitGate`,
+  gated on the slot's FINAL state): after a batch, a slot that still carries
+  `data-pathland-fit-cands` and has collapsed to a **single live candidate** (the
+  app's `REMOVE_CHILD`/`DELETE_NODE` downgrade removed the others) is unwrapped —
+  the surviving candidate is lifted out, the empty wrappers dropped, and the
+  `container-name`/cands + the slot's band rules stripped (the single-child live
+  form). A removal that does **not** reduce the slot to one live candidate (e.g. a
+  band-crossing fit swap dropping a child INSIDE a candidate — the "all branches
+  rendered" bug) leaves the gate intact, and an `INSERT_CHILD`/`CREATE_NODE` (a
+  `META::RESYNC` replaying the tree) never tears it down — the SSR gate survives
+  the resync and keeps showing the width-correct candidate. Golden `sizethatfits`
+  (+ `sizethatfits-snapshot`) fixtures; the hydrate→downgrade case in
+  `ssr-conformance`; `test/fit.test.ts`.
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into
   `debug` with `window.__PATHLAND_LOG_LEVEL="debug"` or
   `?pathland-log=debug`). Meaningful **receive/emit** logging of opcodes and
   events — `→ send EVENT POINTER_UP(target=4, …)`, `← recv frame=7 (2 ops):
-  STYLE SET_PROPERTY(ROUTE="/users", …)`, plus lifecycle (connect/reconnect,
+  PARAMETER SET_PROPERTY(ROUTE="/users", …)`, plus lifecycle (connect/reconnect,
   `pushState`, `popstate`, environment) — with a full per-opcode trace at
   `debug` (`src/describe.ts`).
 - **PLPL decode** (`src/plpl.ts`): bounds-checked batch parse — magic/version
   validation, truncated-opcode/string rejection, length-prefixed string reads.
 - **Full delta application** (`src/apply.ts`):
-  - **STYLE commands**: `SET_PROPERTY`, `SET_TEXT`, `SET_DATE` (date/time/
+  - **PARAMETER commands**: `SET_PROPERTY`, `SET_TEXT`, `SET_DATE` (date/time/
     datetime-local), **`SET_DESIGN_TOKEN`** (→ CSS variables, `src/tokens.ts`).
   - **TREE commands**: `CREATE_NODE`/`DELETE_NODE`/`INSERT_CHILD`/`REMOVE_CHILD`/
     `MOVE_CHILD` (`u32::MAX` append handled) — the element-shell factory
@@ -68,6 +194,15 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   URL in the string section + `NAVIGATE_URL` flag; `encodeNavigateBack` no URL),
   and **`META::ENVIRONMENT`** (`encodeEnvironment(width, height, route)`) — guest →
   host (flags `0x0000`).
+- **In-flight interaction (spec EVENTS.md)**: a range slider being dragged is
+  tracked via `src/inFlight.ts` (marked on `pointerdown`, cleared on
+  `pointerup`/`pointercancel`/`blur`); while in-flight, inbound `VALUE` deltas
+  are **suppressed** (`apply.ts` `PROP_VALUE`), so a server echo can't fight
+  the pointer and flicker the thumb. A slider that declared the **`EDITING`**
+  listener bit also gets **`EDITING_CHANGED`** boundaries — `encodeEditingChanged
+  (id, true)` on drag start and `(id, false)` on release/`pointercancel`/`blur`
+  (`index.ts`, gated on `data-event-listeners` bit 0x40) — e.g. a seek bar that
+  commits on release.
 - **Platform environment** (spec/OPCODE.md §Environment fields): the client sends
   `encodeEnvironment` as its **first** WS message (`transport.ts` `onOpen`, before
   any resync) so the server session seeds its router from the `ROUTE` field, and
@@ -101,6 +236,47 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   and `POINTER_UP` on `click` is sent for **any** listening element — not just
   `<button>` — so `onTapGesture` works on non-button nodes (matching the GTK
   renderer's gesture-on-any-widget behavior; also repairs composite-label buttons).
+- **Robust input-target resolution** (`src/dom-target.ts`): an event's `target` is
+  frequently a **Text node** (e.g. a wheel over a `<span>`'s text) rather than an
+  Element — `closest` then threw `t.closest is not a function`. `nodeOf`/
+  `eventNodeOf` guard with `instanceof Element` and return `null` for a non-Element
+  target (unit-tested in `test/dom-target.test.ts`). Aborted promises are also
+  swallowed: a media `play()` interrupted by a src change/pause (`AbortError`) and
+  a Blob `arrayBuffer()` aborted on socket close no longer surface as unhandled
+  rejections.
+- **Per-window-id service worker** (issue #155): when the server emits
+  `data-pathland-service-worker` on `<html>`, `boot()` registers `{base}/sw.js` at
+  the **root** scope and hands the worker this window's id (`postMessage`, re-seeded
+  on `ready`/`controllerchange` — a single post can be missed while `reg.active` is
+  still null); the worker (`sw.js`, shipped next to the bundle) attaches the id to
+  top-level navigations so the SSR renders the right persisted-state scope on the
+  first paint — the id never appears in the URL. Absent → any existing registration
+  is removed (the kill switch). Strictly pass-through: it never caches and fails open
+  (any error → the original request); the id is keyed per tab in the Cache API under
+  an **absolute** key URL (a relative `Request` URL is rejected by WebKit) and carried
+  across documents via `resultingClientId`. The rewrite builds an **explicit** fetch
+  init — never the navigation `Request`, whose `mode: "navigate"` a script cannot
+  construct (passing it made `fetch` throw and fail open silently) — with
+  `cache: "reload"` (so a same-window reload is never served a stale SSR body); a
+  store/rewrite failure is `console.warn`ed in the worker's console, not swallowed.
+  **Engine variance**: Chrome reports the *initiating* document's client id on the
+  navigation fetch event, WebKit reports an **empty** `clientId` (only
+  `resultingClientId`). The worker therefore resolves the id by `clientId` first, then
+  falls back to client identity **only when unambiguous** — the sole window client, or
+  the single client whose URL equals the request URL (a reload) — and otherwise fails
+  open, so a navigation can never be scoped to another window's state.
+- **Service-worker E2E** (`e2e/`, Playwright, Chromium + WebKit, `npm run test:e2e`):
+  serves the shipped `sw.js` + a bundle of the real `src/service-worker.ts` from a tiny
+  fixture server and asserts the next navigation carries the window id. Real worker
+  engines are the only place the variance above is observable — jsdom/happy-dom cannot
+  reproduce it, which is how the WebKit bug shipped.
+- **SSR-scoped marker + initial-resync skip** (issue #155): the server emits
+  `data-pathland-ssr-scoped` on `<html>` when the request carried a `wid`, i.e. the
+  document was rendered with this window's persisted state. `shouldInitialResync`
+  (`src/transport.ts`) then skips the client's initial `META::RESYNC` — the live
+  session shares the scope. A reload whose SSR could **not** be scoped (no `wid`
+  reached the server) or a stale `?wid=` the window did not adopt still resyncs.
+  Sequence-gap and reconnect recovery are unaffected.
 - **Hydration-aware TREE reconciliation** (`src/apply.ts`): `CREATE_NODE` reuses an
   existing hydrated element (id already in the registry) and `INSERT_CHILD` skips
   when the child is already in the parent's container — so a resync'd full
@@ -108,27 +284,90 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 - **Runtime shells mirror the Rust renderer** (`src/elements.ts`): runtime-created
   nodes carry the same `pathland-*` classes/structure as SSR (a reinstated
   `BUTTON` gets `pathland-button`, `GAUGE` gets its `pathland-gauge` bar shell);
-  a `ZStack` child is absolutely positioned (`position:absolute;inset:0`), and a
+  a `ZStack` child is wrapped in an absolutely-positioned `<div
+  style="position:absolute;inset:0">` (matching the SSR wrapper), and a
   `ProgressView` morphs between the determinate `<progress>` and the
-  `pathland-spinner` div per `IS_INDETERMINATE`/`PROGRESS` — so a destination
-  reinstated after a navigation swap keeps its styling. A table-driven **drift
+  `pathland-spinner` div per `IS_INDETERMINATE`/`PROGRESS` (the spinner carries
+  no `max`/`value`, matching SSR). Picker children are materialized as native
+  `<option data-pathland-id>` elements; stepper/gauge range bounds ride as
+  `data-min`/`data-max`; grids mirror `grid-template-columns` / `grid-auto-flow`
+  from the WIDTH property. A table-driven **drift
   guard** (`test/elements.test.ts`) pins the canonical shells against the Rust
-  renderer's SSR markup.
+  renderer's SSR markup. This element-shell map is the DOM renderer's
+  native-element mapping (the specs carry none): `TEXT` → `<span>`, `IMAGE` →
+  `<img>`, `DIVIDER` → `<hr>`, `TEXT_FIELD` → `<input>`, `TEXT_EDITOR` →
+  `<textarea>`, `TOGGLE` → checkbox/switch, `SLIDER` → `<input type="range">`,
+  `PICKER` → `<select>` + `<option>`, `DATE_PICKER` → date/time inputs,
+  `COLOR_PICKER` → `<input type="color">`, `MENU` → `.pathland-menu`,
+  `VIDEO` → `<video controls>` (with `data-pathland-controller` when bound),
+  `MEDIA_CONTROLLER` → an off-flow shell (`position:absolute;1px;opacity:0`,
+  non-visual + layout-transparent — not `display:none`, which would silence the
+  audio).
+- **ZStack/grid tracks shrink below content (`minmax(0,1fr)`)**: the ZStack's
+  single-cell grid and the count-generated grid tracks
+  (`repeat(n,minmax(0,1fr))`, lazy-hgrid auto columns) use `minmax(0,1fr)` — a
+  bare `1fr` track's implicit `auto` minimum equals the largest child's
+  min-content size, which overflows a short viewport and pushes an `end`-aligned
+  child (a player bar) out of view. `minmax(0,1fr)` lets the track shrink so the
+  inner `ScrollView` scrolls and the bar stays pinned (mirrors the Rust SSR;
+  asserted in `apply.test.ts` + the golden fixtures). **ZStack child shells carry
+  no explicit `width/height`** (`placedChild`): a shell pinning `max-content`
+  made `align-self:stretch` a no-op (stretch needs `auto`), so a FILL child's
+  `100%` resolved circularly and the content overflowed the viewport — with
+  `auto` sizes a FILL child stretches to its track and a Hug child keeps content
+  size + alignment.
+- **`Z_INDEX` draws via the shell (draw-order override)**: `applyLayout` gives
+  every `ZSTACK` child's wrapper shell an explicit `z-index` — the child's
+  `Z_INDEX` (decoded as **F32**, the DSL wire type, and rounded — the old raw-bits
+  read broke negatives) else `0` — and sets `isolation:isolate` on the ZStack
+  container, so overlapping grid items paint deterministically in every browser
+  (WebKit paints a non-fill grid item below a full-area sibling when both are
+  `z-index:auto`). A higher value draws above lower siblings regardless of child
+  index (spec/PRIMITIVES.md §ZStack; mirrors the Rust SSR).
+- **Cross-renderer SSR conformance** (`test/ssr-conformance.test.ts`): the golden
+  fixtures emitted by `pathland-html-golden` (`test/fixtures/ssr/`) drive BOTH a
+  fresh-DOM render (apply each `{name}.plpl` with `createElement` + `applyBatch`
+  and compare the serialized DOM to the canonical `{name}.html` fragment) and a
+  hydrate-then-delta render (`delta_*`, which now includes a `ROLE` change
+  exercising the semantic-tag retag) — so the DOM client and the Rust SSR
+  renderer cannot drift without a failing test. A `semantics` scenario pins the
+  semantic-tag / ARIA behavior on both renderers. `npm run regen` regenerates
+  the fixtures together with the generated TS.
 - **`META::RESYNC`** (`encodeResync`): the client requests a full snapshot after
   **reconnect** (never on first connect — the UI is already the SSR HTML).
+- **Heartbeat + watchdog** (`transport.ts` + `encodePing`, spec/OPCODE.md §Transport
+  heartbeat): the client sends a `META::PING` every **5 s** and treats the connection
+  as dead when **no server batch of any kind** (deltas, `META::PONG`) arrives for
+  **15 s** — then it forces a `close()` so the reconnect + `META::RESYNC` flow
+  recovers. This detects a silently-stalled server / a proxy-dropped upstream leg
+  (the "deltas stop but the socket stays open" failure), which `onclose` never fires
+  for. The PING also counts as inbound WS traffic (keeps Render-free instances from
+  spinning down). Tests cover the ping cadence, the no-activity reconnect, and a
+  `PONG` resetting the watchdog.
+- **Sequence gap detection** (`transport.ts`, spec/OPCODE.md §Sequence gap
+  detection): the batch header's per-stream monotonic `sequence` lets the client
+  detect a lost batch (a sequence gap without a disconnect), skip the gapped
+  batch, and request `META::RESYNC`; the baseline re-establishes on the next
+  batch and resets on every (re)connect. Host → guest (`PONG`) batches are
+  excluded. Tests cover contiguous runs, a gap (resync + skip), `PONG`
+  exclusion, and re-baselining.
 - **Transport** (`src/transport.ts`): WebSocket connect, protocol-version
   negotiation (mismatch → reload), exponential-backoff reconnect, defensive
-  per-batch try/catch.
+  per-batch try/catch, `META::PING`/`META::PONG` heartbeat (above).
 - **Styling (Option A)**: the protocol stays renderer-agnostic; the SSR HTML
-  carries Tailwind classes; runtime style deltas apply as inline style, literal
-  colors inline, design tokens as CSS variables.
-- **Tests** (`test/`, vitest + happy-dom): codec round-trips, TREE/STYLE/META
+  carries the Rust renderer's inline styles + `pathland-*` classes; runtime style
+  deltas apply as inline style (or the style attribute for `DESIGN_TOKEN`
+  references, so CSS expressions survive verbatim), literal colors inline,
+  design tokens as CSS variables.
+- **Tests** (`test/`, vitest + happy-dom): codec round-trips, TREE/PARAMETER/META
   application, design tokens (var mapping, dark scoping, px lengths, generative
   `space.N` refs), event byte layouts (incl. `NAVIGATE`), navigation (ROUTE →
   `onRoute`, transition animation, non-hinted slots), transport lifecycle
   (reconnect/resync), the logger (level gating, prefix), the opcode/event
-  descriptors, the runtime-shell drift guard, and the ZStack/ProgressView
-  behavior — 138 tests.
+  descriptors, the runtime-shell drift guard, the service-worker script +
+  registration/seeding wiring (incl. the WebKit empty-`clientId` fallback and the
+  ambiguity fail-open), and the ZStack/ProgressView behavior — 252 tests, plus the
+  Chromium + WebKit service-worker E2E (`npm run test:e2e`).
 
 ## Not implemented / gaps
 
@@ -138,21 +377,46 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
   accumulators that need concrete numbers (e.g. `BORDER_WIDTH`'s px suffix,
   shadow radius/x/y) remain literal-only.
 
-- **`frameCount` gap detection** (P3): the client now resyncs on EVERY reconnect via
-  `META::RESYNC`; P3's `frameCount` sequencing lets it resync only when a gap is
-  actually detected.
+- **Sequence gap detection** (`transport.ts`, spec/OPCODE.md §Sequence gap
+  detection): each guest → host batch carries a per-stream monotonic `sequence`.
+  The client baselines on the first batch and, when a batch's sequence breaks the
+  chain (a batch was lost while the socket stayed open), **skips the gapped
+  batch** and requests a full snapshot (`META::RESYNC`), then re-baselines.
+  Host → guest heartbeat (`PONG`) batches are excluded; the baseline resets on
+  every (re)connect. Tests cover contiguous runs (no resync), a gap (resync +
+  skip), `PONG` exclusion, and re-baselining after a gap.
+- **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
+  mirrors the Rust SSR — `grid-template-columns`/`grid-template-rows` from the
+  `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/
+  LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`; never a pixel
+  width/height), **`GRID_TRACKS`** per-track specs (`flex`/`fixed:<pts>`/
+  `adaptive:<pts>` → `1fr`/`<pts>px`/`minmax(<pts>px,1fr)`, precedence over the
+  count), `gap` from `SPACING`, greedy scroll
+  (`flex:1 1 auto;align-self:stretch;overflow:auto`), and **per-cell grid
+  alignment** — grid cells are wrapped in an auto-placed shell whose
+  `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell else the
+  grid `ALIGNMENT` position (`placedChild` + `applyLayout`, the ZStack mirror).
+  **`GRID_ROW`** (0x1D) renders as a transparent `display:contents` element; its
+  cell shells get explicit `grid-row`/`grid-column` placement (short rows leave
+  trailing columns empty). `SCROLL` and `WHEEL` events are wired to
+  document-level listeners gated by the listener bits. A runtime-inserted extra
+  `SCROLLVIEW` child is a minor residual (SSR renders only the first child).
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.
 - **Visual tokens** (`PICKER_STYLE`, `CONTROL_SIZE`, `MINIMUM_SCALE_FACTOR`,
   `COLOR_MULTIPLY`) are applied as `data-*` attributes; their *visual* variety is
   renderer-styling-owned (Tailwind/theme), not the protocol's job.
-- The element factory's runtime shells are functional but not yet
-  golden-tested against the Rust/Java renderers' SSR markup (drift guard TODO).
+- The element factory's runtime shells and the full property applier are
+  golden-tested against the Rust SSR renderer via `test/ssr-conformance.test.ts`
+  (fresh-DOM + hydrate-then-delta scenarios).
 - `STATE`/`ROLE` map to ARIA attributes; exact bit semantics should be
   cross-checked against the conformance vectors when they land.
 
 ## Verified by
 
-`npm test` (vitest, 87 tests) + `npm run typecheck` (strict TS). CI runs the
-web-client job (typecheck + test + build + copy-to-demos drift check).
+`npm test` (vitest, 152 tests) + `npm run typecheck` (strict TS). CI runs the
+web-client job (typecheck + test + build + copy-to-demos drift check) and the
+rust job verifies the generated TS + SSR golden fixtures are current
+(`cargo run -p pathland-ts-codegen` / `pathland-html-golden -- --emit` then
+`git diff --exit-code`).

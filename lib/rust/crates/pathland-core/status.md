@@ -1,6 +1,6 @@
 # pathland-core — implementation status
 
-**Last updated:** September 3, 2026
+**Last updated:** October 15, 2026
 
 The **protocol core**: 16-byte opcode, SPSC ring buffers (both directions),
 bump arenas (both directions), memory layout, typed events, and the golden
@@ -11,11 +11,35 @@ tracks what this crate implements.
 
 - **Component types** (`constants.rs::component_type`): the full grouped map —
   `TEXT 0x01, IMAGE 0x02, COLOR 0x03, SHAPE 0x04, DIVIDER 0x05, SPACER 0x06,
-  PROGRESS_VIEW 0x07, GAUGE 0x08, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
-  0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
-  LAZY_HSTACK 0x1C, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
-  0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
-  COLOR_PICKER 0x2A, COMMENT 0x7F`.
+  PROGRESS_VIEW 0x07, GAUGE 0x08, VIDEO 0x0A, ICON 0x0B, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
+0x13, SCROLLVIEW 0x14, LAZY_VGRID 0x15, LAZY_HGRID 0x16, LAZY_VSTACK 0x1B,
+   LAZY_HSTACK 0x1C, GRID_ROW 0x1D, PROXY_VIEW 0x1E, BUTTON 0x20, TEXT_FIELD 0x21, TEXT_EDITOR 0x22, TOGGLE
+   0x24, SLIDER 0x25, STEPPER 0x26, DATE_PICKER 0x27, PICKER 0x28, MENU 0x29,
+   COLOR_PICKER 0x2A, MEDIA_CONTROLLER 0x30, COMMENT 0x7F`. (`0x09` formerly
+   `AUDIO` is freed — audio has no view; spec/MEDIA.md.)
+- **Media kit** (spec/MEDIA.md): `MEDIA_CONTROLLER` (`0x30`, **non-visual**,
+  layout-transparent) owns the resource + transport; a `VIDEO` (`0x0A`) surface
+  references it via `MEDIA_CONTROLLER_ID` (`0x103A`). Transport properties
+  `PLAYBACK_STATE` (0x1035), `MEDIA_POSITION` (0x1036), `MEDIA_VOLUME` (0x1037),
+  `MEDIA_SOURCE` (0x103B), `MEDIA_MUTED` (0x103C), `MEDIA_LOOP` (0x103D),
+  `MEDIA_RATE` (0x103E); the `MEDIA_*` events target the **controller** id and add
+  `MEDIA_DURATION_CHANGED` (0x14). Covered by conformance vectors 39–41.
+- **`PROXY_VIEW`** (`0x1E`) — a container whose child subtree is served by another
+  Pathland server (spec/PROXY.md); the id is the only wire-visible part of the
+  proxy contract (the origin subtree's nodes are ordinary opcodes with
+  **id-remapped** node ids). Covered by conformance vector 38.
+- **`GRID_COLUMNS`/`GRID_ROWS`** (`0x001E`/`0x001F`, F32) track-count properties
+  for grids (positive = count, `FILL`/absent = auto-fit; never a pixel box),
+  **`GRID_TRACKS`** (`0x0020`, STRING) per-track specs (takes precedence over the
+  counts), and the **`GRID_ROW`** (`0x1D`) component (a grid child whose children
+  are one row's cells) — all covered by conformance vectors (34–36).
+- **`ALIGNMENT` (0x0002) is a 2D position code (0–8)**: `0` topLeading, `1`
+  center, `2` bottomTrailing, `3` topCenter, `4` bottomCenter, `5` centerLeading,
+  `6` centerTrailing, `7` topTrailing, `8` bottomLeading. Stacks read one axis
+  (`VSTACK`→horizontal, `HSTACK`→vertical; codes 0/1/2 backward-compatible);
+  `ZSTACK`/grids read both. Position-only — stretching is a child's `FILL`
+  `WIDTH`/`HEIGHT`, never an alignment (spec/PRIMITIVES.md §ZStack). Covered by
+  conformance vector 37 (`ALIGNMENT` topCenter = 3).
 - **Properties** (`property_id`): the full `spec/MODIFIERS.md` catalog —
   stack/text/styling/semantic IDs plus every draft modifier (`SHAPE_KIND`,
   layout `OFFSET`/`POSITION`/frame bounds/`FIXED_SIZE`/`LAYOUT_PRIORITY`/
@@ -27,15 +51,27 @@ tracks what this crate implements.
   `ROTATION_DEGREES`/`SCALE`/`ALLOWS_HIT_TESTING`, control drafts
   `STEP_VALUE`/`CONTROL_SIZE`/`IS_SECURE`/`PROGRESS`/`IS_INDETERMINATE`/
   `SELECTION`/`COLOR_VALUE`/`DATE_PICKER_MODE`/`PICKER_STYLE`,
-  `ACTION_ID`/`BINDING_ID`/`TOGGLE_STYLE`, `IMAGE_SOURCE`, plus the navigation
+  `ACTION_ID`/`BINDING_ID`/`TOGGLE_STYLE`, the **asset references** `IMAGE_SOURCE`
+  and `MEDIA_SOURCE` (0x103B) — STRING asset refs (URL /
+  resource / path), never embedded in the opcode stream (`AUDIO` 0x09 and
+  `AUDIO_SOURCE` 0x1033 / `VIDEO_SOURCE` 0x1034 are freed — audio has no view,
+  spec/MEDIA.md); `ICON_NAME` (0x1038,
+  STRING — the `ICON` primitive's canonical name, spec/ICONS.md); plus the navigation
   drafts `TRANSITION` (0x1031), `ROUTE` (0x2019, STRING), `NAV_DEPTH` (0x201A,
   U32 — the `NavigationContainer`'s back-stack depth, so native navigation
   adapters reconcile their page stack by depth) and `NAV_CHROME` (0x201B,
   F32-enum chrome mode: `PlatformDefault`=0 / `Custom`=1 — the renderer
   supplies default navigation chrome, or the developer owns all nav UI)).
+- **`ICON` vocabulary** (`constants::icon`): the canonical `ICON_NAME` names
+  (spec/ICONS.md) as `&str` consts + `NAMES` + `is_canonical` — the protocol
+  vocabulary only; the canonical-name → native-glyph mapping is renderer-owned
+  (GTK + web each define their own).
 - **Commands**: `TREE` create/delete/insert/remove/move (append = `u32::MAX`);
-  `STYLE` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`; `META`
-  `RESET`/`ENVIRONMENT`/`RESYNC`. `META::ENVIRONMENT` is the extensible
+  `PARAMETER` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`; `META`
+  `RESET`/`ENVIRONMENT`/`RESYNC`. **`META::PING`/`PONG`** (0x04/0x05) are the
+  transport-liveness heartbeat — **network batch transport only** (a shared-memory
+  ring consumer MUST NOT emit/expect/relay them); the core engine never produces
+  them. `META::ENVIRONMENT` is the extensible
   platform-environment field family (`environment::VIEWPORT_WIDTH`/
   `VIEWPORT_HEIGHT`/`ROUTE` — the `ROUTE` string uses the `TEXT_CHANGED`/
   `NAVIGATE` dual convention).
@@ -46,8 +82,8 @@ tracks what this crate implements.
   / batch string section (same dual convention as `TEXT_CHANGED`);
   `Navigate { url: None }` is a native back request (decodes from a bare
   opcode).
-- **`Guest::set_date`** helper (`STYLE::SET_DATE`).
-- **`Guest::set_design_token`** helper (`STYLE::SET_DESIGN_TOKEN`): global token
+- **`Guest::set_date`** helper (`PARAMETER::SET_DATE`).
+- **`Guest::set_design_token`** helper (`PARAMETER::SET_DESIGN_TOKEN`): global token
   override (`path` arena string, `valueType`, `value`), incl. `dark.`-prefixed
   dark variants (spec/TOKENS.md).
 - **`Guest::set_design_token_string`** helper: STRING-valued token override —
@@ -61,17 +97,50 @@ tracks what this crate implements.
   "Design-Token Resolution Conformance" table (spec/CONFORMANCE.md) is tested
   here.
 - **`value_type_for`** matches `spec/MODIFIERS.md`'s canonical mapping
-  (COLOR / U32 / U8 / STRING / F32-enum-code); the `DESIGN_TOKEN` value type
-  (`0x08`) is available per-instance on `SET_PROPERTY`.
+  (COLOR / U32 / U8 / STRING / F32-enum-code / LIST); the `DESIGN_TOKEN` value
+  type (`0x08`) is available per-instance on `SET_PROPERTY`. **`LIST`** (`0x09`)
+  is the arena-backed array value type (a `FIT_QUERY` threshold table).
+- **`SizeThatFits`** (`SIZE_THAT_FITS` `0x17`, `FIT_QUERY` `0x1039` LIST,
+  `FIT_CHANGED` `0x13`): the fit slot shows its single selected child (only it
+  is transmitted); `fit::fit_index` implements the spec'd pick (largest
+  threshold the width meets, ascending + stable, index 0 fallback) shared by
+  every renderer.
 - **Listener bits**: 0–9 (`POINTER_*`, `KEY_*`, `FOCUS`, `EDITING`, `SUBMIT`,
   `SCROLL`, `WHEEL`).
+- **`constants::role`** — the canonical **`ROLE` semantic-structure catalog**
+  (spec/OPCODE.md §semantic properties), **renumbered dense** (0–13): `HEADER`
+  (heading), `PARAGRAPH`, `LIST`, `LIST_ITEM`, `SUMMARY`, `BANNER`,
+  `NAVIGATION`, `MAIN`, `CONTENT_INFO`, `COMPLEMENTARY`, `ARTICLE`, `SECTION`,
+  `SEARCH`. Interactive/control roles are **not roles** — they are intrinsic to
+  the control components; the DSL rejects codes outside this catalog. Single
+  source the renderers, DSLs, and `pathland-ts-codegen` bind to.
+- **`constants::text_style`** — the canonical **`TEXT_STYLE` predefined
+  typographies** (spec/MODIFIERS.md): `LARGE_TITLE`…`HEADLINE` (heading styles →
+  `<h1>`–`<h5>` on a `TEXT`), plus `SUBHEADLINE`/`BODY`/`CALLOUT`/`FOOTNOTE`/
+  `CAPTION`/`CAPTION2` (plain `<span>` text). `TEXT_STYLE = 0x1032`.
 - **Shared linear memory**: 80-byte header, guest→host ring, host→guest event
   ring, guest arena, host→guest **event arena** (two-way string section — a
   host `send_event(TextChanged)` round-trips text over the shared ring).
-- **Conformance vectors** (`conformance.rs`): TREE/STYLE/META/EVENT golden
+- **Wrap-safe ring reads (both directions)**: the masked write cursor can lap
+  the read cursor numerically (the producer wraps through 0), and the naive
+  `write < read` guard in `read_events` / `Host::frames` **permanently
+  deadlocked the ring** at the wrap boundary — the reader never advanced again,
+  the writer sat "full", and every subsequent drain returned empty (the GTK
+  demo's "UI freezes some time into a song, audio keeps playing": events were
+  written but `drain_events` returned 0 forever). Both readers now count the
+  pending run modulo the ring size and drain across the wrap in ring order
+  (`Host::frames` drains the wrapped head in one call and the tail in the next,
+  preserving opcode order). Event drains also take a `max` bound
+  (`drain_event_opcodes_max`) so a fixed-size C buffer never drops events it
+  could not copy. Regression tests: `ring::tests::read_events_drains_a_wrapped_producer`
+  + `tests::host_frames_survives_a_wrapped_write_cursor`.
+- **Conformance vectors** (`conformance.rs`): TREE/PARAMETER/META/EVENT golden
   bytes **incl. vectors 17–18, 20–27** (`SET_DESIGN_TOKEN` (COLOR +
   STRING-valued), `DESIGN_TOKEN`-typed `SET_PROPERTY`, `NAVIGATE`±URL,
-  `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE) and a ring
+  `ROUTE`, `TRANSITION`, `META::ENVIRONMENT` VIEWPORT_WIDTH + ROUTE), vectors
+  **34–38** (grid `GRID_COLUMNS`/`GRID_ROWS`/`GRID_TRACKS`, `GRID_ROW`,
+  `ALIGNMENT` topCenter, `PROXY_VIEW`), and the network-only **`META::PING`/`PONG`** heartbeat
+  opcodes; a ring
   test proving `Guest::set_design_token` emits vector 17 byte-exactly;
   `cargo test` enforces them.
 
@@ -82,7 +151,10 @@ tracks what this crate implements.
   field) and a native emitter are not wired yet — the web path encodes/decodes
   it in the TS client + Java `FrameCodec` (batch string section).
 - Enum *value* codes (e.g. `TOGGLE_STYLE=Switch=0`) are used inline; there are
-  no named value constants.
+  no named value constants. (`ROLE` and `TEXT_STYLE` are now the canonical
+  exceptions — see `constants::role` / `constants::text_style` above; the
+  remaining enum codes live in the specs + the `pathland-ts-codegen` enum
+  table.)
 - No **general STRING-property diff path** in `pathland-engine` (the engine
   stores numeric properties + design-token refs only). `ROUTE` (STRING) will
   need a small string-property capability when the Rust router lands (Phase 3);

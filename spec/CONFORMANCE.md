@@ -66,13 +66,13 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
 - `02 00 00 00` B = childId = 2
 - `00 00 00 00` C = newIndex = 0
 
-### 4. STYLE:SET_PROPERTY (id=1, propertyId=SPACING=0x0001, valueType=F32, 4.0)
+### 4. PARAMETER:SET_PROPERTY (id=1, propertyId=SPACING=0x0001, valueType=F32, 4.0)
 
 ```
 02 01 00 00 01 00 00 00 01 00 04 00 00 00 80 40
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -81,13 +81,13 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 80 40` C = 4.0 (f32 LE: 0x40800000)
 
-### 5. STYLE:SET_PROPERTY (id=1, propertyId=COLOR=0x100A, valueType=COLOR=0x07, rgba=0xFF0000FF)
+### 5. PARAMETER:SET_PROPERTY (id=1, propertyId=COLOR=0x100A, valueType=COLOR=0x07, rgba=0xFF0000FF)
 
 ```
 02 01 00 00 01 00 00 00 0A 10 07 00 FF 00 00 FF
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -96,13 +96,13 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
   - high byte `07` = valueType = 0x07 (COLOR)
 - `FF 00 00 FF` C = 0xFF0000FF (opaque blue, `0xAARRGGBB`)
 
-### 6. STYLE:SET_TEXT (id=1, arenaRef=0)
+### 6. PARAMETER:SET_TEXT (id=1, arenaRef=0)
 
 ```
 02 03 00 00 01 00 00 00 00 00 00 00 00 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `03` command = SET_TEXT
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -200,11 +200,42 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
 - `00 00 00 00` B = 0
 - `00 00 00 00` C = 0
 
+### 13a. META:PING
+
+```
+04 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `04` command = PING (guest → host: transport-liveness heartbeat probe)
+- `00 00` flags = 0
+- `00 00 00 00` A = 0
+- `00 00 00 00` B = 0
+- `00 00 00 00` C = 0
+
+### 13b. META:PONG
+
+```
+04 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `05` command = PONG (host → guest: reply to `META::PING`)
+- `00 00` flags = 0
+- `00 00 00 00` A = 0
+- `00 00 00 00` B = 0
+- `00 00 00 00` C = 0
+
+> Heartbeat scope: `META::PING`/`META::PONG` are **network batch transport only**
+> (see [OPCODE.md §Transport heartbeat](./OPCODE.md#transport-heartbeat)). A
+> shared-memory ring consumer MUST NOT emit, expect, or relay them; they carry no
+> application state and are never routed into the app's tree, signals, or events.
+
 ---
 
 ## Directions
 
-- `TREE` / `STYLE` are **guest → host** (application → renderer).
+- `TREE` / `PARAMETER` are **guest → host** (application → renderer).
 - `EVENT` is **host → guest** (renderer → application): raw pointer/keyboard
   inputs with a host-resolved `targetId`. A conforming EVENT encoder/decoder
   MUST reproduce vectors 8–12 and 21–22 exactly.
@@ -229,16 +260,19 @@ String-bearing events (`TEXT_CHANGED`, `NAVIGATE` with the `NAVIGATE_URL`
 flag) resolve their text from the host → guest **event arena** (header
 `eventArenaOffset` 0x40 / `eventArenaCursor` 0x48, host-owned, shared memory)
 or the batch's string section (network) — the same dual absolute/relative
-convention as `STYLE::SET_TEXT`. See OPCODE.md's
+convention as `PARAMETER::SET_TEXT`. See OPCODE.md's
 [event arena](./OPCODE.md#event-arena-host--guest) section.
 
 ## Network Batch Conformance
 
 A network batch serializes opcodes + an arena delta (see
 [OPCODE.md](./OPCODE.md#transport)). A conforming batch encoder/decoder MUST
-reproduce the following bytes exactly.
+reproduce the following bytes exactly. The header's `sequence` field is the
+per-stream monotonic message sequence (see
+[Sequence gap detection](./OPCODE.md#sequence-gap-detection)); the vectors below
+use representative values.
 
-### 14. NETWORK:BATCH (frameCount=1, one CREATE_NODE, arena delta = "Hi")
+### 14. NETWORK:BATCH (sequence=1, one CREATE_NODE, arena delta = "Hi")
 
 The single opcode is `TREE:CREATE_NODE (id=1, VSTACK)` from vector 1. The arena
 delta is the self-describing entry for `"Hi"`: `[02 00 00 00][48 69]`.
@@ -252,13 +286,13 @@ delta is the self-describing entry for `"Hi"`: `[02 00 00 00][48 69]`.
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `00 00` = flags (guest → host)
-- `01 00 00 00` = frameCount = 1
+- `01 00 00 00` = sequence = 1
 - `01 00 00 00` = opcodeCount = 1
 - `01 01 00 00 01 00 00 00 10 00 00 00 00 00 00 00` = the CREATE_NODE opcode (16 bytes)
 - `06 00 00 00` = arenaDeltaLen = 6
 - `02 00 00 00 48 69` = arena entry `[len=2]["Hi"]`
 
-### 15. NETWORK:BATCH (frameCount=2, empty opcode list, empty arena delta)
+### 15. NETWORK:BATCH (sequence=2, empty opcode list, empty arena delta)
 
 ```
 4C 50 4C 50 01 00 00 00 02 00 00 00 00 00 00 00
@@ -268,7 +302,7 @@ delta is the self-describing entry for `"Hi"`: `[02 00 00 00][48 69]`.
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `00 00` = flags
-- `02 00 00 00` = frameCount = 2
+- `02 00 00 00` = sequence = 2
 - `00 00 00 00` = opcodeCount = 0
 - `00 00 00 00` = arenaDeltaLen = 0
 
@@ -286,25 +320,45 @@ The single opcode is `META:RESYNC` (vector 13). The batch carries the
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `01 00` = flags = `HOST_TO_GUEST` (0x0001)
-- `00 00 00 00` = frameCount = 0
+- `00 00 00 00` = sequence = 0 (heartbeat/request batches carry no sequence)
 - `01 00 00 00` = opcodeCount = 1
 - `04 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00` = the META:RESYNC opcode (16 bytes)
 - `00 00 00 00` = arenaDeltaLen = 0
 
-### 17. STYLE:SET_DESIGN_TOKEN (path="color.primary" arenaRef=0, valueType=COLOR=0x07, value=0xFF0000FF)
+### 16a. NETWORK:BATCH (META:PING heartbeat, guest → host)
+
+The single opcode is `META:PING` (vector 13a). The batch carries the
+`GUEST_TO_HOST` direction flag (0x0000) and an empty arena delta — a guest
+sends exactly this to probe host liveness.
+
+```
+4C 50 4C 50 01 00 00 00 00 00 00 00 01 00 00 00
+04 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00
+```
+
+- `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
+- `01 00` = version 1
+- `00 00` = flags = `GUEST_TO_HOST` (0x0000)
+- `00 00 00 00` = sequence = 0 (heartbeat/request batches carry no sequence)
+- `01 00 00 00` = opcodeCount = 1
+- `04 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00` = the META:PING opcode (16 bytes)
+- `00 00 00 00` = arenaDeltaLen = 0
+
+### 17. PARAMETER:SET_DESIGN_TOKEN (path="color.primary" arenaRef=0, valueType=COLOR=0x07, value=0xFF0000FF)
 
 ```
 02 02 00 00 00 00 00 00 07 00 00 00 FF 00 00 FF
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `02` command = SET_DESIGN_TOKEN
 - `00 00` flags = 0
 - `00 00 00 00` A = arenaRef = 0 (entry is `[u32 length][bytes]` in the arena; the string is `"color.primary"`)
 - `07 00 00 00` B = valueType = 0x07 (COLOR)
 - `FF 00 00 FF` C = 0xFF0000FF (opaque blue, `0xAARRGGBB`)
 
-### 18. STYLE:SET_PROPERTY (id=1, propertyId=COLOR=0x100A, valueType=DESIGN_TOKEN=0x08, arenaRef=0)
+### 18. PARAMETER:SET_PROPERTY (id=1, propertyId=COLOR=0x100A, valueType=DESIGN_TOKEN=0x08, arenaRef=0)
 
 A color property carrying a **token reference** instead of a literal: the
 renderer resolves `"color.primary"` (arena entry at offset 0) against the token
@@ -314,7 +368,7 @@ tables and the current scheme.
 02 01 00 00 01 00 00 00 0A 10 08 00 00 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -323,7 +377,7 @@ tables and the current scheme.
   - high byte `08` = valueType = 0x08 (DESIGN_TOKEN)
 - `00 00 00 00` C = arenaRef = 0 (`"color.primary"`)
 
-### 19. NETWORK:BATCH (frameCount=3, one DESIGN_TOKEN-referencing SET_PROPERTY, arena delta = "color.primary")
+### 19. NETWORK:BATCH (sequence=3, one DESIGN_TOKEN-referencing SET_PROPERTY, arena delta = "color.primary")
 
 The single opcode is vector 18. The arena delta is the self-describing entry for
 `"color.primary"`: `[0D 00 00 00][63 6F 6C 6F 72 2E 70 72 69 6D 61 72 79]`.
@@ -337,13 +391,13 @@ The single opcode is vector 18. The arena delta is the self-describing entry for
 - `4C 50 4C 50` = magic `PLPL` (u32 `0x504C504C`, little-endian)
 - `01 00` = version 1
 - `00 00` = flags (guest → host)
-- `03 00 00 00` = frameCount = 3
+- `03 00 00 00` = sequence = 3
 - `01 00 00 00` = opcodeCount = 1
 - `02 01 00 00 01 00 00 00 0A 10 08 00 00 00 00 00` = the SET_PROPERTY opcode (16 bytes)
 - `11 00 00 00` = arenaDeltaLen = 17
 - `0D 00 00 00 63 6F 6C 6F 72 2E 70 72 69 6D 61 72 79` = arena entry `[len=13]["color.primary"]`
 
-### 20. STYLE:SET_DESIGN_TOKEN (path="font.body.family" arenaRef=0, valueType=STRING=0x05, valueArenaRef=20)
+### 20. PARAMETER:SET_DESIGN_TOKEN (path="font.body.family" arenaRef=0, valueType=STRING=0x05, valueArenaRef=20)
 
 A **STRING-valued** token override: the token path lives at arena offset 0
 (`[len=16]["font.body.family"]`, 20 bytes), the value string `"Inter"` at
@@ -353,7 +407,7 @@ offset 20.
 02 02 00 00 00 00 00 00 05 00 00 00 14 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `02` command = SET_DESIGN_TOKEN
 - `00 00` flags = 0
 - `00 00 00 00` A = arenaRef = 0 (token path `"font.body.family"`)
@@ -395,7 +449,78 @@ back button): no `NAVIGATE_URL` flag, so `B` is ignored and the host calls
 - `00 00 00 00` B = 0
 - `00 00 00 00` C = 0
 
-### 23. STYLE:SET_PROPERTY (id=1, propertyId=ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)
+### 23. EVENT:MEDIA_PLAY_STATE_CHANGED (target=7, playing=1)
+
+The app-bound audio/video node started playing.
+
+```
+03 0F 00 00 07 00 00 00 01 00 00 00 00 00 00 00
+```
+
+- `03` category = EVENT
+- `0F` command = MEDIA_PLAY_STATE_CHANGED
+- `00 00` flags = 0
+- `07 00 00 00` A = targetId = 7 (the media node)
+- `01 00 00 00` B = playing = 1
+- `00 00 00 00` C = 0
+
+### 24. EVENT:MEDIA_TIME_UPDATED (target=7, seconds=12.5)
+
+The media's current playback position (seconds, f32).
+
+```
+03 10 00 00 07 00 00 00 00 00 48 41 00 00 00 00
+```
+
+- `03` category = EVENT
+- `10` command = MEDIA_TIME_UPDATED
+- `07 00 00 00` A = targetId = 7
+- `00 00 48 41` B = 12.5f (0x41480000 LE)
+- `00 00 00 00` C = 0
+
+### 25. EVENT:MEDIA_ENDED (target=7)
+
+The media reached its end.
+
+```
+03 11 00 00 07 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `03` category = EVENT
+- `11` command = MEDIA_ENDED
+- `07 00 00 00` A = targetId = 7
+- `00 00 00 00` B = 0
+- `00 00 00 00` C = 0
+
+### 26. EVENT:MEDIA_VOLUME_CHANGED (target=7, volume=0.5)
+
+The user changed the media volume (0..1, f32).
+
+```
+03 12 00 00 07 00 00 00 00 00 00 3F 00 00 00 00
+```
+
+- `03` category = EVENT
+- `12` command = MEDIA_VOLUME_CHANGED
+- `07 00 00 00` A = targetId = 7
+- `00 00 00 3F` B = 0.5f (0x3F000000 LE)
+- `00 00 00 00` C = 0
+
+### 26a. EVENT:FIT_CHANGED (target=42, index=2)
+
+A `SIZE_THAT_FITS` slot reports its selected candidate index (f32).
+
+```
+03 13 00 00 2A 00 00 00 00 00 00 40 00 00 00 00
+```
+
+- `03` category = EVENT
+- `13` command = FIT_CHANGED
+- `2A 00 00 00` A = targetId = 42
+- `00 00 00 40` B = 2.0f (0x40000000 LE)
+- `00 00 00 00` C = 0
+
+### 27. PARAMETER:SET_PROPERTY (id=1, propertyId=ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)
 
 The `NavigationContainer` emits the current path as a STRING property; the DOM
 renderer reacts with `history.pushState`.
@@ -404,7 +529,7 @@ renderer reacts with `history.pushState`.
 02 01 00 00 01 00 00 00 19 20 05 00 00 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -413,7 +538,7 @@ renderer reacts with `history.pushState`.
   - high byte `05` = valueType = 0x05 (STRING)
 - `00 00 00 00` C = arenaRef = 0 (`"/users/42"`)
 
-### 24. STYLE:SET_PROPERTY (id=1, propertyId=TRANSITION=0x1031, valueType=F32=0x04, Slide=3)
+### 28. PARAMETER:SET_PROPERTY (id=1, propertyId=TRANSITION=0x1031, valueType=F32=0x04, Slide=3)
 
 A transition hint on the slot (enum code carried as an `F32` bit pattern):
 `Slide`=3 → `C` = 3.0 (0x40400000).
@@ -422,7 +547,7 @@ A transition hint on the slot (enum code carried as an `F32` bit pattern):
 02 01 00 00 01 00 00 00 31 10 04 00 00 00 40 40
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -431,7 +556,78 @@ A transition hint on the slot (enum code carried as an `F32` bit pattern):
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 40 40` C = 3.0 (f32 LE: 0x40400000) = `Slide`
 
-### 25. Structural swap (slot 4: delete old destination 5, create new destination 6, insert)
+### 28a. PARAMETER:SET_PROPERTY (id=1, propertyId=FIT_QUERY=0x1039, valueType=LIST=0x09, arenaRef=0)
+
+A `SIZE_THAT_FITS` slot's candidate threshold table. `C` is an arena offset; the
+arena entry is a length-prefixed f32 array `[u32 count][f32 × count]`. The wire
+encoding is identical in the live (one selected child) and web-SSR snapshot
+(multiple children, container-query gated first paint) forms — the snapshot form
+differs only in the slot's **child count**, not in any opcode or value (issue #141).
+
+```
+02 01 00 00 01 00 00 00 39 10 09 00 00 00 00 00
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `32 10 09 00` B = `(valueType << 16) | propertyId` = `(0x09 << 16) | 0x1039`
+  - low two bytes `39 10` = propertyId = 0x1039 (FIT_QUERY)
+  - high byte `09` = valueType = 0x09 (LIST)
+- `00 00 00 00` C = arenaRef = 0
+
+Arena (entry at offset 0) — thresholds `[0, 480, 720]` (ascending, the `FIT_QUERY`
+ordering contract; the app's candidates map 0→fallback … 2→widest, and in a
+full-snapshot emission the slot's **child order equals this table order**):
+
+```
+03 00 00 00 00 00 00 00 00 00 F0 43 00 00 34 44
+```
+
+- `03 00 00 00` = count = 3
+- `00 00 00 00` = 0.0f (the threshold-0 fallback)
+- `00 00 F0 43` = 480.0f (0x43F00000 LE)
+- `00 00 34 44` = 720.0f (0x44340000 LE)
+
+### 28b. `SIZE_THAT_FITS` full-snapshot child order + visibility contract
+
+The full-snapshot (web SSR first document) form of a fit slot carries **every**
+candidate as a child, in `FIT_QUERY` order. The wire differs from the live form
+**only in the slot's child count** — the `FIT_QUERY` opcode + arena are identical
+(28a). Here two candidates with thresholds `[0, 1024]`: child 2 is candidate 0
+(the threshold-0 fallback) and child 3 is candidate 1.
+
+```
+01 01 00 00 01 00 00 00 17 00 00 00 00 00 00 00
+02 01 00 00 01 00 00 00 39 10 09 00 00 00 00 00
+01 01 00 00 02 00 00 00 10 00 00 00 00 00 00 00
+01 01 00 00 03 00 00 00 10 00 00 00 00 00 00 00
+01 03 00 00 01 00 00 00 02 00 00 00 00 00 00 00
+01 03 00 00 01 00 00 00 03 00 00 00 01 00 00 00
+```
+
+- `01 01 00 00 01 00 00 00 17 00 00 00 00 00 00 00` = `TREE:CREATE_NODE`
+  (id=1, `SIZE_THAT_FITS` 0x17)
+- `02 01 00 00 01 00 00 00 39 10 09 00 00 00 00 00` = `PARAMETER:SET_PROPERTY`
+  (id=1, `FIT_QUERY` 0x1039, LIST, arenaRef=0) — bytes per 28a
+- `01 01 00 00 02 00 00 00 10 00 00 00 00 00 00 00` = `TREE:CREATE_NODE`
+  (id=2, candidate 0)
+- `01 01 00 00 03 00 00 00 10 00 00 00 00 00 00 00` = `TREE:CREATE_NODE`
+  (id=3, candidate 1)
+- `01 03 00 00 01 00 00 00 02 00 00 00 00 00 00 00` = `TREE:INSERT_CHILD`
+  (parent=1, child=2, index 0)
+- `01 03 00 00 01 00 00 00 03 00 00 00 01 00 00 00` = `TREE:INSERT_CHILD`
+  (parent=1, child=3, index 1)
+
+Arena: `[2][0.0][1024.0]` = `02 00 00 00 00 00 00 00 00 00 80 44`.
+
+**Contract** (spec/PRIMITIVES.md §SizeThatFits): child order 2, 3 equals the
+`FIT_QUERY` order; the visible candidate is child 2 below 1024 and child 3 at
+`≥ 1024`; **exactly one** candidate is visible at any width; the `FIT_CHANGED`
+index equals this table index.
+
+### 29. Structural swap (slot 4: delete old destination 5, create new destination 6, insert)
 
 A `NavigationContainer` (slot id 4) whose child changes from destination 5 to a
 new destination 6 — the frame of `TREE` deltas a reconcile emits:
@@ -452,7 +648,7 @@ new destination 6 — the frame of `TREE` deltas a reconcile emits:
 An identical recompute (same structure, same ids) emits **zero** opcodes — the
 reconcile is a diff.
 
-### 26. META:ENVIRONMENT (VIEWPORT_WIDTH=0x0001, width=800.0)
+### 30. META:ENVIRONMENT (VIEWPORT_WIDTH=0x0001, width=800.0)
 
 An environment field opcode: `A` = field id, `B` = the field value. `800.0`
 (f32 LE: 0x44480000).
@@ -468,7 +664,7 @@ An environment field opcode: `A` = field id, `B` = the field value. `800.0`
 - `00 00 48 44` B = 800.0 (f32 LE: 0x44480000)
 - `00 00 00 00` C = 0
 
-### 27. META:ENVIRONMENT (ROUTE=0x0003, string offset 0)
+### 31. META:ENVIRONMENT (ROUTE=0x0003, string offset 0)
 
 A STRING-valued environment field: `B` is a string-section/event-arena offset
 (the dual convention of `TEXT_CHANGED`/`NAVIGATE`) to the initial route —
@@ -485,7 +681,7 @@ A STRING-valued environment field: `B` is a string-section/event-arena offset
 - `00 00 00 00` B = string offset = 0 (`"/users/42"`)
 - `00 00 00 00` C = 0
 
-### 28. STYLE:SET_PROPERTY (id=1, propertyId=NAV_DEPTH=0x201A, valueType=U32=0x02, depth=3)
+### 32. PARAMETER:SET_PROPERTY (id=1, propertyId=NAV_DEPTH=0x201A, valueType=U32=0x02, depth=3)
 
 The `NavigationContainer` emits its back-stack depth as a U32 property — three
 destinations in the app's path (the current one included), so a native
@@ -495,7 +691,7 @@ navigation adapter reconciles its page stack by depth. `C` = 3 (U32 LE).
 02 01 00 00 01 00 00 00 1A 20 02 00 03 00 00 00
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -504,7 +700,7 @@ navigation adapter reconciles its page stack by depth. `C` = 3 (U32 LE).
   - high byte `02` = valueType = 0x02 (U32)
 - `03 00 00 00` C = 3 (U32 LE) = depth
 
-### 29. STYLE:SET_PROPERTY (id=1, propertyId=NAV_CHROME=0x201B, valueType=F32=0x04, Custom=1)
+### 33. PARAMETER:SET_PROPERTY (id=1, propertyId=NAV_CHROME=0x201B, valueType=F32=0x04, Custom=1)
 
 The `NavigationContainer`'s chrome mode (F32 enum code): `Custom`=1 → `C` =
 1.0 (0x3F800000) — the developer owns all navigation UI and the renderer adds
@@ -514,7 +710,7 @@ none. `PlatformDefault`=0 is the missing/default value.
 02 01 00 00 01 00 00 00 1B 20 04 00 00 00 80 3F
 ```
 
-- `02` category = STYLE
+- `02` category = PARAMETER
 - `01` command = SET_PROPERTY
 - `00 00` flags = 0
 - `01 00 00 00` A = nodeId = 1
@@ -522,6 +718,149 @@ none. `PlatformDefault`=0 is the missing/default value.
   - low two bytes `1B 20` = propertyId = 0x201B (NAV_CHROME)
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 80 3F` C = 1.0 (f32 LE: 0x3F800000) = Custom
+
+### 34. PARAMETER:SET_PROPERTY (id=1, propertyId=GRID_COLUMNS=0x001E, valueType=F32=0x04, 2.0)
+
+A grid's column count (positive = count; `FILL`/absent = auto-fit). The count is
+a **constructor property**, never a pixel width — the grid's box comes from
+`WIDTH`/`HEIGHT`.
+
+```
+02 01 00 00 01 00 00 00 1E 00 04 00 00 00 00 40
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `1E 00 04 00` B = `(valueType << 16) | propertyId` = `(0x04 << 16) | 0x001E`
+  - low two bytes `1E 00` = propertyId = 0x001E (GRID_COLUMNS)
+  - high byte `04` = valueType = 0x04 (F32)
+- `00 00 00 40` C = 2.0 (f32 LE: 0x40000000) = two columns
+
+### 35. TREE:CREATE_NODE (id=1, GRID_ROW=0x001D)
+
+An explicit row grouping for a `GRID`: a grid child whose children are one row's
+cells (the SwiftUI `GridRow` surface). Structural only — renders nothing outside
+a `GRID`.
+
+```
+01 01 00 00 01 00 00 00 1D 00 00 00 00 00 00 00
+```
+
+- `01` category = TREE
+- `01` command = CREATE_NODE
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `1D 00 00 00` B = componentType = 0x001D (GRID_ROW)
+- `00 00 00 00` C = 0
+
+### 36. PARAMETER:SET_PROPERTY (id=1, propertyId=GRID_TRACKS=0x0020, valueType=STRING=0x05, arenaRef=0)
+
+The grid's per-track spec (`"flex,fixed:80,adaptive:50"`), a STRING property
+referenced by an arena offset — the same convention as `ROUTE`.
+
+```
+02 01 00 00 01 00 00 00 20 00 05 00 00 00 00 00
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `20 00 05 00` B = `(valueType << 16) | propertyId` = `(0x05 << 16) | 0x0020`
+  - low two bytes `20 00` = propertyId = 0x0020 (GRID_TRACKS)
+  - high byte `05` = valueType = 0x05 (STRING)
+- `00 00 00 00` C = arenaRef = 0 (`"flex,fixed:80,adaptive:50"`)
+
+### 37. PARAMETER:SET_PROPERTY (id=1, propertyId=ALIGNMENT=0x0002, valueType=F32=0x04, topCenter=3)
+
+A `ZStack`/grid's 2D position code: `3` = horizontal center × vertical start
+(`top-center`). Stacks read a single axis of the same code (`0/1/2`).
+
+```
+02 01 00 00 01 00 00 00 02 00 04 00 00 00 40 40
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `02 00 04 00` B = `(valueType << 16) | propertyId` = `(0x04 << 16) | 0x0002`
+  - low two bytes `02 00` = propertyId = 0x0002 (ALIGNMENT)
+  - high byte `04` = valueType = 0x04 (F32)
+- `00 00 40 40` C = 3.0 (f32 LE: 0x40400000) = topCenter
+
+### 38. TREE:CREATE_NODE (id=1, PROXY_VIEW=0x001E)
+
+A proxy view: a transparent container whose child subtree is served by
+**another** Pathland server ([PROXY.md](./PROXY.md)). The component id is the
+only wire-visible part of the proxy contract — the origin subtree's nodes are
+ordinary opcodes with **id-remapped** node ids; there is no proxy-specific
+opcode.
+
+```
+01 01 00 00 01 00 00 00 1E 00 00 00 00 00 00 00
+```
+
+- `01` category = TREE
+- `01` command = CREATE_NODE
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `1E 00 00 00` B = componentType = 0x001E (PROXY_VIEW)
+- `00 00 00 00` C = 0
+
+### 39. TREE:CREATE_NODE (id=1, MEDIA_CONTROLLER=0x0030)
+
+A media controller: a non-visual node that owns a media resource and its
+transport state ([MEDIA.md](./MEDIA.md)). The component id is the only
+wire-visible part of the controller; its transport properties are ordinary
+`SET_PROPERTY` opcodes and the `MEDIA_*` events target its node id.
+
+```
+01 01 00 00 01 00 00 00 30 00 00 00 00 00 00 00
+```
+
+- `01` category = TREE
+- `01` command = CREATE_NODE
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `30 00 00 00` B = componentType = 0x0030 (MEDIA_CONTROLLER)
+- `00 00 00 00` C = 0
+
+### 40. PARAMETER:SET_PROPERTY (id=1, propertyId=MEDIA_CONTROLLER_ID=0x103A, valueType=U32=0x02, controller=9)
+
+A `VIDEO` surface binding to its controller: the referenced controller's node id.
+
+```
+02 01 00 00 01 00 00 00 3A 10 02 00 09 00 00 00
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `3A 10 02 00` B = `(valueType << 16) | propertyId` = `(0x02 << 16) | 0x103A`
+  - low two bytes `3A 10` = propertyId = 0x103A (MEDIA_CONTROLLER_ID)
+  - high byte `02` = valueType = 0x02 (U32)
+- `09 00 00 00` C = the controller node id = 9
+
+### 41. PARAMETER:SET_PROPERTY (id=1, propertyId=MEDIA_SOURCE=0x103B, valueType=STRING=0x05, arenaRef=0)
+
+The controller's media resource (`"/audio/track1.mp3"` at arena offset 0).
+
+```
+02 01 00 00 01 00 00 00 3B 10 05 00 00 00 00 00
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `3B 10 05 00` B = `(valueType << 16) | propertyId` = `(0x05 << 16) | 0x103B`
+  - low two bytes `3B 10` = propertyId = 0x103B (MEDIA_SOURCE)
+  - high byte `05` = valueType = 0x05 (STRING)
+- `00 00 00 00` C = arenaRef = 0 (`"/audio/track1.mp3"`)
 
 ---
 

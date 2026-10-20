@@ -5,9 +5,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.pathland</groupId>
+        <groupId>dev.pathland</groupId>
         <artifactId>pathland-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.1.5</version>
     </parent>
 
     <artifactId>pathland-state-redis</artifactId>
@@ -15,14 +15,14 @@
 
     <name>Pathland State Redis</name>
     <description>
-        Framework-agnostic Redis-backed StateStore (com.pathland.state.redis) over
+        Framework-agnostic Redis-backed StateStore (dev.pathland.state.redis) over
         Lettuce. Usable from Spring Boot, Quarkus, or a plain JVM desktop app to persist
         application state for multi-tenant scale-out servers.
     </description>
 
     <dependencies>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-view</artifactId>
             <version>${project.version}</version>
         </dependency>

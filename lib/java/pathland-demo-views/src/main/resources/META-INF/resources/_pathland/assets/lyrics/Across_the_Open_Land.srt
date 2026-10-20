@@ -1,0 +1,326 @@
+1
+00:00:00,000 --> 00:00:03,200
+♪ From a single seed of pure intent,
+A brand new architecture is sent. ♪
+
+2
+00:00:03,200 --> 00:00:06,400
+♪ From a single seed of pure intent,
+A brand new architecture is sent.
+(Wait for the stream) ♪
+
+3
+00:00:06,400 --> 00:00:09,600
+♪ A brand new architecture is sent.
+(Wait for the stream)
+We write the view and we let it stand, ♪
+
+4
+00:00:09,600 --> 00:00:12,000
+♪ (Wait for the stream)
+We write the view and we let it stand,
+A single truth in this Pathland. ♪
+
+5
+00:00:12,000 --> 00:00:14,400
+♪ We write the view and we let it stand,
+A single truth in this Pathland.
+From Rust to Java the logic flows, ♪
+
+6
+00:00:14,400 --> 00:00:16,800
+♪ A single truth in this Pathland.
+From Rust to Java the logic flows,
+The sixteen-byte opcode stream grows. ♪
+
+7
+00:00:16,800 --> 00:00:19,200
+♪ From Rust to Java the logic flows,
+The sixteen-byte opcode stream grows.
+No virtual DOM to weigh us down, ♪
+
+8
+00:00:19,200 --> 00:00:21,600
+♪ The sixteen-byte opcode stream grows.
+No virtual DOM to weigh us down,
+Just native truth when we hit the town. ♪
+
+9
+00:00:21,600 --> 00:00:24,000
+♪ No virtual DOM to weigh us down,
+Just native truth when we hit the town.
+One declarative shape to hold them all, ♪
+
+10
+00:00:24,000 --> 00:00:26,400
+♪ Just native truth when we hit the town.
+One declarative shape to hold them all,
+And stand up straight, never to fall. ♪
+
+11
+00:00:26,400 --> 00:00:28,800
+♪ One declarative shape to hold them all,
+And stand up straight, never to fall.
+Oh, write once and let it fly, ♪
+
+12
+00:00:28,800 --> 00:00:31,200
+♪ And stand up straight, never to fall.
+Oh, write once and let it fly,
+Under any kind of native sky. ♪
+
+13
+00:00:31,200 --> 00:00:33,600
+♪ Oh, write once and let it fly,
+Under any kind of native sky.
+The wire holds the sacred vow, ♪
+
+14
+00:00:33,600 --> 00:00:36,000
+♪ Under any kind of native sky.
+The wire holds the sacred vow,
+Pathland renders here and now. ♪
+
+15
+00:00:36,000 --> 00:00:38,400
+♪ The wire holds the sacred vow,
+Pathland renders here and now.
+GTK or the browser's sea, ♪
+
+16
+00:00:38,400 --> 00:00:40,800
+♪ Pathland renders here and now.
+GTK or the browser's sea,
+It all beats in sixty frames so free. ♪
+
+17
+00:00:40,800 --> 00:00:43,200
+♪ GTK or the browser's sea,
+It all beats in sixty frames so free.
+The binary deltas show the way, ♪
+
+18
+00:00:43,200 --> 00:00:45,600
+♪ It all beats in sixty frames so free.
+The binary deltas show the way,
+To light the UI of today. ♪
+
+19
+00:00:45,600 --> 00:00:48,000
+♪ The binary deltas show the way,
+To light the UI of today.
+Server side handles the first great sight, ♪
+
+20
+00:00:48,000 --> 00:00:50,400
+♪ To light the UI of today.
+Server side handles the first great sight,
+Rendering views in the speed of light. ♪
+
+21
+00:00:50,400 --> 00:00:52,800
+♪ Server side handles the first great sight,
+Rendering views in the speed of light.
+Then web sockets open a brand new lane, ♪
+
+22
+00:00:52,800 --> 00:00:55,200
+♪ Rendering views in the speed of light.
+Then web sockets open a brand new lane,
+Streaming the delta without the pain. ♪
+
+23
+00:00:55,200 --> 00:00:57,600
+♪ Then web sockets open a brand new lane,
+Streaming the delta without the pain.
+No JavaScript burden to hold our hand, ♪
+
+24
+00:00:57,600 --> 00:01:00,000
+♪ Streaming the delta without the pain.
+No JavaScript burden to hold our hand,
+Just raw power across the land. ♪
+
+25
+00:01:00,000 --> 00:01:02,400
+♪ No JavaScript burden to hold our hand,
+Just raw power across the land.
+One state model to rule the night, ♪
+
+26
+00:01:02,400 --> 00:01:04,800
+♪ Just raw power across the land.
+One state model to rule the night,
+Keeps the backend shining bright. ♪
+
+27
+00:01:04,800 --> 00:01:07,200
+♪ One state model to rule the night,
+Keeps the backend shining bright.
+Oh, write once and let it fly, ♪
+
+28
+00:01:07,200 --> 00:01:09,600
+♪ Keeps the backend shining bright.
+Oh, write once and let it fly,
+Under any kind of native sky. ♪
+
+29
+00:01:09,600 --> 00:01:12,000
+♪ Oh, write once and let it fly,
+Under any kind of native sky.
+The wire holds the sacred vow, ♪
+
+30
+00:01:12,000 --> 00:01:14,400
+♪ Under any kind of native sky.
+The wire holds the sacred vow,
+Pathland renders here and now. ♪
+
+31
+00:01:14,400 --> 00:01:16,800
+♪ The wire holds the sacred vow,
+Pathland renders here and now.
+GTK or the browser's sea, ♪
+
+32
+00:01:16,800 --> 00:01:19,200
+♪ Pathland renders here and now.
+GTK or the browser's sea,
+It all beats in sixty frames so free. ♪
+
+33
+00:01:19,200 --> 00:01:21,600
+♪ GTK or the browser's sea,
+It all beats in sixty frames so free.
+The binary deltas show the way, ♪
+
+34
+00:01:21,600 --> 00:01:24,000
+♪ It all beats in sixty frames so free.
+The binary deltas show the way,
+To light the UI of today. ♪
+
+35
+00:01:24,000 --> 00:01:26,400
+♪ The binary deltas show the way,
+To light the UI of today.
+WASM calls from the browser's core, ♪
+
+36
+00:01:26,400 --> 00:01:45,600
+♪
+
+37
+00:01:45,600 --> 00:01:48,000
+♪ To light the UI of today.
+WASM calls from the browser's core,
+Embedded chips open another door. ♪
+
+38
+00:01:48,000 --> 00:01:50,400
+♪ WASM calls from the browser's core,
+Embedded chips open another door.
+On ring buffers, the message will ride, ♪
+
+39
+00:01:50,400 --> 00:01:52,800
+♪ Embedded chips open another door.
+On ring buffers, the message will ride,
+With nothing to hide and nowhere to hide. ♪
+
+40
+00:01:52,800 --> 00:01:55,200
+♪ On ring buffers, the message will ride,
+With nothing to hide and nowhere to hide.
+From Swift to Jetpack, the vision is clear, ♪
+
+41
+00:01:55,200 --> 00:01:57,600
+♪ With nothing to hide and nowhere to hide.
+From Swift to Jetpack, the vision is clear,
+The end of the fragmentation is near. ♪
+
+42
+00:01:57,600 --> 00:02:00,000
+♪ From Swift to Jetpack, the vision is clear,
+The end of the fragmentation is near.
+One protocol to unite the whole frame, ♪
+
+43
+00:02:00,000 --> 00:02:02,400
+♪ The end of the fragmentation is near.
+One protocol to unite the whole frame,
+And forever change the interface game. ♪
+
+44
+00:02:02,400 --> 00:02:04,800
+♪ One protocol to unite the whole frame,
+And forever change the interface game.
+Oh, write once and let it fly, ♪
+
+45
+00:02:04,800 --> 00:02:07,200
+♪ And forever change the interface game.
+Oh, write once and let it fly,
+Under any kind of native sky. ♪
+
+46
+00:02:07,200 --> 00:02:09,600
+♪ Oh, write once and let it fly,
+Under any kind of native sky.
+The wire holds the sacred vow, ♪
+
+47
+00:02:09,600 --> 00:02:12,000
+♪ Under any kind of native sky.
+The wire holds the sacred vow,
+Pathland renders here and now. ♪
+
+48
+00:02:12,000 --> 00:02:14,400
+♪ The wire holds the sacred vow,
+Pathland renders here and now.
+GTK or the browser's sea, ♪
+
+49
+00:02:14,400 --> 00:02:16,800
+♪ Pathland renders here and now.
+GTK or the browser's sea,
+It all beats in sixty frames so free. ♪
+
+50
+00:02:16,800 --> 00:02:19,200
+♪ GTK or the browser's sea,
+It all beats in sixty frames so free.
+The binary deltas show the way, ♪
+
+51
+00:02:19,200 --> 00:02:21,600
+♪ It all beats in sixty frames so free.
+The binary deltas show the way,
+To light the UI of today. ♪
+
+52
+00:02:21,600 --> 00:02:24,000
+♪ The binary deltas show the way,
+To light the UI of today.
+Just sixteen bytes on the wire today, ♪
+
+53
+00:02:24,000 --> 00:02:27,200
+♪ To light the UI of today.
+Just sixteen bytes on the wire today,
+And everything else just fades away. ♪
+
+54
+00:02:27,200 --> 00:02:30,400
+♪ Just sixteen bytes on the wire today,
+And everything else just fades away.
+(Tests are green) ♪
+
+55
+00:02:30,400 --> 00:02:33,600
+♪ And everything else just fades away.
+(Tests are green) ♪
+

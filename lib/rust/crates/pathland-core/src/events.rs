@@ -102,6 +102,27 @@ pub enum Event {
     /// navigated to (browser `popstate`/back/forward/deep-link), resolved from
     /// the string section / event arena; `url: None` is a native back request.
     Navigate { url: Option<String> },
+    /// A bound `MEDIA_CONTROLLER`'s playback state changed (host → guest).
+    /// Draft command 0x0F; reported only when `PLAYBACK_STATE` is bound.
+    MediaPlayStateChanged { target: u32, playing: bool },
+    /// A bound controller's current playback position (host → guest). Draft
+    /// command 0x10; `seconds` is the position in seconds (f32), reported while
+    /// playing. An app-initiated seek (`MEDIA_POSITION` change) is not echoed.
+    MediaTimeUpdated { target: u32, seconds: f32 },
+    /// A bound controller reached the end of its media (host → guest). Draft
+    /// command 0x11.
+    MediaEnded { target: u32 },
+    /// A bound controller's volume changed (host → guest). Draft command 0x12;
+    /// `volume` is in the range 0..1 (f32).
+    MediaVolumeChanged { target: u32, volume: f32 },
+    /// A bound controller's media duration became known/changed (host → guest).
+    /// Draft command 0x14; `seconds` is the duration (f32). Reported when the
+    /// resource loads and only when the value changes.
+    MediaDurationChanged { target: u32, seconds: f32 },
+    /// A `SIZE_THAT_FITS` slot's selected candidate changed (host → guest).
+    /// Draft command 0x13; `index` is the derived fit index (f32), reported once
+    /// after the first measure and then only when it changes.
+    FitChanged { target: u32, index: f32 },
 }
 
 impl Event {
@@ -263,6 +284,54 @@ impl Event {
                 0,
                 0,
             ),
+            Event::MediaPlayStateChanged { target, playing } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_PLAY_STATE_CHANGED,
+                0,
+                *target,
+                u32::from(*playing),
+                0,
+            ),
+            Event::MediaTimeUpdated { target, seconds } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_TIME_UPDATED,
+                0,
+                *target,
+                seconds.to_bits(),
+                0,
+            ),
+            Event::MediaEnded { target } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_ENDED,
+                0,
+                *target,
+                0,
+                0,
+            ),
+            Event::MediaVolumeChanged { target, volume } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_VOLUME_CHANGED,
+                0,
+                *target,
+                volume.to_bits(),
+                0,
+            ),
+            Event::MediaDurationChanged { target, seconds } => Opcode::new(
+                category::EVENT,
+                crate::event::MEDIA_DURATION_CHANGED,
+                0,
+                *target,
+                seconds.to_bits(),
+                0,
+            ),
+            Event::FitChanged { target, index } => Opcode::new(
+                category::EVENT,
+                crate::event::FIT_CHANGED,
+                0,
+                *target,
+                index.to_bits(),
+                0,
+            ),
         }
     }
 }
@@ -371,6 +440,27 @@ impl TryFrom<Opcode> for Event {
                     Ok(Event::Navigate { url: None })
                 }
             }
+            crate::event::MEDIA_PLAY_STATE_CHANGED => Ok(Event::MediaPlayStateChanged {
+                target: op.a(),
+                playing: op.b() != 0,
+            }),
+            crate::event::MEDIA_TIME_UPDATED => Ok(Event::MediaTimeUpdated {
+                target: op.a(),
+                seconds: op.b_f32(),
+            }),
+            crate::event::MEDIA_ENDED => Ok(Event::MediaEnded { target: op.a() }),
+            crate::event::MEDIA_VOLUME_CHANGED => Ok(Event::MediaVolumeChanged {
+                target: op.a(),
+                volume: op.b_f32(),
+            }),
+            crate::event::MEDIA_DURATION_CHANGED => Ok(Event::MediaDurationChanged {
+                target: op.a(),
+                seconds: op.b_f32(),
+            }),
+            crate::event::FIT_CHANGED => Ok(Event::FitChanged {
+                target: op.a(),
+                index: op.b_f32(),
+            }),
             _ => Err(EventError::UnknownCommand),
         }
     }
@@ -498,6 +588,46 @@ mod tests {
         ] {
             assert_eq!(round_trip(e.clone()), e);
         }
+    }
+
+    #[test]
+    fn media_events_round_trip() {
+        for e in [
+            Event::MediaPlayStateChanged { target: 7, playing: true },
+            Event::MediaPlayStateChanged { target: 7, playing: false },
+            Event::MediaTimeUpdated { target: 7, seconds: 12.5 },
+            Event::MediaEnded { target: 7 },
+            Event::MediaVolumeChanged { target: 7, volume: 0.5 },
+            Event::MediaDurationChanged { target: 7, seconds: 210.0 },
+            Event::FitChanged { target: 42, index: 2.0 },
+        ] {
+            assert_eq!(round_trip(e.clone()), e);
+        }
+        // Conformance vector bytes (spec/CONFORMANCE.md vectors 23–26, 26a).
+        assert_eq!(
+            Event::MediaPlayStateChanged { target: 7, playing: true }.encode().to_bytes(),
+            [0x03, 0x0F, 0, 0, 7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::MediaTimeUpdated { target: 7, seconds: 12.5 }.encode().to_bytes(),
+            [0x03, 0x10, 0, 0, 7, 0, 0, 0, 0, 0, 0x48, 0x41, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::MediaEnded { target: 7 }.encode().to_bytes(),
+            [0x03, 0x11, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::MediaVolumeChanged { target: 7, volume: 0.5 }.encode().to_bytes(),
+            [0x03, 0x12, 0, 0, 7, 0, 0, 0, 0, 0, 0x00, 0x3F, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::MediaDurationChanged { target: 7, seconds: 210.0 }.encode().to_bytes(),
+            [0x03, 0x14, 0, 0, 7, 0, 0, 0, 0, 0, 0x52, 0x43, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::FitChanged { target: 42, index: 2.0 }.encode().to_bytes(),
+            [0x03, 0x13, 0, 0, 0x2A, 0, 0, 0, 0, 0, 0, 0x40, 0, 0, 0, 0]
+        );
     }
 
     #[test]

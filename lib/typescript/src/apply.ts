@@ -1,11 +1,11 @@
 // Delta application: decode each opcode and apply it to the DOM via the
-// retained `id → Node` registry. STYLE deltas mutate the hydrated element in
+// retained `id → Node` registry. PARAMETER deltas mutate the hydrated element in
 // place; TREE deltas build the element shell and insert/remove/move it; META
 // deltas reset/environment.
 
 import {
   CAT_META,
-  CAT_STYLE,
+  CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
   CMD_DELETE_NODE,
@@ -18,39 +18,297 @@ import {
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
+  COMPONENT_COLOR,
+  COMPONENT_DIVIDER,
+  COMPONENT_GRID,
+  COMPONENT_GRID_ROW,
+  COMPONENT_HSTACK,
+  COMPONENT_LAZY_HGRID,
+  COMPONENT_LAZY_HSTACK,
+  COMPONENT_LAZY_VGRID,
+  COMPONENT_LAZY_VSTACK,
+  COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
+  COMPONENT_SCROLLVIEW,
+  COMPONENT_SHAPE,
+  COMPONENT_SPACER,
+  COMPONENT_TEXT,
+  COMPONENT_VSTACK,
+  COMPONENT_VIDEO,
   COMPONENT_ZSTACK,
+  PROP_ALIGNMENT,
   PROP_BINDING_ID,
+  PROP_MEDIA_CONTROLLER_ID,
+  PROP_MEDIA_SOURCE,
+  PROP_MEDIA_MUTED,
+  PROP_MEDIA_LOOP,
+  PROP_MEDIA_RATE,
+  PROP_COLOR,
   PROP_COLOR_VALUE,
   PROP_ENABLED,
   PROP_FONT_FAMILY,
+  PROP_GRID_COLUMNS,
+  PROP_GRID_ROWS,
+  PROP_GRID_TRACKS,
   PROP_IMAGE_SOURCE,
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
+  PROP_ICON_NAME,
+  PROP_MEDIA_POSITION,
+  PROP_MEDIA_VOLUME,
   PROP_NAV_CHROME,
   PROP_NAV_DEPTH,
+  PROP_PLAYBACK_STATE,
   PROP_PROGRESS,
   PROP_PROMPT,
+  PROP_ROLE,
   PROP_ROUTE,
   PROP_SELECTED,
   PROP_SELECTION,
   PROP_TEXT,
+  PROP_TEXT_STYLE,
   PROP_VALUE,
   VAL_DESIGN_TOKEN,
+  VAL_ENUM,
+  VAL_LIST,
   VAL_STRING,
   VAL_U8,
 } from "./constants";
 import type { Batch, Opcode } from "./plpl";
-import { readString } from "./plpl";
+import { readList, readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
-import { applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
-import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";
-import { argbToHex, daysToIso, f32FromBits, millisToTime } from "./format";
+import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
+import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
+  encodeFittedChanged,
+  encodeMediaDurationChanged,
+  encodeMediaEnded,
+  encodeMediaPlayStateChanged,
+  encodeMediaTimeUpdated,
+  encodeMediaVolumeChanged,
+} from "./events";
+import {
+  GENERIC_COMPONENTS,
+  NATIVE_ROLE_COMPONENTS,
+  ariaRole,
+  textTag,
+} from "./generated/role-spec";
+import { argbToHex, argbToRgba, daysToIso, f32FromBits, millisToTime } from "./format";
+import { isRangeInFlight } from "./inFlight";
+import { log } from "./log";
+import { applyTextStyle, copyTypography, textStyleByNode } from "./typography";
+import { setIcon } from "./icons";
 
-/** Component type per retained node, so STYLE/TREE application can special-case
+/** Component type per retained node, so PARAMETER/TREE application can special-case
  *  per component (a ZSTACK child's absolute positioning, a ProgressView's
  *  spinner/progress morph) without baking it into the DOM. */
 const componentByNode = new WeakMap<Node, number>();
+
+/** Flex stacks (main axis horizontal). */
+const STACK_MAIN_HORIZONTAL = new Set([COMPONENT_HSTACK, COMPONENT_LAZY_HSTACK]);
+/** Flex stacks (main axis vertical). */
+const STACK_MAIN_VERTICAL = new Set([COMPONENT_VSTACK, COMPONENT_LAZY_VSTACK]);
+/** Hug-to-content containers that propagate a FILL descendant up (LAYOUT.md). */
+const PROPAGATING = new Set([
+  COMPONENT_VSTACK,
+  COMPONENT_HSTACK,
+  COMPONENT_ZSTACK,
+  COMPONENT_LAZY_VSTACK,
+  COMPONENT_LAZY_HSTACK,
+]);
+
+/** Whether `el` is effectively FILL-sized on `horizontal` (LAYOUT.md §fill
+ *  propagation, SwiftUI/Compose parity): FILL itself (`width/height:100%`), a
+ *  layout-greedy primitive, or a Hug container whose subtree carries one. A
+ *  Fixed px box bounds its subtree. `mainAxis` = whether the axis is the
+ *  element's parent's main axis (governs SPACER/DIVIDER greediness). A
+ *  component-less shell (a ZStack child wrapper) is transparent. */
+function fillsAxis(el: Element, horizontal: boolean, mainAxis: boolean): boolean {
+  const comp = componentByNode.get(el) ?? 0;
+  if (comp === 0) {
+    return Array.from(el.children).some(
+      (c) => c instanceof HTMLElement && fillsAxis(c, horizontal, mainAxis),
+    );
+  }
+  const style = (el as HTMLElement).style;
+  const hint = horizontal ? style.width : style.height;
+  if (hint === "100%") {
+    return true;
+  }
+  if (hint !== "") {
+    return false; // a Fixed px box bounds its subtree
+  }
+  const greedy =
+    comp === COMPONENT_COLOR ||
+    comp === COMPONENT_SCROLLVIEW ||
+    (comp === COMPONENT_SPACER && mainAxis) ||
+    (comp === COMPONENT_DIVIDER && !mainAxis);
+  if (greedy) {
+    return true;
+  }
+  if (!PROPAGATING.has(comp)) {
+    return false;
+  }
+  const childMain = STACK_MAIN_HORIZONTAL.has(comp)
+    ? horizontal
+    : STACK_MAIN_VERTICAL.has(comp)
+      ? !horizontal
+      : false;
+  return Array.from(el.children).some(
+    (c) => c instanceof HTMLElement && fillsAxis(c, horizontal, childMain),
+  );
+}
+
+/** Derived layout pass (LAYOUT.md): fill propagation (a Hug stack/ZStack with a
+ *  FILL descendant becomes FILL on that axis), ZStack hug-to-largest-child
+ *  sizing, cross-axis `align-self:stretch` for FILL children, and ZStack child
+ *  positioning. Mirrors the Rust SSR renderer's whole-tree layout decisions;
+ *  runs after every batch so a delta leaves the derived styles consistent. */
+function applyLayout(r: DomRenderer): void {
+  const els = Array.from(r.byId.values()).filter(
+    (n): n is HTMLElement => n instanceof HTMLElement,
+  );
+  // Phase 1: container fill propagation + ZStack sizing + grid cell alignment.
+  for (const el of els) {
+    const comp = componentByNode.get(el) ?? 0;
+    if (!PROPAGATING.has(comp) && !isGridComponent(comp)) {
+      continue;
+    }
+    if (STACK_MAIN_HORIZONTAL.has(comp) || STACK_MAIN_VERTICAL.has(comp)) {
+      const mainH = STACK_MAIN_HORIZONTAL.has(comp);
+      if (el.style.width === "" && fillsAxis(el, true, mainH)) {
+        el.style.width = "100%";
+      }
+      if (el.style.height === "" && fillsAxis(el, false, !mainH)) {
+        el.style.height = "100%";
+      }
+    } else if (comp === COMPONENT_ZSTACK) {
+      if (el.style.width === "") {
+        el.style.width = fillsAxis(el, true, false) ? "100%" : "max-content";
+      }
+      if (el.style.height === "") {
+        el.style.height = fillsAxis(el, false, false) ? "100%" : "max-content";
+      }
+      // Position each child shell per the ZSTACK ALIGNMENT (2D code, both axes).
+      const hToken = el.style.justifyItems || "start";
+      const vToken = el.style.alignItems || "start";
+      for (const w of Array.from(el.children)) {
+        if (!(w instanceof HTMLElement)) {
+          continue;
+        }
+        w.style.justifySelf = fillsAxis(w, true, false) ? "stretch" : hToken;
+        w.style.alignSelf = fillsAxis(w, false, false) ? "stretch" : vToken;
+        // The child's Z_INDEX orders its shell (the grid item) among the
+        // overlapping siblings — the shell is what participates in stacking,
+        // not the child (a plain block inside it). EVERY shell gets an explicit
+        // z-index (the child's, else 0) so overlapping grid items paint
+        // deterministically in every browser (WebKit paints a non-fill grid
+        // item below a full-area sibling when both are z-index:auto). Mirrors
+        // the Rust SSR.
+        const inner = w.firstElementChild;
+        const innerZ = inner instanceof HTMLElement ? inner.style.zIndex : "";
+        w.style.zIndex = innerZ || "0";
+      }
+    } else if (isGridComponent(comp)) {
+      // Position each cell shell per the grid ALIGNMENT (2D code) on both axes
+      // (spec §grid model): a FILL-sized / greedy cell stretches to fill its
+      // track. Explicit rows (spec §GridRow): a GRID_ROW starts a new row; bare
+      // cells auto-flow, advancing after the effective column count
+      // (GRID_COLUMNS or the widest row) — short rows leave trailing columns
+      // empty.
+      const hToken = el.style.justifyItems || "start";
+      const vToken = el.style.alignItems || "start";
+      const children = Array.from(el.children).filter(
+        (c): c is HTMLElement => c instanceof HTMLElement,
+      );
+      const explicitRows = children.some(
+        (c) => componentByNode.get(c) === COMPONENT_GRID_ROW,
+      );
+      const parseCount = (s: string): number | null => {
+        const m = /repeat\(\s*(\d+)/.exec(s);
+        return m ? Number(m[1]) : null;
+      };
+      const setShell = (shell: HTMLElement, row: number, col: number): void => {
+        if (explicitRows) {
+          shell.style.gridRow = String(row + 1);
+          shell.style.gridColumn = String(col + 1);
+        }
+        shell.style.justifySelf = fillsAxis(shell, true, false) ? "stretch" : hToken;
+        shell.style.alignSelf = fillsAxis(shell, false, false) ? "stretch" : vToken;
+        // The cell's Z_INDEX orders its shell (the grid item); see the ZSTACK note.
+        const inner = shell.firstElementChild;
+        shell.style.zIndex = inner instanceof HTMLElement ? inner.style.zIndex : "";
+      };
+      if (!explicitRows) {
+        for (const w of children) {
+          setShell(w, 0, 0);
+        }
+      } else {
+        let cols = parseCount(el.style.gridTemplateColumns);
+        let width = cols ?? 0;
+        let run = 0;
+        for (const c of children) {
+          if (componentByNode.get(c) === COMPONENT_GRID_ROW) {
+            width = Math.max(width, c.children.length);
+            run = 0;
+          } else {
+            run += 1;
+            width = Math.max(width, run);
+          }
+        }
+        width = Math.max(width, 1);
+        if (cols === null) {
+          el.style.gridTemplateColumns = `repeat(${width},minmax(0,1fr))`;
+          cols = width;
+        }
+        const columns = cols ?? width;
+        let row = 0;
+        let col = 0;
+        for (const c of children) {
+          if (componentByNode.get(c) === COMPONENT_GRID_ROW) {
+            if (col > 0) {
+              row += 1;
+            }
+            col = 0;
+            for (const shell of Array.from(c.children).filter(
+              (s): s is HTMLElement => s instanceof HTMLElement,
+            )) {
+              setShell(shell, row, col);
+              col += 1;
+            }
+            row += 1;
+            col = 0;
+          } else {
+            if (col >= columns) {
+              row += 1;
+              col = 0;
+            }
+            setShell(c, row, col);
+            col += 1;
+          }
+        }
+      }
+    }
+  }
+  // Phase 2: cross-axis FILL children in a stack stretch via align-self.
+  for (const el of els) {
+    const parent = el.parentElement;
+    if (!parent) {
+      continue;
+    }
+    const parentComp = componentByNode.get(parent) ?? 0;
+    const mainH = STACK_MAIN_HORIZONTAL.has(parentComp);
+    if (!STACK_MAIN_HORIZONTAL.has(parentComp) && !STACK_MAIN_VERTICAL.has(parentComp)) {
+      continue;
+    }
+    if (fillsAxis(el, !mainH, false)) {
+      el.style.alignSelf = "stretch";
+    }
+  }
+}
+
+/** The last `ROLE` code applied per element (morphing needs both role and text
+ *  style to resolve the effective tag). */
+const roleByNode = new WeakMap<HTMLElement, number>();
 
 /** The retained `node id → DOM Node` registry the renderer works against. */
 export interface DomRenderer {
@@ -70,25 +328,63 @@ export interface DomRenderer {
   onNavigateBack?: () => void;
   /** Optional design-token sink (defaults to document-root CSS variables). */
   tokenSink?: DesignTokenSink;
+  /**
+   * Optional media-event sink: the host wires it to `transport.send` so a bound
+   * `AUDIO`/`VIDEO` node can report play/pause/time/ended/volume (host → guest).
+   */
+  onMediaEvent?: (batch: Uint8Array) => void;
+  /**
+   * Optional fit-event sink: the host wires it to `transport.send` so a
+   * `SIZE_THAT_FITS` slot can report its derived fit index (`FIT_CHANGED`).
+   */
+  onFitEvent?: (batch: Uint8Array) => void;
 }
 
-/** Apply every opcode in a batch to the DOM (TREE structure + STYLE/META deltas). */
+/** Apply every opcode in a batch to the DOM (TREE structure + PARAMETER/META deltas). */
 export function applyBatch(batch: Batch, renderer: DomRenderer): void {
-  for (const op of batch.opcodes) {
-    switch (op.category) {
-      case CAT_TREE:
-        applyTree(op, renderer);
-        break;
-      case CAT_STYLE:
-        applyStyle(op, batch.strings, renderer);
-        break;
-      case CAT_META:
-        applyMeta(op, renderer);
-        break;
-      default:
-        break;
+  // SSR snapshot fit slots (`data-pathland-fit-cands`) touched by a structural
+  // removal in this batch. The gate is torn down AFTER the whole batch, gated on
+  // the slot's FINAL state (issue #141): a removal that does NOT reduce the slot
+  // to a single live candidate (e.g. a band-crossing fit swap dropping a child
+  // inside a candidate) must leave the gate intact — unwrapping it eagerly would
+  // expose every candidate (the "all branches rendered" bug).
+  const touchedFitGates = new Set<HTMLElement>();
+  for (let i = 0; i < batch.opcodes.length; i++) {
+    const op = batch.opcodes[i]!;
+    try {
+      switch (op.category) {
+        case CAT_TREE:
+          applyTree(op, renderer, touchedFitGates);
+          break;
+        case CAT_PARAMETER:
+          applyStyle(op, batch.strings, renderer);
+          break;
+        case CAT_META:
+          applyMeta(op, renderer);
+          break;
+        default:
+          break;
+      }
+    } catch (err) {
+      // The batch is a renderer-consuming instruction stream; an empty catch
+      // would hide a structural bug. Log the exact op for remote diagnosis,
+      // then rethrow (the host's handleMessage surfaces it).
+      const el = renderer.byId.get(op.a);
+      const where = el instanceof Element
+        ? `${el.tagName.toLowerCase()}#${el.getAttribute("data-pathland-id")}.${el.className}`
+        : String(el);
+      console.error(
+        `[pathland] applyBatch failed at op ${i}/${batch.opcodes.length} ` +
+        `cat=${op.category} cmd=${op.command} a=${op.a} b=${op.b} c=${op.c} target=${where}`, err);
+      throw err;
     }
   }
+  for (const slot of touchedFitGates) {
+    reconcileFitGate(slot);
+  }
+  // Derived layout (fill propagation, ZStack sizing/positioning, cross-axis
+  // align-self) — mirrors the Rust SSR renderer's whole-tree decisions.
+  applyLayout(renderer);
 }
 
 function applyMeta(op: Opcode, r: DomRenderer): void {
@@ -108,7 +404,76 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
   }
 }
 
-function applyTree(op: Opcode, r: DomRenderer): void {
+/** The node actually inserted into a parent's container: ZStack children are
+ *  wrapped in a `grid-area:1/1` cell shell, grid cells (a GRID's bare children
+ *  or a GRID_ROW's children) in an auto-placed cell shell (the layout pass sets
+ *  their `justify-self`/`align-self` and explicit `grid-row`/`grid-column` from
+ *  the container's structure/ALIGNMENT — mirrors the Rust SSR renderer), a
+ *  GRID_ROW itself inserts directly (it is the row container, not a cell);
+ *  everything else inserts directly. */
+function placedChild(parent: Node, child: Node): Node {
+  if (child instanceof HTMLElement) {
+    const parentComp = componentByNode.get(parent);
+    if (parentComp === COMPONENT_ZSTACK) {
+      const wrapper = document.createElement("div");
+      wrapper.style.gridArea = "1/1";
+      wrapper.appendChild(child);
+      return wrapper;
+    }
+    if (isGridComponent(parentComp) || parentComp === COMPONENT_GRID_ROW) {
+      if (componentByNode.get(child) === COMPONENT_GRID_ROW) {
+        return child; // a row container is a grid child, not a cell
+      }
+      const wrapper = document.createElement("div");
+      wrapper.appendChild(child);
+      return wrapper;
+    }
+  }
+  return child;
+}
+
+/** Materialize a PICKER's child TEXT node as a native `<option>` (the Rust SSR
+ *  renderer emits `<option data-pathland-id="{child}" value="{index}">` per
+ *  child). The option keeps the child's id so its PARAMETER deltas resolve to it. */
+function pickerOption(child: HTMLElement): HTMLElement {
+  const opt = document.createElement("option");
+  opt.textContent = child.textContent ?? "";
+  const id = child.getAttribute("data-pathland-id");
+  if (id) {
+    opt.setAttribute("data-pathland-id", id);
+  }
+  return opt;
+}
+
+/** Keep a PICKER's option `value` attributes aligned with their index (the SSR
+ *  renderer's `<option value="{i}">` scheme). */
+function renumberPickerOptions(container: Node): void {
+  if (!(container instanceof HTMLSelectElement)) {
+    return;
+  }
+  Array.from(container.options).forEach((o, i) => {
+    o.value = String(i);
+  });
+}
+
+function applyTree(op: Opcode, r: DomRenderer, touchedFitGates: Set<HTMLElement>): void {
+  // N→1 fit-slot reconcile (issue #141): the server's SSR snapshot carried EVERY
+  // candidate behind CSS `@container` gated wrappers (`data-pathland-fit-cands`).
+  // The downgrade to a single selected child is signalled by REMOVING a candidate
+  // (a `REMOVE_CHILD`/`DELETE_NODE` on the slot). Record the touched slot and
+  // reconcile it AFTER the batch (`reconcileFitGate`), once the REMOVE/DELETE
+  // deltas have applied: only a slot that actually ended up with a single live
+  // candidate is the downgrade — a removal that merely drops a child inside a
+  // candidate (a band-crossing fit swap) must leave the gate intact. An
+  // `INSERT_CHILD`/`CREATE_NODE` is never the downgrade: a `META::RESYNC` replays
+  // the whole tree and the SSR gate must SURVIVE it (the CSS band keeps showing the
+  // width-correct candidate).
+  if (op.command === CMD_REMOVE_CHILD || op.command === CMD_DELETE_NODE) {
+    const slot = nearestGatedFitSlot(op, r);
+    if (slot) {
+      touchedFitGates.add(slot);
+    }
+  }
   switch (op.command) {
     case CMD_CREATE_NODE: {
       // Hydration-aware: an id already present in the registry is the SSR-hydrated
@@ -129,31 +494,54 @@ function applyTree(op: Opcode, r: DomRenderer): void {
     }
     case CMD_DELETE_NODE: {
       const el = r.byId.get(op.a);
-      if (el && el.parentNode) {
-        el.parentNode.removeChild(el);
+      if (el) {
+        const host = el as HTMLElement;
+        // `DELETE_NODE` covers the whole subtree: every descendant's registry
+        // entry must die too, or a later op could reuse a still-registered
+        // (detached) element and double-parent it (HierarchyRequestError).
+        purgeSubtreeRegistry(host, r);
+        if (host.parentNode) {
+          host.parentNode.removeChild(host);
+        }
       }
       r.byId.delete(op.a);
       break;
     }
     case CMD_INSERT_CHILD: {
-      const parent = r.byId.get(op.a);
       const child = r.byId.get(op.b);
-      if (parent && child) {
-        const container = childrenContainer(parent);
-        // Hydration/idempotent-replay guard: skip when the child is already there
-        // (the SSR DOM already holds the initial tree; a resync replays it).
-        if (container && !container.contains(child)) {
-          if (componentByNode.get(parent) === COMPONENT_ZSTACK && child instanceof HTMLElement) {
-            // ZStack children overlap: fill the stack (mirrors the Rust renderer's
-            // per-child `position:absolute;inset:0` wrapper).
-            child.style.position = "absolute";
-            child.style.inset = "0";
-            child.style.width = "100%";
-            child.style.height = "100%";
-          }
-          insertAt(container, child, op.c);
-          maybeAnimateInsert(parent, child);
+      const parentNode = r.byId.get(op.a);
+      if (!child || !parentNode) {
+        break;
+      }
+      let parent: Node = parentNode;
+      // A `VIDEO` surface gaining custom control children morphs its bare
+      // `<video>` into a `.pathland-media` wrapper (the Rust SSR emits the same
+      // structure); the children then attach to the wrapper.
+      const comp = componentByNode.get(parentNode);
+      if (comp === COMPONENT_VIDEO
+          && parentNode instanceof HTMLElement && parentNode.matches("video")) {
+        parent = mediaToWrapper(parentNode, r);
+      }
+      const container = childrenContainer(parent);
+      // Hydration/idempotent-replay guard: skip when the child is already there
+      // (the SSR DOM already holds the initial tree; a resync replays it), or
+      // when a duplicate of the node already exists by id (drift protection —
+      // never render a second copy the app did not emit).
+      if (container && !container.contains(child)
+          && !(child instanceof Element && container instanceof Element
+            && container.querySelector(`[data-pathland-id="${op.b}"]`))) {
+        let placed = placedChild(parent, child);
+        if (comp === COMPONENT_PICKER && child instanceof HTMLElement) {
+          // Picker children are option labels → materialize native `<option>`s.
+          placed = pickerOption(child);
+          r.byId.set(op.b, placed);
+          componentByNode.set(placed, COMPONENT_TEXT);
         }
+        insertAt(container, placed, op.c);
+        if (comp === COMPONENT_PICKER) {
+          renumberPickerOptions(container);
+        }
+        maybeAnimateInsert(parent, placed);
       }
       break;
     }
@@ -169,14 +557,32 @@ function applyTree(op: Opcode, r: DomRenderer): void {
       if (!child) {
         break;
       }
-      if (child.parentNode) {
-        child.parentNode.removeChild(child);
-      }
       const parent = r.byId.get(op.a);
       if (parent) {
         const container = childrenContainer(parent);
         if (container) {
-          insertAt(container, child, op.c);
+          // Detach the child (and its now-empty ZStack wrapper, if any) so the
+          // wrapper-count stays in sync with the Rust SSR structure.
+          const oldParent = child.parentNode;
+          child.parentNode?.removeChild(child);
+          if (
+            oldParent instanceof HTMLElement &&
+            oldParent !== container &&
+            oldParent.childElementCount === 0 &&
+            oldParent.style.position === "absolute"
+          ) {
+            oldParent.remove();
+          }
+          let placed = placedChild(parent, child);
+          if (componentByNode.get(parent) === COMPONENT_PICKER && child instanceof HTMLElement) {
+            placed = pickerOption(child);
+            r.byId.set(op.b, placed);
+            componentByNode.set(placed, COMPONENT_TEXT);
+          }
+          insertAt(container, placed, op.c);
+          if (componentByNode.get(parent) === COMPONENT_PICKER) {
+            renumberPickerOptions(container);
+          }
         }
       }
       break;
@@ -187,13 +593,29 @@ function applyTree(op: Opcode, r: DomRenderer): void {
 }
 
 function insertAt(container: Node, child: Node, index: number): void {
+  // Inserting a node into itself or its own subtree yields an incorrect node
+  // tree — the child is effectively already positioned; skip (never throw).
+  if (child === container || container.contains(child)) {
+    return;
+  }
+  // The protocol's INSERT/MOVE index counts ELEMENT children. Debug-comment
+  // nodes (`<!-- #id … -->`, `pathland.debug-html=true`) are sibling children
+  // in the SSR-hydrated DOM, so counting them in `visible` shifts every index
+  // and e.g. would insert a trailing sidebar BEFORE the main area. Count
+  // elements only; the injected nav-back button is excluded by class.
   const visible = Array.from(container.childNodes).filter(
     (n) =>
-      (n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.COMMENT_NODE) &&
+      n.nodeType === Node.ELEMENT_NODE &&
       !(n instanceof HTMLElement && n.classList.contains(NAV_BACK_CLASS)),
   );
   const target = visible[index];
+  detachIfWrongParent(container, child);
   if (target) {
+    if (target === child || target.contains(child)) {
+      // Would yield an incorrect node tree (inserting a node before itself or a
+      // descendant) — the child is already positioned; nothing to do.
+      return;
+    }
     container.insertBefore(child, target);
   } else {
     container.appendChild(child);
@@ -303,6 +725,88 @@ function maybeAnimateInsert(parent: Node, child: Node): void {
   }, { once: true });
 }
 
+/** Resolve an element's role shell kind: from the component when known (fresh
+ *  nodes), else from its tag (SSR-hydrated nodes have no component). */
+function shellKind(el: HTMLElement): "generic" | "native" | "other" {
+  const comp = componentByNode.get(el);
+  if (comp !== undefined) {
+    if (GENERIC_COMPONENTS.includes(comp)) {
+      return "generic";
+    }
+    if (NATIVE_ROLE_COMPONENTS.includes(comp)) {
+      return "native";
+    }
+    return "other";
+  }
+  const t = el.tagName.toLowerCase();
+  if (t === "div" || t === "span") {
+    return el.classList.contains("pathland-menu") || el.classList.contains("pathland-stepper")
+      ? "other"
+      : "generic";
+  }
+  if (
+    t === "button" ||
+    t === "input" ||
+    t === "label" ||
+    t === "select" ||
+    t === "textarea" ||
+    t === "progress" ||
+    t === "img"
+  ) {
+    return "native";
+  }
+  return "other";
+}
+
+/** Replace an element with one of a different tag (a semantic role retag),
+ *  preserving attributes, children, and the registry entry. */
+function morphRole(el: HTMLElement, tag: string, r: DomRenderer): HTMLElement {
+  const fresh = document.createElement(tag);
+  for (const attr of Array.from(el.attributes)) {
+    fresh.setAttribute(attr.name, attr.value);
+  }
+  while (el.firstChild) {
+    fresh.appendChild(el.firstChild);
+  }
+  if (el.parentNode) {
+    el.parentNode.replaceChild(fresh, el);
+  }
+  const id = Number(el.getAttribute("data-pathland-id"));
+  if (id) {
+    r.byId.set(id, fresh);
+  }
+  const comp = componentByNode.get(el);
+  if (comp !== undefined) {
+    componentByNode.set(fresh, comp);
+  }
+  const role = roleByNode.get(el);
+  if (role !== undefined) {
+    roleByNode.set(fresh, role);
+  }
+  copyTypography(el, fresh);
+  return fresh;
+}
+
+/** Resolve and apply the semantic tag + ARIA role for an element from its
+ *  current `ROLE` / `TEXT_STYLE` state (a heading `TEXT_STYLE` always wins).
+ *  Retags a generic shell in place when the effective tag differs. */
+function applySemantic(el: HTMLElement, r: DomRenderer): void {
+  const kind = shellKind(el);
+  const role = roleByNode.get(el) ?? 0;
+  const style = textStyleByNode.get(el);
+  const tag = textTag(kind, role, style ?? null);
+  let current = el;
+  if (tag && current.tagName.toLowerCase() !== tag) {
+    current = morphRole(current, tag, r);
+  }
+  const aria = ariaRole(kind, role);
+  if (aria) {
+    current.setAttribute("role", aria);
+  } else {
+    current.removeAttribute("role");
+  }
+}
+
 function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   if (op.command === CMD_SET_DESIGN_TOKEN) {
     applyDesignToken(op, strings, r.tokenSink ?? createTokenSink());
@@ -344,12 +848,47 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
           r.onRoute?.(text); // host mirrors the URL (history.pushState)
         } else {
           applyStringProperty(el, propId, text);
+          if (propId === PROP_MEDIA_SOURCE) {
+            // A controller's resource: wire its playback element + listeners
+            // (spec/MEDIA.md) and resume playback if the app was playing (a src
+            // change pauses the element). A controller is non-visual — it never
+            // renders native controls.
+            ensureMediaElement(el, propId);
+            applyStringProperty(el, propId, text);
+            setupMediaElement(el, r);
+            resumeIfPlaying(el);
+            // The controller is the source of truth for its surfaces: mirror the
+            // new resource to every bound `VIDEO` surface. They may have been
+            // emitted *before* the controller (or the controller's source may
+            // arrive late), so mirroring cannot depend on emission order.
+            const controllerMedia = mediaElementOf(el);
+            if (controllerMedia) {
+              mirrorToSurfaces(Number(el.getAttribute("data-pathland-id")), controllerMedia);
+            }
+          }
         }
       } else if (valueType === VAL_DESIGN_TOKEN) {
         applyTokenRefProperty(el, propId, readString(strings, op.c));
+      } else if (valueType === VAL_LIST) {
+        applyFitQuery(el, r, readList(strings, op.c));
       } else if (componentByNode.get(el) === COMPONENT_PROGRESS_VIEW
               && (propId === PROP_IS_INDETERMINATE || propId === PROP_PROGRESS)) {
         applyProgress(el, r, propId, valueType, op.c);
+      } else if (propId === PROP_ROLE) {
+        // Semantic role → native element where one exists (generated role-spec):
+        // a generic shell is retagged to its semantic element; the ARIA `role`
+        // attribute is set only when the element does not already convey it.
+        roleByNode.set(el, Math.round(f32FromBits(op.c)) & 0xff);
+        applySemantic(el, r);
+      } else if (propId === PROP_TEXT_STYLE) {
+        // A heading `TEXT_STYLE` (LargeTitle…Headline) makes a TEXT a heading
+        // (`<h1>`–`<h5>`) — always, even without `ROLE_HEADER`; raw font
+        // modifiers never imply a heading. Absence is "no style" (the enum has
+        // no NONE — LARGE_TITLE is code 0, a real heading style). The style also
+        // sets its default size/weight, unless an explicit FONT_SIZE/FONT_WEIGHT
+        // override was applied (raw modifiers layer on top).
+        applyTextStyle(el, Math.round(f32FromBits(op.c)) & 0xff);
+        applySemantic(el, r);
       } else if (propId === PROP_NAV_DEPTH) {
         // Back-stack depth on a nav slot → the renderer's default back button.
         el.setAttribute("data-pathland-depth", String(op.c));
@@ -363,6 +902,13 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
           el.removeAttribute("data-pathland-nav-chrome");
         }
         updateNavBackButton(el, r);
+      } else if (propId === PROP_PLAYBACK_STATE || propId === PROP_MEDIA_POSITION
+              || propId === PROP_MEDIA_VOLUME || propId === PROP_MEDIA_MUTED
+              || propId === PROP_MEDIA_LOOP || propId === PROP_MEDIA_RATE) {
+        applyMediaProperty(el, r, propId, valueType, op.c);
+      } else if (propId === PROP_MEDIA_CONTROLLER_ID) {
+        // A `VIDEO` surface binds to its controller (spec/MEDIA.md).
+        bindVideoSurface(el, r, op.c);
       } else {
         applyNumericProperty(el, propId, valueType, op.c);
       }
@@ -385,23 +931,74 @@ export function setNodeText(el: HTMLElement, text: string): void {
     textarea.value = text;
     return;
   }
+  const trigger = el.querySelector(".pathland-menu-trigger");
+  if (trigger) {
+    trigger.textContent = text;
+    return;
+  }
   const span = el.querySelector(".pathland-text");
   if (span) {
     span.textContent = text;
     return;
   }
-  el.textContent = text;
+  // Only a leaf (no element children) falls through to textContent: re-applying a
+  // composite's LABEL/TEXT property must never wipe its children (SSR renders no
+  // label on composites — a composite's children are its body).
+  if (el.childElementCount === 0) {
+    el.textContent = text;
+  }
+}
+
+/** Set an icon's accessibility: a `LABEL` makes it presentable
+ *  (`role="img"` + `aria-label`); without one it is decorative (`aria-hidden`). */
+function syncIconAria(el: Element, label?: string): void {
+  if (label) {
+    el.setAttribute("role", "img");
+    el.setAttribute("aria-label", label);
+    el.removeAttribute("aria-hidden");
+    el.removeAttribute("focusable");
+  } else {
+    el.removeAttribute("role");
+    el.removeAttribute("aria-label");
+    el.setAttribute("aria-hidden", "true");
+    el.setAttribute("focusable", "false");
+  }
 }
 
 function applyStringProperty(el: HTMLElement, propId: number, text: string): void {
   switch (propId) {
     case PROP_TEXT:
     case PROP_LABEL: {
-      const span = el.querySelector(".pathland-label");
-      if (span) {
-        span.textContent = text;
+      // On a media element the accessibility label is the `alt` text (mirrors
+      // the Rust SSR renderer); on a semantic icon it makes the svg presentable;
+      // elsewhere it's the caption/label span.
+      const icon = el.matches("svg.pathland-icon")
+        ? el
+        : el.querySelector("svg.pathland-icon");
+      const media = el.matches("img,audio,video") ? el : null;
+      if (media) {
+        media.setAttribute("alt", text);
+      } else if (icon) {
+        syncIconAria(icon, text);
       } else {
-        setNodeText(el, text);
+        const span = el.querySelector(".pathland-label");
+        if (span) {
+          span.textContent = text;
+        } else {
+          setNodeText(el, text);
+        }
+      }
+      break;
+    }
+    case PROP_ICON_NAME: {
+      // A semantic icon: swap the filled inner markup for the canonical name.
+      // The glyph comes from an embedded sibling / the memo cache / a lazy
+      // fetch of the renderer-owned `/_pathland/icons/<name>.svg` (icons.ts).
+      const svg = el.matches("svg.pathland-icon")
+        ? el
+        : el.querySelector("svg.pathland-icon");
+      if (svg) {
+        setIcon(svg, text);
       }
       break;
     }
@@ -419,8 +1016,38 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
       }
       break;
     }
+    case PROP_MEDIA_SOURCE: {
+      // A controller's resource: the playback element it owns (itself when the
+      // node adopted a media element, else an inner one).
+      const media = mediaElementOf(el);
+      if (media) {
+        media.src = text;
+      }
+      break;
+    }
     case PROP_FONT_FAMILY: {
       el.style.fontFamily = text;
+      break;
+    }
+    case PROP_GRID_TRACKS: {
+      // A grid's per-track spec (spec §grid model): `flex`/`fixed:<pts>`/
+      // `adaptive:<pts>` comma-separated → the CSS track template; takes
+      // precedence over the count (the DSL emits one or the other).
+      const comp = componentByNode.get(el);
+      const isH = comp === COMPONENT_LAZY_HGRID;
+      const tracks = text.split(",").map((t) => t.trim());
+      const css = tracks
+        .map((t) => {
+          if (t.startsWith("fixed:")) return `${t.slice("fixed:".length)}px`;
+          if (t.startsWith("adaptive:")) return `minmax(${t.slice("adaptive:".length)}px,1fr)`;
+          return "1fr";
+        })
+        .join(" ");
+      if (isH) {
+        el.style.gridTemplateRows = css;
+      } else {
+        el.style.gridTemplateColumns = css;
+      }
       break;
     }
     default:
@@ -435,7 +1062,10 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       if (input) {
         const on = (valueType === 0x01 ? bits & 0xff : bits) !== 0;
         input.checked = on;
-        if (input.getAttribute("role") === "checkbox" || input.getAttribute("role") === "switch") {
+        // Button-style toggles are rendered with `role=checkbox` + `aria-pressed`
+        // (the Rust SSR renderer's TOGGLE_STYLE=Button); switch/checkbox styles
+        // carry only the native `checked` state.
+        if (input.getAttribute("role") === "checkbox") {
           input.setAttribute("aria-pressed", on ? "true" : "false");
         }
       }
@@ -443,20 +1073,28 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
     }
     case PROP_VALUE: {
       const range = el.querySelector<HTMLInputElement>("input[type=range]");
-      if (range) {
+      // In-flight interaction (spec EVENTS.md): while the user is dragging the
+      // slider, its thumb is user-authoritative — a server echo of VALUE must
+      // not fight the pointer (flicker).
+      if (range && !isRangeInFlight(range)) {
         range.value = String(f32FromBits(bits));
       }
       const stepText = el.querySelector(".pathland-stepper span");
       if (stepText) {
         stepText.textContent = String(Math.round(f32FromBits(bits) * 100) / 100);
       }
-      const gauge = el.querySelector<HTMLElement>(".pathland-gauge > div");
+      const gauge = el.matches(".pathland-gauge")
+        ? el
+        : el.querySelector<HTMLElement>(".pathland-gauge");
       if (gauge) {
-        const max = Number(el.querySelector<HTMLElement>(".pathland-gauge")?.dataset.max ?? 1);
-        const min = Number(el.querySelector<HTMLElement>(".pathland-gauge")?.dataset.min ?? 0);
+        const max = Number(gauge.dataset.max ?? 1);
+        const min = Number(gauge.dataset.min ?? 0);
         const span = max - min;
         const pct = span <= 0 ? 0 : ((f32FromBits(bits) - min) / span) * 100;
-        gauge.style.width = pct + "%";
+        const bar = gauge.firstElementChild;
+        if (bar instanceof HTMLElement) {
+          bar.style.width = pct + "%";
+        }
       }
       break;
     }
@@ -465,7 +1103,8 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
         ? (el as HTMLSelectElement)
         : el.querySelector<HTMLSelectElement>("select");
       if (select) {
-        select.value = String(bits);
+        // Index-based, matching the SSR `<option value="{index}">` scheme.
+        select.selectedIndex = bits;
       }
       break;
     }
@@ -482,13 +1121,63 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       el.dataset.bindingId = String(bits >>> 0);
       break;
     }
+    case PROP_COLOR: {
+      // A COLOR / SHAPE node's COLOR property is its fill: it renders as a
+      // background (the generic handler below sets the text color, which the
+      // Rust SSR renderer also emits alongside the fill).
+      const comp = componentByNode.get(el);
+      if (comp === COMPONENT_COLOR || comp === COMPONENT_SHAPE) {
+        el.style.backgroundColor = argbToRgba(bits);
+      }
+      applyProperty(el, propId, valueType, bits);
+      break;
+    }
     case PROP_ENABLED:
       applyEnabled(el, bits);
       break;
+    case PROP_ALIGNMENT: {
+      // ZStack/grids position on BOTH axes with a 2D code (spec §grid model /
+      // §ZStack); stacks/others use the single-axis cross `align-items` token.
+      const comp = componentByNode.get(el);
+      if (isGridComponent(comp) || comp === COMPONENT_ZSTACK) {
+        const code = valueType === VAL_ENUM ? bits & 0xff : Math.round(f32FromBits(bits));
+        el.style.justifyItems = alignHCss(code);
+        el.style.alignItems = alignVCss(code);
+      } else {
+        applyProperty(el, propId, valueType, bits);
+      }
+      break;
+    }
+    case PROP_GRID_COLUMNS: {
+      // A grid's column count (the fixed track of vertical grids): a positive
+      // count mirrors into `grid-template-columns` and NEVER into a pixel width
+      // (spec §grid model); FILL/absent = auto-fit (no template).
+      const comp = componentByNode.get(el);
+      const n = f32FromBits(bits);
+      if (comp !== COMPONENT_LAZY_HGRID && isGridComponent(comp)) {
+        el.style.gridTemplateColumns = n > 0 ? `repeat(${Math.round(n)},minmax(0,1fr))` : "";
+      }
+      break;
+    }
+    case PROP_GRID_ROWS: {
+      // A grid's row count (the `LAZY_HGRID` fixed track): a positive count
+      // mirrors into `grid-template-rows`; FILL/absent = auto-fit.
+      const comp = componentByNode.get(el);
+      const n = f32FromBits(bits);
+      if ((comp === COMPONENT_GRID || comp === COMPONENT_LAZY_HGRID) && isGridComponent(comp)) {
+        el.style.gridTemplateRows = n > 0 ? `repeat(${Math.round(n)},minmax(0,1fr))` : "";
+      }
+      break;
+    }
     default:
       applyProperty(el, propId, valueType, bits);
       break;
   }
+}
+
+/** Whether `comp` is a grid container (GRID / lazy grids). */
+function isGridComponent(comp: number | undefined): boolean {
+  return comp === COMPONENT_GRID || comp === COMPONENT_LAZY_VGRID || comp === COMPONENT_LAZY_HGRID;
 }
 
 /**
@@ -526,6 +1215,11 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
         return p;
       })();
   for (const attr of Array.from(el.attributes)) {
+    // A spinner is a plain div — it carries no `max`/`value` (the Rust SSR
+    // renderer's `<div class="pathland-spinner">`).
+    if (wantSpinner && (attr.name === "max" || attr.name === "value")) {
+      continue;
+    }
     fresh.setAttribute(attr.name, attr.value);
   }
   if (el.parentNode) {
@@ -537,4 +1231,759 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
   }
   componentByNode.set(fresh, COMPONENT_PROGRESS_VIEW);
   return fresh;
+}
+
+// --- media (app-driven AUDIO/VIDEO) ---
+
+/** Per-element media state: echo suppression windows + the last app-requested
+ *  playing state (so a source change can resume playback). */
+const mediaState = new WeakMap<HTMLMediaElement, {
+  suppressUntil: number;
+  suppressTimeUntil: number;
+  playing: boolean;
+  lastReported: number;
+  lastReportedVolume: number;
+  reportTimer: number;
+  /** The element has been unlocked inside a trusted user gesture (autoplay
+   *  policy): an unmuted `play()` is now accepted. */
+  unlocked: boolean;
+}>();
+
+/** A `play()` the browser refused for lack of user activation (autoplay policy):
+ *  replayed on the next trusted gesture (`retryPendingPlay`, driven by the DOM
+ *  client's own gesture listeners). */
+let pendingPlay: HTMLMediaElement | null = null;
+
+/**
+ * Start (or resume) a media element, wiring the autoplay-policy outcome.
+ *
+ * The play/pause action is a **server round-trip**: the click sends a pointer
+ * event, the app toggles its state, and the `PLAYBACK_STATE` delta comes back
+ * over the WebSocket — by which point the click's transient user activation has
+ * expired. A browser therefore rejects the unmuted `play()` with
+ * `NotAllowedError` (spec/EVENTS.md Media). That is not a failure: the element
+ * is marked **pending** and replayed inside the next trusted gesture (where the
+ * browser accepts it), so playback starts without the app re-emitting anything.
+ * Any *other* rejection is logged — a media failure must never be silent.
+ */
+export function playMedia(media: HTMLMediaElement): void {
+  const p = media.play();
+  if (!p || typeof p.then !== "function") {
+    return;
+  }
+  p.then(
+    () => {
+      if (pendingPlay === media) {
+        pendingPlay = null;
+      }
+    },
+    (err: unknown) => {
+      const name = err instanceof Error ? err.name : String(err);
+      if (name === "NotAllowedError") {
+        pendingPlay = media;
+        log.debug("media", "play() blocked by the autoplay policy — retrying on the next gesture");
+      } else {
+        log.warn("media", "play() rejected", name);
+      }
+    },
+  );
+}
+
+/** Replay a `play()` the autoplay policy blocked, within a trusted gesture
+ *  (`event.isTrusted`) — the one context a browser accepts an unmuted `play()`.
+ *  Safe to call on every gesture. */
+export function retryPendingPlay(): void {
+  const media = pendingPlay;
+  if (media) {
+    pendingPlay = null;
+    playMedia(media);
+  }
+}
+
+/** The playback element(s) a controller owns, hydrated from the SSR HTML. */
+function playbackElements(): HTMLMediaElement[] {
+  const out: HTMLMediaElement[] = [];
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-media]")) {
+    const media = el instanceof HTMLMediaElement
+      ? el
+      : el.querySelector<HTMLMediaElement>("audio,video");
+    if (media) {
+      out.push(media);
+    }
+  }
+  return out;
+}
+
+/**
+ * One-time audio unlock, called from inside a **trusted user gesture**.
+ *
+ * Autoplay policy only accepts an unmuted `play()` within a real gesture, and the
+ * app-driven play arrives after a server round-trip — so the element must be
+ * unlocked up front. Play it **muted** (always permitted) and pause, restoring
+ * the mute state: an inaudible play that earns the element permission, after
+ * which the server-driven `play()` is accepted. Idempotent and cheap, so it can
+ * run on every gesture until each element is unlocked (a not-yet-loaded element
+ * is simply retried on the next one). Elements the app already wants playing are
+ * left alone.
+ */
+export function unlockMedia(): void {
+  const seen = new Set<HTMLMediaElement>();
+  for (const media of playbackElements()) {
+    if (seen.has(media)) {
+      continue;
+    }
+    seen.add(media);
+    const state = mediaState.get(media);
+    if (!state || state.unlocked || state.playing || !media.paused) {
+      continue;
+    }
+    if (!media.currentSrc && !media.getAttribute("src")) {
+      continue; // nothing to load yet — try again on the next gesture
+    }
+    const wasMuted = media.muted;
+    media.muted = true;
+    const p = media.play();
+    // `muted` must stay true until playback actually starts (the browser
+    // re-evaluates the element when the media pipeline begins): unmuting in the
+    // same tick turns the muted-autoplay into an *unmuted* one and the browser
+    // rejects it. So restore the mute only once `play()` settles.
+    const restore = () => {
+      media.muted = wasMuted;
+    };
+    if (p && typeof p.then === "function") {
+      p.then(
+        () => {
+          state.unlocked = true;
+          // Only park it if the app has not meanwhile asked it to play.
+          if (!mediaState.get(media)?.playing) {
+            media.pause();
+          }
+          restore();
+        },
+        (err: unknown) => {
+          restore();
+          const name = err instanceof Error ? err.name : String(err);
+          // A not-yet-loaded element rejects here; the next gesture retries.
+          log.debug("media", "unlock play() deferred", name);
+        },
+      );
+    } else {
+      state.unlocked = true;
+      restore();
+    }
+  }
+}
+
+/** The media element of a node: the element itself when it IS the media, else the
+ *  inner `<audio>`/`<video>` of a `.pathland-media` wrapper. */
+function mediaElementOf(el: HTMLElement): HTMLMediaElement | null {
+  return el.matches("audio,video")
+    ? (el as HTMLMediaElement)
+    : el.querySelector<HTMLMediaElement>("audio,video");
+}
+
+/** Ensure a media container holds an inner media element, creating it for a
+ *  live-created node that lacks one yet. The controller's playback element is a
+ *  `<video>` (it plays audio fine while hidden) so a `VIDEO` surface can host the
+ *  same element for its video output (spec/MEDIA.md). */
+function ensureMediaElement(el: HTMLElement, _propId: number): HTMLMediaElement | null {
+  if (el.matches("audio,video")) {
+    return el as HTMLMediaElement;
+  }
+  let media = el.querySelector<HTMLMediaElement>("audio,video");
+  if (!media) {
+    media = document.createElement("video");
+    media.setAttribute("data-pathland-media", "");
+    el.prepend(media);
+  }
+  return media;
+}
+
+/** The cadence for `MEDIA_TIME_UPDATED` reports — ~30/s (≈ every 33 ms of
+ *  playback progress). The DOM client samples the element's position on this
+ *  interval (the browser's `timeupdate` is only ~4 Hz), reporting whenever it
+ *  advances; evens out to ~30 reports/s while playing (spec/EVENTS.md Media —
+ *  parity with the GTK renderer's 30 Hz gate). Background tabs throttle timers
+ *  to ≥1 s, so this is best-effort when not visible/focused. */
+const TIME_UPDATE_MAX_INTERVAL_S = 1 / 30;
+const TIME_UPDATE_SAMPLE_MS = 33;
+
+/** Attach a media node's element once: wire the app-driven media element to the
+ *  host's media-event sink (play/pause/time/ended/volume/duration,
+ *  spec/EVENTS.md). Reports target the owning `MEDIA_CONTROLLER` id — for a
+ *  `VIDEO` surface that adopted the controller's element, `reportId` overrides
+ *  the element's own id so reports stay keyed to the controller (spec/MEDIA.md). */
+export function setupMediaElement(el: HTMLElement, r: DomRenderer, reportId?: number): void {
+  const media = mediaElementOf(el);
+  if (!media || mediaState.has(media)) {
+    return;
+  }
+  const state = { suppressUntil: 0, suppressTimeUntil: 0, playing: false, lastReported: 0, lastReportedVolume: -1, reportTimer: 0, unlocked: false };
+  mediaState.set(media, state);
+  // The report id is the owning `MEDIA_CONTROLLER` node. A controller's playback
+  // element is a `<video data-pathland-media>` **child** of the controller node
+  // (`<div data-pathland-id="…">`), so the element itself carries no id — fall
+  // back to the nearest ancestor that does. (A `VIDEO` surface passes its
+  // controller id explicitly via `reportId`.) Without this, reports go out as
+  // `target=0`, which no media sink is keyed to, and progress never advances.
+  const id = reportId ?? Number(
+    el.getAttribute("data-pathland-id")
+      ?? el.closest("[data-pathland-id]")?.getAttribute("data-pathland-id")
+      ?? 0,
+  );
+  const send = r.onMediaEvent;
+  if (!send) {
+    return;
+  }
+  // Play/pause/volume are reported only when the media has NATIVE controls —
+  // the only case a user drives them directly. App-driven custom-control media
+  // (a hidden element under app controls) never echoes them: every such change
+  // is app-initiated, so reporting it back would lock the player state.
+  if (media.controls) {
+    media.addEventListener("play", () => {
+      if (performance.now() >= state.suppressUntil) {
+        send(encodeMediaPlayStateChanged(id, true));
+      }
+    });
+    media.addEventListener("pause", () => {
+      if (performance.now() >= state.suppressUntil) {
+        send(encodeMediaPlayStateChanged(id, false));
+      }
+    });
+    media.addEventListener("volumechange", () => {
+      if (performance.now() >= state.suppressUntil) {
+        state.lastReportedVolume = media.volume;
+        send(encodeMediaVolumeChanged(id, media.volume));
+      }
+    });
+  }
+  // Time + ended are always reported: the app displays progress and advances on
+  // end. The DOM client SAMPLES the position every ~33 ms (the browser's native
+  // `timeupdate` is only ~4 Hz), reporting whenever it advances a cadence step
+  // (≈ 30 reports/s while playing; spec/EVENTS.md Media — parity with the GTK
+  // renderer's 30 Hz gate). The sampler stops when removed (CMD_DELETE_NODE).
+  state.reportTimer = window.setInterval(() => {
+    if (!media.paused
+        && performance.now() >= state.suppressTimeUntil
+        && Math.abs(media.currentTime - state.lastReported) >= TIME_UPDATE_MAX_INTERVAL_S) {
+      state.lastReported = media.currentTime;
+      send(encodeMediaTimeUpdated(id, media.currentTime));
+    }
+  }, TIME_UPDATE_SAMPLE_MS);
+  media.addEventListener("ended", () => {
+    send(encodeMediaEnded(id));
+  });
+  // Duration becomes known after the resource loads — report it when it changes
+  // (spec/EVENTS.md `MEDIA_DURATION_CHANGED`).
+  media.addEventListener("durationchange", () => {
+    if (Number.isFinite(media.duration) && media.duration > 0) {
+      send(encodeMediaDurationChanged(id, media.duration));
+    }
+  });
+}
+
+/** Test-only: set a media element's last-reported position (the echo-guard
+ *  basis for `MEDIA_POSITION` writes, spec/EVENTS.md Media). */
+export function __setMediaLastReported(el: HTMLMediaElement, seconds: number): void {
+  const state = mediaState.get(el);
+  if (state) {
+    state.lastReported = seconds;
+  }
+}
+
+// --- SizeThatFits (FIT_QUERY → local fit → FIT_CHANGED only on transitions) ---
+
+interface FitSlotState {
+  thresholds: number[];
+  lastIndex: number;
+  observer: ResizeObserver | null;
+}
+
+/** Per-`SIZE_THAT_FITS` slot state: the candidate thresholds + last reported index. */
+const fitState = new WeakMap<HTMLElement, FitSlotState>();
+
+/** The fit rule (spec/PRIMITIVES.md): max i with thresholds[i] <= width;
+ *  thresholds ascending, equal thresholds pick the lower index (stable). */
+function fitIndexFor(thresholds: number[], width: number): number {
+  let selected = 0;
+  for (const [i, t] of thresholds.entries()) {
+    if (t > width) break;
+    if (i === 0 || thresholds[i - 1] !== t) selected = i;
+  }
+  return selected;
+}
+
+/** Apply a LIST-typed property (a `FIT_QUERY` threshold table) to a fitted slot. */
+function applyFitQuery(el: HTMLElement, r: DomRenderer, thresholds: number[]): void {
+  el.setAttribute("data-pathland-fit", thresholds.join(","));
+  const state = ensureFitState(el, r);
+  state.thresholds = thresholds;
+  evaluateFit(el, r, state);
+}
+
+/** Hydrate a fitted slot from the SSR's `data-pathland-fit` attribute. */
+export function hydrateFitElement(el: HTMLElement, r: DomRenderer): void {
+  const raw = el.getAttribute("data-pathland-fit");
+  if (raw == null) return;
+  const thresholds = raw.split(",").map(Number).filter(Number.isFinite);
+  applyFitQuery(el, r, thresholds);
+}
+
+/**
+ * Re-report every fitted slot's CURRENT fit once — the host calls this right
+ * after the WebSocket opens, because a fit report emitted at boot is dropped
+ * (`onFitEvent` gates on `transport.open`, and the dropped report still sets
+ * `lastIndex`, so the ResizeObserver would otherwise stay silent on an
+ * unchanged width). Resetting `lastIndex` forces exactly one `FIT_CHANGED`;
+ * the observer keeps reporting later band crossings.
+ */
+export function refreshFitSlots(r: DomRenderer): void {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-fit]")) {
+    const state = fitState.get(el);
+    if (state) {
+      state.lastIndex = -1;
+      evaluateFit(el, r, state);
+    }
+  }
+}
+
+function ensureFitState(el: HTMLElement, r: DomRenderer): FitSlotState {
+  let state = fitState.get(el);
+  if (!state) {
+    state = { thresholds: [], lastIndex: -1, observer: null };
+    fitState.set(el, state);
+    if (typeof ResizeObserver !== "undefined") {
+      state.observer = new ResizeObserver(() => evaluateFit(el, r, state!));
+      state.observer.observe(el);
+    }
+  }
+  return state;
+}
+
+/** Re-derive a slot's fit from its measured width, reporting only on transitions
+ *  (the spec'd cadence — no size stream, only a `FIT_CHANGED` when the pick
+ *  actually changes; the first measure always reports once). */
+function evaluateFit(el: HTMLElement, r: DomRenderer, state: FitSlotState): void {
+  const send = r.onFitEvent;
+  if (!send) return;
+  const width = el.getBoundingClientRect().width;
+  const index = fitIndexFor(state.thresholds, width);
+  if (index === state.lastIndex) return;
+  state.lastIndex = index;
+  const id = Number(el.getAttribute("data-pathland-id"));
+  if (Number.isInteger(id) && id > 0) {
+    send(encodeFittedChanged(id, index));
+  }
+}
+
+/**
+ * The parent a TREE op structurally mutates (for the fit-slot collapse hook).
+ * INSERT/REMOVE/MOVE target the parent (`A`); DELETE targets the child (`A`),
+ * whose parent is the mutated container (a deleted candidate's wrapper sits
+ * under the slot).
+ */
+function treeOpParent(op: Opcode, r: DomRenderer): HTMLElement | null {
+  const id = op.command === CMD_DELETE_NODE ? null : op.a;
+  if (id != null && id > 0) {
+    const parent = r.byId.get(id) as HTMLElement | undefined;
+    return parent ?? null;
+  }
+  if (op.command === CMD_DELETE_NODE) {
+    const child = r.byId.get(op.a) as HTMLElement | undefined;
+    return child?.parentElement ?? null;
+  }
+  return null;
+}
+
+/**
+ * The nearest gated SSR fit slot (`data-pathland-fit-cands`) an op structurally
+ * mutates, or null. The mutated parent is resolved by `treeOpParent`; `closest`
+ * includes the slot itself (the downgrade's REMOVE/DELETE targets the slot's
+ * candidate). Used to record slots to reconcile after the batch.
+ */
+function nearestGatedFitSlot(op: Opcode, r: DomRenderer): HTMLElement | null {
+  const parent = treeOpParent(op, r);
+  return parent?.closest<HTMLElement>("[data-pathland-fit-cands]") ?? null;
+}
+
+/**
+ * N→1 fit-slot reconcile (issue #141), run AFTER a batch: the SSR snapshot form
+ * laid out EVERY candidate behind `data-pathland-fit-cand` wrappers gated by
+ * `@container` rules (a `style[data-pathland-fit]` element) and made the slot a
+ * `container-name` container. The app's downgrade to a single selected child
+ * removes the unselected candidates; once the slot holds a SINGLE live candidate
+ * it is the ordinary live form, so tear the snapshot presentation down: unwrap the
+ * surviving candidate, drop the now-empty wrappers, strip `data-pathland-fit-cands`
+ * + the container name/type, and drop the slot's band rules.
+ *
+ * Gating on the slot's FINAL state (rather than on any structural removal) is what
+ * keeps the gate intact when a fit swap merely drops a child INSIDE a candidate
+ * (a band crossing) — unwrapping then would expose every candidate (the "all
+ * branches rendered" bug).
+ */
+function reconcileFitGate(slot: HTMLElement): void {
+  if (!slot.hasAttribute("data-pathland-fit-cands")) {
+    return;
+  }
+  const wrappers = Array.from(slot.children).filter(
+    (n): n is HTMLElement => n instanceof HTMLElement && n.hasAttribute("data-pathland-fit-cand"),
+  );
+  // A wrapper is a LIVE candidate while it still holds its candidate element (the
+  // app's downgrade removes the element, leaving an empty wrapper behind).
+  const live = wrappers.filter((w) => w.firstElementChild !== null);
+  if (live.length > 1) {
+    return; // still gated: the CSS band keeps showing exactly one candidate
+  }
+  // Single (or zero) live candidate → the downgrade completed: unwrap the survivor
+  // (it carried the id + styles; the wrapper was purely presentational) and drop
+  // every now-empty wrapper.
+  const survivor = live[0]?.firstElementChild;
+  if (survivor) {
+    live[0]!.replaceWith(survivor);
+  }
+  for (const wrapper of wrappers) {
+    if (wrapper.parentNode === slot) {
+      wrapper.remove();
+    }
+  }
+  slot.removeAttribute("data-pathland-fit-cands");
+  slot.style.removeProperty("container-type");
+  slot.style.removeProperty("container-name");
+  const id = slot.getAttribute("data-pathland-id");
+  if (id) {
+    dropFitBandRules(Number(id));
+  }
+}
+
+/**
+ * Remove a slot's `@container pf-<id>` band rules from the managed
+ * `style[data-pathland-fit]` element (created by the SSR head or the client's
+ * rule manager). Called when a snapshot slot collapses to the live single-child
+ * form — the leftover rules would otherwise keep gating nothing (harmless), but
+ * the element must not grow stale rules across resyncs.
+ */
+function dropFitBandRules(slotId: number): void {
+  const style = document.querySelector<HTMLStyleElement>("style[data-pathland-fit]");
+  if (!style) return;
+  const blocks = style.textContent?.split(/\n/) ?? [];
+  // Match the slot's `@container pf-<id>` at a word boundary so slot `1` never
+  // matches slot `10`/`11`… (multi-digit ids are common once nested fit slots
+  // exist).
+  const marker = new RegExp(`@container pf-${slotId}\\b`);
+  const kept: string[] = [];
+  let skip = false;
+  for (const line of blocks) {
+    if (!skip && marker.test(line)) {
+      skip = true;
+    }
+    if (skip) {
+      if (line.includes("}")) {
+        skip = false;
+      }
+      continue;
+    }
+    kept.push(line);
+  }
+  const text = kept.join("\n");
+  style.textContent = text;
+  // Keep a live sheet in sync where supported.
+  try {
+    style.sheet?.replaceSync?.(text);
+  } catch {
+    // happy-dom / older engines — textContent is the source of truth.
+  }
+}
+
+/** Test-only: tear a fitted slot's observer down (mirrors CMD_DELETE_NODE). */
+export function destroyFitElement(el: HTMLElement): void {
+  const state = fitState.get(el);
+  if (state?.observer) {
+    state.observer.disconnect();
+  }
+  fitState.delete(el);
+}
+
+/** Drop every registry side-entry for a deleted subtree (a DELETE_NODE covers
+ *  the whole subtree): byId + per-node media samplers / fit observers. A node
+ *  left behind in `byId` is a detached-but-"live" element a later op could
+ *  reuse and double-parent (spec OPCODE.md — insert/delete ordering). */
+function purgeSubtreeRegistry(host: Element, r: DomRenderer): void {
+  const nodes = [
+    host,
+    ...Array.from(host.querySelectorAll<HTMLElement>("[data-pathland-id]")),
+  ];
+  for (const node of nodes) {
+    if (!(node instanceof Element)) {
+      continue;
+    }
+    const id = Number(node.getAttribute("data-pathland-id"));
+    if (Number.isInteger(id) && id > 0) {
+      r.byId.delete(id);
+    }
+    const media = mediaElementOf(node as HTMLElement);
+    if (media) {
+      const st = mediaState.get(media);
+      if (st?.reportTimer) {
+        window.clearInterval(st.reportTimer);
+      }
+      mediaState.delete(media);
+    }
+    const fit = fitState.get(node as HTMLElement);
+    if (fit?.observer) {
+      fit.observer.disconnect();
+    }
+    fitState.delete(node as HTMLElement);
+  }
+}
+
+/** Detach `child` from any OTHER parent before insertion so a stale pooled /
+ *  wrong-parent child can never be double-inserted into `container`. */
+function detachIfWrongParent(container: Node, child: Node): void {
+  const p = child.parentNode;
+  if (p && p !== container) {
+    p.removeChild(child);
+  }
+}
+
+/** The media registry (spec/MEDIA.md): per **controller** id, the element that
+ *  owns the resource + transport, and every `VIDEO` surface mirroring it. Keyed
+ *  by controller id rather than by emission order, so a surface that arrives
+ *  before its controller, or a controller that arrives after its surface, still
+ *  binds — the entry is shared and reconciled from both directions. */
+interface MediaEntry {
+  /** The controller's playback element (null until its `MEDIA_SOURCE` arrives). */
+  controllerMedia: HTMLVideoElement | null;
+  /** The `VIDEO` surfaces mirroring this controller. */
+  surfaces: Set<HTMLVideoElement>;
+}
+
+const mediaRegistry = new Map<number, MediaEntry>();
+
+function mediaEntry(controllerId: number): MediaEntry {
+  let entry = mediaRegistry.get(controllerId);
+  if (!entry) {
+    entry = { controllerMedia: null, surfaces: new Set() };
+    mediaRegistry.set(controllerId, entry);
+  }
+  return entry;
+}
+
+/** Copy a controller's transport state onto its bound `VIDEO` surfaces, dropping
+ *  surfaces that have left the DOM (a removed subtree must not keep playing). */
+function mirrorToSurfaces(controllerId: number, media: HTMLMediaElement): void {
+  const entry = mediaRegistry.get(controllerId);
+  if (!entry) {
+    return;
+  }
+  if (media instanceof HTMLVideoElement) {
+    entry.controllerMedia = media;
+    // The controller owns the resource but a bound surface carries the audio:
+    // silence the controller element. Applied here (not only at surface-bind
+    // time) so it holds whichever side arrives first.
+    if (entry.surfaces.size > 0) {
+      media.muted = true;
+    }
+  }
+  const surfaces = entry.surfaces;
+  for (const video of surfaces) {
+    if (!video.isConnected) {
+      surfaces.delete(video);
+      continue;
+    }
+    if (media.src && video.src !== media.src) {
+      video.src = media.src;
+    }
+    video.volume = media.volume;
+    video.muted = media.muted;
+    video.loop = media.loop;
+    if (Number.isFinite(media.currentTime) && Math.abs(video.currentTime - media.currentTime) > 0.25) {
+      video.currentTime = media.currentTime;
+    }
+    if (!media.paused && video.paused) {
+      const p = video.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => undefined);
+      }
+    } else if (media.paused && !video.paused) {
+      video.pause();
+    }
+  }
+}
+
+/** Bind a `VIDEO` surface to its controller (`MEDIA_CONTROLLER_ID`): adopt the
+ *  controller's resource + current transport and mirror it from then on. The
+ *  controller element is silenced (the surface carries the audio), while the
+ *  surface reports media events keyed to the controller id (spec/MEDIA.md). */
+function bindVideoSurface(el: HTMLElement, r: DomRenderer, controllerId: number): void {
+  const video = el.matches("video")
+    ? (el as HTMLVideoElement)
+    : el.querySelector<HTMLVideoElement>("video");
+  if (!video) {
+    return;
+  }
+  const controller = r.byId.get(controllerId);
+  const controllerMedia = controller instanceof HTMLElement
+    ? ensureMediaElement(controller, PROP_MEDIA_SOURCE)
+    : null;
+  if (controllerMedia) {
+    controllerMedia.muted = true; // the surface carries the audio
+  }
+  // Register the surface against the controller id. A surface may be emitted
+  // *before* its controller (or the controller's `MEDIA_SOURCE` may arrive
+  // later) — mirroring happens on whichever side arrives second, because both
+  // resolve the same registry entry.
+  const entry = mediaEntry(controllerId);
+  entry.surfaces.add(video);
+  if (controllerMedia) {
+    mirrorToSurfaces(controllerId, controllerMedia);
+  } else if (entry.controllerMedia) {
+    mirrorToSurfaces(controllerId, entry.controllerMedia);
+  }
+  setupMediaElement(el, r, controllerId);
+  finalizeNativeMedia(el);
+}
+
+/** Apply a media control property: drive the media element, suppress the echo,
+ *  and wire its listeners. */
+function applyMediaProperty(el: HTMLElement, r: DomRenderer, propId: number, valueType: number, bits: number): void {
+  const media = ensureMediaElement(el, PROP_MEDIA_SOURCE);
+  if (!media) {
+    return;
+  }
+  setupMediaElement(el, r);
+  const controllerId = Number(el.getAttribute("data-pathland-id"));
+  const state = mediaState.get(media);
+  if (propId === PROP_PLAYBACK_STATE) {
+    const playing = (valueType === VAL_U8 ? bits & 0xff : bits) !== 0;
+    if (state) {
+      state.playing = playing;
+    }
+    if (playing) {
+      // The play/pause action is a server round-trip, so this runs after the
+      // click's user activation has expired: `playMedia` handles the autoplay
+      // rejection (retried on the next trusted gesture) and logs real failures.
+      playMedia(media);
+    } else {
+      media.pause();
+    }
+    if (state) {
+      state.suppressUntil = performance.now() + 100;
+    }
+  } else if (propId === PROP_MEDIA_POSITION) {
+    // A seek only when it is meaningful (spec/EVENTS.md Media echo guard): the
+    // app echoes every timeupdate back as MEDIA_POSITION, so a write matching
+    // the position we last REPORTED must not seek — even when network delay
+    // means currentTime has advanced (per-second jitter otherwise). A real seek
+    // (user drag / prev / next) to a different position still fires.
+    const target = f32FromBits(bits);
+    const reported = state ? state.lastReported : media.currentTime;
+    if (Math.abs(reported - target) > 0.25) {
+      media.currentTime = target;
+      if (state) {
+        state.suppressTimeUntil = performance.now() + 250;
+      }
+    }
+  } else if (propId === PROP_MEDIA_VOLUME) {
+    // Echo guard: a write matching the volume we last reported is the app
+    // echoing MEDIA_VOLUME_CHANGED back — skip it (it would re-trigger the
+    // native volumechange echo). A genuine user change still applies.
+    const target = Math.min(1, Math.max(0, f32FromBits(bits)));
+    const reported = state ? state.lastReportedVolume : -1;
+    if (reported < 0 || Math.abs(reported - target) > 0.01) {
+      media.volume = target;
+      if (state) {
+        state.suppressUntil = performance.now() + 100;
+      }
+    }
+  } else if (propId === PROP_MEDIA_MUTED) {
+    media.muted = (valueType === VAL_U8 ? bits & 0xff : bits) !== 0;
+    if (state) {
+      state.suppressUntil = performance.now() + 100;
+    }
+  } else if (propId === PROP_MEDIA_LOOP) {
+    media.loop = (valueType === VAL_U8 ? bits & 0xff : bits) !== 0;
+  } else if (propId === PROP_MEDIA_RATE) {
+    const rate = f32FromBits(bits);
+    if (rate > 0) {
+      media.playbackRate = rate;
+    }
+  }
+  // Keep any bound `VIDEO` surface in step with the controller.
+  mirrorToSurfaces(controllerId, media);
+}
+
+/** A source change resets the media element to a paused, loading state — even
+ *  when it was playing. If the app last requested "playing", resume playback on
+ *  the new source (a skip/auto-advance must keep playing, not require a manual
+ *  pause+play). The autoplay-policy outcome is handled by `playMedia`. */
+function resumeIfPlaying(el: HTMLElement): void {
+  const media = mediaElementOf(el);
+  const state = media ? mediaState.get(media) : undefined;
+  if (media && state && state.playing) {
+    playMedia(media);
+  }
+}
+
+/** A live-created media node with no control children renders with native
+ *  `controls` (the default AudioStyle/VideoStyle), mirroring the Rust SSR. */
+function finalizeNativeMedia(el: HTMLElement): void {
+  const media = el.matches("audio,video")
+    ? (el as HTMLMediaElement)
+    : el.querySelector<HTMLMediaElement>("audio,video");
+  if (!media) {
+    return;
+  }
+  const hasCustomChildren = el.matches("audio,video")
+    ? el.childElementCount > 0
+    : el.childElementCount > 1;
+  if (!hasCustomChildren) {
+    media.controls = true;
+  }
+}
+
+/** Morph a bare media element into a `.pathland-media` wrapper (a node gaining
+ *  custom control children), preserving the node's identity + style and moving
+ *  the media element inside — the structure the Rust SSR emits. */
+function mediaToWrapper(el: HTMLElement, r: DomRenderer): HTMLElement {
+  // Idempotent: a media element already inside a `.pathland-media` wrapper is
+  // already materialized — re-wrapping here would nest wrappers and can turn a
+  // later child insert into inserting the wrapper into its own audio (a
+  // HierarchyRequestError). Return the existing wrapper unchanged.
+  const existing = el.parentElement;
+  if (existing?.classList.contains("pathland-media")) {
+    return existing;
+  }
+  const wrapper = document.createElement("div");
+  wrapper.className = "pathland-media";
+  wrapper.setAttribute("data-pathland-media", "");
+  for (const attr of Array.from(el.attributes)) {
+    if (attr.name === "style") {
+      wrapper.style.cssText = el.style.cssText;
+    } else {
+      wrapper.setAttribute(attr.name, attr.value);
+    }
+  }
+  // A custom-control surface body drops the native controls (the children are the
+  // control UI), matching the Rust SSR's `.pathland-media` wrapper.
+  (el as HTMLMediaElement).controls = false;
+  const prevParent = el.parentNode;
+  el.removeAttribute("data-pathland-id");
+  el.style.cssText = "";
+  wrapper.append(el);
+  // Substitute the wrapper for the media element in its ORIGINAL parent. The
+  // parent must be captured BEFORE the append — after it, `el.parentNode` is
+  // the wrapper itself, and replacing it with the wrapper would self-insert
+  // ("The new node is a parent of the node to insert to" / HierarchyRequestError).
+  if (prevParent) {
+    prevParent.replaceChild(wrapper, el);
+  }
+  const id = Number(wrapper.getAttribute("data-pathland-id") ?? 0);
+  if (id) {
+    r.byId.set(id, wrapper);
+  }
+  const c = componentByNode.get(el);
+  if (c !== undefined) {
+    componentByNode.set(wrapper, c);
+  }
+  return wrapper;
 }

@@ -29,18 +29,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Inter (default font)
+## Remix Icon
 
-The default `--pl-font-sans` uses the **Inter** typeface, loaded at runtime from
-the **rsms.me CDN** (served by Cloudflare) via
-`https://rsms.me/inter/inter.css` — the renderer does **not** bundle the font
-binary. Inter is distributed under the SIL Open Font License 1.1; Rasmus
-Andersson's copyright notice and the OFL 1.1 license text apply. See
-https://github.com/rsms/inter/blob/master/LICENSE.txt for the canonical license
-text.
+The **filled** inline SVG `<path>` data in `src/icons.rs` is vendored from
+[Remix Icon](https://remixicon.com) v4.9.1 (the `icons/**/<name>-fill.svg` files
+in the `remixicon` package). Every glyph is a single filled path on a 24×24 grid
+with `fill="currentColor"`. Remix Icon is released under the **Apache License
+2.0** (the npm `package.json` declares `Apache-2.0`):
 
-**Follow-up:** self-hosting the Inter webfont (subsetted woff2, bundled with the
-renderer / embedded in the renderer jar) is planned for offline and
-enterprise/air-gapped deployments. When a self-hosted Inter webfont is bundled,
-the OFL 1.1 license text and the Inter copyright notice must be included
-alongside it.
+```
+Copyright (c) Remix Design
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+```
+
+Source: https://github.com/Remix-Design/RemixIcon (SPDX: `Apache-2.0`).

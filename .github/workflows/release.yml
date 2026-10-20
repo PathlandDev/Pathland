@@ -1,0 +1,311 @@
+name: Release
+
+# Publishing a GitHub Release (which creates the tag, e.g. `v0.1.1`) builds and
+# publishes every artifact — the Rust crates to crates.io and the Java libraries
+# to Maven Central (with the renderer's native libraries for every supported
+# platform) — then attaches the built files to the Release.
+#
+# The tag drives the version: the workflow writes the tag's `X.Y.Z` into the Rust
+# workspace version and the Java parent version (in CI only) before building, and
+# a `bump` job commits that version back to `main` afterwards. No pre-bump commit
+# is required. Tags must be `v<major>.<minor>.<patch>` (an optional pre-release
+# suffix is allowed).
+#
+# The publish steps are idempotent, so re-running a partially failed release is
+# safe (a crate+version already on crates.io is skipped; Maven Central rejects a
+# re-deploy of an existing version).
+#
+# Secrets:
+#   CARGO_REGISTRY_TOKEN  crates.io API token (publish scope)
+#   GPG_PRIVATE_KEY       armored GPG private key (signing)
+#   GPG_PASSPHRASE        its passphrase
+#   CENTRAL_USERNAME      Sonatype Central Portal user token username
+#   CENTRAL_PASSWORD      Sonatype Central Portal user token password
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.1.1); blank = current ref'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Resolve + validate version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - id: v
+        name: Derive the version from the tag
+        run: |
+          set -euo pipefail
+          tag="${{ github.event.release.tag_name || inputs.tag || github.ref_name }}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag '$tag' must be v<major>.<minor>.<patch>"
+            exit 1
+          fi
+          version="${tag#v}"
+          echo "tag=$tag version=$version"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  rust:
+    name: Publish crates to crates.io
+    runs-on: ubuntu-latest
+    needs: version
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Set the version from the tag
+        working-directory: lib/rust
+        run: |
+          set -euo pipefail
+          cargo install cargo-edit --locked
+          cargo set-version --workspace "${{ needs.version.outputs.version }}"
+          # Sanity: the workspace version + the intra-workspace path-dep pins.
+          awk -F'"' '/^version = /{print "workspace:", $2; exit}' Cargo.toml
+          grep -rho 'pathland-[a-z-]*", version = "[^"]*"' crates/*/Cargo.toml | sort -u
+
+      - name: Test the publishable crates
+        working-directory: lib/rust
+        run: cargo test -p pathland-core -p pathland-engine -p pathland-view -p pathland-core-transport -p pathland-render-html
+
+      - name: Publish in dependency order
+        working-directory: lib/rust
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="${{ needs.version.outputs.version }}"
+          crates=(pathland-core pathland-engine pathland-view pathland-core-transport pathland-render-html)
+          for c in "${crates[@]}"; do
+            echo "::group::publish $c $version"
+            # Idempotent: skip a crate+version already on crates.io.
+            if curl -sf -A "pathland-release-ci" "https://crates.io/api/v1/crates/$c/$version" >/dev/null; then
+              echo "$c $version already published — skipping"
+              echo "::endgroup::"
+              continue
+            fi
+            # `cargo publish` packages (leaving the .crate in target/package) then uploads.
+            # `--allow-dirty`: `cargo set-version` above intentionally edits the
+            # crates' manifests (the path-dep version pins), so the tree is "dirty".
+            cargo publish --allow-dirty -p "$c"
+            echo "::endgroup::"
+            # Let the index propagate so the next dependent crate resolves it.
+            sleep 20
+          done
+
+      - name: Package (guarantee .crate files for the release assets)
+        working-directory: lib/rust
+        run: |
+          set -euo pipefail
+          # All dependencies are published by now, so packaging every crate works.
+          for c in pathland-core pathland-engine pathland-view pathland-core-transport pathland-render-html; do
+            cargo package --allow-dirty -p "$c"
+          done
+
+      - name: Upload the .crate files
+        uses: actions/upload-artifact@v4
+        with:
+          name: crates
+          path: lib/rust/target/package/*.crate
+          if-no-files-found: error
+
+  java-natives:
+    name: Build renderer natives (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: windows-x86_64, runner: windows-latest }
+          - { platform: linux-x86_64, runner: ubuntu-latest }
+          - { platform: linux-aarch64, runner: ubuntu-24.04-arm }
+          - { platform: macos-aarch64, runner: macos-14 }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build the renderer cdylib
+        working-directory: lib/rust
+        run: cargo build --release -p pathland-render-html
+
+      - name: Stage the platform lib
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.platform }}" in
+            windows-*) src="pathland_render_html.dll";      dst="libpathland_render_html.dll" ;;
+            macos-*)   src="libpathland_render_html.dylib"; dst="libpathland_render_html.dylib" ;;
+            *)         src="libpathland_render_html.so";    dst="libpathland_render_html.so" ;;
+          esac
+          dest="lib/java/pathland-render-html/target/native/${{ matrix.platform }}"
+          mkdir -p "$dest"
+          cp "lib/rust/target/release/$src" "$dest/$dst"
+          ls -la "$dest"
+
+      - name: Upload the platform lib
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.platform }}
+          path: lib/java/pathland-render-html/target/native/${{ matrix.platform }}/*
+          if-no-files-found: error
+
+  java:
+    name: Publish to Maven Central
+    runs-on: ubuntu-latest
+    needs: [version, java-natives]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Set up JDK + Maven credentials + GPG
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      # Maven 3.10 (the runner default since 2026-10-04) writes a
+      # `maven-metadata-local.xml` beside each artifact in the Central staging,
+      # which central-publishing-maven-plugin bundles and the Portal rejects
+      # ("content that does NOT have a .pom file"). 3.9.x does not. Pin it here.
+      - name: Pin Maven 3.9.9
+        run: |
+          set -euo pipefail
+          v=3.9.9
+          curl -sSL "https://archive.apache.org/dist/maven/maven-3/$v/binaries/apache-maven-$v-bin.tar.gz" | tar -xz -C "$HOME"
+          echo "$HOME/apache-maven-$v/bin" >> "$GITHUB_PATH"
+          mvn -v
+
+      - name: Set the version from the tag
+        working-directory: lib/java
+        run: mvn -B -q versions:set -DnewVersion="${{ needs.version.outputs.version }}" -DgenerateBackupPoms=false -DprocessAllModules=true
+
+      - name: Download the platform natives
+        uses: actions/download-artifact@v4
+        with:
+          path: natives
+
+      - name: Stage the natives for the jar embed
+        run: |
+          set -euo pipefail
+          mkdir -p lib/java/pathland-render-html/target/native
+          for d in natives/native-*; do
+            platform="${d#natives/native-}"
+            mkdir -p "lib/java/pathland-render-html/target/native/$platform"
+            cp "$d"/* "lib/java/pathland-render-html/target/native/$platform/"
+          done
+          find lib/java/pathland-render-html/target/native -type f
+
+      # The demos are excluded from the release reactor: central-publishing-maven-plugin
+      # bundles every reactor module (it ignores maven.deploy.skip), and the demos must
+      # not be published.
+      - name: Deploy to Maven Central
+        working-directory: lib/java
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: >-
+          mvn -B -P release deploy
+          -pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'
+
+      - name: Collect the published main jars
+        run: |
+          set -euo pipefail
+          mkdir -p dist/jars
+          for m in pathland-view pathland-view-processor pathland-render-html pathland-state-redis \
+                   pathland-server-core pathland-observability pathland-test-kit \
+                   pathland-spring-boot-starter pathland-quarkus-starter; do
+            cp lib/java/"$m"/target/"$m"-*.jar dist/jars/ 2>/dev/null || true
+          done
+          rm -f dist/jars/*-sources.jar dist/jars/*-javadoc.jar
+          ls -la dist/jars
+
+      - name: Upload the main jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: jars
+          path: dist/jars/*.jar
+          if-no-files-found: error
+
+  bump:
+    name: Commit the version back to main
+    runs-on: ubuntu-latest
+    needs: [version, rust, java]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Set the Rust version
+        working-directory: lib/rust
+        run: |
+          set -euo pipefail
+          cargo install cargo-edit --locked
+          cargo set-version --workspace "${{ needs.version.outputs.version }}"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set the Java version
+        working-directory: lib/java
+        run: mvn -B -q versions:set -DnewVersion="${{ needs.version.outputs.version }}" -DgenerateBackupPoms=false -DprocessAllModules=true
+
+      - name: Commit + push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "version already current on main — nothing to commit"
+            exit 0
+          fi
+          git add -A
+          git commit -m "chore(release): v${{ needs.version.outputs.version }}"
+          git push origin HEAD:main
+
+  release-assets:
+    name: Attach release assets
+    runs-on: ubuntu-latest
+    needs: [version, rust, java-natives, java]
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Collect the files to attach
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          find dist -type f \( -name '*.crate' -o -name '*.jar' -o -name '*.dll' -o -name '*.so' -o -name '*.dylib' \) -exec cp {} out/ \;
+          ls -la out
+
+      - name: Attach to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.version.outputs.tag }}" out/* --repo "${{ github.repository }}" --clobber

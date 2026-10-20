@@ -5,13 +5,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.pathland</groupId>
+        <groupId>dev.pathland</groupId>
         <artifactId>pathland-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.1.5</version>
     </parent>
 
     <artifactId>pathland-demo-views</artifactId>
     <packaging>jar</packaging>
+
+    <!-- Demo application — not published to Maven Central. -->
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
 
     <name>Pathland Demo Views</name>
     <description>
@@ -23,14 +29,14 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-view</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- Order the processor module before this one in the reactor; the actual
              processing is configured via annotationProcessorPaths below. -->
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-view-processor</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
@@ -50,7 +56,7 @@
                 <configuration>
                     <annotationProcessorPaths>
                         <path>
-                            <groupId>org.pathland</groupId>
+                            <groupId>dev.pathland</groupId>
                             <artifactId>pathland-view-processor</artifactId>
                             <version>${project.version}</version>
                         </path>

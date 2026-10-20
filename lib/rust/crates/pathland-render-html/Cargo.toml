@@ -3,8 +3,10 @@ name = "pathland-render-html"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
 description = "Pathland HTML renderer: maps opcode frames onto declarative HTML elements"
-repository = "https://github.com/michaelkrog/Pathland"
 categories = ["rendering", "web-programming"]
 keywords = ["ui", "protocol", "opcode", "html", "ssr"]
 
@@ -12,5 +14,5 @@ keywords = ["ui", "protocol", "opcode", "html", "ssr"]
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core" }
-pathland-core-transport = { path = "../pathland-core-transport" }
+pathland-core = { path = "../pathland-core", version = "0.1.5" }
+pathland-core-transport = { path = "../pathland-core-transport", version = "0.1.5" }

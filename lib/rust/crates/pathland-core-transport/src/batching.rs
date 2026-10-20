@@ -56,8 +56,8 @@ impl Default for BatchPolicy {
 #[derive(Debug)]
 pub struct Batcher {
     policy: BatchPolicy,
-    /// Frame count of the first buffered frame.
-    frame_count: u32,
+    /// Sequence number assigned to the next flushed batch.
+    next_sequence: u32,
     /// Opcodes buffered since the last flush.
     opcodes: Vec<Opcode>,
     /// Arena bytes appended since the last flush.
@@ -75,7 +75,7 @@ impl Batcher {
     pub fn new(policy: BatchPolicy) -> Self {
         Self {
             policy,
-            frame_count: 0,
+            next_sequence: 1,
             opcodes: Vec::new(),
             pending_arena: Vec::new(),
             last_arena_len: 0,
@@ -106,10 +106,13 @@ impl Batcher {
 
     /// Record a frame (opcodes + the arena's used portion `[0..cursor)`),
     /// accumulating the arena delta. Returns `true` if the size trigger fired.
-    pub fn push_frame(&mut self, frame_count: u32, opcodes: &[Opcode], arena_used: &[u8]) -> bool {
+    ///
+    /// The batch's sequence number is assigned at [`flush`](Self::flush), not
+    /// here: a batch is the network unit, and several frames may coalesce into
+    /// one.
+    pub fn push_frame(&mut self, opcodes: &[Opcode], arena_used: &[u8]) -> bool {
         if self.started.is_none() {
             self.started = Some(Instant::now());
-            self.frame_count = frame_count;
         }
         if arena_used.len() < self.last_arena_len {
             // Arena was reset; restart the pending buffer.
@@ -145,11 +148,12 @@ impl Batcher {
             return None;
         }
         let bytes = encode_batch(
-            self.frame_count,
+            self.next_sequence,
             GUEST_TO_HOST,
             &self.opcodes,
             &self.pending_arena,
         );
+        self.next_sequence = self.next_sequence.wrapping_add(1);
         self.opcodes.clear();
         self.pending_arena.clear();
         self.last_arena_len = 0;
@@ -177,7 +181,7 @@ mod tests {
         // Tiny batch size: one opcode (16 B) exceeds it.
         let policy = BatchPolicy::new(Duration::from_secs(60), 8);
         let mut batcher = Batcher::new(policy);
-        batcher.push_frame(1, &[op(1)], empty_arena());
+        batcher.push_frame(&[op(1)], empty_arena());
         assert!(batcher.size_triggered);
         let bytes = batcher.flush(false).expect("size trigger should flush");
         assert!(!bytes.is_empty());
@@ -188,7 +192,7 @@ mod tests {
     fn no_flush_when_under_policy() {
         let policy = BatchPolicy::new(Duration::from_secs(60), 10_000);
         let mut batcher = Batcher::new(policy);
-        batcher.push_frame(1, &[op(1)], empty_arena());
+        batcher.push_frame(&[op(1)], empty_arena());
         assert!(!batcher.size_triggered);
         assert!(batcher.flush(false).is_none());
         // Force flush drains it.
@@ -200,7 +204,7 @@ mod tests {
     fn time_trigger_flushes() {
         let policy = BatchPolicy::new(Duration::from_millis(1), 10_000);
         let mut batcher = Batcher::new(policy);
-        batcher.push_frame(1, &[op(1)], empty_arena());
+        batcher.push_frame(&[op(1)], empty_arena());
         std::thread::sleep(Duration::from_millis(5));
         assert!(batcher.interval_elapsed());
         let bytes = batcher.flush(false).expect("time trigger should flush");
@@ -217,12 +221,28 @@ mod tests {
     fn multiple_frames_coalesce_into_one_batch() {
         let policy = BatchPolicy::new(Duration::from_secs(60), 10_000);
         let mut batcher = Batcher::new(policy);
-        batcher.push_frame(1, &[op(1)], empty_arena());
-        batcher.push_frame(2, &[op(2), op(3)], empty_arena());
+        batcher.push_frame(&[op(1)], empty_arena());
+        batcher.push_frame(&[op(2), op(3)], empty_arena());
         assert_eq!(batcher.pending_opcodes(), 3);
         let bytes = batcher.flush(true).unwrap();
         // Header(16) + 3 opcodes(48) + arenaLen(4) + 0 arena.
         assert_eq!(bytes.len(), 16 + 48 + 4);
         assert!(batcher.is_empty());
+    }
+
+    #[test]
+    fn flushed_batches_get_incrementing_sequences() {
+        let policy = BatchPolicy::new(Duration::from_secs(60), 10_000);
+        let mut batcher = Batcher::new(policy);
+        batcher.push_frame(&[op(1)], empty_arena());
+        let first = batcher.flush(true).unwrap();
+        batcher.push_frame(&[op(2)], empty_arena());
+        let second = batcher.flush(true).unwrap();
+        // An empty flush must not consume a sequence number.
+        assert!(batcher.flush(true).is_none());
+
+        let mut decoder = crate::batch::BatchDecoder::new();
+        assert_eq!(decoder.decode(&first).unwrap().sequence(), 1);
+        assert_eq!(decoder.decode(&second).unwrap().sequence(), 2);
     }
 }

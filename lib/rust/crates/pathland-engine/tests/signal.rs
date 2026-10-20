@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    category, init_memory, property_id, style, value_type, Guest, Host, MemoryLayout, Opcode,
+    category, init_memory, property_id, parameter, value_type, Guest, Host, MemoryLayout, Opcode,
 };
 use pathland_engine::{assign_ids, Component, Engine, Node, SignalId, SignalValue};
 
@@ -20,9 +20,13 @@ fn text_node(text: &str) -> Node {
         component: Component::Text { text: text.into() },
         children: Vec::new(),
         properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
+    list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -33,9 +37,13 @@ fn vstack(children: Vec<Node>) -> Node {
         component: Component::VStack,
         children,
         properties: BTreeMap::new(),
+        string_properties: BTreeMap::new(),
+    list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
         property_bindings: BTreeMap::new(),
+        string_bindings: BTreeMap::new(),
+        media_controller: None,
         gestures: Vec::new(),
     }
 }
@@ -91,8 +99,8 @@ fn text_signal_change_emits_only_bound_node() {
     );
     assert_eq!(n, 1, "exactly one opcode for the bound node");
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].category(), category::STYLE);
-    assert_eq!(ops[0].command(), style::SET_TEXT);
+    assert_eq!(ops[0].category(), category::PARAMETER);
+    assert_eq!(ops[0].command(), parameter::SET_TEXT);
     assert_eq!(ops[0].a(), 2, "node 2 is the bound text");
 }
 
@@ -141,8 +149,8 @@ fn property_signal_change_emits_set_property() {
     );
     assert_eq!(n, 1);
     assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].category(), category::STYLE);
-    assert_eq!(ops[0].command(), style::SET_PROPERTY);
+    assert_eq!(ops[0].category(), category::PARAMETER);
+    assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].a(), 1);
     assert_eq!(ops[0].b() as u16, property_id::SPACING);
     assert_eq!(ops[0].c_f32(), 12.0);
@@ -195,7 +203,7 @@ fn multiple_nodes_on_one_signal_emit_together() {
     );
     assert_eq!(n, 2, "both bound nodes re-emit");
     assert_eq!(ops.len(), 2);
-    assert!(ops.iter().all(|o| o.command() == style::SET_TEXT));
+    assert!(ops.iter().all(|o| o.command() == parameter::SET_TEXT));
     let ids: Vec<u32> = ops.iter().map(|o| o.a()).collect();
     assert_eq!(ids, vec![2, 4]);
 }
@@ -226,5 +234,86 @@ fn rebinding_drops_stale_dependency() {
         &layout,
     );
     assert_eq!(n, 0);
+    assert!(ops.is_empty());
+}
+
+#[test]
+fn typed_signal_read_write_and_binding() {
+    let mut engine = Engine::new();
+    let label = engine.signal(String::from("hello"));
+    // Typed read returns the current value.
+    assert_eq!(engine.read(label.as_readonly()), Some(String::from("hello")));
+
+    let (mut mem, layout) = with_guest();
+    let mut root = vstack(vec![text_node("")]);
+    root.children[0].text_binding = Some(label.id());
+    assign_ids(&mut root, &mut 1);
+    emit_full(&mut engine, &root, &mut mem, &layout);
+
+    // Typed write emits only the bound node and updates the typed read.
+    let mut guest = Guest::new(&mut mem, &layout);
+    guest.begin_frame();
+    let n = engine
+        .set(label.clone(), String::from("world"), &mut guest)
+        .unwrap();
+    guest.end_frame();
+    assert_eq!(n, 1);
+    assert_eq!(engine.read(label.as_readonly()), Some(String::from("world")));
+}
+
+#[test]
+fn typed_numeric_signal_packs_by_kind() {
+    let mut engine = Engine::new();
+    let spacing = engine.signal(4.0f32);
+    assert_eq!(engine.read(spacing.as_readonly()), Some(4.0));
+
+    let (mut mem, layout) = with_guest();
+    let mut root = vstack(vec![text_node("x")]);
+    root.property_bindings.insert(property_id::SPACING, spacing.id());
+    assign_ids(&mut root, &mut 1);
+    emit_full(&mut engine, &root, &mut mem, &layout);
+
+    let mut guest = Guest::new(&mut mem, &layout);
+    guest.begin_frame();
+    let n = engine
+        .set(spacing.clone(), 12.0f32, &mut guest)
+        .unwrap();
+    guest.end_frame();
+    assert_eq!(n, 1);
+
+    let mut host = Host::new(&mut mem, &layout);
+    let frames = host.frames();
+    let ops: Vec<Opcode> = frames[0].opcodes().collect();
+    let op = ops
+        .iter()
+        .find(|o| o.b() as u16 == property_id::SPACING)
+        .unwrap();
+    assert_eq!(op.c_f32(), 12.0);
+}
+
+#[test]
+fn computed_signal_reemits_its_bound_node() {
+    let mut engine = Engine::new();
+    let n = engine.signal(2.0f32);
+    let nc = n.clone();
+    let label = engine.computed(move || {
+        String::from(if nc.get().unwrap() > 1.0 { "big" } else { "small" })
+    });
+
+    let (mut mem, layout) = with_guest();
+    let mut root = vstack(vec![text_node("")]);
+    root.children[0].text_binding = Some(label.id());
+    assign_ids(&mut root, &mut 1);
+    emit_full(&mut engine, &root, &mut mem, &layout);
+
+    // Setting the source recomputes the computed and re-emits the bound node.
+    let (count, ops) = set_and_collect(&mut engine, n.id(), SignalValue::F32(0.0), &mut mem, &layout);
+    assert_eq!(count, 1);
+    assert_eq!(ops[0].command(), parameter::SET_TEXT);
+    assert_eq!(ops[0].a(), 2);
+
+    // A second set that leaves the computed value unchanged emits nothing.
+    let (count, ops) = set_and_collect(&mut engine, n.id(), SignalValue::F32(-5.0), &mut mem, &layout);
+    assert_eq!(count, 0);
     assert!(ops.is_empty());
 }

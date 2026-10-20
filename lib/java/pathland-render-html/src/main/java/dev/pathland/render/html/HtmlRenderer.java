@@ -1,0 +1,332 @@
+package dev.pathland.render.html;
+
+import dev.pathland.view.emit.ProtocolFrame;
+import dev.pathland.view.transport.FrameCodec;
+import com.sun.jna.Library;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
+
+import java.io.IOException;
+import java.io.FileOutputStream;
+
+/**
+ * The Java binding to the Rust HTML renderer ({@code libpathland_render_html}) —
+ * a thin JNA shim over the flat C ABI. **Stateless and streaming**: each call
+ * renders a self-contained snapshot frame to HTML in one pass (no retained tree).
+ *
+ * <p>This replaces the former hand-written retained Java renderer, so there is a
+ * single renderer reused by every language (Rust SSR, Java via JNA, Swift/.NET via
+ * the same ABI). The wire codec ({@link FrameCodec}) provides the self-contained
+ * batch bytes the C ABI consumes.
+ *
+ * <p>C ABI (see {@code lib/rust/crates/pathland-render-html/src/capi.rs}):
+ * <pre>
+ * const char* pathland_html_render(const uint8_t* batch, uint32 len, uint32 root);
+ * const char* pathland_html_render_fragment(const uint8_t* batch, uint32 len, uint32 root);
+ * const char* pathland_html_render_debug(const uint8_t* batch, uint32 len, uint32 root, uint8 debug);
+ * const char* pathland_html_render_fragment_debug(const uint8_t* batch, uint32 len, uint32 root, uint8 debug);
+ * void        pathland_html_free(const char* ptr);
+ * const char* pathland_html_icon_svg(const char* name);
+ * </pre>
+ */
+public final class HtmlRenderer {
+
+    /** Thrown when the native library cannot be linked (missing {@code libpathland_render_html}). */
+    public static final class NativeUnavailableException extends IllegalStateException {
+        public NativeUnavailableException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    /** The C ABI surface, mapped by JNA onto the Rust cdylib. */
+    private interface NativeRenderHtml extends Library {
+        Pointer pathland_html_render(Pointer batch, int len, int root);
+        Pointer pathland_html_render_fragment(Pointer batch, int len, int root);
+        Pointer pathland_html_render_debug(Pointer batch, int len, int root, byte debug);
+        Pointer pathland_html_render_fragment_debug(Pointer batch, int len, int root, byte debug);
+        void pathland_html_free(Pointer ptr);
+        Pointer pathland_html_icon_svg(String name);
+    }
+
+    private static final class Holder {
+        static final HtmlRenderer INSTANCE = new HtmlRenderer();
+    }
+
+    /** The process-wide binding; lazily links {@code libpathland_render_html} on first call. */
+    public static HtmlRenderer instance() {
+        return Holder.INSTANCE;
+    }
+
+    /**
+     * A renderer if the native library can be linked, or {@code null} when it is
+     * unavailable (not embedded, not on java.library.path). Callers that can degrade
+     * gracefully (e.g. the Tailwind CSS endpoint) should use this instead of
+     * {@link #instance()}, which throws on a missing native library.
+     */
+    public static HtmlRenderer tryInstance() {
+        try {
+            return instance();
+        } catch (NativeUnavailableException e) {
+            return null;
+        }
+    }
+
+    /** True when the native renderer is linkable (embedded or on java.library.path). */
+    public static boolean isAvailable() {
+        return tryInstance() != null;
+    }
+
+    private final NativeRenderHtml nativeRenderer;
+
+    private HtmlRenderer() {
+        String path = resolveLibraryPath();
+        if (path == null) {
+            throw new NativeUnavailableException(
+                    "libpathland_render_html not found (not embedded in the jar, not on java.library.path, "
+                            + "pathland.render.html.lib not set); build the Rust crate so the dylib is embedded, "
+                            + "or set pathland.render.html.lib", null);
+        }
+        try {
+            nativeRenderer = Native.load(path, NativeRenderHtml.class);
+        } catch (Throwable t) {
+            throw new NativeUnavailableException("failed to link libpathland_render_html: " + path, t);
+        }
+    }
+
+    /**
+     * Resolve the native library's full path, in priority order:
+     * <ol>
+     *   <li>the {@code pathland.render.html.lib} system property (explicit override),</li>
+     *   <li>the dylib **embedded in the jar** at {@code META-INF/native/} — extracted to a
+     *       temp dir via JNA so it always travels with the artifact,</li>
+     *   <li>the local Rust build ({@code ../../rust/target/debug}) for the dev flow,</li>
+     *   <li>{@code java.library.path}.</li>
+     * </ol>
+     */
+    static String resolveLibraryPath() {
+        String override = System.getProperty("pathland.render.html.lib");
+        if (override != null) {
+            return override;
+        }
+        // 2. Embedded in the jar (META-INF/native/...).
+        String embedded = extractEmbedded();
+        if (embedded != null) {
+            return embedded;
+        }
+        // 3. Local Rust debug build (dev flow).
+        String devBuild = new java.io.File(
+                new java.io.File(System.getProperty("user.dir")).getParentFile(), "rust/target/debug").getAbsolutePath();
+        java.io.File devLib = new java.io.File(devBuild, "libpathland_render_html" + platformLibraryExtension());
+        if (devLib.isFile()) {
+            return devLib.getAbsolutePath();
+        }
+        // 4. java.library.path.
+        String fileName = "libpathland_render_html" + platformLibraryExtension();
+        String libraryPath = System.getProperty("java.library.path");
+        if (libraryPath == null) {
+            return null;
+        }
+        for (String dir : libraryPath.split(java.io.File.pathSeparator)) {
+            java.io.File candidate = new java.io.File(dir, fileName);
+            if (candidate.isFile()) {
+                return candidate.getAbsolutePath();
+            }
+        }
+        return null;
+    }
+
+    /** Extract the jar-embedded dylib to a temp dir; returns its path or null. */
+    private static String extractEmbedded() {
+        String resource = embeddedResourcePath();
+        if (resource == null) {
+            return null;
+        }
+        String fileName = "libpathland_render_html" + platformLibraryExtension();
+        try (var stream = HtmlRenderer.class.getResourceAsStream(resource)) {
+            if (stream == null) {
+                return null;
+            }
+            java.io.File dir = new java.io.File(System.getProperty("java.io.tmpdir"),
+                    "pathland-native-" + HtmlRenderer.class.getSimpleName() + "-" + System.nanoTime());
+            if (!dir.mkdirs()) {
+                return null;
+            }
+            java.io.File out = new java.io.File(dir, fileName);
+            try (var copy = new java.io.FileOutputStream(out)) {
+                stream.transferTo(copy);
+            }
+            if (!out.setExecutable(true, false)) {
+                // non-fatal: some platforms lack POSIX perms
+            }
+            return out.getAbsolutePath();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /**
+     * The classpath resource for this platform's embedded dylib, or {@code null}
+     * when the jar carries neither layout. The published jar embeds one dylib per
+     * platform under {@code META-INF/native/<os>-<arch>/}; a local dev build uses
+     * the legacy flat {@code META-INF/native/} layout. The platform dir wins.
+     */
+    static String embeddedResourcePath() {
+        String fileName = "libpathland_render_html" + platformLibraryExtension();
+        String platform = platformKey();
+        if (platform != null) {
+            String platformPath = "/META-INF/native/" + platform + "/" + fileName;
+            if (HtmlRenderer.class.getResource(platformPath) != null) {
+                return platformPath;
+            }
+        }
+        String flat = "/META-INF/native/" + fileName;
+        return HtmlRenderer.class.getResource(flat) != null ? flat : null;
+    }
+
+    /**
+     * The jar's platform directory key (`<os>-<arch>`), matching the release
+     * build matrix: `windows-x86_64`, `linux-x86_64`, `linux-aarch64`,
+     * `macos-aarch64`. Returns {@code null} for a platform the project doesn't
+     * ship (the caller then falls back to the legacy flat layout / the host).
+     */
+    private static String platformKey() {
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        String arch = System.getProperty("os.arch", "").toLowerCase(java.util.Locale.ROOT);
+        String archKey = switch (arch) {
+            case "aarch64", "arm64" -> "aarch64";
+            case "x86_64", "amd64" -> "x86_64";
+            default -> arch;
+        };
+        if (os.contains("win")) {
+            return "windows-" + archKey;
+        }
+        if (os.contains("mac")) {
+            return "macos-" + archKey;
+        }
+        if (os.contains("linux") || os.contains("nux")) {
+            return "linux-" + archKey;
+        }
+        return null;
+    }
+
+    private static String platformLibraryExtension() {
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        if (os.contains("mac")) {
+            return ".dylib";
+        }
+        if (os.contains("win")) {
+            return ".dll";
+        }
+        return ".so";
+    }
+
+    /**
+     * Render a full snapshot frame as a complete HTML document. The frame is the
+     * self-contained mount/snapshot batch (TREE + PARAMETER) the emitter produced.
+     */
+    public String render(ProtocolFrame frame, int root) {
+        return renderFrame(frame, root, true);
+    }
+
+    /** Render a full snapshot frame as an HTML fragment (no {@code <html>}). */
+    public String renderFragment(ProtocolFrame frame, int root) {
+        return renderFrame(frame, root, false);
+    }
+
+    /** Alias of {@link #renderFragment} for the {@code META::RESYNC} snapshot path. */
+    public String renderFullSnapshot(ProtocolFrame frame, int root) {
+        return renderFrame(frame, root, false);
+    }
+
+    /**
+     * Render a full snapshot frame as a complete HTML document with **debug
+     * comments** on every node: each element is prefixed with an HTML comment
+     * naming its component type and the modifiers applied (e.g.
+     * {@code <!-- #1 VStack: spacing=4, alignment=Fill -->}). Debugging aid —
+     * opt-in; the plain {@link #render} output is unchanged.
+     */
+    public String renderDebug(ProtocolFrame frame, int root) {
+        return renderFrameDebug(frame, root, true);
+    }
+
+    /**
+     * Render a snapshot frame as an HTML fragment with **debug comments** on
+     * every node (see {@link #renderDebug}).
+     */
+    public String renderFragmentDebug(ProtocolFrame frame, int root) {
+        return renderFrameDebug(frame, root, false);
+    }
+
+    /**
+     * The full inline `<svg>` for a canonical `ICON_NAME` — how a host serves
+     * `/_pathland/icons/<name>.svg` from the **shared Rust renderer**
+     * (`pathland_html_icon_svg` over the C ABI, the same `icons` source SSR
+     * inlines from), so every platform gets the web renderer's glyphs from ONE
+     * library instead of per-platform static files. Unknown/extension names
+     * return this renderer's fallback glyph, so a host can always answer with a
+     * glyph; only a {@code null} argument yields {@code null}.
+     */
+    public String iconSvg(String name) {
+        if (name == null) {
+            return null;
+        }
+        Pointer ptr = nativeRenderer.pathland_html_icon_svg(name);
+        if (ptr == null) {
+            return null;
+        }
+        try {
+            return ptr.getString(0);
+        } finally {
+            nativeRenderer.pathland_html_free(ptr);
+        }
+    }
+
+    private String renderFrame(ProtocolFrame frame, int root, boolean fullDocument) {
+        return renderFrame(frame, root, fullDocument, false);
+    }
+
+    private String renderFrameDebug(ProtocolFrame frame, int root, boolean fullDocument) {
+        return renderFrame(frame, root, fullDocument, true);
+    }
+
+    private String renderFrame(ProtocolFrame frame, int root, boolean fullDocument, boolean debug) {
+        byte[] bytes = FrameCodec.encodeFrame(frame);
+        try (com.sun.jna.Memory memory = new com.sun.jna.Memory(bytes.length)) {
+            memory.write(0, bytes, 0, bytes.length);
+            Pointer result;
+            if (debug) {
+                byte flag = 1;
+                result = fullDocument
+                        ? nativeRenderer.pathland_html_render_debug(memory, bytes.length, root, flag)
+                        : nativeRenderer.pathland_html_render_fragment_debug(memory, bytes.length, root, flag);
+            } else {
+                result = fullDocument
+                        ? nativeRenderer.pathland_html_render(memory, bytes.length, root)
+                        : nativeRenderer.pathland_html_render_fragment(memory, bytes.length, root);
+            }
+            return take(result);
+        }
+    }
+
+    /**
+     * Copy a NUL-terminated C string into a Java String and free the native buffer. */
+    private static String take(Pointer ptr) {
+        if (ptr == null) {
+            return "";
+        }
+        try {
+            return ptr.getString(0);
+        } finally {
+            nativeFree(ptr);
+        }
+    }
+
+    private static void nativeFree(Pointer ptr) {
+        // Resolve through the holder to avoid re-initializing on the free path.
+        try {
+            Holder.INSTANCE.nativeRenderer.pathland_html_free(ptr);
+        } catch (Throwable ignored) {
+            // best-effort; the buffer is transient
+        }
+    }
+}
