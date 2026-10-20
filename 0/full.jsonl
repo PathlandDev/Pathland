@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.4611324720000001,
+    "cost": 0.4666474140000001,
     "tokens": {
-      "input": 1174271,
-      "output": 56894,
-      "reasoning": 67027,
+      "input": 1177236,
+      "output": 58705,
+      "reasoning": 67866,
       "cache": {
-        "read": 38293120,
+        "read": 39453184,
         "write": 0
       }
     },
     "time": {
       "created": 1792509678962,
-      "updated": 1792514977381
+      "updated": 1792514999642
     }
   },
   "messages": [
@@ -20189,15 +20189,15 @@
             },
             {
               "file": "lib/rust/crates/pathland-render-qt/status.md",
-              "patch": "Index: lib/rust/crates/pathland-render-qt/status.md\n===================================================================\n--- lib/rust/crates/pathland-render-qt/status.md\t\n+++ lib/rust/crates/pathland-render-qt/status.md\t\n@@ -1,169 +1,219 @@\n # pathland-render-qt — implementation status\n \n-**Last updated:** September 28, 2026\n+**Last updated:** October 20, 2026\n \n The **Qt Quick renderer**: maps opcode frames incrementally onto a Qt Quick\n scene graph (shared-memory desktop path). Protocol contract: `spec/`.\n Design-token contract: `spec/TOKENS.md`.\n \n **Language split.** The crate is a **hybrid**:\n - **Rust** owns the shared decode core (`pathland-render-core`), a sent-state\n   **delta diff** that turns each frame into a batch of C-compatible commands,\n   the `Pump` transport seam (frames in / events out), the Qt main-loop shell,\n   and the C ABI for foreign hosts.\n - **C++** (in `src/qt/`) owns the Qt application shell (QGuiApplication +\n   QQuickWindow + QQmlEngine + a QML-facing `Bridge` QObject) and applies the\n   delta command batch to QML items. Built via `cc` + `moc` in `build.rs`;\n-  needs Qt6 dev libs (Homebrew: `qtbase qtdeclarative`).\n+  needs Qt6 dev libs (Homebrew: `qtbase qtdeclarative qtmultimedia`).\n \n ## Implemented\n \n - **Build/toolchain**: `build.rs` locates Qt via `qmake -query` (Homebrew +\n   Linux CI), runs `moc` on the bridge, compiles the C++ layer with `cc`, and\n   links the Qt frameworks/dylibs (framework search via the transitive\n   `rustc-link-search=framework` kind, so demo binaries link too). The protocol\n   core (`pathland-core`/`view`) stays `no_std`/wasm-safe.\n - **FFI boundary** (`src/ffi.rs` + `src/qt/pathland_qt.h`): a flat\n   `PathlandQtCommand` batch (create/delete/insert/remove/move/set-text/\n   set-property/set-string-property/reset-node/set-scheme) plus a\n   `PathlandQtEvent` (pointer-up/value-changed/text-changed) flowing C++ → Rust.\n - **Delta diff** (`src/renderer.rs`): `QtRenderer` keeps a sent-state cache and\n   emits only the commands that change it — an unchanged tree emits **zero**\n   commands. Property changes re-send the node's *complete* property set\n   preceded by `RESET_NODE` (so the C++ layer resets removed properties to\n   renderer defaults). Numeric props are emitted with `VALUE` last (Qt Quick\n   clamps a control's value when `from`/`to` aren't configured yet). Tree roots\n   are children of pseudo-parent `0` (window contentItem). Ghost children after\n   `DELETE_NODE` are guarded in the walk. Headless-tested.\n - **Qt widget mapping** (`src/qt/qt_layer.cpp`): component → QML item factory —\n   `VSTACK`/`HSTACK`/lazy stacks → a **wrapper `Item` holding an inner\n   `ColumnLayout`/`RowLayout`** (`QtQuick.Layouts`; the wrapper's `plPad` drives\n   padding + implicit size, so a stack hugs its content), `GRID`+lazy grids →\n   `Grid`, `ZSTACK` → `Item`, `SCROLLVIEW` → `ScrollView` (content attaches to its\n   `contentItem`; fills its parent by default), `TEXT` → `Text`, `SPACER`/\n   unknown → `Item`, `DIVIDER` → `Rectangle`, `COLOR`/`SHAPE` → `Rectangle`,\n   `IMAGE` → `Image`, `BUTTON` → `Button`, `TEXT_FIELD` → `TextField`, `SLIDER`\n   → `Slider`, `TOGGLE` → `Switch` (controls embed `onX: bridge.<event>(id, …)`\n   handlers), `PROGRESS_VIEW`/`GAUGE` → `ProgressBar` (fraction via `PROGRESS`,\n   activity via `IS_INDETERMINATE`), `STEPPER` → `SpinBox`, `PICKER` → `ComboBox`\n   (option children populate the model ordered by insertion; `SELECTION` →\n   `currentIndex`; `onActivated` → `VALUE_CHANGED`), `MENU` → `Button` trigger\n   (Qt 6 has no MenuButton; a popup Menu is a documented gap), `DATE_PICKER` /\n   `COLOR_PICKER` → `TextField`/`Button` approximations (Qt Quick Controls has no\n   native date/color pickers). Property application via generic `setProperty`\n   (Qt ignores unknown props): spacing/`align`/padding+edges, width/height (`-1`\n   FILL → **`Layout.fillWidth`/`fillHeight` in a layout, anchors.fill elsewhere**,\n   `-2` HUG → implicit), color, **font size/weight/family via the `font` `QFont`\n   property** (dotted-path `setProperty` silently fails), opacity, visible, z,\n   value/min/max/step, selected→checked, enabled,\n   `IS_SECURE` → `echoMode`, progress/indeterminate, selection→currentIndex,\n   prompt/label→placeholder, image source. **Stack alignment**: a stack's\n   `ALIGNMENT` is applied to each child via its `Layout` attached properties\n   (`Fill` stretches the cross axis; Start/Center/End set `Layout.alignment`).\n   **Roots are anchored to fill the window** (GTK hexpand/vexpand parity).\n   `RESET_NODE` resets renderer-owned style defaults (value props untouched so a\n   slider/toggle doesn't lose position on echo).\n - **Diff ordering** (`src/renderer.rs`): `QtRenderer::diff` emits child inserts\n   *before* property deltas, so `WIDTH`/`HEIGHT`/`ALIGNMENT` land after a widget is\n   attached to its final parent — FILL resolves against the real parent instead of\n   the create-time contentItem placeholder.\n - **Events** (spec/EVENTS.md guards): the `Bridge` reports control inputs\n   (`tap` → `POINTER_UP`, `valueChanged` → `VALUE_CHANGED`, `textChanged` →\n   `TEXT_CHANGED`) to Rust, which encodes the `Event`, writes it into the event\n   ring, and wakes the host (renderer never drains). Interactions are gated by\n   `BINDING_ID`/`ACTION_ID` and programmatic value sets suppress echoes.\n - **Pointer event streams**: an `EVENT_LISTENERS`-gated QML `MouseArea` overlay\n   is attached to any node carrying pointer listener bits (down/move/up), and\n   its handlers report `POINTER_DOWN`/`POINTER_MOVE`/`POINTER_UP` through the\n   Bridge (bypassing the `BINDING_ID` gate — any element can emit raw inputs,\n   spec/EVENTS.md). Attached/detached on listener-mask changes / `RESET` /\n   `DELETE`.\n - **Native back / `NAVIGATE`**: a window-level `KeyFilter` maps Escape to\n   `Event::Navigate { url: None }` (global, never node-keyed), matching the GTK\n   renderer. BackSpace is deferred (needs text-focus detection).\n - **Color-scheme detection (spec/TOKENS.md)**: `QStyleHints::colorSchemeChanged`\n   fires a scheme event to Rust, which calls `QtRenderer::set_scheme` — the\n   shared core re-resolves design tokens and the diff re-emits the changed\n   concrete values (`SET_PROPERTY`) with no host wake. Initial scheme applied at\n   init.\n - **`META::RESET`**: both pump paths scan each frame for `META::RESET` and call\n   `QtRenderer::reset()` (clears the decoded tree, sent-state cache, and the\n   C++ scene incl. listener overlays).\n - **Qt shell**: init/run split (headless tests drive `init` + `apply` without\n   an event loop); `pathland_qt_layer_run` owns the window + a zero-millisecond\n   idle `QTimer` that ticks Rust's pump (Qt analogue of GTK's idle pump).\n - **C ABI for foreign hosts** (`src/capi.rs`): `pathland_qt_run(host,\n   on_event)` (over a `pathland-view-native` `NativeHost`) and\n   `pathland_qt_run_ring(ring, on_event, width, height)` (over a borrowed\n   `libpathland_core` ring), both mirroring the GTK renderer's contract. Passes\n   a bare program name to Qt.\n - **Rust demo ergonomics** (`run`): `pathland_qt::run(app_id, title,\n   Rc<RefCell<RingTransport>>, on_event)` mirrors `pathland_render_gtk::run`;\n   the pump borrow is held across frame application (zero-copy batch view of the\n   shared ring).\n \n - **Navigation adapter (spec DSL.md §4.5)**: a VSTACK/HSTACK slot carrying the\n   `ROUTE` property promotes to the renderer's nav container and reconciles a\n   page stack **by depth** (`NAV_DEPTH`): pop down to the app's depth, then\n   `Refresh` (same route), `Push` (deeper + new route), or `Replace` (same\n   depth, new route) — mirroring the GTK `AdwNavigationView` adapter. `PlatformDefault`\n   chrome wraps each page in a header with a native back button (`→`\n   `navigateBack` → `Event::Navigate { url: None }`); `NAV_CHROME=1` (`Custom`)\n   pushes the bare destination. The back-stack stays app-owned; the page stack\n   is the renderer's rendered-output cache. **Implementation note:** Qt Quick\n   has no native navigation container and `StackView`'s `push`/`pop` are\n   QML-callable-only (not invokable from C++ via `QMetaObject`), so the nav\n   container is a plain `Item` whose pages the renderer manages (only the top\n   visible) — a renderer-owned page cache, same statelessness contract.\n \n+- **Post-merge protocol parity (October 2026)**: the crate was merged onto the\n+  shared `PARAMETER` rename and now maps the protocol surface added on `main`:\n+  - `ICON` (0x0B) → a `Text` item whose glyph is resolved from `ICON_NAME` by a\n+    renderer-owned canonical-name map (unknown names fall back to a dot), with\n+    `COLOR`/`FONT_SIZE` reuse (spec/ICONS.md).\n+  - `MEDIA_CONTROLLER` (0x30) → **non-visual** (layout-transparent: created but\n+    never attached) hosting a QML `MediaPlayer` + `AudioOutput`\n+    (spec/MEDIA.md).\n+  - `VIDEO` (0x0A) → a `VideoOutput` surface; `MEDIA_CONTROLLER_ID` binds its\n+    `source` to the referenced controller's `MediaPlayer` (a reference, not a\n+    parent/child edge).\n+  - `PROXY_VIEW` (0x1E) → a transparent vertical container.\n+  - `SIZE_THAT_FITS` (0x17) → a greedy two-axis slot; its one selected child\n+    fills it.\n+  - `GRID_ROW` (0x1D) → a `RowLayout` cell (renders; cross-row column\n+    alignment is still a gap).\n+- **Media transport** (spec/MEDIA.md): `MEDIA_SOURCE`, `PLAYBACK_STATE`\n+  (play/pause), `MEDIA_POSITION` (seek, seconds→ms), `MEDIA_VOLUME` /\n+  `MEDIA_MUTED` (via `AudioOutput`), `MEDIA_LOOP`, `MEDIA_RATE`, and the\n+  `MEDIA_PLAY_STATE_CHANGED` / `MEDIA_TIME_UPDATED` / `MEDIA_ENDED` /\n+  `MEDIA_VOLUME_CHANGED` / `MEDIA_DURATION_CHANGED` reports (reported by the\n+  controller's component type, not gated by `BINDING_ID`; programmatic sets are\n+  echo-suppressed). A play/pause declared before the source is re-applied when\n+  the source lands.\n+- **Layout/property parity**: `OFFSET_X/Y`, `POSITION_X/Y`, `MIN/IDEAL/MAX_*`,\n+  `CONTENT_MODE` (image fit/fill), `CLIPS_TO_BOUNDS`, `BORDER_COLOR` /\n+  `BORDER_WIDTH` / `BORDER_RADIUS`, `TEXT_ALIGNMENT`, `LINE_LIMIT`,\n+  `TRUNCATION_MODE`, and `GRID_COLUMNS` (via the `Layout` attached properties\n+  where applicable).\n+- **Headless test hang fixed**: Qt adds the executable's directory to QML's\n+  implicit import path; a `cargo test` binary lives in a huge `target/debug/deps`\n+  and plugin resolution scanned it for minutes. The shell now drops the\n+  application directory from the engine's import path at init, so\n+  `cargo test -p pathland-render-qt` completes in ~2s (no copy-to-temp workaround).\n+\n ## Not implemented / gaps\n \n-- Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving) and\n-  `KEY_DOWN`/`KEY_UP` listener bits are not yet reported; BackSpace as native\n-  back (text-focus detection) is deferred.\n+- **`SIZE_THAT_FITS` fit measurement**: the slot renders greedily and shows\n+  its selected child, but `FIT_QUERY` (a `LIST` value) is not yet decoded into\n+  the Qt layer, so the renderer does not derive/report `FIT_CHANGED`. The app\n+  must keep emitting the selected candidate until this lands.\n+- **`GRID_ROW` cross-row alignment**: each row renders as one `RowLayout` cell;\n+  columns are not aligned across rows (the flatten-into-the-grid form is a\n+  follow-up).\n+- Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving), `KEY_DOWN`/\n+  `KEY_UP`, `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, and BackSpace as native\n+  back (text-focus detection) are not yet reported.\n+- Asset resolution: `MEDIA_SOURCE`/`IMAGE_SOURCE` are passed to Qt as written;\n+  web-style `/_pathland/assets/...` paths are not remapped to a local asset\n+  root (the GTK renderer has `pathland_gtk_set_asset_root`; a Qt analogue is a\n+  follow-up).\n - The Rust DSL does not yet expose signal property bindings (the Java DSL\n   does), so the demo marks the slider bound via a `BINDING_ID` on the retained\n   tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.\n - The Rust DSL has no `NavigationContainer` either (the spec table is\n   aspirational) — the renderer consumes ROUTE/NAV_DEPTH, but the Rust demo\n   can't exercise nav without a DSL feature; Java/SplitNavDemo is the nav demo\n   vehicle (Phase D).\n - `TRANSITION`-hint animation, back-swipe gestures, multi-step deep-link\n   intermediate pages (same gaps as the GTK renderer).\n - `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their\n-  background delegate; mapping is a follow-up), `SHAPE` path approximation,\n-  `MENU` popup item list, `DATE_PICKER`/`COLOR_PICKER` native dialogs, and\n-  `PICKER` option styling not yet mapped.\n+  background delegate; border mapping now covers `Rectangle`-backed nodes only),\n+  `SHAPE` path approximation, `MENU` popup item list, `DATE_PICKER`/\n+  `COLOR_PICKER` native dialogs, and `PICKER` option styling not yet mapped.\n - **FILL inside plain positioners**: `GRID` (a `QQuickGrid`) rejects\n   `anchors.fill` on its children, so a `WIDTH`/`HEIGHT` `FILL` inside a Grid\n   defers and is skipped (the positioner sizes it). Stacks use `RowLayout`/\n   `ColumnLayout` so FILL children stretch properly; `Row`/`Column`/`Grid`\n   plain-positioner stretch would need `QtQuick.Layouts` everywhere.\n - **Java JNA demo** (`lib/java/pathland-qt-demo`) runs the shared\n   `SplitNavDemo` (incl. native navigation) via `pathland_qt_run_ring` — the\n   cross-language nav demo vehicle, since the Rust DSL lacks a\n   `NavigationContainer`.\n - Lazy views render eagerly.\n \n ## Verified by\n \n `cargo test -p pathland-render-qt` (needs Qt6 dev libs; offscreen for the FFI\n tests) — the delta diff suite, the end-to-end FFI batch\n (`command_batch_crosses_into_cpp_offscreen`), the **full pipeline**\n (`renderer_drives_live_qml_scene`: DSL → engine → frame → shared decode →\n delta diff → FFI → live QML `Column`/`Text`/`Button`/`Slider` with spacing/value\n applied and a delta re-applied), **FILL/Layout stretch**\n (`fill_child_stretches_inside_stack`: FILL → `Layout.fillWidth`, fixed →\n `Layout.preferredWidth`, stack `ALIGNMENT=FILL` stretches the cross axis, root\n anchored to the window), pointer-listener MouseArea attachment\n (`pointer_listeners_attach_mousearea`), the event path\n (`decode_maps_pointer_and_global_events`, `ring_event_writes_pointer_into_ring_and_wakes`,\n `scheme_event_reapplies_without_waking`, `text_event_string_is_length_prefixed`,\n `frame_has_reset_detects_meta_reset`), and Phase-B control coverage\n (`control_widgets_construct_and_apply_props`, `picker_builds_model_from_option_children`),\n and the nav adapter (`nav_slot_promotes_and_pushes_root_page`,\n `nav_depth_push_and_pop`, `nav_replace_same_depth_new_route`,\n-`nav_custom_chrome_bare_pages`). Full workspace: `cd lib/rust && cargo test`.\n+`nav_custom_chrome_bare_pages`), plus post-merge parity\n+(`new_components_and_media_binding`: ICON glyph resolution, a layout-transparent\n+MEDIA_CONTROLLER, and a VIDEO surface bound to its controller) and media event\n+decoding (`decode_maps_media_reports`). `cargo test -p pathland-render-qt` now\n+completes directly (the import-path fix). Full workspace: `cd lib/rust && cargo test`.\n Java JNA demo: `scripts/run-java-qt-demo.sh` (headless `RingEventReaderTest`\n runs in the Maven reactor; the live host mounts `SplitNavDemo`).\n Demo: `scripts/run-rust-qt-demo.sh`.\n\\ No newline at end of file\n",
-              "additions": 59,
+              "patch": "Index: lib/rust/crates/pathland-render-qt/status.md\n===================================================================\n--- lib/rust/crates/pathland-render-qt/status.md\t\n+++ lib/rust/crates/pathland-render-qt/status.md\t\n@@ -1,169 +1,220 @@\n # pathland-render-qt — implementation status\n \n-**Last updated:** September 28, 2026\n+**Last updated:** October 20, 2026\n \n The **Qt Quick renderer**: maps opcode frames incrementally onto a Qt Quick\n scene graph (shared-memory desktop path). Protocol contract: `spec/`.\n Design-token contract: `spec/TOKENS.md`.\n \n **Language split.** The crate is a **hybrid**:\n - **Rust** owns the shared decode core (`pathland-render-core`), a sent-state\n   **delta diff** that turns each frame into a batch of C-compatible commands,\n   the `Pump` transport seam (frames in / events out), the Qt main-loop shell,\n   and the C ABI for foreign hosts.\n - **C++** (in `src/qt/`) owns the Qt application shell (QGuiApplication +\n   QQuickWindow + QQmlEngine + a QML-facing `Bridge` QObject) and applies the\n   delta command batch to QML items. Built via `cc` + `moc` in `build.rs`;\n-  needs Qt6 dev libs (Homebrew: `qtbase qtdeclarative`).\n+  needs Qt6 dev libs (Homebrew: `qtbase qtdeclarative qtmultimedia`).\n \n ## Implemented\n \n - **Build/toolchain**: `build.rs` locates Qt via `qmake -query` (Homebrew +\n   Linux CI), runs `moc` on the bridge, compiles the C++ layer with `cc`, and\n   links the Qt frameworks/dylibs (framework search via the transitive\n   `rustc-link-search=framework` kind, so demo binaries link too). The protocol\n   core (`pathland-core`/`view`) stays `no_std`/wasm-safe.\n - **FFI boundary** (`src/ffi.rs` + `src/qt/pathland_qt.h`): a flat\n   `PathlandQtCommand` batch (create/delete/insert/remove/move/set-text/\n   set-property/set-string-property/reset-node/set-scheme) plus a\n   `PathlandQtEvent` (pointer-up/value-changed/text-changed) flowing C++ → Rust.\n - **Delta diff** (`src/renderer.rs`): `QtRenderer` keeps a sent-state cache and\n   emits only the commands that change it — an unchanged tree emits **zero**\n   commands. Property changes re-send the node's *complete* property set\n   preceded by `RESET_NODE` (so the C++ layer resets removed properties to\n   renderer defaults). Numeric props are emitted with `VALUE` last (Qt Quick\n   clamps a control's value when `from`/`to` aren't configured yet). Tree roots\n   are children of pseudo-parent `0` (window contentItem). Ghost children after\n   `DELETE_NODE` are guarded in the walk. Headless-tested.\n - **Qt widget mapping** (`src/qt/qt_layer.cpp`): component → QML item factory —\n   `VSTACK`/`HSTACK`/lazy stacks → a **wrapper `Item` holding an inner\n   `ColumnLayout`/`RowLayout`** (`QtQuick.Layouts`; the wrapper's `plPad` drives\n   padding + implicit size, so a stack hugs its content), `GRID`+lazy grids →\n   `Grid`, `ZSTACK` → `Item`, `SCROLLVIEW` → `ScrollView` (content attaches to its\n   `contentItem`; fills its parent by default), `TEXT` → `Text`, `SPACER`/\n   unknown → `Item`, `DIVIDER` → `Rectangle`, `COLOR`/`SHAPE` → `Rectangle`,\n   `IMAGE` → `Image`, `BUTTON` → `Button`, `TEXT_FIELD` → `TextField`, `SLIDER`\n   → `Slider`, `TOGGLE` → `Switch` (controls embed `onX: bridge.<event>(id, …)`\n   handlers), `PROGRESS_VIEW`/`GAUGE` → `ProgressBar` (fraction via `PROGRESS`,\n   activity via `IS_INDETERMINATE`), `STEPPER` → `SpinBox`, `PICKER` → `ComboBox`\n   (option children populate the model ordered by insertion; `SELECTION` →\n   `currentIndex`; `onActivated` → `VALUE_CHANGED`), `MENU` → `Button` trigger\n   (Qt 6 has no MenuButton; a popup Menu is a documented gap), `DATE_PICKER` /\n   `COLOR_PICKER` → `TextField`/`Button` approximations (Qt Quick Controls has no\n   native date/color pickers). Property application via generic `setProperty`\n   (Qt ignores unknown props): spacing/`align`/padding+edges, width/height (`-1`\n   FILL → **`Layout.fillWidth`/`fillHeight` in a layout, anchors.fill elsewhere**,\n   `-2` HUG → implicit), color, **font size/weight/family via the `font` `QFont`\n   property** (dotted-path `setProperty` silently fails), opacity, visible, z,\n   value/min/max/step, selected→checked, enabled,\n   `IS_SECURE` → `echoMode`, progress/indeterminate, selection→currentIndex,\n   prompt/label→placeholder, image source. **Stack alignment**: a stack's\n   `ALIGNMENT` is applied to each child via its `Layout` attached properties\n   (`Fill` stretches the cross axis; Start/Center/End set `Layout.alignment`).\n   **Roots are anchored to fill the window** (GTK hexpand/vexpand parity).\n   `RESET_NODE` resets renderer-owned style defaults (value props untouched so a\n   slider/toggle doesn't lose position on echo).\n - **Diff ordering** (`src/renderer.rs`): `QtRenderer::diff` emits child inserts\n   *before* property deltas, so `WIDTH`/`HEIGHT`/`ALIGNMENT` land after a widget is\n   attached to its final parent — FILL resolves against the real parent instead of\n   the create-time contentItem placeholder.\n - **Events** (spec/EVENTS.md guards): the `Bridge` reports control inputs\n   (`tap` → `POINTER_UP`, `valueChanged` → `VALUE_CHANGED`, `textChanged` →\n   `TEXT_CHANGED`) to Rust, which encodes the `Event`, writes it into the event\n   ring, and wakes the host (renderer never drains). Interactions are gated by\n   `BINDING_ID`/`ACTION_ID` and programmatic value sets suppress echoes.\n - **Pointer event streams**: an `EVENT_LISTENERS`-gated QML `MouseArea` overlay\n   is attached to any node carrying pointer listener bits (down/move/up), and\n   its handlers report `POINTER_DOWN`/`POINTER_MOVE`/`POINTER_UP` through the\n   Bridge (bypassing the `BINDING_ID` gate — any element can emit raw inputs,\n   spec/EVENTS.md). Attached/detached on listener-mask changes / `RESET` /\n   `DELETE`.\n - **Native back / `NAVIGATE`**: a window-level `KeyFilter` maps Escape to\n   `Event::Navigate { url: None }` (global, never node-keyed), matching the GTK\n   renderer. BackSpace is deferred (needs text-focus detection).\n - **Color-scheme detection (spec/TOKENS.md)**: `QStyleHints::colorSchemeChanged`\n   fires a scheme event to Rust, which calls `QtRenderer::set_scheme` — the\n   shared core re-resolves design tokens and the diff re-emits the changed\n   concrete values (`SET_PROPERTY`) with no host wake. Initial scheme applied at\n   init.\n - **`META::RESET`**: both pump paths scan each frame for `META::RESET` and call\n   `QtRenderer::reset()` (clears the decoded tree, sent-state cache, and the\n   C++ scene incl. listener overlays).\n - **Qt shell**: init/run split (headless tests drive `init` + `apply` without\n   an event loop); `pathland_qt_layer_run` owns the window + a zero-millisecond\n   idle `QTimer` that ticks Rust's pump (Qt analogue of GTK's idle pump).\n+- **Asset root** (`pathland_qt_set_asset_root` /\n+  `pathland_qt_layer_set_asset_root`): web-style `/_pathland/...` image/media\n+  sources resolve against a host-extracted local directory (the Qt analogue of\n+  `pathland_gtk_set_asset_root`); the Java Qt host extracts `DemoAssets` and\n+  sets it before `runRing`.\n - **C ABI for foreign hosts** (`src/capi.rs`): `pathland_qt_run(host,\n   on_event)` (over a `pathland-view-native` `NativeHost`) and\n   `pathland_qt_run_ring(ring, on_event, width, height)` (over a borrowed\n   `libpathland_core` ring), both mirroring the GTK renderer's contract. Passes\n   a bare program name to Qt.\n - **Rust demo ergonomics** (`run`): `pathland_qt::run(app_id, title,\n   Rc<RefCell<RingTransport>>, on_event)` mirrors `pathland_render_gtk::run`;\n   the pump borrow is held across frame application (zero-copy batch view of the\n   shared ring).\n \n - **Navigation adapter (spec DSL.md §4.5)**: a VSTACK/HSTACK slot carrying the\n   `ROUTE` property promotes to the renderer's nav container and reconciles a\n   page stack **by depth** (`NAV_DEPTH`): pop down to the app's depth, then\n   `Refresh` (same route), `Push` (deeper + new route), or `Replace` (same\n   depth, new route) — mirroring the GTK `AdwNavigationView` adapter. `PlatformDefault`\n   chrome wraps each page in a header with a native back button (`→`\n   `navigateBack` → `Event::Navigate { url: None }`); `NAV_CHROME=1` (`Custom`)\n   pushes the bare destination. The back-stack stays app-owned; the page stack\n   is the renderer's rendered-output cache. **Implementation note:** Qt Quick\n   has no native navigation container and `StackView`'s `push`/`pop` are\n   QML-callable-only (not invokable from C++ via `QMetaObject`), so the nav\n   container is a plain `Item` whose pages the renderer manages (only the top\n   visible) — a renderer-owned page cache, same statelessness contract.\n \n+- **Post-merge protocol parity (October 2026)**: the crate was merged onto the\n+  shared `PARAMETER` rename and now maps the protocol surface added on `main`:\n+  - `ICON` (0x0B) → a `Text` item whose glyph is resolved from `ICON_NAME` by a\n+    renderer-owned canonical-name map (unknown names fall back to a dot), with\n+    `COLOR`/`FONT_SIZE` reuse (spec/ICONS.md).\n+  - `MEDIA_CONTROLLER` (0x30) → **non-visual** (layout-transparent: created but\n+    never attached) hosting a QML `MediaPlayer` + `AudioOutput`\n+    (spec/MEDIA.md).\n+  - `VIDEO` (0x0A) → a `VideoOutput` surface; `MEDIA_CONTROLLER_ID` binds its\n+    `source` to the referenced controller's `MediaPlayer` (a reference, not a\n+    parent/child edge).\n+  - `PROXY_VIEW` (0x1E) → a transparent vertical container.\n+  - `SIZE_THAT_FITS` (0x17) → a greedy two-axis slot; its one selected child\n+    fills it.\n+  - `GRID_ROW` (0x1D) → a `RowLayout` cell (renders; cross-row column\n+    alignment is still a gap).\n+- **Media transport** (spec/MEDIA.md): `MEDIA_SOURCE`, `PLAYBACK_STATE`\n+  (play/pause), `MEDIA_POSITION` (seek, seconds→ms), `MEDIA_VOLUME` /\n+  `MEDIA_MUTED` (via `AudioOutput`), `MEDIA_LOOP`, `MEDIA_RATE`, and the\n+  `MEDIA_PLAY_STATE_CHANGED` / `MEDIA_TIME_UPDATED` / `MEDIA_ENDED` /\n+  `MEDIA_VOLUME_CHANGED` / `MEDIA_DURATION_CHANGED` reports (reported by the\n+  controller's component type, not gated by `BINDING_ID`; programmatic sets are\n+  echo-suppressed). A play/pause declared before the source is re-applied when\n+  the source lands.\n+- **Layout/property parity**: `OFFSET_X/Y`, `POSITION_X/Y`, `MIN/IDEAL/MAX_*`,\n+  `CONTENT_MODE` (image fit/fill), `CLIPS_TO_BOUNDS`, `BORDER_COLOR` /\n+  `BORDER_WIDTH` / `BORDER_RADIUS`, `TEXT_ALIGNMENT`, `LINE_LIMIT`,\n+  `TRUNCATION_MODE`, and `GRID_COLUMNS` (via the `Layout` attached properties\n+  where applicable).\n+- **Headless test hang fixed**: Qt adds the executable's directory to QML's\n+  implicit import path; a `cargo test` binary lives in a huge `target/debug/deps`\n+  and plugin resolution scanned it for minutes. The shell now drops the\n+  application directory from the engine's import path at init, so\n+  `cargo test -p pathland-render-qt` completes in ~2s (no copy-to-temp workaround).\n+\n ## Not implemented / gaps\n \n-- Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving) and\n-  `KEY_DOWN`/`KEY_UP` listener bits are not yet reported; BackSpace as native\n-  back (text-focus detection) is deferred.\n+- **`SIZE_THAT_FITS` fit measurement**: the slot renders greedily and shows\n+  its selected child, but `FIT_QUERY` (a `LIST` value) is not yet decoded into\n+  the Qt layer, so the renderer does not derive/report `FIT_CHANGED`. The app\n+  must keep emitting the selected candidate until this lands.\n+- **`GRID_ROW` cross-row alignment**: each row renders as one `RowLayout` cell;\n+  columns are not aligned across rows (the flatten-into-the-grid form is a\n+  follow-up).\n+- Pointer `hover`/`leave` flags (`POINTER_MOVE` hovering/leaving), `KEY_DOWN`/\n+  `KEY_UP`, `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, and BackSpace as native\n+  back (text-focus detection) are not yet reported.\n - The Rust DSL does not yet expose signal property bindings (the Java DSL\n   does), so the demo marks the slider bound via a `BINDING_ID` on the retained\n   tree; a real `.value(Signal)` DSL binding is a DSL/engine feature.\n - The Rust DSL has no `NavigationContainer` either (the spec table is\n   aspirational) — the renderer consumes ROUTE/NAV_DEPTH, but the Rust demo\n   can't exercise nav without a DSL feature; Java/SplitNavDemo is the nav demo\n   vehicle (Phase D).\n - `TRANSITION`-hint animation, back-swipe gestures, multi-step deep-link\n   intermediate pages (same gaps as the GTK renderer).\n - `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their\n-  background delegate; mapping is a follow-up), `SHAPE` path approximation,\n-  `MENU` popup item list, `DATE_PICKER`/`COLOR_PICKER` native dialogs, and\n-  `PICKER` option styling not yet mapped.\n+  background delegate; border mapping now covers `Rectangle`-backed nodes only),\n+  `SHAPE` path approximation, `MENU` popup item list, `DATE_PICKER`/\n+  `COLOR_PICKER` native dialogs, and `PICKER` option styling not yet mapped.\n - **FILL inside plain positioners**: `GRID` (a `QQuickGrid`) rejects\n   `anchors.fill` on its children, so a `WIDTH`/`HEIGHT` `FILL` inside a Grid\n   defers and is skipped (the positioner sizes it). Stacks use `RowLayout`/\n   `ColumnLayout` so FILL children stretch properly; `Row`/`Column`/`Grid`\n   plain-positioner stretch would need `QtQuick.Layouts` everywhere.\n - **Java JNA demo** (`lib/java/pathland-qt-demo`) runs the shared\n   `SplitNavDemo` (incl. native navigation) via `pathland_qt_run_ring` — the\n   cross-language nav demo vehicle, since the Rust DSL lacks a\n   `NavigationContainer`.\n - Lazy views render eagerly.\n \n ## Verified by\n \n `cargo test -p pathland-render-qt` (needs Qt6 dev libs; offscreen for the FFI\n tests) — the delta diff suite, the end-to-end FFI batch\n (`command_batch_crosses_into_cpp_offscreen`), the **full pipeline**\n (`renderer_drives_live_qml_scene`: DSL → engine → frame → shared decode →\n delta diff → FFI → live QML `Column`/`Text`/`Button`/`Slider` with spacing/value\n applied and a delta re-applied), **FILL/Layout stretch**\n (`fill_child_stretches_inside_stack`: FILL → `Layout.fillWidth`, fixed →\n `Layout.preferredWidth`, stack `ALIGNMENT=FILL` stretches the cross axis, root\n anchored to the window), pointer-listener MouseArea attachment\n (`pointer_listeners_attach_mousearea`), the event path\n (`decode_maps_pointer_and_global_events`, `ring_event_writes_pointer_into_ring_and_wakes`,\n `scheme_event_reapplies_without_waking`, `text_event_string_is_length_prefixed`,\n `frame_has_reset_detects_meta_reset`), and Phase-B control coverage\n (`control_widgets_construct_and_apply_props`, `picker_builds_model_from_option_children`),\n and the nav adapter (`nav_slot_promotes_and_pushes_root_page`,\n `nav_depth_push_and_pop`, `nav_replace_same_depth_new_route`,\n-`nav_custom_chrome_bare_pages`). Full workspace: `cd lib/rust && cargo test`.\n+`nav_custom_chrome_bare_pages`), plus post-merge parity\n+(`new_components_and_media_binding`: ICON glyph resolution, a layout-transparent\n+MEDIA_CONTROLLER, and a VIDEO surface bound to its controller) and media event\n+decoding (`decode_maps_media_reports`). `cargo test -p pathland-render-qt` now\n+completes directly (the import-path fix). Full workspace: `cd lib/rust && cargo test`.\n Java JNA demo: `scripts/run-java-qt-demo.sh` (headless `RingEventReaderTest`\n runs in the Maven reactor; the live host mounts `SplitNavDemo`).\n Demo: `scripts/run-rust-qt-demo.sh`.\n\\ No newline at end of file\n",
+              "additions": 60,
               "deletions": 9,
               "status": "modified"
             },
             {
               "file": "lib/rust/crates/pathland-render-qt/todo.md",
-              "patch": "Index: lib/rust/crates/pathland-render-qt/todo.md\n===================================================================\n--- lib/rust/crates/pathland-render-qt/todo.md\t\n+++ lib/rust/crates/pathland-render-qt/todo.md\t\n@@ -1,53 +1,59 @@\n # pathland-render-qt — todo / remaining work\n \n-Status of the \"renders practically nothing\" fix (Qt Quick Layouts migration) and\n-the follow-ups still open.\n+Post-merge status (October 2026): `main` is merged into the branch and the\n+renderer maps the new protocol surface (icons, media, proxy views, fit slots,\n+grid rows). Remaining work is tracked here and in `status.md`.\n \n-## Done (committed-to-code, needs final verification)\n+## Done\n \n-- **Qt Quick Layouts for stacks**: VSTACK/HSTACK (incl. lazy variants) render as a\n-  wrapper `Item` + inner `ColumnLayout`/`RowLayout`; FILL (`WIDTH/HEIGHT = -1`)\n-  stretches via `Layout.fillWidth/fillHeight`, fixed sizes become\n-  `Layout.preferredWidth/Height`, `SPACING`/`PADDING`/`ALIGNMENT` map onto the\n-  layout/attached props (`src/qt/qt_layer.cpp`).\n-- **Diff ordering**: `renderer.rs diff()` emits child inserts before property\n-  deltas, so a widget is attached to its final parent before `WIDTH/HEIGHT/ALIGNMENT`\n-  land — fixes the stale FILL-anchor-against-contentItem bug.\n-- **Root fills the window** (anchors.fill contentItem), like GTK's hexpand/vexpand.\n-- **ScrollView**: content attaches to its `contentItem`; a ScrollView fills its\n-  parent by default (GTK halign/valign = Fill parity).\n-- **Fonts**: `FONT_SIZE/FONT_WEIGHT/FONT_FAMILY` via the `font` `QFont` property\n-  (dotted-path `setProperty` was silently failing).\n-- **Nav adapter hardened**: `promoteNavSlot` detaches children before the swap and\n-  clears `pending_fill` (the UAF behind the committed `pump_once` SIGSEGV).\n-- **Tests**: new `fill_child_stretches_inside_stack` (FILL→fillWidth + root-anchor);\n-  `ffi::` suite (10/10) and Java `RingEventReaderTest` (5/5) pass. Full workspace\n-  `cargo test` passed earlier in the session.\n+- **`main` merged** (`PARAMETER` rename; the shared `pathland-render-core`\n+  absorbs the merged decode). Core/render-core/Qt tests green; wasm guard green.\n+- **New component mappings** (`src/qt/qt_layer.cpp`):\n+  - `ICON` 0x0B → glyph `Text` from the canonical `ICON_NAME` map.\n+  - `MEDIA_CONTROLLER` 0x30 → non-visual (layout-transparent) `MediaPlayer` +\n+    `AudioOutput`.\n+  - `VIDEO` 0x0A → `VideoOutput`, bound via `MEDIA_CONTROLLER_ID`.\n+  - `PROXY_VIEW` 0x1E → transparent vertical container.\n+  - `SIZE_THAT_FITS` 0x17 → greedy two-axis fill slot.\n+  - `GRID_ROW` 0x1D → `RowLayout` cell.\n+- **Media transport + reports** (`src/qt/qt_layer.cpp`, `bridge.*`,\n+  `src/run.rs`): `MEDIA_SOURCE`, `PLAYBACK_STATE`, `MEDIA_POSITION`,\n+  `MEDIA_VOLUME`, `MEDIA_MUTED`, `MEDIA_LOOP`, `MEDIA_RATE`, and the\n+  `MEDIA_*` event family.\n+- **Layout/property parity**: offsets/positions, min/ideal/max sizes,\n+  content mode, clipping, border color/width/radius, text alignment/line\n+  limit/truncation, grid columns.\n+- **Headless test hang fixed**: the shell drops the executable directory from\n+  the QML import path at init, so `cargo test -p pathland-render-qt` runs\n+  directly (~2s) instead of scanning `target/debug/deps` for minutes.\n+- **QtMultimedia** linked in `build.rs`; CI installs `qt6-multimedia-dev` +\n+  `qml6-module-qtmultimedia`.\n+- **Tests**: `new_components_and_media_binding`, `decode_maps_media_reports`;\n+  full crate 24/24 green.\n \n ## Still missing / needs doing\n \n-- [ ] **Clean full-crate run**: `cargo test -p pathland-render-qt` (last runs hung\n-      >300s — likely a stray-process/Qt-lock artifact, not a code failure; the\n-      `ffi::` subset passes in ~73s). Verify a clean run completes (~80–140s).\n-- [ ] **Java reactor**: `cd lib/java && mvn install` (qt-demo tests already green).\n-- [ ] **`status.md`**: update `lib/rust/crates/pathland-render-qt/status.md` for the\n-      Layouts/FILL/ScrollView/font changes (AGENTS.md requires status sync).\n-- [ ] **Visual confirmation**: run `scripts/run-java-qt-demo.sh` and eyeball the\n-      SplitNavDemo — sidebar + Home/Kitchen/Settings content area should now fill\n-      the window instead of showing only the ~200px sidebar.\n-- [ ] **Demo icons (cosmetic)**: the Qt demo references `icons/home.svg`,\n-      `icons/kitchen.svg`, `icons/settings.svg` which don't exist in\n-      `lib/java/pathland-qt-demo/` (only the web demos ship them). Copy/point the\n-      demo at real assets so the sidebar rows show their icons.\n-- [ ] **Test-hook cleanup (optional)**: `pathland_qt_layer_render_once` /\n-      `pathland_qt_layer_widget_size` / `pathland_qt_layer_anchors_fill` were added\n-      as test hooks; keep if useful, drop if not.\n+- [ ] **`SIZE_THAT_FITS` / `FIT_CHANGED`**: decode the `FIT_QUERY` `LIST`\n+      (arena `f32` thresholds) in `pathland-render-core` (or the Qt diff), then\n+      measure allocated width and report `FIT_CHANGED` so the app can switch\n+      candidates without a round trip.\n+- [ ] **`GRID_ROW` flattening**: attach a row's cells directly to the `Grid`\n+      (instead of one `RowLayout` cell) so columns align across rows.\n+- [ ] **Events**: pointer `hover`/`leave`, `KEY_DOWN`/`KEY_UP`,\n+      `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, BackSpace native back.\n+- [ ] **Asset root**: resolve `/_pathland/assets/...` to a local root for\n+      `MEDIA_SOURCE`/`IMAGE_SOURCE` (a `pathland_qt_set_asset_root` analogue of\n+      GTK's).\n+- [ ] **Controls gaps**: `MENU` popup item list, native `DATE_PICKER`/\n+      `COLOR_PICKER`, `PICKER` option styling, `BACKGROUND_COLOR`/border on\n+      Qt Quick Controls, `SHAPE` paths.\n+- [ ] **Lazy view virtualization** (currently eager) and `TRANSITION` animation.\n+- [ ] **Demo icons (cosmetic)**: the Qt demo references `icons/*.svg`; point it\n+      at real assets (or the shared `DemoAssets`) so sidebar rows show icons.\n \n-## Known gaps (pre-existing, unchanged — from status.md)\n+## Known constraints\n \n-- Pointer `hover`/`leave` flags and `KEY_DOWN`/`KEY_UP` not reported; BackSpace as\n-  native back deferred.\n-- `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their\n-  background delegate), `SHAPE` path approximation, `MENU` popup item list,\n-  `DATE_PICKER`/`COLOR_PICKER` native dialogs.\n-- Lazy views render eagerly; `TRANSITION` animation not applied.\n\\ No newline at end of file\n+- FILL inside a plain `QQuickGrid` is skipped (`Grid` rejects child anchors);\n+  stacks use `RowLayout`/`ColumnLayout` so FILL works there.\n+- Qt Quick Controls own their background delegate, so border/background on\n+  controls is limited.\n",
-              "additions": 50,
+              "patch": "Index: lib/rust/crates/pathland-render-qt/todo.md\n===================================================================\n--- lib/rust/crates/pathland-render-qt/todo.md\t\n+++ lib/rust/crates/pathland-render-qt/todo.md\t\n@@ -1,53 +1,60 @@\n # pathland-render-qt — todo / remaining work\n \n-Status of the \"renders practically nothing\" fix (Qt Quick Layouts migration) and\n-the follow-ups still open.\n+Post-merge status (October 2026): `main` is merged into the branch and the\n+renderer maps the new protocol surface (icons, media, proxy views, fit slots,\n+grid rows). Remaining work is tracked here and in `status.md`.\n \n-## Done (committed-to-code, needs final verification)\n+## Done\n \n-- **Qt Quick Layouts for stacks**: VSTACK/HSTACK (incl. lazy variants) render as a\n-  wrapper `Item` + inner `ColumnLayout`/`RowLayout`; FILL (`WIDTH/HEIGHT = -1`)\n-  stretches via `Layout.fillWidth/fillHeight`, fixed sizes become\n-  `Layout.preferredWidth/Height`, `SPACING`/`PADDING`/`ALIGNMENT` map onto the\n-  layout/attached props (`src/qt/qt_layer.cpp`).\n-- **Diff ordering**: `renderer.rs diff()` emits child inserts before property\n-  deltas, so a widget is attached to its final parent before `WIDTH/HEIGHT/ALIGNMENT`\n-  land — fixes the stale FILL-anchor-against-contentItem bug.\n-- **Root fills the window** (anchors.fill contentItem), like GTK's hexpand/vexpand.\n-- **ScrollView**: content attaches to its `contentItem`; a ScrollView fills its\n-  parent by default (GTK halign/valign = Fill parity).\n-- **Fonts**: `FONT_SIZE/FONT_WEIGHT/FONT_FAMILY` via the `font` `QFont` property\n-  (dotted-path `setProperty` was silently failing).\n-- **Nav adapter hardened**: `promoteNavSlot` detaches children before the swap and\n-  clears `pending_fill` (the UAF behind the committed `pump_once` SIGSEGV).\n-- **Tests**: new `fill_child_stretches_inside_stack` (FILL→fillWidth + root-anchor);\n-  `ffi::` suite (10/10) and Java `RingEventReaderTest` (5/5) pass. Full workspace\n-  `cargo test` passed earlier in the session.\n+- **`main` merged** (`PARAMETER` rename; the shared `pathland-render-core`\n+  absorbs the merged decode). Core/render-core/Qt tests green; wasm guard green.\n+- **New component mappings** (`src/qt/qt_layer.cpp`):\n+  - `ICON` 0x0B → glyph `Text` from the canonical `ICON_NAME` map.\n+  - `MEDIA_CONTROLLER` 0x30 → non-visual (layout-transparent) `MediaPlayer` +\n+    `AudioOutput`.\n+  - `VIDEO` 0x0A → `VideoOutput`, bound via `MEDIA_CONTROLLER_ID`.\n+  - `PROXY_VIEW` 0x1E → transparent vertical container.\n+  - `SIZE_THAT_FITS` 0x17 → greedy two-axis fill slot.\n+  - `GRID_ROW` 0x1D → `RowLayout` cell.\n+- **Media transport + reports** (`src/qt/qt_layer.cpp`, `bridge.*`,\n+  `src/run.rs`): `MEDIA_SOURCE`, `PLAYBACK_STATE`, `MEDIA_POSITION`,\n+  `MEDIA_VOLUME`, `MEDIA_MUTED`, `MEDIA_LOOP`, `MEDIA_RATE`, and the\n+  `MEDIA_*` event family.\n+- **Layout/property parity**: offsets/positions, min/ideal/max sizes,\n+  content mode, clipping, border color/width/radius, text alignment/line\n+  limit/truncation, grid columns.\n+- **Asset root** (`pathland_qt_set_asset_root`): `/_pathland/...` sources\n+  resolve against a host-extracted local directory.\n+- **Java Qt demo migrated** to `dev.pathland.demo.qt` (view/demo package\n+  renames, `environmentBinding` mount, `DemoAssets` extraction).\n+- **Headless test hang fixed**: the shell drops the executable directory from\n+  the QML import path at init, so `cargo test -p pathland-render-qt` runs\n+  directly (~2s) instead of scanning `target/debug/deps` for minutes.\n+- **QtMultimedia** linked in `build.rs`; CI installs `qt6-multimedia-dev` +\n+  `qml6-module-qtmultimedia`.\n+- **Tests**: `new_components_and_media_binding`, `decode_maps_media_reports`;\n+  full crate 24/24 green.\n \n ## Still missing / needs doing\n \n-- [ ] **Clean full-crate run**: `cargo test -p pathland-render-qt` (last runs hung\n-      >300s — likely a stray-process/Qt-lock artifact, not a code failure; the\n-      `ffi::` subset passes in ~73s). Verify a clean run completes (~80–140s).\n-- [ ] **Java reactor**: `cd lib/java && mvn install` (qt-demo tests already green).\n-- [ ] **`status.md`**: update `lib/rust/crates/pathland-render-qt/status.md` for the\n-      Layouts/FILL/ScrollView/font changes (AGENTS.md requires status sync).\n-- [ ] **Visual confirmation**: run `scripts/run-java-qt-demo.sh` and eyeball the\n-      SplitNavDemo — sidebar + Home/Kitchen/Settings content area should now fill\n-      the window instead of showing only the ~200px sidebar.\n-- [ ] **Demo icons (cosmetic)**: the Qt demo references `icons/home.svg`,\n-      `icons/kitchen.svg`, `icons/settings.svg` which don't exist in\n-      `lib/java/pathland-qt-demo/` (only the web demos ship them). Copy/point the\n-      demo at real assets so the sidebar rows show their icons.\n-- [ ] **Test-hook cleanup (optional)**: `pathland_qt_layer_render_once` /\n-      `pathland_qt_layer_widget_size` / `pathland_qt_layer_anchors_fill` were added\n-      as test hooks; keep if useful, drop if not.\n+- [ ] **`SIZE_THAT_FITS` / `FIT_CHANGED`**: decode the `FIT_QUERY` `LIST`\n+      (arena `f32` thresholds) in `pathland-render-core` (or the Qt diff), then\n+      measure allocated width and report `FIT_CHANGED` so the app can switch\n+      candidates without a round trip.\n+- [ ] **`GRID_ROW` flattening**: attach a row's cells directly to the `Grid`\n+      (instead of one `RowLayout` cell) so columns align across rows.\n+- [ ] **Events**: pointer `hover`/`leave`, `KEY_DOWN`/`KEY_UP`,\n+      `FOCUS_CHANGED`/`EDITING_CHANGED`/`SUBMIT`, BackSpace native back.\n+- [ ] **Controls gaps**: `MENU` popup item list, native `DATE_PICKER`/\n+      `COLOR_PICKER`, `PICKER` option styling, `BACKGROUND_COLOR`/border on\n+      Qt Quick Controls, `SHAPE` paths.\n+- [ ] **Lazy view virtualization** (currently eager) and `TRANSITION` animation.\n+- [ ] **Demo icons (cosmetic)**: the Qt demo references `icons/*.svg`; point it\n+      at real assets (or the shared `DemoAssets`) so sidebar rows show icons.\n \n-## Known gaps (pre-existing, unchanged — from status.md)\n+## Known constraints\n \n-- Pointer `hover`/`leave` flags and `KEY_DOWN`/`KEY_UP` not reported; BackSpace as\n-  native back deferred.\n-- `BACKGROUND_COLOR`/border on stacks/controls (Qt Quick Controls own their\n-  background delegate), `SHAPE` path approximation, `MENU` popup item list,\n-  `DATE_PICKER`/`COLOR_PICKER` native dialogs.\n-- Lazy views render eagerly; `TRANSITION` animation not applied.\n\\ No newline at end of file\n+- FILL inside a plain `QQuickGrid` is skipped (`Grid` rejects child anchors);\n+  stacks use `RowLayout`/`ColumnLayout` so FILL works there.\n+- Qt Quick Controls own their background delegate, so border/background on\n+  controls is limited.\n",
+              "additions": 51,
               "deletions": 44,
               "status": "modified"
             },
@@ -35826,21 +35826,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001347972,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 290172,
+          "input": 462,
+          "output": 627,
+          "reasoning": 59,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 289024
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1792514977380
+          "created": 1792514977380,
+          "completed": 1792514992150
         },
+        "finish": "tool-calls",
         "id": "msg_15a37ee640021ScmKqRtAPwZGc",
         "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5"
       },
@@ -35868,20 +35871,430 @@
           "tool": "bash",
           "callID": "call_469bb7b1512b4d4f85c47d01",
           "state": {
-            "metadata": {
-              "output": "docs updated for asset root\n"
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland/lib/rust && python3 - <<'PY'\np='crates/pathland-render-qt/status.md'\ns=open(p).read()\ns=s.replace(\"\"\"- Asset resolution: `MEDIA_SOURCE`/`IMAGE_SOURCE` are passed to Qt as written;\n  web-style `/_pathland/assets/...` paths are not remapped to a local asset\n  root (the GTK renderer has `pathland_gtk_set_asset_root`; a Qt analogue is a\n  follow-up).\n\"\"\",\"\")\n# Add asset root to implemented (near the C ABI bullet).\ns=s.replace(\"\"\"- **C ABI for foreign hosts** (`src/capi.rs`): `pathland_qt_run(host,\n  on_event)`\"\"\",\"\"\"- **Asset root** (`pathland_qt_set_asset_root` /\n  `pathland_qt_layer_set_asset_root`): web-style `/_pathland/...` image/media\n  sources resolve against a host-extracted local directory (the Qt analogue of\n  `pathland_gtk_set_asset_root`); the Java Qt host extracts `DemoAssets` and\n  sets it before `runRing`.\n- **C ABI for foreign hosts** (`src/capi.rs`): `pathland_qt_run(host,\n  on_event)`\"\"\",1)\nopen(p,'w').write(s)\n\np='crates/pathland-render-qt/todo.md'\ns=open(p).read()\ns=s.replace(\"\"\"- [ ] **Asset root**: resolve `/_pathland/assets/...` to a local root for\n      `MEDIA_SOURCE`/`IMAGE_SOURCE` (a `pathland_qt_set_asset_root` analogue of\n      GTK's).\n\"\"\",\"\")\ns=s.replace(\"\"\"- **Headless test hang fixed**\"\"\",\"\"\"- **Asset root** (`pathland_qt_set_asset_root`): `/_pathland/...` sources\n  resolve against a host-extracted local directory.\n- **Java Qt demo migrated** to `dev.pathland.demo.qt` (view/demo package\n  renames, `environmentBinding` mount, `DemoAssets` extraction).\n- **Headless test hang fixed**\"\"\",1)\nopen(p,'w').write(s)\nprint(\"docs updated for asset root\")\nPY\ncd /Users/michael/Development/michaelkrog/Pathland && git add lib/rust/crates/pathland-render-qt/status.md lib/rust/crates/pathland-render-qt/todo.md && git commit -m \"docs(qt): record asset-root support and the Java demo migration\" 2>&1 | tail -2"
             },
+            "output": "docs updated for asset root\n[feat/qt-renderer 2ca7b7a2] docs(qt): record asset-root support and the Java demo migration\n 2 files changed, 9 insertions(+), 7 deletions(-)\n",
+            "metadata": {
+              "output": "docs updated for asset root\n[feat/qt-renderer 2ca7b7a2] docs(qt): record asset-root support and the Java demo migration\n 2 files changed, 9 insertions(+), 7 deletions(-)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland/lib/rust && python3 - <<'PY'\np='crates/pathland-render-qt/status.md'\ns=open(p).read()\ns=s.replace(\"\"\"- Asset resolution: `MEDIA_SOURCE`/`IMAGE_SOURCE` are passed to Qt as written;\n  web-style `/_pathland/assets/...` paths are not remapped to a local asset\n  root (the GTK renderer has `pathland_gtk_set_asset_root`; a Qt analogue is a\n  follow-up).\n\"\"\",\"\")\n# Add asset root to implemented (near the C ABI bullet).\ns=s.replace(\"\"\"- **C ABI for foreign hosts** (`src/capi.rs`): `pathland_qt_run(host,\n  on_event)`\"\"\",\"\"\"- **Asset root** (`pathland_qt_set_asset_root` /\n  `pathland_qt_layer_set_asset_root`): web-style `/_pathland/...` image/media\n  sources resolve against a host-extracted local directory (the Qt analogue of\n  `pathland_gtk_set_asset_root`); the Java Qt host extracts `DemoAssets` and\n  sets it before `runRing`.\n- **C ABI for foreign hosts** (`src/capi.rs`): `pathland_qt_run(host,\n  on_event)`\"\"\",1)\nopen(p,'w').write(s)\n\np='crates/pathland-render-qt/todo.md'\ns=open(p).read()\ns=s.replace(\"\"\"- [ ] **Asset root**: resolve `/_pathland/assets/...` to a local root for\n      `MEDIA_SOURCE`/`IMAGE_SOURCE` (a `pathland_qt_set_asset_root` analogue of\n      GTK's).\n\"\"\",\"\")\ns=s.replace(\"\"\"- **Headless test hang fixed**\"\"\",\"\"\"- **Asset root** (`pathland_qt_set_asset_root`): `/_pathland/...` sources\n  resolve against a host-extracted local directory.\n- **Java Qt demo migrated** to `dev.pathland.demo.qt` (view/demo package\n  renames, `environmentBinding` mount, `DemoAssets` extraction).\n- **Headless test hang fixed**\"\"\",1)\nopen(p,'w').write(s)\nprint(\"docs updated for asset root\")\nPY\ncd /Users/michael/Development/michaelkrog/Pathland && git add lib/rust/crates/pathland-render-qt/status.md lib/rust/crates/pathland-render-qt/todo.md && git commit -m \"docs(qt): record asset-root support and the Java demo migration\" 2>&1 | tail -2",
             "time": {
-              "start": 1792514981708
+              "start": 1792514981708,
+              "end": 1792514992011
             }
           },
           "id": "prt_15a37f6030012mF5IePejM7g7w",
           "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
           "messageID": "msg_15a37ee640021ScmKqRtAPwZGc"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "81f5332970a44a26b66f33a5f507214ffa821ea2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 290172,
+            "input": 462,
+            "output": 627,
+            "reasoning": 59,
+            "cache": {
+              "write": 0,
+              "read": 289024
+            }
+          },
+          "cost": 0.001347972,
+          "id": "prt_15a3827d5001TIX1pJKM9qZ0d5",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a37ee640021ScmKqRtAPwZGc"
+        },
+        {
+          "type": "patch",
+          "hash": "d0331a3ec7ead6ff088ac22503ae3fea6fa4ac99",
+          "files": [
+            "/Users/michael/Development/michaelkrog/Pathland/lib/rust/crates/pathland-render-qt/status.md",
+            "/Users/michael/Development/michaelkrog/Pathland/lib/rust/crates/pathland-render-qt/todo.md"
+          ],
+          "id": "prt_15a3828140016gZScbIYI1ir1u",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a37ee640021ScmKqRtAPwZGc"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_15a24f2a7001CmgcF7ZIgkFxon",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001479474,
+        "tokens": {
+          "total": 291047,
+          "input": 827,
+          "output": 430,
+          "reasoning": 382,
+          "cache": {
+            "write": 0,
+            "read": 289408
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1792514992171,
+          "completed": 1792514997375
+        },
+        "finish": "tool-calls",
+        "id": "msg_15a38282b002QSt7ZbeFnNWm2U",
+        "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5"
+      },
+      "parts": [
+        {
+          "snapshot": "81f5332970a44a26b66f33a5f507214ffa821ea2",
+          "type": "step-start",
+          "id": "prt_15a382e18001jpSPFPxzPpW1e6",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a38282b002QSt7ZbeFnNWm2U"
+        },
+        {
+          "type": "reasoning",
+          "text": "Now let me update the todo list to reflect the completed work, and give the user a summary.\n\nLet me mark:\n- Phase 0: completed.\n- Phase 1: completed (except SIZE_THAT_FITS FIT_CHANGED, GRID_ROW alignment — partial).\n- Phase 2: completed (media).\n- Phase 3: partially done (asset root done; events/MENU/pickers remain).\n- Phase 4: verification/docs — done for what's implemented; remaining gaps documented.\n\nLet me update the todo list accordingly, then summarize.\n\nActually, the todo tool is for tracking. Let me set the statuses.\n\nBefore final summary, let me do a final sanity check: `git log --oneline -5`, `git status` clean, and confirm the branch is ahead with the merge. Also maybe run `cargo test` for the whole workspace? GTK tests may require a display; I'll skip. The core/Qt/Java are green.\n\nLet me also double-check that the Qt demo binary builds (cargo check --workspace passed after the demo update? I ran `cargo check --workspace` before the demo DSL fix... no, I fixed the demo then ran `cargo check -p pathland-render-qt-demo` (Finished). Later I ran `cargo check --workspace` before the demo fix? Let me recall: I ran `cargo check --workspace` right after the Qt demo update? Actually the order: updated demo → `cargo check -p pathland-render-qt-demo` Finished → then `cargo check --workspace` Finished. Yes, workspace check passed after the demo fix. Good.\n\nOne more: the Qt crate build after the asset-root change compiled. Qt tests pass. Java reactor install passes.\n\nLet me update todos and summarize.",
+          "time": {
+            "start": 1792514993692,
+            "end": 1792514995574
+          },
+          "id": "prt_15a382e1c001CnYZm0WfVFkxPV",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a38282b002QSt7ZbeFnNWm2U"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "call_256037f55e9f4b109b3f4d82",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "Phase 0: Merge main and resolve pathland-core conflicts",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 0: Absorb main's GTK decode advancements into pathland-render-core",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 0: Rename STYLE->PARAMETER / style->parameter across render-core + render-qt",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 0: Extend shared decode for new component/event/property ids",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 0: Gate — core/render-core tests, qt build, wasm no_std guard",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 1: Layout props + ICON/PROXY_VIEW/MEDIA_CONTROLLER/SIZE_THAT_FITS/GRID_ROW mappings",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 2: Media — QtMultimedia VIDEO surface + controller + MEDIA_* props/events + asset root",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 2b: Migrate the Java Qt demo to dev.pathland packages + verify Maven",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 3: Remaining gaps — FIT_CHANGED measurement, GRID_ROW alignment, hover/key/focus events, MENU/date/color, lazy, transitions",
+                  "status": "pending",
+                  "priority": "medium"
+                },
+                {
+                  "content": "Phase 4: Docs/status sync (done for landed work; gaps documented)",
+                  "status": "completed",
+                  "priority": "high"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"Phase 0: Merge main and resolve pathland-core conflicts\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase 0: Absorb main's GTK decode advancements into pathland-render-core\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase 0: Rename STYLE->PARAMETER / style->parameter across render-core + render-qt\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase 0: Extend shared decode for new component/event/property ids\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase 0: Gate — core/render-core tests, qt build, wasm no_std guard\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase 1: Layout props + ICON/PROXY_VIEW/MEDIA_CONTROLLER/SIZE_THAT_FITS/GRID_ROW mappings\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase 2: Media — QtMultimedia VIDEO surface + controller + MEDIA_* props/events + asset root\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase 2b: Migrate the Java Qt demo to dev.pathland packages + verify Maven\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Phase 3: Remaining gaps — FIT_CHANGED measurement, GRID_ROW alignment, hover/key/focus events, MENU/date/color, lazy, transitions\",\n    \"status\": \"pending\",\n    \"priority\": \"medium\"\n  },\n  {\n    \"content\": \"Phase 4: Docs/status sync (done for landed work; gaps documented)\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "Phase 0: Merge main and resolve pathland-core conflicts",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 0: Absorb main's GTK decode advancements into pathland-render-core",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 0: Rename STYLE->PARAMETER / style->parameter across render-core + render-qt",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 0: Extend shared decode for new component/event/property ids",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 0: Gate — core/render-core tests, qt build, wasm no_std guard",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 1: Layout props + ICON/PROXY_VIEW/MEDIA_CONTROLLER/SIZE_THAT_FITS/GRID_ROW mappings",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 2: Media — QtMultimedia VIDEO surface + controller + MEDIA_* props/events + asset root",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 2b: Migrate the Java Qt demo to dev.pathland packages + verify Maven",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Phase 3: Remaining gaps — FIT_CHANGED measurement, GRID_ROW alignment, hover/key/focus events, MENU/date/color, lazy, transitions",
+                  "status": "pending",
+                  "priority": "medium"
+                },
+                {
+                  "content": "Phase 4: Docs/status sync (done for landed work; gaps documented)",
+                  "status": "completed",
+                  "priority": "high"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "1 todos",
+            "time": {
+              "start": 1792514997242,
+              "end": 1792514997246
+            }
+          },
+          "id": "prt_15a383577001aE5bGCOHONbIdY",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a38282b002QSt7ZbeFnNWm2U"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "81f5332970a44a26b66f33a5f507214ffa821ea2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 291047,
+            "input": 827,
+            "output": 430,
+            "reasoning": 382,
+            "cache": {
+              "write": 0,
+              "read": 289408
+            }
+          },
+          "cost": 0.001479474,
+          "id": "prt_15a383c4a001HlJyC3W5tedRI0",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a38282b002QSt7ZbeFnNWm2U"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_15a24f2a7001CmgcF7ZIgkFxon",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001145028,
+        "tokens": {
+          "total": 291640,
+          "input": 1342,
+          "output": 91,
+          "reasoning": 31,
+          "cache": {
+            "write": 0,
+            "read": 290176
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1792514997395,
+          "completed": 1792514999621
+        },
+        "finish": "tool-calls",
+        "id": "msg_15a383c93002tk1Hv7soEr4s4z",
+        "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5"
+      },
+      "parts": [
+        {
+          "snapshot": "81f5332970a44a26b66f33a5f507214ffa821ea2",
+          "type": "step-start",
+          "id": "prt_15a3842f1001VEsQ5uCjCvRBNM",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a383c93002tk1Hv7soEr4s4z"
+        },
+        {
+          "type": "reasoning",
+          "text": "Let me do a final `git log --oneline` and `git status` to report cleanly. Also verify the branch has the merge commit.",
+          "time": {
+            "start": 1792514999028,
+            "end": 1792514999183
+          },
+          "id": "prt_15a3842f3001GM0LdKgGo22riQ",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a383c93002tk1Hv7soEr4s4z"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_e662073713984cdaaa6a0fbb",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "cd /Users/michael/Development/michaelkrog/Pathland && git status --short | head; echo \"--- recent commits ---\"; git log --oneline -6; echo \"--- divergence ---\"; git rev-list --left-right --count main...HEAD"
+            },
+            "output": "--- recent commits ---\n2ca7b7a2 docs(qt): record asset-root support and the Java demo migration\nbe7cb311 feat(qt): asset-root resolution + migrate the Java Qt demo to dev.pathland\n2aa03b06 feat(qt): media kit + icon/proxy/fit/grid-row parity after main merge\n47ae3bfa Merge branch 'main' into feat/qt-renderer\nc4844b2b Merge pull request #162 from PathlandDev/feat/media-controller\n725d8cab fix(e2e): scope the autoplay flag to Chromium\n--- divergence ---\n0\t11\n",
+            "metadata": {
+              "output": "--- recent commits ---\n2ca7b7a2 docs(qt): record asset-root support and the Java demo migration\nbe7cb311 feat(qt): asset-root resolution + migrate the Java Qt demo to dev.pathland\n2aa03b06 feat(qt): media kit + icon/proxy/fit/grid-row parity after main merge\n47ae3bfa Merge branch 'main' into feat/qt-renderer\nc4844b2b Merge pull request #162 from PathlandDev/feat/media-controller\n725d8cab fix(e2e): scope the autoplay flag to Chromium\n--- divergence ---\n0\t11\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git status --short | head; echo \"--- recent commits ---\"; git log --oneline -6; echo \"--- divergence ---\"; git rev-list --left-right --count main...HEAD",
+            "time": {
+              "start": 1792514999456,
+              "end": 1792514999510
+            }
+          },
+          "id": "prt_15a384391001o2Xi82MwB169E3",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a383c93002tk1Hv7soEr4s4z"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "81f5332970a44a26b66f33a5f507214ffa821ea2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 291640,
+            "input": 1342,
+            "output": 91,
+            "reasoning": 31,
+            "cache": {
+              "write": 0,
+              "read": 290176
+            }
+          },
+          "cost": 0.001145028,
+          "id": "prt_15a384511001P0LnjH9xZrXJSb",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a383c93002tk1Hv7soEr4s4z"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_15a24f2a7001CmgcF7ZIgkFxon",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001542468,
+        "tokens": {
+          "total": 292820,
+          "input": 334,
+          "output": 663,
+          "reasoning": 367,
+          "cache": {
+            "write": 0,
+            "read": 291456
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1792514999642,
+          "completed": 1792515006732
+        },
+        "finish": "stop",
+        "id": "msg_15a38455a002BytawDvWAdy77N",
+        "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5"
+      },
+      "parts": [
+        {
+          "snapshot": "81f5332970a44a26b66f33a5f507214ffa821ea2",
+          "type": "step-start",
+          "id": "prt_15a384cc3001epAt6dBWn2LilD",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a38455a002BytawDvWAdy77N"
+        },
+        {
+          "type": "reasoning",
+          "text": "The working tree is clean, and `main` is fully merged (0 left/11 right means HEAD is 11 ahead of main, main has 0 commits not in HEAD — so the merge is complete). \n\nLet me provide a concise summary of what was done and what remains.\n\nSummary:\n- Merged main (275 commits) into feat/qt-renderer; resolved 10 conflicts; adapted the Qt crate/tests/demo to the `PARAMETER` rename and new DSL API.\n- Phase 1: component parity (ICON, VIDEO, MEDIA_CONTROLLER, PROXY_VIEW, SIZE_THAT_FITS, GRID_ROW) + layout props.\n- Phase 2: QtMultimedia media kit (MediaPlayer + AudioOutput + VideoOutput), transport props, MEDIA_* events, asset root.\n- Fixed the headless test hang (root-caused to QML scanning target/debug/deps).\n- Migrated the Java Qt demo to dev.pathland packages and fixed the pom/script.\n- Verification: core/render-core/Qt tests green (24/24), wasm guard green, `cargo check --workspace` green, Maven reactor install green, demo-views + qt-demo tests green.\n- Remaining (documented in status.md/todo.md): SIZE_THAT_FITS FIT_CHANGED measurement (needs LIST decode), GRID_ROW cross-row alignment, hover/key/focus events, MENU popup/date/color pickers, lazy virtualization, transitions.\n\nI should mention the exact verification result and the commit range. Keep it concise but informative. The user asked \"go\"/\"continue\", so a summary of the completed work is appropriate.\n\nLet me write the final response with file references where useful.",
+          "time": {
+            "start": 1792515001543,
+            "end": 1792515003402
+          },
+          "id": "prt_15a384cc7001YoAoIe0vNlo6NA",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a38455a002BytawDvWAdy77N"
+        },
+        {
+          "type": "text",
+          "text": "Done. `main` is fully merged into `feat/qt-renderer` and the renderer now covers the protocol surface that landed on `main`.\n\n## What landed\n\n**Merge (`47ae3bfa`)**\n- Resolved 10 conflicts across `pathland-core`, `core-transport`, `render-core`, `render-gtk`, `view-native`, CI, and docs.\n- Absorbed the `STYLE` → `PARAMETER` rename and the DSL API changes into `pathland-render-core`, the Qt crate, its tests, and the Rust Qt demo.\n- `cargo check --workspace`, wasm no_std guard, and all core/render-core/Qt tests green.\n\n**Component parity** (`lib/rust/crates/pathland-render-qt/src/qt/qt_layer.cpp`)\n- `ICON` → canonical-name → glyph map; `PROXY_VIEW` → transparent container; `MEDIA_CONTROLLER` → non-visual; `VIDEO` → `VideoOutput`; `SIZE_THAT_FITS` → greedy slot; `GRID_ROW` → row cell.\n- Layout props: offsets/positions, min/ideal/max sizes, content mode, clipping, borders, text alignment/line-limit/truncation, grid columns.\n\n**Media (`spec/MEDIA.md`)**\n- QtMultimedia `MediaPlayer` + `AudioOutput`, `MEDIA_SOURCE`/`PLAYBACK_STATE`/`MEDIA_POSITION`/`MEDIA_VOLUME`/`MEDIA_MUTED`/`MEDIA_LOOP`/`MEDIA_RATE`, and the `MEDIA_*` event reports (`bridge.cpp`, `run.rs`).\n- Asset-root resolution (`pathland_qt_set_asset_root`) mirroring GTK.\n\n**Fixes**\n- Root-caused the documented headless-test \"hang\": Qt scanned the huge `target/debug/deps` as an implicit QML import path. The shell now drops it — `cargo test -p pathland-render-qt` runs directly (24/24 in ~2s).\n- Migrated `lib/java/pathland-qt-demo` to `dev.pathland.demo.qt`, fixed the pom (`dev.pathland` parent/deps), mounted `SplitNavDemo` via `environmentBinding`, and wired `DemoAssets` — Maven reactor install + demo tests green.\n\n## Remaining (documented in `status.md` / `todo.md`)\n- `SIZE_THAT_FITS` `FIT_CHANGED` measurement (needs `FIT_QUERY` LIST decoding).\n- `GRID_ROW` cross-row column alignment.\n- Hover/leave, `KEY_DOWN`/`KEY_UP`, focus/editing/submit, BackSpace back.\n- `MENU` popup, native date/color pickers, `PICKER` styling, control backgrounds, `SHAPE` paths.\n- Lazy-view virtualization and `TRANSITION` animation.\n\nBranch is clean and 11 commits ahead of `main` (merge included).",
+          "time": {
+            "start": 1792515003404,
+            "end": 1792515006620
+          },
+          "id": "prt_15a38540c001Idnfdw7Ocn2qA4",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a38455a002BytawDvWAdy77N"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "81f5332970a44a26b66f33a5f507214ffa821ea2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 292820,
+            "input": 334,
+            "output": 663,
+            "reasoning": 367,
+            "cache": {
+              "write": 0,
+              "read": 291456
+            }
+          },
+          "cost": 0.001542468,
+          "id": "prt_15a3860d8001k2djZ3wTFIgyGF",
+          "sessionID": "ses_ea618ea8effezXFcvKHwAdj4d5",
+          "messageID": "msg_15a38455a002BytawDvWAdy77N"
         }
       ]
     }
