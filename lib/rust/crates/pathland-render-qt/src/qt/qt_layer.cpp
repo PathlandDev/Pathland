@@ -440,7 +440,12 @@ QString qmlFor(uint16_t component, uint32_t id) {
                    "ScrollView { objectName: \"pl%1\"; clip: true }")
             .arg(id);
     case PL_COMP_TEXT:
-        return QStringLiteral("import QtQuick 2.15\nText { objectName: \"pl%1\" }").arg(id);
+        // Word-wrap within the allocated width (HTML/SwiftUI behavior); with no
+        // constraint the implicit width is the unwrapped line, so this is inert.
+        return QStringLiteral(
+                   "import QtQuick 2.15\nText { objectName: \"pl%1\"; "
+                   "wrapMode: Text.WordWrap }")
+            .arg(id);
     case PL_COMP_SPACER:
         return QStringLiteral("import QtQuick 2.15\nItem { objectName: \"pl%1\" }").arg(id);
     case PL_COMP_DIVIDER:
