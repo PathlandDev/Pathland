@@ -1,0 +1,1 @@
+I want to merge main into the current branch and complete the qt renderer according to the specs. What is needed?
