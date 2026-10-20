@@ -1069,9 +1069,9 @@ void reconcileNav(uint32_t slotId) {
             placeDestination(dest, container);
         } else if (dest) {
             placeDestination(dest, page->findChild<QQuickItem *>("content"));
-            page->setParentItem(container);
+            placeDestination(page, container); // page fills the container
         } else {
-            page->setParentItem(container);
+            placeDestination(page, container);
         }
         page->setVisible(true);
         pages.push_back(page);
@@ -1096,9 +1096,9 @@ void reconcileNav(uint32_t slotId) {
             placeDestination(dest, container);
         } else if (dest) {
             placeDestination(dest, page->findChild<QQuickItem *>("content"));
-            page->setParentItem(container);
+            placeDestination(page, container); // page fills the container
         } else {
-            page->setParentItem(container);
+            placeDestination(page, container);
         }
         if (top != page) {
             top->setVisible(false);
@@ -2367,6 +2367,20 @@ uint32_t pathland_qt_layer_nav_depth(uint32_t slot) {
     return it == g.nav_pages.end() ? 0 : static_cast<uint32_t>(it->second.size());
 }
 
+// Whether the top page is sized to fill its nav container (the content-area fix).
+uint32_t pathland_qt_layer_nav_page_fills(uint32_t slot) {
+    auto it = g.nav_pages.find(slot);
+    if (it == g.nav_pages.end() || it->second.empty()) {
+        return 0;
+    }
+    QQuickItem *page = it->second.back();
+    QObject *anchors = page->property("anchors").value<QObject *>();
+    if (!anchors) {
+        return 0;
+    }
+    return anchors->property("fill").value<QQuickItem *>() != nullptr ? 1 : 0;
+}
+
 // Test hook: whether a widget's Layout attached fill flag is explicitly set
 // (which==0 -> fillWidth, else fillHeight). Proves FILL stretch wiring.
 uint32_t pathland_qt_layer_widget_fill(uint32_t id, uint32_t which) {
@@ -2506,6 +2520,9 @@ int pathland_qt_layer_render_once(void) {
     }
     if (!g.window->isVisible()) {
         g.window->show();
+        // Let the window expose and run a layout pass before grabbing.
+        QCoreApplication::processEvents();
+        QCoreApplication::processEvents();
     }
     QImage img = g.window->grabWindow();
     return img.isNull() ? 0 : 1;

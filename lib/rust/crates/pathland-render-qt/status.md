@@ -120,6 +120,11 @@ Design-token contract: `spec/TOKENS.md`.
   QML-callable-only (not invokable from C++ via `QMetaObject`), so the nav
   container is a plain `Item` whose pages the renderer manages (only the top
   visible) — a renderer-owned page cache, same statelessness contract.
+  **Page sizing:** each page wrapper is anchored to fill the nav container
+  (`placeDestination`), so the header/content/destination chain is sized and the
+  destination subtree fills the content area (previously the page wrapper was
+  attached unsized, collapsing the content to 0×0 and showing only an
+  overflowing title).
 
 - **Post-merge protocol parity (October 2026)**: the crate was merged onto the
   shared `PARAMETER` rename and now maps the protocol surface added on `main`:

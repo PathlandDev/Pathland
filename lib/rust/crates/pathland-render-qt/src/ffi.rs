@@ -191,6 +191,8 @@ extern "C" {
     #[allow(dead_code)]
     pub fn pathland_qt_layer_nav_depth(slot: u32) -> u32;
     #[allow(dead_code)]
+    pub fn pathland_qt_layer_nav_page_fills(slot: u32) -> u32;
+    #[allow(dead_code)]
     pub fn pathland_qt_layer_widget_text(id: u32, out: *mut c_char, cap: u32) -> u32;
     #[allow(dead_code)]
     pub fn pathland_qt_layer_widget_prop_text(
@@ -910,9 +912,48 @@ mod tests {
                 "slot promoted to a nav container with one page"
             );
             assert_eq!(
+                unsafe { pathland_qt_layer_nav_page_fills(1) },
+                1,
+                "the page wrapper fills the nav container (content-area sizing)"
+            );
+            assert_eq!(
                 read_text(3),
                 "hello",
                 "destination subtree alive in the page"
+            );
+        });
+    }
+
+    /// The real content-area layout: a nav slot inside a ScrollView under an
+    /// HStack. After showing + laying out, the destination subtree fills the
+    /// content (not 0×0), so a route page renders more than an overflowing title.
+    #[test]
+    fn nav_destination_fills_the_content_area() {
+        with_qt(|| {
+            let cmds = [
+                Command::create_node(1, component_type::HSTACK),
+                Command::insert_child(CONTENT_ITEM, 1, u32::MAX),
+                Command::create_node(2, component_type::SCROLLVIEW),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::create_node(3, component_type::VSTACK), // nav slot
+                Command::insert_child(2, 3, u32::MAX),
+                Command::create_node(4, component_type::VSTACK), // destination
+                Command::insert_child(3, 4, u32::MAX),
+                Command::create_node(5, component_type::TEXT),
+                Command::insert_child(4, 5, u32::MAX),
+                Command::set_text(5, "Home"),
+                Command::set_string_property(3, property_id::ROUTE, "/home"),
+                Command::set_property(3, property_id::NAV_DEPTH, value_type::U32, 1),
+            ];
+            unsafe { pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32) };
+
+            // Show + process events so the offscreen window runs a layout pass.
+            assert_eq!(unsafe { pathland_qt_layer_render_once() }, 1);
+            let w = unsafe { pathland_qt_layer_widget_size(4, 0) };
+            let h = unsafe { pathland_qt_layer_widget_size(4, 1) };
+            assert!(
+                w > 0.0 && h > 0.0,
+                "destination fills the content area (got {w}x{h})"
             );
         });
     }
@@ -949,6 +990,11 @@ mod tests {
             ];
             unsafe { pathland_qt_layer_apply(push.as_ptr(), push.len() as u32) };
             assert_eq!(nav_depth(), 2);
+            assert_eq!(
+                unsafe { pathland_qt_layer_nav_page_fills(1) },
+                1,
+                "a pushed page also fills the nav container"
+            );
             assert_eq!(read_text(5), "detail");
 
             // Pop: back to depth 1 and the previous destination.

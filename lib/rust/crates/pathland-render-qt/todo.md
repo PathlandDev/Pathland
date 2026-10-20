@@ -35,6 +35,8 @@ grid rows). Remaining work is tracked here and in `status.md`.
   resolve against a host-extracted local directory.
 - **Java Qt demo migrated** to `dev.pathland.demo.qt` (view/demo package
   renames, `environmentBinding` mount, `DemoAssets` extraction).
+- **Nav content-area sizing**: the page wrapper fills the nav container, so
+  route content (not just its title) renders at full size.
 - **Headless test hang fixed**: the shell drops the executable directory from
   the QML import path at init, so `cargo test -p pathland-render-qt` runs
   directly (~2s) instead of scanning `target/debug/deps` for minutes.
