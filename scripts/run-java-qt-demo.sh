@@ -34,4 +34,4 @@ CP="target/classes:$(cat "$CPFILE")"
 exec java $MAINTHREAD \
   -Dpathland.core.lib="$ROOT/lib/rust/target/debug/libpathland_core$EXT" \
   -Dpathland.qt.lib="$ROOT/lib/rust/target/debug/libpathland_qt$EXT" \
-  -cp "$CP" com.pathland.demo.qt.QtHost
+  -cp "$CP" dev.pathland.demo.qt.QtHost

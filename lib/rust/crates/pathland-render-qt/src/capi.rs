@@ -11,7 +11,7 @@
 //! Qt (the process argv belongs to the embedding host — e.g. a JVM's `-cp` /
 //! `-D` flags — and must not be parsed as Qt options).
 
-use std::ffi::c_void;
+use std::ffi::{c_char, c_void, CStr};
 
 use pathland_core::Event;
 use pathland_core_transport::{
@@ -96,4 +96,18 @@ pub unsafe extern "C" fn pathland_qt_run_ring(
         width.max(1) as i32,
         height.max(1) as i32,
     );
+}
+
+/// Set the local asset root so web-style `/_pathland/...` image/media sources
+/// resolve against a directory extracted by the host (mirrors
+/// `pathland_gtk_set_asset_root`). Call before `pathland_qt_run*`.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_qt_set_asset_root(dir: *const c_char) {
+    if dir.is_null() {
+        crate::ffi::pathland_qt_layer_set_asset_root(std::ptr::null());
+        return;
+    }
+    let root = CStr::from_ptr(dir).to_string_lossy().into_owned();
+    let c = std::ffi::CString::new(root).unwrap_or_default();
+    crate::ffi::pathland_qt_layer_set_asset_root(c.as_ptr());
 }

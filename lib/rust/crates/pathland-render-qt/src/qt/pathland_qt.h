@@ -92,6 +92,10 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count);
 /* Reset the whole scene (META::RESET). */
 void pathland_qt_layer_reset(void);
 
+/* Set the asset root so web-style `/_pathland/...` media/image sources resolve
+   against a local directory (mirrors `pathland_gtk_set_asset_root`). */
+void pathland_qt_layer_set_asset_root(const char *root);
+
 /* Quit the event loop (host-initiated shutdown). */
 void pathland_qt_layer_quit(void);
 

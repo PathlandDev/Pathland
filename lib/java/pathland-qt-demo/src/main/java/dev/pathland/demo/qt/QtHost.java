@@ -1,18 +1,21 @@
-package com.pathland.demo.qt;
+package dev.pathland.demo.qt;
 
-import com.pathland.demo.DemoTheme;
-import com.pathland.demo.SplitNavDemo;
-import com.pathland.view.Environment;
-import com.pathland.view.Platform;
-import com.pathland.view.emit.Emitter;
-import com.pathland.view.emit.InputDispatcher;
-import com.pathland.view.emit.RenderResult;
-import com.pathland.view.ffm.PathlandCore;
-import com.pathland.view.ffm.RingOpcodeSink;
-import com.pathland.view.signal.Signals;
-import com.pathland.view.signal.WritableSignal;
-import com.pathland.view.state.InMemoryStateStore;
-import com.pathland.view.state.PersistentState;
+import dev.pathland.demo.DemoTheme;
+import dev.pathland.demo.SplitNavDemo;
+import dev.pathland.demo.assets.DemoAssets;
+import dev.pathland.view.Environment;
+import dev.pathland.view.Platform;
+import dev.pathland.view.emit.Emitter;
+import dev.pathland.view.emit.InputDispatcher;
+import dev.pathland.view.emit.RenderResult;
+import dev.pathland.view.ffm.PathlandCore;
+import dev.pathland.view.ffm.RingOpcodeSink;
+import dev.pathland.view.signal.Signals;
+import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.state.InMemoryStateStore;
+import dev.pathland.view.state.PersistentState;
+
+import static dev.pathland.view.Modifiers.environmentBinding;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 
@@ -62,8 +65,12 @@ public final class QtHost {
             WritableSignal<String> activePath = Signals.signal("/home");
 
             Emitter emitter = new Emitter(sink, DemoTheme.adaptive());
+            // The active platform path is a host-provided environment signal; the
+            // view's router binds to it (spec DSL.md §4.5).
             RenderResult result = emitter.mount(
-                    new SplitNavDemo().environment(Platform.ACTIVE_PATH, activePath),
+                    new SplitNavDemo()
+                            .modifiers(environmentBinding(
+                                    e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
                     new Environment(state));
             InputDispatcher dispatcher = new InputDispatcher(result, activePath);
             RingEventReader reader =
@@ -81,8 +88,14 @@ public final class QtHost {
                 }
             };
 
+            // The app references its assets with web-style /_pathland/... paths;
+            // the renderer resolves them against a local copy extracted once from
+            // the shared demo-views jar (see DemoAssets).
+            QtRendererNative renderer = QtRendererNative.instance();
+            renderer.setAssetRoot(DemoAssets.extractToTemp().toString());
+
             // Blocks until the window closes; the ring (handle) must outlive it.
-            QtRendererNative.instance().runRing(core.ringMut(handle), onEvent, WINDOW_WIDTH, WINDOW_HEIGHT);
+            renderer.runRing(core.ringMut(handle), onEvent, WINDOW_WIDTH, WINDOW_HEIGHT);
         }
     }
 }

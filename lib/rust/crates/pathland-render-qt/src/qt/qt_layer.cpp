@@ -185,6 +185,24 @@ int alignmentFor(float code) {
 // Canonical icon name -> glyph (spec/ICONS.md). The vocabulary is the protocol
 // contract; the concrete glyph is renderer-owned. Unknown names fall back to a
 // neutral dot so the node still renders.
+// Resolve an asset source: `/_pathland/<rest>` -> `<root>/<rest>` when an
+// asset root is configured, else the source unchanged. Non-`/_pathland/`
+// sources (absolute paths, file:// URLs) pass through.
+QUrl resolveAsset(const QString &source, const QString &root) {
+    const QString prefix = QStringLiteral("/_pathland/");
+    if (root.isEmpty() || !source.startsWith(prefix)) {
+        return QUrl(source);
+    }
+    QString r = root;
+    while (r.endsWith('/')) {
+        r.chop(1);
+    }
+    if (r.isEmpty()) {
+        return QUrl(source);
+    }
+    return QUrl::fromLocalFile(r + QStringLiteral("/") + source.mid(prefix.size()));
+}
+
 QString iconGlyph(const QString &name) {
     static const std::unordered_map<QString, QString> glyphs = {
         {QStringLiteral("home"), QStringLiteral("\u2302")},
@@ -279,6 +297,9 @@ struct LayerState {
     // MEDIA_CONTROLLER: the last app-declared playback state (0 pause, 1 play),
     // re-applied when MEDIA_SOURCE lands after the transport props.
     std::unordered_map<uint32_t, uint32_t> media_play_state;
+    // Local asset root for web-style `/_pathland/...` source paths (empty = use
+    // sources as-is), set by a foreign host via pathland_qt_layer_set_asset_root.
+    QString asset_root;
     // EVENT_LISTENERS MouseArea overlay per node (id -> MouseArea item).
     std::unordered_map<uint32_t, QQuickItem *> mouse_areas;
     // Deferred FILL dimensions (bit0=width, bit1=height) for widgets whose
@@ -1279,7 +1300,7 @@ void applyStringProperty(uint32_t id, uint16_t prop, const char *str, uint32_t l
         break;
     case PL_PROP_MEDIA_SOURCE:
         if (QObject *player = mediaPlayerFor(id)) {
-            player->setProperty("source", QUrl(value));
+            player->setProperty("source", resolveAsset(value, g.asset_root));
             // Re-apply the app's declared transport state: a play() that landed
             // before the source was known would otherwise stay silent.
             auto st = g.media_play_state.find(id);
@@ -1289,7 +1310,7 @@ void applyStringProperty(uint32_t id, uint16_t prop, const char *str, uint32_t l
         }
         break;
     case PL_PROP_IMAGE_SOURCE:
-        item->setProperty("source", value);
+        item->setProperty("source", resolveAsset(value, g.asset_root));
         break;
     case PL_PROP_FONT_FAMILY: {
         QVariant fv = item->property("font");
@@ -1728,6 +1749,10 @@ void pathland_qt_layer_reset(void) {
     g.apply_count = 0;
     g.last_text_len = 0;
     g.last_text[0] = '\0';
+}
+
+void pathland_qt_layer_set_asset_root(const char *root) {
+    g.asset_root = root ? QString::fromUtf8(root) : QString();
 }
 
 void pathland_qt_layer_quit(void) {

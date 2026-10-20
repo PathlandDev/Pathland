@@ -5,17 +5,23 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.pathland</groupId>
+        <groupId>dev.pathland</groupId>
         <artifactId>pathland-parent</artifactId>
-        <version>0.1.0</version>
+        <version>0.1.5</version>
     </parent>
 
     <artifactId>pathland-qt-demo</artifactId>
     <packaging>jar</packaging>
 
+    <!-- Demo application — not published to Maven Central. -->
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
+
     <name>Pathland Qt Desktop Demo</name>
     <description>
-        Runs the shared framework-agnostic demo views (com.pathland.demo, incl.
+        Runs the shared framework-agnostic demo views (dev.pathland.demo, incl.
         SplitNavDemo with native navigation) under the Qt Quick renderer
         (libpathland_qt). The Java DSL emits opcodes into the libpathland_core
         shared ring (RingOpcodeSink); pathland_qt_run_ring pumps the same ring in
@@ -25,12 +31,12 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-view</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.pathland</groupId>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-demo-views</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -52,7 +58,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <mainClass>com.pathland.demo.qt.QtHost</mainClass>
+                    <mainClass>dev.pathland.demo.qt.QtHost</mainClass>
                 </configuration>
             </plugin>
         </plugins>

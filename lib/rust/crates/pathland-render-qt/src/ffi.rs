@@ -148,6 +148,9 @@ extern "C" {
     pub fn pathland_qt_layer_apply(cmds: *const Command, count: u32);
     /// Reset the whole scene (META::RESET).
     pub fn pathland_qt_layer_reset();
+    /// Set the local asset root for web-style `/_pathland/...` sources.
+    #[allow(dead_code)]
+    pub fn pathland_qt_layer_set_asset_root(root: *const c_char);
     /// Quit the event loop (host-initiated shutdown).
     #[allow(dead_code)] // part of the C ABI surface for foreign hosts
     pub fn pathland_qt_layer_quit();

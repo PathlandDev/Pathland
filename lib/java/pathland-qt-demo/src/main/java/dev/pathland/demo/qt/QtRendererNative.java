@@ -1,4 +1,4 @@
-package com.pathland.demo.qt;
+package dev.pathland.demo.qt;
 
 import com.sun.jna.Callback;
 import com.sun.jna.Library;
@@ -11,7 +11,7 @@ import java.io.File;
  * JNA binding to the Rust Qt renderer cdylib ({@code libpathland_qt}).
  *
  * <p>The Java DSL emits opcodes into a {@code libpathland_core} ring
- * ({@code com.pathland.view.ffm.RingOpcodeSink}); {@link #runRing} hands that
+ * ({@code dev.pathland.view.ffm.RingOpcodeSink}); {@link #runRing} hands that
  * borrowed ring to the in-process Qt Quick renderer ({@code pathland_qt_run_ring}),
  * which pumps it in place. Native inputs are reported back through a no-payload
  * callback; the host drains them from the ring itself — the wire is the opcode
@@ -29,6 +29,8 @@ public final class QtRendererNative {
 
     /** The C ABI surface, mapped by JNA onto the Rust cdylib. */
     private interface NativeQtRenderer extends Library {
+        void pathland_qt_set_asset_root(String dir);
+
         void pathland_qt_run_ring(Pointer ring, EventCallback onEvent, int width, int height);
     }
 
@@ -51,6 +53,15 @@ public final class QtRendererNative {
                             + "(cargo build -p pathland-render-qt)");
         }
         this.nativeQt = Native.load(libraryPath, NativeQtRenderer.class);
+    }
+
+    /**
+     * Set the directory that web-style {@code /_pathland/...} media/image source
+     * paths resolve against (the local copy of the demo's assets). Call before
+     * {@link #runRing}; a null/empty value clears it.
+     */
+    public void setAssetRoot(String dir) {
+        nativeQt.pathland_qt_set_asset_root(dir);
     }
 
     /**
