@@ -1,1 +1,29 @@
-go
+Compiling pathland-render-gtk v0.1.5 (/home/runner/work/Pathland/Pathland/lib/rust/crates/pathland-render-gtk)
+error[E0063]: missing fields `date` and `lists` in initializer of `pathland_render_core::HostNode`
+   --> crates/pathland-render-gtk/src/layout.rs:488:9
+    |
+488 |         HostNode {
+    |         ^^^^^^^^ missing `date` and `lists`
+
+error[E0063]: missing fields `date` and `lists` in initializer of `pathland_render_core::HostNode`
+   --> crates/pathland-render-gtk/src/layout.rs:909:69
+    |
+909 |         let mk = |id: u32, component_type: u16, children: Vec<u32>| HostNode {
+    |                                                                     ^^^^^^^^ missing `date` and `lists`
+
+error[E0063]: missing fields `date` and `lists` in initializer of `pathland_render_core::HostNode`
+   --> crates/pathland-render-gtk/src/layout.rs:939:91
+    |
+939 |         let mk = |id: u32, component_type: u16, children: Vec<u32>, props: &[(u16, u32)]| HostNode {
+    |                                                                                           ^^^^^^^^ missing `date` and `lists`
+
+error[E0063]: missing fields `date` and `lists` in initializer of `pathland_render_core::HostNode`
+    --> crates/pathland-render-gtk/src/lib.rs:3424:9
+     |
+3424 |         HostNode {
+     |         ^^^^^^^^ missing `date` and `lists`
+
+For more information about this error, try `rustc --explain E0063`.
+error: could not compile `pathland-render-gtk` (lib test) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+Error: Process completed with exit code 101.
