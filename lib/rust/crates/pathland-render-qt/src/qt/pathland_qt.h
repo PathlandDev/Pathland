@@ -139,6 +139,7 @@ uint32_t pathland_qt_layer_widget_fill(uint32_t id, uint32_t which);
 double pathland_qt_layer_widget_preferred(uint32_t id, uint32_t which);
 double pathland_qt_layer_widget_size(uint32_t id, uint32_t which);
 double pathland_qt_layer_widget_position(uint32_t id, uint32_t which);
+uint32_t pathland_qt_layer_top_child(uint32_t parent);
 uint32_t pathland_qt_layer_anchors_fill(uint32_t id);
 uint32_t pathland_qt_layer_nav_depth(uint32_t slot);
 uint32_t pathland_qt_layer_nav_page_fills(uint32_t slot);

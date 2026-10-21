@@ -255,6 +255,7 @@ fn is_f32_property(prop: u16) -> bool {
             | pathland_core::property_id::HEIGHT
             | pathland_core::property_id::FONT_SIZE
             | pathland_core::property_id::OPACITY
+            | pathland_core::property_id::Z_INDEX
             | pathland_core::property_id::BORDER_WIDTH
             | pathland_core::property_id::BORDER_RADIUS
             | pathland_core::property_id::PADDING

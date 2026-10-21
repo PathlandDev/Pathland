@@ -243,7 +243,10 @@ applied and a delta re-applied), **FILL/Layout stretch**
 anchored to the window), **stack geometry** (`vstack_lays_out_children_vertically`
 and `hstack_lays_out_children_horizontally`: a `render_once` layout pass then
 asserts children stack on the main axis, are cross-axis aligned, and the
-`SPACING` gap lands between them), pointer-listener MouseArea attachment
+`SPACING` gap lands between them; `zstack_overlaps_children_in_depth` asserts
+ZStack children share one box at the top-leading origin with their own size, and
+`zstack_draw_order_is_child_index_with_z_index_override` asserts child-index
+paint order plus the `Z_INDEX` override), pointer-listener MouseArea attachment
 (`pointer_listeners_attach_mousearea`), the event path
 (`decode_maps_pointer_and_global_events`, `ring_event_writes_pointer_into_ring_and_wakes`,
 `scheme_event_reapplies_without_waking`, `text_event_string_is_length_prefixed`,

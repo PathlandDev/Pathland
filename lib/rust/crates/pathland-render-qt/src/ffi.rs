@@ -210,6 +210,8 @@ extern "C" {
     #[allow(dead_code)]
     pub fn pathland_qt_layer_widget_position(id: u32, which: u32) -> f64;
     #[allow(dead_code)]
+    pub fn pathland_qt_layer_top_child(parent: u32) -> u32;
+    #[allow(dead_code)]
     pub fn pathland_qt_layer_anchors_fill(id: u32) -> u32;
     #[allow(dead_code)]
     pub fn pathland_qt_layer_video_source(id: u32) -> u32;
@@ -609,6 +611,98 @@ mod tests {
                 (x4 - (x3 + w3) - 10.0).abs() < 0.5,
                 "horizontal spacing gap is applied (got {})",
                 x4 - (x3 + w3)
+            );
+        });
+    }
+
+    /// ZStack layout: children share one box (depth stacking) rather than being
+    /// distributed along an axis. Unlike VStack/HStack, the second child does
+    /// not shift — both sit at the top-leading origin with their own size
+    /// (spec/PRIMITIVES.md §ZStack: default alignment is top-leading, no SPACING).
+    #[test]
+    fn zstack_overlaps_children_in_depth() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, component_type::ZSTACK),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::create_node(2, component_type::TEXT),
+                Command::create_node(3, component_type::TEXT),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::insert_child(1, 3, u32::MAX),
+                Command::set_property(2, property_id::WIDTH, value_type::F32, 100.0f32.to_bits()),
+                Command::set_property(2, property_id::HEIGHT, value_type::F32, 50.0f32.to_bits()),
+                Command::set_property(3, property_id::WIDTH, value_type::F32, 100.0f32.to_bits()),
+                Command::set_property(3, property_id::HEIGHT, value_type::F32, 50.0f32.to_bits()),
+                Command::set_text(2, "A"),
+                Command::set_text(3, "B"),
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            assert_eq!(pathland_qt_layer_render_once(), 1);
+
+            // Both children are direct children of the ZStack (no inner layout).
+            assert_eq!(pathland_qt_layer_widget_child_count(1), 2);
+
+            let x2 = pathland_qt_layer_widget_position(2, 0);
+            let y2 = pathland_qt_layer_widget_position(2, 1);
+            let x3 = pathland_qt_layer_widget_position(3, 0);
+            let y3 = pathland_qt_layer_widget_position(3, 1);
+
+            assert!(
+                (x2 - 0.0).abs() < 0.5 && (y2 - 0.0).abs() < 0.5,
+                "first child at the top-leading origin (got {x2},{y2})"
+            );
+            assert!(
+                (x3 - 0.0).abs() < 0.5 && (y3 - 0.0).abs() < 0.5,
+                "second child overlaps at the origin, not shifted by an axis (got {x3},{y3})"
+            );
+            assert!(
+                (x3 - x2).abs() < 0.5 && (y3 - y2).abs() < 0.5,
+                "children share one box"
+            );
+
+            // Each child keeps its own size (not stretched or summed).
+            assert!((pathland_qt_layer_widget_size(2, 0) - 100.0).abs() < 0.5);
+            assert!((pathland_qt_layer_widget_size(2, 1) - 50.0).abs() < 0.5);
+            assert!((pathland_qt_layer_widget_size(3, 0) - 100.0).abs() < 0.5);
+            assert!((pathland_qt_layer_widget_size(3, 1) - 50.0).abs() < 0.5);
+        });
+    }
+
+    /// ZStack draw order (spec/PRIMITIVES.md §ZStack): child index is the paint
+    /// order (later = on top), and an explicit Z_INDEX overrides it (higher =
+    /// on top; ties break by child index).
+    #[test]
+    fn zstack_draw_order_is_child_index_with_z_index_override() {
+        with_qt(|| unsafe {
+            let base = [
+                Command::create_node(1, component_type::ZSTACK),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::create_node(2, component_type::TEXT),
+                Command::create_node(3, component_type::TEXT),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::insert_child(1, 3, u32::MAX),
+                Command::set_text(2, "A"),
+                Command::set_text(3, "B"),
+            ];
+            pathland_qt_layer_apply(base.as_ptr(), base.len() as u32);
+            assert_eq!(
+                pathland_qt_layer_top_child(1),
+                3,
+                "later child paints on top"
+            );
+
+            // A higher Z_INDEX on the first child lifts it above the second.
+            let raise = [Command::set_property(
+                2,
+                property_id::Z_INDEX,
+                value_type::F32,
+                5.0f32.to_bits(),
+            )];
+            pathland_qt_layer_apply(raise.as_ptr(), raise.len() as u32);
+            assert_eq!(
+                pathland_qt_layer_top_child(1),
+                2,
+                "explicit Z_INDEX overrides child order"
             );
         });
     }

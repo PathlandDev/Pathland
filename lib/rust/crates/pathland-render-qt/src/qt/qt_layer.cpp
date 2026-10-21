@@ -2430,6 +2430,40 @@ double pathland_qt_layer_widget_position(uint32_t id, uint32_t which) {
     return which == 0 ? item->x() : item->y();
 }
 
+// Test hook: the node id of the topmost direct child of a parent, by draw order
+// (Qt stacking: a higher `z` wins; ties break by later child index — the spec's
+// ZStack rule, spec/PRIMITIVES.md §ZStack). Renderer-injected layers (background,
+// shadow, pointer MouseArea) aren't node widgets and are skipped. Returns 0 when
+// the parent has no widget children.
+uint32_t pathland_qt_layer_top_child(uint32_t parent) {
+    QQuickItem *p = findWidget(parent);
+    if (!p) {
+        return 0;
+    }
+    std::unordered_map<QQuickItem *, uint32_t> id_of;
+    id_of.reserve(g.widgets.size());
+    for (auto &kv : g.widgets) {
+        id_of[kv.second] = kv.first;
+    }
+    uint32_t top = 0;
+    double top_z = 0;
+    bool have = false;
+    for (QQuickItem *kid : p->childItems()) {
+        auto it = id_of.find(kid);
+        if (it == id_of.end()) {
+            continue; // injected renderer layer, not a node
+        }
+        const double z = kid->z();
+        // `>=` lets a later child win ties (equal z -> child index).
+        if (!have || z >= top_z) {
+            top = it->second;
+            top_z = z;
+            have = true;
+        }
+    }
+    return top;
+}
+
 // Test hook: whether a widget's anchors.fill is bound to the window contentItem
 // (roots are anchored to fill the window — the "sliver" fix).
 uint32_t pathland_qt_layer_anchors_fill(uint32_t id) {
