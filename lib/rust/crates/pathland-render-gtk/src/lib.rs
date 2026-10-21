@@ -3430,6 +3430,8 @@ mod tests {
             properties,
             strings,
             token_refs: Default::default(),
+            lists: HashMap::new(),
+            date: None,
         }
     }
 }
