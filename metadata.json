@@ -1,0 +1,63 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M5F8NZVB2JAACEJAQJ0PR6PY",
+  "strategy": "manual-commit",
+  "branch": "feat/qt-renderer",
+  "checkpoints_count": 61,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/music/MusicPlayerViewTest.java",
+    "lib/java/pathland-gtk-demo/src/main/java/dev/pathland/demo/gtk/RingEventReader.java",
+    "lib/java/pathland-gtk-demo/src/test/java/dev/pathland/demo/gtk/RingEventReaderTest.java",
+    "lib/java/pathland-gtk-demo/status.md",
+    "lib/java/pathland-qt-demo/pom.xml",
+    "lib/java/pathland-qt-demo/src/main/java/dev/pathland/demo/qt/QtHost.java",
+    "lib/java/pathland-qt-demo/src/main/java/dev/pathland/demo/qt/RingEventReader.java",
+    "lib/java/pathland-qt-demo/src/test/java/dev/pathland/demo/qt/RingEventReaderTest.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/MediaController.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/Properties.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/ScrollAxis.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/ScrollView.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/Emitter.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/OpcodeSink.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/ffm/RingOpcodeSink.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/MediaControllerTest.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/ScrollViewTest.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/SizeThatFitsTest.java",
+    "lib/java/pathland-view/status.md",
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/rust/crates/pathland-core/status.md",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/rust/crates/pathland-render-qt/src/ffi.rs",
+    "lib/rust/crates/pathland-render-qt/src/qt/bridge.cpp",
+    "lib/rust/crates/pathland-render-qt/src/qt/pathland_qt.h",
+    "lib/rust/crates/pathland-render-qt/src/qt/qt_layer.cpp",
+    "lib/rust/crates/pathland-render-qt/src/renderer.rs",
+    "lib/rust/crates/pathland-render-qt/status.md",
+    "lib/rust/crates/pathland-render-qt/todo.md",
+    "lib/rust/crates/pathland-view/src/lib.rs",
+    "lib/rust/crates/pathland-view/status.md",
+    "scripts/run-java-qt-demo.sh",
+    "spec/CONFORMANCE.md",
+    "spec/LAYOUT.md",
+    "spec/MODIFIERS.md",
+    "spec/PRIMITIVES.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 8786857,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 247744768,
+    "output_tokens": 223819,
+    "api_call_count": 954
+  }
+}

@@ -1,0 +1,507 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M5F8NZVB2JAACEJAQJ0PR6PY",
+  "session_id": "ses_ea574a23bffedi1MvTVvxigGaa",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-21T12:58:58.840533Z",
+  "branch": "feat/qt-renderer",
+  "checkpoints_count": 61,
+  "save_step_count": 60,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/music/MusicPlayerViewTest.java",
+    "lib/java/pathland-gtk-demo/src/main/java/dev/pathland/demo/gtk/RingEventReader.java",
+    "lib/java/pathland-gtk-demo/src/test/java/dev/pathland/demo/gtk/RingEventReaderTest.java",
+    "lib/java/pathland-gtk-demo/status.md",
+    "lib/java/pathland-qt-demo/pom.xml",
+    "lib/java/pathland-qt-demo/src/main/java/dev/pathland/demo/qt/QtHost.java",
+    "lib/java/pathland-qt-demo/src/main/java/dev/pathland/demo/qt/RingEventReader.java",
+    "lib/java/pathland-qt-demo/src/test/java/dev/pathland/demo/qt/RingEventReaderTest.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/MediaController.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/Properties.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/ScrollAxis.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/ScrollView.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/Emitter.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/OpcodeSink.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/ffm/RingOpcodeSink.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/MediaControllerTest.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/ScrollViewTest.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/SizeThatFitsTest.java",
+    "lib/java/pathland-view/status.md",
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/rust/crates/pathland-core/status.md",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/rust/crates/pathland-render-qt/src/ffi.rs",
+    "lib/rust/crates/pathland-render-qt/src/qt/bridge.cpp",
+    "lib/rust/crates/pathland-render-qt/src/qt/pathland_qt.h",
+    "lib/rust/crates/pathland-render-qt/src/qt/qt_layer.cpp",
+    "lib/rust/crates/pathland-render-qt/src/renderer.rs",
+    "lib/rust/crates/pathland-render-qt/status.md",
+    "lib/rust/crates/pathland-render-qt/todo.md",
+    "lib/rust/crates/pathland-view/src/lib.rs",
+    "lib/rust/crates/pathland-view/status.md",
+    "scripts/run-java-qt-demo.sh",
+    "spec/CONFORMANCE.md",
+    "spec/LAYOUT.md",
+    "spec/MODIFIERS.md",
+    "spec/PRIMITIVES.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "6d7b0d74bfc1",
+  "checkpoint_transcript_start": 72,
+  "transcript_lines_at_start": 72,
+  "compact_transcript_start": 72,
+  "token_usage": {
+    "input_tokens": 8786857,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 247744768,
+    "output_tokens": 223819,
+    "api_call_count": 954
+  },
+  "session_metrics": {
+    "turn_count": 69
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-21T12:58:57.815958Z",
+    "agent_lines": 3782,
+    "agent_removed": 283,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 3782,
+    "total_lines_changed": 4065,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 67,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 67,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 67,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 146,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 146,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 146,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 146,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 146,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 11,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 146,
+      "agent_lines_removed": 1
+    },
+    {
+      "checkpoint_number": 12,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 561,
+      "agent_lines_removed": 95
+    },
+    {
+      "checkpoint_number": 13,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 561,
+      "agent_lines_removed": 95
+    },
+    {
+      "checkpoint_number": 14,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 631,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 15,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 16,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 631,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 17,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 18,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 631,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 19,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 631,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 20,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 21,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 631,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 22,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 631,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 23,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 631,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 24,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 25,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 703,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 26,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 703,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 27,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 703,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 28,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 703,
+      "agent_lines_removed": 129
+    },
+    {
+      "checkpoint_number": 29,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 965,
+      "agent_lines_removed": 145
+    },
+    {
+      "checkpoint_number": 30,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 965,
+      "agent_lines_removed": 145
+    },
+    {
+      "checkpoint_number": 31,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 965,
+      "agent_lines_removed": 145
+    },
+    {
+      "checkpoint_number": 32,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 965,
+      "agent_lines_removed": 145
+    },
+    {
+      "checkpoint_number": 33,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1191,
+      "agent_lines_removed": 152
+    },
+    {
+      "checkpoint_number": 34,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1191,
+      "agent_lines_removed": 152
+    },
+    {
+      "checkpoint_number": 35,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1589,
+      "agent_lines_removed": 156
+    },
+    {
+      "checkpoint_number": 36,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1589,
+      "agent_lines_removed": 156
+    },
+    {
+      "checkpoint_number": 37,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1916,
+      "agent_lines_removed": 160
+    },
+    {
+      "checkpoint_number": 38,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1916,
+      "agent_lines_removed": 160
+    },
+    {
+      "checkpoint_number": 39,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1916,
+      "agent_lines_removed": 160
+    },
+    {
+      "checkpoint_number": 40,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2185,
+      "agent_lines_removed": 191
+    },
+    {
+      "checkpoint_number": 41,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2409,
+      "agent_lines_removed": 192
+    },
+    {
+      "checkpoint_number": 42,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2409,
+      "agent_lines_removed": 192
+    },
+    {
+      "checkpoint_number": 43,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2612,
+      "agent_lines_removed": 214
+    },
+    {
+      "checkpoint_number": 44,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2612,
+      "agent_lines_removed": 214
+    },
+    {
+      "checkpoint_number": 45,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2887,
+      "agent_lines_removed": 215
+    },
+    {
+      "checkpoint_number": 46,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2887,
+      "agent_lines_removed": 215
+    },
+    {
+      "checkpoint_number": 47,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2887,
+      "agent_lines_removed": 215
+    },
+    {
+      "checkpoint_number": 48,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2887,
+      "agent_lines_removed": 215
+    },
+    {
+      "checkpoint_number": 49,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 2887,
+      "agent_lines_removed": 215
+    },
+    {
+      "checkpoint_number": 50,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3319,
+      "agent_lines_removed": 243
+    },
+    {
+      "checkpoint_number": 51,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3319,
+      "agent_lines_removed": 243
+    },
+    {
+      "checkpoint_number": 52,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3319,
+      "agent_lines_removed": 243
+    },
+    {
+      "checkpoint_number": 53,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3410,
+      "agent_lines_removed": 245
+    },
+    {
+      "checkpoint_number": 54,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3410,
+      "agent_lines_removed": 245
+    },
+    {
+      "checkpoint_number": 55,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3410,
+      "agent_lines_removed": 245
+    },
+    {
+      "checkpoint_number": 56,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3503,
+      "agent_lines_removed": 256
+    },
+    {
+      "checkpoint_number": 57,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3503,
+      "agent_lines_removed": 256
+    },
+    {
+      "checkpoint_number": 58,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3648,
+      "agent_lines_removed": 271
+    },
+    {
+      "checkpoint_number": 59,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3648,
+      "agent_lines_removed": 271
+    },
+    {
+      "checkpoint_number": 60,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3648,
+      "agent_lines_removed": 271
+    },
+    {
+      "checkpoint_number": 61,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 3782,
+      "agent_lines_removed": 283
+    }
+  ]
+}
