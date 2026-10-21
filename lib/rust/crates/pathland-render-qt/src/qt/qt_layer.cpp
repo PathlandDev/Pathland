@@ -2419,6 +2419,17 @@ double pathland_qt_layer_widget_size(uint32_t id, uint32_t which) {
     return which == 0 ? item->width() : item->height();
 }
 
+// Test hook: a widget's current x (0) or y (1) position. After a layout pass
+// this is the position a stack's RowLayout/ColumnLayout assigned, proving the
+// child order/axis (VStack stacks downward, HStack flows rightward).
+double pathland_qt_layer_widget_position(uint32_t id, uint32_t which) {
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return -1;
+    }
+    return which == 0 ? item->x() : item->y();
+}
+
 // Test hook: whether a widget's anchors.fill is bound to the window contentItem
 // (roots are anchored to fill the window — the "sliver" fix).
 uint32_t pathland_qt_layer_anchors_fill(uint32_t id) {

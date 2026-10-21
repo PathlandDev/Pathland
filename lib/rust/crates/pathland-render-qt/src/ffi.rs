@@ -208,6 +208,8 @@ extern "C" {
     #[allow(dead_code)]
     pub fn pathland_qt_layer_widget_size(id: u32, which: u32) -> f64;
     #[allow(dead_code)]
+    pub fn pathland_qt_layer_widget_position(id: u32, which: u32) -> f64;
+    #[allow(dead_code)]
     pub fn pathland_qt_layer_anchors_fill(id: u32) -> u32;
     #[allow(dead_code)]
     pub fn pathland_qt_layer_video_source(id: u32) -> u32;
@@ -499,6 +501,115 @@ mod tests {
             // Root ALIGNMENT=FILL -> children fill the cross axis (height).
             assert_eq!(pathland_qt_layer_widget_fill(2, 1), 1);
             assert_eq!(pathland_qt_layer_widget_fill(3, 1), 1);
+        });
+    }
+
+    /// VStack layout: children stack top-to-bottom on the main (vertical) axis,
+    /// with the configured spacing between them, and default cross-axis stretch
+    /// aligns them on the left. Drives the real QML `ColumnLayout` and reads the
+    /// laid-out geometry (`render_once` forces a layout pass offscreen).
+    ///
+    /// The stack is sized to its exact content (2 × 50 + 10) inside a `ZStack`
+    /// root, so no leftover space is redistributed across the layout's rows and
+    /// the spacing gap is observable directly.
+    #[test]
+    fn vstack_lays_out_children_vertically() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, component_type::ZSTACK),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::create_node(2, component_type::VSTACK),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::create_node(3, component_type::TEXT),
+                Command::create_node(4, component_type::TEXT),
+                Command::insert_child(2, 3, u32::MAX),
+                Command::insert_child(2, 4, u32::MAX),
+                Command::set_property(2, property_id::WIDTH, value_type::F32, 200.0f32.to_bits()),
+                Command::set_property(2, property_id::HEIGHT, value_type::F32, 110.0f32.to_bits()),
+                Command::set_property(2, property_id::SPACING, value_type::F32, 10.0f32.to_bits()),
+                Command::set_property(3, property_id::HEIGHT, value_type::F32, 50.0f32.to_bits()),
+                Command::set_property(4, property_id::HEIGHT, value_type::F32, 50.0f32.to_bits()),
+                Command::set_text(3, "A"),
+                Command::set_text(4, "B"),
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            assert_eq!(pathland_qt_layer_render_once(), 1);
+
+            let x3 = pathland_qt_layer_widget_position(3, 0);
+            let y3 = pathland_qt_layer_widget_position(3, 1);
+            let x4 = pathland_qt_layer_widget_position(4, 0);
+            let y4 = pathland_qt_layer_widget_position(4, 1);
+            let h3 = pathland_qt_layer_widget_size(3, 1);
+
+            assert!(
+                (h3 - 50.0).abs() < 0.5,
+                "child height is the fixed main-axis size (got {h3})"
+            );
+            assert!(
+                y4 > y3,
+                "second child stacks below the first (got y3={y3}, y4={y4})"
+            );
+            assert!(
+                (x4 - x3).abs() < 0.5,
+                "default stretch aligns children on the left (x3={x3}, x4={x4})"
+            );
+            assert!(
+                (y4 - (y3 + h3) - 10.0).abs() < 0.5,
+                "vertical spacing gap is applied (got {})",
+                y4 - (y3 + h3)
+            );
+        });
+    }
+
+    /// HStack layout: children flow left-to-right on the main (horizontal) axis,
+    /// with the configured spacing between them, and default cross-axis stretch
+    /// aligns them on the top. Sized to exact content (2 × 100 + 10) as above.
+    #[test]
+    fn hstack_lays_out_children_horizontally() {
+        with_qt(|| unsafe {
+            let cmds = [
+                Command::create_node(1, component_type::ZSTACK),
+                Command::insert_child(0, 1, u32::MAX),
+                Command::create_node(2, component_type::HSTACK),
+                Command::insert_child(1, 2, u32::MAX),
+                Command::create_node(3, component_type::TEXT),
+                Command::create_node(4, component_type::TEXT),
+                Command::insert_child(2, 3, u32::MAX),
+                Command::insert_child(2, 4, u32::MAX),
+                Command::set_property(2, property_id::WIDTH, value_type::F32, 210.0f32.to_bits()),
+                Command::set_property(2, property_id::HEIGHT, value_type::F32, 100.0f32.to_bits()),
+                Command::set_property(2, property_id::SPACING, value_type::F32, 10.0f32.to_bits()),
+                Command::set_property(3, property_id::WIDTH, value_type::F32, 100.0f32.to_bits()),
+                Command::set_property(4, property_id::WIDTH, value_type::F32, 100.0f32.to_bits()),
+                Command::set_text(3, "A"),
+                Command::set_text(4, "B"),
+            ];
+            pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
+            assert_eq!(pathland_qt_layer_render_once(), 1);
+
+            let x3 = pathland_qt_layer_widget_position(3, 0);
+            let y3 = pathland_qt_layer_widget_position(3, 1);
+            let x4 = pathland_qt_layer_widget_position(4, 0);
+            let y4 = pathland_qt_layer_widget_position(4, 1);
+            let w3 = pathland_qt_layer_widget_size(3, 0);
+
+            assert!(
+                (w3 - 100.0).abs() < 0.5,
+                "child width is the fixed main-axis size (got {w3})"
+            );
+            assert!(
+                x4 > x3,
+                "second child flows right of the first (got x3={x3}, x4={x4})"
+            );
+            assert!(
+                (y4 - y3).abs() < 0.5,
+                "default stretch aligns children on the top (y3={y3}, y4={y4})"
+            );
+            assert!(
+                (x4 - (x3 + w3) - 10.0).abs() < 0.5,
+                "horizontal spacing gap is applied (got {})",
+                x4 - (x3 + w3)
+            );
         });
     }
 

@@ -240,7 +240,10 @@ delta diff → FFI → live QML `Column`/`Text`/`Button`/`Slider` with spacing/v
 applied and a delta re-applied), **FILL/Layout stretch**
 (`fill_child_stretches_inside_stack`: FILL → `Layout.fillWidth`, fixed →
 `Layout.preferredWidth`, stack `ALIGNMENT=FILL` stretches the cross axis, root
-anchored to the window), pointer-listener MouseArea attachment
+anchored to the window), **stack geometry** (`vstack_lays_out_children_vertically`
+and `hstack_lays_out_children_horizontally`: a `render_once` layout pass then
+asserts children stack on the main axis, are cross-axis aligned, and the
+`SPACING` gap lands between them), pointer-listener MouseArea attachment
 (`pointer_listeners_attach_mousearea`), the event path
 (`decode_maps_pointer_and_global_events`, `ring_event_writes_pointer_into_ring_and_wakes`,
 `scheme_event_reapplies_without_waking`, `text_event_string_is_length_prefixed`,
