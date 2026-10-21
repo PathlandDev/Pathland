@@ -155,6 +155,31 @@ class RingEventReaderTest {
     }
 
     @Test
+    void decodesFitChangedAndMediaDuration() {
+        try (Memory ring = ringWithArena(HEADER_SIZE, "x", 0)) {
+            RingEventReader reader = new RingEventReader(ring, ring.size());
+
+            byte[] raw = concat(
+                    opcode(Commands.Event.FIT_CHANGED, 0, 42, Float.floatToRawIntBits(1.0f), 0),
+                    opcode(Commands.Event.MEDIA_DURATION_CHANGED, 0, 61,
+                            Float.floatToRawIntBits(180.0f), 0));
+
+            List<Event> events = reader.decode(raw);
+            assertEquals(2, events.size());
+
+            Event fit = events.get(0);
+            assertTrue(fit.isFitChanged());
+            assertEquals(42, fit.target());
+            assertEquals(1, fit.fitIndex());
+
+            Event duration = events.get(1);
+            assertTrue(duration.isMediaDurationChanged());
+            assertEquals(61, duration.target());
+            assertEquals(180.0f, duration.mediaValue());
+        }
+    }
+
+    @Test
     void ignoresUnknownCommandsAndNonEventCategories() {
         try (Memory ring = ringWithArena(HEADER_SIZE, "x", 0)) {
             RingEventReader reader = new RingEventReader(ring, ring.size());

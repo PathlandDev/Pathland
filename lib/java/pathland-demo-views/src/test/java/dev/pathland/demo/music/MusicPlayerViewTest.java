@@ -18,6 +18,8 @@ import dev.pathland.view.state.PersistentState;
 import dev.pathland.view.state.StateStore;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,6 +44,17 @@ class MusicPlayerViewTest {
             this.result = result;
             this.sink = sink;
             this.store = store;
+        }
+    }
+
+    /** Captures every completed frame (the emitter emits one per changed binding). */
+    private static final class MultiFrameSink extends FrameOpcodeSink {
+        final List<ProtocolFrame> frames = new ArrayList<>();
+
+        @Override
+        public void endFrame() {
+            super.endFrame();
+            frames.add(super.frame());
         }
     }
 
@@ -202,6 +215,33 @@ class MusicPlayerViewTest {
         media.onEnded();
         assertTrue(store.load("player.track:session-1", Integer.class).isPresent(),
                 "ended advances the track");
+    }
+
+    /** A natural end advances the track and keeps playing: the renderer's end
+     *  report must not write the app's `PLAYBACK_STATE` command to pause (it is a
+     *  report, routed to `playingReport()`), or the next track loads paused. */
+    @Test
+    void endedAdvancesWithoutPausing() {
+        StateStore store = new InMemoryStateStore();
+        store.save("player.playing:session-1", true);
+        PersistentState state = new PersistentState(store, "session-1");
+        MultiFrameSink sink = new MultiFrameSink();
+        RenderResult result = new Emitter(sink).mount(MusicPlayerView.make(), new Environment(state));
+        var entry = result.mediaInputs().entrySet().iterator().next();
+
+        assertTrue(anySetProperty(sink.frame(), Properties.PLAYBACK_STATE, 1),
+                "the mounted controller carries the playing command");
+
+        int before = sink.frames.size();
+        entry.getValue().onEnded();
+        // `ended()` changes many bound values at once, each a separate fine-grained
+        // frame: scan the whole post-end batch, not just the last frame.
+        var deltas = sink.frames.subList(before, sink.frames.size());
+        assertTrue(deltas.stream().anyMatch(f -> anySetPropertyString(f, Properties.MEDIA_SOURCE,
+                        MusicPlayerView.TRACKS.get(1).audio())),
+                "ended advances to the next track's source");
+        assertFalse(deltas.stream().anyMatch(f -> anyProperty(f, Properties.PLAYBACK_STATE)),
+                "ended does not pause: the PLAYBACK_STATE command is untouched");
     }
 
     @Test

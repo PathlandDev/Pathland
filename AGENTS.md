@@ -166,7 +166,7 @@ lib/java/
   pathland-demo-views/  # com.pathland.demo — shared demo views (CounterView/CounterControls/
                         #   NameField + SplitNavDemo with native navigation) declaring State fields
   pathland-gtk-demo/    # com.pathland.demo.gtk — JNA desktop demo: SplitNavDemo under the GTK4 renderer
-  pathland-qt-demo/     # com.pathland.demo.qt — JNA desktop demo: SplitNavDemo under the Qt Quick
+  pathland-qt-demo/     # com.pathland.demo.qt — JNA desktop demo: MusicPlayerView under the Qt Quick
                         #   renderer (pathland_qt_run_ring), incl. native navigation
   pathland-quarkus-demo/# Quarkus SSR + WebSocket demo (com.pathland.demo.quarkus)
   pathland-spring-boot-demo/ # Spring Boot SSR + WebSocket demo (com.pathland.demo.spring)
@@ -178,7 +178,7 @@ lib/java/
 - Run the Qt Quick demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-qt-demo`
   (needs Qt6 dev libs — Homebrew: `brew install qtbase qtdeclarative`; on macOS point `QMAKE`
   at `$(brew --prefix qtbase)/bin/qmake` if it isn't on PATH, see `scripts/run-rust-qt-demo.sh`).
-- Run the Java Qt Quick demo (JNA, shared ring, SplitNavDemo + native navigation):
+- Run the Java Qt Quick demo (JNA, shared ring, MusicPlayerView + app-driven media):
   `scripts/run-java-qt-demo.sh` (macOS hands Qt the main thread via `-XstartOnFirstThread`).
 - Run the Quarkus demo (SSR + WebSocket deltas, dev mode):
   `cd lib/java/pathland-quarkus-demo && mvn quarkus:dev` (or `mvn package && java -jar target/quarkus-app/quarkus-run.jar`).

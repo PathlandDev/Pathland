@@ -21,10 +21,11 @@ import dev.pathland.view.signal.WritableSignal;
  * <p><b>Commands vs reports</b> (spec/EVENTS.md Media): the <em>commands</em>
  * ({@link #playing()}, {@link #position()}, {@link #volume()}, {@link #muted()},
  * {@link #loop()}, {@link #rate()}) are written by the app/user and emitted as
- * transport properties; the <em>reports</em> ({@link #time()},
- * {@link #duration()}, {@link #volumeReport()}) are fed by the renderer's
- * {@code MEDIA_*} events. Bind a control's <em>display</em> to the report and its
- * <em>drag</em> to the command so a report never echoes back as a command.
+ * transport properties; the <em>reports</em> ({@link #playingReport()},
+ * {@link #time()}, {@link #duration()}, {@link #volumeReport()}) are fed by the
+ * renderer's {@code MEDIA_*} events. Bind a control's <em>display</em> to the
+ * report and its <em>drag</em> to the command so a report never echoes back as a
+ * command.
  *
  * <pre>{@code
  * MediaController player = new MediaController();
@@ -49,7 +50,10 @@ public final class MediaController {
     private WritableSignal<Boolean> loop = Signals.signal(false);
     private WritableSignal<Float> rate = Signals.signal(1f);
 
-    // Transport REPORTS (the renderer's MEDIA_* events flow into these).
+    // Transport REPORTS (the renderer's MEDIA_* events flow into these). A report
+    // never writes a command signal (spec/MEDIA.md §4.2), so a playback-state
+    // report cannot clobber the app's PLAYBACK_STATE intent.
+    private WritableSignal<Boolean> playingReport = Signals.signal(false);
     private WritableSignal<Float> time = Signals.signal(0f);
     private WritableSignal<Float> duration = Signals.signal(0f);
     private WritableSignal<Float> volumeReport = Signals.signal(1f);
@@ -134,6 +138,12 @@ public final class MediaController {
         return this;
     }
 
+    /** Use {@code signal} as the play-state report feed ({@code MEDIA_PLAY_STATE_CHANGED}). */
+    public MediaController playingReport(WritableSignal<Boolean> signal) {
+        this.playingReport = signal;
+        return this;
+    }
+
     /** Use {@code signal} as the volume report feed ({@code MEDIA_VOLUME_CHANGED}). */
     public MediaController volumeReport(WritableSignal<Float> signal) {
         this.volumeReport = signal;
@@ -189,7 +199,7 @@ public final class MediaController {
         return source;
     }
 
-    /** The play/pause command ({@code MEDIA_PLAY_STATE_CHANGED} echoes back into it). */
+    /** The play/pause command ({@code PLAYBACK_STATE}); the app's intent only. */
     public WritableSignal<Boolean> playing() {
         return playing;
     }
@@ -227,6 +237,11 @@ public final class MediaController {
     /** The media duration feed ({@code MEDIA_DURATION_CHANGED}) — a seek control's maximum. */
     public WritableSignal<Float> duration() {
         return duration;
+    }
+
+    /** The play-state feed ({@code MEDIA_PLAY_STATE_CHANGED}) — bind a display to it. */
+    public WritableSignal<Boolean> playingReport() {
+        return playingReport;
     }
 
     /** The volume feed ({@code MEDIA_VOLUME_CHANGED}) — bind a display to it. */

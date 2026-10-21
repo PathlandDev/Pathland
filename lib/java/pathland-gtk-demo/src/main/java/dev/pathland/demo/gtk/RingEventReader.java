@@ -76,6 +76,8 @@ public final class RingEventReader {
             case Commands.Event.MEDIA_TIME_UPDATED -> Event.mediaTimeUpdated(a, f32(b));
             case Commands.Event.MEDIA_ENDED -> Event.mediaEnded(a);
             case Commands.Event.MEDIA_VOLUME_CHANGED -> Event.mediaVolumeChanged(a, f32(b));
+            case Commands.Event.MEDIA_DURATION_CHANGED -> Event.mediaDurationChanged(a, f32(b));
+            case Commands.Event.FIT_CHANGED -> Event.fitChanged(a, f32(b));
             case Commands.Event.NAVIGATE -> (flags & Commands.Flags.NAVIGATE_URL) != 0
                     ? Event.navigate(arenaString(b))
                     : Event.navigateBack();

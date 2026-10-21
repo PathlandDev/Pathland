@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Run the Java + Qt Quick desktop demo: the shared demo views (SplitNavDemo,
-# incl. native navigation) under the Qt renderer, over the libpathland_core
-# shared ring.
+# Run the Java + Qt Quick desktop demo: the shared MusicPlayerView (an Apple
+# Music-style player with app-driven media) under the Qt renderer, over the
+# libpathland_core shared ring.
 #
 # macOS must run Qt on the main thread (-XstartOnFirstThread); Linux needs no flag.
 set -euo pipefail

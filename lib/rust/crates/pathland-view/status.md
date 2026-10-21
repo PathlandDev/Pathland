@@ -17,7 +17,8 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   `RangeConfig`, …) with fluent setters, consumed by the value builders. Values
   move structural properties (`spacing`/`alignment`/grid counts) into the config
   (no longer modifiers).
-- **Views**: `VStack`, `HStack`, `ZStack`, `Grid`, `ScrollView`, `LazyVGrid`,
+- **Views**: `VStack`, `HStack`, `ZStack`, `Grid`, `ScrollView` (axis via
+  `ScrollAxis` / `.axis(...)`, emitting `SCROLL_AXIS` when horizontal), `LazyVGrid`,
   `LazyHGrid`, `LazyVStack`, `LazyHStack`, `Text`, `Button`, `Spacer`,
   `Icon` (semantic symbols via `IconName` + `icon(…)`), `Image` (sets
   `IMAGE_SOURCE`), `Color` (dual identity: a layout-greedy View *and* a value

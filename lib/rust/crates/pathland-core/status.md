@@ -107,6 +107,9 @@ tracks what this crate implements.
   every renderer.
 - **Listener bits**: 0–9 (`POINTER_*`, `KEY_*`, `FOCUS`, `EDITING`, `SUBMIT`,
   `SCROLL`, `WHEEL`).
+- **`SCROLL_AXIS`** (`0x0021`, F32 enum: `Vertical`=0 default, `Horizontal`=1):
+  a `SCROLLVIEW`'s scroll axis. The view is greedy on this axis; the cross axis
+  hugs its content (fill propagation) — spec/PRIMITIVES.md §ScrollView.
 - **`constants::role`** — the canonical **`ROLE` semantic-structure catalog**
   (spec/OPCODE.md §semantic properties), **renumbered dense** (0–13): `HEADER`
   (heading), `PARAGRAPH`, `LIST`, `LIST_ITEM`, `SUMMARY`, `BANNER`,

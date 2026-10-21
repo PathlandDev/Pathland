@@ -407,7 +407,8 @@ are never chainable modifiers.
 | `0x0006` | `SHAPE_KIND` (ENUM; view-specific, see PRIMITIVES.md) |
 | `0x000A`–`0x000D` | Text (TEXT, LINE_LIMIT, TEXT_ALIGNMENT, TRUNCATION_MODE) |
 | `0x000E`–`0x0020` | Layout properties (allocated: OFFSET, POSITION, frame bounds, FIXED_SIZE, LAYOUT_PRIORITY, ASPECT_RATIO/CONTENT_MODE, MINIMUM_SCALE_FACTOR, GRID_COLUMNS, GRID_ROWS, GRID_TRACKS) |
-| `0x0021`–`0x00FF` | Future layout/format properties (unallocated) |
+| `0x0021` | `SCROLL_AXIS` (ENUM; a `SCROLLVIEW`'s scroll axis — see PRIMITIVES.md) |
+| `0x0022`–`0x00FF` | Future layout/format properties (unallocated) |
 | `0x1001`–`0x1016` | Styling (BACKGROUND_COLOR, BORDER_*, FONT_SIZE/WEIGHT/FAMILY, COLOR, WIDTH, HEIGHT, OPACITY, VISIBLE, Z_INDEX, CLIPS_TO_BOUNDS, PADDING_*, BORDER_EDGES) |
 | `0x1002` | `IMAGE_SOURCE` (STRING; view-specific, see PRIMITIVES.md) |
 | `0x1017`–`0x102F` | Text-format properties (allocated: FONT_STYLE/DESIGN/WIDTH, KERNING, TRACKING, BASELINE_OFFSET, LINE_SPACING, TEXT_CASE, UNDERLINE, STRIKETHROUGH), effect properties (SHADOW_*, BLUR, SATURATION, CONTRAST, BRIGHTNESS, GRAYSCALE, HUE_ROTATION, COLOR_MULTIPLY, COLOR_INVERT), ROTATION_DEGREES, SCALE, ALLOWS_HIT_TESTING |
@@ -475,6 +476,7 @@ resolution](#default-value-type-resolution).
 | `TEXT_ALIGNMENT` | 0x000C | `Leading`=0, `Center`=1, `Trailing`=2 |
 | `TRUNCATION_MODE` | 0x000D | `Head`=0, `Middle`=1, `Tail`=2 |
 | `CONTENT_MODE` | 0x001C | `Fit`=0, `Fill`=1 |
+| `SCROLL_AXIS` | 0x0021 | `Vertical`=0 (default), `Horizontal`=1 |
 | `FONT_STYLE` | 0x1017 | `Normal`=0, `Italic`=1 |
 | `FONT_DESIGN` | 0x1018 | `Default`=0, `Serif`=1, `Rounded`=2, `Monospaced`=3 |
 | `TEXT_CASE` | 0x101E | `None`=0, `Uppercase`=1, `Lowercase`=2 |

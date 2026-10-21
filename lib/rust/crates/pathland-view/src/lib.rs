@@ -531,6 +531,28 @@ impl ShapeKind {
     }
 }
 
+/// A `SCROLLVIEW`'s scroll axis (the `SCROLL_AXIS` enum, spec/PRIMITIVES.md
+/// §ScrollView). The view is layout-greedy on this axis; the cross axis hugs its
+/// content (a `Fill`-sized content child propagates `Fill`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ScrollAxis {
+    /// Scroll vertically (the default).
+    #[default]
+    Vertical,
+    /// Scroll horizontally.
+    Horizontal,
+}
+
+impl ScrollAxis {
+    /// The protocol enum value for this axis.
+    pub fn value(self) -> u8 {
+        match self {
+            ScrollAxis::Vertical => 0,
+            ScrollAxis::Horizontal => 1,
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Modifiers
 // ---------------------------------------------------------------------------
@@ -2310,13 +2332,28 @@ container_debug!(ScrollView);
 /// A scrollable container.
 #[derive(Default)]
 pub struct ScrollView {
+    axis: ScrollAxis,
     children: Vec<Box<dyn View>>,
 }
 
 impl ScrollView {
-    /// An empty scroll view.
+    /// An empty scroll view (vertical axis).
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set the scroll axis (`Vertical` by default).
+    pub fn axis(mut self, axis: ScrollAxis) -> Self {
+        self.axis = axis;
+        self
+    }
+
+    /// A horizontally scrolling view.
+    pub fn horizontal() -> Self {
+        Self {
+            axis: ScrollAxis::Horizontal,
+            children: Vec::new(),
+        }
     }
 }
 
@@ -2328,10 +2365,17 @@ impl Children for ScrollView {
 
 impl View for ScrollView {
     fn build_env(&self, _env: &mut Environment) -> Node {
+        let mut p = BTreeMap::new();
+        if self.axis != ScrollAxis::Vertical {
+            p.insert(
+                property_id::SCROLL_AXIS,
+                (self.axis.value() as f32).to_bits(),
+            );
+        }
         plain_node(
             Component::ScrollView,
             build_children(&self.children, _env),
-            BTreeMap::new(),
+            p,
         )
     }
 }
@@ -4260,6 +4304,26 @@ mod sizethatfits_tests {
                     text: "wide".into()
                 }
         );
+    }
+}
+
+#[cfg(test)]
+mod scrollview_tests {
+    use super::*;
+
+    #[test]
+    fn horizontal_axis_emits_scroll_axis() {
+        let node = ScrollView::new().axis(ScrollAxis::Horizontal).build();
+        assert_eq!(
+            node.properties.get(&property_id::SCROLL_AXIS).copied(),
+            Some((1.0f32).to_bits())
+        );
+    }
+
+    #[test]
+    fn vertical_axis_is_the_default_and_omits_the_property() {
+        let node = ScrollView::new().build();
+        assert!(node.properties.get(&property_id::SCROLL_AXIS).is_none());
     }
 }
 

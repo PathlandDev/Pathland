@@ -35,8 +35,11 @@ cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
 - `RingEventReader` — decodes raw ring `EVENT` opcodes into
   `dev.pathland.view.transport.Event`, resolving `TEXT_CHANGED`/`NAVIGATE`
   strings from the shared host → guest event arena (header `0x40`), plus the
-  four `MEDIA_*` events (play state, time, ended, volume). Headless unit tests
-  cover pointer/value/date/text/navigate/media decoding and bounds behaviour.
+  `MEDIA_*` events (play state, time, ended, volume, duration) and
+  `FIT_CHANGED` (routed to the emitter's fit sink, so the `SizeThatFits` slot
+  swaps to its wide candidate and the now-playing sidebar appears). Headless
+  unit tests cover pointer/value/date/text/navigate/media/fit decoding and
+  bounds behaviour.
 - `GtkHost` (`main`) — mounts `MusicPlayerView` (the Apple Music-style player:
   library, now-playing sidebar, player bar with transport/seek/volume), extracts
   the demo's audio + covers to a runtime dir, sets the asset root, runs GTK

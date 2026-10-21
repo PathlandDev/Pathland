@@ -21,12 +21,12 @@
 
     <name>Pathland Qt Desktop Demo</name>
     <description>
-        Runs the shared framework-agnostic demo views (dev.pathland.demo, incl.
-        SplitNavDemo with native navigation) under the Qt Quick renderer
-        (libpathland_qt). The Java DSL emits opcodes into the libpathland_core
-        shared ring (RingOpcodeSink); pathland_qt_run_ring pumps the same ring in
-        place (zero-copy); native inputs round-trip as EVENT opcodes that this host
-        drains and dispatches into the app's bindings.
+        Runs the shared framework-agnostic MusicPlayerView (dev.pathland.demo.music,
+        an Apple Music-style player with app-driven media) under the Qt Quick
+        renderer (libpathland_qt). The Java DSL emits opcodes into the
+        libpathland_core shared ring (RingOpcodeSink); pathland_qt_run_ring pumps
+        the same ring in place (zero-copy); native inputs round-trip as EVENT
+        opcodes that this host drains and dispatches into the app's bindings.
     </description>
 
     <dependencies>

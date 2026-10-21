@@ -102,16 +102,17 @@ need an explicit `FILL` frame to get their natural behavior:
 | Primitive | Greedy on | Precedent |
 |-----------|-----------|-----------|
 | `DIVIDER` | cross-axis | SwiftUI `Divider()` fills the stack's available width/height; CSS `hr` is block-width |
-| `SCROLLVIEW` | both axes | SwiftUI `ScrollView` / Compose scroll fills the available space (the point of a scroll region) |
+| `SCROLLVIEW` | its **scroll axis** only (`SCROLL_AXIS`, default vertical) | SwiftUI `ScrollView` expands along its scroll axis; the cross axis hugs its content unless a `Fill` child propagates |
 | `COLOR` | both axes | SwiftUI `Color` is layout-greedy and expands unless a frame constrains it |
 | `SPACER` | main-axis | `Spacer()` absorbs leftover main-axis space by definition |
 
 Rules:
 
 - Greedy fills **only the axis the primitive is designed to fill** — never both
-  for `DIVIDER`/`SPACER`.
+  for `DIVIDER`/`SPACER`/`SCROLLVIEW`; a `SCROLLVIEW` fills its scroll axis and
+  **hugs on the cross axis** (a `Fill`-width content child propagates `Fill`).
 - An **explicit `WIDTH`/`HEIGHT` always overrides** the greedy default (`Fixed`
-  = that box; `FILL` = stretch anyway).
+  = that box; `FILL` = stretch anyway; `HUG_CONTENT` = natural size).
 - Every other primitive (Text, Image, stacks, buttons, controls) is a plain
   **Fixed / Fill / Hug** node governed by the size model — no implicit
   greediness.
@@ -241,8 +242,8 @@ renderer** (HTML + GTK4 today; SwiftUI/Compose as they land).
 | C10 | `CLIPS_TO_BOUNDS=1` | a Fixed box with overflowing content | content (and the node's painted decoration) clipped to the allocated box; layout unchanged |
 | C11 | `Grid` `GRID_COLUMNS=2`, `SPACING=8`, Hug cells | a definite-width parent | two **equal `1fr` columns** with an 8pt gap; Hug cells keep their natural size, positioned at Leading in their track |
 | C12 | `Grid` `GRID_COLUMNS=2` with a `FILL`-width cell | a definite-width parent | the `FILL` cell **stretches to fill its column**; Hug cells keep their size; the grid does **not** propagate the `FILL` up to a Hug parent on the auto axis |
-| C13 | `ScrollView` (greedy, no frame) | a `FILL`-sized column | fills the available width and height; content taller/wider than the viewport **scrolls**, never clips or overflows the viewport |
-| C14 | `ScrollView` `HEIGHT=HUG_CONTENT` | a Hug column | the viewport's height is the content's **natural height** (no vertical scroll); the horizontal axis stays greedy |
+| C13 | `ScrollView` (`SCROLL_AXIS=Vertical`, no frame) | a `FILL`-sized column, content `FILL`-width | fills the available height (scroll axis); the cross (horizontal) axis hugs — it fills only because the content has a `Fill`-width child; content taller than the viewport **scrolls**, never clips or overflows the viewport |
+| C14 | `ScrollView` `HEIGHT=HUG_CONTENT` | a Hug column | the viewport's height is the content's **natural height** (no vertical scroll); the cross axis hugs its content (no implicit width greed) |
 
 Grid/scroll/lazy allocation is specified in [PRIMITIVES.md §Grid / §ScrollView](./PRIMITIVES.md#grid--grid-0x13); the lazy containers are identical to their eager base with windowed realization only.
 

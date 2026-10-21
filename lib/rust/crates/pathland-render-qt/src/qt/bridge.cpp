@@ -128,11 +128,16 @@ void Bridge::mediaDuration(quint32 nodeId, qreal seconds) {
 
 void Bridge::fitChanged(quint32 nodeId, int index) {
     // A fit report targets the slot (by component type), not gated by BINDING_ID.
+    // It is a layout result, not a programmatic value echo, so it is reported
+    // even while a frame's properties are being applied (suppress) — the spec
+    // requires the first measure to report exactly once.
     PathlandQtEvent ev{};
     ev.kind = PLQT_EV_FIT_CHANGED;
     ev.node_id = nodeId;
     ev.value = static_cast<float>(index);
-    fireMedia(this, ev);
+    if (event_fn) {
+        event_fn(&ev, user);
+    }
 }
 
 namespace {

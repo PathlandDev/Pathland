@@ -22,7 +22,9 @@ grid rows). Remaining work is tracked here and in `status.md`.
   - **composite control mode** — a `Button` with children is promoted to a bare
     shell that renders its `ButtonStyle` body (leaf buttons stay native);
   - foreground `COLOR` inheritance into descendant `Text`/`Icon`;
-  - default cross-axis stretch + `Spacer` expansion + `CONTENT_MARGINS`;
+  - cross-axis **hug** by default with spec *effective-fill* (explicit FILL,
+    greedy `SPACER`/`DIVIDER`/`COLOR`/`SCROLLVIEW`, fill propagation incl.
+    composite bodies), recomputed at frame boundaries; `CONTENT_MARGINS`;
   - `TEXT_STYLE` base typography and a best-effort `SHADOW_*` layer.
 - **Media transport + reports** (`src/qt/qt_layer.cpp`, `bridge.*`,
   `src/run.rs`): `MEDIA_SOURCE`, `PLAYBACK_STATE`, `MEDIA_POSITION`,

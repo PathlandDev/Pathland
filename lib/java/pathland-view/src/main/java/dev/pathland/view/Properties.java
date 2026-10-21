@@ -37,6 +37,8 @@ public final class Properties {
     public static final int GRID_ROWS = 0x001F;
     /** Grid track spec (STRING): comma-separated `flex`/`fixed:<pts>`/`adaptive:<pts>`, takes precedence over the counts. */
     public static final int GRID_TRACKS = 0x0020;
+    /** A SCROLLVIEW's scroll axis (constructor property; F32 enum: Vertical=0 default, Horizontal=1). */
+    public static final int SCROLL_AXIS = 0x0021;
     // Style (0x1000 range)
     public static final int BACKGROUND_COLOR = 0x1001;
     public static final int IMAGE_SOURCE = 0x1002;

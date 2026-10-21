@@ -738,6 +738,24 @@ a **constructor property**, never a pixel width — the grid's box comes from
   - high byte `04` = valueType = 0x04 (F32)
 - `00 00 00 40` C = 2.0 (f32 LE: 0x40000000) = two columns
 
+### 34a. PARAMETER:SET_PROPERTY (id=1, propertyId=SCROLL_AXIS=0x0021, valueType=F32=0x04, Horizontal=1)
+
+A `SCROLLVIEW`'s scroll axis (enum code carried as an `F32` bit pattern):
+`Horizontal`=1 → `C` = 1.0 (0x3F800000). Absent = `Vertical`=0.
+
+```
+02 01 00 00 01 00 00 00 21 00 04 00 00 00 80 3F
+```
+
+- `02` category = PARAMETER
+- `01` command = SET_PROPERTY
+- `00 00` flags = 0
+- `01 00 00 00` A = nodeId = 1
+- `21 00 04 00` B = `(valueType << 16) | propertyId` = `(0x04 << 16) | 0x0021`
+  - low two bytes `21 00` = propertyId = 0x0021 (SCROLL_AXIS)
+  - high byte `04` = valueType = 0x04 (F32)
+- `00 00 80 3F` C = 1.0 (f32 LE: 0x3F800000) = `Horizontal`
+
 ### 35. TREE:CREATE_NODE (id=1, GRID_ROW=0x001D)
 
 An explicit row grouping for a `GRID`: a grid child whose children are one row's

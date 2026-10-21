@@ -251,9 +251,11 @@ fn is_f32_property(prop: u16) -> bool {
     matches!(
         prop,
         pathland_core::property_id::SPACING
+            | pathland_core::property_id::SHAPE_KIND
             | pathland_core::property_id::WIDTH
             | pathland_core::property_id::HEIGHT
             | pathland_core::property_id::FONT_SIZE
+            | pathland_core::property_id::FONT_STYLE
             | pathland_core::property_id::OPACITY
             | pathland_core::property_id::Z_INDEX
             | pathland_core::property_id::BORDER_WIDTH
