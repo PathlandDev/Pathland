@@ -15,6 +15,12 @@ build_gtk_dylibs() {
   (cd "$ROOT/lib/rust" && cargo build -p pathland-core-capi -p pathland-render-gtk)
 }
 
+# Build the Rust dylibs the Qt desktop demo links: the core ring
+# (libpathland_core) and the Qt Quick renderer (libpathland_qt).
+build_qt_dylibs() {
+  (cd "$ROOT/lib/rust" && cargo build -p pathland-core-capi -p pathland-render-qt)
+}
+
 # Install the Java reactor (everything except the two web demos, which need a
 # newer JDK to run; they are not required to launch the other demos).
 java_install() {

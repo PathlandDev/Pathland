@@ -399,6 +399,10 @@ pub mod property_id {
     /// (the equal-`1fr` count is `N`×`flex` sugar). CSS-grid-native: renderers
     /// without a native equivalent (GTK `GtkGrid`) fall back to natural sizing.
     pub const GRID_TRACKS: u16 = 0x0020;
+    /// **Draft.** A `SCROLLVIEW`'s scroll axis (F32 enum): `Vertical`=0 (default
+    /// when absent), `Horizontal`=1. The view is layout-greedy on this axis; the
+    /// cross axis hugs its content (fill propagation applies).
+    pub const SCROLL_AXIS: u16 = 0x0021;
     // Style (0x1000 range)
     pub const BACKGROUND_COLOR: u16 = 0x1001;
     /// **Draft.** Image source (STRING: a resource name, file path, or URL —

@@ -1,0 +1,15 @@
+[package]
+name = "pathland-render-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Pathland renderer core: shared toolkit-free opcode decode (RenderTree/HostNode) + design-token resolution, reused by every renderer"
+publish = false
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+
+[dev-dependencies]
+pathland-engine = { path = "../pathland-engine" }
+pathland-view = { path = "../pathland-view" }

@@ -134,6 +134,12 @@ public final class RingOpcodeSink implements OpcodeSink, AutoCloseable {
         core.push(handle, new Opcode(category, command, flags, a, b, c).toBytes());
     }
 
+    /** The ring renderers gate raw inputs on a {@code BINDING_ID} (spec/EVENTS.md). */
+    @Override
+    public boolean requiresBindingId() {
+        return true;
+    }
+
     @Override
     public void close() {
         core.destroy(handle);

@@ -51,4 +51,13 @@ public interface OpcodeSink {
      * {@link dev.pathland.view.Color} (packed argb), or {@link String}.
      */
     void setDesignToken(String path, int valueType, Object value);
+
+    /**
+     * Whether this sink feeds a renderer that gates raw inputs on a
+     * {@code BINDING_ID} (the desktop/ring path). The frame (SSR/DOM) path returns
+     * {@code false} and the emitter omits the marker from its payload.
+     */
+    default boolean requiresBindingId() {
+        return false;
+    }
 }

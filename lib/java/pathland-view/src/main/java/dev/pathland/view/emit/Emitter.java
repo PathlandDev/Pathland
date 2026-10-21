@@ -400,11 +400,13 @@ public final class Emitter {
         node.properties.put(Properties.MEDIA_RATE, c.rate().get());
         node.propertyBindings.put(Properties.MEDIA_RATE, c.rate());
         // Reports flow into the dedicated report signals (never echoed back as
-        // commands, spec/EVENTS.md Media).
+        // commands, spec/EVENTS.md Media): writing the app's PLAYBACK_STATE
+        // command from a report would, e.g., pause the next track after a
+        // natural end.
         node.mediaInput = new MediaInput() {
             @Override
             public void onPlayStateChanged(boolean playing) {
-                c.playing().set(playing);
+                c.playingReport().set(playing);
             }
 
             @Override
@@ -512,14 +514,7 @@ public final class Emitter {
         if (node.dateBinding != null) {
             sink.setDate(node.id, node.days, node.millisOfDay);
         }
-        // The GTK renderer gates TEXT_CHANGED / VALUE_CHANGED on a BINDING_ID
-        // (transport-aware event guard). The ring/desktop path emits one per bound
-        // control so those events round-trip; the frame (SSR) path never needs it.
-        // The value is the node's own id — unique, and the host already routes
-        // events by target id.
-        if (ringSink() && (node.textInput != null || node.valueInput != null || node.dateInput != null)) {
-            node.properties.computeIfAbsent(Properties.BINDING_ID, k -> node.id);
-        }
+        ensureBindingId(node);
         for (Map.Entry<Integer, Object> entry : node.properties.entrySet()) {
             emitProperty(node.id, entry.getKey(), entry.getValue());
         }
@@ -530,7 +525,25 @@ public final class Emitter {
     }
 
     private boolean ringSink() {
-        return sink instanceof dev.pathland.view.ffm.RingOpcodeSink;
+        return sink.requiresBindingId();
+    }
+
+    /**
+     * Mark a bound control with {@code BINDING_ID} (the renderer's event gate).
+     * The ring/desktop renderers gate {@code TEXT_CHANGED}/{@code VALUE_CHANGED} on
+     * it; the frame (SSR/DOM) path never needs it. The value is the node's own id —
+     * unique, and the host already routes events by target id.
+     *
+     * <p>Applied on <b>every</b> emission path (mount, reconcile of a matched node,
+     * and a newly created subtree): a control materialized by a structural slot
+     * (e.g. the player bar's wide volume slider, created when its nested
+     * {@code SIZE_THAT_FITS} swaps) must be gated too, or the renderer silently
+     * drops its raw inputs.
+     */
+    private void ensureBindingId(PathlandNode node) {
+        if (ringSink() && (node.textInput != null || node.valueInput != null || node.dateInput != null)) {
+            node.properties.computeIfAbsent(Properties.BINDING_ID, k -> node.id);
+        }
     }
 
     private void emitProperty(int nodeId, int property, Object value) {
@@ -828,6 +841,10 @@ public final class Emitter {
 
     /** Content diff for a matched (same component, same position) node pair. */
     private void reconcileNode(PathlandNode old, PathlandNode fresh, List<Runnable> ops) {
+        // A matched control may have gained a binding since the previous emission
+        // (or was first created before the gate existed): ensure the marker is in
+        // the property set so the diff below emits it.
+        ensureBindingId(fresh);
         String oldText = old.text; // last-emitted text (kept current by bindings)
         String freshText = currentText(fresh);
         if (!Objects.equals(oldText, freshText)) {
@@ -898,6 +915,7 @@ public final class Emitter {
 
     /** Emit a newly created node's content + its whole child subtree (children get fresh ids). */
     private void emitSubtreeInto(List<Runnable> ops, PathlandNode node) {
+        ensureBindingId(node);
         String text = currentText(node);
         if (text != null && !text.isEmpty()) {
             int id = node.id;

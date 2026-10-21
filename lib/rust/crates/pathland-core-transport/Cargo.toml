@@ -16,3 +16,4 @@ pathland-core = { path = "../pathland-core", version = "0.1.5" }
 [dev-dependencies]
 pathland-engine = { path = "../pathland-engine", version = "0.1.5" }
 pathland-view = { path = "../pathland-view", version = "0.1.5" }
+pathland-render-core = { path = "../pathland-render-core", version = "0.1.5" }

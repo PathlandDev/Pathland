@@ -6,6 +6,14 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
 `spec/TOKENS.md`.
 
+**Note (2026-09-23):** the toolkit-free decode core (`RenderTree`/`HostNode`,
+`apply_frame`, token tables + resolution, `concrete_default_tables`,
+`render_tree_from_frame`, `describe`) moved to the shared
+`pathland-render-core` crate; this crate now consumes it and keeps the
+GTK-specific layers (`tokens.rs` native-theme enrichment, `layout.rs`,
+`capi.rs`). `pathland_gtk::RenderTree` etc. remain re-exported for
+compatibility.
+
 ## Implemented
 
 - **Components → widgets** (`widget_kind`/`build_widget`):
@@ -305,7 +313,9 @@ The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
   computed (row, col); the row node itself maps to no widget (blank). `WIDTH`/
   `HEIGHT` on a grid are the universal pixel box, never a count. `SCROLLVIEW`
   renders its first (spec-pinned) content child with `Automatic`/`Automatic`
-  scroll policy and greedy `Align::Fill`. **SCROLL** (the v/h Adjustments'
+  scroll policy and greedy `Align::Fill`. **Gap: `SCROLL_AXIS` (0x0021) is not
+  yet implemented** — the scroll view is treated as greedy on both axes, not
+  axis-aware (scroll-axis greedy, cross-axis hug + fill propagation). **SCROLL** (the v/h Adjustments'
   `value_changed` → `Event::Scroll`) and **WHEEL** (`GtkEventControllerScroll`
   → `Event::Wheel`) are emitted for nodes with the listener bits (8/9).
   **Residuals**: `LAZY_*` realizes eagerly (spec-permitted), auto-fit grids

@@ -1,0 +1,25 @@
+[package]
+name = "pathland-render-qt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Pathland Qt Quick renderer: maps opcode frames onto a Qt Quick scene graph (shared Rust decode core + a thin C++ Qt widget layer), plus a C ABI for foreign hosts"
+publish = false
+
+[lib]
+name = "pathland_qt"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+pathland-render-core = { path = "../pathland-render-core" }
+pathland-core-transport = { path = "../pathland-core-transport" }
+pathland-view-native = { path = "../pathland-view-native" }
+
+[dev-dependencies]
+pathland-engine = { path = "../pathland-engine" }
+pathland-view = { path = "../pathland-view" }
+
+[build-dependencies]
+cc = "1"

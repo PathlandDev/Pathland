@@ -70,7 +70,8 @@ Statelessness). Protocol contract: `spec/`.
   `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
   `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex
   `div`, `ZSTACK` → grid overlay `div`, grids → CSS-grid `div`, `SCROLLVIEW` →
-  overflow `div`, `BUTTON` → `<button>`, `TEXT_FIELD` → `<input>` (secure →
+  overflow `div` (**gap: `SCROLL_AXIS` 0x0021 not yet implemented** — still
+  both-axis greedy), `BUTTON` → `<button>`, `TEXT_FIELD` → `<input>` (secure →
   `type="password"`), `TEXT_EDITOR` → `<textarea>`, `TOGGLE` → checkbox/switch
   input, `SLIDER` → `<input type="range">`, `STEPPER` → `.pathland-stepper`,
   `DATE_PICKER` → `<input type="date">`/`<input type="time">`, `PICKER` →

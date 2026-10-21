@@ -419,6 +419,52 @@ class SizeThatFitsTest {
         assertEquals(frames, sink.framesProduced(), "an identical recompute emits no frame");
     }
 
+    /**
+     * A bound control materialized by a structural reconcile must carry
+     * {@code BINDING_ID} (the desktop renderer's raw-input gate), or its
+     * {@code VALUE_CHANGED} is dropped — the "volume slider moves but the audio
+     * never changes" bug: the player bar's wide volume slider is created when its
+     * nested {@code SIZE_THAT_FITS} swaps to the wide controls cluster.
+     */
+    @Test
+    void reconcileCreatedBoundControlsCarryTheBindingGate() {
+        GatingFrameSink sink = new GatingFrameSink();
+        Emitter emitter = new Emitter(sink);
+        var volume = dev.pathland.view.signal.Signals.signal(0.7f);
+        View root = SizeThatFits.make(
+                Fit.of(VStack.children(Text.make(t -> t.text("compact")))),
+                Fit.of(VStack.children(Slider.make(s -> s.value(volume).in(0f, 1f))), 600f));
+        RenderResult result = emitter.mount(root, Environment.DEFAULT);
+        int slot = slotId(result);
+
+        // The mount shows the fallback, so the slider is created by the fit swap.
+        assertFalse(sink.frame().opcodes().stream().anyMatch(o ->
+                        o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE
+                                && (o.b() & 0xffff) == Components.SLIDER),
+                "the compact candidate has no slider at mount");
+
+        result.fitInputs().get(slot).accept(1);
+        ProtocolFrame swap = sink.frame();
+        int slider = swap.opcodes().stream()
+                .filter(o -> o.category() == Categories.TREE && o.command() == Commands.Tree.CREATE_NODE
+                        && (o.b() & 0xffff) == Components.SLIDER)
+                .mapToInt(Opcode::a)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the swap creates the wide slider"));
+        assertTrue(swap.opcodes().stream().anyMatch(o ->
+                        o.category() == Categories.PARAMETER && o.command() == Commands.Parameter.SET_PROPERTY
+                                && o.a() == slider && (o.b() & 0xffff) == Properties.BINDING_ID),
+                "the reconcile-created slider carries BINDING_ID so VALUE_CHANGED round-trips");
+    }
+
+    /** A frame sink for the desktop-style path (gated raw inputs). */
+    private static final class GatingFrameSink extends FrameOpcodeSink {
+        @Override
+        public boolean requiresBindingId() {
+            return true;
+        }
+    }
+
     /** A custom-style body: re-builds the nested fit slot (fresh signal, default 0) on
      *  every render, like `AudioStyle.makeBody` does when its parent subtree re-renders. */
     private static View rebuiltNested(String suffix) {

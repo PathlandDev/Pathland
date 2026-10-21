@@ -9,7 +9,7 @@
 //! needs GTK initialized - which keeps the mapping unit-testable headlessly.
 
 use gtk::{Align, Orientation};
-use crate::host::{HostNode, RenderTree};
+use pathland_render_core::{HostNode, RenderTree};
 use pathland_core::{component_type, property_id, size};
 
 /// Map a component type to its native stack orientation.
@@ -494,6 +494,8 @@ mod tests {
             properties: props.iter().copied().collect(),
             strings: HashMap::new(),
             token_refs: Default::default(),
+            lists: HashMap::new(),
+            date: None,
         }
     }
 
@@ -915,6 +917,8 @@ mod tests {
             properties: HashMap::new(),
             strings: HashMap::new(),
             token_refs: Default::default(),
+            lists: HashMap::new(),
+            date: None,
         };
         let mut tree = RenderTree::default();
         // GRID with a 2-cell GRID_ROW, a short 1-cell GRID_ROW, and a bare cell.
@@ -945,6 +949,8 @@ mod tests {
             properties: props.iter().copied().collect(),
             strings: HashMap::new(),
             token_refs: Default::default(),
+            lists: HashMap::new(),
+            date: None,
         };
         let mut tree = RenderTree::default();
         // GRID_COLUMNS=2, three bare cells → row 0 = [2,3], row 1 = [4].

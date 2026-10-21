@@ -179,7 +179,8 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   modifiers), shapes (`Rectangle`, `Circle`, `Capsule`, `Ellipse`,
   `RoundedRectangle`, generic `Shape.make(ShapeKind)` — all `SHAPE` nodes),
   `Button`, `TextField`, `Spacer`, `TextEditor`, `Toggle`, `Slider`, `Stepper`,
-  `ProgressView`, `Gauge`, `Divider`, `Grid`, `GridRow`, `ScrollView`, `LazyVStack`,
+  `ProgressView`, `Gauge`, `Divider`, `Grid`, `GridRow`, `ScrollView` (axis via
+  `ScrollAxis` / `.axis(...)`, emitting `SCROLL_AXIS` when horizontal), `LazyVStack`,
   `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `Picker`, `Menu`, `ColorPicker`,
   `DatePicker`, **`Label`** (a composite — an `HStack` of an optional `Image` and
   an optional `Text`, title always driving the accessibility label; static and
@@ -193,8 +194,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   signals (`source`/`playing`/`position`/`volume`/`muted`/`loop`/`rate`, each
   rebindable to an app-owned `WritableSignal` so the controller drives the state
   the rest of the UI reads), the *report* feeds
-  (`time`/`duration`/`volumeReport`), `onEnded`, and the convenience transport
+  (`playingReport`/`time`/`duration`/`volumeReport`), `onEnded`, and the
+  convenience transport
   (`play`/`pause`/`toggle`/`seek`/`setVolume`/`setMuted`/`setLoop`/`setRate`).
+  A report never writes a command signal (spec/MEDIA.md §4.2): e.g. a
+  `MEDIA_PLAY_STATE_CHANGED` (the natural-end stop, or a media error) feeds
+  `playingReport`, so the app's `PLAYBACK_STATE` intent survives and the track
+  advanced on `MEDIA_ENDED` keeps playing.
   The emitter materializes **one `MEDIA_CONTROLLER` node per controller** (in
   place at its `attach()` marker, with a **pinned** id). The pinned id is
   reserved in the id allocator (no other node can take it) and honored on **every**
@@ -310,7 +316,12 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (a transient error can't silently kill a node's binding).
 - **Emitter** (`emit`): mounts once, stable ids, node-level binding effects
   (a signal change re-emits only that node), `FrameOpcodeSink` /
-  `RingOpcodeSink`. **`Signals.constant` / `ConstantSignal`**: a view or
+  `RingOpcodeSink`. For the ring path, a bound `text`/`value`/`date` control
+  carries `BINDING_ID` on **every** emission path — mount, a matched reconcile,
+  and a newly created subtree — so a control materialized by a structural slot
+  (e.g. the player bar's wide volume slider, created when its nested
+  `SIZE_THAT_FITS` swaps) still reports `VALUE_CHANGED`; the frame/SSR sink
+  omits the marker. **`Signals.constant` / `ConstantSignal`**: a view or
   modifier holds one `Signal<T>` per reactive value (the raw `of(T)` overload is
   sugar for a constant); the emitter treats a constant as a plain, non-reactive
   property (no binding/effect).

@@ -77,13 +77,25 @@ crates/pathland-engine/   # EMITTER — retained tree types (Node/Component) + t
                           #   reactive emitter + signals + MediaController (spec/MEDIA.md).
 crates/pathland-core-transport/ # TRANSPORT — shared-memory ring owner (RingTransport) +
                           #   network batch encode/decode + batching policy (std)
-crates/pathland-render-gtk/ # RENDERER — host reader (RenderTree) + maps opcode frames onto
-                          #   native GTK widgets incrementally; the only crate that touches
-                          #   GTK/glib/pango. Fixed-size images scale to the logical-points
-                          #   box (gdk-pixbuf, CONTENT_MODE fit/fill). App-driven media via a
-                          #   direct GStreamer playbin (GTK4's own media backend is compiled
-                          #   out of some builds). Exposes pathland_gtk_run[_ring]/
+crates/pathland-render-core/ # RENDERER CORE (shared, toolkit-free) — opcode-frame decode into a
+                          #   native-element description (RenderTree/HostNode), design-token
+                          #   tables + resolution, concrete Tier-1 defaults. No GTK/Qt: every
+                          #   renderer shares one tested decode path.
+crates/pathland-render-gtk/ # RENDERER — maps opcode frames onto native GTK widgets
+                          #   incrementally; the only crate that touches GTK/glib/pango.
+                          #   Fixed-size images scale to the logical-points box (gdk-pixbuf,
+                          #   CONTENT_MODE fit/fill). App-driven media via a direct GStreamer
+                          #   playbin (GTK4's own media backend is compiled out of some
+                          #   builds). Exposes pathland_gtk_run[_ring]/
                           #   pathland_gtk_set_asset_root for Java (JNA) hosts.
+crates/pathland-render-qt/ # RENDERER (hybrid Rust + C++) — maps opcode frames onto a Qt Quick
+                          #   scene graph (Row/Column/Text + Qt Quick Controls). Rust owns the
+                          #   shared decode core + a sent-state delta diff + the Pump/C ABI;
+                          #   a thin C++ layer (src/qt/, built via cc + moc) owns the Qt shell
+                          #   and applies the delta command batch to QML items (incl. media via
+                          #   QtMultimedia). The crate needs Qt6 dev libs (Homebrew: qtbase
+                          #   qtdeclarative qtmultimedia) to build/test; its headless tests use
+                          #   QT_QPA_PLATFORM=offscreen.
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
 #   stacks, spans, buttons) as a pure function of the stream; the
                            #   server-side/remote-projection target (Goal #15).
@@ -111,6 +123,8 @@ crates/pathland-core-capi/ # MINIMAL RING C ABI — the SPSC ring + 16-byte opco
 # ── Demo ───────────────────────────────────────────────────────────────────
 crates/pathland-render-gtk-demo/ # Rust GTK4 demo: authors the DSL, emits into the ring, renders
                           #   through pathland-render-gtk. Uses NO GTK APIs directly.
+crates/pathland-render-qt-demo/ # Rust Qt Quick demo: authors the DSL, emits into the ring, renders
+                          #   through pathland-render-qt. Uses NO Qt APIs directly.
 ```
 
 ### Java libraries (`lib/java/`, framework-agnostic)
@@ -150,7 +164,10 @@ lib/java/
   pathland-quarkus-starter/ # com.pathland.quarkus — Quarkus CDI integration: add the dep +
                         #   a PathlandApp bean → SSR at any path + /ws deltas + state
   pathland-demo-views/  # com.pathland.demo — shared demo views (CounterView/CounterControls/
-                        #   NameField) declaring State fields; consumed by both demos
+                        #   NameField + SplitNavDemo with native navigation) declaring State fields
+  pathland-gtk-demo/    # com.pathland.demo.gtk — JNA desktop demo: SplitNavDemo under the GTK4 renderer
+  pathland-qt-demo/     # com.pathland.demo.qt — JNA desktop demo: MusicPlayerView under the Qt Quick
+                        #   renderer (pathland_qt_run_ring), incl. native navigation
   pathland-quarkus-demo/# Quarkus SSR + WebSocket demo (com.pathland.demo.quarkus)
   pathland-spring-boot-demo/ # Spring Boot SSR + WebSocket demo (com.pathland.demo.spring)
 ```
@@ -158,6 +175,11 @@ lib/java/
 - Test: `cd lib/rust && cargo test` (runs all crates).
 - Build/test the Java libraries: `cd lib/java && mvn install`.
 - Run the GTK demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-gtk-demo`.
+- Run the Qt Quick demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-qt-demo`
+  (needs Qt6 dev libs — Homebrew: `brew install qtbase qtdeclarative`; on macOS point `QMAKE`
+  at `$(brew --prefix qtbase)/bin/qmake` if it isn't on PATH, see `scripts/run-rust-qt-demo.sh`).
+- Run the Java Qt Quick demo (JNA, shared ring, MusicPlayerView + app-driven media):
+  `scripts/run-java-qt-demo.sh` (macOS hands Qt the main thread via `-XstartOnFirstThread`).
 - Run the Quarkus demo (SSR + WebSocket deltas, dev mode):
   `cd lib/java/pathland-quarkus-demo && mvn quarkus:dev` (or `mvn package && java -jar target/quarkus-app/quarkus-run.jar`).
   Needs JDK 17+ (the whole stack runs on every LTS from 17) and Quarkus ≥ 3.18.

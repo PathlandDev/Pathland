@@ -1,0 +1,19 @@
+[package]
+name = "pathland-render-qt-demo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Pathland Qt Quick desktop demo: authors the DSL, emits into the ring, renders through pathland-render-qt. Uses NO Qt APIs directly"
+publish = false
+
+[[bin]]
+name = "pathland-render-qt-demo"
+path = "src/main.rs"
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+pathland-engine = { path = "../pathland-engine" }
+pathland-core-transport = { path = "../pathland-core-transport" }
+pathland-view = { path = "../pathland-view" }
+pathland-render-qt = { path = "../pathland-render-qt" }

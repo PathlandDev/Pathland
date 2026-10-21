@@ -13,7 +13,7 @@ use std::collections::BTreeMap;
 use gtk::prelude::*;
 use pathland_core::tokens::{Scheme, TokenValue};
 
-use crate::host::concrete_default_tables;
+use pathland_render_core::concrete_default_tables;
 
 /// GTK theme named color → canonical Tier-1 token path. A resolver that returns
 /// `None` for a name keeps the concrete fallback for that token.

@@ -12,12 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The workspace includes pathland-render-gtk (GTK4 + libadwaita + GStreamer),
-      # so the runner needs the GTK4, libadwaita, and GStreamer system libraries
-      # before `cargo test` can link them. GStreamer is required because the
-      # renderer plays app-driven media through a direct GStreamer playbin (GTK4's
-      # own media backend is compiled out of some builds); the plugins are the
-      # runtime set the audio stack uses (playbin, volume/audioconvert, mp3 decode).
+      # The workspace includes pathland-render-gtk (GTK4 + libadwaita + GStreamer)
+      # and pathland-render-qt (Qt Quick), so the runner needs the GTK4,
+      # libadwaita, GStreamer, and Qt system libraries before `cargo test` can
+      # link them. GStreamer is required because the GTK renderer plays app-driven
+      # media through a direct GStreamer playbin (GTK4's own media backend is
+      # compiled out of some builds); the plugins are the runtime set the audio
+      # stack uses (playbin, volume/audioconvert, mp3 decode). The Qt libraries
+      # are installed in the next step.
       - name: Install GTK4 + libadwaita + GStreamer system dependencies
         run: |
           sudo apt-get update
@@ -34,6 +36,29 @@ jobs:
             gstreamer1.0-plugins-good \
             gstreamer1.0-libav
 
+      - name: Install Qt6 (QML/Quick) system dependencies
+        run: |
+          sudo apt-get install -y \
+            qt6-base-dev \
+            qt6-declarative-dev \
+            qt6-declarative-private-dev \
+            qt6-multimedia-dev \
+            qml6-module-qtqml \
+            qml6-module-qtqml-models \
+            qml6-module-qtqml-workerscript \
+            qml6-module-qtquick \
+            qml6-module-qtquick-layouts \
+            qml6-module-qtquick-controls \
+            qml6-module-qtquick-templates \
+            qml6-module-qtquick-window \
+            qml6-module-qtmultimedia
+        # The dev headers alone don't ship the QML runtime modules; the Qt
+        # renderer's offscreen tests instantiate the QML (QtQml + WorkerScript,
+        # Items, stacks/Grid via QtQuick.Layouts, Qt Quick Controls, Multimedia)
+        # through QQmlComponent, so the qml6-module-* runtime files are required
+        # too. Note the Qt6 package names: `-window` (the Qt5 `-window2` name
+        # does not exist), and private headers need qt6-declarative-private-dev.
+
       - name: Install Rust (stable + wasm32 target)
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -47,6 +72,13 @@ jobs:
       - name: Test workspace
         working-directory: lib/rust
         run: cargo test
+
+      - name: Qt renderer headless smoke
+        working-directory: lib/rust
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+        run: cargo test -p pathland-render-qt
 
       # The DOM renderer's constants/token conventions and the cross-renderer SSR
       # golden fixtures are GENERATED from Rust (pathland-ts-codegen /

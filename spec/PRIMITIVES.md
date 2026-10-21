@@ -663,19 +663,30 @@ directly instead of relying on row-major index flow.
 
 ### ScrollView — `SCROLLVIEW` 0x14
 
-A scrollable content container. **Layout-greedy on both axes** by default — it
-fills the available space (SwiftUI `ScrollView` / Compose scroll semantics); an
-explicit `WIDTH`/`HEIGHT` overrides it (LAYOUT.md §layout-greedy primitives).
-**Properties**: layout modifiers (Fixed/Fill frames, `PADDING`/`CONTENT_MARGINS`
-as an inset).
+A scrollable content container. **Layout-greedy on its scroll axis** — it fills
+the available space on that axis so the content can scroll; on the **cross axis**
+it **hugs its content** by default (it shrinks to fit the content, SwiftUI
+`ScrollView` semantics). An explicit `WIDTH`/`HEIGHT` overrides either behavior
+(LAYOUT.md §layout-greedy primitives).
+
+**Properties**: `SCROLL_AXIS` (0x0021, F32 enum: `Vertical`=0 — the default when
+absent, `Horizontal`=1) selects the scroll axis; plus layout modifiers
+(Fixed/Fill frames, `PADDING`/`CONTENT_MARGINS` as an inset).
 
 **Content.** The **first child** is the content; a scroll view carries a single
 content subtree (typically a stack), matching SwiftUI/Compose's single-content
-contract. The content is measured with an **unbounded proposal** on both axes —
-it may grow beyond the viewport (that is what scrolls). The **viewport** is the
-scroll view's allocated box; a Hug `WIDTH`/`HEIGHT` — or a Hug parent proposal
-on an axis — sizes the viewport to the content's natural size on that axis (the
-viewport fits the content, so that axis does not scroll).
+contract. The content is measured with an **unbounded proposal on the scroll
+axis** — it may grow beyond the viewport (that is what scrolls) — and a
+**bounded proposal on the cross axis** (the viewport's cross size). **Fill
+propagation applies on the cross axis**: a `Fill`-width child of the content
+stack (`.frame(maxWidth: .infinity)` in SwiftUI) is itself `Fill`-sized and
+fills the viewport on that axis — so a full-width scroll row is authored as a
+`Fill`-width child, never by stretching the content or the viewport. Content
+with no `Fill` child keeps its natural cross size, and the viewport hugs/shrinks
+to fit it. The **viewport** is the scroll view's allocated box; a Hug
+`WIDTH`/`HEIGHT` — or a Hug parent proposal on an axis — sizes the viewport to
+the content's natural size on that axis (the viewport fits the content, so that
+axis does not scroll).
 
 **Overflow.** A scroll view scrolls its content rather than clipping it — the
 viewport clips by virtue of scrolling; `CLIPS_TO_BOUNDS` on the scroll view has

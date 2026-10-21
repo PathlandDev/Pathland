@@ -13,6 +13,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pathland-core = { path = "../pathland-core" }
+pathland-render-core = { path = "../pathland-render-core" }
 pathland-core-transport = { path = "../pathland-core-transport" }
 pathland-view-native = { path = "../pathland-view-native" }
 gtk = { package = "gtk4", version = "0.9" }
