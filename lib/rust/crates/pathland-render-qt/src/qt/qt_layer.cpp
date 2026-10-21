@@ -29,6 +29,7 @@
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
 #include <QtGui/QColor>
+#include <QtGui/QPalette>
 #include <QtCore/QDebug>
 #include <QtCore/QVariant>
 // The Layout attached properties (`Layout.fillWidth`/`fillHeight`/`preferredWidth`)
@@ -400,7 +401,11 @@ struct LayerState {
 
 LayerState g;
 
-bool init_app(int argc, char **argv) {
+// `argc` MUST be passed by reference: QGuiApplication keeps a reference to it
+// for the application's lifetime (QCoreApplication docs), so a by-value local
+// dangles once this returns — on Linux/Qt 6.4 `QCoreApplication::arguments()`
+// then reads freed stack memory and segfaults.
+bool init_app(int &argc, char **argv) {
     g.app = new QGuiApplication(argc, argv);
     return g.app != nullptr;
 }
@@ -2732,7 +2737,13 @@ void reportScheme() {
     if (!g.app || !g.bridge) {
         return;
     }
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     const bool dark = g.app->styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+#else
+    // Qt 6.4 (Ubuntu 24.04 / CI floor) has no QStyleHints::colorScheme();
+    // approximate from the palette's window color.
+    const bool dark = g.app->palette().color(QPalette::Window).lightness() < 128;
+#endif
     g.bridge->schemeChanged(dark ? 1 : 0);
 }
 
@@ -2783,9 +2794,12 @@ int pathland_qt_layer_init(PathlandQtWake wake, PathlandQtTick tick,
 
     // Color-scheme detection (spec/TOKENS.md): the renderer derives the
     // effective scheme from the platform and re-resolves tokens when it
-    // changes. Scheme is never carried by the protocol.
+    // changes. Scheme is never carried by the protocol. Live change tracking
+    // needs Qt 6.5's colorSchemeChanged; on 6.4 (CI floor) report once.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QObject::connect(g.app->styleHints(), &QStyleHints::colorSchemeChanged, g.app,
                      []() { reportScheme(); });
+#endif
     reportScheme();
 
     // Idle tick: pump the ring on the Qt main thread between frames, like the

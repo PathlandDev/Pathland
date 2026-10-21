@@ -297,6 +297,8 @@ mod tests {
     extern "C" fn noop_event(_ev: *const QtEvent, _user: *mut c_void) {}
 
     /// QGuiApplication is process-global: serialize every Qt-touching test.
+    /// Each test runs on its own test thread, so the application/window must be
+    /// created and destroyed on that thread (Qt forbids using it from another).
     static QT_LOCK: Mutex<()> = Mutex::new(());
 
     fn with_qt(f: impl FnOnce()) {
@@ -402,7 +404,7 @@ mod tests {
     }
 
     fn read_text(id: u32) -> String {
-        let mut buf = [0i8; 256];
+        let mut buf = [0 as c_char; 256];
         let n = unsafe { pathland_qt_layer_widget_text(id, buf.as_mut_ptr(), buf.len() as u32) };
         if n == 0 {
             return String::new();
@@ -415,7 +417,7 @@ mod tests {
     /// Read an integer-valued QML property (e.g. `lineCount`) as an `i32`.
     fn int_prop(id: u32, prop: &str) -> i32 {
         let cprop = std::ffi::CString::new(prop).unwrap();
-        let mut buf = [0i8; 64];
+        let mut buf = [0 as c_char; 64];
         unsafe {
             pathland_qt_layer_widget_prop_text(
                 id,
@@ -444,7 +446,7 @@ mod tests {
     /// Read a string- or URL-valued QML property (e.g. an image `source`).
     fn str_prop(id: u32, prop: &str) -> String {
         let cprop = std::ffi::CString::new(prop).unwrap();
-        let mut buf = [0i8; 512];
+        let mut buf = [0 as c_char; 512];
         unsafe {
             pathland_qt_layer_widget_prop_text(
                 id,
@@ -471,7 +473,7 @@ mod tests {
             pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
 
             assert_eq!(pathland_qt_layer_apply_count(), 3);
-            let mut buf = [0i8; 64];
+            let mut buf = [0 as c_char; 64];
             let n = pathland_qt_layer_last_text(buf.as_mut_ptr(), buf.len() as u32);
             assert_eq!(n, text.len() as u32);
             assert_eq!(CStr::from_ptr(buf.as_ptr()).to_string_lossy(), text);
@@ -518,7 +520,7 @@ mod tests {
             assert_eq!(read_text(3), "Press");
             // Node 4 is the Slider with value/min/max applied.
             assert_eq!(read_text(4), ""); // Slider has no text
-            let mut buf = [0i8; 64];
+            let mut buf = [0 as c_char; 64];
             let n = unsafe {
                 pathland_qt_layer_widget_prop_text(
                     4,
@@ -534,7 +536,7 @@ mod tests {
             assert_eq!(n, 1);
 
             // Root spacing applied.
-            let mut buf2 = [0i8; 64];
+            let mut buf2 = [0 as c_char; 64];
             unsafe {
                 pathland_qt_layer_widget_prop_text(
                     1,
@@ -560,7 +562,7 @@ mod tests {
             r.apply_frame(&frame);
 
             assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 2);
-            let mut buf3 = [0i8; 64];
+            let mut buf3 = [0 as c_char; 64];
             unsafe {
                 pathland_qt_layer_widget_prop_text(
                     1,
@@ -1456,7 +1458,7 @@ mod tests {
             ];
             pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
 
-            let mut buf = [0i8; 256];
+            let mut buf = [0 as c_char; 256];
             pathland_qt_layer_media_source(2, buf.as_mut_ptr(), buf.len() as u32);
             assert_eq!(
                 CStr::from_ptr(buf.as_ptr()).to_string_lossy(),
@@ -3034,7 +3036,7 @@ mod tests {
 
             assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 4);
             // node 2 = ProgressBar with the fraction applied.
-            let mut buf = [0i8; 64];
+            let mut buf = [0 as c_char; 64];
             unsafe {
                 pathland_qt_layer_widget_prop_text(
                     2,
@@ -3086,7 +3088,7 @@ mod tests {
             }
 
             // node 2 = Picker; its ComboBox model has both options.
-            let mut buf = [0i8; 64];
+            let mut buf = [0 as c_char; 64];
             unsafe {
                 pathland_qt_layer_widget_prop_text(
                     2,

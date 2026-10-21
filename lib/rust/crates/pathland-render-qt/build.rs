@@ -39,17 +39,22 @@ fn qmake_bin() -> PathBuf {
     );
 }
 
-fn qmake_query(qmake: &PathBuf, key: &str) -> String {
+fn qmake_query_opt(qmake: &PathBuf, key: &str) -> Option<String> {
     let out = Command::new(qmake)
         .arg("-query")
         .arg(key)
         .output()
-        .unwrap_or_else(|e| panic!("failed to run {qmake:?} -query {key}: {e}"));
-    assert!(out.status.success(), "qmake -query {key} failed");
-    String::from_utf8(out.stdout)
-        .expect("qmake output not UTF-8")
-        .trim()
-        .to_string()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let value = String::from_utf8(out.stdout).ok()?.trim().to_string();
+    (!value.is_empty()).then_some(value)
+}
+
+fn qmake_query(qmake: &PathBuf, key: &str) -> String {
+    qmake_query_opt(qmake, key)
+        .unwrap_or_else(|| panic!("failed to run {qmake:?} -query {key}"))
 }
 
 fn moc_name(header: &str) -> String {
@@ -63,17 +68,35 @@ fn moc_name(header: &str) -> String {
 }
 
 fn find_moc(qmake: &PathBuf) -> PathBuf {
-    let qt_bin = qmake.parent().expect("qmake must live in a bin dir");
-    let prefix = qt_bin.parent().expect("qmake bin has a prefix");
-    let candidates = [
-        qt_bin.join("moc"),
-        qt_bin.join("moc6"),
-        prefix.join("share/qt/libexec/moc"),
-        PathBuf::from("/opt/homebrew/share/qt/libexec/moc"),
-        PathBuf::from("/usr/local/share/qt/libexec/moc"),
-        PathBuf::from("/usr/lib/qt6/libexec/moc"),
-        PathBuf::from("/usr/lib/x86_64-linux-gnu/qt6/libexec/moc"),
-    ];
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    // A bare PATH name (`qmake6`, the Linux CI fallback) has no parent dir to
+    // derive the install layout from — hence the qmake queries below.
+    if let Some(qt_bin) = qmake.parent().filter(|p| !p.as_os_str().is_empty()) {
+        candidates.push(qt_bin.join("moc"));
+        candidates.push(qt_bin.join("moc6"));
+        if let Some(prefix) = qt_bin.parent() {
+            candidates.push(prefix.join("share/qt/libexec/moc"));
+        }
+    }
+    // qmake knows its own install layout: Debian/Ubuntu put moc in
+    // `QT_INSTALL_LIBEXECS` (e.g. /usr/lib/qt6/libexec), not next to qmake.
+    for key in ["QT_INSTALL_LIBEXECS", "QT_INSTALL_BINS"] {
+        if let Some(dir) = qmake_query_opt(qmake, key) {
+            let dir = PathBuf::from(dir);
+            candidates.push(dir.join("moc"));
+            candidates.push(dir.join("moc6"));
+        }
+    }
+    candidates.extend(
+        [
+            "/opt/homebrew/share/qt/libexec/moc",
+            "/usr/local/share/qt/libexec/moc",
+            "/usr/lib/qt6/libexec/moc",
+            "/usr/lib/x86_64-linux-gnu/qt6/libexec/moc",
+            "/usr/lib/aarch64-linux-gnu/qt6/libexec/moc",
+        ]
+        .map(PathBuf::from),
+    );
     for c in &candidates {
         if c.exists() {
             return c.clone();
@@ -85,7 +108,7 @@ fn find_moc(qmake: &PathBuf) -> PathBuf {
         }
     }
     panic!(
-        "moc not found (looked next to qmake and in standard Qt libexec paths); set QMAKE to a qtbase qmake"
+        "moc not found (looked next to qmake, in qmake's QT_INSTALL_LIBEXECS/BINS, and standard Qt libexec paths); set QMAKE to a qtbase qmake"
     );
 }
 
@@ -150,7 +173,38 @@ fn main() {
         .files(["src/qt/qt_layer.cpp", "src/qt/bridge.cpp"])
         .std("c++17");
     build.include(&headers);
+    // Linux/plain-layout Qt installs (Debian/Ubuntu): module headers live in
+    // `<headers>/<Module>`, and private headers in the versioned
+    // `<headers>/<Module>/<version>/<Module>/private/…` tree. Add both so
+    // `<QtQuickLayouts/private/qquicklayout_p.h>` (and its nested
+    // `<private/qquickitem_p.h>`, `<QPointer>`) resolve. Harmless on macOS,
+    // where the framework header dirs below are used instead.
+    for m in &modules {
+        let module_dir = PathBuf::from(&headers).join(m);
+        if !module_dir.is_dir() {
+            continue;
+        }
+        build.include(&module_dir);
+        if let Ok(rd) = std::fs::read_dir(&module_dir) {
+            for entry in rd.flatten() {
+                if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                    continue;
+                }
+                let version_dir = entry.path();
+                build.include(&version_dir);
+                let versioned_module = version_dir.join(m);
+                if versioned_module.is_dir() {
+                    build.include(&versioned_module);
+                }
+            }
+        }
+    }
     build.include("src/qt"); // so `#include "bridge.h"` / "pathland_qt.h" resolve
+    if !frameworks.is_empty() {
+        // Framework-style includes (`#include <QtGui/QGuiApplication>`) resolve
+        // through the framework search path, not the flat -I dirs above.
+        build.flag(&format!("-F{libs}"));
+    }
     for f in &frameworks {
         for d in framework_header_dirs(f) {
             build.include(&d);
@@ -173,8 +227,14 @@ fn main() {
         build.file(format!("{out_dir}/{}.cpp", moc_name(h)));
     }
 
+    // Compile the C++/moc sources BEFORE emitting the Qt link directives so the
+    // static `pathland_qt_layer` archive appears *before* the Qt libraries on the
+    // linker command line. Linux links with `--as-needed`: Qt libraries listed
+    // first would be dropped (nothing references them yet), leaving the archive's
+    // Q_OBJECT/meta-type symbols unresolved.
+    build.compile("pathland_qt_layer");
+
     if !frameworks.is_empty() {
-        build.flag(&format!("-F{libs}"));
         for f in &frameworks {
             println!("cargo:rustc-link-search=native={libs}");
             println!("cargo:rustc-link-lib=framework={f}");
@@ -191,8 +251,6 @@ fn main() {
         }
         println!("cargo:rustc-link-arg=-Wl,-rpath,{libs}");
     }
-
-    build.compile("pathland_qt_layer");
 
     println!("cargo:rerun-if-env-changed=QMAKE");
     for f in [
