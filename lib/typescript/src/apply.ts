@@ -5,6 +5,8 @@
 
 import {
   CAT_META,
+  COLOR_SCHEME_DARK,
+  COLOR_SCHEME_LIGHT,
   CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
@@ -14,6 +16,8 @@ import {
   CMD_MOVE_CHILD,
   CMD_REMOVE_CHILD,
   CMD_RESET,
+  CMD_RESET_THEME,
+  CMD_SET_COLOR_SCHEME,
   CMD_SET_DATE,
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
@@ -398,6 +402,20 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
       r.byId.clear();
       break;
     }
+    case CMD_SET_COLOR_SCHEME: {
+      const root = document.documentElement;
+      if (op.a === COLOR_SCHEME_LIGHT) {
+        root.dataset.pathlandScheme = "light";
+      } else if (op.a === COLOR_SCHEME_DARK) {
+        root.dataset.pathlandScheme = "dark";
+      } else {
+        delete root.dataset.pathlandScheme;
+      }
+      break;
+    }
+    case CMD_RESET_THEME:
+      (r.tokenSink ??= createTokenSink()).reset();
+      break;
     case CMD_ENVIRONMENT:
     default:
       break;
@@ -809,7 +827,7 @@ function applySemantic(el: HTMLElement, r: DomRenderer): void {
 
 function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   if (op.command === CMD_SET_DESIGN_TOKEN) {
-    applyDesignToken(op, strings, r.tokenSink ?? createTokenSink());
+    applyDesignToken(op, strings, (r.tokenSink ??= createTokenSink()));
     return;
   }
   const node = r.byId.get(op.a);

@@ -91,6 +91,76 @@ impl TokenValue {
     }
 }
 
+/// The **Tier-1** standard token catalog (spec/TOKENS.md) — the paths every
+/// renderer MUST provide light + dark defaults for. Composite tokens whose
+/// value would be a multi-part CSS shorthand (`button.padding`) are not scalar
+/// token values and are excluded; renderers own such component chrome.
+pub const TIER1_TOKENS: &[&str] = &[
+    // Colors.
+    "color.primary",
+    "color.secondary",
+    "color.background",
+    "color.surface",
+    "color.text.primary",
+    "color.text.secondary",
+    "color.text.onPrimary",
+    "color.border",
+    "color.accent",
+    // Typography.
+    "font.body.size",
+    "font.body.weight",
+    "font.body.family",
+    // Spacing + radii + borders.
+    "space.base",
+    "radius.xs",
+    "radius.sm",
+    "radius.md",
+    "radius.lg",
+    "radius.xl",
+    "radius.full",
+    "border.width.thin",
+    // Shared control core.
+    "control.background",
+    "control.foreground",
+    "control.border",
+    "control.border.width",
+    "control.radius",
+    "control.padding.horizontal",
+    "control.padding.vertical",
+    "control.height",
+    "control.font.size",
+    "control.font.weight",
+    "control.accent",
+    // Buttons.
+    "button.background",
+    "button.foreground",
+    "button.border",
+    "button.radius",
+    "button.height",
+    "button.font.size",
+    "button.font.weight",
+    "button.accent",
+    // Inputs.
+    "input.background",
+    "input.foreground",
+    "input.placeholder",
+    "input.border",
+    "input.radius",
+    "input.font.size",
+    // Toggle / slider / progress / gauge.
+    "toggle.accent",
+    "toggle.track.off",
+    "toggle.track.on",
+    "toggle.thumb",
+    "slider.accent",
+    "slider.track",
+    "slider.thumb",
+    "progress.track",
+    "progress.fill",
+    "gauge.track",
+    "gauge.fill",
+];
+
 /// The four lookup tables a renderer consults, in resolution order:
 /// app overrides (base + `dark.*`) and renderer defaults (base + `dark.*`).
 ///
@@ -160,6 +230,23 @@ pub fn resolve(
         }
     }
     None
+}
+
+/// Resolve a `DESIGN_TOKEN` property **reference** (spec/TOKENS.md).
+///
+/// A reference whose path starts with `dark.` is an **explicit dark-variant
+/// reference**: the prefix is stripped and the bare path resolves against the
+/// dark layer regardless of the active scheme. Every other reference resolves
+/// normally under the effective scheme.
+pub fn resolve_ref(
+    path: &str,
+    scheme: Scheme,
+    tables: &TokenTables<'_>,
+) -> Option<TokenValue> {
+    match path.strip_prefix("dark.") {
+        Some(bare) => resolve(bare, Scheme::Dark, tables),
+        None => resolve(path, scheme, tables),
+    }
 }
 
 /// The parent-fallback chain for a path: `font.body.size` →
@@ -291,6 +378,62 @@ mod tests {
         assert_eq!(
             parent_chain("font.body.size"),
             ["font.body.size", "font.body", "font", ""]
+        );
+    }
+
+    #[test]
+    fn explicit_dark_reference_forces_the_dark_layer() {
+        // App overrides: light blue, dark amber. A `dark.` reference must use
+        // the dark value in BOTH schemes; a regular reference follows the scheme.
+        let (o, d, de, dde) = tables(
+            &[("color.primary", TokenValue::Color(0xFF_2563EB))],
+            &[("color.primary", TokenValue::Color(0xFF_F59E0B))],
+            &[],
+            &[],
+        );
+        let t = TokenTables {
+            overrides: &o,
+            dark_overrides: &d,
+            defaults: &de,
+            dark_defaults: &dde,
+        };
+        assert_eq!(
+            resolve_ref("dark.color.primary", Scheme::Light, &t),
+            Some(TokenValue::Color(0xFF_F59E0B)),
+            "explicit dark reference ignores the light scheme"
+        );
+        assert_eq!(
+            resolve_ref("dark.color.primary", Scheme::Dark, &t),
+            Some(TokenValue::Color(0xFF_F59E0B))
+        );
+        assert_eq!(
+            resolve_ref("color.primary", Scheme::Light, &t),
+            Some(TokenValue::Color(0xFF_2563EB))
+        );
+        assert_eq!(
+            resolve_ref("color.primary", Scheme::Dark, &t),
+            Some(TokenValue::Color(0xFF_F59E0B))
+        );
+    }
+
+    #[test]
+    fn explicit_dark_reference_falls_back_to_dark_defaults() {
+        let (o, d, de, dde) = tables(
+            &[],
+            &[],
+            &[("color.primary", TokenValue::Color(0xFF_2563EB))],
+            &[("color.primary", TokenValue::Color(0xFF_111827))],
+        );
+        let t = TokenTables {
+            overrides: &o,
+            dark_overrides: &d,
+            defaults: &de,
+            dark_defaults: &dde,
+        };
+        assert_eq!(
+            resolve_ref("dark.color.primary", Scheme::Light, &t),
+            Some(TokenValue::Color(0xFF_111827)),
+            "dark defaults, not light defaults"
         );
     }
 

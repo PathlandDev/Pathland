@@ -17,8 +17,8 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    Opcode, border_edges, category, component_type, parameter, property_id, size,
-    tokens::TokenValue, tree, value_type,
+    Opcode, border_edges, category, color_scheme_mode, component_type, meta, parameter,
+    property_id, size, tokens::Scheme, tokens::TokenValue, tree, value_type,
 };
 
 mod capi;
@@ -252,7 +252,9 @@ impl Node {
                 css.push_str(&format!("font-family:{family};"));
             }
         }
-        if let Some(family) = self.strings.get(&property_id::FONT_FAMILY) {
+        if let Some(v) = self.token_ref(property_id::FONT_FAMILY) {
+            css.push_str(&format!("font-family:{v};"));
+        } else if let Some(family) = self.strings.get(&property_id::FONT_FAMILY) {
             css.push_str(&format!("font-family:'{}';", family.replace('\'', "\\'")));
         }
 
@@ -394,17 +396,29 @@ impl Node {
         // box-shadow. The color is `SHADOW_COLOR` when set, else the
         // renderer-owned default `rgba(0,0,0,0.3)` — mirroring the DOM client.
         // `shadow(radius)` carries only the radius (the color is the renderer's).
+        let shadow_radius_ref = self.token_ref(property_id::SHADOW_RADIUS);
+        let shadow_x_ref = self.token_ref(property_id::SHADOW_X);
+        let shadow_y_ref = self.token_ref(property_id::SHADOW_Y);
         let shadow_radius = f32p(property_id::SHADOW_RADIUS).unwrap_or(0.0);
         let shadow_x = f32p(property_id::SHADOW_X).unwrap_or(0.0);
         let shadow_y = f32p(property_id::SHADOW_Y).unwrap_or(0.0);
-        if shadow_radius != 0.0 || shadow_x != 0.0 || shadow_y != 0.0 {
+        if shadow_radius_ref.is_some()
+            || shadow_x_ref.is_some()
+            || shadow_y_ref.is_some()
+            || shadow_radius != 0.0
+            || shadow_x != 0.0
+            || shadow_y != 0.0
+        {
             let color = self
                 .token_ref(property_id::SHADOW_COLOR)
                 .or_else(|| self.properties.get(&property_id::SHADOW_COLOR).copied().map(rgba))
                 .unwrap_or_else(|| "rgba(0,0,0,0.3)".to_string());
+            let x = shadow_x_ref.unwrap_or_else(|| format!("{shadow_x}px"));
+            let y = shadow_y_ref.unwrap_or_else(|| format!("{shadow_y}px"));
+            let r = shadow_radius_ref.unwrap_or_else(|| format!("{shadow_radius}px"));
             // Color first, then the lengths — the order the browser serializes a
             // `box-shadow` back to, so the SSR string matches the hydrated DOM.
-            css.push_str(&format!("box-shadow:{color} {shadow_x}px {shadow_y}px {shadow_radius}px;"));
+            css.push_str(&format!("box-shadow:{color} {x} {y} {r};"));
         }
         if let Some(v) = self.token_ref(property_id::OPACITY) {
             css.push_str(&format!("opacity:{v};"));
@@ -867,6 +881,17 @@ fn decode(opcodes: &[Opcode], strings: &[u8]) -> (BTreeMap<u32, Node>, Tokens) {
                     apply_style(&mut nodes, op.command(), *op, strings);
                 }
             }
+            category::META => match op.command() {
+                meta::SET_COLOR_SCHEME => {
+                    tokens.scheme_override = match op.a() {
+                        color_scheme_mode::LIGHT => Some(Scheme::Light),
+                        color_scheme_mode::DARK => Some(Scheme::Dark),
+                        _ => None,
+                    };
+                }
+                meta::RESET_THEME => tokens.reset(),
+                _ => {}
+            },
             _ => {}
         }
     }
@@ -948,6 +973,8 @@ fn list_f32(strings: &[u8], offset: u32) -> Option<Vec<f32>> {
 struct Tokens {
     base: BTreeMap<String, (u8, TokenValue)>,
     dark: BTreeMap<String, (u8, TokenValue)>,
+    /// `META::SET_COLOR_SCHEME` override (`None` = platform).
+    scheme_override: Option<Scheme>,
 }
 
 impl Tokens {
@@ -959,30 +986,75 @@ impl Tokens {
         }
     }
 
-    /// Render the overrides as CSS rules: base tokens as `:root` rules, dark
-    /// overrides inside `@media (prefers-color-scheme: dark)` — the browser
-    /// resolves the scheme natively, so SSR needs no client scheme knowledge.
+    /// `META::RESET_THEME`: drop every application override (base + dark).
+    fn reset(&mut self) {
+        self.base.clear();
+        self.dark.clear();
+    }
+
+    fn declarations(&self, dark: bool) -> String {
+        let map = if dark { &self.dark } else { &self.base };
+        map.iter()
+            .map(|(path, (vt, value))| {
+                format!("{}:{};", token_to_css_var(path), token_css_value(path, *vt, value))
+            })
+            .collect()
+    }
+
+    /// Render the overrides as CSS rules: base tokens as `:root` rules; dark
+    /// overrides inside the platform-dark media query (when not forced) and
+    /// under the forced-dark attribute selector.
+    ///
+    /// Every base override also populates the forced-dark variable family
+    /// (`--pl-dark-…`) because the dark resolution layer falls through to base
+    /// overrides; a dark override is emitted afterwards so it wins.
     fn css(&self) -> String {
         let mut css = String::new();
-        for (path, (vt, value)) in &self.base {
+        let base = self.declarations(false);
+        if !base.is_empty() {
+            css.push_str(&format!(":root{{{base}}}"));
+        }
+        if !base.is_empty() || !self.dark.is_empty() {
+            // In a dark scheme the dark layer wins first, then the base
+            // override falls through; the base declarations are repeated in
+            // the dark scope so they outrank the built-in dark defaults.
+            let dark = self.declarations(true);
+            let scoped = format!("{base}{dark}");
             css.push_str(&format!(
-                ":root{{{}:{};}}",
-                token_to_css_var(path),
+                "@media (prefers-color-scheme: dark){{:root:not([data-pathland-scheme]){{{scoped}}}}}"
+            ));
+            css.push_str(&format!(
+                ":root[data-pathland-scheme=\"dark\"]{{{scoped}}}"
+            ));
+        }
+        // Forced-dark refs: base overrides fall through, then dark overrides
+        // win (emitted second).
+        let mut forced = String::new();
+        for (path, (vt, value)) in &self.base {
+            forced.push_str(&format!(
+                "{}:{};",
+                forced_dark_var(path),
                 token_css_value(path, *vt, value)
             ));
         }
-        if !self.dark.is_empty() {
-            let rules: String = self
-                .dark
-                .iter()
-                .map(|(path, (vt, value))| {
-                    format!(":root{{{}:{};}}", token_to_css_var(path), token_css_value(path, *vt, value))
-                })
-                .collect();
-            css.push_str(&format!("@media (prefers-color-scheme: dark){{{rules}}}"));
+        for (path, (vt, value)) in &self.dark {
+            forced.push_str(&format!(
+                "{}:{};",
+                forced_dark_var(path),
+                token_css_value(path, *vt, value)
+            ));
+        }
+        if !forced.is_empty() {
+            css.push_str(&format!(":root{{{forced}}}"));
         }
         css
     }
+}
+
+/// The forced-dark variable for a token path (`--pl-dark-<path>`).
+fn forced_dark_var(path: &str) -> String {
+    let bare = path.strip_prefix(token_spec::DARK_PREFIX).unwrap_or(path);
+    format!("{}{}", token_spec::FORCED_DARK_VAR_PREFIX, css_var_name(bare))
 }
 
 /// The canonical CSS custom property for a token path: `--pl-` prefix, `.` →
@@ -991,11 +1063,7 @@ impl Tokens {
 /// in [`token_spec`], which `pathland-ts-codegen` mirrors into the DOM client).
 fn token_to_css_var(path: &str) -> String {
     let bare = path.strip_prefix(token_spec::DARK_PREFIX).unwrap_or(path);
-    let name: String = bare
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
-        .collect();
-    format!("{}{name}", token_spec::VAR_PREFIX)
+    format!("{}{}", token_spec::VAR_PREFIX, css_var_name(bare))
 }
 
 /// Token paths whose F32 values are CSS lengths (emitted with `px`).
@@ -1040,15 +1108,38 @@ fn token_css_value(path: &str, _value_type: u8, value: &TokenValue) -> String {
 
 /// Resolve a `DESIGN_TOKEN` property reference to a CSS expression. The
 /// generative `space.<N>` family resolves to `calc(var(--pl-space-base) * N)`;
-/// every other token resolves to `var(--pl-<path>)`.
+/// an explicit `dark.` reference resolves the forced-dark variable family
+/// (`--pl-dark-<path>`); every other token resolves to `var(--pl-<path>)`.
+/// A missing token falls back to `unset` (the renderer's own default styling).
 fn resolve_token_ref(path: &str) -> String {
-    let bare = path.strip_prefix(token_spec::DARK_PREFIX).unwrap_or(path);
+    let forced_dark = path.strip_prefix(token_spec::DARK_PREFIX);
+    let bare = forced_dark.unwrap_or(path);
     if let Some(rest) = bare.strip_prefix(token_spec::SPACE_FAMILY) {
         if rest.parse::<f64>().is_ok() {
-            return format!("calc(var(--pl-space-base) * {rest})");
+            let base = if forced_dark.is_some() {
+                "--pl-dark-space-base"
+            } else {
+                "--pl-space-base"
+            };
+            return format!("calc(var({base}) * {rest})");
         }
     }
-    format!("var({})", token_to_css_var(bare))
+    if forced_dark.is_some() {
+        return format!(
+            "var({}{}, unset)",
+            token_spec::FORCED_DARK_VAR_PREFIX,
+            css_var_name(bare)
+        );
+    }
+    format!("var({}, unset)", token_to_css_var(bare))
+}
+
+/// The normalized name component of a token path (`.` and other non-CSS-safe
+/// characters → `-`), without the `--pl-` prefix.
+fn css_var_name(path: &str) -> String {
+    path.chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+        .collect()
 }
 
 fn apply_tree(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode) {
@@ -1202,8 +1293,13 @@ impl HtmlRenderer {
         } else {
             format!("<style data-pathland-fit>{fit_rules}</style>\n")
         };
+        let scheme_attr = match tokens.scheme_override {
+            Some(Scheme::Light) => " data-pathland-scheme=\"light\"",
+            Some(Scheme::Dark) => " data-pathland-scheme=\"dark\"",
+            None => "",
+        };
         format!(
-            "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n\
+            "<!DOCTYPE html>\n<html{scheme_attr}>\n<head>\n<meta charset=\"utf-8\">\n\
              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
              <title>Pathland</title>\n\
              {}{}{}\n</head>\n<body>{body}</body>\n</html>\n",
@@ -3777,7 +3873,7 @@ mod tests {
         // Generative spacing base — without it `space.<N>` refs resolve to an
         // undefined variable unless the app overrides `space.base`.
         assert!(css.contains("--pl-space-base"), "space.base token");
-        assert_eq!(count(css, "--pl-space-base"), 2, "space.base has a light + dark default");
+        assert_eq!(count(css, "--pl-space-base"), 3, "space.base has light + dark (platform + forced) defaults");
         // Canonical typography tokens (spec/TOKENS.md font.body.*).
         for var in [
             "--pl-font-body-size",
@@ -3786,8 +3882,13 @@ mod tests {
         ] {
             assert!(css.contains(var), "missing {var}");
         }
-        // Canonical control/button/input tokens so app overrides retheme components.
+        // Canonical control/button/input + per-component tokens so app
+        // overrides retheme components.
         for var in [
+            "--pl-toggle-accent",
+            "--pl-slider-accent",
+            "--pl-progress-fill",
+            "--pl-gauge-fill",
             "--pl-control-background",
             "--pl-control-foreground",
             "--pl-control-border",
@@ -3972,7 +4073,7 @@ mod tests {
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
         assert!(html.contains(":root{--pl-color-primary:rgba(37,99,235,1);}"), "base override: {html}");
         assert!(
-            html.contains("@media (prefers-color-scheme: dark){:root{--pl-color-primary:rgba(96,165,250,1);}}"),
+            html.contains("@media (prefers-color-scheme: dark){:root:not([data-pathland-scheme]){--pl-color-primary:rgba(37,99,235,1);--pl-color-primary:rgba(96,165,250,1);}}"),
             "dark override scoped in media query: {html}"
         );
     }
@@ -4002,8 +4103,8 @@ mod tests {
             "base rule inside the token style element: {html}"
         );
         assert!(
-            html.contains("rgba(96,165,250,1);}}</style>"),
-            "token style element is closed after the dark media query: {html}"
+            html.contains(":root[data-pathland-scheme=\"dark\"]{--pl-color-primary:rgba(37,99,235,1);--pl-color-primary:rgba(96,165,250,1);}"),
+            "dark override scoped under the forced-dark attribute: {html}"
         );
         assert!(
             !html.contains("</style>:root") && !html.contains("</style>@media"),
@@ -4051,6 +4152,59 @@ mod tests {
     }
 
     #[test]
+    fn set_color_scheme_sets_the_document_attr_and_skips_the_platform_query() {
+        let opcodes = vec![Opcode::new(
+            category::META,
+            pathland_core::meta::SET_COLOR_SCHEME,
+            0,
+            pathland_core::color_scheme_mode::DARK,
+            0,
+            0,
+        )];
+        let html = HtmlRenderer::new().render_document(&opcodes, &[], 0);
+        assert!(html.contains("<html data-pathland-scheme=\"dark\">"), "forced-dark attr: {html}");
+        let light = vec![Opcode::new(
+            category::META,
+            pathland_core::meta::SET_COLOR_SCHEME,
+            0,
+            pathland_core::color_scheme_mode::LIGHT,
+            0,
+            0,
+        )];
+        let html = HtmlRenderer::new().render_document(&light, &[], 0);
+        assert!(html.contains("<html data-pathland-scheme=\"light\">"), "forced-light attr: {html}");
+    }
+
+    #[test]
+    fn explicit_dark_token_ref_uses_the_forced_dark_variable() {
+        let strings = string_section(&["dark.color.surface"]);
+        let opcodes = vec![
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::DESIGN_TOKEN as u32) << 16) | property_id::COLOR as u32,
+                0,
+            ),
+        ];
+        let html = HtmlRenderer::new().render_fragment(&opcodes, &strings, 1);
+        assert!(html.contains("var(--pl-dark-color-surface, unset)"), "forced dark ref: {html}");
+    }
+
+    #[test]
+    fn reset_theme_drops_earlier_overrides() {
+        let strings = string_section(&["color.primary"]);
+        let opcodes = vec![
+            Opcode::new(category::PARAMETER, parameter::SET_DESIGN_TOKEN, 0, 0, value_type::COLOR as u32, 0xFF_2563EB),
+            Opcode::new(category::META, pathland_core::meta::RESET_THEME, 0, 0, 0, 0),
+        ];
+        let html = HtmlRenderer::new().render_document(&opcodes, &strings, 0);
+        assert!(!html.contains("data-pathland-tokens"), "no override style element after reset: {html}");
+    }
+
+    #[test]
     fn design_token_property_ref_renders_var() {
         let strings = string_section(&["color.primary"]);
         let opcodes = vec![
@@ -4065,7 +4219,7 @@ mod tests {
             ),
         ];
         let html = HtmlRenderer::new().render_fragment(&opcodes, &strings, 1);
-        assert!(html.contains("color:var(--pl-color-primary);"), "token ref: {html}");
+        assert!(html.contains("color:var(--pl-color-primary, unset);"), "token ref: {html}");
     }
 
     #[test]

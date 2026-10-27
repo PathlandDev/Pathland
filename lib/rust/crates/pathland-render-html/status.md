@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** October 15, 2026
+**Last updated:** October 27, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -213,11 +213,23 @@ Statelessness). Protocol contract: `spec/`.
   - **Full Tier-1 default coverage**: `--pl-space-base` (light + dark, so the
     generative `space.<N>` family always resolves), canonical typography
     (`--pl-font-body-size/weight/family`), the radius scale + `--pl-border-width-thin`,
-    and the **shared control core mapped onto the canonical catalog** —
-    `--pl-control-*`, `--pl-button-*`, `--pl-input-*` (light + dark), with the
-    focus ring mapped to `control.accent` and shadows mapped onto the composite
-    `elevation.low.*` / `elevation.high.*` tokens. `.pathland-*` rules reference
-    the canonical variables, so `SET_DESIGN_TOKEN` overrides retheme components.
+    the **shared control core** (`--pl-control-*`, `--pl-button-*`,
+    `--pl-input-*`), and the component tokens (`--pl-toggle-*`,
+    `--pl-slider-*`, `--pl-progress-*`, `--pl-gauge-*`, `--pl-stepper-*`,
+    `--pl-picker-*`, `--pl-menu-*`, `--pl-label-*`, `--pl-size-control-*`),
+    all with light + dark values. `.pathland-*` rules reference the canonical
+    variables, so `SET_DESIGN_TOKEN` overrides retheme components.
+  - **Forced scheme**: `META::SET_COLOR_SCHEME` sets `data-pathland-scheme` on
+    `<html>`; the platform-dark media rule is scoped to
+    `:root:not([data-pathland-scheme])` and the dark values are repeated under
+    `:root[data-pathland-scheme="dark"]`. Forced light suppresses the media
+    rule. `META::RESET_THEME` clears the batch's overrides.
+  - **Explicit `dark.` references** resolve to the forced-dark variable family
+    (`--pl-dark-…`), so they use the dark value in either scheme.
+  - **Unknown/unresolved token fallback**: `var(--pl-…, unset)` so the
+    renderer's own default styling applies. Base overrides are repeated in the
+    dark scope so they correctly outrank built-in dark defaults (dark override
+    → base override → dark default).
 
 ## Design decision (decision A, September 2026): inline-all + built-in design system
 
@@ -287,9 +299,10 @@ contract both renderers must satisfy.
   ellipsizes via `line-clamp`. Renderer-owned fidelity: CSS cannot place a
   head/middle ellipsis, so non-Tail modes fall back to the tail ellipsis.
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset
-  (colors, font size/weight, spacing/padding, corner radius, opacity,
-  width/height, border width/color, shadow color). Compound accumulators that
-  need concrete numbers (shadow radius/x/y) remain literal-only.
+  (colors, font size/weight/family, spacing/padding/content margins, corner
+  radius, opacity, width/height, border width/color, shadow color/x/y/radius).
+  **Parent-path fallback and per-component native control chrome are not
+  implemented in CSS** (see the gaps above).
 - **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
   grids emit `gap` from `SPACING`, equal-`1fr` track templates from the
   `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/
@@ -309,12 +322,18 @@ contract both renderers must satisfy.
   covered by the SSR tests + golden fixtures (incl. the `gridrow` scenario).
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
+- **Parent-path token fallback is not implemented in CSS**: overriding a
+  parent path (e.g. `font.body`) does not derive leaf variables
+  (`font.body.size`). Override the leaf paths on the web.
 - **Typography uses the platform system font stack** (`system-ui,
   -apple-system, 'Segoe UI', Roboto, …`) — no external/webfont loading, so the
   rendered document makes no network requests for fonts and works offline.
   An app can still pick its own typeface via a `font.body.family`
   `SET_DESIGN_TOKEN` override (any STRING value, e.g. `"Inter"` if the app
   hosts it).
+- Compound token refs cover shadow x/y/radius and border width (the DOM client
+  mirrors them); per-component tokens still style only the component CSS the
+  renderer owns.
 
 ## Verified by
 

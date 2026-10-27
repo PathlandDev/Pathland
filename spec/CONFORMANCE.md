@@ -880,6 +880,40 @@ The controller's media resource (`"/audio/track1.mp3"` at arena offset 0).
   - high byte `05` = valueType = 0x05 (STRING)
 - `00 00 00 00` C = arenaRef = 0 (`"/audio/track1.mp3"`)
 
+### 42. META:SET_COLOR_SCHEME (mode=DARK=2)
+
+A renderer-wide color-scheme override (guest → host): the renderer re-resolves
+every token-referencing property against the dark layer. `A=1` forces light,
+`A=0` restores platform-derived detection.
+
+```
+04 06 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `06` command = SET_COLOR_SCHEME
+- `00 00` flags = 0
+- `02 00 00 00` A = mode = 2 (dark)
+- `00 00 00 00` B = 0
+- `00 00 00 00` C = 0
+
+### 43. META:RESET_THEME
+
+Clears every application design-token override (base + `dark.*`) and
+re-resolves token references against the renderer's defaults. A replacement
+theme emits this immediately before its `SET_DESIGN_TOKEN` overrides.
+
+```
+04 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `07` command = RESET_THEME
+- `00 00` flags = 0
+- `00 00 00 00` A = 0
+- `00 00 00 00` B = 0
+- `00 00 00 00` C = 0
+
 ---
 
 ## Design-Token Resolution Conformance
@@ -906,6 +940,11 @@ Given the overrides:
 | `space.2` | either | `8.0` | generative family: `space.base` (4.0) × 2 |
 | `space.0.5` | either | `2.0` | generative family: fractional leaf |
 | `space.2` | either, `space.base` not overridden | renderer default × 2 | generative base falls back to renderer defaults |
+| reference `dark.color.primary` | light | `0xFF60A5FA` — **forced dark** | explicit `dark.` reference resolves the dark layer regardless of scheme |
+| reference `dark.color.primary` | dark | `0xFF60A5FA` | explicit `dark.` reference under dark |
+| reference `missing.token` | either | **unset** (no materialized value) | no override/default → renderer's own default styling, never an error |
 
 A property carrying the `DESIGN_TOKEN` value type (vector 18) resolves through
-the same algorithm and MUST re-resolve when the active scheme changes.
+the same algorithm and MUST re-resolve when the active scheme changes. An
+explicit `dark.` reference uses the forced-dark rule above. `META::RESET_THEME`
+(vector 43) clears all overrides and re-resolves.

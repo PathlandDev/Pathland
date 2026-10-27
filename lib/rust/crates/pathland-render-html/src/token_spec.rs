@@ -11,6 +11,12 @@ pub const DARK_PREFIX: &str = "dark.";
 /// The CSS custom-property prefix for every token variable.
 pub const VAR_PREFIX: &str = "--pl-";
 
+/// Prefix for the **explicit dark-value** variable family. Every canonical token
+/// also exposes its dark-layer value at `--pl-dark-<path>` regardless of the
+/// active scheme, so a `dark.`-prefixed reference can force the dark value
+/// (spec/TOKENS.md).
+pub const FORCED_DARK_VAR_PREFIX: &str = "--pl-dark-";
+
 /// The generative spacing family: `space.<N>` resolves to
 /// `calc(var(--pl-space-base) * N)`.
 pub const SPACE_FAMILY: &str = "space.";

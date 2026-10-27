@@ -1,6 +1,6 @@
 # pathland-core — implementation status
 
-**Last updated:** October 15, 2026
+**Last updated:** October 27, 2026
 
 The **protocol core**: 16-byte opcode, SPSC ring buffers (both directions),
 bump arenas (both directions), memory layout, typed events, and the golden
@@ -89,13 +89,18 @@ tracks what this crate implements.
 - **`Guest::set_design_token_string`** helper: STRING-valued token override —
   both the path and the value ride the arena (`A` = path ref, `B` = STRING,
   `C` = value ref).
+- **`Guest::set_color_scheme` / `Guest::reset_theme`** helpers
+  (`META::SET_COLOR_SCHEME` / `META::RESET_THEME`): force the renderer color
+  scheme (platform/light/dark) and clear all application token overrides.
 - **`pathland_core::tokens`** — the **reference resolution algorithm**
   (spec/TOKENS.md): `dark.*` layer → override → default → parent-fallback →
   fallback, the generative `space.<N>` family (`space.base` × N), and the
   `TokenValue`/`Scheme`/`TokenTables` types. Pure `no_std` + `alloc`;
-  renderers keep their own tables and call `tokens::resolve`. The full
-  "Design-Token Resolution Conformance" table (spec/CONFORMANCE.md) is tested
-  here.
+  renderers keep their own tables and call `tokens::resolve`. `resolve_ref`
+  implements explicit `dark.` references (forced dark layer regardless of the
+  active scheme). `TIER1_TOKENS` is the canonical Tier-1 catalog used by the
+  renderer default-table coverage tests. The full "Design-Token Resolution
+  Conformance" table (spec/CONFORMANCE.md) is tested here.
 - **`value_type_for`** matches `spec/MODIFIERS.md`'s canonical mapping
   (COLOR / U32 / U8 / STRING / F32-enum-code / LIST); the `DESIGN_TOKEN` value
   type (`0x08`) is available per-instance on `SET_PROPERTY`. **`LIST`** (`0x09`)
@@ -167,4 +172,6 @@ tracks what this crate implements.
 
 `cargo test -p pathland-core` — conformance vectors, opcode round-trips,
 arena, ring, event-ring (incl. shared-ring `TEXT_CHANGED` + `Navigate` round
-trips and `META::RESET` event-arena recycle), randomized tests.
+trips and `META::RESET` event-arena recycle), `META::SET_COLOR_SCHEME` /
+`META::RESET_THEME` vectors, the token resolution table (incl. explicit `dark.`
+refs), randomized tests.

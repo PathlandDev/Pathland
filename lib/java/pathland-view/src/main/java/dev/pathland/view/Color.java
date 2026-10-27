@@ -16,7 +16,7 @@ import dev.pathland.view.emit.PathlandNode;
  * {@code dark.color.primary}); the emitter sends it as the {@code DESIGN_TOKEN} value
  * type and the renderer resolves it against the active scheme (spec/TOKENS.md).
  */
-public record Color(int argb, String token) implements View {
+public record Color(int argb, String token) implements View, TokenPath {
 
     public static final Color CLEAR = new Color(0x00000000, null);
     public static final Color BLACK = new Color(0xFF000000, null);
@@ -47,6 +47,11 @@ public record Color(int argb, String token) implements View {
     /** Whether this is a design-token reference rather than a literal color. */
     public boolean isToken() {
         return token != null;
+    }
+
+    @Override
+    public String tokenPath() {
+        return token;
     }
 
     @Override

@@ -1,6 +1,6 @@
 # pathland-render-core — implementation status
 
-**Last updated:** September 23, 2026
+**Last updated:** October 27, 2026
 
 The **toolkit-free renderer core shared by every Pathland renderer** (GTK4, Qt,
 …): opcode-frame decode into a retained native-element description
@@ -27,13 +27,23 @@ The **toolkit-free renderer core shared by every Pathland renderer** (GTK4, Qt,
   - `DESIGN_TOKEN`-typed `SET_PROPERTY` values record the token path and
     **resolve at apply time** against the theme, the active scheme, and the
     parent-fallback chain into concrete `properties`/`strings`
-    (`resolve_tokens`, reusing `pathland_core::tokens`); paths are kept for
-    re-resolution on scheme change.
+    (`resolve_tokens`, reusing `pathland_core::tokens::resolve_ref`); paths
+    are kept for re-resolution on scheme change.
+  - Explicit `dark.` references resolve the dark layer in either scheme.
+  - Previously materialized token values are removed before each resolution,
+    so an unresolvable reference (or a reset override) leaves the property
+    unset instead of retaining a stale value. A literal `SET_PROPERTY`
+    replaces a previous token reference (and vice versa).
   - **Tier-1 default tables** (light + dark) via `concrete_default_tables` —
     concrete platform-appropriate fallbacks; a renderer may enrich with native
     theme colors via `RenderTree::set_defaults`.
-  - `set_scheme` re-resolves every token-referencing property. Scheme is never
-    carried by the protocol.
+  - Platform scheme (`set_scheme`) and application override
+    (`set_scheme_override(Option<Scheme>)`, `META::SET_COLOR_SCHEME`) are
+    separate; the effective scheme is the override when set.
+  - `reset_theme()` / `META::RESET_THEME` clears base + `dark.*` overrides and
+    re-resolves against renderer defaults.
+  - `concrete_default_tables` now covers the full `TIER1_TOKENS` catalog in
+    both schemes (coverage-tested).
 - **`render_tree_from_frame`** — decode a fresh tree from one frame.
 - **`describe`** — one-opcode human-readable line (debugging aid).
 
@@ -48,7 +58,10 @@ The **toolkit-free renderer core shared by every Pathland renderer** (GTK4, Qt,
 ## Not implemented / gaps
 
 - No layout computation (by design — the protocol never emits rects).
-- No META handling (`RESET`/`ENVIRONMENT`/`RESYNC`) — renderer-owned concern.
+- No META handling beyond theming (`SET_COLOR_SCHEME`/`RESET_THEME`); `RESET` /
+  `ENVIRONMENT` / `RESYNC` remain renderer-owned concerns.
+- Web renderers do not yet implement the parent-path fallback (`font.body` →
+  `font.body.size`) in CSS; native renderers do via the shared resolver.
 
 ## Verified by
 

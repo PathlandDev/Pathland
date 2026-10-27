@@ -19,6 +19,7 @@ import {
   isDarkToken,
   isLengthToken,
   tokenToCssVar,
+  tokenToForcedDarkCssVar,
 } from "./generated/tokens-core";
 
 // Re-exported for callers that use the token conventions directly.
@@ -54,6 +55,8 @@ function tokenCssOverride(path: string, valueType: number, value: number | strin
 
 export interface DesignTokenSink {
   setToken(path: string, valueType: number, value: number | string): void;
+  /** `META::RESET_THEME`: drop every app override (including SSR-rendered ones). */
+  reset(): void;
 }
 
 /**
@@ -65,33 +68,79 @@ export interface DesignTokenSink {
 export function createTokenSink(): DesignTokenSink {
   const base = new Map<string, string>();
   const dark = new Map<string, string>();
+  // Forced-dark variables (`--pl-dark-…`): base overrides fall through, then
+  // dark overrides win (spec/TOKENS.md explicit `dark.` references).
+  const forcedBase = new Map<string, string>();
+  const forcedDark = new Map<string, string>();
   let styleEl: HTMLStyleElement | null = null;
+
+  function ensureStyle(): HTMLStyleElement {
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.setAttribute("data-pathland-tokens", "");
+      document.head.appendChild(styleEl);
+    }
+    return styleEl;
+  }
 
   function render(): void {
     const rules: string[] = [];
     for (const [name, value] of base) {
       rules.push(`:root{${name}:${value};}`);
     }
-    if (dark.size > 0) {
-      const darkRules: string[] = [];
-      for (const [name, value] of dark) {
-        darkRules.push(`:root{${name}:${value};}`);
+    if (base.size > 0 || dark.size > 0) {
+      // Dark resolution: dark override → base override → dark default. The
+      // base declarations are repeated in the dark scope so they outrank the
+      // built-in dark defaults (same specificity, later wins).
+      const baseDecls: string[] = [];
+      for (const [name, value] of base) {
+        baseDecls.push(`${name}:${value};`);
       }
-      rules.push(`@media (prefers-color-scheme: dark){${darkRules.join("")}}`);
+      const darkDecls: string[] = [];
+      for (const [name, value] of dark) {
+        darkDecls.push(`${name}:${value};`);
+      }
+      const decls = baseDecls.join("") + darkDecls.join("");
+      rules.push(
+        `@media (prefers-color-scheme: dark){:root:not([data-pathland-scheme]){${decls}}}`,
+      );
+      rules.push(`:root[data-pathland-scheme="dark"]{${decls}}`);
     }
-    if (!styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.setAttribute("data-pathland-tokens", "");
-      document.head.appendChild(styleEl);
+    const forced: string[] = [];
+    for (const [name, value] of forcedBase) {
+      forced.push(`${name}:${value};`);
     }
-    styleEl.textContent = rules.join("");
+    for (const [name, value] of forcedDark) {
+      forced.push(`${name}:${value};`);
+    }
+    if (forced.length > 0) {
+      rules.push(`:root{${forced.join("")}}`);
+    }
+    ensureStyle().textContent = rules.join("");
   }
 
   return {
     setToken(path, valueType, value) {
       const name = tokenToCssVar(path);
       const cssValue = tokenCssOverride(path, valueType, value);
-      (isDarkToken(path) ? dark : base).set(name, cssValue);
+      if (isDarkToken(path)) {
+        dark.set(name, cssValue);
+        forcedDark.set(tokenToForcedDarkCssVar(path), cssValue);
+      } else {
+        base.set(name, cssValue);
+        forcedBase.set(tokenToForcedDarkCssVar(path), cssValue);
+      }
+      render();
+    },
+    reset() {
+      base.clear();
+      dark.clear();
+      forcedBase.clear();
+      forcedDark.clear();
+      // A reset replaces the whole override layer: remove SSR/client token
+      // style elements and start a fresh (empty) managed element.
+      document.querySelectorAll("style[data-pathland-tokens]").forEach((el) => el.remove());
+      styleEl = null;
       render();
     },
   };

@@ -18,10 +18,12 @@ public final class Padding implements ViewModifier {
         private Signal<Float> right;
         private Signal<Float> bottom;
         private Signal<Float> left;
+        private Length uniformToken;
 
         /** Uniform padding on every edge. */
         public Config uniform(float value) {
             this.uniform = Signals.constant(value);
+            this.uniformToken = null;
             this.top = this.right = this.bottom = this.left = null;
             return this;
         }
@@ -29,6 +31,15 @@ public final class Padding implements ViewModifier {
         /** Uniform padding on every edge (reactive). */
         public Config uniform(Signal<Float> value) {
             this.uniform = value;
+            this.uniformToken = null;
+            this.top = this.right = this.bottom = this.left = null;
+            return this;
+        }
+
+        /** Uniform padding from a design token (e.g. {@code space.2}). */
+        public Config uniform(Length value) {
+            this.uniformToken = value;
+            this.uniform = null;
             this.top = this.right = this.bottom = this.left = null;
             return this;
         }
@@ -42,6 +53,7 @@ public final class Padding implements ViewModifier {
         /** Per-edge padding (top, right, bottom, left), each reactive. */
         public Config edges(Signal<Float> top, Signal<Float> right, Signal<Float> bottom, Signal<Float> left) {
             this.uniform = null;
+            this.uniformToken = null;
             this.top = top;
             this.right = right;
             this.bottom = bottom;
@@ -66,6 +78,11 @@ public final class Padding implements ViewModifier {
         return Configurators.modifier(Config::new, Padding::new, c -> c.uniform(value));
     }
 
+    /** Uniform padding from a design token. */
+    static Padding with(Length value) {
+        return Configurators.modifier(Config::new, Padding::new, c -> c.uniform(value));
+    }
+
     /** Configure the padding. */
     static Padding with(Consumer<Config> configure) {
         Config config = new Config();
@@ -75,6 +92,9 @@ public final class Padding implements ViewModifier {
 
     @Override
     public View body(View content) {
+        if (config.uniformToken != null) {
+            return Modified.props(content, Modified.prop(Properties.PADDING, config.uniformToken));
+        }
         if (config.uniform != null || config.top == null) {
             Signal<Float> uniform =
                     config.uniform != null ? config.uniform : Signals.constant(0f);

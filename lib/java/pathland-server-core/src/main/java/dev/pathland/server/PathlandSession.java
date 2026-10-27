@@ -7,6 +7,8 @@ import dev.pathland.view.Environment;
 import dev.pathland.view.EnvironmentBinding;
 import dev.pathland.view.Platform;
 import dev.pathland.view.ProxyConfig;
+import dev.pathland.view.ThemeData;
+import dev.pathland.view.ThemeMode;
 import dev.pathland.view.emit.Emitter;
 import dev.pathland.view.emit.ProtocolFrame;
 import dev.pathland.view.emit.FrameOpcodeSink;
@@ -169,6 +171,28 @@ public final class PathlandSession {
     }
 
     /** Apply (or enrich) the platform environment after mount (viewport resizes, …). */
+    /**
+     * Replace the session's global theme at runtime (spec/TOKENS.md §Runtime
+     * theming): emits {@code RESET_THEME} + the new overrides to the connected
+     * client. The SSR document keeps the mount theme until a resync/reload.
+     */
+    public void setTheme(ThemeData theme) {
+        emitter.replaceTheme(theme);
+    }
+
+    /** Clear all app token overrides (renderer defaults apply). */
+    public void resetTheme() {
+        emitter.resetTheme();
+    }
+
+    /**
+     * Force/release the effective color scheme ({@code PLATFORM}/{@code LIGHT}/
+     * {@code DARK}); the renderer re-resolves tokens with no node re-emission.
+     */
+    public void setColorScheme(ThemeMode mode) {
+        emitter.setColorScheme(mode);
+    }
+
     public void applyEnvironment(EnvironmentData env) {
         activePath.set(env.route()); // re-route if the platform moved (guards run in the bound router)
         if (env.viewportWidth() > 0) {

@@ -1,7 +1,7 @@
 # Pathland Design Tokens
 
 **Status:** Draft
-**Last Updated:** October 1, 2026
+**Last Updated:** October 27, 2026
 
 ---
 
@@ -53,9 +53,9 @@ cross-renderer consistency when it overrides tokens.
 | Aspect | Owner |
 |--------|-------|
 | Theme values (base + `dark.*`) | Application |
-| Color-scheme detection (light/dark) | Renderer (platform-derived) |
+| Color-scheme detection (light/dark) | Renderer (platform-derived; app may force via `SET_COLOR_SCHEME`) |
 | Default token values (light + dark) | Renderer |
-| Token resolution (override → default → fallback) | Renderer |
+| Token resolution (override → default → parent → fallback) | Renderer |
 | Interaction states (hover/pressed/focus/disabled) | Renderer |
 | Literal property values | Application |
 
@@ -216,6 +216,11 @@ Small sets; only where a component's semantics genuinely differ from
 `button.radius`, `button.padding`, `button.height`, `button.font.size`,
 `button.font.weight`, `button.accent`.
 
+> A composite shorthand such as `button.padding` (two-axis) is renderer-owned:
+> the scalar token value types cannot encode a multi-part CSS shorthand. Apps
+> that need a scalar override should use the shared control padding tokens or
+> per-component properties.
+
 **Text fields / editors** (Tier 1): `input.background`, `input.foreground`,
 `input.placeholder`, `input.border`, `input.radius`, `input.font.size`.
 
@@ -246,7 +251,10 @@ Base token paths define the **light** design. A `dark.`-prefixed path defines
 the **dark** design for the same token.
 
 The renderer derives the **effective color scheme** from its platform's native
-light/dark signal — it is **never** carried by the protocol.
+light/dark signal by default. An application MAY override it for the whole host
+with `META::SET_COLOR_SCHEME` (`platform` / `light` / `dark`); the renderer
+applies the override until the application restores `platform`. The
+platform-derived signal itself is never carried by the protocol.
 
 ### Rules
 
@@ -258,8 +266,13 @@ light/dark signal — it is **never** carried by the protocol.
 3. The application rolls a full theme by overriding base values and — where the
    dark look must differ — `dark.*` values.
 4. The renderer MUST **re-resolve** every token-referencing property when the
-   effective scheme changes, and MAY animate the transition.
-5. The `dark.` prefix is the first scheme prefix; the namespace is open so
+   effective scheme changes (including a `SET_COLOR_SCHEME` override), and MAY
+   animate the transition.
+5. A **`DESIGN_TOKEN` reference** whose path starts with `dark.` is an
+   **explicit dark-variant reference**: it resolves the bare path against the
+   dark layer regardless of the active scheme. (A `SET_DESIGN_TOKEN` override
+   still uses the `dark.` prefix to select the dark layer.)
+6. The `dark.` prefix is the first scheme prefix; the namespace is open so
    custom schemes could follow. Only `light` (base) and `dark` are
    standardized.
 
@@ -319,6 +332,13 @@ current scheme, and re-resolves when the scheme changes.
 - A literal value and a token reference are mutually exclusive on a property.
 - Because overrides and the scheme are renderer state, a token-typed property
   requires **no re-emission** when a token changes — the renderer re-resolves.
+- If a reference cannot be resolved (no override, no renderer default), the
+  property is **left unset** and the renderer's own default styling applies;
+  resolution NEVER errors and MUST NOT retain a previously resolved value.
+- `META::RESET_THEME` clears every application override (base + `dark.*`) and
+  re-resolves all token-referencing properties against the renderer defaults.
+  A replacement theme is emitted as `RESET_THEME` followed by its
+  `SET_DESIGN_TOKEN` overrides in the same frame.
 
 ---
 
@@ -328,10 +348,14 @@ A renderer MUST:
 
 1. Provide platform-appropriate **light and dark defaults** for all Tier 1
    tokens.
-2. Accept `PARAMETER::SET_DESIGN_TOKEN` commands and store overrides.
-3. Derive the effective color scheme from the platform and re-resolve on change.
-4. Resolve token references (`DESIGN_TOKEN` value type) in properties.
-5. Fall back to defaults when no override exists.
+2. Accept `PARAMETER::SET_DESIGN_TOKEN` commands and store overrides, and clear
+   them on `META::RESET_THEME`.
+3. Derive the effective color scheme from the platform (or honor
+   `META::SET_COLOR_SCHEME`) and re-resolve on change.
+4. Resolve token references (`DESIGN_TOKEN` value type) in properties, including
+   explicit `dark.` references.
+5. Fall back to defaults when no override exists; leave the property unset when
+   the reference cannot be resolved.
 6. Never transmit visual styling rules in the protocol.
 
 A renderer MAY:

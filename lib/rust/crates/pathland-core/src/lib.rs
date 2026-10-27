@@ -360,6 +360,19 @@ impl<'a> Guest<'a> {
         ring_fn::push_reset(self.slots, self.header, self.mask())
     }
 
+    /// Force the renderer-wide color scheme (`META::SET_COLOR_SCHEME`):
+    /// `0` = platform-derived, `1` = light, `2` = dark (spec/TOKENS.md).
+    pub fn set_color_scheme(&mut self, mode: u32) -> Result<(), RingError> {
+        let op = Opcode::new(category::META, crate::meta::SET_COLOR_SCHEME, 0, mode, 0, 0);
+        ring_fn::push(self.slots, self.header, self.mask(), &op)
+    }
+
+    /// Clear every application design-token override (`META::RESET_THEME`).
+    pub fn reset_theme(&mut self) -> Result<(), RingError> {
+        let op = Opcode::new(category::META, crate::meta::RESET_THEME, 0, 0, 0, 0);
+        ring_fn::push(self.slots, self.header, self.mask(), &op)
+    }
+
     // --- EVENT ingress (host → guest) ---
 
     /// Drain all pending raw-input events written by the host into the event

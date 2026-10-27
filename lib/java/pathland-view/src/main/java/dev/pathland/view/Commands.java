@@ -67,8 +67,20 @@ public static final class Meta {
             public static final int PING = 0x04;
             /** The reply to {@link #PING} (host → guest): `A/B/C = 0`. Network batch transport only. */
             public static final int PONG = 0x05;
+            /** Renderer-wide color-scheme override (guest → host): `A=0` platform, `1` light, `2` dark. */
+            public static final int SET_COLOR_SCHEME = 0x06;
+            /** Clear every application design-token override (guest → host): `A/B/C = 0`. */
+            public static final int RESET_THEME = 0x07;
             private Meta() {}
         }
+
+    /** `META::SET_COLOR_SCHEME` mode values. */
+    public static final class ColorSchemeMode {
+        public static final int PLATFORM = 0;
+        public static final int LIGHT = 1;
+        public static final int DARK = 2;
+        private ColorSchemeMode() {}
+    }
 
     /** `META::ENVIRONMENT` field ids (spec/OPCODE.md §Environment fields). */
     public static final class Environment {

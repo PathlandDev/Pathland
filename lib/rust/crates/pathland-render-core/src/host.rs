@@ -10,8 +10,10 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-use pathland_core::tokens::{resolve as resolve_token, Scheme, TokenTables, TokenValue};
-use pathland_core::{category, component_type, parameter, tree, value_type, Frame, Opcode};
+use pathland_core::tokens::{resolve_ref as resolve_token_ref, Scheme, TokenTables, TokenValue};
+use pathland_core::{
+    category, color_scheme_mode, component_type, meta, parameter, tree, value_type, Frame, Opcode,
+};
 
 /// A decoded node in the host's native-element description.
 #[derive(Debug, Clone, PartialEq)]
@@ -112,9 +114,12 @@ pub struct RenderTree {
     /// [`RenderTree::set_defaults`].
     defaults: BTreeMap<String, TokenValue>,
     dark_defaults: BTreeMap<String, TokenValue>,
-    /// The effective color scheme (renderer-derived, never carried by the
-    /// protocol).
-    scheme: Scheme,
+    /// The platform-derived color scheme (OS/browser light-dark signal).
+    /// Never carried by the protocol.
+    platform_scheme: Scheme,
+    /// An application override from `META::SET_COLOR_SCHEME`; `None` follows
+    /// the platform.
+    scheme_override: Option<Scheme>,
 }
 
 impl Default for RenderTree {
@@ -126,7 +131,8 @@ impl Default for RenderTree {
             dark_overrides: BTreeMap::new(),
             defaults,
             dark_defaults,
-            scheme: Scheme::Light,
+            platform_scheme: Scheme::Light,
+            scheme_override: None,
         }
     }
 }
@@ -143,15 +149,38 @@ impl RenderTree {
         self.resolve_tokens();
     }
 
-    /// The effective color scheme.
+    /// The effective color scheme: the application override when set, else the
+    /// platform-derived scheme.
     pub fn scheme(&self) -> Scheme {
-        self.scheme
+        self.scheme_override.unwrap_or(self.platform_scheme)
     }
 
-    /// Set the effective color scheme and re-resolve every token-referencing
-    /// property (spec/TOKENS.md resolution contract).
+    /// Set the platform-derived (OS/browser) color scheme and re-resolve every
+    /// token-referencing property. Ignored as an effective scheme while an
+    /// application override is active; the stored platform value is used again
+    /// once `set_scheme_override(None)` restores platform mode.
     pub fn set_scheme(&mut self, scheme: Scheme) {
-        self.scheme = scheme;
+        self.platform_scheme = scheme;
+        self.resolve_tokens();
+    }
+
+    /// Force (`Some`) or release (`None` = platform) the effective color
+    /// scheme (`META::SET_COLOR_SCHEME`) and re-resolve.
+    pub fn set_scheme_override(&mut self, scheme: Option<Scheme>) {
+        self.scheme_override = scheme;
+        self.resolve_tokens();
+    }
+
+    /// The application scheme override, if any.
+    pub fn scheme_override(&self) -> Option<Scheme> {
+        self.scheme_override
+    }
+
+    /// Clear every application design-token override (`META::RESET_THEME`) and
+    /// re-resolve against the renderer defaults.
+    pub fn reset_theme(&mut self) {
+        self.overrides.clear();
+        self.dark_overrides.clear();
         self.resolve_tokens();
     }
 
@@ -160,6 +189,10 @@ impl RenderTree {
     /// values into [`HostNode::properties`] (numeric) or [`HostNode::strings`]
     /// (STRING tokens). The paths are kept in [`HostNode::token_refs`] for
     /// re-resolution on scheme change.
+    ///
+    /// Previously materialized values are removed first, so an unresolvable
+    /// reference (or a reset override) leaves the property unset rather than
+    /// retaining a stale value.
     pub fn resolve_tokens(&mut self) {
         let tables = TokenTables {
             overrides: &self.overrides,
@@ -167,10 +200,14 @@ impl RenderTree {
             defaults: &self.defaults,
             dark_defaults: &self.dark_defaults,
         };
+        let scheme = self.scheme();
         for node in self.nodes.values_mut() {
-            let refs: Vec<(u16, String)> = node.token_refs.iter().map(|(k, v)| (*k, v.clone())).collect();
+            let refs: Vec<(u16, String)> =
+                node.token_refs.iter().map(|(k, v)| (*k, v.clone())).collect();
             for (prop, path) in refs {
-                if let Some(value) = resolve_token(&path, self.scheme, &tables) {
+                node.properties.remove(&prop);
+                node.strings.remove(&prop);
+                if let Some(value) = resolve_token_ref(&path, scheme, &tables) {
                     match value {
                         TokenValue::Str(s) => {
                             node.strings.insert(prop, s);
@@ -239,26 +276,33 @@ impl RenderTree {
                     let vt = (op.b() >> 16) as u8;
                     if let Some(n) = self.nodes.get_mut(&op.a()) {
                         if vt == value_type::STRING {
-                            // Resolve the arena offset into the actual text.
+                            // Resolve the arena offset into the actual text. A
+                            // literal replaces any previous token reference.
+                            n.token_refs.remove(&prop_id);
                             if let Ok(text) = frame.arena_str(op.c()) {
                                 n.strings.insert(prop_id, text.to_string());
                             }
                         } else if vt == value_type::DESIGN_TOKEN {
                             // A token reference: keep the path for resolution
                             // against the theme (spec/TOKENS.md). C is the arena
-                            // offset of the token path.
+                            // offset of the token path. Drop any previously
+                            // materialized literal/resolved value for this prop.
                             if let Ok(path) = frame.arena_str(op.c()) {
+                                n.properties.remove(&prop_id);
+                                n.strings.remove(&prop_id);
                                 n.token_refs.insert(prop_id, path.to_string());
                             }
                         } else if vt == value_type::LIST {
                             // An arena-backed `[u32 count][f32 × count]` array —
                             // today a SIZE_THAT_FITS `FIT_QUERY` table.
+                            n.token_refs.remove(&prop_id);
                             if let Ok(bytes) = frame.arena_get(op.c()) {
                                 if let Some(values) = list_f32(bytes) {
                                     n.lists.insert(prop_id, values);
                                 }
                             }
                         } else {
+                            n.token_refs.remove(&prop_id);
                             n.properties.insert(prop_id, op.c());
                         }
                     }
@@ -293,6 +337,17 @@ impl RenderTree {
                             self.overrides.insert(path.to_string(), value);
                         }
                     }
+                }
+                (category::META, meta::SET_COLOR_SCHEME) => {
+                    self.scheme_override = match op.a() {
+                        color_scheme_mode::LIGHT => Some(Scheme::Light),
+                        color_scheme_mode::DARK => Some(Scheme::Dark),
+                        _ => None,
+                    };
+                }
+                (category::META, meta::RESET_THEME) => {
+                    self.overrides.clear();
+                    self.dark_overrides.clear();
                 }
                 _ => {}
             }
@@ -399,6 +454,51 @@ pub fn concrete_default_tables() -> (
         ("input.border", TokenValue::Color(0xFF_D1D5DB)),
         ("input.radius", TokenValue::F32(6.0)),
         ("input.font.size", TokenValue::F32(16.0)),
+        ("border.width.thick", TokenValue::F32(2.0)),
+        ("size.control.xs", TokenValue::F32(24.0)),
+        ("size.control.sm", TokenValue::F32(32.0)),
+        ("size.control.md", TokenValue::F32(36.0)),
+        ("size.control.lg", TokenValue::F32(44.0)),
+        ("size.control.xl", TokenValue::F32(52.0)),
+        ("button.height", TokenValue::F32(36.0)),
+        ("button.font.size", TokenValue::F32(14.0)),
+        ("button.font.weight", TokenValue::F32(600.0)),
+        ("toggle.accent", TokenValue::Color(0xFF_2563EB)),
+        ("toggle.track.off", TokenValue::Color(0xFF_D1D5DB)),
+        ("toggle.track.on", TokenValue::Color(0xFF_2563EB)),
+        ("toggle.thumb", TokenValue::Color(0xFF_FFFFFF)),
+        ("slider.accent", TokenValue::Color(0xFF_2563EB)),
+        ("slider.track", TokenValue::Color(0xFF_E5E7EB)),
+        ("slider.thumb", TokenValue::Color(0xFF_FFFFFF)),
+        ("progress.track", TokenValue::Color(0xFF_E5E7EB)),
+        ("progress.fill", TokenValue::Color(0xFF_2563EB)),
+        ("gauge.track", TokenValue::Color(0xFF_E5E7EB)),
+        ("gauge.fill", TokenValue::Color(0xFF_2563EB)),
+        ("stepper.accent", TokenValue::Color(0xFF_2563EB)),
+        ("stepper.background", TokenValue::Color(0xFF_FFFFFF)),
+        ("stepper.border", TokenValue::Color(0xFF_D1D5DB)),
+        ("stepper.radius", TokenValue::F32(6.0)),
+        ("picker.accent", TokenValue::Color(0xFF_2563EB)),
+        ("picker.background", TokenValue::Color(0xFF_FFFFFF)),
+        ("picker.border", TokenValue::Color(0xFF_D1D5DB)),
+        ("picker.radius", TokenValue::F32(6.0)),
+        ("menu.background", TokenValue::Color(0xFF_FFFFFF)),
+        ("menu.foreground", TokenValue::Color(0xFF_111827)),
+        ("menu.border", TokenValue::Color(0xFF_E5E7EB)),
+        ("menu.radius", TokenValue::F32(6.0)),
+        ("label.foreground", TokenValue::Color(0xFF_111827)),
+        ("label.font.size", TokenValue::F32(16.0)),
+        ("elevation.low.color", TokenValue::Color(0x0D_000000)),
+        ("elevation.low.radius", TokenValue::F32(0.0)),
+        ("elevation.low.x", TokenValue::F32(0.0)),
+        ("elevation.low.y", TokenValue::F32(1.0)),
+        ("elevation.low.blur", TokenValue::F32(2.0)),
+        ("elevation.high.color", TokenValue::Color(0x26_000000)),
+        ("elevation.high.radius", TokenValue::F32(0.0)),
+        ("elevation.high.x", TokenValue::F32(0.0)),
+        ("elevation.high.y", TokenValue::F32(4.0)),
+        ("elevation.high.blur", TokenValue::F32(12.0)),
+        ("opacity.disabled", TokenValue::F32(0.5)),
     ]);
     let dark = m(&[
         ("color.background", TokenValue::Color(0xFF_0F172A)),
@@ -419,6 +519,13 @@ pub fn concrete_default_tables() -> (
         ("font.body.weight", TokenValue::F32(400.0)),
         ("font.body.family", TokenValue::Str("Inter, sans-serif".into())),
         ("space.base", TokenValue::F32(4.0)),
+        ("radius.xs", TokenValue::F32(2.0)),
+        ("radius.sm", TokenValue::F32(6.0)),
+        ("radius.md", TokenValue::F32(6.0)),
+        ("radius.lg", TokenValue::F32(8.0)),
+        ("radius.xl", TokenValue::F32(12.0)),
+        ("radius.full", TokenValue::F32(9999.0)),
+        ("border.width.thin", TokenValue::F32(1.0)),
         ("control.background", TokenValue::Color(0xFF_1F2937)),
         ("control.foreground", TokenValue::Color(0xFF_F9FAFB)),
         ("control.border", TokenValue::Color(0xFF_374151)),
@@ -441,6 +548,51 @@ pub fn concrete_default_tables() -> (
         ("input.border", TokenValue::Color(0xFF_374151)),
         ("input.radius", TokenValue::F32(6.0)),
         ("input.font.size", TokenValue::F32(16.0)),
+        ("border.width.thick", TokenValue::F32(2.0)),
+        ("size.control.xs", TokenValue::F32(24.0)),
+        ("size.control.sm", TokenValue::F32(32.0)),
+        ("size.control.md", TokenValue::F32(36.0)),
+        ("size.control.lg", TokenValue::F32(44.0)),
+        ("size.control.xl", TokenValue::F32(52.0)),
+        ("button.height", TokenValue::F32(36.0)),
+        ("button.font.size", TokenValue::F32(14.0)),
+        ("button.font.weight", TokenValue::F32(600.0)),
+        ("toggle.accent", TokenValue::Color(0xFF_60A5FA)),
+        ("toggle.track.off", TokenValue::Color(0xFF_374151)),
+        ("toggle.track.on", TokenValue::Color(0xFF_60A5FA)),
+        ("toggle.thumb", TokenValue::Color(0xFF_F9FAFB)),
+        ("slider.accent", TokenValue::Color(0xFF_60A5FA)),
+        ("slider.track", TokenValue::Color(0xFF_374151)),
+        ("slider.thumb", TokenValue::Color(0xFF_F9FAFB)),
+        ("progress.track", TokenValue::Color(0xFF_374151)),
+        ("progress.fill", TokenValue::Color(0xFF_60A5FA)),
+        ("gauge.track", TokenValue::Color(0xFF_374151)),
+        ("gauge.fill", TokenValue::Color(0xFF_60A5FA)),
+        ("stepper.accent", TokenValue::Color(0xFF_60A5FA)),
+        ("stepper.background", TokenValue::Color(0xFF_1F2937)),
+        ("stepper.border", TokenValue::Color(0xFF_374151)),
+        ("stepper.radius", TokenValue::F32(6.0)),
+        ("picker.accent", TokenValue::Color(0xFF_60A5FA)),
+        ("picker.background", TokenValue::Color(0xFF_1F2937)),
+        ("picker.border", TokenValue::Color(0xFF_374151)),
+        ("picker.radius", TokenValue::F32(6.0)),
+        ("menu.background", TokenValue::Color(0xFF_111827)),
+        ("menu.foreground", TokenValue::Color(0xFF_F9FAFB)),
+        ("menu.border", TokenValue::Color(0xFF_374151)),
+        ("menu.radius", TokenValue::F32(6.0)),
+        ("label.foreground", TokenValue::Color(0xFF_F9FAFB)),
+        ("label.font.size", TokenValue::F32(16.0)),
+        ("elevation.low.color", TokenValue::Color(0x59_000000)),
+        ("elevation.low.radius", TokenValue::F32(0.0)),
+        ("elevation.low.x", TokenValue::F32(0.0)),
+        ("elevation.low.y", TokenValue::F32(1.0)),
+        ("elevation.low.blur", TokenValue::F32(2.0)),
+        ("elevation.high.color", TokenValue::Color(0x80_000000)),
+        ("elevation.high.radius", TokenValue::F32(0.0)),
+        ("elevation.high.x", TokenValue::F32(0.0)),
+        ("elevation.high.y", TokenValue::F32(4.0)),
+        ("elevation.high.blur", TokenValue::F32(12.0)),
+        ("opacity.disabled", TokenValue::F32(0.5)),
     ]);
     (base, dark)
 }
@@ -496,6 +648,15 @@ mod tests {
         Video, View, ViewExt,
     };
     use std::rc::Rc;
+
+    #[test]
+    fn concrete_defaults_cover_the_tier1_catalog_in_both_schemes() {
+        let (light, dark) = concrete_default_tables();
+        for token in pathland_core::tokens::TIER1_TOKENS {
+            assert!(light.contains_key(*token), "missing light default for {token}");
+            assert!(dark.contains_key(*token), "missing dark default for {token}");
+        }
+    }
 
     #[test]
     fn decodes_a_declarative_frame() {
@@ -728,5 +889,178 @@ mod tests {
             // ...and is NOT stored as a raw arena offset in `properties`.
             assert!(!n.properties.contains_key(&property_id::IMAGE_SOURCE));
         }
+    }
+
+    /// Build an arena of length-prefixed strings; returns the bytes and each
+    /// entry's offset (ring-arena layout: `[u32 byteLen][bytes…]`).
+    fn arena(strings: &[&str]) -> (Vec<u8>, Vec<u32>) {
+        let mut bytes = Vec::new();
+        let mut offsets = Vec::new();
+        for s in strings {
+            offsets.push(bytes.len() as u32);
+            bytes.extend_from_slice(&(s.len() as u32).to_le_bytes());
+            bytes.extend_from_slice(s.as_bytes());
+        }
+        (bytes, offsets)
+    }
+
+    fn ops_bytes(ops: &[Opcode]) -> Vec<u8> {
+        ops.iter().flat_map(|o| o.to_bytes()).collect()
+    }
+
+    fn frame_from<'a>(slots: &'a [u8], arena: &'a [u8]) -> Frame<'a> {
+        Frame::from_parts(slots, arena, 0, slots.len())
+    }
+
+    fn token_ref_op(node: u32, prop: u16, offset: u32) -> Opcode {
+        Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            node,
+            ((value_type::DESIGN_TOKEN as u32) << 16) | prop as u32,
+            offset,
+        )
+    }
+
+    #[test]
+    fn explicit_dark_reference_uses_the_dark_layer_in_light_mode() {
+        let (arena, off) = arena(&["dark.color.primary"]);
+        let ops = [
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_DESIGN_TOKEN,
+                0,
+                off[0],
+                value_type::COLOR as u32,
+                0xFF_60A5FA,
+            ),
+            token_ref_op(1, pathland_core::property_id::COLOR, off[0]),
+        ];
+        let mut tree = RenderTree::default();
+        let slots = ops_bytes(&ops);
+        tree.apply_frame(&frame_from(&slots, &arena));
+        assert_eq!(tree.scheme(), Scheme::Light);
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&pathland_core::property_id::COLOR),
+            Some(&0xFF_60A5FA),
+            "an explicit dark reference ignores the light scheme"
+        );
+    }
+
+    #[test]
+    fn scheme_override_forces_resolution_and_platform_is_restored() {
+        let (arena, off) = arena(&["color.primary"]);
+        let ops = [
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
+            token_ref_op(1, pathland_core::property_id::COLOR, off[0]),
+        ];
+        let mut tree = RenderTree::default();
+        let (light, dark) = concrete_default_tables();
+        let light_primary = light.get("color.primary").cloned().unwrap();
+        let dark_primary = dark.get("color.primary").cloned().unwrap();
+        let slots = ops_bytes(&ops);
+        tree.apply_frame(&frame_from(&slots, &arena));
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&pathland_core::property_id::COLOR),
+            light_primary.to_bits().as_ref()
+        );
+
+        tree.set_scheme_override(Some(Scheme::Dark));
+        assert_eq!(tree.scheme(), Scheme::Dark);
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&pathland_core::property_id::COLOR),
+            dark_primary.to_bits().as_ref()
+        );
+
+        // A platform signal while forced does not change the effective scheme.
+        tree.set_scheme(Scheme::Light);
+        assert_eq!(tree.scheme(), Scheme::Dark);
+
+        // Restoring platform mode picks up the stored platform scheme.
+        tree.set_scheme_override(None);
+        assert_eq!(tree.scheme(), Scheme::Light);
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&pathland_core::property_id::COLOR),
+            light_primary.to_bits().as_ref()
+        );
+    }
+
+    #[test]
+    fn reset_theme_clears_overrides_and_stale_values() {
+        let (arena, off) = arena(&["color.primary", "app.custom"]);
+        let ops = [
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_DESIGN_TOKEN,
+                0,
+                off[0],
+                value_type::COLOR as u32,
+                0xFF_AA0000,
+            ),
+            token_ref_op(1, pathland_core::property_id::COLOR, off[0]),
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::TEXT as u32, 0),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_DESIGN_TOKEN,
+                0,
+                off[1],
+                value_type::COLOR as u32,
+                0xFF_00AA00,
+            ),
+            token_ref_op(2, pathland_core::property_id::COLOR, off[1]),
+        ];
+        let mut tree = RenderTree::default();
+        let slots = ops_bytes(&ops);
+        tree.apply_frame(&frame_from(&slots, &arena));
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&pathland_core::property_id::COLOR),
+            Some(&0xFF_AA0000)
+        );
+        assert_eq!(
+            tree.node(2).unwrap().properties.get(&pathland_core::property_id::COLOR),
+            Some(&0xFF_00AA00)
+        );
+
+        let reset = [Opcode::new(category::META, meta::RESET_THEME, 0, 0, 0, 0)];
+        let slots = ops_bytes(&reset);
+        tree.apply_frame(&frame_from(&slots, &[]));
+
+        // color.primary falls back to the renderer default; an app-defined
+        // token with no default is left unset (no stale value).
+        let default_primary = concrete_default_tables().0.get("color.primary").cloned().unwrap();
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&pathland_core::property_id::COLOR),
+            default_primary.to_bits().as_ref()
+        );
+        assert!(!tree.node(2).unwrap().properties.contains_key(&pathland_core::property_id::COLOR));
+    }
+
+    #[test]
+    fn literal_property_replaces_a_token_reference() {
+        let (arena, off) = arena(&["color.primary"]);
+        let ops = [
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
+            token_ref_op(1, pathland_core::property_id::COLOR, off[0]),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::COLOR as u32) << 16) | pathland_core::property_id::COLOR as u32,
+                0xFF_112233,
+            ),
+        ];
+        let mut tree = RenderTree::default();
+        let slots = ops_bytes(&ops);
+        tree.apply_frame(&frame_from(&slots, &arena));
+        let node = tree.node(1).unwrap();
+        assert!(node.token_refs.is_empty());
+        assert_eq!(
+            node.properties.get(&pathland_core::property_id::COLOR),
+            Some(&0xFF_112233)
+        );
     }
 }

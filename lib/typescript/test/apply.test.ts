@@ -11,6 +11,8 @@ import {
   CMD_INSERT_CHILD,
   CMD_MOVE_CHILD,
   CMD_RESET,
+  CMD_RESET_THEME,
+  CMD_SET_COLOR_SCHEME,
   CMD_SET_DATE,
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
@@ -549,7 +551,7 @@ describe("applyBatch · META + design tokens + string props", () => {
     applyBatch(batch, renderer());
     const style = document.head.querySelector("style[data-pathland-tokens]");
     expect(style?.textContent).toContain(
-      "@media (prefers-color-scheme: dark){:root{--pl-color-primary:rgba(96,165,250,1.000);}}",
+      "@media (prefers-color-scheme: dark){:root:not([data-pathland-scheme]){--pl-color-primary:rgba(96,165,250,1.000);}}",
     );
   });
 
@@ -578,6 +580,27 @@ describe("applyBatch · META + design tokens + string props", () => {
     expect(style?.textContent).toContain(":root{--pl-font-body-family:'Inter';}");
   });
 
+  it("META::SET_COLOR_SCHEME sets/removes the document scheme attribute", () => {
+    const r = renderer();
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_COLOR_SCHEME, 0, 2, 0, 0]])), r);
+    expect(document.documentElement.dataset.pathlandScheme).toBe("dark");
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_COLOR_SCHEME, 0, 1, 0, 0]])), r);
+    expect(document.documentElement.dataset.pathlandScheme).toBe("light");
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_COLOR_SCHEME, 0, 0, 0, 0]])), r);
+    expect(document.documentElement.dataset.pathlandScheme).toBeUndefined();
+  });
+
+  it("META::RESET_THEME clears the managed token overrides", () => {
+    const r = renderer();
+    applyBatch(
+      parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_DESIGN_TOKEN, 0, 0, 0x07, 0xff0000ff]], stringEntry("color.primary"))),
+      r,
+    );
+    expect(document.head.querySelector("style[data-pathland-tokens]")?.textContent).toContain("--pl-color-primary");
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_RESET_THEME, 0, 0, 0, 0]])), r);
+    expect(document.head.querySelector("style[data-pathland-tokens]")?.textContent).toBe("");
+  });
+
   it("resolves a DESIGN_TOKEN property reference to var()", () => {
     const span = document.createElement("span");
     const r = renderer();
@@ -589,7 +612,7 @@ describe("applyBatch · META + design tokens + string props", () => {
       ),
     );
     applyBatch(batch, r);
-    expect(span.style.color).toBe("var(--pl-color-primary)");
+    expect(span.getAttribute("style")).toContain("color:var(--pl-color-primary, unset)");
   });
 
   it("resolves a generative space.<N> property reference to calc()", () => {

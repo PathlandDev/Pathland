@@ -23,8 +23,8 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 
-use pathland_core::{value_type, value_type_for};
-use pathland_core::Guest;
+use pathland_core::{category, meta, value_type, value_type_for};
+use pathland_core::{Guest, Opcode};
 
 use crate::node::{component_type_id, Component, Node};
 use crate::signal::{Dep, Runtime, Signal, SignalId, SignalValue, SignalValueKind, WritableSignal};
@@ -186,6 +186,55 @@ impl Engine {
             self.emit_token_override(&dark_path, value, guest)?;
         }
         Ok(())
+    }
+
+    /// Emit `META::RESET_THEME` (clear every application token override; the
+    /// renderer falls back to its defaults). A replacement theme emits this
+    /// immediately before its overrides in the same frame.
+    pub fn reset_theme(
+        &mut self,
+        guest: &mut Guest<'_>,
+    ) -> Result<(), pathland_core::RingError> {
+        guest.push_opcode(Opcode::new(category::META, meta::RESET_THEME, 0, 0, 0, 0))
+    }
+
+    /// Emit `META::SET_COLOR_SCHEME`: force light/dark or restore platform
+    /// detection (spec/TOKENS.md). The renderer re-resolves token references;
+    /// no node is re-emitted.
+    pub fn set_color_scheme(
+        &mut self,
+        mode: crate::ColorSchemeMode,
+        guest: &mut Guest<'_>,
+    ) -> Result<(), pathland_core::RingError> {
+        guest.push_opcode(Opcode::new(
+            category::META,
+            meta::SET_COLOR_SCHEME,
+            0,
+            mode.code(),
+            0,
+            0,
+        ))
+    }
+
+    /// Replace the theme at runtime: `RESET_THEME` then the new overrides in
+    /// one frame (spec/DSL.md §7.3).
+    pub fn replace_theme(
+        &mut self,
+        theme: &crate::Theme,
+        guest: &mut Guest<'_>,
+    ) -> Result<(), pathland_core::RingError> {
+        self.reset_theme(guest)?;
+        self.apply_theme(theme, guest)
+    }
+
+    /// Replace an adaptive theme at runtime (reset + light + `dark.` overrides).
+    pub fn replace_adaptive_theme(
+        &mut self,
+        adaptive: &crate::AdaptiveTheme,
+        guest: &mut Guest<'_>,
+    ) -> Result<(), pathland_core::RingError> {
+        self.reset_theme(guest)?;
+        self.apply_adaptive_theme(adaptive, guest)
     }
 
     /// Emit one `SET_DESIGN_TOKEN` override, arena-allocating STRING values.

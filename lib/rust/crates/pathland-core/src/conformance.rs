@@ -304,6 +304,24 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x00, // C = arenaRef = 0
         ],
     ),
+    (
+        "META:SET_COLOR_SCHEME (mode=DARK=2)",
+        [
+            0x04, 0x06, 0x00, 0x00, // category META, command SET_COLOR_SCHEME
+            0x02, 0x00, 0x00, 0x00, // A = mode = 2 (dark)
+            0x00, 0x00, 0x00, 0x00, // B = 0
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
+    (
+        "META:RESET_THEME",
+        [
+            0x04, 0x07, 0x00, 0x00, // category META, command RESET_THEME
+            0x00, 0x00, 0x00, 0x00, // A = 0
+            0x00, 0x00, 0x00, 0x00, // B = 0
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -486,6 +504,8 @@ mod tests {
                 0,
                 VECTORS[32].1,
             ),
+            (0x04, 0x06, 0x0000, 2, 0, 0, VECTORS[33].1),
+            (0x04, 0x07, 0x0000, 0, 0, 0, VECTORS[34].1),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {
             let op = Opcode::new(*cat, *cmd, *flags, *a, *b, *c);

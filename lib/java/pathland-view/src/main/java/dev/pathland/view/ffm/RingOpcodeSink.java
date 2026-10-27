@@ -1,5 +1,7 @@
 package dev.pathland.view.ffm;
 
+import dev.pathland.view.TokenPath;
+
 import dev.pathland.view.Categories;
 import dev.pathland.view.Color;
 import dev.pathland.view.Commands;
@@ -83,7 +85,7 @@ public final class RingOpcodeSink implements OpcodeSink, AutoCloseable {
             int ref = core.arenaAlloc(handle, ((String) value).getBytes(StandardCharsets.UTF_8));
             push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, ref);
         } else if (valueType == ValueTypes.DESIGN_TOKEN) {
-            int ref = core.arenaAlloc(handle, ((Color) value).token().getBytes(StandardCharsets.UTF_8));
+            int ref = core.arenaAlloc(handle, ((TokenPath) value).tokenPath().getBytes(StandardCharsets.UTF_8));
             push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, ref);
         } else if (valueType == ValueTypes.LIST) {
             int ref = core.arenaAlloc(handle, encodeList((float[]) value));
@@ -143,5 +145,15 @@ public final class RingOpcodeSink implements OpcodeSink, AutoCloseable {
     @Override
     public void close() {
         core.destroy(handle);
+    }
+
+    @Override
+    public void resetTheme() {
+        push(Categories.META, Commands.Meta.RESET_THEME, 0, 0, 0, 0);
+    }
+
+    @Override
+    public void setColorScheme(int mode) {
+        push(Categories.META, Commands.Meta.SET_COLOR_SCHEME, 0, mode, 0, 0);
     }
 }

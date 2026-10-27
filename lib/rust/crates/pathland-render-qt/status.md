@@ -1,6 +1,6 @@
 # pathland-render-qt — implementation status
 
-**Last updated:** October 20, 2026
+**Last updated:** October 27, 2026
 
 The **Qt Quick renderer**: maps opcode frames incrementally onto a Qt Quick
 scene graph (shared-memory desktop path). Protocol contract: `spec/`.
@@ -109,6 +109,14 @@ Design-token contract: `spec/TOKENS.md`.
   shared core re-resolves design tokens and the diff re-emits the changed
   concrete values (`SET_PROPERTY`) with no host wake. Initial scheme applied at
   init.
+- **Design tokens / theming**: `PARAMETER::SET_DESIGN_TOKEN` overrides and
+  `DESIGN_TOKEN` property references are decoded by the shared
+  `pathland-render-core` tree and diffed to QML like any other property;
+  `META::SET_COLOR_SCHEME` forces platform/light/dark (the platform signal is
+  stored but ignored while forced) and `META::RESET_THEME` clears app
+  overrides. Explicit `dark.` references and unknown-token fallback follow the
+  shared resolver. Qt-specific defaults are the shared concrete Tier-1 tables
+  (no `QPalette` enrichment yet).
 - **`META::RESET`**: both pump paths scan each frame for `META::RESET` and call
   `QtRenderer::reset()` (clears the decoded tree, sent-state cache, and the
   C++ scene incl. listener overlays).
@@ -251,6 +259,11 @@ Design-token contract: `spec/TOKENS.md`.
 - **`PICKER` option styling** and `SHAPE` path approximation. Native **leaf**
   controls keep Qt Quick Controls' own chrome (background/border); the styling
   layer covers containers, composite controls, and `Rectangle`-backed nodes.
+  Per-component design tokens (`button.*`, `toggle.*`, `slider.*`, …) are
+  therefore not applied to native leaf chrome automatically — an app can still
+  emit explicit token-referenced properties.
+- **Qt-native token defaults**: no `QPalette` → Tier-1 default enrichment yet;
+  the renderer uses the shared concrete fallback table.
 - **Icons** are renderer-owned glyphs (the canonical `ICON_NAME` → a Unicode
   symbol), not the web's SVG/Lucide set — recognizable but not pixel-identical.
 - **Shadows** are an offset rectangle approximation, not a blurred
