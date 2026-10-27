@@ -1552,9 +1552,19 @@ impl HtmlRenderer {
                 } else {
                     format!("<div class=\"pathland-custom-body\">{children}</div>")
                 };
+                // The tokenized track fill: CSS cannot read the input's value,
+                // so the first paint carries the clamped percentage inline. The
+                // DOM client keeps the same custom property in sync on changes.
+                let fill = if max > min {
+                    (((value - min) / (max - min)) * 100.0)
+                        .clamp(0.0, 100.0)
+                        .round() as i32
+                } else {
+                    0
+                };
                 let slider_class = class_attr("pathland-slider");
                 format!(
-                    "<label{data_id}{event}{aria}{slider_class}{style}><input type=\"range\" min=\"{min}\" max=\"{max}\" step=\"any\" value=\"{value}\">{body}</label>"
+                    "<label{data_id}{event}{aria}{slider_class}{style}><input type=\"range\" min=\"{min}\" max=\"{max}\" step=\"any\" value=\"{value}\" style=\"--pl-slider-fill:{fill}%\">{body}</label>"
                 )
             }
             component_type::TEXT_FIELD => {
@@ -1578,12 +1588,12 @@ impl HtmlRenderer {
                 };
                 let textfield_class = class_attr("pathland-textfield");
                 format!(
-                    "<label{data_id}{event}{aria}{textfield_class}{style}><span class=\"pathland-label\">{label}</span><input class=\"pathland-input\" type=\"{input_type}\" value=\"{value}\" placeholder=\"{prompt}\"></label>"
+                    "<label{data_id}{event}{aria}{textfield_class}{style}><span class=\"pathland-label\">{label}</span><input class=\"pathland-input pathland-control\" type=\"{input_type}\" value=\"{value}\" placeholder=\"{prompt}\"></label>"
                 )
             }
             component_type::TEXT_EDITOR => {
                 let value = escape(node.text.as_deref().unwrap_or_default());
-                format!("<textarea{data_id}{event}{aria} class=\"pathland-input\" rows=\"4\"{style}>{value}</textarea>")
+                format!("<textarea{data_id}{event}{aria} class=\"pathland-input pathland-control\" rows=\"4\"{style}>{value}</textarea>")
             }
             component_type::IMAGE => {
                 let src = escape(
@@ -1638,7 +1648,7 @@ impl HtmlRenderer {
                 if node.children.is_empty() {
                     // Renderer-native controls (the default `VideoStyle`).
                     format!(
-                        "<video{data_id}{event}{aria}{binding} controls{style}></video>"
+                        "<video{data_id}{event}{aria} class=\"pathland-video\"{binding} controls{style}></video>"
                     )
                 } else {
                     // A custom `VideoStyle` body: the children are the control UI.
@@ -1712,7 +1722,7 @@ if indeterminate {
                     let value = node.f32_property(property_id::PROGRESS, 0.0);
                     let max = node.f32_property(property_id::MAX_VALUE, 1.0);
                     format!(
-                        "<progress{data_id}{event}{aria} value=\"{value}\" max=\"{max}\"{style}></progress>"
+                        "<progress{data_id}{event}{aria} class=\"pathland-progress\" value=\"{value}\" max=\"{max}\"{style}></progress>"
                     )
                 }
             }
@@ -1972,7 +1982,7 @@ if indeterminate {
                     },
                     None => ("date", String::new()),
                 };
-                format!("<input{data_id}{event}{aria} type=\"{t}\" value=\"{value}\"{style}>")
+                format!("<input{data_id}{event}{aria} class=\"pathland-date pathland-control\" type=\"{t}\" value=\"{value}\"{style}>")
             }
             component_type::PICKER => {
                 let selected = node.u32_property(property_id::SELECTION, 0);
@@ -1995,7 +2005,7 @@ if indeterminate {
                         )
                     })
                     .collect();
-                format!("<select{data_id}{event}{aria}{style}>{options}</select>")
+                format!("<select{data_id}{event}{aria} class=\"pathland-select pathland-control\"{style}>{options}</select>")
             }
             component_type::MENU => {
                 // Composite shell matching the DOM client's `menuShell()`
@@ -2017,7 +2027,7 @@ if indeterminate {
                     (color >> 8) & 0xFF,
                     color & 0xFF
                 );
-                format!("<input{data_id}{event}{aria} type=\"color\" value=\"{hex}\"{style}>")
+                format!("<input{data_id}{event}{aria} class=\"pathland-color pathland-control\" type=\"color\" value=\"{hex}\"{style}>")
             }
             component_type::COMMENT => String::new(),
             _ => String::new(),
@@ -2118,7 +2128,7 @@ fn style_attr(css: &str) -> String {
     }
 }
 
-/// A `class="…"` attribute for a non-empty Tailwind class list.
+/// A `class="…"` attribute for a non-empty class list.
 fn class_attr(classes: &str) -> String {
     let classes = classes.trim();
     if classes.is_empty() {
@@ -2453,7 +2463,7 @@ mod tests {
         let html = renderer.render_document(&opcodes, &strings, 1);
 
         assert!(html.contains(
-            "<input type=\"range\" min=\"0\" max=\"1\" step=\"any\" value=\"0.5\">"
+            "<input type=\"range\" min=\"0\" max=\"1\" step=\"any\" value=\"0.5\" style=\"--pl-slider-fill:50%\">"
         ));
         assert!(html.contains("<span class=\"pathland-text\">Volume</span>"));
     }
@@ -2505,7 +2515,7 @@ mod tests {
         assert!(html.contains("class=\"pathland-textfield\""));
         assert!(html.contains("<span class=\"pathland-label\">Name:</span>"));
         assert!(html.contains(
-            "<input class=\"pathland-input\" type=\"text\" value=\"Bob\" placeholder=\"Enter\">"
+            "<input class=\"pathland-input pathland-control\" type=\"text\" value=\"Bob\" placeholder=\"Enter\">"
         ));
     }
 
@@ -2700,7 +2710,7 @@ mod tests {
         assert!(img.contains("object-fit:cover;"), "ContentMode Fill -> cover");
         let video = renderer.render_fragment(&opcodes, &strings, 2);
         assert!(
-            video.contains("<video data-pathland-id=\"2\" data-pathland-controller=\"9\" controls"),
+            video.contains("<video data-pathland-id=\"2\" class=\"pathland-video\" data-pathland-controller=\"9\" controls"),
             "video surface binds its controller and renders native controls: {video}"
         );
     }
@@ -3034,7 +3044,9 @@ mod tests {
         ));
 
         let renderer = HtmlRenderer::new();
-        assert!(renderer.render_document(&opcodes, &[], 1).contains("<progress"));
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("<progress"));
+        assert!(html.contains("class=\"pathland-progress\""));
         assert!(renderer.render_document(&opcodes, &[], 2).contains("pathland-spinner"));
     }
 
@@ -3047,7 +3059,7 @@ mod tests {
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
-        assert!(html.contains("<input data-pathland-id=\"1\" type=\"date\" value=\"2024-01-01\">"));
+        assert!(html.contains("<input data-pathland-id=\"1\" class=\"pathland-date pathland-control\" type=\"date\" value=\"2024-01-01\">"));
     }
 
     #[test]
@@ -3074,6 +3086,7 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
         assert!(html.contains("<select"));
+        assert!(html.contains("class=\"pathland-select pathland-control\""));
         assert!(html.contains("<option data-pathland-id=\"2\" value=\"0\" selected>Red</option>"));
     }
 
@@ -3102,7 +3115,7 @@ mod tests {
         ));
 
         let renderer = HtmlRenderer::new();
-        assert!(renderer.render_document(&opcodes, &[], 1).contains("<input data-pathland-id=\"1\" type=\"color\" value=\"#0000ff\">"));
+        assert!(renderer.render_document(&opcodes, &[], 1).contains("<input data-pathland-id=\"1\" class=\"pathland-color pathland-control\" type=\"color\" value=\"#0000ff\">"));
         assert!(renderer.render_document(&opcodes, &[], 2).contains("background-color:rgba(0,0,255,1)"));
     }
 
@@ -3624,7 +3637,7 @@ mod tests {
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
-        assert!(html.contains("<input class=\"pathland-input\" type=\"password\""));
+        assert!(html.contains("<input class=\"pathland-input pathland-control\" type=\"password\""));
     }
 
     #[test]
@@ -3865,6 +3878,29 @@ mod tests {
         assert!(css.contains("outline: 1px solid var(--pl-input-border)"), "inset outline instead of border");
         assert!(css.contains("outline-offset: -1px"), "inset ring");
         assert!(css.contains("--pl-input-focus"), "input focus token");
+        // Native controls inherit the preflight + design-token surface.
+        for selector in [
+            ".pathland-control",
+            ".pathland-select",
+            ".pathland-date",
+            ".pathland-color",
+            ".pathland-progress",
+            ".pathland-video",
+        ] {
+            assert!(css.contains(selector), "native control selector {selector}");
+        }
+        assert!(css.contains("::-webkit-progress-value"), "native progress fill");
+        assert!(css.contains("--pl-progress-fill"), "progress fill token");
+        assert!(css.contains("accent-color: var(--pl-control-accent)"), "control accent inherited");
+        // Range slider: custom track/fill/thumb, not native chrome.
+        assert!(css.contains("::-webkit-slider-runnable-track"), "webkit range track");
+        assert!(css.contains("::-webkit-slider-thumb"), "webkit range thumb");
+        assert!(css.contains("::-moz-range-track"), "firefox range track");
+        assert!(css.contains("::-moz-range-progress"), "firefox range fill");
+        assert!(css.contains("::-moz-range-thumb"), "firefox range thumb");
+        assert!(css.contains("var(--pl-slider-fill)"), "range fill variable");
+        assert!(css.contains("--pl-slider-track"), "range track token");
+        assert!(css.contains("--pl-slider-thumb"), "range thumb token");
     }
 
     #[test]
@@ -4037,7 +4073,7 @@ mod tests {
         opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0));
 
         let html = HtmlRenderer::new().render_document(&opcodes, &strings, 1);
-        // Arbitrary numbers inline; enum-derived stays a Tailwind class.
+        // Arbitrary numbers inline; enum-derived values are inline too.
         assert!(html.contains("font-size:18px"), "font-size inline: {}", html);
         assert!(html.contains("font-weight:700"), "font-weight inline");
         assert!(html.contains("border-radius:8px"), "border-radius inline");

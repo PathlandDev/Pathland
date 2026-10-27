@@ -81,7 +81,7 @@ import {
 import type { Batch, Opcode } from "./plpl";
 import { readList, readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
-import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
+import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty, updateRangeFill } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
   encodeFittedChanged,
   encodeMediaDurationChanged,
@@ -1097,6 +1097,9 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       if (range && !isRangeInFlight(range)) {
         range.value = String(f32FromBits(bits));
       }
+      if (range) {
+        updateRangeFill(range);
+      }
       const stepText = el.querySelector(".pathland-stepper span");
       if (stepText) {
         stepText.textContent = String(Math.round(f32FromBits(bits) * 100) / 100);
@@ -1233,13 +1236,18 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
         return p;
       })();
   for (const attr of Array.from(el.attributes)) {
-    // A spinner is a plain div — it carries no `max`/`value` (the Rust SSR
-    // renderer's `<div class="pathland-spinner">`).
+    // The shape owns its class (`pathland-spinner` / `pathland-progress`);
+    // copying the old class would overwrite the fresh shell. A spinner is a
+    // plain div — it carries no `max`/`value` (mirroring the Rust SSR markup).
+    if (attr.name === "class") {
+      continue;
+    }
     if (wantSpinner && (attr.name === "max" || attr.name === "value")) {
       continue;
     }
     fresh.setAttribute(attr.name, attr.value);
   }
+  fresh.className = wantSpinner ? "pathland-spinner" : "pathland-progress";
   if (el.parentNode) {
     el.parentNode.replaceChild(fresh, el);
   }

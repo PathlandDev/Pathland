@@ -40,7 +40,9 @@ import {
   PROP_IS_INDETERMINATE,
   PROP_LABEL,
   PROP_LINE_LIMIT,
+  PROP_MAX_VALUE,
   PROP_MEDIA_POSITION,
+  PROP_MIN_VALUE,
   PROP_NAV_CHROME,
   PROP_PLAYBACK_STATE,
   PROP_NAV_DEPTH,
@@ -397,17 +399,20 @@ describe("applyBatch · STYLE", () => {
     expect(box.checked).toBe(true);
   });
 
-  it("applies VALUE to a slider", () => {
+  it("applies VALUE to a slider and updates the tokenized fill", () => {
     const slider = document.createElement("label");
     slider.className = "pathland-slider";
     const range = document.createElement("input");
     range.type = "range";
+    range.min = "0";
+    range.max = "1";
     slider.appendChild(range);
     const r = renderer();
     r.byId.set(6, slider);
     const bits = new Uint32Array(new Float32Array([0.75]).buffer)[0]!;
     applyBatch(parseBatch(buildBatch([[CAT_PARAMETER, 1, 0, 6, (0 << 16) | PROP_VALUE, bits]])), r);
     expect(range.value).toBe("0.75");
+    expect(range.style.getPropertyValue("--pl-slider-fill")).toBe("75%");
   });
 
   it("suppresses VALUE while a slider is being dragged (in-flight)", () => {
@@ -415,6 +420,8 @@ describe("applyBatch · STYLE", () => {
     slider.className = "pathland-slider";
     const range = document.createElement("input");
     range.type = "range";
+    range.min = "0";
+    range.max = "1";
     range.value = "0.3";
     slider.appendChild(range);
     const r = renderer();
@@ -427,11 +434,42 @@ describe("applyBatch · STYLE", () => {
     markRangeInFlight(range);
     applyBatch(batch(), r);
     expect(range.value).toBe("0.3");
+    expect(range.style.getPropertyValue("--pl-slider-fill")).toBe("30%");
 
     // On release, inbound VALUE applies again.
     clearInFlightRange();
     applyBatch(batch(), r);
     expect(range.value).toBe("0.75");
+    expect(range.style.getPropertyValue("--pl-slider-fill")).toBe("75%");
+  });
+
+  it("recomputes the slider fill when MIN_VALUE/MAX_VALUE change", () => {
+    const slider = document.createElement("label");
+    slider.className = "pathland-slider";
+    const range = document.createElement("input");
+    range.type = "range";
+    range.min = "0";
+    range.max = "10";
+    range.value = "5";
+    slider.appendChild(range);
+    const r = renderer();
+    r.byId.set(6, slider);
+
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, 1, 0, 6, (VAL_F32 << 16) | PROP_MAX_VALUE, f32bits(20)]]),
+      ),
+      r,
+    );
+    expect(range.style.getPropertyValue("--pl-slider-fill")).toBe("25%");
+
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, 1, 0, 6, (VAL_F32 << 16) | PROP_MIN_VALUE, f32bits(5)]]),
+      ),
+      r,
+    );
+    expect(range.style.getPropertyValue("--pl-slider-fill")).toBe("0%");
   });
 });
 

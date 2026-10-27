@@ -16,11 +16,12 @@ hydration client (zero runtime dependencies) that:
 - **Negotiates** the protocol version (mismatch → reload) and **reconnects**
   with exponential backoff.
 
-Styling is **Option A**: the protocol stays renderer-agnostic; the SSR HTML
-carries Tailwind classes (server-compiled), and runtime style deltas are applied
-as inline style (overriding the current value), with literal colors inline and
-semantic design tokens as CSS variables. The DOM renderer owns the bounded
-property → style/class map (`src/classes.ts`).
+Styling is renderer-owned: the protocol stays renderer-agnostic. The SSR HTML
+carries a Tailwind-derived preflight plus a tokenized built-in design system
+(`--pl-*` CSS variables); per-node values are inline style, with literal colors
+inline and semantic design tokens as CSS variables. Native browser controls
+inherit the same preflight + design tokens through `.pathland-*` classes. The
+DOM renderer owns the bounded property → style map (`src/classes.ts`).
 
 ## Layout
 

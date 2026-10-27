@@ -94,6 +94,27 @@ Statelessness). Protocol contract: `spec/`.
   bytes never ride the opcode stream.
 - **Composite override mode**: `BUTTON`/`TOGGLE`/`SLIDER` with children render
   the custom body wrapped in the native element.
+- **Native browser controls inherit the design system**: the Tailwind-derived
+  preflight stays the base reset, and every native form control carries a
+  `pathland-*` class styled from design tokens:
+  - text fields/editors: `.pathland-input.pathland-control`;
+  - `PICKER` → `.pathland-select.pathland-control` (native dropdown arrow kept,
+    tokenized field + options);
+  - `DATE_PICKER` / `COLOR_PICKER` → `.pathland-date` / `.pathland-color` with
+    `.pathland-control` (tokenized surface, inherited `color-scheme`,
+    `accent-color`);
+  - `SLIDER` → `.pathland-slider` with a renderer-owned track/thumb
+    (`slider.track` / `slider.accent` / `slider.thumb`), no native range chrome;
+    the `--pl-slider-fill` custom property is emitted inline for first paint and
+    kept in sync by the DOM client (value/min/max/input). The native range input
+    remains for keyboard/pointer interaction and accessibility;
+  - `PROGRESS_VIEW` → `.pathland-progress` with tokenized WebKit/Mozilla
+    track/fill pseudo-elements;
+  - `VIDEO` → `.pathland-video` (and `.pathland-media` for custom bodies) with
+    surface/radius/accent tokens.
+  Inline opcode properties still override the base classes. Native `<select>`
+  popups, date/color dialogs, and `<video>` controls remain UA shadow DOM, so
+  their internals are best-effort; app-driven media is fully themeable.
 - **Properties**: `ALIGNMENT` (cross-axis **position** — the default is hug
   (`flex-start`), never CSS `align-items:stretch`, per `spec/LAYOUT.md`; only
   `FILL`-sized children stretch via their `100%` size), `CONTENT_MARGINS`,

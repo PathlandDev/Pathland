@@ -30,6 +30,7 @@ sub, sup { font-size: 75%; line-height: 0; position: relative; vertical-align: b
 sub { bottom: -0.25em; } sup { top: -0.5em; }
 table { text-indent: 0; border-color: inherit; border-collapse: collapse; }
 button, input, optgroup, select, textarea { font-family: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-size: 100%; font-weight: inherit; line-height: inherit; letter-spacing: inherit; color: inherit; margin: 0; padding: 0; }
+progress, video { font: inherit; color: inherit; }
 button, select { text-transform: none; }
 button, [type='button'], [type='reset'], [type='submit'] { -webkit-appearance: button; background-color: transparent; background-image: none; }
 :-moz-focusring { outline: auto; }
@@ -415,10 +416,77 @@ body  {
 .pathland-toggle input[role='switch']:checked::after { left: 1.375rem; }
 .pathland-toggle input[role='switch']:focus-visible { outline: 2px solid var(--pl-toggle-accent); outline-offset: 2px; }
 
-/* ===== Slider ===== */
+/* ===== Slider =====
+   A renderer-owned range: the native input stays for keyboard/pointer
+   interaction and accessibility, but its track, fill, and thumb are drawn from
+   design tokens (`slider.track`, `slider.accent`, `slider.thumb`). The fill
+   custom property is set inline by SSR and kept in sync by the DOM client. */
 .pathland-slider { display: inline-flex; align-items: center; gap: 0.625rem; }
-.pathland-slider input[type='range'] { flex: 1; accent-color: var(--pl-slider-accent); }
-.pathland-slider input[type='range']:focus-visible { outline: 2px solid var(--pl-slider-accent); outline-offset: 2px; }
+.pathland-slider input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  height: 1.25rem;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--pl-slider-accent);
+  --pl-slider-fill: 0%;
+}
+.pathland-slider input[type='range']::-webkit-slider-runnable-track {
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--pl-slider-accent) 0%,
+    var(--pl-slider-accent) var(--pl-slider-fill),
+    var(--pl-slider-track) var(--pl-slider-fill),
+    var(--pl-slider-track) 100%
+  );
+}
+.pathland-slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.3125rem;
+  border: 1px solid var(--pl-slider-track);
+  border-radius: 9999px;
+  background: var(--pl-slider-thumb);
+  box-shadow: var(--pl-elevation-low-x) var(--pl-elevation-low-y)
+    var(--pl-elevation-low-blur) var(--pl-elevation-low-radius)
+    var(--pl-elevation-low-color);
+}
+.pathland-slider input[type='range']::-moz-range-track {
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--pl-slider-track);
+}
+.pathland-slider input[type='range']::-moz-range-progress {
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--pl-slider-accent);
+}
+.pathland-slider input[type='range']::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--pl-slider-track);
+  border-radius: 9999px;
+  background: var(--pl-slider-thumb);
+  box-shadow: var(--pl-elevation-low-x) var(--pl-elevation-low-y)
+    var(--pl-elevation-low-blur) var(--pl-elevation-low-radius)
+    var(--pl-elevation-low-color);
+}
+.pathland-slider input[type='range']:focus-visible {
+  outline: 2px solid var(--pl-slider-accent);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+.pathland-slider input[type='range']:disabled {
+  cursor: default;
+  opacity: var(--pl-opacity-disabled);
+}
 
 /* ===== Media (custom AudioStyle/VideoStyle) ===== */
 /* A media node with custom control children wraps a bare (control-less) media
@@ -428,28 +496,99 @@ body  {
 .pathland-media audio,
 .pathland-media video { display: none; }
 
-/* ===== Text field / editor ===== */
-.pathland-textfield { display: inline-flex; align-items: center; gap: 0.5rem; }
-.pathland-textfield .pathland-label { flex: none; }
+/* ===== Native controls (inherit Tailwind-derived preflight + tokens) ===== */
+/* Every native form control shares the design-system surface: the Tailwind
+   preflight supplies the font/color reset, these tokens supply the visual base.
+   App-authored inline properties (WIDTH/HEIGHT/PADDING/COLOR/…) still win. */
+.pathland-control,
 .pathland-input {
-  display: block;
-  width: 100%;
-  flex: 1 1 auto;
-  min-width: 0;
   border-radius: var(--pl-input-radius);
   background-color: var(--pl-input-background);
-  padding: 0.375rem 0.75rem;
+  font-family: inherit;
   font-size: var(--pl-input-font-size);
   line-height: 1.5rem;
   color: var(--pl-input-foreground);
   outline: 1px solid var(--pl-input-border);
   outline-offset: -1px;
   transition: outline-color 120ms, box-shadow 120ms;
+  accent-color: var(--pl-control-accent);
+  color-scheme: inherit;
 }
-.pathland-input::placeholder { color: var(--pl-input-placeholder); }
-.pathland-input:focus {
+.pathland-control {
+  min-height: var(--pl-control-height);
+  padding: var(--pl-control-padding-vertical) var(--pl-control-padding-horizontal);
+}
+.pathland-input {
+  display: block;
+  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.375rem 0.75rem;
+}
+.pathland-input::placeholder,
+.pathland-control::placeholder { color: var(--pl-input-placeholder); }
+.pathland-input:focus,
+.pathland-control:focus {
   outline: 2px solid var(--pl-input-focus);
   outline-offset: -2px;
+}
+.pathland-control:disabled { opacity: var(--pl-opacity-disabled); }
+
+/* PICKER: keep the native dropdown affordance; theme the field + options. */
+.pathland-select { display: inline-block; cursor: pointer; }
+.pathland-select option {
+  background-color: var(--pl-input-background);
+  color: var(--pl-input-foreground);
+}
+
+/* DATE_PICKER / COLOR_PICKER: the popup itself is UA-owned; the field surface,
+   scheme, and picker highlights follow the design system. */
+.pathland-date,
+.pathland-color { display: inline-flex; align-items: center; }
+.pathland-color { padding: var(--pl-control-padding-vertical); }
+.pathland-color::-webkit-color-swatch-wrapper { padding: 0; }
+.pathland-color::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--pl-input-radius) - 2px);
+}
+
+/* PROGRESS_VIEW: tokenized track/fill across engines. */
+.pathland-progress {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 0.625rem;
+  border: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: var(--pl-progress-track);
+  color: var(--pl-progress-fill);
+  accent-color: var(--pl-progress-fill);
+}
+.pathland-progress::-webkit-progress-bar {
+  background-color: var(--pl-progress-track);
+  border-radius: 9999px;
+}
+.pathland-progress::-webkit-progress-value {
+  background-color: var(--pl-progress-fill);
+  border-radius: 9999px;
+}
+.pathland-progress::-moz-progress-bar {
+  background-color: var(--pl-progress-fill);
+  border-radius: 9999px;
+}
+
+/* VIDEO: native controls are UA shadow DOM (best-effort scheme/accent only);
+   app-driven media (`.pathland-media` + custom controls) is fully themeable. */
+.pathland-video,
+.pathland-media {
+  max-width: 100%;
+  background-color: var(--pl-color-surface);
+  color: var(--pl-color-text-primary);
+  border-radius: var(--pl-control-radius);
+  accent-color: var(--pl-control-accent);
+  color-scheme: inherit;
 }
 
 /* ===== Stepper ===== */

@@ -262,6 +262,16 @@ function applyIndeterminate(el: HTMLElement, on: boolean): void {
   }
 }
 
+/** Keep the tokenized range track fill in sync with the native input value.
+ *  Mirrors the Rust SSR renderer's inline `--pl-slider-fill` percentage. */
+export function updateRangeFill(input: HTMLInputElement): void {
+  const min = input.min === "" ? 0 : Number(input.min);
+  const max = input.max === "" ? 100 : Number(input.max);
+  const value = input.value === "" ? min : Number(input.value);
+  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  input.style.setProperty("--pl-slider-fill", Math.round(Math.min(100, Math.max(0, pct))) + "%");
+}
+
 function applyStepValue(el: HTMLElement, value: number): void {
   const range = el.querySelector<HTMLInputElement>("input[type=range]");
   if (range) {
@@ -283,6 +293,7 @@ function applyRangeBounds(el: HTMLElement, property: number, value: number): voi
     } else if (property === P.PROP_MAX_VALUE) {
       input.max = String(value);
     }
+    updateRangeFill(input);
   }
   // Range bounds are also mirrored onto the composite shells that carry them as
   // `data-min`/`data-max` (stepper click math, gauge percentage), matching the

@@ -8,6 +8,7 @@ import { hydrateFitElement, refreshFitSlots, retryPendingPlay, setupMediaElement
 import { Transport, shouldInitialResync } from "./transport";
 import { log } from "./log";
 import { clearInFlightRange, markRangeInFlight } from "./inFlight";
+import { updateRangeFill } from "./classes";
 import {
   encodeDateChanged,
   encodeEditingChanged,
@@ -483,19 +484,25 @@ function boot(): void {
 
   // Sliders report live while dragging; text fields/editors report live while typing.
   document.addEventListener("input", (event) => {
-    if (!transport.open) {
-      return;
-    }
     const target = event.target as Element | null;
     if (!target) {
       return;
     }
     const slider = target.closest<HTMLInputElement>("input[type=range]");
     if (slider) {
+      // The tokenized track fill is local presentation — update it even when
+      // the transport is down; only the event report needs an open socket.
+      updateRangeFill(slider);
+      if (!transport.open) {
+        return;
+      }
       const label = slider.closest<HTMLElement>("label.pathland-slider[data-pathland-id]");
       if (label) {
         transport.send(encodeValueChanged(Number(label.getAttribute("data-pathland-id")), Number(slider.value)));
       }
+      return;
+    }
+    if (!transport.open) {
       return;
     }
     const textarea = target.closest<HTMLTextAreaElement>("textarea[data-pathland-id]");
