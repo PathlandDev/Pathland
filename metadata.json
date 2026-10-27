@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M5ZBZACQEPNM1T9QMCTRCSJ9",
+  "strategy": "manual-commit",
+  "branch": "feat/theming-gaps",
+  "checkpoints_count": 8,
+  "files_touched": [
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-2da7368af3e1.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-a7c877fcbd6f.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-2da7368af3e1.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-a7c877fcbd6f.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/rust/crates/pathland-html-golden/src/lib.rs",
+    "lib/rust/crates/pathland-html-golden/status.md",
+    "lib/rust/crates/pathland-render-html/src/css.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/typescript/README.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/classes.ts",
+    "lib/typescript/src/elements.ts",
+    "lib/typescript/src/index.ts",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/classes.test.ts",
+    "lib/typescript/test/elements.test.ts",
+    "lib/typescript/test/fixtures/ssr/composite_controls.html",
+    "lib/typescript/test/fixtures/ssr/form.html",
+    "lib/typescript/test/fixtures/ssr/media.html",
+    "lib/typescript/test/fixtures/ssr/native_controls.html",
+    "lib/typescript/test/fixtures/ssr/native_controls.plpl",
+    "lib/typescript/test/ssr-conformance.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 610916,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 51992960,
+    "output_tokens": 28829,
+    "api_call_count": 125
+  }
+}
