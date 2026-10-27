@@ -198,6 +198,8 @@ and launches:
 | `./scripts/run-quarkus-demo.sh` | Quarkus SSR + WebSocket (hot reload) | http://localhost:8080 |
 | `./scripts/run-rust-gtk-demo.sh` | Rust DSL → GTK4 desktop renderer | a native window |
 | `./scripts/run-java-gtk-demo.sh` | Java DSL → GTK4 desktop renderer (the shared `SplitNavDemo`) | a native window |
+| `./lib/typescript/scripts/run-profile-card-demo.sh` | TypeScript view DSL → wasm SSR + WebSocket | http://127.0.0.1:4317 |
+| `./lib/typescript/scripts/run-music-player-demo.sh` | TypeScript music player → app-driven media + deltas | http://127.0.0.1:4318 |
 
 ```bash
 # e.g. the Spring Boot demo
@@ -207,6 +209,8 @@ and launches:
 Notes:
 - The web demos need a JDK 17+ (the whole stack runs on every LTS from 17).
 - The GTK demos need the GTK4 + libadwaita system libraries.
+- The TypeScript demos need Node 20+ (pnpm via corepack) and the Rust
+  `wasm32-unknown-unknown` target for the SSR renderer.
 - On macOS the Java GTK demo hands GTK the main thread automatically
   (`-XstartOnFirstThread`); Linux needs nothing special.
 
@@ -237,6 +241,17 @@ MAVEN_OPTS="-XstartOnFirstThread" mvn -q compile exec:java \
   -Dpathland.core.lib=$PWD/../../lib/rust/target/debug/libpathland_core.dylib \
   -Dpathland.gtk.lib=$PWD/../../lib/rust/target/debug/libpathland_gtk.dylib
 # (macOS needs -XstartOnFirstThread; Linux can drop it)
+
+# TypeScript view DSL → server-owned runtime → wasm SSR + WebSocket deltas
+cd lib/typescript
+corepack pnpm install
+corepack pnpm server:build:all    # wasm SSR + DOM bundle + example asset copy
+corepack pnpm --filter @pathland/example-profile-card start
+# → http://127.0.0.1:4317
+
+# TypeScript music player: library + now-playing sidebar + app-driven audio
+corepack pnpm --filter @pathland/example-music-player start
+# → http://127.0.0.1:4318
 ```
 
 ## The technical details

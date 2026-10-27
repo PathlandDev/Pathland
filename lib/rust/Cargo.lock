@@ -685,6 +685,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pathland-render-html-wasm"
+version = "0.1.5"
+dependencies = [
+ "pathland-core",
+ "pathland-core-transport",
+ "pathland-render-html",
+]
+
+[[package]]
 name = "pathland-render-qt"
 version = "0.1.5"
 dependencies = [

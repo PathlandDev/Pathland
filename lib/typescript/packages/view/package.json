@@ -1,0 +1,27 @@
+{
+  "name": "@pathland/view",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./primitives": "./src/primitives.ts",
+    "./modifiers": "./src/modifiers.ts",
+    "./element": "./src/element.ts",
+    "./context": "./src/context.ts",
+    "./media": "./src/media.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pathland/protocol": "workspace:*",
+    "@pathland/signals": "workspace:*",
+    "@pathland/state": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

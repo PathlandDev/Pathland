@@ -46,6 +46,27 @@ npm run build     # tsc --noEmit + esbuild -> dist/pathland-dom-renderer.js (IIF
 npm run copy-to-demos   # copy the bundle into both Java demos' static dirs
 ```
 
+## Server workspace
+
+`lib/typescript` is also the root of the pnpm workspace for the server-side
+TypeScript view DSL and runtime:
+
+```
+packages/{protocol,signals,state,view,engine,ssr,server}/
+examples/{profile-card,music-player}/
+```
+
+```bash
+cd lib/typescript
+corepack pnpm install
+corepack pnpm server:build:wasm       # Rust HTML renderer → wasm
+corepack pnpm server:build:client     # this DOM bundle
+corepack pnpm server:copy:client      # content-hashed bundle into the examples
+corepack pnpm -r typecheck
+corepack pnpm -r test
+corepack pnpm server:e2e              # profile-card + music-player
+```
+
 The per-window-id service worker has a real-browser E2E (Chromium + WebKit) — the
 worker-engine differences (e.g. WebKit reporting an empty `clientId` on navigations)
 are invisible to jsdom, so they are guarded here:

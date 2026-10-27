@@ -90,10 +90,12 @@ jobs:
         run: |
           cargo run -p pathland-ts-codegen
           cargo run -p pathland-html-golden -- --emit
-          git diff --exit-code -- \
+          repo_root="$(git rev-parse --show-toplevel)"
+          git -C "$repo_root" diff --exit-code -- \
             lib/typescript/src/constants.ts \
             lib/typescript/src/generated \
-            lib/typescript/test/fixtures/ssr
+            lib/typescript/test/fixtures/ssr \
+            lib/typescript/packages/protocol/src/constants.ts
 
       - name: Build the C ABI (cdylib, used by the Java JNA ring interop / native hosts)
         working-directory: lib/rust
@@ -116,6 +118,77 @@ jobs:
           name: pathland-render-html-native
           path: lib/rust/target/debug/libpathland_render_html.so
           retention-days: 1
+
+      # The TypeScript SSR server loads the Rust HTML renderer compiled to wasm.
+      - name: Build the HTML renderer wasm wrapper
+        run: bash lib/typescript/scripts/build-wasm.sh
+
+      - name: Upload the SSR wasm for the typescript-server job
+        uses: actions/upload-artifact@v4
+        with:
+          name: pathland-render-html-wasm
+          path: lib/typescript/packages/ssr/wasm/pathland_render_html.wasm
+          retention-days: 1
+
+  typescript-server:
+    name: TypeScript view + server (SSR, WS, example)
+    runs-on: ubuntu-latest
+    needs: [rust]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: lib/typescript/pnpm-lock.yaml
+
+      - name: Install the workspace
+        working-directory: lib/typescript
+        run: pnpm install --frozen-lockfile
+
+      - name: Download the SSR wasm
+        uses: actions/download-artifact@v4
+        with:
+          name: pathland-render-html-wasm
+          path: lib/typescript/packages/ssr/wasm
+
+      - name: Typecheck the TypeScript packages
+        working-directory: lib/typescript
+        run: pnpm -r typecheck
+
+      - name: Test the TypeScript packages
+        working-directory: lib/typescript
+        run: pnpm -r test
+
+      - name: Build the existing DOM client bundle
+        working-directory: lib/typescript
+        run: pnpm run build
+
+      - name: Copy the hydrated client into the examples
+        working-directory: lib/typescript
+        run: pnpm server:copy:client
+
+      - name: Verify the example client bundles are current
+        run: git diff --exit-code -- lib/typescript/examples/profile-card/public lib/typescript/examples/music-player/public
+
+      - name: Install Playwright Chromium
+        working-directory: lib/typescript
+        run: pnpm --filter @pathland/example-profile-card exec playwright install --with-deps chromium
+
+      - name: Profile-card SSR + hydration E2E
+        working-directory: lib/typescript
+        run: pnpm --filter @pathland/example-profile-card test:e2e
+
+      - name: Music-player SSR + media E2E
+        working-directory: lib/typescript
+        run: pnpm --filter @pathland/example-music-player test:e2e
 
   java:
     name: Java (Maven reactor, JDK ${{ matrix.java }})

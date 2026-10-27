@@ -20,6 +20,16 @@ lib/java/**/target/
 
 # Ad-hoc node installs (Entire CLI hooks)
 /node_modules/
+lib/typescript/node_modules/
+lib/typescript/packages/*/node_modules/
+lib/typescript/examples/*/node_modules/
+lib/typescript/packages/*/coverage/
+lib/typescript/examples/*/coverage/
+lib/typescript/examples/*/test-results/
+lib/typescript/examples/*/playwright-report/
+
+# Generated TypeScript server wasm (run `pnpm server:build:wasm`)
+lib/typescript/packages/ssr/wasm/*.wasm
 
 # JVM crash logs
 hs_err_pid*.log

@@ -2,7 +2,7 @@
 
 This document provides essential context for AI agents (or human contributors) working on the **Pathland** protocol. It captures the project's direction, architectural decisions, and implementation details to ensure consistency.
 
-**Last Updated**: August 21, 2026
+**Last Updated**: October 22, 2026
 
 ---
 
@@ -99,6 +99,9 @@ crates/pathland-render-qt/ # RENDERER (hybrid Rust + C++) — maps opcode frames
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
 #   stacks, spans, buttons) as a pure function of the stream; the
                            #   server-side/remote-projection target (Goal #15).
+crates/pathland-render-html-wasm/ # WASM WRAPPER — the Rust HTML renderer compiled to
+                           #   wasm32-unknown-unknown for the TypeScript SSR server.
+                           #   The wasm file is a build output (`cd lib/typescript && pnpm server:build:wasm`).
 # ── Web client (DOM renderer, lib/typescript) ──────────────────────────────
 lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer: a small
                            #   vanilla-TypeScript hydration client (no runtime deps):
@@ -174,6 +177,13 @@ lib/java/
 
 - Test: `cd lib/rust && cargo test` (runs all crates).
 - Build/test the Java libraries: `cd lib/java && mvn install`.
+- Install/typecheck/test the TypeScript workspace (from `lib/typescript`):
+  `corepack pnpm install && corepack pnpm server:build:wasm && corepack pnpm -r typecheck && corepack pnpm -r test`.
+- Build the SSR wasm + browser bundle: `cd lib/typescript && corepack pnpm server:build:all`.
+- Run the TypeScript examples (from `lib/typescript`):
+  `corepack pnpm --filter @pathland/example-profile-card start` (http://127.0.0.1:4317),
+  `corepack pnpm --filter @pathland/example-music-player start` (http://127.0.0.1:4318),
+  or `corepack pnpm --filter @pathland/example-<name> test:e2e`.
 - Run the GTK demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-gtk-demo`.
 - Run the Qt Quick demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-qt-demo`
   (needs Qt6 dev libs — Homebrew: `brew install qtbase qtdeclarative`; on macOS point `QMAKE`
@@ -361,6 +371,38 @@ tests (golden byte layout + round-trips), replacing the old codegen assert pass.
   a plain, non-reactive property (no binding/effect), so statics carry zero
   binding overhead. Controls' config fields for *distinct* properties
   (`min`/`max`/`step`/`placeholder`/`mode`/`style`) stay raw.
+
+### TypeScript view + server (`lib/typescript/packages/`, `lib/typescript/examples/`)
+
+Angular-like TypeScript authoring plus a server-owned runtime. The browser keeps
+using the existing `@pathland/dom-renderer`; the server mounts the retained tree,
+emits PLPL snapshots/deltas, and renders SSR HTML through the Rust HTML renderer
+compiled to wasm. Rust remains the wire/SSR source of truth — not the TS runtime.
+
+```
+lib/typescript/packages/protocol/  # @pathland/protocol — generated constants, BatchWriter/Reader, EVENT/META decode
+lib/typescript/packages/signals/   # @pathland/signals — callable signals, computed, effect, InputSignal
+lib/typescript/packages/state/     # @pathland/state — StateStore, MemoryStateStore, State, PersistentState
+lib/typescript/packages/view/      # @pathland/view — @view marker, elements, primitives, modifiers, AppContext
+lib/typescript/packages/engine/    # @pathland/engine — retained tree, FrameOpcodeSink, Emitter, InputDispatcher
+lib/typescript/packages/ssr/       # @pathland/ssr — wasm loader, page shell, bundle manifest
+lib/typescript/packages/server/    # @pathland/server — sessions, registry, batcher, WebSocket, Express, Nest
+lib/typescript/examples/profile-card/ # reference UserProfileCard + SSR/WS demo + Playwright e2e
+lib/typescript/examples/music-player/ # TS MusicPlayerView (library/now-playing/player bar) + app-driven media + e2e
+```
+
+- The pnpm workspace root is `lib/typescript`: it covers `packages/*` +
+  `examples/*` and also hosts the existing `@pathland/dom-renderer` client.
+- `@view` is a legacy decorator marker; `body(props)` is called once per session.
+- Phase 1 is static-tree only: signals update text/properties, not structure.
+  Structural/conditional reconciliation is the planned next phase.
+- Media: `MediaController` + `attach()` materialize a non-visual controller;
+  `Slider`/`Button`/`Icon` drive transport commands, and `MEDIA_*` reports feed
+  the controller signals. The music-player example is the reference.
+- Text fields bind `SET_TEXT` + `BINDING_ID` (not `VALUE`); `TEXT_CHANGED`
+  events write the bound `WritableSignal`.
+- The wasm wrapper's output pointer is valid only until the next render; the
+  wrapper copies the bytes immediately.
 
 ### POC Goals (issues #12–#18)
 
@@ -580,6 +622,8 @@ implementing project.
 
 **In progress**: —
 
+**TypeScript server (phase 1)**: complete — protocol/signals/state/view/engine packages, the Rust wasm SSR wrapper, `@pathland/ssr`, `@pathland/server` (sessions, registry, batcher, WebSocket, Express, Nest adapter), and the `lib/typescript/examples/profile-card` SSR + delta + Playwright demo plus the `lib/typescript/examples/music-player` app-driven media demo (library, now-playing sidebar, transport/seek/volume). Structural/conditional rendering and Redis state are deferred.
+
 **Planned / deferred**: value-control (slider/switch) editing + rendering, image rendering, cross-platform state backends beyond Redis + in-memory (File/SQLite for desktop, LocalStorage for browser/WASM, NVS Flash for ESP32 — the `StateStore` contract is already platform-neutral).
 
 ---
@@ -589,7 +633,8 @@ implementing project.
 1. Read this file and `spec/OPCODE.md`
 2. Run Rust tests: `cd lib/rust && cargo test` (runs all crates)
 3. Build/test the Java libraries: `cd lib/java && mvn install`
-4. Make small changes, verify they work
+4. TypeScript server: `cd lib/typescript && corepack pnpm install && corepack pnpm server:build:wasm && corepack pnpm -r typecheck && corepack pnpm -r test`
+5. Make small changes, verify they work
 
 ---
 

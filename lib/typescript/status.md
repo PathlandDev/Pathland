@@ -7,6 +7,10 @@ client (no runtime dependencies) that is the single source of the client,
 replacing the two duplicated `app.js` files in the demos. Protocol contract:
 `spec/`.
 
+This directory is also the root of the pnpm workspace for the server-side
+TypeScript view DSL/runtime (`packages/` + `examples/`); the browser client is
+the workspace root package.
+
 ## Implemented
 
 - **Single source, unified**: `src/` is the one client; `npm run build` emits

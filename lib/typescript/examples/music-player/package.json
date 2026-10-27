@@ -1,0 +1,33 @@
+{
+  "name": "@pathland/example-music-player",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test",
+    "pretest:e2e": "(test -f ../../packages/ssr/wasm/pathland_render_html.wasm || npm --prefix ../.. run server:build:wasm) && npm --prefix ../.. run server:build:client && npm --prefix ../.. run server:copy:client"
+  },
+  "dependencies": {
+    "@pathland/engine": "workspace:*",
+    "@pathland/protocol": "workspace:*",
+    "@pathland/server": "workspace:*",
+    "@pathland/signals": "workspace:*",
+    "@pathland/ssr": "workspace:*",
+    "@pathland/state": "workspace:*",
+    "@pathland/view": "workspace:*",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.19.43",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,15 @@
+[package]
+name = "pathland-render-html-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "WebAssembly wrapper for the Pathland HTML renderer (TypeScript SSR)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pathland-core = { path = "../pathland-core", version = "0.1.5" }
+pathland-core-transport = { path = "../pathland-core-transport", version = "0.1.5" }
+pathland-render-html = { path = "../pathland-render-html", version = "0.1.5" }

@@ -1,15 +1,17 @@
 # pathland-ts-codegen — implementation status
 
-**Last updated:** September 25, 2026
+**Last updated:** October 22, 2026
 
 Generates the TypeScript DOM renderer's protocol-derived files from the canonical
 Rust sources, so the TS side cannot drift silently.
 
 ## Implemented
 
-- **`constants.ts`** (`lib/typescript/src/constants.ts`): every wire constant is
+- **`constants.ts`** (`lib/typescript/src/constants.ts` and
+  `lib/typescript/packages/protocol/src/constants.ts`): every wire constant is
   bound to its `pathland_core::constants` source (a rename breaks compilation, a
-  revalue changes the emitted file); the protocol-semantic enum codes (alignment,
+  revalue changes the emitted file); the TypeScript server workspace gets the
+  same bytes for its `@pathland/protocol` package. The protocol-semantic enum codes (alignment,
   shape kind, state, …) are enumerated from `spec/` — `ROLE_*` is bound to
   `pathland_core::constants::role` (the semantic-only catalog, dense 0–13) and
   `TEXT_STYLE_*` to `pathland_core::constants::text_style`.
@@ -37,6 +39,7 @@ Rust sources, so the TS side cannot drift silently.
   source SSR inlines from), so glyph parity between SSR and the client is
   guaranteed by the single Rust source, not by a mirrored TS map.
 - **`npm run regen`** (`lib/typescript/scripts/regen.mjs`) runs both generators
+  (`lib/typescript/packages/protocol/src/constants.ts` is written by the same run)
   (and the golden-fixture emitter); CI's `rust` job runs them and fails on
   `git diff --exit-code` drift.
 

@@ -11,7 +11,14 @@
     "test:e2e": "esbuild src/service-worker.ts --bundle --format=esm --outfile=e2e/fixture/service-worker.bundle.js && playwright test",
     "copy-to-demos": "node scripts/copy-to-demos.mjs",
     "regen": "node scripts/regen.mjs",
-    "build:all": "npm run build && npm run copy-to-demos"
+    "build:all": "npm run build && npm run copy-to-demos",
+    "server:typecheck": "pnpm -r typecheck",
+    "server:test": "pnpm -r test",
+    "server:build:wasm": "bash scripts/build-wasm.sh",
+    "server:build:client": "npm run build",
+    "server:copy:client": "node scripts/copy-client.mjs",
+    "server:build:all": "npm run server:build:wasm && npm run server:build:client && npm run server:copy:client",
+    "server:e2e": "npm --prefix examples/profile-card run test:e2e && npm --prefix examples/music-player run test:e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
@@ -20,5 +27,9 @@
     "happy-dom": "^15.11.7",
     "typescript": "^5.6.3",
     "vitest": "^2.1.8"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
   }
 }

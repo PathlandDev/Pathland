@@ -24,6 +24,11 @@ pub fn constants_ts_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../typescript/src/constants.ts")
 }
 
+/// The TypeScript server workspace's copy of the protocol constants.
+pub fn protocol_constants_ts_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../typescript/packages/protocol/src/constants.ts")
+}
+
 /// The canonical source of the generated token conventions.
 pub fn tokens_core_ts_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../typescript/src/generated/tokens-core.ts")
@@ -649,7 +654,13 @@ pub fn emit_role_spec_ts() -> String {
 
 fn main() -> io::Result<()> {
     let consts = constants_ts_path();
-    std::fs::write(&consts, emit_constants_ts())?;
+    let emitted = emit_constants_ts();
+    std::fs::write(&consts, &emitted)?;
+    let protocol_consts = protocol_constants_ts_path();
+    if let Some(parent) = protocol_consts.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&protocol_consts, emitted)?;
     println!("wrote {}", consts.display());
     let tokens = tokens_core_ts_path();
     if let Some(parent) = tokens.parent() {

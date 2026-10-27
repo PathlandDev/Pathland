@@ -11,6 +11,7 @@ members = [
     "crates/pathland-render-gtk",
     "crates/pathland-render-gtk-demo",
     "crates/pathland-render-html",
+    "crates/pathland-render-html-wasm",
     "crates/pathland-html-golden",
     "crates/pathland-ts-codegen",
     "crates/pathland-render-qt",
