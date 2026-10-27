@@ -312,6 +312,23 @@ impl Node {
                 css.push_str(&format!("height:{};", size_css(v)));
             }
         }
+        // Frame bounds (SwiftUI `minWidth`/`idealWidth`/`maxWidth` and the
+        // height equivalents). The DOM client applies these after WIDTH/HEIGHT
+        // in the same order, so a player-bar frame `width(FILL).maxWidth(768)`
+        // is 768-wide on the very first SSR paint — not only after hydration.
+        // `IDEAL_*` maps onto the base size exactly like `classes.ts`.
+        for (prop, css_prop) in [
+            (property_id::MIN_WIDTH, "min-width"),
+            (property_id::IDEAL_WIDTH, "width"),
+            (property_id::MAX_WIDTH, "max-width"),
+            (property_id::MIN_HEIGHT, "min-height"),
+            (property_id::IDEAL_HEIGHT, "height"),
+            (property_id::MAX_HEIGHT, "max-height"),
+        ] {
+            if let Some(v) = f32p(prop) {
+                css.push_str(&format!("{css_prop}:{};", px(v)));
+            }
+        }
         if let (Some(x), Some(y)) = (f32p(property_id::OFFSET_X), f32p(property_id::OFFSET_Y)) {
             if x != 0.0 || y != 0.0 {
                 css.push_str(&format!("transform:translate({}px, {}px);", x, y));
@@ -3803,6 +3820,42 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("width:100%;height:100%;"), "FILL expands: {}", html);
+    }
+
+    #[test]
+    fn style_css_applies_frame_bounds_on_the_first_paint() {
+        use pathland_core::size;
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        for (prop, value) in [
+            (property_id::WIDTH, size::FILL),
+            (property_id::MAX_WIDTH, 768.0),
+            (property_id::MIN_WIDTH, 320.0),
+            (property_id::HEIGHT, size::FILL),
+            (property_id::MAX_HEIGHT, 96.0),
+            (property_id::MIN_HEIGHT, 40.0),
+        ] {
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::F32 as u32) << 16) | prop as u32,
+                value.to_bits(),
+            ));
+        }
+
+        let html = HtmlRenderer::new().render_document(&opcodes, &[], 1);
+        // The player-bar shape: `width(FILL).maxWidth(768)` must already be
+        // clamped in SSR, otherwise hydration changes its width (and a nested
+        // fit slot appears to re-select).
+        assert!(html.contains("width:100%;"), "FILL width: {html}");
+        assert!(html.contains("max-width:768px;"), "max width bounds: {html}");
+        assert!(html.contains("min-width:320px;"), "min width bounds: {html}");
+        assert!(html.contains("height:100%;"), "FILL height: {html}");
+        assert!(html.contains("max-height:96px;"), "max height bounds: {html}");
+        assert!(html.contains("min-height:40px;"), "min height bounds: {html}");
     }
 
     #[test]

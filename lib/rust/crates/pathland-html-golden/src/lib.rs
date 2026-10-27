@@ -151,7 +151,32 @@ fn scenarios() -> Vec<Scenario> {
         sizethatfits_snapshot_three(),
         media(),
         native_controls(),
+        framebounds(),
     ]
+}
+
+fn framebounds() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::VSTACK);
+    // The player-bar shape: fill the parent but clamp the first paint.
+    b.set_prop(1, value_type::F32, property_id::WIDTH, pathland_core::size::FILL.to_bits());
+    b.set_prop(1, value_type::F32, property_id::MAX_WIDTH, 768.0f32.to_bits());
+    b.set_prop(1, value_type::F32, property_id::HEIGHT, 76.0f32.to_bits());
+    // A nested fit slot whose measurement must see the clamped width.
+    b.create(2, component_type::SIZE_THAT_FITS);
+    b.set_list_f32(2, property_id::FIT_QUERY, &[0.0, 700.0]);
+    b.create(3, component_type::HSTACK);
+    b.create(4, component_type::TEXT);
+    b.insert(3, 4);
+    b.set_text(4, "compact");
+    b.insert(2, 3);
+    b.insert(1, 2);
+    Scenario {
+        name: "framebounds",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
 }
 
 fn native_controls() -> Scenario {

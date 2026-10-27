@@ -16,7 +16,7 @@ import { CAT_TREE, CMD_DELETE_NODE, CMD_REMOVE_CHILD } from "../src/constants";
 const FIXTURES = resolve(process.cwd(), "test/fixtures/ssr");
 
 /** Full-snapshot scenarios (applied to a fresh DOM and compared to SSR). */
-const FULL = ["counter", "form", "composite_controls", "layout", "gridrow", "gridtracks", "zstack2d", "tokens", "semantics", "icons", "sizethatfits", "media", "native_controls"] as const;
+const FULL = ["counter", "form", "composite_controls", "layout", "gridrow", "gridtracks", "zstack2d", "tokens", "semantics", "icons", "sizethatfits", "media", "native_controls", "framebounds"] as const;
 
 function plpl(name: string): Uint8Array {
   return new Uint8Array(readFileSync(resolve(FIXTURES, `${name}.plpl`)));

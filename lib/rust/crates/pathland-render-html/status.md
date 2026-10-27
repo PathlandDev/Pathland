@@ -119,7 +119,9 @@ Statelessness). Protocol contract: `spec/`.
   (`flex-start`), never CSS `align-items:stretch`, per `spec/LAYOUT.md`; only
   `FILL`-sized children stretch via their `100%` size), `CONTENT_MARGINS`,
   `WIDTH`/`HEIGHT` (`FILL` → `width:100%`/`height:100%` expansion, `HUG` →
-  intrinsic), `PADDING` + per-edge, `COLOR`,
+  intrinsic), the frame bounds `MIN_WIDTH`/`IDEAL_WIDTH`/`MAX_WIDTH` and the
+  height equivalents (emitted on the SSR first paint, matching the DOM client),
+  `PADDING` + per-edge, `COLOR`,
   `BACKGROUND_COLOR`, `FONT_SIZE`/`WEIGHT`/`FAMILY`, `TEXT_STYLE` (the
   renderer-owned default size/weight; explicit `FONT_SIZE`/`WEIGHT` override),
   `OPACITY`, `VISIBLE`,

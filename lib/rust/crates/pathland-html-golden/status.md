@@ -14,9 +14,10 @@ Cross-renderer **golden conformance fixtures** for the HTML renderers.
   child + `FIT_QUERY` LIST mirrored to `data-pathland-fit`, **media** —
   image alt/content-mode + a `VIDEO` surface bound to its `MEDIA_CONTROLLER`
   (non-visual hidden controller shell), **native_controls** — picker/date/color/
-  progress/video native shells carrying their design-system classes, and a
-  base→delta pair whose change includes a `ROLE` change exercising the
-  semantic-tag retag), each rendered by
+  progress/video native shells carrying their design-system classes,
+  **framebounds** — a fill-width frame clamped by `MAX_WIDTH` around a fit slot
+  (the player-bar first-paint regression), and a base→delta pair whose change
+  includes a `ROLE` change exercising the semantic-tag retag), each rendered by
   the canonical Rust SSR renderer into committed fixtures under
   `lib/typescript/test/fixtures/ssr/` (`{name}.plpl` batch bytes + `{name}.html`
   canonical `render_fragment`).
