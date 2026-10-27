@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M5YXWBVTH328W33MP90NVDWB",
+  "session_id": "ses_ea618ea8effezXFcvKHwAdj4d5",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-27T14:58:03.917426Z",
+  "branch": "feat/ts-dsl",
+  "checkpoints_count": 5,
+  "save_step_count": 1,
+  "files_touched": [
+    "README.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4-pro",
+  "turn_id": "65e2d7597408",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 2278074,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 114822528,
+    "output_tokens": 127921,
+    "api_call_count": 421
+  },
+  "session_metrics": {
+    "turn_count": 16
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-27T14:58:03.527099Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 7704,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 7704,
+    "total_lines_changed": 7711,
+    "agent_percentage": 0,
+    "metric_version": 2
+  }
+}
