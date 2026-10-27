@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.7747127279999995,
+    "cost": 0.7793694059999994,
     "tokens": {
-      "input": 2081612,
-      "output": 117770,
-      "reasoning": 75436,
+      "input": 2083281,
+      "output": 117982,
+      "reasoning": 75485,
       "cache": {
-        "read": 115515776,
+        "read": 116932352,
         "write": 0
       }
     },
     "time": {
       "created": 1793113136668,
-      "updated": 1793127848731
+      "updated": 1793127860889
     }
   },
   "messages": [
@@ -46468,21 +46468,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001673022,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 472600,
+          "input": 993,
+          "output": 137,
+          "reasoning": 46,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 471424
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1793127848730
+          "created": 1793127848730,
+          "completed": 1793127857853
         },
+        "finish": "tool-calls",
         "id": "msg_17ebf9b1a002uOiLH1PxPVPK6P",
         "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v"
       },
@@ -46510,20 +46513,211 @@
           "tool": "bash",
           "callID": "call_00_av68bcyfslah9cxsfhvk7xb7",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -m \"feat(web): token-theme native controls and range slider\" -m \"- style select/date/color/progress/video with the built-in design tokens\n- replace native range chrome with a tokenized track, thumb, and fill\n- sync --pl-slider-fill in the DOM on value/bounds/drag\n- add native_controls golden scenario and refresh demo DOM bundles\n- update renderer/golden status docs\""
             },
+            "output": "[feat/theming-gaps 6057c454] feat(web): token-theme native controls and range slider\n 25 files changed, 397 insertions(+), 68 deletions(-)\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-2da7368af3e1.js\n create mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-a7c877fcbd6f.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-2da7368af3e1.js\n create mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-a7c877fcbd6f.js\n create mode 100644 lib/typescript/test/fixtures/ssr/native_controls.html\n create mode 100644 lib/typescript/test/fixtures/ssr/native_controls.plpl\n",
+            "metadata": {
+              "output": "[feat/theming-gaps 6057c454] feat(web): token-theme native controls and range slider\n 25 files changed, 397 insertions(+), 68 deletions(-)\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-2da7368af3e1.js\n create mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-a7c877fcbd6f.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-2da7368af3e1.js\n create mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-a7c877fcbd6f.js\n create mode 100644 lib/typescript/test/fixtures/ssr/native_controls.html\n create mode 100644 lib/typescript/test/fixtures/ssr/native_controls.plpl\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -m \"feat(web): token-theme native controls and range slider\" -m \"- style select/date/color/progress/video with the built-in design tokens\n- replace native range chrome with a tokenized track, thumb, and fill\n- sync --pl-slider-fill in the DOM on value/bounds/drag\n- add native_controls golden scenario and refresh demo DOM bundles\n- update renderer/golden status docs\"",
             "time": {
-              "start": 1793127852317
+              "start": 1793127852317,
+              "end": 1793127857726
             }
           },
           "id": "prt_17ebfa8cb001Hi5bOvhtUnZ0xx",
           "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
           "messageID": "msg_17ebf9b1a002uOiLH1PxPVPK6P"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "354a1a3c6fd3e145b993578b6e9befedd6167e76",
+          "type": "step-finish",
+          "tokens": {
+            "total": 472600,
+            "input": 993,
+            "output": 137,
+            "reasoning": 46,
+            "cache": {
+              "write": 0,
+              "read": 471424
+            }
+          },
+          "cost": 0.001673022,
+          "id": "prt_17ebfbe79001mAMva1KpI6zVmc",
+          "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
+          "messageID": "msg_17ebf9b1a002uOiLH1PxPVPK6P"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_17ebf8a04001MaKD2yIUOy20ul",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00152946,
+        "tokens": {
+          "total": 472911,
+          "input": 538,
+          "output": 50,
+          "reasoning": 3,
+          "cache": {
+            "write": 0,
+            "read": 472320
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793127857877,
+          "completed": 1793127860836
+        },
+        "finish": "tool-calls",
+        "id": "msg_17ebfbed5002jtSuBvJ2T4Vox6",
+        "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v"
+      },
+      "parts": [
+        {
+          "snapshot": "354a1a3c6fd3e145b993578b6e9befedd6167e76",
+          "type": "step-start",
+          "id": "prt_17ebfc8fa001DK1Z3lGICY1fsj",
+          "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
+          "messageID": "msg_17ebfbed5002jtSuBvJ2T4Vox6"
+        },
+        {
+          "type": "reasoning",
+          "text": "Verify clean.",
+          "time": {
+            "start": 1793127860475,
+            "end": 1793127860645
+          },
+          "id": "prt_17ebfc8fb001hS1bf7JyHJaRYM",
+          "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
+          "messageID": "msg_17ebfbed5002jtSuBvJ2T4Vox6"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_k69zuxyv47rshazr0szi5zb7",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short --branch; git log --oneline -2"
+            },
+            "output": "## feat/theming-gaps\n6057c454 feat(web): token-theme native controls and range slider\n60d6e039 feat(theme): runtime scheme/reset, forced dark refs, non-color tokens\n",
+            "metadata": {
+              "output": "## feat/theming-gaps\n6057c454 feat(web): token-theme native controls and range slider\n60d6e039 feat(theme): runtime scheme/reset, forced dark refs, non-color tokens\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short --branch; git log --oneline -2",
+            "time": {
+              "start": 1793127860656,
+              "end": 1793127860695
+            }
+          },
+          "id": "prt_17ebfc9a7001v4c4HeQv4v2JIe",
+          "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
+          "messageID": "msg_17ebfbed5002jtSuBvJ2T4Vox6"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "354a1a3c6fd3e145b993578b6e9befedd6167e76",
+          "type": "step-finish",
+          "tokens": {
+            "total": 472911,
+            "input": 538,
+            "output": 50,
+            "reasoning": 3,
+            "cache": {
+              "write": 0,
+              "read": 472320
+            }
+          },
+          "cost": 0.00152946,
+          "id": "prt_17ebfca21001piCp41B19GJsXe",
+          "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
+          "messageID": "msg_17ebfbed5002jtSuBvJ2T4Vox6"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_17ebf8a04001MaKD2yIUOy20ul",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001454196,
+        "tokens": {
+          "total": 472995,
+          "input": 138,
+          "output": 25,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 472832
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793127860888,
+          "completed": 1793127863842
+        },
+        "finish": "stop",
+        "id": "msg_17ebfca98002Gy1Tf84kkVKLCZ",
+        "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v"
+      },
+      "parts": [
+        {
+          "snapshot": "354a1a3c6fd3e145b993578b6e9befedd6167e76",
+          "type": "step-start",
+          "id": "prt_17ebfd5970014fGp0fAQgKxEUE",
+          "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
+          "messageID": "msg_17ebfca98002Gy1Tf84kkVKLCZ"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `6057c454` on `feat/theming-gaps`; working tree is clean.",
+          "time": {
+            "start": 1793127863706,
+            "end": 1793127863727
+          },
+          "id": "prt_17ebfd59a001XO8LBmRfhc7J05",
+          "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
+          "messageID": "msg_17ebfca98002Gy1Tf84kkVKLCZ"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "354a1a3c6fd3e145b993578b6e9befedd6167e76",
+          "type": "step-finish",
+          "tokens": {
+            "total": 472995,
+            "input": 138,
+            "output": 25,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 472832
+            }
+          },
+          "cost": 0.001454196,
+          "id": "prt_17ebfd5ed001UMOGFPdu3yNBic",
+          "sessionID": "ses_e8220e1e3ffedcLMv65E4lVb9v",
+          "messageID": "msg_17ebfca98002Gy1Tf84kkVKLCZ"
         }
       ]
     }
