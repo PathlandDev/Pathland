@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** October 15, 2026
+**Last updated:** October 27, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -143,9 +143,13 @@ compatibility.
     from the first widget's style context (headless → concrete fallback).
   - **Scheme detection** from the native GTK variant
     (`gtk::Settings` `prefer-dark` + `-dark` theme name); a notify handler
-    calls `GtkRenderer::set_scheme`, which re-enriches native defaults and
-    re-resolves + re-applies every token-referencing widget. Scheme is never
-    carried by the protocol.
+    updates the platform scheme, which re-enriches native defaults and
+    re-resolves + re-applies every token-referencing widget. An application
+    `META::SET_COLOR_SCHEME` override takes precedence until it restores
+    `platform`; platform changes while forced are stored but not effective.
+  - `META::RESET_THEME` clears base + `dark.*` overrides and re-resolves
+    widget properties against the GTK/default tables. Explicit `dark.`
+    references and unknown-token fallback follow the shared resolver.
   - The generative `space.<N>` family resolves `space.base` × N.
   - Since GTK CSS has no custom properties, tokens resolve to **concrete**
     values (rgba/px/Pango) before the existing CSS-provider / text-style paths.

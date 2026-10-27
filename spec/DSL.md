@@ -1188,8 +1188,12 @@ the arena — **never** a packed literal. A property carries exactly one value
 | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits |
 |----------------------------|----------|----------|-------|
 | `Color.token("color.primary")` | `Color.token("color.primary")` | `Color::token("color.primary")` | `DESIGN_TOKEN` ref (`0x08`) in any COLOR-typed property: `COLOR` 0x100A (`.foregroundStyle`), `BACKGROUND_COLOR` 0x1001, `BORDER_COLOR` 0x1004, `SHADOW_COLOR` 0x1021, `TINT` 0x1030, … |
-| `Color.token("dark.color.surface")` | `Color.token("dark.color.surface")` | `Color::token("dark.color.surface")` | same — an explicit dark-variant reference |
-| `.padding(space.2)` / `Spacing(space.2)` | (token-valued spacing/padding) | (token-valued spacing/padding) | `DESIGN_TOKEN` ref in a F32-typed property: `PADDING` 0x1011 / `SPACING` 0x0001 / `CONTENT_MARGINS` 0x0005, … (see TOKENS.md §Generative token families) |
+| `Color.token("dark.color.surface")` | `Color.token("dark.color.surface")` | `Color::token("dark.color.surface")` | same — an explicit dark-variant reference (resolves the dark layer in either scheme) |
+| `.padding(space.2)` / `Spacing(space.2)` | `Padding.with(Length.token("space.2"))` / `spacing(Length.token("space.2"))` | `Padding(Length::token("space.2"))` / `spacing(Length::token("space.2"))` | `DESIGN_TOKEN` ref in a F32-typed property: `PADDING` 0x1011 / `SPACING` 0x0001 / `CONTENT_MARGINS` 0x0005, … (see TOKENS.md §Generative token families) |
+| `Font.body.family` token | `FontFamily.token("font.body.family")` | `FontFamily::token("font.body.family")` | `DESIGN_TOKEN` ref in a STRING-typed property (`FONT_FAMILY`) |
+
+Token references are **static paths**: a signal-bound property carries a
+literal value, not a token reference.
 
 `Color` keeps its dual identity: as a **View** it is a layout-greedy fill; as a
 token reference (`Color.token(path)`) it is a **data value** passed to
@@ -1246,6 +1250,33 @@ Authoring rules:
    `space.<N>` members MUST NOT be overridden.
 3. Overrides are **global and renderer-wide**: apply the theme once per
    session/host at mount, not per view.
+
+### 7.3 Runtime theming and scheme choice
+
+A host MAY replace the theme after mount. Replacement is **reset + apply**: the
+host emits `META::RESET_THEME` followed by the new theme's
+`PARAMETER::SET_DESIGN_TOKEN` overrides in one frame. The renderer clears the
+old overrides, re-resolves every token-referencing property, and re-applies the
+new values; no node is re-emitted.
+
+The host MAY also force the effective scheme with
+`META::SET_COLOR_SCHEME`:
+
+| Canonical mode | Emits | Behavior |
+|----------------|-------|----------|
+| `.platform` | `SET_COLOR_SCHEME` A=0 | follow the OS/browser light/dark signal (default) |
+| `.light` | `SET_COLOR_SCHEME` A=1 | force the light design |
+| `.dark` | `SET_COLOR_SCHEME` A=2 | force the dark design |
+
+While forced, platform scheme changes are ignored. Returning to `.platform`
+restores native detection. Both commands are renderer state — the emitter
+re-resolves, never re-emitting the tree.
+
+Java exposes this through `Emitter.replaceTheme(...)` / `resetTheme()` /
+`setColorScheme(...)`; the server runtime's host-level
+`PathlandSession.setTheme(...)` / `setColorScheme(...)` delegate to the same
+emission path. Rust exposes `Engine::reset_theme` / `set_color_scheme` (and
+`replace_theme` / `replace_adaptive_theme`).
 
 ---
 

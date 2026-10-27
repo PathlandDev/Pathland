@@ -1,6 +1,6 @@
 # pathland-engine — implementation status
 
-**Last updated:** October 9, 2026
+**Last updated:** October 27, 2026
 
 The retained-tree **emitter**: the application's canonical UI tree and the
 diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
@@ -36,6 +36,11 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
   `Engine::apply_adaptive_theme` (light as base, dark with the `dark.` prefix;
   STRING values arena-alloc'd) emit the overrides once at mount — they never
   re-emit nodes.
+- **Runtime theming** (`Engine::reset_theme`, `Engine::set_color_scheme`,
+  `Engine::replace_theme`, `Engine::replace_adaptive_theme`): emits
+  `META::RESET_THEME` / `META::SET_COLOR_SCHEME`; `ColorSchemeMode`
+  (`Platform`/`Light`/`Dark`) mirrors the wire modes. Replacement is
+  reset + apply in one frame; no tree node is re-emitted.
 - **Reactive runtime** (`signal.rs`): a shared `Runtime`
   (`Rc<RefCell<Store>>`, `no_std` — no thread-local; the "current computation"
   is an explicit stack in the store) owns value signals, **computed** signals

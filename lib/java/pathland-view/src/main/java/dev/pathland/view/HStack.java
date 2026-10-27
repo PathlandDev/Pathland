@@ -19,6 +19,7 @@ public final class HStack implements View, Configurable<HStack.Config>, Children
 
         private Signal<VerticalAlignment> alignment;
         private Signal<Float> spacing;
+        private Length spacingToken;
 
         /** Set the cross-axis alignment. */
         public Config alignment(VerticalAlignment alignment) {
@@ -35,12 +36,21 @@ public final class HStack implements View, Configurable<HStack.Config>, Children
         /** Set the main-axis gap. */
         public Config spacing(float spacing) {
             this.spacing = Signals.constant(spacing);
+            this.spacingToken = null;
             return this;
         }
 
         /** Bind the main-axis gap to a signal. */
         public Config spacing(Signal<Float> spacing) {
             this.spacing = spacing;
+            this.spacingToken = null;
+            return this;
+        }
+
+        /** Set the main-axis gap from a design token (e.g. {@code space.2}). */
+        public Config spacing(Length spacing) {
+            this.spacingToken = spacing;
+            this.spacing = null;
             return this;
         }
     }
@@ -86,7 +96,9 @@ public final class HStack implements View, Configurable<HStack.Config>, Children
         if (config.alignment != null) {
             node.property(Properties.ALIGNMENT, config.alignment);
         }
-        if (config.spacing != null) {
+        if (config.spacingToken != null) {
+            node.properties.put(Properties.SPACING, config.spacingToken);
+        } else if (config.spacing != null) {
             node.property(Properties.SPACING, config.spacing);
         }
         for (View child : children) {

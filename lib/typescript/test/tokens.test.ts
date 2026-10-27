@@ -35,7 +35,8 @@ describe("design tokens", () => {
   });
 
   it("resolves plain token references to var()", () => {
-    expect(resolveTokenCssRef("color.primary")).toBe("var(--pl-color-primary)");
+    expect(resolveTokenCssRef("color.primary")).toBe("var(--pl-color-primary, unset)");
+    expect(resolveTokenCssRef("dark.color.primary")).toBe("var(--pl-dark-color-primary, unset)");
   });
 
   it("resolves generative space.<N> references to calc()", () => {
@@ -47,7 +48,7 @@ describe("design tokens", () => {
     const sink = createTokenSink();
     sink.setToken("color.primary", VAL_COLOR, 0xff2196f3);
     const style = document.head.querySelector("style[data-pathland-tokens]");
-    expect(style?.textContent).toBe(":root{--pl-color-primary:rgba(33,150,243,1.000);}");
+    expect(style?.textContent).toBe(":root{--pl-color-primary:rgba(33,150,243,1.000);}@media (prefers-color-scheme: dark){:root:not([data-pathland-scheme]){--pl-color-primary:rgba(33,150,243,1.000);}}:root[data-pathland-scheme=\"dark\"]{--pl-color-primary:rgba(33,150,243,1.000);}:root{--pl-dark-color-primary:rgba(33,150,243,1.000);}");
   });
 
   it("applies dark.* overrides inside the dark media query", () => {
@@ -55,7 +56,7 @@ describe("design tokens", () => {
     sink.setToken("dark.color.primary", VAL_COLOR, 0xff60a5fa);
     const style = document.head.querySelector("style[data-pathland-tokens]");
     expect(style?.textContent).toBe(
-      "@media (prefers-color-scheme: dark){:root{--pl-color-primary:rgba(96,165,250,1.000);}}",
+      "@media (prefers-color-scheme: dark){:root:not([data-pathland-scheme]){--pl-color-primary:rgba(96,165,250,1.000);}}:root[data-pathland-scheme=\"dark\"]{--pl-color-primary:rgba(96,165,250,1.000);}:root{--pl-dark-color-primary:rgba(96,165,250,1.000);}",
     );
   });
 
@@ -63,7 +64,7 @@ describe("design tokens", () => {
     const sink = createTokenSink();
     sink.setToken("space.base", VAL_F32, bitsFromF32(4));
     const style = document.head.querySelector("style[data-pathland-tokens]");
-    expect(style?.textContent).toBe(":root{--pl-space-base:4px;}");
+    expect(style?.textContent).toBe(":root{--pl-space-base:4px;}@media (prefers-color-scheme: dark){:root:not([data-pathland-scheme]){--pl-space-base:4px;}}:root[data-pathland-scheme=\"dark\"]{--pl-space-base:4px;}:root{--pl-dark-space-base:4px;}");
   });
 
   it("keeps both layers and regenerates the style block", () => {
@@ -72,7 +73,7 @@ describe("design tokens", () => {
     sink.setToken("dark.color.primary", VAL_COLOR, 0xff60a5fa);
     const style = document.head.querySelector("style[data-pathland-tokens]");
     expect(style?.textContent).toBe(
-      ":root{--pl-color-primary:rgba(37,99,235,1.000);}@media (prefers-color-scheme: dark){:root{--pl-color-primary:rgba(96,165,250,1.000);}}",
+      ":root{--pl-color-primary:rgba(37,99,235,1.000);}@media (prefers-color-scheme: dark){:root:not([data-pathland-scheme]){--pl-color-primary:rgba(37,99,235,1.000);--pl-color-primary:rgba(96,165,250,1.000);}}:root[data-pathland-scheme=\"dark\"]{--pl-color-primary:rgba(37,99,235,1.000);--pl-color-primary:rgba(96,165,250,1.000);}:root{--pl-dark-color-primary:rgba(37,99,235,1.000);--pl-dark-color-primary:rgba(96,165,250,1.000);}",
     );
     sink.setToken("space.2", VAL_U32, 8);
     expect(style?.textContent).toContain(":root{--pl-space-2:8;}");

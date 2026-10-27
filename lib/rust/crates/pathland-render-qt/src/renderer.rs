@@ -623,6 +623,82 @@ mod tests {
     }
 
     #[test]
+    fn meta_scheme_override_and_theme_reset_re_resolve() {
+        // An explicit color token ref under the platform-light scheme resolves
+        // to the light default; META::SET_COLOR_SCHEME(DARK) re-resolves it.
+        let path = "color.primary";
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&(path.len() as u32).to_le_bytes());
+        strings.extend_from_slice(path.as_bytes());
+        let ops = [
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::DESIGN_TOKEN as u32) << 16)
+                    | pathland_core::property_id::COLOR as u32,
+                0,
+            ),
+        ];
+        let slots: Vec<u8> = ops.iter().flat_map(|o| o.to_bytes()).collect();
+        let mut r = QtRenderer::new();
+        r.tree
+            .apply_frame(&Frame::from_parts(&slots, &strings, 0, slots.len()));
+        assert_eq!(
+            r.tree
+                .node(1)
+                .unwrap()
+                .properties
+                .get(&pathland_core::property_id::COLOR)
+                .copied(),
+            Some(0xFF_2563EB)
+        );
+
+        let scheme = [Opcode::new(
+            category::META,
+            pathland_core::meta::SET_COLOR_SCHEME,
+            0,
+            pathland_core::color_scheme_mode::DARK,
+            0,
+            0,
+        )];
+        let slots: Vec<u8> = scheme.iter().flat_map(|o| o.to_bytes()).collect();
+        r.tree.apply_frame(&Frame::from_parts(&slots, &[], 0, slots.len()));
+        assert_eq!(
+            r.tree
+                .node(1)
+                .unwrap()
+                .properties
+                .get(&pathland_core::property_id::COLOR)
+                .copied(),
+            Some(0xFF_60A5FA)
+        );
+
+        let reset = [Opcode::new(
+            category::META,
+            pathland_core::meta::RESET_THEME,
+            0,
+            0,
+            0,
+            0,
+        )];
+        let slots: Vec<u8> = reset.iter().flat_map(|o| o.to_bytes()).collect();
+        r.tree.apply_frame(&Frame::from_parts(&slots, &[], 0, slots.len()));
+        assert_eq!(
+            r.tree
+                .node(1)
+                .unwrap()
+                .properties
+                .get(&pathland_core::property_id::COLOR)
+                .copied(),
+            Some(0xFF_60A5FA),
+            "reset keeps the forced-dark default"
+        );
+    }
+
+    #[test]
     fn roots_are_children_of_content_item() {
         let mut view = vstack![text("ab")].build();
         assign_ids(&mut view, &mut 1);

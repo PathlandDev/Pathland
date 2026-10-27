@@ -34,6 +34,13 @@ export const CMD_ENVIRONMENT = 0x02;
 export const CMD_RESYNC = 0x03;
 export const CMD_PING = 0x04;
 export const CMD_PONG = 0x05;
+export const CMD_SET_COLOR_SCHEME = 0x06;
+export const CMD_RESET_THEME = 0x07;
+
+// META::SET_COLOR_SCHEME modes
+export const COLOR_SCHEME_PLATFORM = 0x00000000;
+export const COLOR_SCHEME_LIGHT = 0x00000001;
+export const COLOR_SCHEME_DARK = 0x00000002;
 
 // META::ENVIRONMENT field ids (spec/OPCODE.md §Environment fields)
 export const ENV_VIEWPORT_WIDTH = 0x0001;

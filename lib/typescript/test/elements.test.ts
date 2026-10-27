@@ -27,6 +27,7 @@ import {
   COMPONENT_TEXT_EDITOR,
   COMPONENT_TEXT_FIELD,
   COMPONENT_TOGGLE,
+  COMPONENT_VIDEO,
   COMPONENT_VSTACK,
   COMPONENT_ZSTACK,
 } from "../src/constants";
@@ -44,7 +45,7 @@ const EXPECTED: Array<[number, string, string | null, (el: HTMLElement) => boole
   [COMPONENT_SHAPE, "DIV", null, () => undefined],
   [COMPONENT_DIVIDER, "DIV", null, (el) => el.style.height === "0" || el.style.height === "0px"],
   [COMPONENT_SPACER, "DIV", null, (el) => el.style.flex !== ""],
-  [COMPONENT_PROGRESS_VIEW, "PROGRESS", null, (el) => (el as HTMLProgressElement).max === 1],
+  [COMPONENT_PROGRESS_VIEW, "PROGRESS", "pathland-progress", (el) => (el as HTMLProgressElement).max === 1],
   [COMPONENT_GAUGE, "DIV", "pathland-gauge", (el) => el.children.length === 1],
   [COMPONENT_VSTACK, "DIV", null, (el) => el.style.flexDirection === "column"],
   [COMPONENT_HSTACK, "DIV", null, (el) => el.style.flexDirection === "row"],
@@ -60,10 +61,11 @@ const EXPECTED: Array<[number, string, string | null, (el: HTMLElement) => boole
   [COMPONENT_TOGGLE, "LABEL", "pathland-toggle", () => undefined],
   [COMPONENT_SLIDER, "LABEL", "pathland-slider", () => undefined],
   [COMPONENT_STEPPER, "DIV", "pathland-stepper", () => undefined],
-  [COMPONENT_PICKER, "SELECT", null, () => undefined],
+  [COMPONENT_PICKER, "SELECT", "pathland-select", () => undefined],
   [COMPONENT_MENU, "DIV", "pathland-menu", () => undefined],
-  [COMPONENT_COLOR_PICKER, "INPUT", null, (el) => (el as HTMLInputElement).type === "color"],
-  [COMPONENT_DATE_PICKER, "INPUT", null, (el) => (el as HTMLInputElement).type === "date"],
+  [COMPONENT_COLOR_PICKER, "INPUT", "pathland-color", (el) => (el as HTMLInputElement).type === "color"],
+  [COMPONENT_DATE_PICKER, "INPUT", "pathland-date", (el) => (el as HTMLInputElement).type === "date"],
+  [COMPONENT_VIDEO, "VIDEO", "pathland-video", (el) => (el as HTMLVideoElement).controls],
 ];
 
 describe("createElement runtime shells (drift guard vs the Rust renderer)", () => {

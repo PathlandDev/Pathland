@@ -3098,6 +3098,78 @@ mod tests {
     }
 
     #[test]
+    fn meta_scheme_override_and_theme_reset_re_resolve() {
+        let layout = MemoryLayout::default();
+        let mut mem = vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        let mut root = text("x")
+            .modifiers(ForegroundStyle(pathland_view::Color::token("color.primary")))
+            .build();
+        assign_ids(&mut root, &mut 1);
+        let mut engine = Engine::new();
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&root, &mut guest).unwrap();
+            guest.end_frame();
+        }
+        let mut host = Host::new(&mut mem, &layout);
+        let mut tree = RenderTree::default();
+        tree.apply_frame(&host.frames()[0]);
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&property_id::COLOR).copied(),
+            Some(0xFF_2563EB)
+        );
+
+        // META::SET_COLOR_SCHEME(DARK) forces the dark layer.
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            guest
+                .set_color_scheme(pathland_core::color_scheme_mode::DARK)
+                .unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            tree.apply_frame(&host.frames()[0]);
+        }
+        assert_eq!(tree.scheme(), Scheme::Dark);
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&property_id::COLOR).copied(),
+            Some(0xFF_60A5FA)
+        );
+
+        // A base override + RESET_THEME returns to the forced-dark default.
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            guest
+                .set_design_token("color.primary", value_type::COLOR, 0xFF_112233)
+                .unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            tree.apply_frame(&host.frames()[0]);
+        }
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&property_id::COLOR).copied(),
+            Some(0xFF_112233)
+        );
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            guest.reset_theme().unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            tree.apply_frame(&host.frames()[0]);
+        }
+        assert_eq!(
+            tree.node(1).unwrap().properties.get(&property_id::COLOR).copied(),
+            Some(0xFF_60A5FA),
+            "reset theme falls back to the forced-dark default"
+        );
+    }
+
+    #[test]
     fn generative_space_ref_resolves_against_base() {
         let layout = MemoryLayout::default();
         let mut mem = vec![0u8; layout.total_bytes()];

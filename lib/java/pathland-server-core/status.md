@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** October 15, 2026
+**Last updated:** October 27, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -44,6 +44,11 @@ dependency — framework glue lives in the starters.
   string offsets rebased — so a continuous input burst can't overflow a remote WebSocket
   send queue), `applyEnvironment` (re-route guard-aware via the bound router),
   `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `renderHtml`, `close`.
+  Runtime theming: `setTheme(ThemeData)`, `resetTheme()`, and
+  `setColorScheme(ThemeMode)` emit one `META::RESET_THEME` +
+  `SET_DESIGN_TOKEN` frame or `META::SET_COLOR_SCHEME` to the live client
+  (renderer state; no tree re-emission). The SSR document keeps the mount
+  theme until a resync/reload.
   `sendBatch` drops the connection on any send failure (a client reconnect then
   re-syncs via `META::RESYNC` instead of silently stalling on an "open" socket);
   `closeConnection` best-effort closes an `AutoCloseable` adapter (the starters now

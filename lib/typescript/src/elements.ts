@@ -1,6 +1,6 @@
 // The DOM renderer's native element mapping: create the DOM shell for a node of
 // the given component. Used when TREE deltas create nodes at runtime (the SSR
-// path renders the shell server-side with Tailwind classes).
+// path renders the same shell server-side with the canonical `pathland-*` classes).
 
 import {
   COMPONENT_BUTTON,
@@ -166,6 +166,7 @@ export function createElement(component: number): Node {
       // `VideoStyle`, spec/MEDIA.md); a surface that gains custom control children
       // is morphed to a `.pathland-media` wrapper on first insert, which drops them.
       const el = document.createElement("video");
+      el.className = "pathland-video";
       el.controls = true;
       return el;
     }
@@ -205,12 +206,13 @@ export function createElement(component: number): Node {
     }
     case COMPONENT_PROGRESS_VIEW: {
       const el = document.createElement("progress");
+      el.className = "pathland-progress";
       el.max = 1;
       return el;
     }
     case COMPONENT_TEXT_EDITOR: {
       const el = document.createElement("textarea");
-      el.className = "pathland-input";
+      el.className = "pathland-input pathland-control";
       el.setAttribute("rows", "4"); // mirrors the Rust SSR renderer
       return el;
     }
@@ -222,18 +224,23 @@ export function createElement(component: number): Node {
       return sliderShell();
     case COMPONENT_STEPPER:
       return stepperShell();
-    case COMPONENT_PICKER:
-      return document.createElement("select");
+    case COMPONENT_PICKER: {
+      const el = document.createElement("select");
+      el.className = "pathland-select pathland-control";
+      return el;
+    }
     case COMPONENT_MENU:
       return menuShell();
     case COMPONENT_COLOR_PICKER: {
       const el = document.createElement("input");
       el.type = "color";
+      el.className = "pathland-color pathland-control";
       return el;
     }
     case COMPONENT_DATE_PICKER: {
       const el = document.createElement("input");
       el.type = "date";
+      el.className = "pathland-date pathland-control";
       return el;
     }
     case COMPONENT_COMMENT:
@@ -262,7 +269,7 @@ function textFieldShell(): HTMLElement {
   span.className = "pathland-label";
   const input = document.createElement("input");
   input.type = "text";
-  input.className = "pathland-input";
+  input.className = "pathland-input pathland-control";
   label.append(span, input);
   return label;
 }
@@ -286,6 +293,7 @@ function sliderShell(): HTMLElement {
   const input = document.createElement("input");
   input.type = "range";
   input.step = "any";
+  input.style.setProperty("--pl-slider-fill", "0%");
   const span = document.createElement("span");
   span.className = "pathland-text";
   label.append(input, span);

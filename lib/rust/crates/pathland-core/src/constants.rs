@@ -127,6 +127,27 @@ pub mod meta {
     /// The reply to `META::PING` (host → guest). `A/B/C = 0`, no payload.
     /// Network batch transport only (see [`PING`]).
     pub const PONG: u8 = 0x05;
+    /// **Draft.** `A = mode` — renderer-wide color-scheme override
+    /// (guest → host): `0` = platform-derived (default), `1` = light,
+    /// `2` = dark. The renderer re-resolves every token-referencing property;
+    /// while forced, platform scheme changes are ignored. See
+    /// `spec/TOKENS.md` §Color Schemes.
+    pub const SET_COLOR_SCHEME: u8 = 0x06;
+    /// **Draft.** `A/B/C = 0` — clear every application design-token override
+    /// (base + `dark.*`) and re-resolve against the renderer defaults
+    /// (guest → host). Emit before a replacement theme's `SET_DESIGN_TOKEN`
+    /// opcodes in the same frame.
+    pub const RESET_THEME: u8 = 0x07;
+}
+
+/// Values for `META::SET_COLOR_SCHEME`'s `A` field.
+pub mod color_scheme_mode {
+    /// Follow the platform's native light/dark signal (default).
+    pub const PLATFORM: u32 = 0;
+    /// Force the light scheme.
+    pub const LIGHT: u32 = 1;
+    /// Force the dark scheme.
+    pub const DARK: u32 = 2;
 }
 
 /// Environment field ids for `META::ENVIRONMENT` (host → guest).

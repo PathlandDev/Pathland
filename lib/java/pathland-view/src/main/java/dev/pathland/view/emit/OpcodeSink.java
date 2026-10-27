@@ -53,6 +53,22 @@ public interface OpcodeSink {
     void setDesignToken(String path, int valueType, Object value);
 
     /**
+     * Emit {@code META::RESET_THEME}: clear every application design-token
+     * override and re-resolve renderer defaults (spec/TOKENS.md).
+     */
+    default void resetTheme() {
+        throw new UnsupportedOperationException("resetTheme");
+    }
+
+    /**
+     * Emit {@code META::SET_COLOR_SCHEME}: {@code 0} platform, {@code 1} light,
+     * {@code 2} dark (spec/TOKENS.md).
+     */
+    default void setColorScheme(int mode) {
+        throw new UnsupportedOperationException("setColorScheme");
+    }
+
+    /**
      * Whether this sink feeds a renderer that gates raw inputs on a
      * {@code BINDING_ID} (the desktop/ring path). The frame (SSR/DOM) path returns
      * {@code false} and the emitter omits the marker from its payload.

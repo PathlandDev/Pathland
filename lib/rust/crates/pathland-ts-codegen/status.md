@@ -1,6 +1,6 @@
 # pathland-ts-codegen — implementation status
 
-**Last updated:** September 25, 2026
+**Last updated:** October 27, 2026
 
 Generates the TypeScript DOM renderer's protocol-derived files from the canonical
 Rust sources, so the TS side cannot drift silently.
@@ -14,10 +14,12 @@ Rust sources, so the TS side cannot drift silently.
   `pathland_core::constants::role` (the semantic-only catalog, dense 0–13) and
   `TEXT_STYLE_*` to `pathland_core::constants::text_style`.
 - **`generated/tokens-core.ts`** (`lib/typescript/src/generated/tokens-core.ts`):
-  the design-token conventions (`tokenToCssVar`, `isDarkToken`,
-  `isLengthToken`, `resolveTokenCssRef` + length-token tables) emitted from
-  `pathland_render_html::token_spec` — the single source the Rust renderer and
-  the DOM client share. `src/tokens.ts` imports it.
+  the design-token conventions (`tokenToCssVar`, `tokenToForcedDarkCssVar`,
+  `isDarkToken`, `isLengthToken`, `resolveTokenCssRef` + length-token tables)
+  emitted from `pathland_render_html::token_spec` — the single source the Rust
+  renderer and the DOM client share. `src/tokens.ts` imports it. Explicit
+  `dark.` references resolve to `--pl-dark-…` and plain refs carry the
+  `unset` fallback.
 - **`generated/role-spec.ts`** (`lib/typescript/src/generated/role-spec.ts`):
   the semantic `ROLE` → element + typography → heading conventions emitted from
   `pathland_render_html::role_spec` — `ROLE_TAGS`, `HEADING_STYLES`,
@@ -48,7 +50,8 @@ them.
 
 ## Not implemented / gaps
 
-- Only the pure-data surfaces are generated. The element-shell factory
+- Theme/scheme **runtime** behavior is handled by `apply.ts` + `tokens.ts`,
+  not generated. Only the pure-data surfaces are generated. The element-shell factory
   (`elements.ts`) and the property-handler table (`classes.ts`) are still
   hand-written — their alignment is enforced behaviorally by the
   `pathland-html-golden` conformance harness rather than generated. Extending

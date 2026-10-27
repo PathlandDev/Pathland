@@ -5,6 +5,8 @@
 
 import {
   CAT_META,
+  COLOR_SCHEME_DARK,
+  COLOR_SCHEME_LIGHT,
   CAT_PARAMETER,
   CAT_TREE,
   CMD_CREATE_NODE,
@@ -14,6 +16,8 @@ import {
   CMD_MOVE_CHILD,
   CMD_REMOVE_CHILD,
   CMD_RESET,
+  CMD_RESET_THEME,
+  CMD_SET_COLOR_SCHEME,
   CMD_SET_DATE,
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
@@ -77,7 +81,7 @@ import {
 import type { Batch, Opcode } from "./plpl";
 import { readList, readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
-import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty } from "./classes";
+import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty, updateRangeFill } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
   encodeFittedChanged,
   encodeMediaDurationChanged,
@@ -398,6 +402,20 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
       r.byId.clear();
       break;
     }
+    case CMD_SET_COLOR_SCHEME: {
+      const root = document.documentElement;
+      if (op.a === COLOR_SCHEME_LIGHT) {
+        root.dataset.pathlandScheme = "light";
+      } else if (op.a === COLOR_SCHEME_DARK) {
+        root.dataset.pathlandScheme = "dark";
+      } else {
+        delete root.dataset.pathlandScheme;
+      }
+      break;
+    }
+    case CMD_RESET_THEME:
+      (r.tokenSink ??= createTokenSink()).reset();
+      break;
     case CMD_ENVIRONMENT:
     default:
       break;
@@ -809,7 +827,7 @@ function applySemantic(el: HTMLElement, r: DomRenderer): void {
 
 function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   if (op.command === CMD_SET_DESIGN_TOKEN) {
-    applyDesignToken(op, strings, r.tokenSink ?? createTokenSink());
+    applyDesignToken(op, strings, (r.tokenSink ??= createTokenSink()));
     return;
   }
   const node = r.byId.get(op.a);
@@ -1079,6 +1097,9 @@ function applyNumericProperty(el: HTMLElement, propId: number, valueType: number
       if (range && !isRangeInFlight(range)) {
         range.value = String(f32FromBits(bits));
       }
+      if (range) {
+        updateRangeFill(range);
+      }
       const stepText = el.querySelector(".pathland-stepper span");
       if (stepText) {
         stepText.textContent = String(Math.round(f32FromBits(bits) * 100) / 100);
@@ -1215,13 +1236,18 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
         return p;
       })();
   for (const attr of Array.from(el.attributes)) {
-    // A spinner is a plain div — it carries no `max`/`value` (the Rust SSR
-    // renderer's `<div class="pathland-spinner">`).
+    // The shape owns its class (`pathland-spinner` / `pathland-progress`);
+    // copying the old class would overwrite the fresh shell. A spinner is a
+    // plain div — it carries no `max`/`value` (mirroring the Rust SSR markup).
+    if (attr.name === "class") {
+      continue;
+    }
     if (wantSpinner && (attr.name === "max" || attr.name === "value")) {
       continue;
     }
     fresh.setAttribute(attr.name, attr.value);
   }
+  fresh.className = wantSpinner ? "pathland-spinner" : "pathland-progress";
   if (el.parentNode) {
     el.parentNode.replaceChild(fresh, el);
   }

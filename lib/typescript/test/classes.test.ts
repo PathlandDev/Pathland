@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyEnabled, applyProperty, alignmentCss, sizeCss } from "../src/classes";
+import { applyEnabled, applyProperty, alignmentCss, sizeCss, updateRangeFill } from "../src/classes";
 import {
   PROP_ACTION_ID,
   PROP_ALIGNMENT,
@@ -231,6 +231,25 @@ describe("semantic + control variants", () => {
     expect(alignmentCss(0)).toBe("flex-start");
     expect(alignmentCss(1)).toBe("center");
     expect(alignmentCss(2)).toBe("flex-end");
+  });
+
+  it("updateRangeFill writes the clamped tokenized percentage", () => {
+    const range = document.createElement("input");
+    range.type = "range";
+    range.min = "0";
+    range.max = "20";
+    range.value = "5";
+    updateRangeFill(range);
+    expect(range.style.getPropertyValue("--pl-slider-fill")).toBe("25%");
+
+    range.value = "25";
+    updateRangeFill(range);
+    expect(range.style.getPropertyValue("--pl-slider-fill")).toBe("100%");
+
+    range.min = "5";
+    range.max = "5";
+    updateRangeFill(range);
+    expect(range.style.getPropertyValue("--pl-slider-fill")).toBe("0%");
   });
 
   it("disabled toggles native controls + aria-disabled on other elements", () => {

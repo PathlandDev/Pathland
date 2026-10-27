@@ -634,4 +634,61 @@ class EmitterTest {
         assertEquals("color.accent", frame.stringAt(only.a()));
         assertEquals(0xFF123456, only.c());
     }
+
+    @Test
+    void lengthTokenEmitsDesignTokenForSpacingAndFontSize() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        emitter.mount(
+                VStack.make(v -> v.spacing(Length.token("space.2")))
+                        .children(Text.make("x").modifiers(
+                                padding(Length.token("space.3")),
+                                fontSize(Length.token("font.body.size")))),
+                Environment.DEFAULT);
+
+        ProtocolFrame frame = sink.frame();
+        List<Opcode> tokens = frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.PARAMETER
+                        && o.command() == Commands.Parameter.SET_PROPERTY
+                        && ((o.b() >>> 16) & 0xff) == ValueTypes.DESIGN_TOKEN)
+                .toList();
+        assertEquals(3, tokens.size(), "spacing + padding + font size token refs");
+        assertTrue(tokens.stream().anyMatch(o -> tokenPath(frame, o).equals("space.2")));
+        assertTrue(tokens.stream().anyMatch(o -> tokenPath(frame, o).equals("space.3")));
+        assertTrue(tokens.stream().anyMatch(o -> tokenPath(frame, o).equals("font.body.size")));
+    }
+
+    private static String tokenPath(ProtocolFrame frame, Opcode op) {
+        return frame.stringAt(op.c());
+    }
+
+    @Test
+    void runtimeThemeReplacementEmitsResetThenTheOverrides() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        emitter.mount(Text.make("x"), Environment.DEFAULT);
+
+        emitter.replaceTheme(new Theme().color("color.primary", 0xFF60A5FA));
+        ProtocolFrame frame = sink.frame();
+        assertEquals(1, countOps(frame, Categories.META, Commands.Meta.RESET_THEME));
+        assertEquals(1, countOps(frame, Categories.PARAMETER, Commands.Parameter.SET_DESIGN_TOKEN));
+        Opcode override = frame.opcodes().stream()
+                .filter(o -> o.command() == Commands.Parameter.SET_DESIGN_TOKEN)
+                .findFirst().orElseThrow();
+        assertEquals("color.primary", frame.stringAt(override.a()));
+        assertEquals(0xFF60A5FA, override.c());
+    }
+
+    @Test
+    void runtimeSchemeOverrideEmitsMetaCommand() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        emitter.mount(Text.make("x"), Environment.DEFAULT);
+
+        emitter.setColorScheme(ThemeMode.DARK);
+        ProtocolFrame frame = sink.frame();
+        assertEquals(1, countOps(frame, Categories.META, Commands.Meta.SET_COLOR_SCHEME));
+        Opcode op = frame.opcodes().get(0);
+        assertEquals(2, op.a(), "A = DARK mode");
+    }
 }

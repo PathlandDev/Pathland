@@ -22,30 +22,50 @@ public final class Frame implements ViewModifier {
 
         private Signal<Float> width;
         private Signal<Float> height;
+        private Length widthToken;
+        private Length heightToken;
         private Signal<Alignment> alignment;
         private final Signal<Float>[] bounds = newBounds();
 
         /** A fixed {@code width} (finite; {@code ±∞} = {@code FILL}). */
         public Config width(float value) {
             this.width = rawSize(value);
+            this.widthToken = null;
             return this;
         }
 
         /** Bind a fixed {@code width} to a signal. */
         public Config width(Signal<Float> value) {
             this.width = value;
+            this.widthToken = null;
+            return this;
+        }
+
+        /** Reference a width design token (e.g. {@code size.control.md}). */
+        public Config width(Length value) {
+            this.widthToken = value;
+            this.width = null;
             return this;
         }
 
         /** A fixed {@code height} (finite; {@code ±∞} = {@code FILL}). */
         public Config height(float value) {
             this.height = rawSize(value);
+            this.heightToken = null;
             return this;
         }
 
         /** Bind a fixed {@code height} to a signal. */
         public Config height(Signal<Float> value) {
             this.height = value;
+            this.heightToken = null;
+            return this;
+        }
+
+        /** Reference a height design token (e.g. {@code size.control.md}). */
+        public Config height(Length value) {
+            this.heightToken = value;
+            this.height = null;
             return this;
         }
 
@@ -146,10 +166,14 @@ public final class Frame implements ViewModifier {
     @Override
     public View body(View content) {
         List<Modified.Prop> props = new ArrayList<>();
-        if (config.width != null && !isOmitted(config.width)) {
+        if (config.widthToken != null) {
+            props.add(Modified.prop(Properties.WIDTH, config.widthToken));
+        } else if (config.width != null && !isOmitted(config.width)) {
             props.add(Modified.prop(Properties.WIDTH, normalized(config.width)));
         }
-        if (config.height != null && !isOmitted(config.height)) {
+        if (config.heightToken != null) {
+            props.add(Modified.prop(Properties.HEIGHT, config.heightToken));
+        } else if (config.height != null && !isOmitted(config.height)) {
             props.add(Modified.prop(Properties.HEIGHT, normalized(config.height)));
         }
         if (config.alignment != null) {

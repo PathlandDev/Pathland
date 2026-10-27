@@ -10,7 +10,7 @@
 //! generated rather than hand-mirrored. They are the renderer-facing copy of the
 //! same maps the HTML renderers implement.
 
-use pathland_core::{
+use pathland_core::{color_scheme_mode,
     category, component_type, environment, event, flag, listener, meta, parameter, property_id, role,
     text_style, tree, value_type,
 };
@@ -171,6 +171,14 @@ pub fn emit_constants_ts() -> String {
         ("RESYNC", fmt_u8(meta::RESYNC)),
         ("PING", fmt_u8(meta::PING)),
         ("PONG", fmt_u8(meta::PONG)),
+        ("SET_COLOR_SCHEME", fmt_u8(meta::SET_COLOR_SCHEME)),
+        ("RESET_THEME", fmt_u8(meta::RESET_THEME)),
+    ]);
+    out.push_str("\n// META::SET_COLOR_SCHEME modes\n");
+    write_consts(&mut out, "COLOR_SCHEME_", &[
+        ("PLATFORM", fmt_u32(color_scheme_mode::PLATFORM)),
+        ("LIGHT", fmt_u32(color_scheme_mode::LIGHT)),
+        ("DARK", fmt_u32(color_scheme_mode::DARK)),
     ]);
     out.push_str("\n// META::ENVIRONMENT field ids (spec/OPCODE.md §Environment fields)\n");
     write_consts(&mut out, "ENV_", &[
@@ -488,6 +496,12 @@ pub fn emit_tokens_core_ts() -> String {
     };
     writeln!(out, "export const DARK_PREFIX = {};", q(token_spec::DARK_PREFIX)).unwrap();
     writeln!(out, "export const VAR_PREFIX = {};", q(token_spec::VAR_PREFIX)).unwrap();
+    writeln!(
+        out,
+        "export const FORCED_DARK_VAR_PREFIX = {};",
+        q(token_spec::FORCED_DARK_VAR_PREFIX)
+    )
+    .unwrap();
     writeln!(out, "export const SPACE_FAMILY = {};", q(token_spec::SPACE_FAMILY)).unwrap();
     writeln!(
         out,
@@ -525,6 +539,11 @@ pub fn emit_tokens_core_ts() -> String {
          export function isDarkToken(path: string): boolean {\n\
          \x20 return path.startsWith(DARK_PREFIX);\n\
          }\n\n\
+         /** The forced-dark variable for a token path (`--pl-dark-<path>`). */\n\
+         export function tokenToForcedDarkCssVar(path: string): string {\n\
+         \x20 const bare = path.startsWith(DARK_PREFIX) ? path.slice(DARK_PREFIX.length) : path;\n\
+         \x20 return FORCED_DARK_VAR_PREFIX + bare.replace(/[^A-Za-z0-9_-]/g, \"-\");\n\
+         }\n\n\
          /** Token paths whose F32 values are CSS lengths (emitted with `px`). */\n\
          export function isLengthToken(path: string): boolean {\n\
          \x20 for (const prefix of LENGTH_PREFIXES) {\n\
@@ -537,16 +556,23 @@ pub fn emit_tokens_core_ts() -> String {
          \x20 return path.startsWith(\"elevation.\") && LENGTH_ELEVATION_SUFFIXES.some((s) => path.endsWith(s));\n\
          }\n\n\
          /** Resolve a `DESIGN_TOKEN` property reference to a CSS expression: the\n\
-          *  generative `space.<N>` family resolves to `calc(var(--pl-space-base) * N)`. */\n\
+          *  generative `space.<N>` family resolves to `calc(var(--pl-space-base) * N)`;\n\
+          *  an explicit `dark.` reference uses the forced-dark variable family; every\n\
+          *  other token resolves to `var(--pl-<path>, unset)`. */\n\
          export function resolveTokenCssRef(path: string): string {\n\
-         \x20 const bare = path.startsWith(DARK_PREFIX) ? path.slice(DARK_PREFIX.length) : path;\n\
+         \x20 const forcedDark = path.startsWith(DARK_PREFIX);\n\
+         \x20 const bare = forcedDark ? path.slice(DARK_PREFIX.length) : path;\n\
          \x20 if (bare.startsWith(SPACE_FAMILY)) {\n\
          \x20\x20 const rest = bare.slice(SPACE_FAMILY.length);\n\
          \x20\x20 if (rest.length > 0 && !Number.isNaN(Number(rest))) {\n\
-         \x20\x20\x20 return `calc(var(--pl-space-base) * ${rest})`;\n\
+         \x20\x20\x20 const base = forcedDark ? \"--pl-dark-space-base\" : \"--pl-space-base\";\n\
+         \x20\x20\x20 return `calc(var(${base}) * ${rest})`;\n\
          \x20\x20 }\n\
          \x20 }\n\
-         \x20 return `var(${tokenToCssVar(bare)})`;\n\
+         \x20 if (forcedDark) {\n\
+         \x20\x20 return `var(${tokenToForcedDarkCssVar(bare)}, unset)`;\n\
+         \x20 }\n\
+         \x20 return `var(${tokenToCssVar(bare)}, unset)`;\n\
          }\n",
     );
     out

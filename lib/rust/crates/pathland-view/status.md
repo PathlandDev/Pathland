@@ -1,6 +1,6 @@
 # pathland-view (Rust DSL) — implementation status
 
-**Last updated:** October 9, 2026
+**Last updated:** October 27, 2026
 
 The SwiftUI-style **view DSL** (`no_std`) building `pathland_engine::Node`
 trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
@@ -52,6 +52,11 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   `Color::token("color.primary")` (and `dark.*` paths) usable as a View and in
   every color-taking modifier; token refs emit as the `DESIGN_TOKEN` value type
   via `Node::token_properties` (spec/TOKENS.md).
+- **Non-color token refs**: `Length` (`Literal`/`Token`) is accepted by
+  `Padding`, `FontSize`, stack/grid `spacing`, `Border` width,
+  `CornerRadius`, `Frame` width/height; `FontFamily::token(path)` covers
+  `FONT_FAMILY` STRING tokens. Static/signal literals keep their existing
+  forms; token refs are static paths only (spec DSL.md §7.1).
 - **`Theme` / `AdaptiveTheme` (global overrides)**: re-exports
   `pathland_engine::Theme` and `AdaptiveTheme { light, dark }`. Emit once at
   mount via `Engine::apply_theme` / `Engine::apply_adaptive_theme`.

@@ -14,6 +14,31 @@ use alloc::vec::Vec;
 
 use pathland_core::tokens::TokenValue;
 
+/// The renderer-wide color-scheme mode (`META::SET_COLOR_SCHEME`,
+/// spec/TOKENS.md). `Platform` follows the OS/browser signal; `Light`/`Dark`
+/// force the effective scheme until `Platform` is restored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ColorSchemeMode {
+    /// Follow the platform's native light/dark signal.
+    #[default]
+    Platform,
+    /// Force the light design.
+    Light,
+    /// Force the dark design.
+    Dark,
+}
+
+impl ColorSchemeMode {
+    /// The wire `A` value for `META::SET_COLOR_SCHEME`.
+    pub const fn code(self) -> u32 {
+        match self {
+            ColorSchemeMode::Platform => pathland_core::color_scheme_mode::PLATFORM,
+            ColorSchemeMode::Light => pathland_core::color_scheme_mode::LIGHT,
+            ColorSchemeMode::Dark => pathland_core::color_scheme_mode::DARK,
+        }
+    }
+}
+
 /// A batch of global design-token overrides for a single scheme (light/base).
 #[derive(Debug, Clone, Default)]
 pub struct Theme {
@@ -145,5 +170,36 @@ mod tests {
         assert_eq!(frame.arena_str(ops[0].a()).unwrap(), "color.primary");
         assert_eq!(frame.arena_str(ops[1].a()).unwrap(), "font.body.family");
         assert_eq!(frame.arena_str(ops[2].a()).unwrap(), "dark.color.primary");
+    }
+
+    #[test]
+    fn runtime_replace_emits_reset_then_the_theme_and_a_scheme_override() {
+        let layout = MemoryLayout::default();
+        let mut mem = vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        let mut guest = Guest::new(&mut mem, &layout);
+        guest.begin_frame();
+        let mut engine = Engine::new();
+        engine
+            .replace_theme(
+                &Theme::new().color("color.primary", 0xFF60A5FA),
+                &mut guest,
+            )
+            .unwrap();
+        engine
+            .set_color_scheme(ColorSchemeMode::Dark, &mut guest)
+            .unwrap();
+        guest.end_frame();
+
+        let mut host = Host::new(&mut mem, &layout);
+        let ops: Vec<_> = host.frames()[0].opcodes().collect();
+        assert_eq!(ops.len(), 3);
+        assert_eq!(ops[0].category(), pathland_core::category::META);
+        assert_eq!(ops[0].command(), pathland_core::meta::RESET_THEME);
+        assert_eq!(ops[1].command(), pathland_core::parameter::SET_DESIGN_TOKEN);
+        assert_eq!(ops[2].category(), pathland_core::category::META);
+        assert_eq!(ops[2].command(), pathland_core::meta::SET_COLOR_SCHEME);
+        assert_eq!(ops[2].a(), pathland_core::color_scheme_mode::DARK);
     }
 }

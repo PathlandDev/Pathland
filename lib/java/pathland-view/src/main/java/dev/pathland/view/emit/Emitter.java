@@ -1,12 +1,14 @@
 package dev.pathland.view.emit;
 
 import dev.pathland.view.Color;
+import dev.pathland.view.TokenPath;
 import dev.pathland.view.Components;
 import dev.pathland.view.Environment;
 import dev.pathland.view.EnvironmentValues;
 import dev.pathland.view.MediaController;
 import dev.pathland.view.Properties;
 import dev.pathland.view.ThemeData;
+import dev.pathland.view.ThemeMode;
 import dev.pathland.view.ValueTypes;
 import dev.pathland.view.View;
 import dev.pathland.view.signal.ConstantSignal;
@@ -48,7 +50,7 @@ import java.util.function.Consumer;
 public final class Emitter {
 
     private final OpcodeSink sink;
-    private final ThemeData theme;
+    private ThemeData theme;
     private final Map<Integer, Runnable> tapActions = new LinkedHashMap<>();
     private final Map<Integer, Consumer<String>> textInputs = new LinkedHashMap<>();
     private final Map<Integer, Consumer<Float>> valueInputs = new LinkedHashMap<>();
@@ -231,6 +233,37 @@ public final class Emitter {
         if (theme != null) {
             theme.emitInto(sink);
         }
+    }
+
+    /**
+     * Replace the global theme at runtime: emits one frame with
+     * {@code META::RESET_THEME} followed by the new theme's overrides
+     * (spec/TOKENS.md §Runtime theming). The renderer re-resolves token
+     * references; no node is re-emitted. A {@code null} theme clears all
+     * overrides.
+     */
+    public void replaceTheme(ThemeData theme) {
+        this.theme = theme;
+        sink.beginFrame();
+        sink.resetTheme();
+        emitTheme();
+        sink.endFrame();
+    }
+
+    /**
+     * Force/release the effective color scheme at runtime
+     * ({@code META::SET_COLOR_SCHEME}). Platform changes are ignored while a
+     * forced mode is active.
+     */
+    public void setColorScheme(ThemeMode mode) {
+        sink.beginFrame();
+        sink.setColorScheme(mode.code());
+        sink.endFrame();
+    }
+
+    /** Clear every application token override (renderer defaults apply). */
+    public void resetTheme() {
+        replaceTheme(null);
     }
 
     /** Stop all registered binding effects (e.g. when tearing down the tree). */
@@ -547,7 +580,7 @@ public final class Emitter {
     }
 
     private void emitProperty(int nodeId, int property, Object value) {
-        int valueType = value instanceof Color c && c.isToken()
+        int valueType = value instanceof TokenPath token && token.tokenPath() != null
                 ? ValueTypes.DESIGN_TOKEN
                 : ValueTypes.forProperty(property);
         sink.setProperty(nodeId, property, valueType, value);

@@ -30,6 +30,7 @@ sub, sup { font-size: 75%; line-height: 0; position: relative; vertical-align: b
 sub { bottom: -0.25em; } sup { top: -0.5em; }
 table { text-indent: 0; border-color: inherit; border-collapse: collapse; }
 button, input, optgroup, select, textarea { font-family: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-size: 100%; font-weight: inherit; line-height: inherit; letter-spacing: inherit; color: inherit; margin: 0; padding: 0; }
+progress, video { font: inherit; color: inherit; }
 button, select { text-transform: none; }
 button, [type='button'], [type='reset'], [type='submit'] { -webkit-appearance: button; background-color: transparent; background-image: none; }
 :-moz-focusring { outline: auto; }
@@ -126,6 +127,41 @@ body  {
   --pl-input-font-size: 1rem;
   --pl-input-focus: #4f46e5;
 
+  /* Component tokens (Tier 1) */
+  --pl-toggle-accent: var(--pl-control-accent);
+  --pl-toggle-track-off: #d1d5db;
+  --pl-toggle-track-on: var(--pl-control-accent);
+  --pl-toggle-thumb: #ffffff;
+  --pl-slider-accent: var(--pl-control-accent);
+  --pl-slider-track: #e5e7eb;
+  --pl-slider-thumb: #ffffff;
+  --pl-progress-track: #e5e7eb;
+  --pl-progress-fill: var(--pl-color-primary);
+  --pl-gauge-track: #e5e7eb;
+  --pl-gauge-fill: var(--pl-color-primary);
+  --pl-stepper-accent: var(--pl-control-accent);
+  --pl-stepper-background: var(--pl-color-surface);
+  --pl-stepper-border: var(--pl-color-border);
+  --pl-stepper-radius: var(--pl-radius-sm);
+  --pl-picker-accent: var(--pl-control-accent);
+  --pl-picker-background: var(--pl-color-surface);
+  --pl-picker-border: var(--pl-color-border);
+  --pl-picker-radius: var(--pl-radius-sm);
+  --pl-menu-background: var(--pl-color-surface);
+  --pl-menu-foreground: var(--pl-color-text-primary);
+  --pl-menu-border: var(--pl-color-border);
+  --pl-menu-radius: var(--pl-radius-md);
+  --pl-label-foreground: var(--pl-color-text-primary);
+  --pl-label-font-size: 1rem;
+  --pl-border-width-thick: 2px;
+  --pl-button-height: 2.25rem;
+  --pl-opacity-disabled: 0.5;
+  --pl-size-control-xs: 1.5rem;
+  --pl-size-control-sm: 2rem;
+  --pl-size-control-md: 2.25rem;
+  --pl-size-control-lg: 2.75rem;
+  --pl-size-control-xl: 3.25rem;
+
   /* Elevation (Tier 2, composite shadows) */
   --pl-elevation-low-color: rgb(0 0 0 / 0.05);
   --pl-elevation-low-radius: 0px;
@@ -169,7 +205,7 @@ body  {
   shape-rendering: geometricPrecision;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-pathland-scheme]) {
     --pl-color-background: #0f172a;
     --pl-color-primary: #60a5fa;
     --pl-color-secondary: #818cf8;
@@ -194,32 +230,263 @@ body  {
     --pl-input-placeholder: #6b7280;
     --pl-input-border: rgb(255 255 255 / 0.1);
     --pl-input-focus: #6366f1;
+    --pl-toggle-accent: #60a5fa;
+    --pl-toggle-track-off: rgb(255 255 255 / 0.15);
+    --pl-toggle-track-on: #60a5fa;
+    --pl-toggle-thumb: #f9fafb;
+    --pl-slider-accent: #60a5fa;
+    --pl-slider-track: rgb(255 255 255 / 0.15);
+    --pl-slider-thumb: #f9fafb;
+    --pl-progress-track: rgb(255 255 255 / 0.15);
+    --pl-progress-fill: #60a5fa;
+    --pl-gauge-track: rgb(255 255 255 / 0.15);
+    --pl-gauge-fill: #60a5fa;
+    --pl-stepper-accent: #60a5fa;
+    --pl-stepper-background: var(--pl-color-surface);
+    --pl-stepper-border: var(--pl-color-border);
+    --pl-stepper-radius: var(--pl-radius-sm);
+    --pl-picker-accent: #60a5fa;
+    --pl-picker-background: var(--pl-color-surface);
+    --pl-picker-border: var(--pl-color-border);
+    --pl-picker-radius: var(--pl-radius-sm);
+    --pl-menu-background: var(--pl-color-surface);
+    --pl-menu-foreground: var(--pl-color-text-primary);
+    --pl-menu-border: var(--pl-color-border);
+    --pl-menu-radius: var(--pl-radius-md);
+    --pl-label-foreground: #f9fafb;
+    --pl-label-font-size: 1rem;
+    --pl-border-width-thick: 2px;
+    --pl-button-height: 2.25rem;
+    --pl-opacity-disabled: 0.5;
+    --pl-size-control-xs: 1.5rem;
+    --pl-size-control-sm: 2rem;
+    --pl-size-control-md: 2.25rem;
+    --pl-size-control-lg: 2.75rem;
+    --pl-size-control-xl: 3.25rem;
+
     --pl-elevation-low-color: rgb(0 0 0 / 0.35);
     --pl-elevation-high-color: rgb(0 0 0 / 0.5);
   }
 }
+:root[data-pathland-scheme='dark'] {
+  color-scheme: dark;
+    --pl-color-background: #0f172a;
+    --pl-color-primary: #60a5fa;
+    --pl-color-secondary: #818cf8;
+    --pl-color-surface: #111827;
+    --pl-color-text-primary: #f9fafb;
+    --pl-color-text-secondary: #9ca3af;
+    --pl-color-text-on-primary: #0f172a;
+    --pl-color-border: #374151;
+    --pl-color-accent: #60a5fa;
+    --pl-space-base: 4px;
+    --pl-control-background: rgb(255 255 255 / 0.1);
+    --pl-control-foreground: #f9fafb;
+    --pl-control-border: rgb(255 255 255 / 0.15);
+    --pl-control-accent: #60a5fa;
+    --pl-button-background: rgb(255 255 255 / 0.1);
+    --pl-button-background-hover: rgb(255 255 255 / 0.2);
+    --pl-button-foreground: #ffffff;
+    --pl-button-border: rgb(255 255 255 / 0.1);
+    --pl-button-accent: #60a5fa;
+    --pl-input-background: rgb(255 255 255 / 0.05);
+    --pl-input-foreground: #ffffff;
+    --pl-input-placeholder: #6b7280;
+    --pl-input-border: rgb(255 255 255 / 0.1);
+    --pl-input-focus: #6366f1;
+    --pl-toggle-accent: #60a5fa;
+    --pl-toggle-track-off: rgb(255 255 255 / 0.15);
+    --pl-toggle-track-on: #60a5fa;
+    --pl-toggle-thumb: #f9fafb;
+    --pl-slider-accent: #60a5fa;
+    --pl-slider-track: rgb(255 255 255 / 0.15);
+    --pl-slider-thumb: #f9fafb;
+    --pl-progress-track: rgb(255 255 255 / 0.15);
+    --pl-progress-fill: #60a5fa;
+    --pl-gauge-track: rgb(255 255 255 / 0.15);
+    --pl-gauge-fill: #60a5fa;
+    --pl-stepper-accent: #60a5fa;
+    --pl-stepper-background: var(--pl-color-surface);
+    --pl-stepper-border: var(--pl-color-border);
+    --pl-stepper-radius: var(--pl-radius-sm);
+    --pl-picker-accent: #60a5fa;
+    --pl-picker-background: var(--pl-color-surface);
+    --pl-picker-border: var(--pl-color-border);
+    --pl-picker-radius: var(--pl-radius-sm);
+    --pl-menu-background: var(--pl-color-surface);
+    --pl-menu-foreground: var(--pl-color-text-primary);
+    --pl-menu-border: var(--pl-color-border);
+    --pl-menu-radius: var(--pl-radius-md);
+    --pl-label-foreground: #f9fafb;
+    --pl-label-font-size: 1rem;
+    --pl-border-width-thick: 2px;
+    --pl-button-height: 2.25rem;
+    --pl-opacity-disabled: 0.5;
+    --pl-size-control-xs: 1.5rem;
+    --pl-size-control-sm: 2rem;
+    --pl-size-control-md: 2.25rem;
+    --pl-size-control-lg: 2.75rem;
+    --pl-size-control-xl: 3.25rem;
+
+    --pl-elevation-low-color: rgb(0 0 0 / 0.35);
+    --pl-elevation-high-color: rgb(0 0 0 / 0.5);
+}
+:root[data-pathland-scheme='light'] {
+  color-scheme: light;
+}
+/* Forced-dark values: explicit `dark.` token references resolve these
+   regardless of the active scheme (spec/TOKENS.md). */
+:root {
+  --pl-dark-color-background: #0f172a;
+  --pl-dark-color-primary: #60a5fa;
+  --pl-dark-color-secondary: #818cf8;
+  --pl-dark-color-surface: #111827;
+  --pl-dark-color-text-primary: #f9fafb;
+  --pl-dark-color-text-secondary: #9ca3af;
+  --pl-dark-color-text-on-primary: #0f172a;
+  --pl-dark-color-border: #374151;
+  --pl-dark-color-accent: #60a5fa;
+  --pl-dark-space-base: 4px;
+  --pl-dark-control-background: rgb(255 255 255 / 0.1);
+  --pl-dark-control-foreground: #f9fafb;
+  --pl-dark-control-border: rgb(255 255 255 / 0.15);
+  --pl-dark-control-accent: #60a5fa;
+  --pl-dark-button-background: rgb(255 255 255 / 0.1);
+  --pl-dark-button-background-hover: rgb(255 255 255 / 0.2);
+  --pl-dark-button-foreground: #ffffff;
+  --pl-dark-button-border: rgb(255 255 255 / 0.1);
+  --pl-dark-button-accent: #60a5fa;
+  --pl-dark-input-background: rgb(255 255 255 / 0.05);
+  --pl-dark-input-foreground: #ffffff;
+  --pl-dark-input-placeholder: #6b7280;
+  --pl-dark-input-border: rgb(255 255 255 / 0.1);
+  --pl-dark-input-focus: #6366f1;
+  --pl-dark-toggle-accent: #60a5fa;
+  --pl-dark-toggle-track-off: rgb(255 255 255 / 0.15);
+  --pl-dark-toggle-track-on: #60a5fa;
+  --pl-dark-toggle-thumb: #f9fafb;
+  --pl-dark-slider-accent: #60a5fa;
+  --pl-dark-slider-track: rgb(255 255 255 / 0.15);
+  --pl-dark-slider-thumb: #f9fafb;
+  --pl-dark-progress-track: rgb(255 255 255 / 0.15);
+  --pl-dark-progress-fill: #60a5fa;
+  --pl-dark-gauge-track: rgb(255 255 255 / 0.15);
+  --pl-dark-gauge-fill: #60a5fa;
+  --pl-dark-stepper-accent: #60a5fa;
+  --pl-dark-stepper-background: var(--pl-dark-color-surface);
+  --pl-dark-stepper-border: var(--pl-dark-color-border);
+  --pl-dark-stepper-radius: var(--pl-dark-radius-sm);
+  --pl-dark-picker-accent: #60a5fa;
+  --pl-dark-picker-background: var(--pl-dark-color-surface);
+  --pl-dark-picker-border: var(--pl-dark-color-border);
+  --pl-dark-picker-radius: var(--pl-dark-radius-sm);
+  --pl-dark-menu-background: var(--pl-dark-color-surface);
+  --pl-dark-menu-foreground: var(--pl-dark-color-text-primary);
+  --pl-dark-menu-border: var(--pl-dark-color-border);
+  --pl-dark-menu-radius: var(--pl-dark-radius-md);
+  --pl-dark-label-foreground: #f9fafb;
+  --pl-dark-label-font-size: 1rem;
+  --pl-dark-border-width-thick: 2px;
+  --pl-dark-button-height: 2.25rem;
+  --pl-dark-opacity-disabled: 0.5;
+  --pl-dark-size-control-xs: 1.5rem;
+  --pl-dark-size-control-sm: 2rem;
+  --pl-dark-size-control-md: 2.25rem;
+  --pl-dark-size-control-lg: 2.75rem;
+  --pl-dark-size-control-xl: 3.25rem;
+
+  --pl-dark-elevation-low-color: rgb(0 0 0 / 0.35);
+  --pl-dark-elevation-high-color: rgb(0 0 0 / 0.5);
+}
 
 /* ===== Toggle switch / checkbox ===== */
 .pathland-toggle { display: inline-flex; align-items: center; gap: 0.5rem; }
-.pathland-toggle input[type='checkbox'] { accent-color: var(--pl-control-accent); width: 1rem; height: 1rem; }
+.pathland-toggle input[type='checkbox'] { accent-color: var(--pl-toggle-accent); width: 1rem; height: 1rem; }
 .pathland-toggle input[role='switch'] {
   appearance: none; width: 2.75rem; height: 1.5rem; border-radius: 9999px;
-  background-color: #d1d5db; cursor: pointer; position: relative;
+  background-color: var(--pl-toggle-track-off); cursor: pointer; position: relative;
   transition: background-color 150ms; flex: none;
 }
-.pathland-toggle input[role='switch']:checked { background-color: var(--pl-control-accent); }
+.pathland-toggle input[role='switch']:checked { background-color: var(--pl-toggle-track-on); }
 .pathland-toggle input[role='switch']::after {
   content: ''; position: absolute; top: 0.125rem; left: 0.125rem;
-  width: 1.25rem; height: 1.25rem; border-radius: 9999px; background: #fff;
+  width: 1.25rem; height: 1.25rem; border-radius: 9999px; background: var(--pl-toggle-thumb);
   transition: left 150ms;
 }
 .pathland-toggle input[role='switch']:checked::after { left: 1.375rem; }
-.pathland-toggle input[role='switch']:focus-visible { outline: 2px solid var(--pl-control-accent); outline-offset: 2px; }
+.pathland-toggle input[role='switch']:focus-visible { outline: 2px solid var(--pl-toggle-accent); outline-offset: 2px; }
 
-/* ===== Slider ===== */
+/* ===== Slider =====
+   A renderer-owned range: the native input stays for keyboard/pointer
+   interaction and accessibility, but its track, fill, and thumb are drawn from
+   design tokens (`slider.track`, `slider.accent`, `slider.thumb`). The fill
+   custom property is set inline by SSR and kept in sync by the DOM client. */
 .pathland-slider { display: inline-flex; align-items: center; gap: 0.625rem; }
-.pathland-slider input[type='range'] { flex: 1; accent-color: var(--pl-control-accent); }
-.pathland-slider input[type='range']:focus-visible { outline: 2px solid var(--pl-control-accent); outline-offset: 2px; }
+.pathland-slider input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  height: 1.25rem;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--pl-slider-accent);
+  --pl-slider-fill: 0%;
+}
+.pathland-slider input[type='range']::-webkit-slider-runnable-track {
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--pl-slider-accent) 0%,
+    var(--pl-slider-accent) var(--pl-slider-fill),
+    var(--pl-slider-track) var(--pl-slider-fill),
+    var(--pl-slider-track) 100%
+  );
+}
+.pathland-slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.3125rem;
+  border: 1px solid var(--pl-slider-track);
+  border-radius: 9999px;
+  background: var(--pl-slider-thumb);
+  box-shadow: var(--pl-elevation-low-x) var(--pl-elevation-low-y)
+    var(--pl-elevation-low-blur) var(--pl-elevation-low-radius)
+    var(--pl-elevation-low-color);
+}
+.pathland-slider input[type='range']::-moz-range-track {
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--pl-slider-track);
+}
+.pathland-slider input[type='range']::-moz-range-progress {
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--pl-slider-accent);
+}
+.pathland-slider input[type='range']::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--pl-slider-track);
+  border-radius: 9999px;
+  background: var(--pl-slider-thumb);
+  box-shadow: var(--pl-elevation-low-x) var(--pl-elevation-low-y)
+    var(--pl-elevation-low-blur) var(--pl-elevation-low-radius)
+    var(--pl-elevation-low-color);
+}
+.pathland-slider input[type='range']:focus-visible {
+  outline: 2px solid var(--pl-slider-accent);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+.pathland-slider input[type='range']:disabled {
+  cursor: default;
+  opacity: var(--pl-opacity-disabled);
+}
 
 /* ===== Media (custom AudioStyle/VideoStyle) ===== */
 /* A media node with custom control children wraps a bare (control-less) media
@@ -229,49 +496,120 @@ body  {
 .pathland-media audio,
 .pathland-media video { display: none; }
 
-/* ===== Text field / editor ===== */
-.pathland-textfield { display: inline-flex; align-items: center; gap: 0.5rem; }
-.pathland-textfield .pathland-label { flex: none; }
+/* ===== Native controls (inherit Tailwind-derived preflight + tokens) ===== */
+/* Every native form control shares the design-system surface: the Tailwind
+   preflight supplies the font/color reset, these tokens supply the visual base.
+   App-authored inline properties (WIDTH/HEIGHT/PADDING/COLOR/…) still win. */
+.pathland-control,
 .pathland-input {
-  display: block;
-  width: 100%;
-  flex: 1 1 auto;
-  min-width: 0;
   border-radius: var(--pl-input-radius);
   background-color: var(--pl-input-background);
-  padding: 0.375rem 0.75rem;
+  font-family: inherit;
   font-size: var(--pl-input-font-size);
   line-height: 1.5rem;
   color: var(--pl-input-foreground);
   outline: 1px solid var(--pl-input-border);
   outline-offset: -1px;
   transition: outline-color 120ms, box-shadow 120ms;
+  accent-color: var(--pl-control-accent);
+  color-scheme: inherit;
 }
-.pathland-input::placeholder { color: var(--pl-input-placeholder); }
-.pathland-input:focus {
+.pathland-control {
+  min-height: var(--pl-control-height);
+  padding: var(--pl-control-padding-vertical) var(--pl-control-padding-horizontal);
+}
+.pathland-input {
+  display: block;
+  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.375rem 0.75rem;
+}
+.pathland-input::placeholder,
+.pathland-control::placeholder { color: var(--pl-input-placeholder); }
+.pathland-input:focus,
+.pathland-control:focus {
   outline: 2px solid var(--pl-input-focus);
   outline-offset: -2px;
+}
+.pathland-control:disabled { opacity: var(--pl-opacity-disabled); }
+
+/* PICKER: keep the native dropdown affordance; theme the field + options. */
+.pathland-select { display: inline-block; cursor: pointer; }
+.pathland-select option {
+  background-color: var(--pl-input-background);
+  color: var(--pl-input-foreground);
+}
+
+/* DATE_PICKER / COLOR_PICKER: the popup itself is UA-owned; the field surface,
+   scheme, and picker highlights follow the design system. */
+.pathland-date,
+.pathland-color { display: inline-flex; align-items: center; }
+.pathland-color { padding: var(--pl-control-padding-vertical); }
+.pathland-color::-webkit-color-swatch-wrapper { padding: 0; }
+.pathland-color::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--pl-input-radius) - 2px);
+}
+
+/* PROGRESS_VIEW: tokenized track/fill across engines. */
+.pathland-progress {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 0.625rem;
+  border: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  background-color: var(--pl-progress-track);
+  color: var(--pl-progress-fill);
+  accent-color: var(--pl-progress-fill);
+}
+.pathland-progress::-webkit-progress-bar {
+  background-color: var(--pl-progress-track);
+  border-radius: 9999px;
+}
+.pathland-progress::-webkit-progress-value {
+  background-color: var(--pl-progress-fill);
+  border-radius: 9999px;
+}
+.pathland-progress::-moz-progress-bar {
+  background-color: var(--pl-progress-fill);
+  border-radius: 9999px;
+}
+
+/* VIDEO: native controls are UA shadow DOM (best-effort scheme/accent only);
+   app-driven media (`.pathland-media` + custom controls) is fully themeable. */
+.pathland-video,
+.pathland-media {
+  max-width: 100%;
+  background-color: var(--pl-color-surface);
+  color: var(--pl-color-text-primary);
+  border-radius: var(--pl-control-radius);
+  accent-color: var(--pl-control-accent);
+  color-scheme: inherit;
 }
 
 /* ===== Stepper ===== */
 .pathland-stepper { display: inline-flex; align-items: center; gap: 0.5rem; }
-.pathland-stepper button { width: 1.75rem; height: 1.75rem; border-radius: var(--pl-radius-sm); border: 1px solid var(--pl-color-border); background: var(--pl-color-surface); }
+.pathland-stepper button { width: 1.75rem; height: 1.75rem; border-radius: var(--pl-stepper-radius); border: 1px solid var(--pl-stepper-border); background: var(--pl-stepper-background); color: var(--pl-stepper-accent); }
 
 /* ===== Progress / gauge / spinner ===== */
 .pathland-spinner {
-  width: 1.25rem; height: 1.25rem; border: 3px solid var(--pl-color-border);
-  border-top-color: var(--pl-color-primary); border-radius: 9999px;
+  width: 1.25rem; height: 1.25rem; border: 3px solid var(--pl-progress-track);
+  border-top-color: var(--pl-progress-fill); border-radius: 9999px;
   animation: pathland-spin 0.8s linear infinite;
 }
 @keyframes pathland-spin { to { transform: rotate(360deg); } }
-.pathland-gauge { display: block; height: 0.625rem; width: 100%; background: var(--pl-color-border); border-radius: 9999px; overflow: hidden; }
-.pathland-gauge > div { height: 100%; background: var(--pl-color-primary); transition: width 150ms; }
+.pathland-gauge { display: block; height: 0.625rem; width: 100%; background: var(--pl-gauge-track); border-radius: 9999px; overflow: hidden; }
+.pathland-gauge > div { height: 100%; background: var(--pl-gauge-fill); transition: width 150ms; }
 
 /* ===== Menu (popover) ===== */
 .pathland-menu { position: relative; display: inline-block; }
 .pathland-menu-items {
-  display: none; position: absolute; min-width: 10rem; background: var(--pl-color-surface);
-  border: 1px solid var(--pl-color-border); border-radius: var(--pl-radius-md);
+  display: none; position: absolute; min-width: 10rem; background: var(--pl-menu-background);
+  color: var(--pl-menu-foreground); border: 1px solid var(--pl-menu-border); border-radius: var(--pl-menu-radius);
   box-shadow: var(--pl-elevation-high-x) var(--pl-elevation-high-y) var(--pl-elevation-high-blur) var(--pl-elevation-high-radius) var(--pl-elevation-high-color);
   z-index: 20;
 }

@@ -1,6 +1,6 @@
 # pathland-view (Java) — implementation status
 
-**Last updated:** October 15, 2026
+**Last updated:** October 27, 2026
 
 The hand-written, framework-agnostic Java 17+ DSL (`dev.pathland.view`):
 declarative views, Angular-style signals, fine-grained emitter, `PLPL` wire
@@ -430,6 +430,17 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   section (frame) / arena (ring). The `Emitter` takes a `ThemeData` and rides it
   into the mount + resync frames. Overrides are renderer-global — they never
   re-emit nodes.
+- **Non-color token refs**: `Length` (`Length.of(float)` / `Length.token(path)`)
+  is accepted by `Padding`, `FontSize`, stack/grid `spacing`, `Border` width,
+  `CornerRadius`, and `Frame` width/height; `FontFamily.Token` covers the
+  `FONT_FAMILY` STRING token. The emitter detects `TokenPath` and sends
+  `DESIGN_TOKEN`; literal/signal values keep their existing forms.
+- **Runtime theming**: `Emitter.replaceTheme(ThemeData)` / `resetTheme()` and
+  `setColorScheme(ThemeMode)`; `PathlandSession.setTheme` / `resetTheme` /
+  `setColorScheme` delegate to the same emission path. Replacement emits
+  `META::RESET_THEME` + overrides in one frame; `ThemeMode` is
+  `PLATFORM`/`LIGHT`/`DARK`. `OpcodeSink.resetTheme`/`setColorScheme` are
+  implemented by both the frame and ring sinks.
 
 ## Not implemented / gaps
 

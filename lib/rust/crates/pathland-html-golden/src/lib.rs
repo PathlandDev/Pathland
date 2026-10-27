@@ -150,7 +150,68 @@ fn scenarios() -> Vec<Scenario> {
         sizethatfits_snapshot(),
         sizethatfits_snapshot_three(),
         media(),
+        native_controls(),
+        framebounds(),
     ]
+}
+
+fn framebounds() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::VSTACK);
+    // The player-bar shape: fill the parent but clamp the first paint.
+    b.set_prop(1, value_type::F32, property_id::WIDTH, pathland_core::size::FILL.to_bits());
+    b.set_prop(1, value_type::F32, property_id::MAX_WIDTH, 768.0f32.to_bits());
+    b.set_prop(1, value_type::F32, property_id::HEIGHT, 76.0f32.to_bits());
+    // A nested fit slot whose measurement must see the clamped width.
+    b.create(2, component_type::SIZE_THAT_FITS);
+    b.set_list_f32(2, property_id::FIT_QUERY, &[0.0, 700.0]);
+    b.create(3, component_type::HSTACK);
+    b.create(4, component_type::TEXT);
+    b.insert(3, 4);
+    b.set_text(4, "compact");
+    b.insert(2, 3);
+    b.insert(1, 2);
+    Scenario {
+        name: "framebounds",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn native_controls() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::VSTACK);
+    // PICKER → <select class="pathland-select pathland-control"> + option child.
+    b.create(2, component_type::PICKER);
+    b.create(3, component_type::TEXT);
+    b.insert(2, 3);
+    b.set_text(3, "Red");
+    b.insert(1, 2);
+    // DATE_PICKER → tokenized native date input. (No SET_DATE here: the DOM
+    // client converts the day number in local time, so a fixture with a date
+    // value would be timezone-dependent; the class/token surface is what this
+    // scenario pins.)
+    b.create(4, component_type::DATE_PICKER);
+    b.insert(1, 4);
+    // COLOR_PICKER → tokenized native color input.
+    b.create(5, component_type::COLOR_PICKER);
+    b.set_prop(5, value_type::U32, property_id::COLOR_VALUE, 0x0000FF);
+    b.insert(1, 5);
+    // PROGRESS_VIEW → tokenized native <progress>.
+    b.create(6, component_type::PROGRESS_VIEW);
+    b.set_prop(6, value_type::F32, property_id::PROGRESS, 0.5f32.to_bits());
+    b.set_prop(6, value_type::F32, property_id::MAX_VALUE, 1.0f32.to_bits());
+    b.insert(1, 6);
+    // VIDEO → native <video class="pathland-video" controls>.
+    b.create(7, component_type::VIDEO);
+    b.insert(1, 7);
+    Scenario {
+        name: "native_controls",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
 }
 
 fn gridtracks() -> Scenario {

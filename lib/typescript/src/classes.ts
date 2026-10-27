@@ -28,14 +28,22 @@ function u32(c: number): number {
 
 // --- accumulators (multi-part CSS that arrives across several deltas) ---
 
+/** A CSS length: a numeric dp value (rendered with `px`) or a resolved CSS
+ *  expression (e.g. a token reference such as `var(--pl-radius-lg, unset)`). */
+type CssLength = number | string;
+
+function lengthCss(v: CssLength): string {
+  return typeof v === "number" ? fmtFloat(v) + "px" : v;
+}
+
 interface ShadowInfo {
-  x: number;
-  y: number;
-  radius: number;
+  x: CssLength;
+  y: CssLength;
+  radius: CssLength;
   color: string;
 }
 interface BorderInfo {
-  width: number;
+  width: CssLength;
   color: string;
 }
 interface TransformInfo {
@@ -93,8 +101,9 @@ function recomposeShadow(el: HTMLElement): void {
   const s = shadowOf(el);
   // Color first, then the lengths — the canonical order a browser serializes a
   // `box-shadow` to (matches the SSR output).
-  el.style.boxShadow = s.radius > 0 || s.x !== 0 || s.y !== 0
-    ? `${s.color} ${fmtFloat(s.x)}px ${fmtFloat(s.y)}px ${fmtFloat(s.radius)}px`
+  const visible = s.radius !== 0 || s.x !== 0 || s.y !== 0;
+  el.style.boxShadow = visible
+    ? `${s.color} ${lengthCss(s.x)} ${lengthCss(s.y)} ${lengthCss(s.radius)}`
     : "";
 }
 function recomposeFilter(el: HTMLElement): void {
@@ -129,7 +138,7 @@ function recomposeDecoration(el: HTMLElement): void {
 function applyBorderEdges(el: HTMLElement): void {
   const b = borderOf(el);
   const edges = EDGES.get(el) ?? 0x0f;
-  const side = (bit: number) => (edges & bit) !== 0 ? `${fmtFloat(b.width)}px solid ${b.color}` : "none";
+  const side = (bit: number) => (edges & bit) !== 0 ? `${lengthCss(b.width)} solid ${b.color}` : "none";
   el.style.borderTop = side(0x01);
   el.style.borderLeft = side(0x02);
   el.style.borderBottom = side(0x04);
@@ -253,6 +262,16 @@ function applyIndeterminate(el: HTMLElement, on: boolean): void {
   }
 }
 
+/** Keep the tokenized range track fill in sync with the native input value.
+ *  Mirrors the Rust SSR renderer's inline `--pl-slider-fill` percentage. */
+export function updateRangeFill(input: HTMLInputElement): void {
+  const min = input.min === "" ? 0 : Number(input.min);
+  const max = input.max === "" ? 100 : Number(input.max);
+  const value = input.value === "" ? min : Number(input.value);
+  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  input.style.setProperty("--pl-slider-fill", Math.round(Math.min(100, Math.max(0, pct))) + "%");
+}
+
 function applyStepValue(el: HTMLElement, value: number): void {
   const range = el.querySelector<HTMLInputElement>("input[type=range]");
   if (range) {
@@ -274,6 +293,7 @@ function applyRangeBounds(el: HTMLElement, property: number, value: number): voi
     } else if (property === P.PROP_MAX_VALUE) {
       input.max = String(value);
     }
+    updateRangeFill(input);
   }
   // Range bounds are also mirrored onto the composite shells that carry them as
   // `data-min`/`data-max` (stepper click math, gauge percentage), matching the
@@ -557,11 +577,11 @@ function setFilterPart(el: HTMLElement, prefix: string, value: number | string):
 
 // A property carrying the DESIGN_TOKEN value type (spec/OPCODE.md) resolves to a
 // CSS expression (`var(--pl-…)` / `calc(var(--pl-space-base) * N)`) instead of
-// a literal. Only properties that map to a single CSS value are tokenizable
-// here; compound accumulators that need concrete numbers (e.g. BORDER_WIDTH's
-// px suffix, shadow/transform components) are left literal. The value is
-// written into the style *attribute* verbatim (not via the CSSOM) so CSS
-// expressions survive exactly as the SSR renderer emits them.
+// a literal. Single-value properties map straight to a CSS declaration; border
+// width and the shadow components are handled explicitly above so their
+// accumulator can hold a CSS expression. The value is written into the style
+// *attribute* verbatim (not via the CSSOM) so CSS expressions survive exactly
+// as the SSR renderer emits them.
 const TOKEN_STYLE_PROPS: Record<number, string> = {
   [P.PROP_COLOR]: "color",
   [P.PROP_BACKGROUND_COLOR]: "background-color",
@@ -569,6 +589,7 @@ const TOKEN_STYLE_PROPS: Record<number, string> = {
   [P.PROP_FONT_SIZE]: "font-size",
   [P.PROP_FONT_FAMILY]: "font-family",
   [P.PROP_FONT_WEIGHT]: "font-weight",
+  [P.PROP_CONTENT_MARGINS]: "padding",
   [P.PROP_SPACING]: "gap",
   [P.PROP_PADDING]: "padding",
   [P.PROP_PADDING_TOP]: "padding-top",
@@ -600,8 +621,28 @@ export function applyTokenRefProperty(el: HTMLElement, property: number, tokenPa
     applyBorderEdges(el);
     return;
   }
+  if (property === P.PROP_BORDER_WIDTH) {
+    borderOf(el).width = value;
+    applyBorderEdges(el);
+    return;
+  }
   if (property === P.PROP_SHADOW_COLOR) {
     shadowOf(el).color = value;
+    recomposeShadow(el);
+    return;
+  }
+  if (property === P.PROP_SHADOW_X) {
+    shadowOf(el).x = value;
+    recomposeShadow(el);
+    return;
+  }
+  if (property === P.PROP_SHADOW_Y) {
+    shadowOf(el).y = value;
+    recomposeShadow(el);
+    return;
+  }
+  if (property === P.PROP_SHADOW_RADIUS) {
+    shadowOf(el).radius = value;
     recomposeShadow(el);
     return;
   }

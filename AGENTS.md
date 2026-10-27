@@ -2,7 +2,7 @@
 
 This document provides essential context for AI agents (or human contributors) working on the **Pathland** protocol. It captures the project's direction, architectural decisions, and implementation details to ensure consistency.
 
-**Last Updated**: August 21, 2026
+**Last Updated**: October 27, 2026
 
 ---
 
@@ -511,10 +511,13 @@ Grouped ranges (see `spec/PRIMITIVES.md`):
 **Core Principle**: Application defines intent, overrides, and the theme.
 Renderer defines visual appearance, behavior, defaults, and interaction states.
 
-- The **application owns the theme**: token overrides (base = **light**, `dark.`-prefixed = **dark**) and token references in style properties.
-- The **renderer owns** default token values (light + dark), token resolution, effective color-scheme detection (platform-derived), interaction states (hover, pressed, focus, disabled), and theme adaptation
-- `SET_DESIGN_TOKEN` identifies tokens by **dot-separated string paths** (e.g. `color.primary`, `space.2`) with the standard value-type encoding — there is no separate numeric tokenId system. A `dark.` prefix selects the dark variant (`dark.color.primary`)
+- The **application owns the theme**: token overrides (base = **light**, `dark.`-prefixed = **dark**) and token references in style properties. Token refs cover COLOR and non-color values (`Length` for spacing/padding/font size/radius/border/frame; `FontFamily.Token` for STRING) in the Rust and Java DSLs.
+- The **renderer owns** default token values (light + dark, the full Tier-1 catalog), token resolution (including explicit `dark.` = forced dark and parent fallback), effective color-scheme detection, interaction states (hover, pressed, focus, disabled), and theme adaptation
+- `SET_DESIGN_TOKEN` identifies tokens by **dot-separated string paths** (e.g. `color.primary`, `space.2`) with the standard value-type encoding — there is no separate numeric tokenId system. A `dark.` prefix selects the dark variant (`dark.color.primary`); a `DESIGN_TOKEN` reference whose path starts with `dark.` forces the dark value in either scheme
+- **Runtime theming**: `META::RESET_THEME` clears every app override; a replacement theme is reset + `SET_DESIGN_TOKEN` overrides in one frame. `META::SET_COLOR_SCHEME` forces `platform`/`light`/`dark`. Both are renderer state — no node is re-emitted. Java: `Emitter.replaceTheme`/`setColorScheme` + `PathlandSession.setTheme`/`setColorScheme`; Rust: `Engine::reset_theme`/`set_color_scheme`.
+- An unresolvable token reference leaves the property **unset** (renderer default), never an error or stale value.
 - The protocol MUST NEVER describe hover styles, click styles, visual transitions, conditional styling, or layout tuning for interaction states
+- **Deferred**: applying per-component tokens to native GTK/Qt leaf control chrome; web parent-path fallback.
 
 Full details: [Design Token System](./spec/OPCODE.md#design-token-system) and the canonical catalog / color-scheme contract in [spec/TOKENS.md](./spec/TOKENS.md).
 

@@ -31,4 +31,4 @@ pub use node::*;
 pub use signal::{
     Dep, IntoSignalId, Runtime, Signal, SignalId, SignalValue, SignalValueKind, WritableSignal,
 };
-pub use theme::{AdaptiveTheme, Theme};
+pub use theme::{AdaptiveTheme, ColorSchemeMode, Theme};

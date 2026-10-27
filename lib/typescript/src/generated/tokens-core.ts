@@ -4,6 +4,7 @@
 
 export const DARK_PREFIX = "dark.";
 export const VAR_PREFIX = "--pl-";
+export const FORCED_DARK_VAR_PREFIX = "--pl-dark-";
 export const SPACE_FAMILY = "space.";
 export const LENGTH_PREFIXES: readonly string[] = ["space.", "radius.", "border.width.", "size.control.", "control.padding.", "control.height."];
 export const LENGTH_PREFIX_SUFFIX: ReadonlyArray<readonly [string, string]> = [["control.font.", ".size"], ["font.heading.", ".size"]];
@@ -23,6 +24,12 @@ export function isDarkToken(path: string): boolean {
   return path.startsWith(DARK_PREFIX);
 }
 
+/** The forced-dark variable for a token path (`--pl-dark-<path>`). */
+export function tokenToForcedDarkCssVar(path: string): string {
+  const bare = path.startsWith(DARK_PREFIX) ? path.slice(DARK_PREFIX.length) : path;
+  return FORCED_DARK_VAR_PREFIX + bare.replace(/[^A-Za-z0-9_-]/g, "-");
+}
+
 /** Token paths whose F32 values are CSS lengths (emitted with `px`). */
 export function isLengthToken(path: string): boolean {
   for (const prefix of LENGTH_PREFIXES) {
@@ -36,14 +43,21 @@ export function isLengthToken(path: string): boolean {
 }
 
 /** Resolve a `DESIGN_TOKEN` property reference to a CSS expression: the
-*  generative `space.<N>` family resolves to `calc(var(--pl-space-base) * N)`. */
+*  generative `space.<N>` family resolves to `calc(var(--pl-space-base) * N)`;
+*  an explicit `dark.` reference uses the forced-dark variable family; every
+*  other token resolves to `var(--pl-<path>, unset)`. */
 export function resolveTokenCssRef(path: string): string {
-  const bare = path.startsWith(DARK_PREFIX) ? path.slice(DARK_PREFIX.length) : path;
+  const forcedDark = path.startsWith(DARK_PREFIX);
+  const bare = forcedDark ? path.slice(DARK_PREFIX.length) : path;
   if (bare.startsWith(SPACE_FAMILY)) {
    const rest = bare.slice(SPACE_FAMILY.length);
    if (rest.length > 0 && !Number.isNaN(Number(rest))) {
-    return `calc(var(--pl-space-base) * ${rest})`;
+    const base = forcedDark ? "--pl-dark-space-base" : "--pl-space-base";
+    return `calc(var(${base}) * ${rest})`;
    }
   }
-  return `var(${tokenToCssVar(bare)})`;
+  if (forcedDark) {
+   return `var(${tokenToForcedDarkCssVar(bare)}, unset)`;
+  }
+  return `var(${tokenToCssVar(bare)}, unset)`;
 }

@@ -273,6 +273,11 @@ public final class Modifiers {
         return CornerRadius.with(value);
     }
 
+    /** A CornerRadius value from a design token (cornerRadius(Length.token("radius.lg"))). */
+    public static CornerRadius cornerRadius(Length token) {
+        return CornerRadius.with(token);
+    }
+
     /** A CornerRadius value (cornerRadius(...)). */
     public static CornerRadius cornerRadius(Consumer<CornerRadius.Config> configure) {
         return CornerRadius.with(configure);
@@ -326,6 +331,11 @@ public final class Modifiers {
         return FontFamily.with(value);
     }
 
+    /** A FontFamily value from a design token (fontFamily(new FontFamily.Token("font.body.family"))). */
+    public static FontFamily fontFamily(FontFamily.Token token) {
+        return FontFamily.with(token);
+    }
+
     /** A FontFamily value (fontFamily(...)). */
     public static FontFamily fontFamily(Consumer<FontFamily.Config> configure) {
         return FontFamily.with(configure);
@@ -341,6 +351,11 @@ public final class Modifiers {
     /** A FontSize value (fontSize(...)). */
     public static FontSize fontSize(Signal<Float> signal) {
         return FontSize.with(signal);
+    }
+
+    /** A FontSize value from a design token (fontSize(Length.token("font.body.size"))). */
+    public static FontSize fontSize(Length token) {
+        return FontSize.with(token);
     }
 
     /** A FontSize value (fontSize(...)). */
@@ -573,6 +588,11 @@ public final class Modifiers {
     /** A Padding value (padding(...)). */
     public static Padding padding(Signal<Float> value) {
         return Padding.with(value);
+    }
+
+    /** A Padding value from a design token (padding(Length.token("space.2"))). */
+    public static Padding padding(Length token) {
+        return Padding.with(token);
     }
 
     /** A Padding value (padding(...)). */

@@ -607,6 +607,89 @@ fn reactive_f32(node: &mut Node, prop: u16, r: &Reactive<f32>) {
     }
 }
 
+/// A length value: a literal dp/point value or a **design-token reference**
+/// (spec/TOKENS.md). A token reference emits the `DESIGN_TOKEN` value type in an
+/// F32-typed property and is resolved by the renderer.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Length {
+    /// A literal value in device pixels/points.
+    Literal(f32),
+    /// A design-token path (e.g. `space.2`, `font.body.size`).
+    Token(&'static str),
+}
+
+impl Length {
+    /// A design-token reference.
+    pub const fn token(path: &'static str) -> Self {
+        Length::Token(path)
+    }
+
+    /// A literal length.
+    pub const fn of(value: f32) -> Self {
+        Length::Literal(value)
+    }
+}
+
+/// A static, signal-bound, or token length used by a modifier config.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LengthValue {
+    /// A static value or signal binding.
+    Reactive(Reactive<f32>),
+    /// A design-token reference.
+    Token(&'static str),
+}
+
+/// Convert a raw/signal length or a [`Length`] token into a [`LengthValue`].
+pub trait IntoLength {
+    /// Convert into a [`LengthValue`].
+    fn into_length(self) -> LengthValue;
+}
+
+impl IntoLength for f32 {
+    fn into_length(self) -> LengthValue {
+        LengthValue::Reactive(Reactive::Static(self))
+    }
+}
+
+impl IntoLength for Reactive<f32> {
+    fn into_length(self) -> LengthValue {
+        LengthValue::Reactive(self)
+    }
+}
+
+impl IntoLength for Signal<f32> {
+    fn into_length(self) -> LengthValue {
+        LengthValue::Reactive(Reactive::Signal(self.id()))
+    }
+}
+
+impl IntoLength for WritableSignal<f32> {
+    fn into_length(self) -> LengthValue {
+        LengthValue::Reactive(Reactive::Signal(self.id()))
+    }
+}
+
+impl IntoLength for Length {
+    fn into_length(self) -> LengthValue {
+        match self {
+            Length::Literal(v) => LengthValue::Reactive(Reactive::Static(v)),
+            Length::Token(path) => LengthValue::Token(path),
+        }
+    }
+}
+
+/// Apply a length property: a literal/signal behaves like [`reactive_f32`]; a
+/// token reference rides `Node::token_properties` as `DESIGN_TOKEN`.
+fn apply_length(node: &mut Node, prop: u16, value: &LengthValue) {
+    match value {
+        LengthValue::Reactive(r) => reactive_f32(node, prop, r),
+        LengthValue::Token(path) => {
+            node.properties.remove(&prop);
+            node.token_properties.insert(prop, String::from(*path));
+        }
+    }
+}
+
 /// Apply a reactive enum property (a `u8` code stored as `F32`).
 fn reactive_enum(node: &mut Node, prop: u16, r: &Reactive<u8>) {
     match r {
@@ -645,28 +728,28 @@ fn reactive_color(node: &mut Node, prop: u16, r: &Reactive<Color>) {
 /// static; `Padding(signal)` binds `PADDING` to a signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Padding {
-    value: Reactive<f32>,
+    value: LengthValue,
 }
 
-/// A uniform padding value (raw or signal).
+/// A uniform padding value (raw, signal, or token).
 #[allow(non_snake_case)]
-pub fn Padding(value: impl IntoReactive<f32>) -> Padding {
+pub fn Padding(value: impl IntoLength) -> Padding {
     Padding {
-        value: value.into_reactive(),
+        value: value.into_length(),
     }
 }
 
 /// Text font size in points. `FontSize(28.0)` static, `FontSize(signal)` bound.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FontSize {
-    value: Reactive<f32>,
+    value: LengthValue,
 }
 
-/// A font size value (raw or signal).
+/// A font size value (raw, signal, or token).
 #[allow(non_snake_case)]
-pub fn FontSize(value: impl IntoReactive<f32>) -> FontSize {
+pub fn FontSize(value: impl IntoLength) -> FontSize {
     FontSize {
-        value: value.into_reactive(),
+        value: value.into_length(),
     }
 }
 
@@ -859,9 +942,29 @@ impl ViewModifier for Font {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FontFamily(pub &'static str);
 
+impl FontFamily {
+    /// Reference a font-family design token (e.g. `font.body.family`).
+    pub const fn token(path: &'static str) -> FontFamilyToken {
+        FontFamilyToken(path)
+    }
+}
+
 impl ViewModifier for FontFamily {
     fn apply(&self, node: &mut Node) {
         node.string_properties
+            .insert(property_id::FONT_FAMILY, String::from(self.0));
+    }
+}
+
+/// A **font-family design-token reference** (`FONT_FAMILY` with the
+/// `DESIGN_TOKEN` value type); created with [`FontFamily::token`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FontFamilyToken(pub &'static str);
+
+impl ViewModifier for FontFamilyToken {
+    fn apply(&self, node: &mut Node) {
+        node.string_properties.remove(&property_id::FONT_FAMILY);
+        node.token_properties
             .insert(property_id::FONT_FAMILY, String::from(self.0));
     }
 }
@@ -1056,13 +1159,13 @@ impl core::fmt::Debug for TapGesture {
 
 impl ViewModifier for Padding {
     fn apply(&self, node: &mut Node) {
-        reactive_f32(node, property_id::PADDING, &self.value);
+        apply_length(node, property_id::PADDING, &self.value);
     }
 }
 
 impl ViewModifier for FontSize {
     fn apply(&self, node: &mut Node) {
-        reactive_f32(node, property_id::FONT_SIZE, &self.value);
+        apply_length(node, property_id::FONT_SIZE, &self.value);
     }
 }
 
@@ -1136,15 +1239,15 @@ pub struct Hidden;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Border {
     color: Reactive<Color>,
-    width: Reactive<f32>,
+    width: LengthValue,
 }
 
 impl Border {
-    /// A border from a color and width (each raw or signal).
-    pub fn new(color: impl IntoReactive<Color>, width: impl IntoReactive<f32>) -> Self {
+    /// A border from a color and width (color raw/signal; width raw/signal/token).
+    pub fn new(color: impl IntoReactive<Color>, width: impl IntoLength) -> Self {
         Self {
             color: color.into_reactive(),
-            width: width.into_reactive(),
+            width: width.into_length(),
         }
     }
 }
@@ -1152,14 +1255,14 @@ impl Border {
 /// Corner radius (SwiftUI `.cornerRadius(_:)`). Raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CornerRadius {
-    value: Reactive<f32>,
+    value: LengthValue,
 }
 
-/// A corner radius value (raw or signal).
+/// A corner radius value (raw, signal, or token).
 #[allow(non_snake_case)]
-pub fn CornerRadius(value: impl IntoReactive<f32>) -> CornerRadius {
+pub fn CornerRadius(value: impl IntoLength) -> CornerRadius {
     CornerRadius {
-        value: value.into_reactive(),
+        value: value.into_length(),
     }
 }
 
@@ -1282,13 +1385,13 @@ impl ViewModifier for Hidden {
 impl ViewModifier for Border {
     fn apply(&self, node: &mut Node) {
         reactive_color(node, property_id::BORDER_COLOR, &self.color);
-        reactive_f32(node, property_id::BORDER_WIDTH, &self.width);
+        apply_length(node, property_id::BORDER_WIDTH, &self.width);
     }
 }
 
 impl ViewModifier for CornerRadius {
     fn apply(&self, node: &mut Node) {
-        reactive_f32(node, property_id::BORDER_RADIUS, &self.value);
+        apply_length(node, property_id::BORDER_RADIUS, &self.value);
     }
 }
 
@@ -2085,8 +2188,8 @@ pub struct VStack {
 pub struct StackConfig {
     /// Cross-axis alignment.
     pub alignment: Option<Align>,
-    /// Main-axis gap (raw or signal).
-    pub spacing: Option<Reactive<f32>>,
+    /// Main-axis gap (raw, signal, or token).
+    pub spacing: Option<LengthValue>,
 }
 
 impl StackConfig {
@@ -2095,9 +2198,9 @@ impl StackConfig {
         self.alignment = Some(alignment);
         self
     }
-    /// Set the main-axis gap (raw or signal; a signal re-emits only `SPACING`).
-    pub fn spacing(&mut self, spacing: impl IntoReactive<f32>) -> &mut Self {
-        self.spacing = Some(spacing.into_reactive());
+    /// Set the main-axis gap (raw, signal, or token; a signal re-emits only `SPACING`).
+    pub fn spacing(&mut self, spacing: impl IntoLength) -> &mut Self {
+        self.spacing = Some(spacing.into_length());
         self
     }
 }
@@ -2133,7 +2236,7 @@ impl View for VStack {
         }
         let mut node = plain_node(Component::VStack, build_children(&self.children, _env), p);
         if let Some(s) = self.config.spacing {
-            reactive_f32(&mut node, property_id::SPACING, &s);
+            apply_length(&mut node, property_id::SPACING, &s);
         }
         node
     }
@@ -2181,7 +2284,7 @@ impl View for HStack {
         }
         let mut node = plain_node(Component::HStack, build_children(&self.children, _env), p);
         if let Some(s) = self.config.spacing {
-            reactive_f32(&mut node, property_id::SPACING, &s);
+            apply_length(&mut node, property_id::SPACING, &s);
         }
         node
     }
@@ -2251,8 +2354,8 @@ pub struct GridConfig {
     pub rows: Option<Reactive<f32>>,
     /// Cross-axis alignment.
     pub alignment: Option<Align>,
-    /// Main-axis gap (raw or signal).
-    pub spacing: Option<Reactive<f32>>,
+    /// Main-axis gap (raw, signal, or token).
+    pub spacing: Option<LengthValue>,
 }
 
 impl GridConfig {
@@ -2268,8 +2371,8 @@ impl GridConfig {
         self.alignment = Some(alignment);
         self
     }
-    pub fn spacing(&mut self, spacing: impl IntoReactive<f32>) -> &mut Self {
-        self.spacing = Some(spacing.into_reactive());
+    pub fn spacing(&mut self, spacing: impl IntoLength) -> &mut Self {
+        self.spacing = Some(spacing.into_length());
         self
     }
 }
@@ -2286,7 +2389,7 @@ fn grid_apply(config: &GridConfig, node: &mut Node) {
             .insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
     }
     if let Some(s) = config.spacing {
-        reactive_f32(node, property_id::SPACING, &s);
+        apply_length(node, property_id::SPACING, &s);
     }
 }
 
@@ -2513,7 +2616,7 @@ impl View for LazyVStack {
         }
         let mut node = plain_node(Component::LazyVStack, build_children(&self.children, _env), p);
         if let Some(s) = self.config.spacing {
-            reactive_f32(&mut node, property_id::SPACING, &s);
+            apply_length(&mut node, property_id::SPACING, &s);
         }
         node
     }
@@ -2561,7 +2664,7 @@ impl View for LazyHStack {
         }
         let mut node = plain_node(Component::LazyHStack, build_children(&self.children, _env), p);
         if let Some(s) = self.config.spacing {
-            reactive_f32(&mut node, property_id::SPACING, &s);
+            apply_length(&mut node, property_id::SPACING, &s);
         }
         node
     }
@@ -3587,6 +3690,45 @@ mod tests {
         assert_eq!(
             node.properties.get(&property_id::BORDER_WIDTH),
             Some(&1.0f32.to_bits())
+        );
+    }
+
+    #[test]
+    fn length_and_font_family_tokens_ride_token_properties() {
+        let node = Text::new("x")
+            .modifiers((
+                Padding(Length::token("space.2")),
+                FontSize(Length::token("font.body.size")),
+                Border::new(Color::token("color.border"), Length::token("border.width.thin")),
+                CornerRadius(Length::token("radius.lg")),
+                FontFamily::token("font.body.family"),
+            ))
+            .build();
+        assert_eq!(
+            node.token_properties.get(&property_id::PADDING).map(String::as_str),
+            Some("space.2")
+        );
+        assert_eq!(
+            node.token_properties.get(&property_id::FONT_SIZE).map(String::as_str),
+            Some("font.body.size")
+        );
+        assert_eq!(
+            node.token_properties.get(&property_id::BORDER_WIDTH).map(String::as_str),
+            Some("border.width.thin")
+        );
+        assert_eq!(
+            node.token_properties.get(&property_id::BORDER_RADIUS).map(String::as_str),
+            Some("radius.lg")
+        );
+        assert_eq!(
+            node.token_properties.get(&property_id::FONT_FAMILY).map(String::as_str),
+            Some("font.body.family")
+        );
+        // A literal still emits the numeric property (no token ref).
+        let literal = Text::new("y").modifiers(Padding(8.0)).build();
+        assert_eq!(
+            literal.properties.get(&property_id::PADDING).copied(),
+            Some(8.0f32.to_bits())
         );
     }
 

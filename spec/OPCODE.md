@@ -410,6 +410,8 @@ element.
 | `RESYNC` | `0x03` | 0 | 0 | 0 | The host (renderer) requests a **full snapshot** of the current tree (host → guest). The guest answers with a single full-snapshot batch (the same TREE + PARAMETER stream as a mount). Used for reconnect/gap recovery and no-JS refresh. |
 | `PING` | `0x04` | 0 | 0 | 0 | A transport-liveness **heartbeat probe** (guest → host). No payload. **Network batch transport only** — a shared-memory ring consumer MUST NOT expect, emit, or relay it. See [Transport heartbeat](#transport-heartbeat). |
 | `PONG` | `0x05` | 0 | 0 | 0 | The reply to `META::PING` (host → guest). No payload. Network batch transport only. |
+| `SET_COLOR_SCHEME` | `0x06` | mode | 0 | 0 | **Draft.** Renderer-wide color-scheme override (guest → host): `0` = platform-derived (default), `1` = light, `2` = dark. The renderer re-resolves every token-referencing property; while forced, platform scheme changes are ignored. See [TOKENS.md](./TOKENS.md#color-schemes-light--dark). |
+| `RESET_THEME` | `0x07` | 0 | 0 | 0 | **Draft.** Clear every application design-token override (base + `dark.*`) and re-resolve against renderer defaults (guest → host). Emit before a replacement theme's `SET_DESIGN_TOKEN` opcodes in the same frame. |
 
 #### Environment fields
 
@@ -595,8 +597,11 @@ when the application rolls a theme.
   arena; `SET_DESIGN_TOKEN` overrides a token's value globally.
 - **Base = light. `dark.`-prefixed paths are the dark variant** (`dark.color.primary`).
   The renderer derives the effective scheme (light/dark) from the platform and
-  re-resolves when it changes — scheme selection is never carried by the
-  protocol.
+  re-resolves when it changes. An application MAY force a scheme with
+  `META::SET_COLOR_SCHEME` (platform/light/dark); the override is renderer-wide
+  and `platform` restores native detection. A `DESIGN_TOKEN` reference whose
+  path starts with `dark.` always resolves against the dark layer, regardless
+  of the active scheme (an explicit dark-variant reference).
 - The **standard token catalog** (colors, typography, spacing, radii,
   elevations, `control.*`, per-component tokens) and the **resolution
   algorithm** (dark layer → override → default → parent → fallback) are defined
@@ -609,7 +614,9 @@ carry the **`DESIGN_TOKEN`** value type (`0x08`), with `C` = arenaRef to the
 token path. The renderer resolves the reference against the token tables and the
 current scheme. A property carries exactly one value — a literal or a token
 reference, never both. Because overrides and the scheme are renderer state, a
-token-typed property requires **no re-emission** when a token changes.
+token-typed property requires **no re-emission** when a token changes. A
+`dark.`-prefixed reference resolves the dark layer regardless of the active
+scheme; an unresolvable reference leaves the property unset (renderer default).
 
 ### Renderer Responsibilities
 

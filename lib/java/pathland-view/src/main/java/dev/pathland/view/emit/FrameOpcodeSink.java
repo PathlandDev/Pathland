@@ -1,5 +1,7 @@
 package dev.pathland.view.emit;
 
+import dev.pathland.view.TokenPath;
+
 import dev.pathland.view.Categories;
 import dev.pathland.view.Color;
 import dev.pathland.view.Commands;
@@ -90,7 +92,7 @@ public class FrameOpcodeSink implements OpcodeSink {
         } else if (valueType == ValueTypes.DESIGN_TOKEN) {
             // C = arena offset of the token path (spec/TOKENS.md).
             int offset = strings.size();
-            writeString(((Color) value).token());
+            writeString(((TokenPath) value).tokenPath());
             push(Categories.PARAMETER, Commands.Parameter.SET_PROPERTY, 0, nodeId, b, offset);
         } else if (valueType == ValueTypes.LIST) {
             // C = arena offset of a length-prefixed array `[u32 count][f32 × count]`
@@ -147,5 +149,15 @@ public class FrameOpcodeSink implements OpcodeSink {
         strings.write((value >>> 8) & 0xFF);
         strings.write((value >>> 16) & 0xFF);
         strings.write((value >>> 24) & 0xFF);
+    }
+
+    @Override
+    public void resetTheme() {
+        push(Categories.META, Commands.Meta.RESET_THEME, 0, 0, 0, 0);
+    }
+
+    @Override
+    public void setColorScheme(int mode) {
+        push(Categories.META, Commands.Meta.SET_COLOR_SCHEME, 0, mode, 0, 0);
     }
 }
