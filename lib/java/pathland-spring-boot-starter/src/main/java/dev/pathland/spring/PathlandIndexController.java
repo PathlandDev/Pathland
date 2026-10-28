@@ -116,6 +116,12 @@ public class PathlandIndexController {
             resource = diskAsset(file);
         }
         if (resource == null || !resource.exists()) {
+            // The renderer-owned base design has no static file either: serve its
+            // content-hashed bytes from the shared Rust renderer with immutable caching.
+            ResponseEntity<?> cssResponse = baseCss(file);
+            if (cssResponse != null) {
+                return cssResponse;
+            }
             // Renderer-owned icon glyphs have no static file — serve them from the
             // shared Rust renderer (`pathland_html_icon_svg` over the C ABI, the same
             // `icons` source SSR inlines from), so every host serves /_pathland/icons/
@@ -139,6 +145,27 @@ public class PathlandIndexController {
                     .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic().immutable())
                     .body(in.readAllBytes());
         }
+    }
+
+    /** Serve the content-hashed base stylesheet (`base-<sha256-12>.css`) from the
+     *  shared Rust renderer with immutable caching; {@code null} for any other name. */
+    private ResponseEntity<?> baseCss(String file) {
+        var renderer = dev.pathland.render.html.HtmlRenderer.tryInstance();
+        if (renderer == null) {
+            return null;
+        }
+        String name = renderer.baseCssName();
+        if (name.isEmpty() || !name.equals(file)) {
+            return null;
+        }
+        String css = renderer.baseCss();
+        if (css.isEmpty()) {
+            return null;
+        }
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "css"))
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePublic().immutable())
+                .body(css.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     /** Serve `/_pathland/icons/<name>.svg` from the shared Rust renderer; {@code null}

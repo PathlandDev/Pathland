@@ -271,10 +271,18 @@ The built-in stylesheet is now **generated**, not hand-written in `css.rs`:
   `check` verifies Tier-1 catalog coverage, layer/reference direction,
   dark/forced-dark declarations, `$extensions.pathland.internal` markings, and
   that every `$type: dimension` token is recognized by `token_spec::isLengthToken`.
-- `design/build/base.css` is synced to `assets/base.css` by
+- `design/build/base.css` + `base.css.name` (the SHA-256 content hash, e.g.
+  `base-5f86423db422.css`) are synced to `assets/` by
   `scripts/sync-design-css.sh` (and `--check` fails on drift). `src/css.rs`
-  embeds it with `include_str!`; `builtin_css()` exposes the bundle and `STYLE`
-  wraps it in `<style>`.
+  embeds both with `include_str!`; `builtin_css()` / `builtin_css_name()` expose
+  them and `STYLE` wraps the bundle in `<style>`.
+- **External stylesheet mode**: `render_document` stays inline (the library
+  default); `render_document_linked(opcodes, strings, root, css_base)` emits
+  `<link rel="stylesheet" href="{css_base}/{name}">` instead. Token overrides and
+  fit-band rules stay inline after it. The C ABI adds
+  `pathland_html_render_linked`, `pathland_html_base_css`, and
+  `pathland_html_base_css_name`; the Java shim + Spring/Quarkus starters use
+  them and serve the CSS immutable. An empty base falls back to inline.
 - The build is wired into `scripts/lib.sh` (`build_rust_html`), the Maven
   `refresh-ide` profile, and a CI design job that runs build/check/sync-check.
 
@@ -384,13 +392,14 @@ contract both renderers must satisfy.
 
 ## Verified by
 
-`cargo test -p pathland-render-html` — 45 headless render tests (components,
+`cargo test -p pathland-render-html` — 77 headless render tests (components,
 properties, composite, event attrs, navigation slot route/transition attrs,
 `days_to_date`, network-decoded frames, inline-all styling, built-in CSS block
 contents, Inter CDN head links, design tokens: base/dark override CSS, `px`
 lengths, `DESIGN_TOKEN` refs, generative `space.N`). The built-in CSS tests
 assert the generated bundle is embedded (reset, tokens, component rules) and
-that component rules reference the catalog/metadata tokens. `cargo test -p
+that component rules reference the catalog/metadata tokens; the linked-mode
+tests assert the hashed `<link>` and that the default render remains inline. `cargo test -p
 pathland-html-golden` — the SSR golden-fixture guard. `npm --prefix design run
 build && npm --prefix design run check` and `scripts/sync-design-css.sh --check`
 validate the design pipeline and the committed bundle.

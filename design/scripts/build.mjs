@@ -5,6 +5,7 @@
 // `base.css` is the bundle the Rust renderer embeds (synced to
 // lib/rust/crates/pathland-render-html/assets/base.css).
 
+import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -45,6 +46,10 @@ export async function buildDesign() {
 
   const basePath = join(BUILD, "base.css");
   await writeFile(basePath, base, "utf8");
+  // Content-hashed asset name for the SSR starters' cache-busting <link>.
+  // The Rust renderer embeds this name (synced to assets/base.css.name).
+  const hash = createHash("sha256").update(base, "utf8").digest("hex").slice(0, 12);
+  await writeFile(join(BUILD, "base.css.name"), `base-${hash}.css\n`, "utf8");
   return basePath;
 }
 
@@ -52,7 +57,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   buildDesign()
     .then((basePath) => {
       console.log(`design: wrote ${basePath}`);
-      console.log("design: wrote build/tokens.css and build/manifest.json");
+      console.log("design: wrote build/tokens.css, build/manifest.json and build/base.css.name");
     })
     .catch((error) => {
       console.error(error);

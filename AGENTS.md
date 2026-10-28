@@ -212,18 +212,28 @@ design/tokens/component/*.tokens.json # per-component surface (emitted)
 design/html/{reset,components}.css    # hand-authored CSS consuming var(--pl-*)
 design/scripts/{build,dev,check}.mjs  # SD build, watcher/preview, validation
 design/build/base.css                 # generated: reset + tokens + components
+design/build/base.css.name            # content hash: base-<sha256-12>.css
 ```
 
 - Tokens are flat DTCG entries (`$value`/`$type`/`$extensions.pathland`) because
   the catalog has both leaf and group paths (`control.border` vs
   `control.border.width`). Dark values live on `$extensions.pathland.dark`;
   durations/z-index/`em` icon sizes are marked internal.
-- `npm --prefix design run build` generates `design/build/{tokens.css,manifest.json,base.css}`;
+- `npm --prefix design run build` generates
+  `design/build/{tokens.css,manifest.json,base.css,base.css.name}`;
   `npm --prefix design run check` validates catalog coverage, layer direction,
-  dark/forced-dark declarations, and dimension/`isLengthToken` rules.
-- `scripts/sync-design-css.sh` copies the bundle to
-  `lib/rust/crates/pathland-render-html/assets/base.css` (committed; `--check`
-  fails on drift). `css.rs` embeds it with `include_str!`.
+  dark/forced-dark declarations, dimension/`isLengthToken` rules, and the CSS
+  content hash.
+- `scripts/sync-design-css.sh` copies the bundle + name to
+  `lib/rust/crates/pathland-render-html/assets/` (committed; `--check` fails on
+  drift). `css.rs` embeds both with `include_str!` (`builtin_css()` /
+  `builtin_css_name()`).
+- The renderer's library default is inline (`render_document`); the linked mode
+  (`render_document_linked`, C ABI `pathland_html_render_linked` +
+  `pathland_html_base_css[_name]`, Java `renderLinked`/`baseCss`/`baseCssName`)
+  emits `{base}/base-<hash>.css`. The Spring Boot and Quarkus starters use it
+  and serve the renderer-owned bytes immutable (global + mounted bases); token
+  overrides/fit rules stay inline.
 - `scripts/lib.sh` (`build_rust_html`), the Maven `refresh-ide` profile, and CI
   run the design build + sync. Do not edit generated CSS by hand.
 

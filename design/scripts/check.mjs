@@ -9,6 +9,7 @@
 //   - no references are unresolved;
 //   - the generated build/ files match the current token sources.
 
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -236,6 +237,21 @@ try {
   tokensCss = await readFile(join(DESIGN_ROOT, "build", "tokens.css"), "utf8");
 } catch {
   fail("build/tokens.css is missing — run `npm --prefix design run build` first");
+}
+
+// The content-hashed asset name the SSR starters emit in their <link>.
+try {
+  const [baseCss, nameFile] = await Promise.all([
+    readFile(join(DESIGN_ROOT, "build", "base.css"), "utf8"),
+    readFile(join(DESIGN_ROOT, "build", "base.css.name"), "utf8"),
+  ]);
+  const name = nameFile.trim();
+  const hash = createHash("sha256").update(baseCss, "utf8").digest("hex").slice(0, 12);
+  if (name !== `base-${hash}.css`) {
+    fail(`build/base.css.name is stale: expected base-${hash}.css, got ${name || "<empty>"}`);
+  }
+} catch {
+  fail("build/base.css.name is missing — run `npm --prefix design run build` first");
 }
 
 if (manifest) {

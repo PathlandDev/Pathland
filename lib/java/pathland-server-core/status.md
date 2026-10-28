@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** October 28, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -96,8 +96,11 @@ dependency — framework glue lives in the starters.
   name from the `_pathland/dom-renderer.current` manifest on the classpath, falling
   back to the literal `dom-renderer.js` when absent) so the client's WebSocket and
   asset refs resolve from the same reserved prefix (spec DSL.md). The content-hashed
-  name busts the immutable asset cache with a fresh URL per build. Multi-app hosts
-  give each mount its own base.
+  name busts the immutable asset cache with a fresh URL per build. The built-in
+  base design is linked the same way: `renderHtml` renders through
+  `HtmlRenderer.renderLinked(frame, root, base)`, so the CSS href is
+  `{base}/base-<sha256>.css` (token overrides/fit rules stay inline).
+  Multi-app hosts give each mount its own base.
 - **Per-window-id service worker (opt-in, issue #155)**: `PathlandHost` carries a
   host-level `serviceWorker` flag (default `false`; one registration covers the
   whole origin) threaded to every `PathlandRegistry`; `PathlandSession.renderHtml`

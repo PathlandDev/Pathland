@@ -1,6 +1,6 @@
 # pathland-spring-boot-starter — implementation status
 
-**Last updated:** October 3, 2026
+**Last updated:** October 28, 2026
 
 Spring Boot auto-configuration for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding the starter dependency + a
@@ -23,10 +23,14 @@ subpaths (the BFF layout).
     the prefix stripped + a framework static controller serving the bundle + asset mount
     from `classpath:/static/_pathland/**` at both `/_pathland/**` and `/{app}/_pathland/**`;
     the more-specific mapping beats `/{*path}`, and the `!Upgrade` header excludes WS).
-    When no static file matches an `/_pathland/icons/{name}.svg` request, the controller
-    serves the renderer-owned glyph from the shared Rust renderer
-    (`HtmlRenderer.iconSvg` → `pathland_html_icon_svg`) with an `immutable` cache header —
-    no static icon files on any host, and a host can still override a glyph with a file.
+    When no static file matches, the controller serves renderer-owned assets from the
+    shared Rust renderer: the content-hashed base stylesheet
+    (`HtmlRenderer.baseCss()` at `baseCssName()`) as `text/css` with
+    `Cache-Control: public, max-age=31536000, immutable`, and
+    `/_pathland/icons/{name}.svg` glyphs (`HtmlRenderer.iconSvg` →
+    `pathland_html_icon_svg`) with an `immutable` cache header — no static CSS/icon
+    files on any host, and a host can still override either with a file. SSR links
+    the CSS via `PathlandSession` → `renderLinked`.
     The framework controller honors byte-range requests (`206 Partial Content` +
     `Content-Range`, `416` for unsatisfiable ranges, `Accept-Ranges` on the full
     response) — a `<video>` (a `MediaController`'s playback) seeking beyond its
@@ -76,6 +80,9 @@ connects, re-syncs, gets transport-level PONGs, stays isolated, and is never clo
 the peer. `PathlandObservabilityTest` (`@SpringBootTest` + `MockMvc`) asserts
 `/actuator/health` reports the `pathland` component UP and the auto-configured
 `PathlandTelemetry` is a `MicrometerTelemetry` registering `pathland.*` meters.
+`BaseCssHeadersTest` (`@SpringBootTest` + `MockMvc`) asserts the linked SSR
+`<link>`, the immutable `text/css` response at the global and mounted bases, and
+a 404 for an unknown hash.
 Manual: the `pathland-spring-boot-demo` renders `/`, `/kitchen`, `/settings`
 and the 404 fallback **and a second app at `/app2`**; a WebSocket handshake to
 `/_pathland/ws` and `/app2/_pathland/ws` returns 101.

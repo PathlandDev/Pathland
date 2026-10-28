@@ -12,14 +12,15 @@ use std::os::raw::c_uchar;
 
 use pathland_core_transport::decode_frame;
 
-use crate::HtmlRenderer;
+use crate::{css, HtmlRenderer};
 
-fn render_bytes(
+fn render_bytes_with_css(
     batch: *const c_uchar,
     len: u32,
     root: u32,
     fragment: bool,
     debug: bool,
+    css_base: Option<&str>,
 ) -> *const c_char {
     if batch.is_null() {
         return std::ptr::null();
@@ -32,6 +33,8 @@ fn render_bytes(
     let renderer = HtmlRenderer::new().with_debug_comments(debug);
     let html = if fragment {
         renderer.render_fragment(&opcodes, &strings, root)
+    } else if let Some(base) = css_base {
+        renderer.render_document_linked(&opcodes, &strings, root, base)
     } else {
         renderer.render_document(&opcodes, &strings, root)
     };
@@ -39,6 +42,16 @@ fn render_bytes(
         Ok(cs) => cs.into_raw(),
         Err(_) => std::ptr::null(),
     }
+}
+
+fn render_bytes(
+    batch: *const c_uchar,
+    len: u32,
+    root: u32,
+    fragment: bool,
+    debug: bool,
+) -> *const c_char {
+    render_bytes_with_css(batch, len, root, fragment, debug, None)
 }
 
 /// Render a self-contained PLPL batch as a **full HTML document**. Returns a
@@ -102,6 +115,54 @@ pub unsafe extern "C" fn pathland_html_free(ptr: *const c_char) {
     }
 }
 
+/// Render a self-contained PLPL batch as a **full HTML document** whose base
+/// design is a content-hashed stylesheet link at `{css_base}/{name}` instead of
+/// an inline `<style>` block (see [`pathland_html_base_css_name`]). `debug`
+/// non-zero enables node comments. Ownership and safety as
+/// [`pathland_html_render`]; `css_base` must be a valid NUL-terminated C string
+/// (or NULL, which falls back to the inline document).
+#[no_mangle]
+pub unsafe extern "C" fn pathland_html_render_linked(
+    batch: *const c_uchar,
+    len: u32,
+    root: u32,
+    css_base: *const c_char,
+    debug: u8,
+) -> *const c_char {
+    let css_base = if css_base.is_null() {
+        None
+    } else {
+        match unsafe { CStr::from_ptr(css_base) }.to_str() {
+            Ok(base) => Some(base),
+            Err(_) => return std::ptr::null(),
+        }
+    };
+    render_bytes_with_css(batch, len, root, false, debug != 0, css_base)
+}
+
+/// The generated base-design stylesheet (the bytes served at
+/// `{base}/[`pathland_html_base_css_name`]`). Returns a NUL-terminated C string
+/// owned by the caller (release with [`pathland_html_free`]).
+#[no_mangle]
+pub extern "C" fn pathland_html_base_css() -> *const c_char {
+    match CString::new(css::builtin_css()) {
+        Ok(cs) => cs.into_raw(),
+        Err(_) => std::ptr::null(),
+    }
+}
+
+/// The content-hashed asset name of the base stylesheet (e.g.
+/// `base-5f86423db422.css`), so a host can serve it with immutable caching and
+/// emit a cache-busting `<link>`. Returns a NUL-terminated C string owned by the
+/// caller (release with [`pathland_html_free`]).
+#[no_mangle]
+pub extern "C" fn pathland_html_base_css_name() -> *const c_char {
+    match CString::new(css::builtin_css_name()) {
+        Ok(cs) => cs.into_raw(),
+        Err(_) => std::ptr::null(),
+    }
+}
+
 /// The full `<svg>` for a canonical `ICON_NAME` — the renderer-owned glyph
 /// served at `/_pathland/icons/<name>.svg`. This is how every host language
 /// (Java via JNA, Swift/.NET/Node/Go via this same ABI) serves the web
@@ -159,6 +220,46 @@ mod tests {
         assert!(!html.contains("<!DOCTYPE html>"));
         assert!(html.contains("data-pathland-id=\"1\""));
         unsafe { pathland_html_free(frag) };
+    }
+
+    #[test]
+    fn capi_exposes_the_base_css_and_renders_a_linked_document() {
+        let css_ptr = pathland_html_base_css();
+        assert!(!css_ptr.is_null());
+        let css = unsafe { CStr::from_ptr(css_ptr) }.to_string_lossy().into_owned();
+        assert!(css.contains("--pl-color-primary"), "base design bytes");
+        unsafe { pathland_html_free(css_ptr) };
+
+        let name_ptr = pathland_html_base_css_name();
+        assert!(!name_ptr.is_null());
+        let name = unsafe { CStr::from_ptr(name_ptr) }.to_string_lossy().into_owned();
+        assert!(name.starts_with("base-") && name.ends_with(".css"), "{name}");
+        unsafe { pathland_html_free(name_ptr) };
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(
+            category::TREE,
+            tree::CREATE_NODE,
+            0,
+            1,
+            component_type::TEXT as u32,
+            0,
+        ));
+        let bytes = encode_frame(&opcodes, &[]);
+        let base = std::ffi::CString::new("/_pathland").unwrap();
+        let ptr = unsafe {
+            pathland_html_render_linked(bytes.as_ptr(), bytes.len() as u32, 1, base.as_ptr(), 0)
+        };
+        assert!(!ptr.is_null());
+        let html = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+        assert!(
+            html.contains(&format!(
+                "<link rel=\"stylesheet\" href=\"/_pathland/{name}\">"
+            )),
+            "{html}"
+        );
+        assert!(!html.contains("<style>"), "linked document omits inline base CSS: {html}");
+        unsafe { pathland_html_free(ptr) };
     }
 
     #[test]
