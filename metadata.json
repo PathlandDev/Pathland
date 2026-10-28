@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M60XE96V53KAHC7AP3G5ZYT7",
+  "strategy": "manual-commit",
+  "branch": "feature/hashed-base-css",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "AGENTS.md",
+    "design/PLAN.md",
+    "design/README.md",
+    "design/scripts/build.mjs",
+    "design/scripts/check.mjs",
+    "lib/java/pathland-quarkus-starter/src/main/java/dev/pathland/quarkus/IndexResource.java",
+    "lib/java/pathland-quarkus-starter/src/test/java/dev/pathland/quarkus/BaseCssTest.java",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/HtmlRenderer.java",
+    "lib/java/pathland-render-html/src/test/java/dev/pathland/render/html/HtmlRendererTest.java",
+    "lib/java/pathland-render-html/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/PathlandSessionTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/java/dev/pathland/spring/PathlandIndexController.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/BaseCssHeadersTest.java",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/rust/crates/pathland-render-html/assets/base.css.name",
+    "lib/rust/crates/pathland-render-html/src/capi.rs",
+    "lib/rust/crates/pathland-render-html/src/css.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "scripts/sync-design-css.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1865816,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 28175232,
+    "output_tokens": 28648,
+    "api_call_count": 84
+  }
+}
