@@ -22,7 +22,7 @@ use pathland_core::{
 };
 
 mod capi;
-mod css;
+pub mod css;
 mod debug;
 pub mod icons;
 pub mod role_spec;
@@ -3928,8 +3928,8 @@ mod tests {
         assert!(css.contains("color-scheme: light dark"), "native form controls follow the theme");
         assert!(css.contains(".pathland-input"), "input component");
         assert!(css.contains("--pl-input-border"), "input border token");
-        assert!(css.contains("outline: 1px solid var(--pl-input-border)"), "inset outline instead of border");
-        assert!(css.contains("outline-offset: -1px"), "inset ring");
+        assert!(css.contains("outline: var(--pl-control-border-width) solid var(--pl-input-border)"), "inset outline instead of border");
+        assert!(css.contains("outline-offset: calc(-1 * var(--pl-control-border-width))"), "inset ring");
         assert!(css.contains("--pl-input-focus"), "input focus token");
         // Native controls inherit the preflight + design-token surface.
         for selector in [
@@ -3990,7 +3990,8 @@ mod tests {
             "--pl-button-foreground",
             "--pl-button-border",
             "--pl-button-radius",
-            "--pl-button-padding",
+            "--pl-button-padding-horizontal",
+            "--pl-button-padding-vertical",
             "--pl-button-font-size",
             "--pl-button-font-weight",
             "--pl-input-background",
@@ -4037,7 +4038,7 @@ mod tests {
         assert!(css.contains("color: var(--pl-button-foreground)"), "button fg from button.*");
         assert!(css.contains("background-color: var(--pl-input-background)"), "input bg from input.*");
         assert!(css.contains("color: var(--pl-input-foreground)"), "input fg from input.*");
-        assert!(css.contains("outline: 2px solid var(--pl-control-accent)"), "focus ring uses control.accent");
+        assert!(css.contains("outline: var(--pl-button-focus-ring-width) solid var(--pl-button-focus-ring-color)"), "focus ring uses button.focus.ring.*");
         assert!(css.contains("var(--pl-elevation-low-x)"), "button shadow uses elevation.low.*");
         assert!(css.contains("var(--pl-elevation-high-x)"), "menu shadow uses elevation.high.*");
     }

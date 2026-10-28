@@ -1,0 +1,13 @@
+{
+  "icon.size": {
+    "$value": "{control.icon.size}",
+    "$type": "dimension",
+    "$extensions": { "pathland": { "internal": true } }
+  },
+  "icon.offset": {
+    "$value": "{control.icon.offset}",
+    "$type": "dimension",
+    "$extensions": { "pathland": { "internal": true } }
+  },
+  "color.swatch.inset": { "$value": "{control.swatch.inset}", "$type": "dimension" }
+}

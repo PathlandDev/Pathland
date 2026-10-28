@@ -1,0 +1,26 @@
+{
+  "stepper.accent": { "$value": "{control.accent}", "$type": "color" },
+  "stepper.background": { "$value": "{color.surface}", "$type": "color" },
+  "stepper.border": { "$value": "{color.border}", "$type": "color" },
+  "stepper.radius": { "$value": "{radius.sm}", "$type": "dimension" },
+  "stepper.gap": { "$value": "{base.space.2}", "$type": "dimension" },
+  "stepper.button.size": { "$value": "{base.space.7}", "$type": "dimension" },
+  "stepper.border.width": { "$value": "{control.border.width}", "$type": "dimension" },
+
+  "picker.accent": { "$value": "{control.accent}", "$type": "color" },
+  "picker.background": { "$value": "{color.surface}", "$type": "color" },
+  "picker.border": { "$value": "{color.border}", "$type": "color" },
+  "picker.radius": { "$value": "{radius.sm}", "$type": "dimension" },
+
+  "menu.background": { "$value": "{color.surface}", "$type": "color" },
+  "menu.foreground": { "$value": "{color.text.primary}", "$type": "color" },
+  "menu.border": { "$value": "{color.border}", "$type": "color" },
+  "menu.radius": { "$value": "{radius.md}", "$type": "dimension" },
+  "menu.min-width": { "$value": "{base.size.menu-min}", "$type": "dimension" },
+  "menu.border.width": { "$value": "{control.border.width}", "$type": "dimension" },
+  "menu.z-index": {
+    "$value": "{base.z.menu}",
+    "$type": "number",
+    "$extensions": { "pathland": { "internal": true } }
+  }
+}

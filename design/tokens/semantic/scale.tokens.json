@@ -1,0 +1,40 @@
+{
+  "space.base": { "$value": "{base.space.unit}", "$type": "dimension" },
+
+  "radius.xs": { "$value": "{base.radius.xs}", "$type": "dimension" },
+  "radius.sm": { "$value": "{base.radius.sm}", "$type": "dimension" },
+  "radius.md": { "$value": "{base.radius.md}", "$type": "dimension" },
+  "radius.lg": { "$value": "{base.radius.lg}", "$type": "dimension" },
+  "radius.xl": { "$value": "{base.radius.xl}", "$type": "dimension" },
+  "radius.full": { "$value": "{base.radius.full}", "$type": "dimension" },
+
+  "border.width.thin": { "$value": "{base.border.width.1}", "$type": "dimension" },
+  "border.width.thick": { "$value": "{base.border.width.2}", "$type": "dimension" },
+
+  "size.control.xs": { "$value": "{base.size.control.xs}", "$type": "dimension" },
+  "size.control.sm": { "$value": "{base.size.control.sm}", "$type": "dimension" },
+  "size.control.md": { "$value": "{base.size.control.md}", "$type": "dimension" },
+  "size.control.lg": { "$value": "{base.size.control.lg}", "$type": "dimension" },
+  "size.control.xl": { "$value": "{base.size.control.xl}", "$type": "dimension" },
+
+  "opacity.disabled": { "$value": "{base.opacity.disabled}", "$type": "number" },
+
+  "elevation.low.color": {
+    "$value": "{base.color.black-a05}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.black-a35}" } }
+  },
+  "elevation.low.radius": { "$value": "{base.elevation.low.radius}", "$type": "dimension" },
+  "elevation.low.x": { "$value": "{base.elevation.low.x}", "$type": "dimension" },
+  "elevation.low.y": { "$value": "{base.elevation.low.y}", "$type": "dimension" },
+  "elevation.low.blur": { "$value": "{base.elevation.low.blur}", "$type": "dimension" },
+  "elevation.high.color": {
+    "$value": "{base.color.black-a15}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.black-a50}" } }
+  },
+  "elevation.high.radius": { "$value": "{base.elevation.high.radius}", "$type": "dimension" },
+  "elevation.high.x": { "$value": "{base.elevation.high.x}", "$type": "dimension" },
+  "elevation.high.y": { "$value": "{base.elevation.high.y}", "$type": "dimension" },
+  "elevation.high.blur": { "$value": "{base.elevation.high.blur}", "$type": "dimension" }
+}

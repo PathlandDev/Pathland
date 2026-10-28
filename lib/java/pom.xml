@@ -228,6 +228,28 @@
                     <inherited>false</inherited>
                     <executions>
                         <execution>
+                            <id>refresh-design</id>
+                            <phase>validate</phase>
+                            <goals><goal>exec</goal></goals>
+                            <configuration>
+                                <workingDirectory>${session.executionRootDirectory}/../../design</workingDirectory>
+                                <executable>npm</executable>
+                                <arguments>
+                                    <argument>run</argument>
+                                    <argument>build</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>refresh-design-sync</id>
+                            <phase>validate</phase>
+                            <goals><goal>exec</goal></goals>
+                            <configuration>
+                                <workingDirectory>${session.executionRootDirectory}/../..</workingDirectory>
+                                <executable>${session.executionRootDirectory}/../../scripts/sync-design-css.sh</executable>
+                            </configuration>
+                        </execution>
+                        <execution>
                             <id>refresh-rust</id>
                             <phase>validate</phase>
                             <goals><goal>exec</goal></goals>

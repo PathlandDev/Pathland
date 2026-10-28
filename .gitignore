@@ -21,6 +21,10 @@ lib/java/**/target/
 # Ad-hoc node installs (Entire CLI hooks)
 /node_modules/
 
+# Design pipeline (generated bundle + local dependencies)
+/design/build/
+/design/node_modules/
+
 # JVM crash logs
 hs_err_pid*.log
 replay_pid*.log

@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** October 28, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -254,6 +254,30 @@ Statelessness). Protocol contract: `spec/`.
     dark scope so they correctly outrank built-in dark defaults (dark override
     → base override → dark default).
 
+## Built-in HTML base design (`design/`)
+
+The built-in stylesheet is now **generated**, not hand-written in `css.rs`:
+
+- `design/tokens/{base,semantic,component}` is a three-layer Style Dictionary
+  source (flat DTCG entries). Base literals are compiled into literals and never
+  emitted; semantic + component tokens are emitted in four layers (`:root`,
+  platform-dark media, forced-dark/light scheme selectors, and the
+  `--pl-dark-*` forced-dark family).
+- `design/html/{reset,components}.css` holds the hand-authored reset and
+  `.pathland-*` rules. Component rules consume `var(--pl-*)` tokens; no
+  design-relevant literal remains (sizes, radii, border widths, durations,
+  z-index, focus rings, opacities).
+- `design/scripts/{build,dev,check}.mjs` provide build/watch/validation.
+  `check` verifies Tier-1 catalog coverage, layer/reference direction,
+  dark/forced-dark declarations, `$extensions.pathland.internal` markings, and
+  that every `$type: dimension` token is recognized by `token_spec::isLengthToken`.
+- `design/build/base.css` is synced to `assets/base.css` by
+  `scripts/sync-design-css.sh` (and `--check` fails on drift). `src/css.rs`
+  embeds it with `include_str!`; `builtin_css()` exposes the bundle and `STYLE`
+  wraps it in `<style>`.
+- The build is wired into `scripts/lib.sh` (`build_rust_html`), the Maven
+  `refresh-ide` profile, and a CI design job that runs build/check/sync-check.
+
 ## Design decision (decision A, September 2026): inline-all + built-in design system
 
 Tailwind is **removed**. The renderer emits **everything inline** as CSS in a
@@ -263,8 +287,8 @@ single `style` attribute — no external compiler, no class system, no safelist:
   including the previously class-based enum surface (alignment, text alignment,
   text case, visible, font style/design, underline/strikethrough, clips-to-bounds,
   hit-testing, invert, truncation). **1 dp = 1 CSS px**.
-- **`css::STYLE`** is a built-in `<style>` block injected by `render_document`,
-  containing:
+- **`css::STYLE`** is the generated built-in `<style>` block injected by
+  `render_document` (see "Built-in HTML base design" above), containing:
   - a **preflight reset** (vendored from Tailwind CSS, MIT — see
     `THIRD_PARTY_NOTICES`),
   - `:root` **design tokens** as CSS custom properties (`--pl-color-primary`,
@@ -360,9 +384,13 @@ contract both renderers must satisfy.
 
 ## Verified by
 
-`cargo test -p pathland-render-html` — 43 headless render tests (components,
+`cargo test -p pathland-render-html` — 45 headless render tests (components,
 properties, composite, event attrs, navigation slot route/transition attrs,
 `days_to_date`, network-decoded frames, inline-all styling, built-in CSS block
 contents, Inter CDN head links, design tokens: base/dark override CSS, `px`
-lengths, `DESIGN_TOKEN` refs, generative `space.N`). `cargo test -p
-pathland-html-golden` — the SSR golden-fixture guard.
+lengths, `DESIGN_TOKEN` refs, generative `space.N`). The built-in CSS tests
+assert the generated bundle is embedded (reset, tokens, component rules) and
+that component rules reference the catalog/metadata tokens. `cargo test -p
+pathland-html-golden` — the SSR golden-fixture guard. `npm --prefix design run
+build && npm --prefix design run check` and `scripts/sync-design-css.sh --check`
+validate the design pipeline and the committed bundle.

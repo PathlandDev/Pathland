@@ -1,0 +1,19 @@
+{
+  "name": "@pathland/design",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pathland's built-in HTML base design: three-layer Style Dictionary tokens plus hand-authored reset and component CSS.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "chokidar": "^4.0.3",
+    "style-dictionary": "^5.0.0"
+  }
+}

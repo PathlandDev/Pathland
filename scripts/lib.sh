@@ -4,8 +4,18 @@
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Build the generated HTML base design and sync it into the renderer crate.
+build_design() {
+  if [[ ! -d "$ROOT/design/node_modules" ]]; then
+    (cd "$ROOT/design" && npm ci)
+  fi
+  (cd "$ROOT/design" && npm run build)
+  "$ROOT/scripts/sync-design-css.sh"
+}
+
 # Build the Rust HTML renderer cdylib (embedded in the Java pathland-render-html jar).
 build_rust_html() {
+  build_design
   (cd "$ROOT/lib/rust" && cargo build -p pathland-render-html)
 }
 

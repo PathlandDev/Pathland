@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pathland base design preview</title>
+  <!-- The generated bundle is rebuilt by `npm --prefix design run dev`. -->
+  <link rel="stylesheet" href="../build/base.css">
+  <style>
+    /* Preview-only page layout (not part of the design system). */
+    body { display: block; height: auto; min-height: 100vh; margin: 0; padding: 2rem; }
+    .preview { max-width: 56rem; margin: 0 auto; display: grid; gap: 2rem; }
+    .preview section { display: grid; gap: 0.75rem; }
+    .preview h2 { font-size: 0.875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--pl-color-text-secondary); }
+    .preview .row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .preview .stack { display: grid; gap: 0.5rem; max-width: 24rem; }
+    .preview .scheme { display: flex; gap: 0.5rem; }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <header class="row" style="justify-content: space-between;">
+      <h1 style="font-size: 1.25rem; font-weight: 600;">Pathland base design</h1>
+      <div class="scheme">
+        <button class="pathland-button" type="button" data-scheme="light">Light</button>
+        <button class="pathland-button" type="button" data-scheme="dark">Dark</button>
+        <button class="pathland-button" type="button" data-scheme="system">System</button>
+      </div>
+    </header>
+
+    <section>
+      <h2>Buttons</h2>
+      <div class="row">
+        <button class="pathland-button" type="button">Primary action</button>
+        <button class="pathland-button" type="button" disabled>Disabled</button>
+        <button class="pathland-button" type="button">
+          <svg class="pathland-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"></path>
+          </svg>
+          With icon
+        </button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Fields</h2>
+      <div class="stack">
+        <div class="pathland-textfield">
+          <span class="pathland-label">Name</span>
+          <input class="pathland-input pathland-control" type="text" placeholder="Ada Lovelace">
+        </div>
+        <input class="pathland-input pathland-control" type="text" value="Focused value" autofocus>
+        <select class="pathland-select pathland-control">
+          <option>First option</option>
+          <option>Second option</option>
+        </select>
+        <div class="row">
+          <input class="pathland-date pathland-control" type="date">
+          <input class="pathland-color pathland-control" type="color" value="#2563eb">
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Toggles</h2>
+      <div class="row">
+        <label class="pathland-toggle">
+          <input type="checkbox" role="switch" checked>
+          <span class="pathland-text">Switch on</span>
+        </label>
+        <label class="pathland-toggle">
+          <input type="checkbox" role="switch">
+          <span class="pathland-text">Switch off</span>
+        </label>
+        <label class="pathland-toggle">
+          <input type="checkbox" checked>
+          <span class="pathland-text">Checkbox</span>
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Slider</h2>
+      <label class="pathland-slider" style="max-width: 24rem;">
+        <input type="range" min="0" max="100" value="40" style="--pl-slider-fill: 40%;">
+        <span class="pathland-text">40</span>
+      </label>
+    </section>
+
+    <section>
+      <h2>Progress / gauge / spinner</h2>
+      <div class="stack">
+        <progress class="pathland-progress" value="0.6" max="1"></progress>
+        <div class="pathland-gauge"><div style="width: 65%;"></div></div>
+        <div class="row"><div class="pathland-spinner"></div><span>Loading…</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Stepper</h2>
+      <div class="pathland-stepper">
+        <button type="button">−</button>
+        <span>3</span>
+        <button type="button">+</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Menu</h2>
+      <div class="pathland-menu">
+        <div class="pathland-menu-trigger pathland-button">Open menu</div>
+        <div class="pathland-menu-items">
+          <div style="padding: 0.5rem 0.75rem;">First item</div>
+          <div style="padding: 0.5rem 0.75rem;">Second item</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Media</h2>
+      <div class="pathland-media" style="max-width: 24rem;">
+        <video controls muted></video>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    for (const button of document.querySelectorAll("[data-scheme]")) {
+      button.addEventListener("click", () => {
+        const scheme = button.dataset.scheme;
+        if (scheme === "system") {
+          delete document.documentElement.dataset.pathlandScheme;
+        } else {
+          document.documentElement.dataset.pathlandScheme = scheme;
+        }
+      });
+    }
+  </script>
+</body>
+</html>

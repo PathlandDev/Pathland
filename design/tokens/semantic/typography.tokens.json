@@ -1,0 +1,15 @@
+{
+  "font.body.size": { "$value": "{base.font.size.16}", "$type": "dimension" },
+  "font.body.weight": { "$value": "{base.font.weight.400}", "$type": "number" },
+  "font.body.family": { "$value": "{base.font.family.system}", "$type": "fontFamily" },
+  "font.sans": {
+    "$value": "{font.body.family}",
+    "$type": "fontFamily",
+    "$extensions": {
+      "pathland": {
+        "internal": true,
+        "semanticAlias": "the reset typography follows a font.body.family override"
+      }
+    }
+  }
+}
