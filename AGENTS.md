@@ -2,7 +2,7 @@
 
 This document provides essential context for AI agents (or human contributors) working on the **Pathland** protocol. It captures the project's direction, architectural decisions, and implementation details to ensure consistency.
 
-**Last Updated**: October 27, 2026
+**Last Updated**: October 28, 2026
 
 ---
 
@@ -198,6 +198,34 @@ lib/java/
   rebuild itself with `mvn -P refresh-ide validate` (root `pom.xml`: `cargo build
   -p pathland-render-html`, `npm run build:all`, and the render-html embedded
   dylib re-copy), then Reload/Build → Run → reload.
+
+### HTML base design (`design/`)
+
+The HTML renderer's built-in stylesheet is generated from a **three-layer Style
+Dictionary pipeline** plus hand-authored reset/component CSS (one built-in base
+design; no app-facing base-design selection):
+
+```
+design/tokens/base/*.tokens.json      # internal palette + scales (not emitted)
+design/tokens/semantic/*.tokens.json  # protocol catalog semantics (emitted)
+design/tokens/component/*.tokens.json # per-component surface (emitted)
+design/html/{reset,components}.css    # hand-authored CSS consuming var(--pl-*)
+design/scripts/{build,dev,check}.mjs  # SD build, watcher/preview, validation
+design/build/base.css                 # generated: reset + tokens + components
+```
+
+- Tokens are flat DTCG entries (`$value`/`$type`/`$extensions.pathland`) because
+  the catalog has both leaf and group paths (`control.border` vs
+  `control.border.width`). Dark values live on `$extensions.pathland.dark`;
+  durations/z-index/`em` icon sizes are marked internal.
+- `npm --prefix design run build` generates `design/build/{tokens.css,manifest.json,base.css}`;
+  `npm --prefix design run check` validates catalog coverage, layer direction,
+  dark/forced-dark declarations, and dimension/`isLengthToken` rules.
+- `scripts/sync-design-css.sh` copies the bundle to
+  `lib/rust/crates/pathland-render-html/assets/base.css` (committed; `--check`
+  fails on drift). `css.rs` embeds it with `include_str!`.
+- `scripts/lib.sh` (`build_rust_html`), the Maven `refresh-ide` profile, and CI
+  run the design build + sync. Do not edit generated CSS by hand.
 
 ### Native C-ABI shim (`pathland-view-native` + `pathland-core-capi`)
 
@@ -519,7 +547,9 @@ Renderer defines visual appearance, behavior, defaults, and interaction states.
 - The protocol MUST NEVER describe hover styles, click styles, visual transitions, conditional styling, or layout tuning for interaction states
 - **Deferred**: applying per-component tokens to native GTK/Qt leaf control chrome; web parent-path fallback.
 
-Full details: [Design Token System](./spec/OPCODE.md#design-token-system) and the canonical catalog / color-scheme contract in [spec/TOKENS.md](./spec/TOKENS.md).
+The HTML renderer's default token values are generated from `design/` (see
+"HTML base design" above). Full details: [Design Token System](./spec/OPCODE.md#design-token-system)
+and the canonical catalog / color-scheme contract in [spec/TOKENS.md](./spec/TOKENS.md).
 
 ---
 

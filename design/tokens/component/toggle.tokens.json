@@ -1,0 +1,21 @@
+{
+  "toggle.accent": { "$value": "{control.accent}", "$type": "color" },
+  "toggle.track.off": { "$value": "{control.border}", "$type": "color" },
+  "toggle.track.on": { "$value": "{control.accent}", "$type": "color" },
+  "toggle.thumb": { "$value": "{control.thumb}", "$type": "color" },
+  "toggle.gap": { "$value": "{base.space.2}", "$type": "dimension" },
+  "toggle.checkbox.size": { "$value": "{base.space.4}", "$type": "dimension" },
+  "toggle.switch.width": { "$value": "{base.space.11}", "$type": "dimension" },
+  "toggle.switch.height": { "$value": "{base.space.6}", "$type": "dimension" },
+  "toggle.switch.radius": { "$value": "{base.radius.full}", "$type": "dimension" },
+  "toggle.thumb.size": { "$value": "{base.space.5}", "$type": "dimension" },
+  "toggle.thumb.offset": { "$value": "{base.space.0_5}", "$type": "dimension" },
+  "toggle.thumb.travel": { "$value": "{base.space.5_5}", "$type": "dimension" },
+  "toggle.transition.duration": {
+    "$value": "{base.duration.150}",
+    "$type": "duration",
+    "$extensions": { "pathland": { "internal": true } }
+  },
+  "toggle.focus.ring.width": { "$value": "{control.focus.ring.width}", "$type": "dimension" },
+  "toggle.focus.ring.offset": { "$value": "{control.focus.ring.offset}", "$type": "dimension" }
+}

@@ -1,0 +1,42 @@
+{
+  "progress.track": {
+    "$value": "{base.color.gray.200}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.white-a15}",
+        "baseReference": "progress track has no semantic catalog alias"
+      }
+    }
+  },
+  "progress.fill": { "$value": "{color.primary}", "$type": "color" },
+  "progress.height": { "$value": "{base.space.2_5}", "$type": "dimension" },
+  "progress.radius": { "$value": "{base.radius.full}", "$type": "dimension" },
+
+  "gauge.track": {
+    "$value": "{base.color.gray.200}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.white-a15}",
+        "baseReference": "gauge track has no semantic catalog alias"
+      }
+    }
+  },
+  "gauge.fill": { "$value": "{color.primary}", "$type": "color" },
+  "gauge.height": { "$value": "{base.space.2_5}", "$type": "dimension" },
+  "gauge.radius": { "$value": "{base.radius.full}", "$type": "dimension" },
+  "gauge.transition.duration": {
+    "$value": "{base.duration.150}",
+    "$type": "duration",
+    "$extensions": { "pathland": { "internal": true } }
+  },
+
+  "spinner.size": { "$value": "{base.space.5}", "$type": "dimension" },
+  "spinner.border.width": { "$value": "{base.border.width.3}", "$type": "dimension" },
+  "spinner.duration": {
+    "$value": "{base.duration.800}",
+    "$type": "duration",
+    "$extensions": { "pathland": { "internal": true } }
+  }
+}

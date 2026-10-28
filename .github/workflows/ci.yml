@@ -6,9 +6,37 @@ on:
   pull_request:
 
 jobs:
+  design:
+    name: Design (Style Dictionary)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: design/package-lock.json
+
+      # Build the generated token CSS / manifest / bundle and validate the
+      # three token layers against the protocol catalog, dark/forced-dark
+      # rules, and the canonical length conventions.
+      - name: Install, build, check
+        working-directory: design
+        run: |
+          npm ci
+          npm run build
+          npm run check
+
+      # The Rust renderer embeds the generated bundle (committed for packaging).
+      - name: Verify the committed renderer CSS matches the design build
+        run: scripts/sync-design-css.sh --check
+
   rust:
     name: Rust (workspace + C ABI + no_std/wasm)
     runs-on: ubuntu-latest
+    needs: [design]
     steps:
       - uses: actions/checkout@v4
 

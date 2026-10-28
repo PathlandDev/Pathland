@@ -1,0 +1,23 @@
+{
+  "slider.accent": { "$value": "{control.accent}", "$type": "color" },
+  "slider.track": {
+    "$value": "{base.color.gray.200}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.white-a15}",
+        "baseReference": "slider track has no semantic catalog alias"
+      }
+    }
+  },
+  "slider.thumb": { "$value": "{control.thumb}", "$type": "color" },
+  "slider.gap": { "$value": "{base.space.2_5}", "$type": "dimension" },
+  "slider.height": { "$value": "{base.space.5}", "$type": "dimension" },
+  "slider.track.height": { "$value": "{base.space.1_5}", "$type": "dimension" },
+  "slider.track.radius": { "$value": "{base.radius.full}", "$type": "dimension" },
+  "slider.thumb.size": { "$value": "{base.space.4}", "$type": "dimension" },
+  "slider.thumb.offset": { "$value": "{base.size.slider-thumb-offset}", "$type": "dimension" },
+  "slider.thumb.border.width": { "$value": "{base.border.width.1}", "$type": "dimension" },
+  "slider.focus.ring.width": { "$value": "{control.focus.ring.width}", "$type": "dimension" },
+  "slider.focus.ring.offset": { "$value": "{control.focus.ring.offset}", "$type": "dimension" }
+}

@@ -1,0 +1,35 @@
+{
+  "base.color.white": { "$value": "#ffffff", "$type": "color" },
+  "base.color.black": { "$value": "#000000", "$type": "color" },
+
+  "base.color.gray.50": { "$value": "#f9fafb", "$type": "color" },
+  "base.color.gray.200": { "$value": "#e5e7eb", "$type": "color" },
+  "base.color.gray.300": { "$value": "#d1d5db", "$type": "color" },
+  "base.color.gray.400": { "$value": "#9ca3af", "$type": "color" },
+  "base.color.gray.500": { "$value": "#6b7280", "$type": "color" },
+  "base.color.gray.700": { "$value": "#374151", "$type": "color" },
+  "base.color.gray.800": { "$value": "#1f2937", "$type": "color" },
+  "base.color.gray.900": { "$value": "#111827", "$type": "color" },
+  "base.color.slate.900": { "$value": "#0f172a", "$type": "color" },
+
+  "base.color.blue.400": { "$value": "#60a5fa", "$type": "color" },
+  "base.color.blue.600": { "$value": "#2563eb", "$type": "color" },
+  "base.color.indigo.400": { "$value": "#818cf8", "$type": "color" },
+  "base.color.indigo.500": { "$value": "#6366f1", "$type": "color" },
+  "base.color.indigo.600": { "$value": "#4f46e5", "$type": "color" },
+  "base.color.green.400": { "$value": "#4ade80", "$type": "color" },
+  "base.color.green.600": { "$value": "#16a34a", "$type": "color" },
+  "base.color.amber.400": { "$value": "#fbbf24", "$type": "color" },
+  "base.color.amber.600": { "$value": "#d97706", "$type": "color" },
+  "base.color.red.400": { "$value": "#f87171", "$type": "color" },
+  "base.color.red.600": { "$value": "#dc2626", "$type": "color" },
+
+  "base.color.white-a05": { "$value": "rgb(255 255 255 / 0.05)", "$type": "color" },
+  "base.color.white-a10": { "$value": "rgb(255 255 255 / 0.1)", "$type": "color" },
+  "base.color.white-a15": { "$value": "rgb(255 255 255 / 0.15)", "$type": "color" },
+  "base.color.white-a20": { "$value": "rgb(255 255 255 / 0.2)", "$type": "color" },
+  "base.color.black-a05": { "$value": "rgb(0 0 0 / 0.05)", "$type": "color" },
+  "base.color.black-a15": { "$value": "rgb(0 0 0 / 0.15)", "$type": "color" },
+  "base.color.black-a35": { "$value": "rgb(0 0 0 / 0.35)", "$type": "color" },
+  "base.color.black-a50": { "$value": "rgb(0 0 0 / 0.5)", "$type": "color" }
+}

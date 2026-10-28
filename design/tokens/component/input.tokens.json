@@ -1,0 +1,59 @@
+{
+  "input.background": {
+    "$value": "{base.color.white}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.white-a05}",
+        "baseReference": "input field surface differs from the shared control surface"
+      }
+    }
+  },
+  "input.foreground": {
+    "$value": "{control.foreground}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.white}",
+        "baseReference": "field text is pure white on dark surfaces"
+      }
+    }
+  },
+  "input.placeholder": {
+    "$value": "{base.color.gray.400}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.gray.500}",
+        "baseReference": "placeholder color has no semantic catalog alias"
+      }
+    }
+  },
+  "input.border": {
+    "$value": "{base.color.gray.300}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.white-a10}",
+        "baseReference": "field outline differs from the shared control border"
+      }
+    }
+  },
+  "input.radius": { "$value": "{control.radius}", "$type": "dimension" },
+  "input.font.size": { "$value": "{base.font.size.1rem}", "$type": "dimension" },
+  "input.focus": {
+    "$value": "{base.color.indigo.600}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.indigo.500}",
+        "baseReference": "input focus color has no semantic catalog alias"
+      }
+    }
+  },
+  "input.padding.horizontal": { "$value": "{control.padding.horizontal}", "$type": "dimension" },
+  "input.padding.vertical": { "$value": "{control.padding.vertical}", "$type": "dimension" },
+  "input.focus.ring.width": { "$value": "{control.focus.ring.width}", "$type": "dimension" },
+  "input.focus.ring.offset": { "$value": "{control.focus.ring.inset}", "$type": "dimension" },
+  "input.swatch.inset": { "$value": "{control.swatch.inset}", "$type": "dimension" }
+}

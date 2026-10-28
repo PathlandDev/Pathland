@@ -1,0 +1,41 @@
+{
+  "button.background": { "$value": "{control.background}", "$type": "color" },
+  "button.background-hover": { "$value": "{control.background.hover}", "$type": "color" },
+  "button.foreground": {
+    "$value": "{control.foreground}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.white}",
+        "baseReference": "button text is pure white on dark surfaces"
+      }
+    }
+  },
+  "button.border": {
+    "$value": "{control.border}",
+    "$type": "color",
+    "$extensions": {
+      "pathland": {
+        "dark": "{base.color.white-a10}",
+        "baseReference": "button border is subtler than the shared control border in dark mode"
+      }
+    }
+  },
+  "button.border.width": { "$value": "{control.border.width}", "$type": "dimension" },
+  "button.radius": { "$value": "{control.radius}", "$type": "dimension" },
+  "button.height": { "$value": "{control.height}", "$type": "dimension" },
+  "button.padding.horizontal": { "$value": "{control.padding.horizontal}", "$type": "dimension" },
+  "button.padding.vertical": { "$value": "{control.padding.vertical}", "$type": "dimension" },
+  "button.line-height": { "$value": "{base.space.5}", "$type": "dimension" },
+  "button.font.size": { "$value": "{control.font.size}", "$type": "dimension" },
+  "button.font.weight": { "$value": "{control.font.weight}", "$type": "number" },
+  "button.accent": { "$value": "{control.accent}", "$type": "color" },
+  "button.focus.ring.width": { "$value": "{control.focus.ring.width}", "$type": "dimension" },
+  "button.focus.ring.offset": { "$value": "{control.focus.ring.offset}", "$type": "dimension" },
+  "button.focus.ring.color": { "$value": "{control.accent}", "$type": "color" },
+  "button.transition.duration": {
+    "$value": "{control.transition.duration}",
+    "$type": "duration",
+    "$extensions": { "pathland": { "internal": true } }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "color.background": {
+    "$value": "{base.color.white}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.slate.900}" } }
+  },
+  "color.primary": {
+    "$value": "{base.color.blue.600}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.blue.400}" } }
+  },
+  "color.secondary": {
+    "$value": "{base.color.indigo.600}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.indigo.400}" } }
+  },
+  "color.surface": {
+    "$value": "{base.color.white}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.gray.900}" } }
+  },
+  "color.text.primary": {
+    "$value": "{base.color.gray.900}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.gray.50}" } }
+  },
+  "color.text.secondary": {
+    "$value": "{base.color.gray.500}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.gray.400}" } }
+  },
+  "color.text.onPrimary": {
+    "$value": "{base.color.white}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.slate.900}" } }
+  },
+  "color.border": {
+    "$value": "{base.color.gray.200}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.gray.700}" } }
+  },
+  "color.accent": {
+    "$value": "{base.color.blue.600}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.blue.400}" } }
+  },
+
+  "color.separator": {
+    "$value": "{base.color.gray.200}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.gray.700}" } }
+  },
+  "color.success": {
+    "$value": "{base.color.green.600}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.green.400}" } }
+  },
+  "color.warning": {
+    "$value": "{base.color.amber.600}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.amber.400}" } }
+  },
+  "color.danger": {
+    "$value": "{base.color.red.600}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.red.400}" } }
+  },
+  "color.info": {
+    "$value": "{base.color.blue.600}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.blue.400}" } }
+  }
+}
