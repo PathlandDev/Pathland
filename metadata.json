@@ -3,7 +3,7 @@
   "checkpoint_id": "01M60Q48FVJZ52C7XSD4MB6K0J",
   "strategy": "manual-commit",
   "branch": "feature/design-system-style-dictionary",
-  "checkpoints_count": 2,
+  "checkpoints_count": 10,
   "files_touched": [
     ".github/workflows/ci.yml",
     ".gitignore",
@@ -58,13 +58,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": "/0/prompt.txt"
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 1679330,
+    "input_tokens": 2355073,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 25010048,
-    "output_tokens": 43831,
-    "api_call_count": 135
+    "cache_read_tokens": 31226752,
+    "output_tokens": 70236,
+    "api_call_count": 185
   }
 }

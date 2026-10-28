@@ -1,0 +1,1 @@
+I want to investigate how to make it easy to shift the base design for html renderer. Not just by overrides.

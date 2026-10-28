@@ -1,0 +1,55 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M60Q48FVJZ52C7XSD4MB6K0J",
+  "session_id": "ses_e7ef8db25ffenYE0dC4DYKQYP6",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-28T07:38:27.586455Z",
+  "branch": "feature/design-system-style-dictionary",
+  "checkpoints_count": 8,
+  "save_step_count": 1,
+  "files_touched": [
+    "design/PLAN.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "3ac1cf096fc7",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 675743,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 6216704,
+    "output_tokens": 26405,
+    "api_call_count": 50
+  },
+  "session_metrics": {
+    "turn_count": 8
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-28T07:38:27.516283Z",
+    "agent_lines": 260,
+    "agent_removed": 0,
+    "human_added": 4675,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 4935,
+    "total_lines_changed": 5561,
+    "agent_percentage": 4.675418090271534,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 253,
+      "agent_lines_removed": 0
+    }
+  ]
+}
