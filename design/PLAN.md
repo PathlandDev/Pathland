@@ -26,7 +26,6 @@ Make the HTML renderer's base design a **CSS-first, Style Dictionary pipeline**:
   one built-in base design.
 - GTK/Qt renderer changes.
 - Generated Java/TypeScript token constants and documentation (possible follow-up).
-- A production hashed linked stylesheet (deferred; the renderer embeds the base CSS).
 - Any protocol change. `spec/TOKENS.md` remains the catalog contract.
 
 ---
@@ -241,15 +240,31 @@ This is a development tool, **not** an app-selectable base design.
 
 - The base design is generated from the three-layer Style Dictionary source plus hand-authored
   reset/component CSS.
-- The renderer embeds the synced generated bundle; no app-facing base-design selection exists.
+- The renderer embeds the synced generated bundle and exposes its content-hashed
+  asset name. The Spring Boot / Quarkus starters link that asset and serve it
+  immutable; the library default remains inline. No app-facing base-design
+  selection exists.
 - The design token layers are validated against the protocol catalog, dark/forced-dark rules,
   and dimension/length conventions.
 - `cargo test`, the Java shim tests, the TypeScript tests, and the sync check pass.
 - No multiple-brand or app-selected base-design machinery is introduced.
 
+## Follow-up — content-hashed linked stylesheet (landed)
+
+- `design/build/base.css.name` carries `base-<sha256-12>.css`; `base.css` and the
+  name are synced to the crate and validated (`check` + `sync --check`).
+- Rust `render_document_linked` + `builtin_css_name()` and the C ABI
+  (`pathland_html_render_linked`, `pathland_html_base_css`,
+  `pathland_html_base_css_name`) expose the linked form; `render_document` stays
+  inline.
+- Java `HtmlRenderer.renderLinked` / `baseCss()` / `baseCssName()`; the SSR
+  starters use it and `PathlandSession` emits `{base}/base-<hash>.css`.
+- Spring and Quarkus serve the renderer-owned CSS at the global and mounted
+  bases with `Cache-Control: public, max-age=31536000, immutable`.
+- Token overrides and fit-band rules remain inline.
+
 ## Deferred
 
-- Production hashed linked stylesheet for the single built-in design.
 - SD-generated TypeScript/Java token constants and documentation.
 - Additional preview/design-tool ergonomics beyond Phase 5.
 

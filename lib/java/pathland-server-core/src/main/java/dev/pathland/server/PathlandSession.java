@@ -347,9 +347,13 @@ public final class PathlandSession {
                     + "pathland-render-html jar.</p></body></html>";
         }
         ProtocolFrame frame = ssrFrame();
+        // The base design is a content-hashed, immutable stylesheet under the
+        // session's framework base (the same base the DOM bundle/WS use). The
+        // Java shim falls back to the inline document when the linked export is
+        // unavailable. Token overrides and fit-band rules remain inline.
         String html = debugHtml
-                ? renderer.renderDebug(frame, rootId)
-                : renderer.render(frame, rootId);
+                ? renderer.renderLinkedDebug(frame, rootId, base)
+                : renderer.renderLinked(frame, rootId, base);
         // The reserved framework path prefix (spec): host system endpoints live
         // under `/{base}/**`. Carried as `data-pathland-base` so the DOM client
         // resolves its WebSocket and the bundle from the same base. Multi-app

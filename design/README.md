@@ -11,10 +11,12 @@ html/reset.css                   Tailwind-derived preflight        (hand-authore
 html/components.css              .pathland-* rules                 (hand-authored)
 ```
 
-The generated bundle is `build/base.css` (reset + `tokens.css` + components).
-`lib/rust/crates/pathland-render-html/assets/base.css` is the synced, committed
-copy the renderer embeds with `include_str!`; the renderer has one built-in base
-design and no app-facing design selection.
+The generated bundle is `build/base.css` (reset + `tokens.css` + components);
+`build/base.css.name` is its content-hashed asset name (e.g.
+`base-5f86423db422.css`). Both are synced into
+`lib/rust/crates/pathland-render-html/assets/` and committed: the renderer embeds
+the bytes with `include_str!` and exposes the name for cache-busting links. There
+is one built-in base design and no app-facing design selection.
 
 ## Commands
 
@@ -24,7 +26,7 @@ npm --prefix design run build   # Style Dictionary + build/base.css
 npm --prefix design run check   # catalog/layer/dark/dimension validation
 npm --prefix design run dev     # rebuild on token/CSS changes
 npm --prefix design run dev -- --serve   # also serve preview/ on :4173
-scripts/sync-design-css.sh      # copy build/base.css into the Rust crate
+scripts/sync-design-css.sh      # copy base.css + base.css.name into the Rust crate
 scripts/sync-design-css.sh --check
 ```
 
@@ -104,7 +106,24 @@ still emitted and listed in `build/manifest.json` with `"internal": true`.
   when introducing a new dimension path);
 - durations / z-index / icon sizes are marked internal;
 - `build/manifest.json` and `build/tokens.css` match the current sources, and
-  base tokens are not emitted.
+  base tokens are not emitted;
+- `build/base.css.name` matches the SHA-256 of `build/base.css`.
+
+## Serving the stylesheet
+
+The renderer supports two deliveries:
+
+- **inline** (the library default, `render_document` / `render`): the whole
+  base design is a `<style>` block in the document head;
+- **linked** (`render_document_linked` / Java `renderLinked`): an external
+  `<link rel="stylesheet" href="{base}/base-<hash>.css">`. Token overrides
+  (`<style data-pathland-tokens>`) and fit-band rules stay inline after it.
+
+The Spring Boot and Quarkus SSR starters use the linked form and serve the
+renderer-owned bytes at `{base}/base-<hash>.css` (global and per-app bases) with
+`Cache-Control: public, max-age=31536000, immutable`. A new design build gets a
+new hash, so the URL busts the cache. Library hosts can keep the inline default
+or serve `baseCss()` / `baseCssName()` themselves.
 
 ## Preview
 
@@ -119,6 +138,8 @@ design.
 - `build/tokens.css`
 - `build/manifest.json`
 - `build/base.css`
+- `build/base.css.name`
 - `lib/rust/crates/pathland-render-html/assets/base.css` (synced copy)
+- `lib/rust/crates/pathland-render-html/assets/base.css.name` (synced copy)
 
 Edit the token files or `html/{reset,components}.css`, then rebuild and sync.

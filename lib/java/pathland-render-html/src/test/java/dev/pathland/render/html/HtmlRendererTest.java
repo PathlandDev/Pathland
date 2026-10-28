@@ -83,6 +83,24 @@ class HtmlRendererTest {
     }
 
     @Test
+    void renderLinkedEmitsTheContentHashedStylesheet() {
+        ProtocolFrame frame = frameOf(Text.make(t -> t.text("Hi")));
+        HtmlRenderer renderer = renderer();
+        String name = renderer.baseCssName();
+        assertTrue(name.matches("base-[0-9a-f]{12}\\.css"), "hashed asset name: " + name);
+        String css = renderer.baseCss();
+        assertFalse(css.isEmpty(), "base CSS bytes are exposed");
+        assertTrue(css.contains("--pl-color-primary"), "base design bytes: " + css);
+
+        String html = renderer.renderLinked(frame, 1, "/_pathland");
+        assertTrue(html.contains("<link rel=\"stylesheet\" href=\"/_pathland/" + name + "\">"),
+                "linked stylesheet: " + html);
+        assertFalse(html.contains("<style>"), "base CSS is not inlined: " + html);
+        // The default API stays inline.
+        assertTrue(renderer.render(frame, 1).contains("<style>"), "default render remains inline");
+    }
+
+    @Test
     void rendersFullSnapshotFragment() {
         View root = VStack.children(Text.make(t -> t.text("Static")),
                 Text.make(t -> t.text(Signals.computed(() -> "Count: 0"))));

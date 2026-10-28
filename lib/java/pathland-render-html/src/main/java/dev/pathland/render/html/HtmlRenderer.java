@@ -44,6 +44,9 @@ public final class HtmlRenderer {
         Pointer pathland_html_render_fragment(Pointer batch, int len, int root);
         Pointer pathland_html_render_debug(Pointer batch, int len, int root, byte debug);
         Pointer pathland_html_render_fragment_debug(Pointer batch, int len, int root, byte debug);
+        Pointer pathland_html_render_linked(Pointer batch, int len, int root, String cssBase, byte debug);
+        Pointer pathland_html_base_css();
+        Pointer pathland_html_base_css_name();
         void pathland_html_free(Pointer ptr);
         Pointer pathland_html_icon_svg(String name);
     }
@@ -228,6 +231,67 @@ public final class HtmlRenderer {
         return renderFrame(frame, root, true);
     }
 
+    /**
+     * Render a full snapshot frame as a complete HTML document whose built-in
+     * base design is a **content-hashed stylesheet link** at
+     * {@code {cssBase}/{baseCssName()}} instead of an inline {@code <style>}
+     * block. Token overrides and fit-band rules stay inline. A blank base (or a
+     * native renderer that predates the linked export) falls back to the inline
+     * document.
+     */
+    public String renderLinked(ProtocolFrame frame, int root, String cssBase) {
+        return renderFrameLinked(frame, root, cssBase, false);
+    }
+
+    /** {@link #renderLinked} with per-node debug comments. */
+    public String renderLinkedDebug(ProtocolFrame frame, int root, String cssBase) {
+        return renderFrameLinked(frame, root, cssBase, true);
+    }
+
+    /** The generated base-design stylesheet bytes (served at {@link #baseCssName()}). */
+    public String baseCss() {
+        String cached = baseCss;
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (this) {
+            if (baseCss == null) {
+                try {
+                    baseCss = take(nativeRenderer.pathland_html_base_css());
+                } catch (LinkageError e) {
+                    baseCss = "";
+                }
+            }
+            return baseCss;
+        }
+    }
+
+    /**
+     * The content-hashed base stylesheet asset name (e.g.
+     * {@code base-5f86423db422.css}), so hosts can emit a cache-busting link and
+     * serve the bytes with immutable caching. Empty when the linked export is
+     * unavailable (callers then fall back to the inline document).
+     */
+    public String baseCssName() {
+        String cached = baseCssName;
+        if (cached != null) {
+            return cached;
+        }
+        synchronized (this) {
+            if (baseCssName == null) {
+                try {
+                    baseCssName = take(nativeRenderer.pathland_html_base_css_name());
+                } catch (LinkageError e) {
+                    baseCssName = "";
+                }
+            }
+            return baseCssName;
+        }
+    }
+
+    private volatile String baseCss;
+    private volatile String baseCssName;
+
     /** Render a full snapshot frame as an HTML fragment (no {@code <html>}). */
     public String renderFragment(ProtocolFrame frame, int root) {
         return renderFrame(frame, root, false);
@@ -305,6 +369,26 @@ public final class HtmlRenderer {
                         : nativeRenderer.pathland_html_render_fragment(memory, bytes.length, root);
             }
             return take(result);
+        }
+    }
+
+    private String renderFrameLinked(ProtocolFrame frame, int root, String cssBase, boolean debug) {
+        if (cssBase == null || cssBase.isBlank() || baseCssName().isEmpty()) {
+            return debug ? renderDebug(frame, root) : render(frame, root);
+        }
+        byte[] bytes = FrameCodec.encodeFrame(frame);
+        try (com.sun.jna.Memory memory = new com.sun.jna.Memory(bytes.length)) {
+            memory.write(0, bytes, 0, bytes.length);
+            Pointer result;
+            try {
+                result = nativeRenderer.pathland_html_render_linked(
+                        memory, bytes.length, root, cssBase, (byte) (debug ? 1 : 0));
+            } catch (LinkageError e) {
+                // An older dylib without the linked export: degrade to inline.
+                return debug ? renderDebug(frame, root) : render(frame, root);
+            }
+            String html = take(result);
+            return html.isEmpty() ? (debug ? renderDebug(frame, root) : render(frame, root)) : html;
         }
     }
 

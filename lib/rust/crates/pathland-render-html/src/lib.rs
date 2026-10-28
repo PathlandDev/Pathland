@@ -1261,6 +1261,24 @@ pub struct HtmlRenderer {
     debug_comments: bool,
 }
 
+/// Escape a value for a double-quoted HTML attribute.
+fn escape_html_attr(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// The `<link>` head tag for the external content-hashed base stylesheet.
+fn linked_css_head(css_base: &str) -> String {
+    format!(
+        "<link rel=\"stylesheet\" href=\"{}/{}\">",
+        escape_html_attr(css_base.trim_end_matches('/')),
+        css::builtin_css_name()
+    )
+}
+
 impl HtmlRenderer {
     /// Create a renderer (stateless; the same value serves every render).
     #[must_use]
@@ -1285,9 +1303,45 @@ impl HtmlRenderer {
         self.debug_comments
     }
 
-    /// Render the subtree rooted at `root` as a full HTML document.
+    /// Render the subtree rooted at `root` as a full HTML document, with the
+    /// built-in base design inlined as a `<style>` block (the default for
+    /// library hosts and tests).
     #[must_use]
     pub fn render_document(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
+        self.render_document_with_head(opcodes, strings, root, css::STYLE)
+    }
+
+    /// Render the subtree rooted at `root` as a full HTML document with the
+    /// built-in base design as a **separate content-hashed stylesheet link**
+    /// (`{css_base}/{css::builtin_css_name()}`) instead of an inline `<style>`
+    /// block. `css_base` is the host's reserved framework base (e.g.
+    /// `/_pathland`); an empty base falls back to the inline document.
+    ///
+    /// Token overrides and fit-band rules stay inline (they are per-session
+    /// renderer state), after the stylesheet link so they win the cascade.
+    #[must_use]
+    pub fn render_document_linked(
+        &self,
+        opcodes: &[Opcode],
+        strings: &[u8],
+        root: u32,
+        css_base: &str,
+    ) -> String {
+        let base = css_base.trim();
+        if base.is_empty() {
+            return self.render_document(opcodes, strings, root);
+        }
+        let head = linked_css_head(base);
+        self.render_document_with_head(opcodes, strings, root, &head)
+    }
+
+    fn render_document_with_head(
+        &self,
+        opcodes: &[Opcode],
+        strings: &[u8],
+        root: u32,
+        css_head: &str,
+    ) -> String {
         let (nodes, tokens) = decode(opcodes, strings);
         let body = self.render_node(&nodes, root, None);
         // Token overrides render as their own `<style data-pathland-tokens>`
@@ -1320,7 +1374,7 @@ impl HtmlRenderer {
              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
              <title>Pathland</title>\n\
              {}{}{}\n</head>\n<body>{body}</body>\n</html>\n",
-            css::STYLE,
+            css_head,
             token_style,
             fit_style
         )
@@ -3954,6 +4008,40 @@ mod tests {
         assert!(css.contains("var(--pl-slider-fill)"), "range fill variable");
         assert!(css.contains("--pl-slider-track"), "range track token");
         assert!(css.contains("--pl-slider-thumb"), "range thumb token");
+    }
+
+    #[test]
+    fn linked_document_emits_a_cacheable_base_stylesheet_link() {
+        let renderer = HtmlRenderer::new();
+        let name = css::builtin_css_name();
+        assert!(name.starts_with("base-"), "content-hashed name: {name}");
+        assert!(name.ends_with(".css"), "css asset name: {name}");
+
+        let linked = renderer.render_document_linked(&[], &[], 0, "/_pathland");
+        assert!(
+            linked.contains(&format!(
+                "<link rel=\"stylesheet\" href=\"/_pathland/{name}\">"
+            )),
+            "linked stylesheet: {linked}"
+        );
+        assert!(!linked.contains("<style>"), "base CSS is not inlined: {linked}");
+        assert!(!linked.contains("--pl-color-primary:"), "no inline base tokens: {linked}");
+
+        // A trailing slash is normalized, and the default render stays inline.
+        let mounted = renderer.render_document_linked(&[], &[], 0, "/app2/_pathland/");
+        assert!(
+            mounted.contains(&format!(
+                "<link rel=\"stylesheet\" href=\"/app2/_pathland/{name}\">"
+            )),
+            "mounted base: {mounted}"
+        );
+        let inline = renderer.render_document(&[], &[], 0);
+        assert!(inline.contains("<style>"), "default remains inline");
+        assert!(inline.contains("--pl-color-primary:"), "default carries the tokens");
+
+        // An empty base is a graceful fallback to the inline document.
+        let fallback = renderer.render_document_linked(&[], &[], 0, "  ");
+        assert!(fallback.contains("<style>"), "empty base falls back inline");
     }
 
     #[test]

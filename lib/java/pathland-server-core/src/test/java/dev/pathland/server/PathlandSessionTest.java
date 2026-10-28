@@ -89,6 +89,24 @@ class PathlandSessionTest {
     }
 
     @Test
+    void renderHtmlLinksTheContentHashedBaseStylesheet() {
+        assumeTrue(dev.pathland.render.html.HtmlRenderer.tryInstance() != null,
+                "the Rust HTML renderer is available");
+        PathlandApp app = () -> Button.make(b -> b.title("Tap").action(() -> {}));
+        PathlandSession session = new PathlandSession(
+                "s1", STORE, app, EnvironmentData.of("/"), false, "/app2/_pathland", "s1");
+        String name = dev.pathland.render.html.HtmlRenderer.instance().baseCssName();
+        assertFalse(name.isEmpty(), "the renderer exposes a content-hashed CSS name");
+
+        String html = session.renderHtml();
+        assertTrue(html.contains("<link rel=\"stylesheet\" href=\"/app2/_pathland/" + name + "\">"),
+                "SSR links the base stylesheet under the app base: " + html);
+        assertFalse(html.contains("<style>"), "the base design is no longer inlined: " + html);
+
+        session.close();
+    }
+
+    @Test
     void dropsFailedConnectionAndRecoversOnReconnect() {
         PathlandApp app = () -> Button.make(b -> b.title("Tap").action(() -> {}));
         PathlandSession session = new PathlandSession("s2", STORE, app, EnvironmentData.of("/"));

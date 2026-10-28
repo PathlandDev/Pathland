@@ -18,11 +18,20 @@
 //! Do not edit `assets/base.css` by hand.
 
 const CSS: &str = include_str!("../assets/base.css");
+const CSS_NAME: &str = include_str!("../assets/base.css.name");
 
 /// The generated base-design stylesheet (without the wrapping `<style>` tag).
 #[must_use]
 pub fn builtin_css() -> &'static str {
     CSS
+}
+
+/// The content-hashed asset name of [`builtin_css`] (e.g. `base-5f86423db422.css`).
+/// Hosts serve the stylesheet at this name under `/_pathland/` so a new build
+/// busts the immutable asset cache via a fresh URL.
+#[must_use]
+pub fn builtin_css_name() -> &'static str {
+    CSS_NAME.trim()
 }
 
 /// The complete `<style>` block injected into every rendered document.

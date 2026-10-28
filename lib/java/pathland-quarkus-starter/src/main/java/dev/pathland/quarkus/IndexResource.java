@@ -34,6 +34,9 @@ public class IndexResource {
     @Inject
     PathlandHost host;
 
+    /** Content-hashed assets never change under a given name. */
+    private static final String IMMUTABLE = "public, max-age=31536000, immutable";
+
     /** The root page (the route is {@code /}). */
     @GET
     @Produces(MediaType.TEXT_HTML)
@@ -79,6 +82,15 @@ public class IndexResource {
         return iconResponse(name);
     }
 
+    /** The renderer-owned content-hashed base stylesheet at the global base. */
+    @GET
+    @Path("/_pathland/{name}.css")
+    @Produces("text/css")
+    public Response baseCss(@PathParam("name") String name) {
+        Response css = baseCssResponse(name + ".css");
+        return css != null ? css : Response.status(Response.Status.NOT_FOUND).build();
+    }
+
     /** Serve a mounted app's framework file (its {@code data-pathland-base} bundle) from the shared classpath mount. */
     private Response frameworkFile(String file) throws IOException {
         // Quarkus web static lives in META-INF/resources (classpath resource root), so the
@@ -88,14 +100,40 @@ public class IndexResource {
                 return Response.ok(in.readAllBytes()).type(mediaTypeOf(file)).build();
             }
         }
-        // No static file (a host override would be served above) — renderer-owned
-        // icon glyphs come from the shared Rust renderer; a single-segment name is
-        // required (the DOM client requests exactly {base}/icons/<encodeURIComponent>).
+        // No static file (a host override would be served above) — the base design
+        // is renderer-owned and content-hashed.
+        Response css = baseCssResponse(file);
+        if (css != null) {
+            return css;
+        }
+        // Renderer-owned icon glyphs come from the shared Rust renderer; a
+        // single-segment name is required (the DOM client requests exactly
+        // {base}/icons/<encodeURIComponent>).
         if (file.startsWith("icons/") && file.endsWith(".svg")
                 && file.substring("icons/".length(), file.length() - ".svg".length()).indexOf('/') < 0) {
             return iconResponse(file.substring("icons/".length(), file.length() - ".svg".length()));
         }
         return Response.status(Response.Status.NOT_FOUND).build();
+    }
+
+    /** The renderer-owned content-hashed base stylesheet, or {@code null}. */
+    private Response baseCssResponse(String file) {
+        var renderer = dev.pathland.render.html.HtmlRenderer.tryInstance();
+        if (renderer == null) {
+            return null;
+        }
+        String name = renderer.baseCssName();
+        if (name.isEmpty() || !name.equals(file)) {
+            return null;
+        }
+        String css = renderer.baseCss();
+        if (css.isEmpty()) {
+            return null;
+        }
+        return Response.ok(css.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .type("text/css")
+                .header("Cache-Control", IMMUTABLE)
+                .build();
     }
 
     /** The renderer-owned `/_pathland/icons/<name>.svg` from the shared Rust library. */

@@ -1,6 +1,6 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** October 2, 2026
+**Last updated:** October 28, 2026
 
 The **Java binding to the Rust HTML renderer** (`dev.pathland.render.html`) — a
 thin **JNA shim** over `libpathland_render_html`. There is a **single renderer**
@@ -22,9 +22,16 @@ Java renderer is removed. Protocol contract: `spec/`.
 - **Full Rust renderer surface** (canonical): all spec components render inline
   (structural + decorative CSS in a single `style` attribute), ARIA/event
   attributes, `IS_SECURE` → password, `TOGGLE_STYLE` variants,
-  `DATE_PICKER_MODE`, and literal colors inline. The renderer injects its own
-  built-in `<style>` block (preflight reset + design tokens + `.pathland-*`
-  component defaults) into every document — no external CSS, no `/tailwind.css`.
+  `DATE_PICKER_MODE`, and literal colors inline. The default `render(...)`
+  injects the renderer's built-in `<style>` block (preflight reset + design
+  tokens + `.pathland-*` component defaults) into every document — no
+  `/tailwind.css`. `renderLinked(frame, root, cssBase)` /
+  `renderLinkedDebug(...)` instead emit a content-hashed
+  `<link rel="stylesheet" href="{cssBase}/{baseCssName()}">`; token overrides
+  and fit-band rules stay inline. `baseCss()` / `baseCssName()` bind the Rust
+  `pathland_html_base_css[_name]` exports so the Spring/Quarkus starters serve
+  the renderer-owned bytes immutable. A missing linked export degrades to the
+  inline document.
 - **Icon glyphs from the shared renderer**: `iconSvg(String name)` binds the
   Rust `pathland_html_icon_svg` export over the C ABI — the full inline `<svg>`
   for a canonical `ICON_NAME` (unknown/extension names → the renderer's
@@ -70,5 +77,6 @@ Java renderer is removed. Protocol contract: `spec/`.
 ## Verified by
 
 `mvn test -pl pathland-render-html` — JNA shim tests (skip when the Rust dylib
-is absent); part of the non-demo reactor run on JDK 17.
+is absent), including the linked stylesheet link + `baseCss`/`baseCssName`
+exposure; part of the non-demo reactor run on JDK 17.
 

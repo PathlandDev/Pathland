@@ -1,6 +1,6 @@
 # pathland-quarkus-starter — implementation status
 
-**Last updated:** October 17, 2026
+**Last updated:** October 28, 2026
 
 Quarkus integration for Pathland: SSR at any path, live deltas over each app's reserved
 `/{base}/ws`, per-session state. Adding the starter dependency + a `PathlandApp` CDI
@@ -28,10 +28,14 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
   per-app framework files (`/{app}/_pathland/...`, e.g. the mounted app's bundle) are
   served from the shared `/_pathland/**` classpath mount. Quarkus serves the global
   `/_pathland/**` bundle + asset mount from `META-INF/resources` before JAX-RS.
-  **`/_pathland/icons/{name}.svg`** (global base JAX-RS route + the mounted-base
-  `frameworkFile` path) serves the renderer-owned icon glyphs from the shared
-  Rust renderer (`HtmlRenderer.iconSvg` → `pathland_html_icon_svg`) with an
-  `immutable` cache header — no static icon files on any host.
+  **`/_pathland/{name}.css`** (global JAX-RS route + the mounted-base
+  `frameworkFile` path) serves the renderer-owned content-hashed base design
+  (`HtmlRenderer.baseCss()` at `baseCssName()`) as `text/css` with
+  `Cache-Control: public, max-age=31536000, immutable`. **`/_pathland/icons/{name}.svg`**
+  serves the renderer-owned icon glyphs from the shared Rust renderer
+  (`HtmlRenderer.iconSvg` → `pathland_html_icon_svg`) with an `immutable` cache
+  header — no static CSS/icon files on any host. SSR links the CSS via
+  `PathlandSession` → `renderLinked`.
 - **`PathlandRegistryProducer`** — CDI `@Produces @Singleton` `PathlandHost` from every
   `MountedApp` bean plus the lone `PathlandApp` bean (mounted at `/`); `@Disposes` shuts
   it down. Reads the `pathland.debug-html` config property (default `false`) to enable
@@ -98,4 +102,6 @@ sessions** against `/_pathland/ws` (via the shared `pathland-server-core` test-j
 probe) and asserts each connects, re-syncs, gets transport-level PONGs, stays isolated,
 and is never closed by the peer.
 `PathlandObservabilityTest` (`@QuarkusTest`) asserts `/q/health` reports the Pathland
-check UP and `/q/metrics` exposes the `pathland.*` namespace.
+check UP and `/q/metrics` exposes the `pathland.*` namespace. `BaseCssTest`
+(`@QuarkusTest`) asserts the linked SSR `<link>`, the immutable `text/css`
+response at the global and mounted bases, and a 404 for an unknown hash.
