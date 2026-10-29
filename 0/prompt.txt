@@ -1,0 +1,1 @@
+When running pathland hosted at pathland.onrender.com, lighthouse report gives 100 for performance and best practices. Yay. But accessbility is 70  and seo is 83. What are the main culprits here.
