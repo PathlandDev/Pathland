@@ -151,8 +151,8 @@ function boot(): void {
   });
   transport.start();
 
-  // Media events from app-driven AUDIO/VIDEO nodes (spec/EVENTS.md Media) ride
-  // the same WebSocket as every raw input.
+  // Media events from app-driven media controllers / VIDEO nodes
+  // (spec/EVENTS.md Media) ride the same WebSocket as every raw input.
   renderer.onMediaEvent = (batch) => {
     if (transport.open) {
       transport.send(batch);

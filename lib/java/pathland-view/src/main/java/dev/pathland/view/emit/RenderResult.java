@@ -20,7 +20,7 @@ import java.util.function.Consumer;
  * @param valueInputs     node id → value-input sink (VALUE_CHANGED)
  * @param editingInputs   node id → editing-changed sink (EDITING_CHANGED)
  * @param dateInputs      node id → date-input sink (DATE_CHANGED)
- * @param mediaInputs     node id → media-event sink (MEDIA_*; bound AUDIO/VIDEO)
+ * @param mediaInputs     node id → media-event sink (MEDIA_*; a MEDIA_CONTROLLER / VIDEO surface)
  * @param fitInputs       node id → fit-index sink (FIT_CHANGED; a SIZE_THAT_FITS slot)
  * @param navigateActions node id → declarative route-change action (a {@code .navigate/
  *                        push/replace} intent resolved to the nearest enclosing router)

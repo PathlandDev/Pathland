@@ -343,7 +343,8 @@ export interface DomRenderer {
   tokenSink?: DesignTokenSink;
   /**
    * Optional media-event sink: the host wires it to `transport.send` so a bound
-   * `AUDIO`/`VIDEO` node can report play/pause/time/ended/volume (host → guest).
+   * `MEDIA_CONTROLLER`'s media element can report play/pause/time/ended/volume
+   * (host → guest).
    */
   onMediaEvent?: (batch: Uint8Array) => void;
   /**
@@ -1326,7 +1327,7 @@ function morphProgress(el: HTMLElement, r: DomRenderer, wantSpinner: boolean): H
   return fresh;
 }
 
-// --- media (app-driven AUDIO/VIDEO) ---
+// --- media (app-driven MEDIA_CONTROLLER + VIDEO) ---
 
 /** Per-element media state: echo suppression windows + the last app-requested
  *  playing state (so a source change can resume playback). */

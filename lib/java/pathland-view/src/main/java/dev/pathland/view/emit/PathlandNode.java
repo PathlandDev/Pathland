@@ -89,8 +89,9 @@ public final class PathlandNode {
     /** Writable date-input sink (date pickers); the emitter routes DATE_CHANGED into it. */
     public DateInput dateInput;
 
-    /** Media-event sink (bound `AUDIO`/`VIDEO`); the emitter routes the media
-     *  events (spec/EVENTS.md) into it — play state, time, ended, volume. */
+    /** Media-event sink (a bound `MEDIA_CONTROLLER` / its `VIDEO` surface); the
+     *  emitter routes the media events (spec/EVENTS.md) into it — play state,
+     *  time, ended, volume. */
     public MediaInput mediaInput;
 
     /**
