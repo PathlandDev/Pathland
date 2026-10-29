@@ -9,6 +9,8 @@ dependency — framework glue lives in the starters.
 
 ## Implemented
 
+- **Window metadata + SSR head attrs**: `PathlandSession.renderHtml` injects host attrs into the renderer's opening `<html …>` (which now carries `lang`), and `FrameRebase` rebases `SET_WINDOW_METADATA` string offsets. Proxy origin metadata is dropped with the other META opcodes.
+
 - **`PathlandApp`** — the app's root-view factory (`View newRoot()` + optional
   `theme()`); the single app-specific piece a starter needs.
 - **`MountedApp`** — `record MountedApp(String path, PathlandApp app)`: one app mounted

@@ -24,6 +24,7 @@ This document provides essential context for AI agents (or human contributors) w
 - Opcodes live in a **ring buffer** in linear memory; the guest writes at `writeCursor`, the host reads from `readCursor`; frame boundaries via a monotonic `frameCount` in the header block.
 - **Both directions are binary**: a second **event ring** (host → guest) carries `EVENT`-category opcodes. The renderer writes raw inputs at `eventWriteCursor`; the guest drains them at `eventReadCursor`. Events are 16-byte opcodes through the engine, never a side-channel callback.
 - **Variable-length data** (strings, token paths) lives in a bump **arena**; opcodes reference entries by offset (`[u32 byteLength][bytes...]`), so every opcode stays 16 bytes. A second host-owned **event arena** mirrors this in the host → guest direction (shared-memory event strings, e.g. `TEXT_CHANGED`); over the network, host → guest strings ride the batch's string section.
+- **Window metadata** (`META::SET_WINDOW_METADATA`, field family `TITLE`/`DESCRIPTION`/`LOCALE`) carries the hosting surface's presentation metadata; renderers map it to their own chrome (browser `<title>`/meta description/`<html lang>`, GTK/Qt window title). It is root-scoped and signal-backed, so a route title is a computed over the router. Web-only artifacts (canonical/robots/sitemap) stay host-owned.
 - Spec: **`spec/OPCODE.md`** (primary) + **`spec/CONFORMANCE.md`** (golden vectors). Companion catalogs: **`spec/PRIMITIVES.md`** (views), **`spec/MODIFIERS.md`** (modifiers/properties), **`spec/EVENTS.md`** (events), **`spec/LAYOUT.md`** (frame & layout allocation contract) — draft IDs are allocated there spec-first.
 
 ### Declarative, not positioned (NON-NEGOTIABLE)
@@ -489,7 +490,7 @@ See `spec/OPCODE.md` for the full format, ring buffer, arena, and frame lifecycl
 | TREE | 0x01 | Guest → Host | Node create/delete/insert/remove/move |
 | PARAMETER | 0x02 | Guest → Host | Constraint properties (spacing, padding, …), design tokens |
 | EVENT | 0x03 | Host → Guest | Raw inputs: pointer down/move/up, key down/up |
-| META | 0x04 | Both | Reset, environment |
+| META | 0x04 | Both | Reset, environment, window metadata |
 
 ### Component Types (u16)
 

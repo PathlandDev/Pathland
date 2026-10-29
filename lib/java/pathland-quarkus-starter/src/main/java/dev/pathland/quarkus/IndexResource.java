@@ -8,8 +8,10 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,6 +44,28 @@ public class IndexResource {
     @Produces(MediaType.TEXT_HTML)
     public Response index(@QueryParam("wid") String wid) {
         return render("/", wid);
+    }
+
+    /** A valid crawler policy — never the SPA HTML fallback. */
+    @GET
+    @Path("/robots.txt")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response robots(@Context UriInfo uri) {
+        String base = uri.getBaseUri().toString();
+        String body = "User-agent: *\nAllow: /\nSitemap: " + base + "sitemap.xml\n";
+        return Response.ok(body).build();
+    }
+
+    /** A one-entry sitemap for the app root (a host may mount more routes). */
+    @GET
+    @Path("/sitemap.xml")
+    @Produces(MediaType.APPLICATION_XML)
+    public Response sitemap(@Context UriInfo uri) {
+        String loc = uri.getBaseUri().toString();
+        String body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                + "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"
+                + "<url><loc>" + loc + "</loc></url></urlset>\n";
+        return Response.ok(body).build();
     }
 
     /**

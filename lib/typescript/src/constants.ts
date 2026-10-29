@@ -36,6 +36,7 @@ export const CMD_PING = 0x04;
 export const CMD_PONG = 0x05;
 export const CMD_SET_COLOR_SCHEME = 0x06;
 export const CMD_RESET_THEME = 0x07;
+export const CMD_SET_WINDOW_METADATA = 0x08;
 
 // META::SET_COLOR_SCHEME modes
 export const COLOR_SCHEME_PLATFORM = 0x00000000;
@@ -46,6 +47,11 @@ export const COLOR_SCHEME_DARK = 0x00000002;
 export const ENV_VIEWPORT_WIDTH = 0x0001;
 export const ENV_VIEWPORT_HEIGHT = 0x0002;
 export const ENV_ROUTE = 0x0003;
+
+// META::SET_WINDOW_METADATA field ids (spec/OPCODE.md §Window metadata)
+export const WINDOW_TITLE = 0x0001;
+export const WINDOW_DESCRIPTION = 0x0002;
+export const WINDOW_LOCALE = 0x0003;
 
 // EVENT commands (host -> guest)
 export const CMD_POINTER_DOWN = 0x01;

@@ -153,6 +153,7 @@ export function createElement(component: number): Node {
       // positioning a 1×1 transparent box keeps it rendered (audio flows) while
       // contributing no spacing.
       const el = document.createElement("div");
+      el.setAttribute("aria-hidden", "true");
       el.style.position = "absolute";
       el.style.width = "1px";
       el.style.height = "1px";

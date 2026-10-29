@@ -61,6 +61,30 @@ class DeltaBatcherTest {
     }
 
     @Test
+    void rebasesWindowMetadataStringOffsets() {
+        List<byte[]> sent = new ArrayList<>();
+        DeltaBatcher batcher = new DeltaBatcher(60_000, 1_000_000, sent::add);
+
+        batcher.append(new ProtocolFrame(List.of(
+                new Opcode(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, 1, 0, 0)),
+                stringSection("ab")));
+        batcher.append(new ProtocolFrame(List.of(
+                new Opcode(Categories.META, Commands.Meta.SET_WINDOW_METADATA, 0,
+                        Commands.WindowFields.TITLE, 0, 0)),
+                stringSection("Library")));
+        batcher.flush();
+        batcher.close();
+
+        ProtocolFrame merged = FrameCodec.decodeFrame(sent.get(0));
+        Opcode title = merged.opcodes().stream()
+                .filter(o -> o.category() == Categories.META
+                        && o.command() == Commands.Meta.SET_WINDOW_METADATA)
+                .findFirst().orElseThrow();
+        assertEquals("Library", merged.stringAt(title.b()),
+                "the metadata string offset is rebased past earlier frames");
+    }
+
+    @Test
     void rebasesListTypedOffsets() {
         // The LIST value type (e.g. a SIZE_THAT_FITS FIT_QUERY) references the
         // string section by a relative offset — it must rebase past earlier

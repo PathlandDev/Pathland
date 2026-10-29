@@ -23,11 +23,12 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 
-use pathland_core::{category, meta, value_type, value_type_for};
+use pathland_core::{category, meta, value_type, value_type_for, window_field, WindowMeta};
 use pathland_core::{Guest, Opcode};
 
 use crate::node::{component_type_id, Component, Node};
 use crate::signal::{Dep, Runtime, Signal, SignalId, SignalValue, SignalValueKind, WritableSignal};
+use crate::window::WindowMetadata;
 
 /// Encode a `LIST` property's arena entry: `[u32 count][f32 × count]`
 /// (spec/OPCODE.md §Value types — a `FIT_QUERY` threshold table).
@@ -84,6 +85,10 @@ pub struct Engine {
     gen: u64,
     /// Reactive signal runtime (values + computed/effects + node dependencies).
     store: Runtime,
+    /// Window/surface metadata signal bindings (`META::SET_WINDOW_METADATA`).
+    window: WindowMetadata,
+    /// The last window metadata written to the wire (dedupe / clear detection).
+    window_emitted: WindowMeta,
 }
 
 impl Default for Engine {
@@ -98,6 +103,8 @@ impl Engine {
             snapshot: Vec::new(),
             gen: 0,
             store: Runtime::new(),
+            window: WindowMetadata::new(),
+            window_emitted: WindowMeta::new(),
         }
     }
 
@@ -117,7 +124,9 @@ impl Engine {
         // re-adds the bindings this tree actually uses, so stale subscriptions
         // vanish.
         self.store.clear_node_deps();
-        let mut out = 0usize;
+        // Window metadata is renderer-global, not part of the tree: emit the
+        // initial values (and any rebind/clear) before the node opcodes.
+        let mut out = self.emit_window_metadata(guest)?;
         self.reconcile_node(root, None, 0, guest, &mut out)?;
 
         for (id, slot) in self.snapshot.iter_mut().enumerate() {
@@ -135,6 +144,53 @@ impl Engine {
     /// Number of nodes tracked in the snapshot (diagnostics).
     pub fn tracked_nodes(&self) -> usize {
         self.snapshot.iter().filter(|s| s.is_some()).count()
+    }
+
+    /// Bind the window/surface presentation metadata
+    /// (`META::SET_WINDOW_METADATA`): title, description, locale. Values are
+    /// signal-backed, so a route can drive them from a computed. The next
+    /// [`Engine::emit`] writes the initial values; a subsequent
+    /// [`Engine::set_signal`] writes only the changed field.
+    pub fn bind_window_metadata(&mut self, metadata: WindowMetadata) {
+        self.window = metadata;
+    }
+
+    /// Bind one window-metadata field to a signal (the flat/C-ABI form of
+    /// [`Engine::bind_window_metadata`]).
+    pub fn bind_window_field(&mut self, field: u16, signal: SignalId) {
+        self.window.set_signal(field, signal);
+    }
+
+    /// Emit changed window-metadata fields. Unchanged fields write nothing; a
+    /// field that became unset writes an empty string (clear).
+    fn emit_window_metadata(
+        &mut self,
+        guest: &mut Guest<'_>,
+    ) -> Result<usize, pathland_core::RingError> {
+        let mut out = 0usize;
+        for field in window_field::ALL {
+            let value = self.window.signal(field).and_then(|id| {
+                let value = self.store.get(id);
+                value.to_text().map(ToOwned::to_owned)
+            });
+            let previous = self.window_emitted.get(field).map(ToOwned::to_owned);
+            if value == previous {
+                continue;
+            }
+            let text = value.as_deref().unwrap_or("");
+            let offset = guest.alloc_str(text).map_err(|_| pathland_core::RingError::Full)?;
+            guest.push_opcode(Opcode::new(
+                category::META,
+                meta::SET_WINDOW_METADATA,
+                0,
+                field as u32,
+                offset,
+                0,
+            ))?;
+            self.window_emitted.set(field, text);
+            out += 1;
+        }
+        Ok(out)
     }
 
     /// Emit a global design-token override (`PARAMETER::SET_DESIGN_TOKEN`).
@@ -319,6 +375,9 @@ impl Engine {
         for cell in changed {
             out += self.emit_cell(cell, guest)?;
         }
+        // A window-metadata signal (or a computed feeding one) changed. Fields
+        // are compared, so an unrelated signal emits zero opcodes.
+        out += self.emit_window_metadata(guest)?;
         Ok(out)
     }
 

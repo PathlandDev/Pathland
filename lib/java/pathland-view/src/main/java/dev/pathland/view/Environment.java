@@ -57,9 +57,25 @@ public final class Environment {
     public static final Environment DEFAULT = new Environment(null);
 
     private final dev.pathland.view.state.PersistentState state;
+    /** The root-declared window/surface metadata, if any (set during mount render). */
+    private WindowMetadata windowMetadata;
 
     public Environment(dev.pathland.view.state.PersistentState state) {
         this.state = state;
+    }
+
+    /**
+     * The window/surface metadata declared by the root's {@link WindowMetadata}
+     * modifier, or {@code null}. The emitter binds these fields to their signals
+     * after the mount render.
+     */
+    public WindowMetadata windowMetadata() {
+        return windowMetadata;
+    }
+
+    /** Record the root-declared window metadata during its render. */
+    void setWindowMetadata(WindowMetadata metadata) {
+        this.windowMetadata = metadata;
     }
 
     /**

@@ -69,6 +69,15 @@ public interface OpcodeSink {
     }
 
     /**
+     * Emit {@code META::SET_WINDOW_METADATA}: {@code A}=field
+     * ({@link dev.pathland.view.Commands.WindowFields}), {@code B}=string offset
+     * of the value. An empty string clears the field.
+     */
+    default void setWindowMetadata(int field, String value) {
+        throw new UnsupportedOperationException("setWindowMetadata");
+    }
+
+    /**
      * Whether this sink feeds a renderer that gates raw inputs on a
      * {@code BINDING_ID} (the desktop/ring path). The frame (SSR/DOM) path returns
      * {@code false} and the emitter omits the marker from its payload.

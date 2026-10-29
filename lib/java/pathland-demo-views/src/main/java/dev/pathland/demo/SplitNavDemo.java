@@ -8,6 +8,7 @@ import dev.pathland.view.*;
 import dev.pathland.view.router.Navigation;
 import dev.pathland.view.router.Router;
 import static dev.pathland.view.Modifiers.*;
+import static dev.pathland.view.signal.Signals.computed;
 
 /**
  * A master-detail (split) navigation demo (spec PRIMITIVES.md: `NavigationSplitView` →
@@ -62,7 +63,21 @@ public final class SplitNavDemo implements View {
                 .modifiers(
                         frame(f -> f.width(Float.POSITIVE_INFINITY)),
                         pathChange(p -> p.listener(path -> System.out.println("[split] active path: " + path))),
-                        environmentBinding(e -> e.key(Navigation.ROUTER).value(router)))
+                        environmentBinding(e -> e.key(Navigation.ROUTER).value(router)),
+                        // The route owns the window/tab title; the computed reads the
+                        // router signal, so a navigation emits one META opcode.
+                        windowMetadata(w -> w
+                                .title(computed(() -> switch (router.path()) {
+                                    case "/kitchen" -> "Kitchen Sink · Pathland";
+                                    case "/settings" -> "Settings · Pathland";
+                                    default -> "Home · Pathland";
+                                }))
+                                .description(computed(() -> switch (router.path()) {
+                                    case "/kitchen" -> "The Pathland component showcase";
+                                    case "/settings" -> "Pathland demo settings";
+                                    default -> "A Pathland split-navigation demo";
+                                }))
+                                .locale("en")))
                 .children(
                         new Sidebar(),
                         ScrollView.make() .modifiers(frame(f -> f.width(Float.POSITIVE_INFINITY)))

@@ -832,4 +832,18 @@ public final class Modifiers {
         return ZIndex.with(configure);
     }
 
+    /* ---- windowMetadata -------------------------------------------------------------- */
+
+    /**
+     * Window/surface presentation metadata
+     * (`windowMetadata(w -> w.title(...).description(...).locale(...))`).
+     * Root-scoped and signal-backed: a change emits only the changed
+     * `META::SET_WINDOW_METADATA` field, and the renderer maps it onto its own
+     * window chrome (the browser maps title/description/locale to the document
+     * title, meta description, and `<html lang>`).
+     */
+    public static WindowMetadata windowMetadata(Consumer<WindowMetadata.Config> configure) {
+        return WindowMetadata.with(configure);
+    }
+
 }

@@ -691,4 +691,57 @@ class EmitterTest {
         Opcode op = frame.opcodes().get(0);
         assertEquals(2, op.a(), "A = DARK mode");
     }
+
+    @Test
+    void windowMetadataMountsAndReEmitsOnlyTheChangedField() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        WritableSignal<String> title = Signals.signal("Library");
+        WritableSignal<String> description = Signals.signal("8 songs");
+        View root = VStack.children(Text.make("body"))
+                .modifiers(windowMetadata(w -> w
+                        .title(title)
+                        .description(description)
+                        .locale("en")));
+
+        emitter.mount(root, Environment.DEFAULT);
+        ProtocolFrame mount = sink.frame();
+        assertEquals(3, countOps(mount, Categories.META, Commands.Meta.SET_WINDOW_METADATA),
+                "title + description + locale");
+        assertEquals("Library", windowValue(mount, Commands.WindowFields.TITLE));
+
+        title.set("Now Playing");
+        ProtocolFrame delta = sink.frame();
+        assertEquals(1, countOps(delta, Categories.META, Commands.Meta.SET_WINDOW_METADATA),
+                "one opcode for the changed title");
+        Opcode op = delta.opcodes().get(0);
+        assertEquals(Commands.WindowFields.TITLE, op.a());
+        assertEquals("Now Playing", delta.stringAt(op.b()));
+
+        // Unchanged value → no new frame/opcodes.
+        int produced = sink.framesProduced();
+        title.set("Now Playing");
+        assertEquals(produced, sink.framesProduced(), "unchanged metadata emits no frame");
+    }
+
+    @Test
+    void windowMetadataFullSnapshotReEmitsEveryField() {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        emitter.mount(VStack.children(Text.make("body"))
+                .modifiers(windowMetadata(w -> w.title("Library").locale("en"))), Environment.DEFAULT);
+        emitter.renderFull();
+        ProtocolFrame frame = sink.frame();
+        // Force re-sends every field; an unset field is sent as a clear.
+        assertEquals(3, countOps(frame, Categories.META, Commands.Meta.SET_WINDOW_METADATA));
+    }
+
+    private static String windowValue(ProtocolFrame frame, int field) {
+        Opcode op = frame.opcodes().stream()
+                .filter(o -> o.category() == Categories.META
+                        && o.command() == Commands.Meta.SET_WINDOW_METADATA
+                        && o.a() == field)
+                .findFirst().orElseThrow();
+        return frame.stringAt(op.b());
+    }
 }

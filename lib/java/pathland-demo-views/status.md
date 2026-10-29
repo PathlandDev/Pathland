@@ -8,6 +8,8 @@ Quarkus and Spring Boot demos. Uses `State` fields wired by the
 
 ## Implemented
 
+- **Window metadata demo**: `MusicPlayerView` sets the title from the current track and the description from its artist/album (live on track change); `SplitNavDemo` derives title/description from `router.path()`. Secondary text uses a contrast-safe `#4B5563`; transport buttons and sliders carry accessible names; `Library` is an `h1`.
+
 - **`KitchenSinkView`** (the demo root): a scrollable column of every protocol
   section, mounted by both demos' `SessionApp`.
 - **Sections** (each a custom `View`):

@@ -9,6 +9,8 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 
 ## Implemented
 
+- **Window metadata**: the DOM client applies `META::SET_WINDOW_METADATA` at runtime — `TITLE` → `document.title`, `DESCRIPTION` → meta description, `LOCALE` → `<html lang>`; empty clears to the renderer default. `LABEL` also names buttons and slider inputs; the media shell is `aria-hidden`.
+
 - **Single source, unified**: `src/` is the one client; `npm run build` emits
   `dist/pathland-dom-renderer.js` (IIFE, minified via esbuild), and
   `npm run copy-to-demos` copies it into both the Quarkus and Spring Boot demos'

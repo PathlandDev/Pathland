@@ -14,8 +14,9 @@ import dev.pathland.view.emit.Opcode;
  *
  * <p>{@code SET_TEXT} ({@code B}), {@code STRING}/{@code DESIGN_TOKEN}/{@code LIST}
  * -typed {@code SET_PROPERTY} ({@code C}), and {@code SET_DESIGN_TOKEN}
- * ({@code A}, plus {@code C} for a STRING-valued token) reference the string
- * section by a relative offset.
+ * ({@code A}, plus {@code C} for a STRING-valued token), and
+ * {@code META::SET_WINDOW_METADATA} ({@code B}) reference the string section by
+ * a relative offset.
  */
 final class FrameRebase {
 
@@ -25,7 +26,11 @@ final class FrameRebase {
         int a = op.a();
         int b = op.b();
         int c = op.c();
-        if (op.category() == Categories.PARAMETER) {
+        if (op.category() == Categories.META
+                && op.command() == Commands.Meta.SET_WINDOW_METADATA) {
+            // B = string offset of the title/description/locale value.
+            b += base;
+        } else if (op.category() == Categories.PARAMETER) {
             int command = op.command();
             if (command == Commands.Parameter.SET_TEXT) {
                 b += base;

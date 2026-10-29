@@ -32,7 +32,7 @@ public final class AdView implements View {
                 .children(
                         Text.make("Pathland Ads").modifiers(fontSize(16), FontWeight.BOLD),
                         Text.make("A second app, served on this same server, embedded here via a proxy view.")
-                                .modifiers(fontSize(12), foregroundStyle(Color.rgb(0x6B, 0x72, 0x80))),
+                                .modifiers(fontSize(12), foregroundStyle(Color.rgb(0x4B, 0x55, 0x63))),
                         Button.make(b -> b.title("Click me").action(() -> clicks.update(v -> v + 1))),
                         Text.make(computed(() -> clicks.get() == 1
                                         ? "Clicked 1 time"

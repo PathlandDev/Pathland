@@ -2968,6 +2968,11 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
             break;
         case PLQT_SET_SCHEME:
             break; // MVP: scheme handling is a follow-up
+        case PLQT_SET_WINDOW_TITLE:
+            if (g.window && c.str && c.str_len > 0) {
+                g.window->setTitle(QString::fromUtf8(c.str, static_cast<int>(c.str_len)));
+            }
+            break;
         case PLQT_SET_DATE: {
             // A DATE_PICKER value: days since the Unix epoch + millis of day.
             // The renderer owns the formatting (QML approximation of a picker).

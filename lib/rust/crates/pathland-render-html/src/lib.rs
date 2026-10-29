@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    Opcode, border_edges, category, color_scheme_mode, component_type, meta, parameter,
+    Opcode, WindowMeta, border_edges, category, color_scheme_mode, component_type, meta, parameter,
     property_id, size, tokens::Scheme, tokens::TokenValue, tree, value_type,
 };
 
@@ -867,15 +867,32 @@ fn aria_attrs(node: &Node) -> String {
             attrs.push_str(" disabled");
         }
     }
+    // A LABEL on a control is its accessible name. ICON (role=img), IMAGE (alt)
+    // and SLIDER (aria-label on the inner input) handle it in their own builders.
+    if !matches!(
+        node.component,
+        component_type::ICON
+            | component_type::IMAGE
+            | component_type::SLIDER
+            // A text field's wrapping <label> + visible span already name it.
+            | component_type::TEXT_FIELD
+    ) {
+        if let Some(label) = node.strings.get(&property_id::LABEL) {
+            if !label.is_empty() {
+                attrs.push_str(&format!(" aria-label=\"{}\"", escape_html_attr(label)));
+            }
+        }
+    }
     attrs
 }
 
 /// Decode a self-contained snapshot batch (opcodes + string section) into a
 /// **transient** `id → Node` map. The map lives only for the duration of one
 /// render call — the renderer retains nothing between calls.
-fn decode(opcodes: &[Opcode], strings: &[u8]) -> (BTreeMap<u32, Node>, Tokens) {
+fn decode(opcodes: &[Opcode], strings: &[u8]) -> (BTreeMap<u32, Node>, Tokens, WindowMeta) {
     let mut nodes = BTreeMap::new();
     let mut tokens = Tokens::default();
+    let mut window = WindowMeta::new();
     for op in opcodes {
         match op.category() {
             category::TREE => apply_tree(&mut nodes, op.command(), *op),
@@ -907,12 +924,19 @@ fn decode(opcodes: &[Opcode], strings: &[u8]) -> (BTreeMap<u32, Node>, Tokens) {
                     };
                 }
                 meta::RESET_THEME => tokens.reset(),
+                meta::SET_WINDOW_METADATA => {
+                    // A=fieldId, B=string offset. An empty string clears the
+                    // field (spec/OPCODE.md §Window metadata).
+                    if let Some(value) = strings_str(strings, op.b()) {
+                        window.set(op.a() as u16, &value);
+                    }
+                }
                 _ => {}
             },
             _ => {}
         }
     }
-    (nodes, tokens)
+    (nodes, tokens, window)
 }
 
 /// Read a `[u32 len][utf8]` entry from the batch's string section at a relative offset.
@@ -1342,8 +1366,18 @@ impl HtmlRenderer {
         root: u32,
         css_head: &str,
     ) -> String {
-        let (nodes, tokens) = decode(opcodes, strings);
+        let (nodes, tokens, window) = decode(opcodes, strings);
         let body = self.render_node(&nodes, root, None);
+        // Window metadata (`META::SET_WINDOW_METADATA`) maps onto the web
+        // document head. These are renderer mappings, not the protocol concept:
+        // title → <title>, description → meta description, locale → lang.
+        let lang = escape_html_attr(window.locale.as_deref().unwrap_or("en"));
+        let title = escape(window.title.as_deref().unwrap_or("Pathland"));
+        let description = window
+            .description
+            .as_deref()
+            .map(|d| format!("<meta name=\"description\" content=\"{}\">\n", escape_html_attr(d)))
+            .unwrap_or_default();
         // Token overrides render as their own `<style data-pathland-tokens>`
         // element AFTER the built-in block so their `:root` variables win the
         // cascade (same specificity, later wins) — matching the JS DOM client's
@@ -1370,13 +1404,10 @@ impl HtmlRenderer {
             None => "",
         };
         format!(
-            "<!DOCTYPE html>\n<html{scheme_attr}>\n<head>\n<meta charset=\"utf-8\">\n\
+            "<!DOCTYPE html>\n<html lang=\"{lang}\"{scheme_attr}>\n<head>\n<meta charset=\"utf-8\">\n\
              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
-             <title>Pathland</title>\n\
-             {}{}{}\n</head>\n<body>{body}</body>\n</html>\n",
-            css_head,
-            token_style,
-            fit_style
+             <title>{title}</title>\n\
+             {description}{css_head}{token_style}{fit_style}\n</head>\n<body>{body}</body>\n</html>\n",
         )
     }
 
@@ -1386,7 +1417,7 @@ impl HtmlRenderer {
     /// that already defines the token variables.
     #[must_use]
     pub fn render_fragment(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
-        let (nodes, _) = decode(opcodes, strings);
+        let (nodes, _, _) = decode(opcodes, strings);
         self.render_node(&nodes, root, None)
     }
 
@@ -1634,8 +1665,16 @@ impl HtmlRenderer {
                     0
                 };
                 let slider_class = class_attr("pathland-slider");
+                // The accessible name goes on the <input>, not the wrapping
+                // <label> (a label element does not name its own control).
+                let input_aria = node
+                    .strings
+                    .get(&property_id::LABEL)
+                    .filter(|label| !label.is_empty())
+                    .map(|label| format!(" aria-label=\"{}\"", escape_html_attr(label)))
+                    .unwrap_or_default();
                 format!(
-                    "<label{data_id}{event}{aria}{slider_class}{style}><input type=\"range\" min=\"{min}\" max=\"{max}\" step=\"any\" value=\"{value}\" style=\"--pl-slider-fill:{fill}%\">{body}</label>"
+                    "<label{data_id}{event}{aria}{slider_class}{style}><input type=\"range\" min=\"{min}\" max=\"{max}\" step=\"any\" value=\"{value}\"{input_aria} style=\"--pl-slider-fill:{fill}%\">{body}</label>"
                 )
             }
             component_type::TEXT_FIELD => {
@@ -1702,8 +1741,11 @@ impl HtmlRenderer {
                 } else {
                     format!("<video data-pathland-media src=\"{src}\"></video>")
                 };
+                // Non-visual: hide the whole off-flow container from assistive
+                // tech (it is playback plumbing, not content). This also keeps
+                // it out of the page's landmark/region tree.
                 format!(
-                    "<div{data_id} style=\"{MEDIA_CONTROLLER_SHELL_STYLE}\">{media}</div>"
+                    "<div{data_id} aria-hidden=\"true\" style=\"{MEDIA_CONTROLLER_SHELL_STYLE}\">{media}</div>"
                 )
             }
             component_type::VIDEO => {
@@ -2540,6 +2582,46 @@ mod tests {
     }
 
     #[test]
+    fn label_names_icon_buttons_and_sliders() {
+        use pathland_core::value_type;
+
+        let parts = ["Previous track", "Volume"];
+        let strings = string_section(&parts);
+        let second = (4 + parts[0].len()) as u32;
+
+        let button = vec![
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::BUTTON as u32, 0),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::STRING as u32) << 16) | property_id::LABEL as u32,
+                0,
+            ),
+        ];
+        let html = HtmlRenderer::new().render_fragment(&button, &strings, 1);
+        assert!(html.contains("aria-label=\"Previous track\""), "button name: {html}");
+
+        let slider = vec![
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SLIDER as u32, 0),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::STRING as u32) << 16) | property_id::LABEL as u32,
+                second,
+            ),
+        ];
+        let html = HtmlRenderer::new().render_fragment(&slider, &strings, 1);
+        assert!(
+            html.contains("<input type=\"range\"") && html.contains("aria-label=\"Volume\""),
+            "slider input name: {html}"
+        );
+    }
+
+    #[test]
     fn renders_text_field() {
         use pathland_core::value_type;
 
@@ -2812,7 +2894,7 @@ mod tests {
         let html = renderer.render_fragment(&opcodes, &strings, 1);
         assert!(
             html.contains(&format!(
-                "data-pathland-id=\"1\" style=\"{MEDIA_CONTROLLER_SHELL_STYLE}\""
+                "data-pathland-id=\"1\" aria-hidden=\"true\" style=\"{MEDIA_CONTROLLER_SHELL_STYLE}\""
             )),
             "the controller is off-flow but still rendered (audio flows): {html}"
         );
@@ -4340,7 +4422,7 @@ mod tests {
             0,
         )];
         let html = HtmlRenderer::new().render_document(&opcodes, &[], 0);
-        assert!(html.contains("<html data-pathland-scheme=\"dark\">"), "forced-dark attr: {html}");
+        assert!(html.contains("<html lang=\"en\" data-pathland-scheme=\"dark\">"), "forced-dark attr: {html}");
         let light = vec![Opcode::new(
             category::META,
             pathland_core::meta::SET_COLOR_SCHEME,
@@ -4350,7 +4432,7 @@ mod tests {
             0,
         )];
         let html = HtmlRenderer::new().render_document(&light, &[], 0);
-        assert!(html.contains("<html data-pathland-scheme=\"light\">"), "forced-light attr: {html}");
+        assert!(html.contains("<html lang=\"en\" data-pathland-scheme=\"light\">"), "forced-light attr: {html}");
     }
 
     #[test]
@@ -4419,5 +4501,59 @@ mod tests {
             html.contains("gap:calc(var(--pl-space-base) * 2);"),
             "generative space ref: {html}"
         );
+    }
+
+    #[test]
+    fn window_metadata_maps_to_head_and_escapes() {
+        let parts = ["Pathland & <fun>", "8 songs \"great\"", "da"];
+        let mut offsets = Vec::new();
+        let mut cursor = 0u32;
+        for part in parts {
+            offsets.push(cursor);
+            cursor += 4 + part.len() as u32;
+        }
+        let strings = string_section(&parts);
+        let ops = vec![
+            Opcode::new(
+                category::META,
+                meta::SET_WINDOW_METADATA,
+                0,
+                pathland_core::window_field::TITLE as u32,
+                offsets[0],
+                0,
+            ),
+            Opcode::new(
+                category::META,
+                meta::SET_WINDOW_METADATA,
+                0,
+                pathland_core::window_field::DESCRIPTION as u32,
+                offsets[1],
+                0,
+            ),
+            Opcode::new(
+                category::META,
+                meta::SET_WINDOW_METADATA,
+                0,
+                pathland_core::window_field::LOCALE as u32,
+                offsets[2],
+                0,
+            ),
+            Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0),
+        ];
+        let html = HtmlRenderer::new().render_document(&ops, &strings, 1);
+        assert!(html.contains("<html lang=\"da\">"), "locale attr: {html}");
+        assert!(html.contains("<title>Pathland &amp; &lt;fun&gt;</title>"), "escaped title: {html}");
+        assert!(
+            html.contains("<meta name=\"description\" content=\"8 songs &quot;great&quot;\">"),
+            "escaped description: {html}"
+        );
+    }
+
+    #[test]
+    fn window_metadata_defaults_without_opcodes() {
+        let html = HtmlRenderer::new().render_document(&[], &[], 0);
+        assert!(html.contains("<html lang=\"en\">"), "default lang: {html}");
+        assert!(html.contains("<title>Pathland</title>"), "default title: {html}");
+        assert!(!html.contains("name=\"description\""), "no description: {html}");
     }
 }

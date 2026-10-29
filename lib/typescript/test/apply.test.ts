@@ -17,6 +17,7 @@ import {
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
+  CMD_SET_WINDOW_METADATA,
   COMPONENT_BUTTON,
   COMPONENT_GRID,
   COMPONENT_LAZY_HGRID,
@@ -65,6 +66,9 @@ import {
   VAL_STRING,
   VAL_U32,
   VAL_U8,
+  WINDOW_DESCRIPTION,
+  WINDOW_LOCALE,
+  WINDOW_TITLE,
 } from "../src/constants";
 import { buildBatch, stringEntry } from "./plpl.test";
 
@@ -628,6 +632,29 @@ describe("applyBatch · META + design tokens + string props", () => {
     expect(document.documentElement.dataset.pathlandScheme).toBeUndefined();
   });
 
+  it("META::SET_WINDOW_METADATA updates title, description, lang and clears", () => {
+    const r: DomRenderer = { byId: new Map<number, Node>(), defaultTitle: "Default" };
+    const metaOp = (field: number, text: string) =>
+      parseBatch(buildBatch([[CAT_META, CMD_SET_WINDOW_METADATA, 0, field, 0, 0]], stringEntry(text)));
+
+    applyBatch(metaOp(WINDOW_TITLE, "Library"), r);
+    expect(document.title).toBe("Library");
+
+    applyBatch(metaOp(WINDOW_DESCRIPTION, "8 songs"), r);
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("8 songs");
+
+    applyBatch(metaOp(WINDOW_LOCALE, "da"), r);
+    expect(document.documentElement.lang).toBe("da");
+
+    // Empty clears the field → renderer defaults.
+    applyBatch(metaOp(WINDOW_TITLE, ""), r);
+    expect(document.title).toBe("Default");
+    applyBatch(metaOp(WINDOW_DESCRIPTION, ""), r);
+    expect(document.head.querySelector('meta[name="description"]')).toBeNull();
+    applyBatch(metaOp(WINDOW_LOCALE, ""), r);
+    expect(document.documentElement.hasAttribute("lang")).toBe(false);
+  });
+
   it("META::RESET_THEME clears the managed token overrides", () => {
     const r = renderer();
     applyBatch(
@@ -716,6 +743,24 @@ describe("applyBatch · META + design tokens + string props", () => {
     expect(button.firstChild).toBe(img);
     expect(button.lastChild).toBe(span);
     expect(button.textContent).toBe("Home");
+    expect(button.getAttribute("aria-label")).toBe("Home");
+  });
+
+  it("a LABEL names a slider's inner input", () => {
+    const label = document.createElement("label");
+    label.className = "pathland-slider";
+    const input = document.createElement("input");
+    input.type = "range";
+    label.appendChild(input);
+    const r = renderer();
+    r.byId.set(3, label);
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 3, (VAL_STRING << 16) | PROP_LABEL, 0]], stringEntry("Volume")),
+      ),
+      r,
+    );
+    expect(input.getAttribute("aria-label")).toBe("Volume");
   });
 
   it("a positive LINE_LIMIT clamps the text via the webkit box model", () => {

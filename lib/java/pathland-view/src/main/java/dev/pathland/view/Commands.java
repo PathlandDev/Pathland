@@ -71,8 +71,18 @@ public static final class Meta {
             public static final int SET_COLOR_SCHEME = 0x06;
             /** Clear every application design-token override (guest → host): `A/B/C = 0`. */
             public static final int RESET_THEME = 0x07;
+            /** Window/surface presentation metadata (guest → host): `A=fieldId, B=string`. */
+            public static final int SET_WINDOW_METADATA = 0x08;
             private Meta() {}
         }
+
+    /** `META::SET_WINDOW_METADATA` field ids (spec/OPCODE.md §Window metadata). */
+    public static final class WindowFields {
+        public static final int TITLE = 0x0001;
+        public static final int DESCRIPTION = 0x0002;
+        public static final int LOCALE = 0x0003;
+        private WindowFields() {}
+    }
 
     /** `META::SET_COLOR_SCHEME` mode values. */
     public static final class ColorSchemeMode {

@@ -407,3 +407,16 @@ pub unsafe extern "C" fn pathland_native_node_bind_string_property(
 ) -> u8 {
     u8::from(as_host(host).bind_string_property(node, prop as u16, as_signal_id(signal)))
 }
+
+/// Bind a window/surface metadata field (`META::SET_WINDOW_METADATA`: 1 title,
+/// 2 description, 3 locale) to a string signal. A change re-emits only that
+/// field; renderers map it onto their own window chrome. Returns 1 for a
+/// defined field.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_native_window_metadata(
+    host: HostHandle,
+    field: u32,
+    signal: u32,
+) -> u8 {
+    u8::from(as_host(host).bind_window_metadata(field as u16, as_signal_id(signal)))
+}

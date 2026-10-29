@@ -91,8 +91,10 @@ public final class LibraryView implements View, Configurable<LibraryView.Config>
                         padding(24),
                         frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(
+                        // LargeTitle → <h1> on the web (the page's main heading).
                         Text.make("Library").modifiers(
-                                fontSize(26), FontWeight.BOLD, accessibilityRole(Roles.HEADER)),
+                                Font.largeTitle(), fontSize(26), FontWeight.BOLD,
+                                accessibilityRole(Roles.HEADER)),
                         Text.make(MusicPlayerView.TRACKS.size() + " songs · " + MusicPlayerView.TRACKS.size() + " albums")
                                 .modifiers(foregroundStyle(MusicPlayerView.SECONDARY_FG)),
 Divider.make().modifiers(padding(p -> p.edges(0, 0, 0, 10))),

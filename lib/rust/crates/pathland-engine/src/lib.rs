@@ -24,6 +24,7 @@ mod media;
 mod node;
 mod signal;
 mod theme;
+mod window;
 
 pub use engine::{EmitResult, Engine};
 pub use media::{MediaController, MediaControllerRef};
@@ -32,3 +33,4 @@ pub use signal::{
     Dep, IntoSignalId, Runtime, Signal, SignalId, SignalValue, SignalValueKind, WritableSignal,
 };
 pub use theme::{AdaptiveTheme, ColorSchemeMode, Theme};
+pub use window::WindowMetadata;

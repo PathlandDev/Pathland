@@ -73,11 +73,15 @@ public final class PlayerControls implements View, Configurable<PlayerControls.C
         var playControl = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
-                        Button.make(b -> b.action(this::prev)).modifiers(fontSize(20))
+                        Button.make(b -> b.action(this::prev))
+                                .modifiers(fontSize(20), accessibilityLabel("Previous track"))
                                 .children(Icon.make(IconName.SKIP_BACK)),
-                        Button.make(b -> b.action(player::toggle)).modifiers(fontSize(20))
+                        Button.make(b -> b.action(player::toggle))
+                                .modifiers(fontSize(20), accessibilityLabel(computed(
+                                        () -> player.playing().get() ? "Pause" : "Play")))
                                 .children(Icon.make(transportIcon)),
-                        Button.make(b -> b.action(this::next)).modifiers(fontSize(20))
+                        Button.make(b -> b.action(this::next))
+                                .modifiers(fontSize(20), accessibilityLabel("Next track"))
                                 .children(Icon.make(IconName.SKIP_FORWARD)));
         var trackInfo = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
@@ -99,7 +103,8 @@ public final class PlayerControls implements View, Configurable<PlayerControls.C
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
                 .children(
                         Icon.make(IconName.VOLUME).modifiers(fontSize(16)),
-                        Slider.make(s -> s.value(volumeControl).in(0f, 1f)));
+                        Slider.make(s -> s.value(volumeControl).in(0f, 1f))
+                                .modifiers(accessibilityLabel("Volume")));
 
         var compactControls = HStack
                 .make(h -> h.alignment(VerticalAlignment.CENTER).spacing(18f))
@@ -134,7 +139,8 @@ public final class PlayerControls implements View, Configurable<PlayerControls.C
                                 .in(0f, 100f).onEditingChanged(seek::onEditingChanged))
                                 .modifiers(
                                         frame(f -> f.width(Float.POSITIVE_INFINITY)),
-                                        padding(p -> p.edges(0, 16, 0, 16))));
+                                        padding(p -> p.edges(0, 16, 0, 16)),
+                                        accessibilityLabel("Seek")));
     }
 
     /** Previous track (wraps around), restarting from the top. */

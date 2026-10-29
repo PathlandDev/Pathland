@@ -7,6 +7,8 @@ ring for foreign hosts (Swift/Java/C# via FFI). Protocol contract: `spec/`.
 
 ## Implemented
 
+- **Window metadata C ABI**: `pathland_native_window_metadata(host, field, signal)` binds a field to a string signal (title/description/locale), re-emitting only the changed field.
+
 - **`NativeHost`**: owns the shared ring, `create_node`/`set_property`/
   `set_text`, frame emission, `drain_events`.
 - **Component mapping** (`component_from_id`/`component_id`): the full

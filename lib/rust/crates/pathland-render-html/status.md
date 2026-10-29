@@ -10,6 +10,8 @@ Statelessness). Protocol contract: `spec/`.
 
 ## Implemented
 
+- **Window metadata → head**: `TITLE` → `<title>`, `DESCRIPTION` → `<meta name="description">`, `LOCALE` → `<html lang>` (default `en`/`Pathland`); values escaped. Also: generic `LABEL` → `aria-label` (icon buttons), slider names on the inner input, `aria-hidden` on the non-visual media shell.
+
 - **`PROXY_VIEW` (0x1E)**: renders as a plain container box (a flex column,
   like a stack with one child) and lays out the (id-remapped) origin subtree the
   proxying server spliced in — the renderer holds no notion of "remote"

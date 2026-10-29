@@ -277,7 +277,7 @@ class PathlandSessionTest {
 
         String html = session.renderHtml();
         java.util.regex.Matcher matcher = java.util.regex.Pattern
-                .compile("data-pathland-id=\"(\\d+)\" style=\"position:absolute")
+                .compile("data-pathland-id=\"(\\d+)\" aria-hidden=\"true\" style=\"position:absolute")
                 .matcher(html);
         assertTrue(matcher.find(), "the controller shell is in the SSR: " + html);
         int controllerId = Integer.parseInt(matcher.group(1));

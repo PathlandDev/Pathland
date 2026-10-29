@@ -90,7 +90,7 @@ pub struct Opcode {
 | `TREE` | `0x01` | Tree mutations | Guest engine | Node create/delete/insert/remove/move |
 | `PARAMETER` | `0x02` | Constraints & tokens | Guest engine | Property values (spacing, padding, …), design tokens |
 | `EVENT` | `0x03` | Raw inputs | Host renderer | Pointer down/move/up, key down/up |
-| `META` | `0x04` | Control | Both | Reset, environment |
+| `META` | `0x04` | Control | Both | Reset, environment, window metadata |
 
 ---
 
@@ -412,6 +412,7 @@ element.
 | `PONG` | `0x05` | 0 | 0 | 0 | The reply to `META::PING` (host → guest). No payload. Network batch transport only. |
 | `SET_COLOR_SCHEME` | `0x06` | mode | 0 | 0 | **Draft.** Renderer-wide color-scheme override (guest → host): `0` = platform-derived (default), `1` = light, `2` = dark. The renderer re-resolves every token-referencing property; while forced, platform scheme changes are ignored. See [TOKENS.md](./TOKENS.md#color-schemes-light--dark). |
 | `RESET_THEME` | `0x07` | 0 | 0 | 0 | **Draft.** Clear every application design-token override (base + `dark.*`) and re-resolve against renderer defaults (guest → host). Emit before a replacement theme's `SET_DESIGN_TOKEN` opcodes in the same frame. |
+| `SET_WINDOW_METADATA` | `0x08` | fieldId (u16, low) | field value | 0 | **Draft.** Presentation metadata for the host window/surface that owns the stream (guest → host) — see [Window metadata](#window-metadata). |
 
 #### Environment fields
 
@@ -436,6 +437,43 @@ and re-sends it to **enrich** after connect (a window-resize re-emits the
 viewport fields). The application applies the environment uniformly — the
 router hydrates from the `ROUTE` field before mount, so a deep-link renders
 correctly on the first frame.
+
+#### Window metadata
+
+`META::SET_WINDOW_METADATA` is an **extensible field family** for presentation
+metadata of the host **window/surface** that owns the stream (a browser tab, a
+native window, an embedded surface). One opcode sets one field; new fields are
+new ids, never new commands. The protocol defines the concept; **each renderer
+maps it onto its own chrome** — the browser mapping is only one of them:
+
+| Renderer | `TITLE` | `DESCRIPTION` | `LOCALE` |
+|----------|---------|---------------|----------|
+| HTML / SSR | `<title>` | `<meta name="description">` | `<html lang>` |
+| DOM client | `document.title` | meta description | `<html lang>` |
+| GTK4 | window/headerbar title | accessible description | — |
+| Qt | window title | — | — |
+
+| Field | Value | `B` encoding | Notes |
+|-------|-------|--------------|-------|
+| `TITLE` | `0x0001` | string offset | Title of the hosting window/surface |
+| `DESCRIPTION` | `0x0002` | string offset | Human-readable description of the current content |
+| `LOCALE` | `0x0003` | string offset | BCP 47 content locale |
+
+The string encoding follows the same convention as `SET_TEXT`/`ROUTE`: an
+absolute offset into the guest arena over the shared ring, or a *relative*
+offset into the batch's string section over the network. An **empty string
+clears** the field, and the renderer applies its own default. Metadata is
+renderer-global (not part of the retained tree), survives `META::RESET`, and is
+re-emitted in a full snapshot (`META::RESYNC`).
+
+Semantics:
+
+- The application owns the values; a bound signal change emits exactly the
+  changed field (like a property diff).
+- A proxied origin's window metadata is **ignored** — an embedded app never
+  retitles the host window (spec/PROXY.md).
+- Web-only artifacts (`canonical`, `robots`, sitemap) are host concerns and are
+  **not** protocol fields.
 
 ---
 

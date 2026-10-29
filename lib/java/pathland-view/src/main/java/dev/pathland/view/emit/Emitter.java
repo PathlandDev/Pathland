@@ -1,12 +1,14 @@
 package dev.pathland.view.emit;
 
 import dev.pathland.view.Color;
+import dev.pathland.view.Commands;
 import dev.pathland.view.TokenPath;
 import dev.pathland.view.Components;
 import dev.pathland.view.Environment;
 import dev.pathland.view.EnvironmentValues;
 import dev.pathland.view.MediaController;
 import dev.pathland.view.Properties;
+import dev.pathland.view.WindowMetadata;
 import dev.pathland.view.ThemeData;
 import dev.pathland.view.ThemeMode;
 import dev.pathland.view.ValueTypes;
@@ -51,6 +53,10 @@ public final class Emitter {
 
     private final OpcodeSink sink;
     private ThemeData theme;
+    /** The root-declared window/surface metadata (null when absent). */
+    private WindowMetadata windowMetadata;
+    /** Last window-metadata value written per field (dedupe / clear detection). */
+    private final Map<Integer, String> lastWindowMetadata = new LinkedHashMap<>();
     private final Map<Integer, Runnable> tapActions = new LinkedHashMap<>();
     private final Map<Integer, Consumer<String>> textInputs = new LinkedHashMap<>();
     private final Map<Integer, Consumer<Float>> valueInputs = new LinkedHashMap<>();
@@ -155,6 +161,7 @@ public final class Emitter {
             PathlandNode.SNAPSHOT_EMISSION.set(prevSnapshot);
         }
         this.tree = tree;
+        this.windowMetadata = env.windowMetadata();
         nextId = 1;
         assignIds(tree);
         // Materialize one non-visual `MEDIA_CONTROLLER` node per referenced
@@ -179,12 +186,14 @@ public final class Emitter {
 
         sink.beginFrame();
         emitTheme();
+        emitWindowMetadata(false);
         emitNode(tree);
         sink.endFrame();
 
         bindings.clear();
         nodeBindings.clear();
         registerBindings(tree);
+        registerWindowMetadataBindings();
         rootId = tree.id;
         return new RenderResult(
                 rootId,
@@ -217,6 +226,9 @@ public final class Emitter {
         guardUniqueIds();
         sink.beginFrame();
         emitTheme();
+        // A reconnecting client may have missed a title/description change during
+        // the gap, so a full snapshot always re-sends every metadata field.
+        emitWindowMetadata(true);
         // The retained tree already carries every fit candidate when the session
         // mounted in snapshot mode; re-emit it as-is (a resync re-establishes the
         // container-query first paint for a reconnecting client). Before the first
@@ -233,6 +245,74 @@ public final class Emitter {
         if (theme != null) {
             theme.emitInto(sink);
         }
+    }
+
+    /**
+     * Emit the window/surface metadata fields ({@code META::SET_WINDOW_METADATA}).
+     * With {@code force} (a full snapshot) every field is re-sent; otherwise only
+     * changed fields are written.
+     */
+    private void emitWindowMetadata(boolean force) {
+        WindowMetadata metadata = this.windowMetadata;
+        if (metadata == null) {
+            return;
+        }
+        emitWindowField(Commands.WindowFields.TITLE, metadata.title(), force);
+        emitWindowField(Commands.WindowFields.DESCRIPTION, metadata.description(), force);
+        emitWindowField(Commands.WindowFields.LOCALE, metadata.locale(), force);
+    }
+
+    private void emitWindowField(int field, Signal<String> signal, boolean force) {
+        String value;
+        if (signal == null) {
+            if (!lastWindowMetadata.containsKey(field) && !force) {
+                return;
+            }
+            value = "";
+        } else {
+            value = signal.get();
+            if (value == null) {
+                value = "";
+            }
+        }
+        if (force || !Objects.equals(lastWindowMetadata.get(field), value)) {
+            sink.setWindowMetadata(field, value);
+            lastWindowMetadata.put(field, value);
+        }
+    }
+
+    /**
+     * Bind each reactive window-metadata field to its signal. A change emits only
+     * that field's {@code META::SET_WINDOW_METADATA}; an unchanged value emits
+     * zero opcodes.
+     */
+    private void registerWindowMetadataBindings() {
+        WindowMetadata metadata = this.windowMetadata;
+        if (metadata == null) {
+            return;
+        }
+        bindWindowField(Commands.WindowFields.TITLE, metadata.title());
+        bindWindowField(Commands.WindowFields.DESCRIPTION, metadata.description());
+        bindWindowField(Commands.WindowFields.LOCALE, metadata.locale());
+    }
+
+    private void bindWindowField(int field, Signal<String> signal) {
+        if (signal == null || isConstant(signal)) {
+            return;
+        }
+        EffectRef effect = Signals.effect(() -> {
+            String value = signal.get();
+            if (value == null) {
+                value = "";
+            }
+            if (!Objects.equals(lastWindowMetadata.get(field), value)) {
+                lastWindowMetadata.put(field, value);
+                sink.beginFrame();
+                sink.setWindowMetadata(field, value);
+                sink.endFrame();
+            }
+        });
+        bindings.add(effect);
     }
 
     /**

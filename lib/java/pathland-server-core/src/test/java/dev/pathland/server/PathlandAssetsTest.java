@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.pathland.view.Button;
+import dev.pathland.view.Text;
+import dev.pathland.view.VStack;
+import static dev.pathland.view.Modifiers.windowMetadata;
 import dev.pathland.view.state.InMemoryStateStore;
 import dev.pathland.view.transport.EnvironmentData;
 import java.io.ByteArrayInputStream;
@@ -91,6 +94,27 @@ class PathlandAssetsTest {
             }
             return new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8));
         };
+    }
+
+    @Test
+    void ssrCarriesWindowMetadataAndInjectsHostAttrs() {
+        PathlandApp app = () -> VStack.children(Text.make("x"))
+                .modifiers(windowMetadata(w -> w
+                        .title("Library")
+                        .description("8 songs")
+                        .locale("da")));
+        PathlandSession session = new PathlandSession(
+                "s", new InMemoryStateStore(), app, EnvironmentData.of("/"));
+        try {
+            String html = session.renderHtml();
+            assertTrue(html.contains("<html lang=\"da\" data-pathland-base=\"/_pathland\""),
+                    "locale + injected host attrs: " + html);
+            assertTrue(html.contains("<title>Library</title>"), "title: " + html);
+            assertTrue(html.contains("<meta name=\"description\" content=\"8 songs\">"),
+                    "description: " + html);
+        } finally {
+            session.close();
+        }
     }
 
     private static String newPathlandSessionHtml() {

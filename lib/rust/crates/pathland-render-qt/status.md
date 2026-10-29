@@ -18,6 +18,8 @@ Design-token contract: `spec/TOKENS.md`.
 
 ## Implemented
 
+- **Window metadata**: a changed `TITLE` is forwarded to the Qt layer as `PLQT_SET_WINDOW_TITLE`; unchanged metadata emits zero commands.
+
 - **Build/toolchain**: `build.rs` locates Qt via `qmake -query` (Homebrew +
   Linux CI), runs `moc` on the bridge, compiles the C++ layer with `cc`, and
   links the Qt frameworks/dylibs (framework search via the transitive

@@ -32,6 +32,9 @@ pub struct QtRenderer {
     tree: RenderTree,
     sent: HashMap<u32, SentNode>,
     sent_children: HashMap<u32, Vec<u32>>,
+    /// The last window title forwarded to the C++ layer. The string lives here
+    /// so the returned command batch can borrow it until it is applied.
+    sent_window_title: Option<String>,
 }
 
 impl Default for QtRenderer {
@@ -46,6 +49,7 @@ impl QtRenderer {
             tree: RenderTree::default(),
             sent: HashMap::new(),
             sent_children: HashMap::new(),
+            sent_window_title: None,
         }
     }
 
@@ -77,6 +81,7 @@ impl QtRenderer {
         self.tree = RenderTree::default();
         self.sent.clear();
         self.sent_children.clear();
+        self.sent_window_title = None;
         unsafe { crate::ffi::pathland_qt_layer_reset() };
     }
 
@@ -184,6 +189,17 @@ impl QtRenderer {
                 }
                 s.props = node.properties.clone();
                 s.strings = strings;
+            }
+        }
+
+        // 6. Window metadata (`META::SET_WINDOW_METADATA`): renderer-global, not
+        //    a node. Only a changed title is forwarded; Qt has no description or
+        //    locale slot. The string stays in `self` so the batch can borrow it.
+        let title = self.tree.window().title.clone();
+        if title != self.sent_window_title {
+            self.sent_window_title = title;
+            if let Some(title) = self.sent_window_title.as_deref() {
+                cmds.push(Command::set_window_title(title));
             }
         }
 
@@ -323,7 +339,7 @@ mod tests {
         category, component_type, init_memory, parameter, tree, value_type, Frame, Guest, Host,
         MemoryLayout, Opcode,
     };
-    use pathland_engine::Engine;
+    use pathland_engine::{Engine, WindowMetadata};
     use pathland_view::{assign_ids, text, vstack, Configurable, Node, Padding, View, ViewExt};
 
     /// One persistent engine + ring memory, so consecutive emits are **deltas**
@@ -695,6 +711,40 @@ mod tests {
                 .copied(),
             Some(0xFF_60A5FA),
             "reset keeps the forced-dark default"
+        );
+    }
+
+    #[test]
+    fn window_title_change_forwards_one_command() {
+        let mut view = vstack![text("ab")].build();
+        assign_ids(&mut view, &mut 1);
+        let mut h = Harness::new();
+        let title = h.engine.signal("Library".to_string());
+        h.engine.bind_window_metadata(WindowMetadata::new().title(title));
+        let mut r = QtRenderer::new();
+        apply_emit(&mut r, &mut h, &view);
+
+        let cmds = r.diff();
+        let window: Vec<&Command> = cmds
+            .iter()
+            .filter(|c| c.kind == Command::SET_WINDOW_TITLE)
+            .collect();
+        assert_eq!(window.len(), 1, "one title command");
+        let cmd = window[0];
+        let text = unsafe {
+            std::str::from_utf8(std::slice::from_raw_parts(
+                cmd.str_ as *const u8,
+                cmd.str_len as usize,
+            ))
+            .unwrap()
+        };
+        assert_eq!(text, "Library");
+
+        // Unchanged metadata emits zero commands.
+        let again = r.diff();
+        assert!(
+            !again.iter().any(|c| c.kind == Command::SET_WINDOW_TITLE),
+            "unchanged title emits nothing"
         );
     }
 

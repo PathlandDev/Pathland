@@ -210,6 +210,11 @@ Because A remaps the origin ids (§2) **before** rendering, the embed's
 A's own — no cross-contamination. String handling stays per-frame; there is no
 arena rebasing.
 
+The origin's window metadata (`META::SET_WINDOW_METADATA`) is **dropped** with
+the other `META` opcodes: an embedded app must never retitle the host window or
+overwrite the host's description/locale. Only the top-level app owns the
+presentation metadata of the surface.
+
 The client hydrates the composed document by `data-pathland-id` as usual and
 applies A's single live stream — it requires **no proxy awareness**.
 

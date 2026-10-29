@@ -9,6 +9,8 @@ tracks what this crate implements.
 
 ## Implemented
 
+- **Window/surface metadata** (`META::SET_WINDOW_METADATA` 0x08, draft): an extensible field family (`TITLE`, `DESCRIPTION`, `LOCALE`) for the hosting window/surface, plus the shared no_std `WindowMeta` decoder helper. Spec + conformance vectors 44–45.
+
 - **Component types** (`constants.rs::component_type`): the full grouped map —
   `TEXT 0x01, IMAGE 0x02, COLOR 0x03, SHAPE 0x04, DIVIDER 0x05, SPACER 0x06,
   PROGRESS_VIEW 0x07, GAUGE 0x08, VIDEO 0x0A, ICON 0x0B, VSTACK 0x10, HSTACK 0x11, ZSTACK 0x12, GRID
