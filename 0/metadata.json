@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M63ZEF2RQ2PFHY6MSYDEQT9Z",
+  "session_id": "ses_e781117edffeH1F2FVAIcCqUPu",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-29T14:01:31.054904Z",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "save_step_count": 1,
+  "files_touched": [
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/PathlandNode.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/emit/RenderResult.java",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/index.ts"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "64dbd61d6b0c",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 165508,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 696960,
+    "output_tokens": 6226,
+    "api_call_count": 26
+  },
+  "session_metrics": {
+    "turn_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-29T14:01:31.035693Z",
+    "agent_lines": 9,
+    "agent_removed": 7,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 9,
+    "total_lines_changed": 16,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 9,
+      "agent_lines_removed": 7
+    }
+  ]
+}
