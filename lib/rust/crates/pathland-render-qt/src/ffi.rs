@@ -33,6 +33,7 @@ impl Command {
     pub const RESET_NODE: u8 = 8;
     pub const SET_SCHEME: u8 = 9;
     pub const SET_DATE: u8 = 10;
+    pub const SET_WINDOW_TITLE: u8 = 11;
 
     fn new(kind: u8, a: u32, b: u32, c: u32) -> Self {
         Self {
@@ -103,6 +104,10 @@ impl Command {
     /// A `DATE_PICKER` value: `b = days since epoch (I32)`, `c = millis of day`.
     pub fn set_date(id: u32, days: i32, millis: u32) -> Self {
         Self::new(Self::SET_DATE, id, days as u32, millis)
+    }
+    /// The host window title (`META::SET_WINDOW_METADATA` TITLE).
+    pub fn set_window_title(title: &str) -> Self {
+        Self::with_str(Self::SET_WINDOW_TITLE, 0, title)
     }
 }
 

@@ -9,6 +9,8 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 
 ## Implemented
 
+- **Window metadata** (`windowMetadata(w -> w.title(...).description(...).locale(...))`): a root-scoped `ViewModifier` with signal-backed fields. The emitter emits the initial `META::SET_WINDOW_METADATA` fields at mount, re-emits only the changed field on a signal write, and re-sends every field in `renderFull` (resync). `FrameOpcodeSink` and the JNA `RingOpcodeSink` carry it; a route title is a `computed` over the router.
+
 - **`ProxyView`** (`ProxyView.make(p -> p.endpoint(...).route(...).credential(...))`):
   a `PROXY_VIEW` (0x1E) container whose child subtree is served by **another**
   Pathland server (spec/PROXY.md). It authors **no** children — the origin root is

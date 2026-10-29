@@ -31,7 +31,8 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
     static final int SIDEBAR_WIDTH = 280;
     static final int BAR_HEIGHT = 76;
 
-    static final Color SECONDARY_FG = Color.rgb(0x6B, 0x72, 0x80);
+    // Gray-600: >= 4.5:1 on white, the sidebar, the selected row, and the player bar.
+    static final Color SECONDARY_FG = Color.rgb(0x4B, 0x55, 0x63);
     static final Color ACTIVE_ROW_BG = Color.rgb(0xE8, 0xEF, 0xFF);
     static final Color ACTIVE_ROW_FG = Color.rgb(0x1A, 0x3A, 0x8C);
     static final Color SIDEBAR_BG = Color.rgb(0xF6, 0xF7, 0xFA);
@@ -164,7 +165,7 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
         // fit candidates, so the reconcile re-uses every shared node and a fit
         // swap only inserts/removes the now-playing sidebar subtree — a handful
         // of TREE deltas instead of rebuilding the whole main area.
-        View mainArea = ZStack
+        var mainArea = ZStack
                 .make(z -> z.alignment(Alignment.BOTTOM_CENTER))
                 .children(
                         LibraryView.make(l -> l
@@ -184,14 +185,14 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
                                         Spacer.make()
                                 ),
                         subtitlePill(block, previous, current));
-        View wideRow = HStack.make()
+        var wideRow = HStack.make()
                 .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(
                         mainArea,
                         NowPlayingSidebar.make(s -> s
                                 .trackIndex(trackIndex.signal())
                                 .adUrl(config.adUrl)).modifiers(clipped()));
-        View compactRow = HStack.make()
+        var compactRow = HStack.make()
                 .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)))
                 .children(mainArea);
         // Audio has no view: the attach marker materializes the playback
@@ -208,7 +209,15 @@ public final class MusicPlayerView implements View, Configurable<MusicPlayerView
                                 .modifiers(
                                         frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)),
                                         accessibilityRole(Roles.MAIN)))
-                .modifiers(frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)));
+                .modifiers(
+                        frame(f -> f.width(Commands.Size.FILL).height(Commands.Size.FILL)),
+                        // Runtime window metadata: the tab/window title follows the
+                        // current track (a computed → one META opcode per change).
+                        windowMetadata(w -> w
+                                .title(computed(() -> "Pathland · " + at(trackIndex.get()).title()))
+                                .description(computed(() -> at(trackIndex.get()).artist()
+                                        + " · " + at(trackIndex.get()).album()))
+                                .locale("en")));
     }
 
     /** The karaoke lyric pill just above the floating player bar: always two

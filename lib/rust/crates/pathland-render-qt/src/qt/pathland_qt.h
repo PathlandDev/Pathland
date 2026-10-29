@@ -30,6 +30,7 @@ typedef enum PathlandQtCommandKind {
     PLQT_RESET_NODE = 8,    /* a=id — reset renderer-owned style to defaults     */
     PLQT_SET_SCHEME = 9,    /* a=scheme (0 light, 1 dark)                        */
     PLQT_SET_DATE = 10,     /* a=id, b=days since epoch (I32), c=millis of day   */
+    PLQT_SET_WINDOW_TITLE = 11, /* str=title (window/surface metadata)          */
 } PathlandQtCommandKind;
 
 typedef struct PathlandQtCommand {

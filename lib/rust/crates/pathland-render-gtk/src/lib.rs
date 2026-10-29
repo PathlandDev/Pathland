@@ -151,6 +151,13 @@ impl GtkRenderer {
         self.tree.scheme()
     }
 
+    /// The decoded window/surface presentation metadata
+    /// (`META::SET_WINDOW_METADATA`): the host maps title/description onto the
+    /// GTK window chrome.
+    pub fn window_metadata(&self) -> &pathland_core::WindowMeta {
+        self.tree.window()
+    }
+
     /// Set the effective color scheme (renderer-derived, never carried by the
     /// protocol) and re-resolve every design token — native defaults for the
     /// new scheme are re-enriched from the GTK theme when a widget exists, then
@@ -2741,6 +2748,7 @@ pub fn run_with_pump_sized<P, F>(
     let app = gtk::Application::builder().application_id(&app_id).build();
 
     app.connect_activate(move |app| {
+        let fallback_title = title.clone();
         let window = gtk::ApplicationWindow::builder()
             .application(app)
             .title(&title)
@@ -2829,6 +2837,7 @@ pub fn run_with_pump_sized<P, F>(
         // Initial render + window root. Deferred control signals from the mount
         // apply are flushed before the idle pump takes over.
         pump_once(&renderer, &pump);
+        sync_window_metadata(&renderer, &window, &fallback_title);
         flush_pending(&pump, &pending, &on_event);
         let root = renderer.borrow().root_widget();
         if let Some(root) = root {
@@ -2843,15 +2852,37 @@ pub fn run_with_pump_sized<P, F>(
         let idle_pump = pump.clone();
         let idle_pending = pending.clone();
         let idle_wake = on_event.clone();
+        let idle_window = window.clone();
+        let idle_title = fallback_title.clone();
         glib::idle_add_local(move || {
             flush_pending(&idle_pump, &idle_pending, &idle_wake);
             pump_once(&idle_renderer, &idle_pump);
+            sync_window_metadata(&idle_renderer, &idle_window, &idle_title);
             glib::ControlFlow::Continue
         });
     });
 
     // Run the GTK main loop with the caller-provided argv.
     app.run_with_args(args);
+}
+
+/// Apply the decoded window/surface metadata to the GTK window chrome: title
+/// (falling back to the run-time default when unset) and the accessible
+/// description. Locale has no GTK window affordance.
+fn sync_window_metadata(
+    renderer: &Rc<RefCell<GtkRenderer>>,
+    window: &gtk::ApplicationWindow,
+    fallback_title: &str,
+) {
+    let (title, description) = {
+        let renderer = renderer.borrow();
+        let metadata = renderer.window_metadata();
+        (metadata.title.clone(), metadata.description.clone())
+    };
+    window.set_title(Some(title.as_deref().unwrap_or(fallback_title)));
+    if let Some(description) = description.as_deref() {
+        window.update_property(&[gtk::accessible::Property::Description(description)]);
+    }
 }
 
 /// Whether a text input currently holds keyboard focus, so backspace is not

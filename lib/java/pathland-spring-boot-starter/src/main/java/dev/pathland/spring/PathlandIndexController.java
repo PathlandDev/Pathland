@@ -53,6 +53,42 @@ public class PathlandIndexController {
         this.host = host;
     }
 
+    /** A valid crawler policy — never the SPA HTML fallback. */
+    @GetMapping(value = "/robots.txt", produces = MediaType.TEXT_PLAIN_VALUE)
+    @ResponseBody
+    public ResponseEntity<String> robots(HttpServletRequest request) {
+        String base = baseUrl(request);
+        return ResponseEntity.ok("User-agent: *\nAllow: /\nSitemap: " + base + "sitemap.xml\n");
+    }
+
+    /** A one-entry sitemap for the app root (a host may mount more routes). */
+    @GetMapping(value = "/sitemap.xml", produces = MediaType.APPLICATION_XML_VALUE)
+    @ResponseBody
+    public ResponseEntity<String> sitemap(HttpServletRequest request) {
+        String loc = baseUrl(request);
+        String body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                + "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"
+                + "<url><loc>" + loc + "</loc></url></urlset>\n";
+        return ResponseEntity.ok(body);
+    }
+
+    /** The request's absolute application root (scheme + host + port + context path). */
+    private static String baseUrl(HttpServletRequest request) {
+        StringBuilder url = new StringBuilder()
+                .append(request.getScheme()).append("://").append(request.getServerName());
+        int port = request.getServerPort();
+        boolean defaultPort = ("http".equals(request.getScheme()) && port == 80)
+                || ("https".equals(request.getScheme()) && port == 443);
+        if (!defaultPort) {
+            url.append(':').append(port);
+        }
+        String context = request.getContextPath();
+        if (context != null && !context.isEmpty()) {
+            url.append(context);
+        }
+        return url.append('/').toString();
+    }
+
     /**
      * The SPA catch-all: every path renders the session shell seeded at the request path,
      * dispatched to the mounted app that owns the path. Requests carrying an

@@ -122,7 +122,8 @@ function boot(): void {
   // state (its request carried a wid — e.g. the service worker attached it). When it
   // was, no initial snapshot is needed (see shouldInitialResync).
   const ssrScoped = document.documentElement.dataset.pathlandSsrScoped != null;
-  const renderer: DomRenderer = { byId };
+  // The SSR title is the renderer default a later WINDOW_TITLE clear restores.
+  const renderer: DomRenderer = { byId, defaultTitle: document.title };
   const transport = new Transport({
     url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${base}/ws?wid=${wid}`,
     renderer,

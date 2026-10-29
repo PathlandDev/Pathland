@@ -138,6 +138,37 @@ pub mod meta {
     /// (guest → host). Emit before a replacement theme's `SET_DESIGN_TOKEN`
     /// opcodes in the same frame.
     pub const RESET_THEME: u8 = 0x07;
+    /// **Draft.** `A = fieldId (u16, low), B = value` — presentation metadata
+    /// for the host window/surface that owns this stream (guest → host):
+    /// title, description, locale (and future fields — an extensible family
+    /// like [`ENVIRONMENT`]). Each field defines its own `B` encoding; today
+    /// every field is a `STRING` offset (the arena / batch string-section
+    /// convention). Renderer-global: survives `META::RESET`, and a full
+    /// snapshot re-emits it. Each renderer maps the fields onto its own chrome;
+    /// the browser mapping is `<title>` / `<meta name="description">` /
+    /// `<html lang>`, not the protocol definition.
+    pub const SET_WINDOW_METADATA: u8 = 0x08;
+}
+
+/// Window/surface metadata field ids for `META::SET_WINDOW_METADATA`
+/// (guest → host).
+///
+/// Each opcode sets one field; new fields are new ids, never new commands
+/// (spec/OPCODE.md §Window metadata). An empty string clears the field and the
+/// renderer falls back to its default.
+pub mod window_field {
+    /// The window/surface title (STRING in `B`).
+    pub const TITLE: u16 = 0x0001;
+    /// A human-readable description of the current content (STRING in `B`).
+    /// Renderers map it to their own affordance (browser meta description,
+    /// native accessible description, …).
+    pub const DESCRIPTION: u16 = 0x0002;
+    /// The content locale as a BCP 47 tag (STRING in `B`). The browser maps it
+    /// to `<html lang>`; native renderers may use it for accessibility/formatting.
+    pub const LOCALE: u16 = 0x0003;
+
+    /// Every field this protocol version defines.
+    pub const ALL: [u16; 3] = [TITLE, DESCRIPTION, LOCALE];
 }
 
 /// Values for `META::SET_COLOR_SCHEME`'s `A` field.

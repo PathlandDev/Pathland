@@ -16,6 +16,8 @@ compatibility.
 
 ## Implemented
 
+- **Window metadata**: the GTK window title follows `META::SET_WINDOW_METADATA` `TITLE` (fallback: the run-time title); `DESCRIPTION` maps to the window accessible description.
+
 - **Components → widgets** (`widget_kind`/`build_widget`):
   - `VSTACK`/`HSTACK`/`LAZY_VSTACK`/`LAZY_HSTACK` → `GtkBox` (spacing/alignment/
     padding/content-margins),

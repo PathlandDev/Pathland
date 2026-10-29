@@ -9,6 +9,8 @@ subpaths (the BFF layout).
 
 ## Implemented
 
+- **Crawler endpoints**: `/robots.txt` (text/plain) and `/sitemap.xml` (application/xml) are real routes before the SPA catch-all, so Lighthouse does not parse the HTML shell as robots.txt.
+
 - **`PathlandAutoConfiguration`** (`@AutoConfiguration`, `@EnableWebSocket` since Spring
   Boot 3.5 no longer auto-enables it) + `META-INF/spring/…/AutoConfiguration.imports`:
   - default `StateStore` bean (`@ConditionalOnMissingBean` — Redis-or-in-memory),

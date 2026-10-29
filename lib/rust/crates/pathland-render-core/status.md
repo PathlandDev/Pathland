@@ -10,6 +10,8 @@ The **toolkit-free renderer core shared by every Pathland renderer** (GTK4, Qt,
 
 ## Implemented
 
+- **Window metadata decode**: `RenderTree` stores `META::SET_WINDOW_METADATA` (`WindowMeta`), shared by the GTK/Qt renderers; empty strings clear fields.
+
 - **`RenderTree` / `HostNode`** (extracted from `pathland-render-gtk`'s
   `host.rs`, which was already GTK-free):
   - `TREE` ops → node tree: `CREATE_NODE`, `DELETE_NODE`, `INSERT_CHILD`,

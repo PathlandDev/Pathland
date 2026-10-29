@@ -31,6 +31,7 @@ import {
   CMD_SET_DATE,
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
+  CMD_SET_WINDOW_METADATA,
   CMD_SUBMIT,
   CMD_TEXT_CHANGED,
   CMD_VALUE_CHANGED,
@@ -38,6 +39,9 @@ import {
   COMPONENT_BUTTON,
   COMPONENT_COMMENT,
   COMPONENT_COLOR,
+  WINDOW_DESCRIPTION,
+  WINDOW_LOCALE,
+  WINDOW_TITLE,
   COMPONENT_COLOR_PICKER,
   COMPONENT_DATE_PICKER,
   COMPONENT_DIVIDER,
@@ -136,6 +140,13 @@ const META_NAME: Record<number, string> = {
   [CMD_RESET]: "RESET",
   [CMD_ENVIRONMENT]: "ENVIRONMENT",
   [CMD_RESYNC]: "RESYNC",
+  [CMD_SET_WINDOW_METADATA]: "SET_WINDOW_METADATA",
+};
+
+const WINDOW_FIELD_NAME: Record<number, string> = {
+  [WINDOW_TITLE]: "TITLE",
+  [WINDOW_DESCRIPTION]: "DESCRIPTION",
+  [WINDOW_LOCALE]: "LOCALE",
 };
 
 const COMPONENT_NAME: Record<number, string> = {
@@ -291,6 +302,9 @@ function describeOpcode(batch: Batch, op: Opcode): string {
         return `META ${mn}(${field}=${
           (op.a & 0xffff) === ENV_ROUTE ? `"${readString(batch.strings, op.b)}"` : f32(op.b)
         })`;
+      }
+      if (op.command === CMD_SET_WINDOW_METADATA) {
+        return `META ${mn}(${name(WINDOW_FIELD_NAME, op.a)}=\"${readString(batch.strings, op.b)}\")`;
       }
       return `META ${mn}(a=${op.a}, b=${op.b}, c=${op.c})`;
     }

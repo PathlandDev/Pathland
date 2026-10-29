@@ -59,6 +59,7 @@ mod memory;
 mod opcode;
 mod ring;
 pub mod tokens;
+mod window;
 
 pub use arena::ArenaError;
 pub use constants::*;
@@ -66,6 +67,7 @@ pub use events::{Event, EventError};
 pub use memory::MemoryLayout;
 pub use opcode::{Opcode, OPCODE_SIZE};
 pub use ring::RingError;
+pub use window::WindowMeta;
 
 use alloc::vec;
 use alloc::vec::Vec;

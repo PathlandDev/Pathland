@@ -160,4 +160,11 @@ public class FrameOpcodeSink implements OpcodeSink {
     public void setColorScheme(int mode) {
         push(Categories.META, Commands.Meta.SET_COLOR_SCHEME, 0, mode, 0, 0);
     }
+
+    @Override
+    public void setWindowMetadata(int field, String value) {
+        int offset = strings.size();
+        writeString(value);
+        push(Categories.META, Commands.Meta.SET_WINDOW_METADATA, 0, field, offset, 0);
+    }
 }

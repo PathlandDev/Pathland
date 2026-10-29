@@ -918,6 +918,7 @@ anchors. Transforms do not affect layout.
 | `labelStyle` | `.labelStyle(_:)` | `.modifiers(LabelStyle)` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
 | `videoStyle` | `.videoStyle(_:)` | `.modifiers(VideoStyle)` | environment-scoped (`Environment.VIDEO_STYLE` key, nearest-wins); the style supplies the `VIDEO` surface's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
 | `environment` | `.environment(_:_:)` | `.modifiers(environmentBinding(e -> e.key(EnvironmentKey).value(value)))` | environment-scoped (a typed `EnvironmentKey`, nearest-wins); no wire property |
+| `windowMetadata` | (platform shell metadata) | `.modifiers(windowMetadata(w -> w.title(signal).description(signal).locale(value)))` | `META::SET_WINDOW_METADATA` fields (`TITLE`/`DESCRIPTION`/`LOCALE`) — renderer maps them to its window chrome |
 | `focusable` | `.focusable(_:)` | (via the `PointerEvents` modifier) | **no property** — declares `FOCUS` listener bit 5; observe `FOCUS_CHANGED` |
 | raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifiers(pointerEvents(p -> p.mask(int)))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
 
@@ -928,6 +929,13 @@ exposed through the `PointerEvents` modifier value — there is no per-event sug
 (e.g. a `.focusable` or `.onSubmit` that sets the matching bit). `environment`
 is the one inheritance/scoping modifier
 ([§6 rule 6](#6-authoring-conventions)), alongside the style modifiers.
+
+**Window metadata is root-scoped.** `windowMetadata` applies to the whole
+hosting surface, not to the subtree it wraps. Values are signals (a plain value
+is wrapped as a constant), so a route's title is a `computed` over the router:
+`windowMetadata(w -> w.title(computed(() -> titleFor(router.path()))))`. A
+signal change re-emits only that `META::SET_WINDOW_METADATA` field; the renderer
+maps it to the window/tab title and description.
 
 ### 5.6 Custom modifiers (developer-authored)
 

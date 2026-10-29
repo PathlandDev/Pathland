@@ -222,6 +222,19 @@ impl NativeHost {
         }
     }
 
+    /// Bind a window/surface metadata field (`META::SET_WINDOW_METADATA`) to a
+    /// signal. A change re-emits only that field; the renderer maps it onto its
+    /// native window chrome (title/description/locale). Unknown fields are
+    /// ignored. Returns `true` for a defined field.
+    pub fn bind_window_metadata(&mut self, field: u16, signal: SignalId) -> bool {
+        if pathland_core::window_field::ALL.contains(&field) {
+            self.engine.bind_window_field(field, signal);
+            true
+        } else {
+            false
+        }
+    }
+
     /// Bind a node's `STRING`-valued property to a signal (e.g. a controller's
     /// `MEDIA_SOURCE`; a change re-emits only that property). Returns `true` if
     /// the node exists.

@@ -322,6 +322,24 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x00, // C = 0
         ],
     ),
+    (
+        "META:SET_WINDOW_METADATA (field=TITLE=1, arenaRef=0)",
+        [
+            0x04, 0x08, 0x00, 0x00, // category META, command SET_WINDOW_METADATA
+            0x01, 0x00, 0x00, 0x00, // A = fieldId = TITLE
+            0x00, 0x00, 0x00, 0x00, // B = string offset = 0
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
+    (
+        "META:SET_WINDOW_METADATA (field=LOCALE=3, arenaRef=6)",
+        [
+            0x04, 0x08, 0x00, 0x00, // category META, command SET_WINDOW_METADATA
+            0x03, 0x00, 0x00, 0x00, // A = fieldId = LOCALE
+            0x06, 0x00, 0x00, 0x00, // B = string offset = 6
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -506,6 +524,8 @@ mod tests {
             ),
             (0x04, 0x06, 0x0000, 2, 0, 0, VECTORS[33].1),
             (0x04, 0x07, 0x0000, 0, 0, 0, VECTORS[34].1),
+            (0x04, 0x08, 0x0000, 0x0001, 0, 0, VECTORS[35].1),
+            (0x04, 0x08, 0x0000, 0x0003, 6, 0, VECTORS[36].1),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {
             let op = Opcode::new(*cat, *cmd, *flags, *a, *b, *c);

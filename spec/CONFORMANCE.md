@@ -914,6 +914,44 @@ theme emits this immediately before its `SET_DESIGN_TOKEN` overrides.
 - `00 00 00 00` B = 0
 - `00 00 00 00` C = 0
 
+### 44. META:SET_WINDOW_METADATA (TITLE, arenaRef=0)
+
+Sets the hosting window/surface title to the string at arena offset 0 (over the
+shared ring the offset is absolute into the guest arena; over the network it is
+relative into the batch's string section). `A=2` describes, `A=3` sets the
+locale. An empty string clears the field.
+
+```
+04 08 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `08` command = SET_WINDOW_METADATA
+- `00 00` flags = 0
+- `01 00 00 00` A = fieldId = 1 (TITLE)
+- `00 00 00 00` B = string offset = 0 (`"Pathland"` in the arena)
+- `00 00 00 00` C = 0
+
+### 45. NETWORK:BATCH (META:SET_WINDOW_METADATA, LOCALE, relative string offset=0)
+
+The same field family over the network transport: the opcode references the
+batch's string section by a **relative** offset.
+
+```
+4C 50 4C 50 01 00 00 00 05 00 00 00 01 00 00 00
+04 08 00 00 03 00 00 00 00 00 00 00 00 00 00 00
+06 00 00 00 02 00 00 00 65 6E
+```
+
+- `4C 50 4C 50` = magic `PLPL`
+- `01 00` = version 1
+- `00 00` = flags = `GUEST_TO_HOST`
+- `05 00 00 00` = sequence = 5
+- `01 00 00 00` = opcodeCount = 1
+- `04 08 00 00 03 00 00 00 00 00 00 00 00 00 00 00` = SET_WINDOW_METADATA, field 3 (LOCALE), offset 0
+- `06 00 00 00` = arenaDeltaLen = 6
+- `02 00 00 00 65 6E` = `[u32 length=2]["en"]`
+
 ---
 
 ## Design-Token Resolution Conformance

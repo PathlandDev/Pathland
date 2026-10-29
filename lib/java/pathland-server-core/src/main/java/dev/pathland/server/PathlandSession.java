@@ -360,12 +360,29 @@ public final class PathlandSession {
         // hosts give each mounted app its own base (e.g. `/app2/_pathland`).
         // The bundle name is content-hashed (see PathlandAssets) so a new build
         // busts the immutable asset cache via a fresh URL.
-        return html
-                .replace("<html>", "<html data-pathland-base=\"" + base + "\""
-                        + (serviceWorker ? " data-pathland-service-worker=\"true\"" : "")
-                        + (ssrScoped ? " data-pathland-ssr-scoped=\"true\"" : "") + ">")
+        String htmlAttrs = " data-pathland-base=\"" + base + "\""
+                + (serviceWorker ? " data-pathland-service-worker=\"true\"" : "")
+                + (ssrScoped ? " data-pathland-ssr-scoped=\"true\"" : "");
+        return injectHtmlAttributes(html, htmlAttrs)
                 .replace("</body>", "<script src=\"" + base + "/" + PathlandAssets.bundleName()
                         + "\" defer></script></body>");
+    }
+
+    /**
+     * Add host attributes to the renderer's opening {@code <html …>} tag. The
+     * renderer may already carry {@code lang} (window metadata), so this must not
+     * depend on an exact {@code <html>} string.
+     */
+    private static String injectHtmlAttributes(String html, String attrs) {
+        int start = html.indexOf("<html");
+        if (start < 0) {
+            return html;
+        }
+        int end = html.indexOf('>', start);
+        if (end < 0) {
+            return html;
+        }
+        return html.substring(0, end) + attrs + html.substring(end);
     }
 
     /**

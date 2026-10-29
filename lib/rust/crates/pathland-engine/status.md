@@ -8,6 +8,8 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
 
 ## Implemented
 
+- **Window metadata bindings**: `Engine::bind_window_metadata`/`bind_window_field` bind fields to signals; mount emits the initial `META::SET_WINDOW_METADATA` fields, a signal write emits only the changed field, and unchanged values emit zero opcodes.
+
 - **Retained tree** (`node.rs`): `Node` (id, component, children, properties,
   `string_properties`, `token_properties`, text/property signal bindings,
   app-side gestures). Components include `Icon` (→ `component_type::ICON`).

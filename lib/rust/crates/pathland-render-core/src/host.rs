@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use pathland_core::tokens::{resolve_ref as resolve_token_ref, Scheme, TokenTables, TokenValue};
 use pathland_core::{
     category, color_scheme_mode, component_type, meta, parameter, tree, value_type, Frame, Opcode,
+    WindowMeta,
 };
 
 /// A decoded node in the host's native-element description.
@@ -120,6 +121,10 @@ pub struct RenderTree {
     /// An application override from `META::SET_COLOR_SCHEME`; `None` follows
     /// the platform.
     scheme_override: Option<Scheme>,
+    /// Window/surface presentation metadata (`META::SET_WINDOW_METADATA`): the
+    /// shared decode for every non-web renderer. Renderers map the fields onto
+    /// their own window chrome.
+    window: WindowMeta,
 }
 
 impl Default for RenderTree {
@@ -133,6 +138,7 @@ impl Default for RenderTree {
             dark_defaults,
             platform_scheme: Scheme::Light,
             scheme_override: None,
+            window: WindowMeta::new(),
         }
     }
 }
@@ -174,6 +180,11 @@ impl RenderTree {
     /// The application scheme override, if any.
     pub fn scheme_override(&self) -> Option<Scheme> {
         self.scheme_override
+    }
+
+    /// The decoded window/surface presentation metadata.
+    pub fn window(&self) -> &WindowMeta {
+        &self.window
     }
 
     /// Clear every application design-token override (`META::RESET_THEME`) and
@@ -348,6 +359,12 @@ impl RenderTree {
                 (category::META, meta::RESET_THEME) => {
                     self.overrides.clear();
                     self.dark_overrides.clear();
+                }
+                (category::META, meta::SET_WINDOW_METADATA) => {
+                    // Empty string clears the field (spec/OPCODE.md §Window metadata).
+                    if let Ok(value) = frame.arena_str(op.b()) {
+                        self.window.set(op.a() as u16, value);
+                    }
                 }
                 _ => {}
             }
@@ -1036,6 +1053,58 @@ mod tests {
             default_primary.to_bits().as_ref()
         );
         assert!(!tree.node(2).unwrap().properties.contains_key(&pathland_core::property_id::COLOR));
+    }
+
+    #[test]
+    fn decodes_window_metadata_and_clears_on_empty() {
+        let (strings, off) = arena(&["Library", "8 songs", "en"]);
+        let ops = [
+            Opcode::new(
+                category::META,
+                meta::SET_WINDOW_METADATA,
+                0,
+                pathland_core::window_field::TITLE as u32,
+                off[0],
+                0,
+            ),
+            Opcode::new(
+                category::META,
+                meta::SET_WINDOW_METADATA,
+                0,
+                pathland_core::window_field::DESCRIPTION as u32,
+                off[1],
+                0,
+            ),
+            Opcode::new(
+                category::META,
+                meta::SET_WINDOW_METADATA,
+                0,
+                pathland_core::window_field::LOCALE as u32,
+                off[2],
+                0,
+            ),
+        ];
+        let mut tree = RenderTree::default();
+        let slots = ops_bytes(&ops);
+        tree.apply_frame(&frame_from(&slots, &strings));
+        assert_eq!(tree.window().title.as_deref(), Some("Library"));
+        assert_eq!(tree.window().description.as_deref(), Some("8 songs"));
+        assert_eq!(tree.window().locale.as_deref(), Some("en"));
+
+        // An empty string clears the title; the other fields stay.
+        let (empty, empty_off) = arena(&[""]);
+        let clear = [Opcode::new(
+            category::META,
+            meta::SET_WINDOW_METADATA,
+            0,
+            pathland_core::window_field::TITLE as u32,
+            empty_off[0],
+            0,
+        )];
+        let slots = ops_bytes(&clear);
+        tree.apply_frame(&frame_from(&slots, &empty));
+        assert_eq!(tree.window().title, None);
+        assert_eq!(tree.window().locale.as_deref(), Some("en"));
     }
 
     #[test]

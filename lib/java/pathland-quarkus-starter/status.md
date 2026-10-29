@@ -9,6 +9,8 @@ bean gives a running app; `MountedApp` beans host more apps at their own subpath
 
 ## Implemented
 
+- **Crawler endpoints**: `/robots.txt` (text/plain) and `/sitemap.xml` (application/xml) are real routes before the SPA catch-all, so Lighthouse does not parse the HTML shell as robots.txt.
+
 - **`PathlandSocket`** — `@WebSocket("/_pathland/ws")` for the root app: 1:1 sessions
   per connection (a fresh `uiId` per connection + the client's `wid` state scope from
   the `?wid=` query param), binary events routed into the root registry of the

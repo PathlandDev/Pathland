@@ -7,6 +7,8 @@ Rust sources, so the TS side cannot drift silently.
 
 ## Implemented
 
+- **Window metadata constants**: `CMD_SET_WINDOW_METADATA` + `WINDOW_TITLE/DESCRIPTION/LOCALE` are generated from `pathland_core`.
+
 - **`constants.ts`** (`lib/typescript/src/constants.ts`): every wire constant is
   bound to its `pathland_core::constants` source (a rename breaks compilation, a
   revalue changes the emitted file); the protocol-semantic enum codes (alignment,

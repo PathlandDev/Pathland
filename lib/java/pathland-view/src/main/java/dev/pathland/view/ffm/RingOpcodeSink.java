@@ -156,4 +156,10 @@ public final class RingOpcodeSink implements OpcodeSink, AutoCloseable {
     public void setColorScheme(int mode) {
         push(Categories.META, Commands.Meta.SET_COLOR_SCHEME, 0, mode, 0, 0);
     }
+
+    @Override
+    public void setWindowMetadata(int field, String value) {
+        int ref = core.arenaAlloc(handle, value.getBytes(StandardCharsets.UTF_8));
+        push(Categories.META, Commands.Meta.SET_WINDOW_METADATA, 0, field, ref, 0);
+    }
 }

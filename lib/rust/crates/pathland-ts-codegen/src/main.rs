@@ -12,7 +12,7 @@
 
 use pathland_core::{color_scheme_mode,
     category, component_type, environment, event, flag, listener, meta, parameter, property_id, role,
-    text_style, tree, value_type,
+    text_style, tree, value_type, window_field,
 };
 use pathland_render_html::{role_spec, token_spec};
 use std::fmt::Write;
@@ -173,6 +173,7 @@ pub fn emit_constants_ts() -> String {
         ("PONG", fmt_u8(meta::PONG)),
         ("SET_COLOR_SCHEME", fmt_u8(meta::SET_COLOR_SCHEME)),
         ("RESET_THEME", fmt_u8(meta::RESET_THEME)),
+        ("SET_WINDOW_METADATA", fmt_u8(meta::SET_WINDOW_METADATA)),
     ]);
     out.push_str("\n// META::SET_COLOR_SCHEME modes\n");
     write_consts(&mut out, "COLOR_SCHEME_", &[
@@ -185,6 +186,12 @@ pub fn emit_constants_ts() -> String {
         ("VIEWPORT_WIDTH", fmt_u16(environment::VIEWPORT_WIDTH)),
         ("VIEWPORT_HEIGHT", fmt_u16(environment::VIEWPORT_HEIGHT)),
         ("ROUTE", fmt_u16(environment::ROUTE)),
+    ]);
+    out.push_str("\n// META::SET_WINDOW_METADATA field ids (spec/OPCODE.md §Window metadata)\n");
+    write_consts(&mut out, "WINDOW_", &[
+        ("TITLE", fmt_u16(window_field::TITLE)),
+        ("DESCRIPTION", fmt_u16(window_field::DESCRIPTION)),
+        ("LOCALE", fmt_u16(window_field::LOCALE)),
     ]);
     out.push_str("\n// EVENT commands (host -> guest)\n");
     write_consts(&mut out, "CMD_", &[

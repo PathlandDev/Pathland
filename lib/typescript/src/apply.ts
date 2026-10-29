@@ -22,6 +22,7 @@ import {
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
+  CMD_SET_WINDOW_METADATA,
   COMPONENT_COLOR,
   COMPONENT_DIVIDER,
   COMPONENT_GRID,
@@ -38,6 +39,9 @@ import {
   COMPONENT_SPACER,
   COMPONENT_TEXT,
   COMPONENT_VSTACK,
+  WINDOW_DESCRIPTION,
+  WINDOW_LOCALE,
+  WINDOW_TITLE,
   COMPONENT_VIDEO,
   COMPONENT_ZSTACK,
   PROP_ALIGNMENT,
@@ -318,6 +322,11 @@ const roleByNode = new WeakMap<HTMLElement, number>();
 export interface DomRenderer {
   byId: Map<number, Node>;
   /**
+   * The document title the SSR page shipped with. A `WINDOW_TITLE` clear (empty
+   * string) restores this renderer default.
+   */
+  defaultTitle?: string;
+  /**
    * Optional hook invoked when a slot's `ROUTE` property changes — the host wires it
    * to `history.pushState` so the browser URL mirrors the app's navigation (spec
    * DSL.md §4.5). Not called on hydrate (the URL is already correct).
@@ -364,7 +373,7 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
           applyStyle(op, batch.strings, renderer);
           break;
         case CAT_META:
-          applyMeta(op, renderer);
+          applyMeta(op, batch.strings, renderer);
           break;
         default:
           break;
@@ -391,7 +400,7 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   applyLayout(renderer);
 }
 
-function applyMeta(op: Opcode, r: DomRenderer): void {
+function applyMeta(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   switch (op.command) {
     case CMD_RESET: {
       for (const el of Array.from(r.byId.values())) {
@@ -416,10 +425,49 @@ function applyMeta(op: Opcode, r: DomRenderer): void {
     case CMD_RESET_THEME:
       (r.tokenSink ??= createTokenSink()).reset();
       break;
+    case CMD_SET_WINDOW_METADATA: {
+      // Renderer-global surface metadata (spec/OPCODE.md §Window metadata). The
+      // browser mapping: title → document.title, description → meta description,
+      // locale → <html lang>. An empty value clears the field.
+      const value = readString(strings, op.b);
+      switch (op.a) {
+        case WINDOW_TITLE:
+          document.title = value || (r.defaultTitle ?? "Pathland");
+          break;
+        case WINDOW_DESCRIPTION:
+          setMetaDescription(value);
+          break;
+        case WINDOW_LOCALE:
+          if (value) {
+            document.documentElement.lang = value;
+          } else {
+            document.documentElement.removeAttribute("lang");
+          }
+          break;
+        default:
+          break;
+      }
+      break;
+    }
     case CMD_ENVIRONMENT:
     default:
       break;
   }
+}
+
+/** Update (or remove, for an empty value) the document's meta description. */
+function setMetaDescription(value: string): void {
+  const existing = document.head.querySelector<HTMLMetaElement>('meta[name="description"]');
+  if (!value) {
+    existing?.remove();
+    return;
+  }
+  const meta = existing ?? document.createElement("meta");
+  if (!existing) {
+    meta.setAttribute("name", "description");
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", value);
 }
 
 /** The node actually inserted into a parent's container: ZStack children are
@@ -999,10 +1047,29 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
       } else if (icon) {
         syncIconAria(icon, text);
       } else {
+        // A LABEL is the element's accessible name (mirrors the Rust SSR
+        // renderer). A slider names its inner input; a text field's visible
+        // wrapping label already names it.
+        if (el.classList.contains("pathland-slider")) {
+          const input = el.querySelector("input");
+          if (input) {
+            if (text) {
+              input.setAttribute("aria-label", text);
+            } else {
+              input.removeAttribute("aria-label");
+            }
+          }
+        } else if (!el.querySelector(".pathland-label")) {
+          if (text) {
+            el.setAttribute("aria-label", text);
+          } else {
+            el.removeAttribute("aria-label");
+          }
+        }
         const span = el.querySelector(".pathland-label");
         if (span) {
           span.textContent = text;
-        } else {
+        } else if (!el.querySelector("button,input,select,textarea,[role=button]")) {
           setNodeText(el, text);
         }
       }
