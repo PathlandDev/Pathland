@@ -126,9 +126,9 @@ public final class WindowMetadata implements ViewModifier {
         }
 
         @Override
-        public PathlandNode render(Environment env) {
+        public PathlandNode renderNode(Environment env) {
             env.setWindowMetadata(metadata);
-            return content.render(env);
+            return content.renderNode(env);
         }
     }
 }
