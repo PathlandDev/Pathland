@@ -326,9 +326,18 @@ apps. Components and modifiers:
   body. Non-signal reads are mount-time only; render bodies must be pure/idempotent
   and must not write signals. Each child view is a component slot; the root chain
   (body delegation, modifiers, environment/tap/navigation wrappers) is one slot.
-  `View.of(Supplier<View>)` is the inline form (Java has no `if` expression).
+  `View.of(Supplier<View>)` is the inline form (Java has no `if` expression);
+  `ForEach.of(list | Signal<List<T>>, (item, index) -> View)` is the reactive
+  list component (static lists may use streams/`for` directly).
   `NavigationContainer` / `SizeThatFits` are ordinary components. The root
   component type must stay stable across re-renders. (Rust parity is Phase 2.)
+- **Cross-language vocabulary** (spec DSL.md §9.3.1): the same anchors across
+  Swift, Java, Kotlin, Rust, and TypeScript — `View`, `body`/`build`, `Signal`,
+  `computed`, `State`, `ForEach`, `View.of`, `children`, `modifiers`. Use native
+  control flow (`if`/`switch` in Swift/Java, `if`/`when` in Kotlin, `if`/`match`
+  in Rust, ternary/`switch` in TypeScript); Java uses `View.of` only where an
+  inline expression is needed. Swift is the canonical SwiftUI-shaped reference;
+  Kotlin/Swift are not implemented yet and Rust parity is Phase 2.
 - **The three operations (spec DSL.md §2)**: every concrete view exposes
   `make(...)` (values — the only static; `make(Consumer<Config>)`, `make(value)`,
   `make()`), and the instance operations `.modifiers(ViewModifier...)` and
@@ -360,8 +369,8 @@ apps. Components and modifiers:
   `Configurators` helper (one construction path). The former `.of(...)` construction
   factories are **removed** — a shortcut (or the lambda / `.children(...)` / empty
   `make()` for config-less views) replaces every one. Only data/branch factories keep
-  `of`: `Color.of/rgb/argb/token`, `Fit.of`, `View.of`, `EnvironmentKey.of`,
-  `Route.of`, `Params.of`, `Signals.*`.
+  `of`: `Color.of/rgb/argb/token`, `Fit.of`, `View.of`, `ForEach.of`,
+  `EnvironmentKey.of`, `Route.of`, `Params.of`, `Signals.*`.
   Sizing is the `Frame` modifier value
   (`frame(f -> f.width(w).height(h).alignment(..))` and the lambda
   configurator `frame(f -> f.minWidth(..).maxWidth(..).alignment(..))`

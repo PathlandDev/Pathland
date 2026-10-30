@@ -355,7 +355,7 @@ flow instead of a wrapper type:
 |----------------------------|----------|----------|-------|
 | `if cond { then } else { else }` in a result builder | plain `if` in `body()`; `View.of(() -> …)` for an inline expression | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
 | `switch value { case a -> v; default -> d }` | plain `switch` in `body()`; `View.of(() -> switch …)` inline | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
-| `ForEach(items) { … }` | plain `for` over a signal collection in `body()` | plain `for` in `build()` | `TREE` deltas (reconcile) |
+| `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach.of(signal, (item, i) -> …)` for a row-scoped component | plain `for` in `build()` (`ForEach` parity: Phase 2) | `TREE` deltas (reconcile) |
 
 **Java realization** — bare control flow in a component body:
 
@@ -1398,6 +1398,10 @@ are the companion specs.
   that component and reconciles it into `TREE` deltas with zero opcodes for
   identical structure; `View.of` is the inline supplier form
   ([§3.4](#34-structural-reactivity-reactive-bodies--slots)).
+- [ ] **Reactive lists** — `ForEach` over a static list or a
+  `Signal<List<T>>`, each item a child component slot; static lists MAY use
+  native iteration instead ([§3.4](#34-structural-reactivity-reactive-bodies--slots),
+  [§9.3.1](#931-cross-language-reactive-vocabulary)).
 - [ ] **Navigation** — `Router` / `RouteTable` / `NavigationContainer` /
   `NavigationLink` over a plain `Signal<Route>`, the initial route host-seeded
   before mount, emitting `ROUTE` and `TRANSITION` and consuming the `NAVIGATE`
@@ -1476,6 +1480,97 @@ Rules:
   `*.bound` modifier surface is folded into it and **removed**.
 - Names are recommendations; semantics
   ([§1](#1-design-principles-dsl-flavored)) are the contract.
+
+#### 9.3.1 Cross-language reactive vocabulary
+
+The **names and semantics** are shared; the syntax is the host language's.
+Swift is the canonical SwiftUI-shaped reference. Java spells the non-native
+helpers as `View.of` / `ForEach.of`; Kotlin and TypeScript use their native
+expression and collection forms; Rust parity is Phase 2.
+
+| Concept | Swift | Java | Kotlin | Rust | TypeScript |
+|---------|-------|------|--------|------|------------|
+| Component render | `var body: some View` | `View body()` | `View body()` | `fn build(&self)` | `body(props)` |
+| Signal read | `count` (`@State`), `signal.value` | `sig.get()` | `sig.value` / `sig()` | `sig.get()` | `sig()` |
+| Branch | `if`/`switch` in `@ViewBuilder` | `if`/`switch` in `body()`; `View.of(() -> …)` inline | `if`/`when` expressions | `if`/`match` expressions | ternary / `switch` expressions |
+| Inline subtree | `Group { … }` / `@ViewBuilder` | `View.of(() -> …)` | `View.of { … }` (rarely needed) | `View::of(\|\| …)` | `View.of(() => …)` |
+| Static list | `ForEach(items) { … }` / `for` in a builder | stream/`for` + `.children(…)` | `items.map { … }` + `.children(…)` | iterator + `.children(vec![…])` | `items.map(…)` |
+| Reactive list | `ForEach(items) { … }` | `ForEach.of(items, (item, i) -> …)` | `ForEach(items) { item, i -> … }` | `ForEach::of(items, \|item, i\| …)` | `ForEach(items, (item, i) => …)` |
+| Children | trailing closure | `.children(a, b)` | `.children(a, b)` / trailing lambda | `.children(vec![a, b])` | `children: [a, b]` |
+| Values | `VStack(spacing: 8)` | `VStack.make(v -> v.spacing(8))` | `VStack(spacing = 8)` | `VStack::new(\|v\| v.spacing(8.0))` | `VStack({ spacing: 8 })` |
+| Modifiers | `.padding(16)` / `.modifiers(…)` | `.modifiers(padding(16))` | `.modifiers(padding(16))` | `.modifiers(padding(16.0))` | `.modifiers(padding(16))` |
+| State | `@State` / `@Binding` | `State<T>` / `WritableSignal<T>` | `State<T>` / `WritableSignal<T>` | `State<T>` / `WritableSignal<T>` | `State<T>` / `WritableSignal<T>` |
+| Environment | `@Environment` | `Environment.value(key)` | `Environment.value(key)` | `Environment` | `useAppContext()` / `Environment` |
+
+Canonical examples:
+
+```swift
+struct LibraryView: View {
+    let tracks: [Track]
+    @Binding var trackIndex: Int
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("Library")
+            ForEach(tracks) { track in
+                TrackRow(track: track, trackIndex: $trackIndex)
+            }
+        }
+    }
+}
+```
+
+```java
+VStack.make(v -> v.spacing(8)).children(
+    Text.make("Library"),
+    ForEach.of(tracks, (track, index) -> TrackRowView.make(r -> r
+        .track(track)
+        .index(index)
+        .trackIndex(trackIndex))));
+```
+
+```kotlin
+VStack(spacing = 8) {
+    Text("Library")
+    ForEach(tracks) { track, index ->
+        TrackRow(TrackRowProps(track, index, trackIndex))
+    }
+}
+```
+
+```rust
+VStack::new(|v| v.spacing(8.0)).children(vec![
+    Text::new("Library").into(),
+    ForEach::of(tracks.clone(), |track, index| {
+        TrackRow::new(track, index, track_index.clone()).into()
+    }),
+])
+```
+
+```ts
+VStack({ spacing: 8 }, [
+  Text({ text: "Library" }),
+  ForEach(tracks, (track, index) =>
+    TrackRow({ track, index, trackIndex })),
+])
+```
+
+Rules:
+
+- **Use native control flow** where the language has it. `View.of` is the Java
+  inline form because Java has no `if` expression; Swift/Kotlin/Rust/TypeScript
+  use their own `if`/`switch`/`when`/`match`/ternary forms.
+- **Use native iteration for static lists.** `ForEach` is the reactive
+  (component-scoped) list; static lists MAY use streams/`map`/`for` directly.
+- **Keep the anchors**: `View`, `Signal`, `computed`, `effect`, `State`,
+  `ForEach`, `View.of`, `children`, `modifiers`. These are what make the DSLs
+  recognizable; casing and construction follow the host language.
+- **`(item, index)` order** for `ForEach`, matching JavaScript `map` and Java
+  `BiFunction`; Kotlin/Rust authors may name the lambda parameters.
+- **No keys yet.** The emitter reconciles by position + type; a keyed `ForEach`
+  is a future protocol/emitter feature, not a syntax difference.
+- **Gaps**: Rust reactive-body/`ForEach` parity is Phase 2; the TypeScript plan
+  currently defers structural reactivity; Kotlin/Swift are not implemented yet.
 
 ### 9.4 Conformance recipe
 

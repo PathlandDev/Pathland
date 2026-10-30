@@ -122,11 +122,12 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 
 ## Not implemented / gaps
 
-- **Reactive body parity (Phase 2)**: the Java DSL now uses per-component
-  tracked bodies (plain `if`/`switch`/`for` in `body()`, `View.of` inline) and has
-  removed `Conditional`/`Case`. The Rust DSL still uses `Conditional::when` and
-  build-time `if`/`match` with host rebuild + re-emit; tracking reads during
-  `build()` and removing `Conditional` are the Phase 2 parity work.
+- **Reactive body + ForEach parity (Phase 2)**: the Java DSL now uses
+  per-component tracked bodies (plain `if`/`switch`/`for` in `body()`, `View.of`
+  inline, `ForEach.of` for lists) and has removed `Conditional`/`Case`. The Rust
+  DSL still uses `Conditional::when` and build-time `if`/`match` with host rebuild
+  + re-emit; tracking reads during `build()`, adding `ForEach`, and removing
+  `Conditional` are the Phase 2 parity work.
 - **Renderer coverage**: the GTK renderer reports `VALUE_CHANGED`/`TEXT_CHANGED`
   for Toggle/Slider/TextField/Picker; Stepper/TextEditor/DatePicker/ColorPicker
   sink wiring lands in the DSL but the renderer side for some controls is still

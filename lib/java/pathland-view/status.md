@@ -22,6 +22,16 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   are mount-time only. The root component type must stay stable. `render(Environment)`
   is the emitter entry point; primitives override `renderNode(Environment)`.
   `Conditional`/`Case` are removed (replaced by bare control flow + `View.of`).
+- **`ForEach`** (`ForEach.of(list | Signal<List<T>>, (item, index) -> View)`):
+  a Group-backed reactive list component. A static list maps once per render; a
+  `Signal<List<T>>` re-renders only the list slot. Each item is a child component
+  slot; null children are skipped; reconciliation is position + type (no keys).
+  `ForEachTest`.
+- **Cross-language vocabulary** (spec DSL.md §9.3.1): the shared anchors
+  (`View`, `body`/`build`, `Signal`, `computed`, `State`, `ForEach`, `View.of`,
+  `children`, `modifiers`) and the native spellings for Swift/Java/Kotlin/Rust/
+  TypeScript. Swift is the canonical SwiftUI-shaped reference; Rust parity is
+  Phase 2.
 - **`ProxyView`** (`ProxyView.make(p -> p.endpoint(...).route(...).credential(...))`):
   a `PROXY_VIEW` (0x1E) container whose child subtree is served by **another**
   Pathland server (spec/PROXY.md). It authors **no** children — the origin root is
@@ -106,8 +116,9 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `fontSize(sizeSignal)` — pure sugar for the lambda, via the package-private
   `Configurators` helper), and the lambda / `.children(...)` / empty `make()` (for
   config-less or value-less views) covers the rest. Only data/branch factories keep
-  `of` (`Color.of/rgb/argb/token`, `Fit.of`, `View.of`, `EnvironmentKey.of`, `Route.of`,
-  `Params.of`). The `View` interface carries no per-modifier factory
+  `of` (`Color.of/rgb/argb/token`, `Fit.of`, `View.of`, `ForEach.of`,
+  `EnvironmentKey.of`, `Route.of`, `Params.of`). The `View` interface carries no
+  per-modifier factory
   methods (spec `DSL.md` §5.6).
 - **Signals-first configs (spec DSL.md §2)**: **every value member** exposes a raw
   setter (sugar for `Signals.constant`) and a `Signal<T>` setter — layout included
@@ -464,8 +475,8 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 ## Verified by
 
 `mvn test` (JDK 17+) — emitter, codec round-trips (incl. `NAVIGATE`), signals,
-state, reactive bodies (`ReactiveBodyTest`), reactive slots (`ViewOfTest`) and the
-router (`RouterTest`:
+state, reactive bodies (`ReactiveBodyTest`), reactive slots (`ViewOfTest`),
+reactive lists (`ForEachTest`) and the router (`RouterTest`:
 initial route + `ROUTE` property + `NAV_DEPTH` depth tracking + `NAV_CHROME`
 chrome mode, destination swap deltas, back-stack, params, guard redirect,
 fallback, `NAVIGATE` routing, `NavigationLink`, the **declarative nav
