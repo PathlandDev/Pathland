@@ -59,7 +59,7 @@ public final class Video implements View, Configurable<Video.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         // The surface owns the native VIDEO node; the active style supplies its
         // content as the node's child (control-owned interaction, spec DSL.md §5.7).
         // The default NativeVideoStyle supplies no content, so the node stays a leaf

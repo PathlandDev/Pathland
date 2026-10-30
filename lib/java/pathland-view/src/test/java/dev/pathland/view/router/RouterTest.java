@@ -101,7 +101,7 @@ class RouterTest {
         }
 
         @Override
-        public dev.pathland.view.emit.PathlandNode render(Environment env) {
+        public dev.pathland.view.emit.PathlandNode renderNode(Environment env) {
             dev.pathland.view.emit.PathlandNode node =
                     new dev.pathland.view.emit.PathlandNode(dev.pathland.view.Components.VSTACK);
             node.children.add(child.render(env));
@@ -327,7 +327,7 @@ class RouterTest {
         FrameOpcodeSink sink = sink();
         View root = new View() {
             @Override
-            public dev.pathland.view.emit.PathlandNode render(Environment env) {
+            public dev.pathland.view.emit.PathlandNode renderNode(Environment env) {
                 dev.pathland.view.emit.PathlandNode node =
                         new dev.pathland.view.emit.PathlandNode(dev.pathland.view.Components.VSTACK);
                 node.children.add(NavigationLink.make(l -> l.label("Users").to("/users").router(router)).render(env));
@@ -480,7 +480,7 @@ class RouterTest {
 
         View probe = new View() {
             @Override
-            public dev.pathland.view.emit.PathlandNode render(Environment env) {
+            public dev.pathland.view.emit.PathlandNode renderNode(Environment env) {
                 seen.add(dev.pathland.view.Environment.value(key).get());
                 return new dev.pathland.view.emit.PathlandNode(dev.pathland.view.Components.TEXT);
             }
@@ -514,7 +514,7 @@ class RouterTest {
 
         View probe = new View() {
             @Override
-            public dev.pathland.view.emit.PathlandNode render(Environment env) {
+            public dev.pathland.view.emit.PathlandNode renderNode(Environment env) {
                 plainSeen.add(dev.pathland.view.Environment.value(plainKey).get());
                 sigSeen.add(dev.pathland.view.Environment.value(sigKey));
                 return new dev.pathland.view.emit.PathlandNode(dev.pathland.view.Components.TEXT);
@@ -532,7 +532,7 @@ class RouterTest {
         java.util.List<String> missing = new java.util.ArrayList<>();
         View missingProbe = new View() {
             @Override
-            public dev.pathland.view.emit.PathlandNode render(Environment env) {
+            public dev.pathland.view.emit.PathlandNode renderNode(Environment env) {
                 missing.add(dev.pathland.view.Environment.value(plainKey).get());
                 return new dev.pathland.view.emit.PathlandNode(dev.pathland.view.Components.TEXT);
             }
@@ -617,7 +617,7 @@ class RouterTest {
         java.util.List<ButtonStyle> seen = new java.util.ArrayList<>();
         View probe = new View() {
             @Override
-            public dev.pathland.view.emit.PathlandNode render(Environment env) {
+            public dev.pathland.view.emit.PathlandNode renderNode(Environment env) {
                 seen.add(env.buttonStyle());
                 seen.add(dev.pathland.view.Environment.value(Environment.BUTTON_STYLE).get());
                 return new dev.pathland.view.emit.PathlandNode(dev.pathland.view.Components.TEXT);
@@ -663,9 +663,9 @@ class RouterTest {
     private static View probeButton(java.util.List<ButtonStyle> seen, String label) {
         return new View() {
             @Override
-            public dev.pathland.view.emit.PathlandNode render(Environment env) {
+            public dev.pathland.view.emit.PathlandNode renderNode(Environment env) {
                 seen.add(env.buttonStyle());
-                return Button.make(b -> b.title(label).action(() -> { })).render(env);
+                return Button.make(b -> b.title(label).action(() -> { })).renderNode(env);
             }
         };
     }

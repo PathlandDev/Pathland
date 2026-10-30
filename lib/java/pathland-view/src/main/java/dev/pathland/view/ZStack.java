@@ -67,7 +67,7 @@ public final class ZStack implements View, Configurable<ZStack.Config>, Children
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.ZSTACK);
         if (config.alignment != null) {
             node.property(Properties.ALIGNMENT, config.alignment);

@@ -65,10 +65,10 @@ public final class Slider implements View, Configurable<Slider.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.SLIDER);
         if (config.binding != null) {
-            node.properties.put(Properties.VALUE, config.binding.get());
+            node.properties.put(Properties.VALUE, dev.pathland.view.emit.ReactiveValues.initial(Properties.VALUE, config.binding));
             node.propertyBindings.put(Properties.VALUE, config.binding);
             node.valueInput = config.binding::set;
         }

@@ -63,10 +63,10 @@ public final class Image implements View, Configurable<Image.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.IMAGE);
         if (config.source != null) {
-            node.properties.put(Properties.IMAGE_SOURCE, config.source.get());
+            node.properties.put(Properties.IMAGE_SOURCE, dev.pathland.view.emit.ReactiveValues.initial(Properties.IMAGE_SOURCE, config.source));
             node.propertyBindings.put(Properties.IMAGE_SOURCE, config.source);
         }
         return node;

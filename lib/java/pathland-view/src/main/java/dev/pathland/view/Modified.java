@@ -57,14 +57,14 @@ final class Modified implements View {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         if (modifier != null) {
-            return modifier.body(inner).render(env);
+            return modifier.body(inner).renderNode(env);
         }
-        PathlandNode node = inner.render(env);
+        PathlandNode node = inner.renderNode(env);
         for (Prop p : props) {
             if (p.signal() != null) {
-                Object value = ReactiveValues.from(p.property(), p.signal());
+                Object value = ReactiveValues.initial(p.property(), p.signal());
                 node.properties.put(p.property(), value);
                 node.propertyBindings.put(p.property(), p.signal());
             } else {

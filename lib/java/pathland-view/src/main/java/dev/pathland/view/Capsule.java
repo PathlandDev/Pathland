@@ -25,7 +25,7 @@ public final class Capsule implements View, Configurable<Capsule.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.SHAPE);
         node.properties.put(Properties.SHAPE_KIND, (float) ShapeKind.CAPSULE.wire());
         return node;

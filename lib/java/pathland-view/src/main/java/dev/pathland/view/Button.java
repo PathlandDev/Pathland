@@ -79,7 +79,7 @@ public final class Button implements View, Configurable<Button.Config>, Children
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         // The control owns the native BUTTON shell + the action; the style supplies
         // the content (the decorated label) as the shell's child. The label keeps its
         // own component(s) and layout (Composite Override Mode, PRIMITIVES.md §2).

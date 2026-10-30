@@ -48,7 +48,7 @@ public final class Shape implements View, Configurable<Shape.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.SHAPE);
         if (config.kind != null) {
             node.properties.put(Properties.SHAPE_KIND, (float) config.kind.wire());

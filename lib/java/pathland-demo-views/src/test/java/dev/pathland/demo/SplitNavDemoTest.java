@@ -96,18 +96,31 @@ class SplitNavDemoTest {
      */
     @Test
     void mediaControllerKeepsItsNodeIdAcrossAContentSwap() {
-        FrameOpcodeSink sink = new FrameOpcodeSink();
+        RecordingSink sink = new RecordingSink();
         Mount mount = mount(sink, "/kitchen");
         long first = controllerNodeId(sink.frame());
 
         mount.activePath().set("/home");
-        assertTrue(anySetText(sink.frame(), "Home"), "swapped to the home content");
+        assertTrue(anyFrame(sink, f -> anySetText(f, "Home")), "swapped to the home content");
 
         mount.activePath().set("/kitchen");
-        ProtocolFrame back = sink.frame();
-        assertTrue(anySetText(back, "Pathland Kitchensink"), "swapped back to the kitchen sink");
-        assertEquals(first, controllerNodeId(back),
-                "the controller's playback key is stable across a content swap");
+        assertTrue(anyFrame(sink, f -> anySetText(f, "Pathland Kitchensink")),
+                "swapped back to the kitchen sink");
+        // A re-render may retain the controller node (no CREATE_NODE) or recreate it
+        // with the pinned id; either way it must never get a different playback key.
+        for (ProtocolFrame frame : sink.frames) {
+            if (hasCreate(frame, Components.MEDIA_CONTROLLER)) {
+                assertEquals(first, controllerNodeId(frame),
+                        "a re-created controller keeps its playback key");
+            }
+        }
+    }
+
+    private static boolean hasCreate(ProtocolFrame frame, int component) {
+        return frame.opcodes().stream().anyMatch(o ->
+                o.category() == Categories.TREE
+                        && o.command() == Commands.Tree.CREATE_NODE
+                        && o.b() == component);
     }
 
     /** The `MEDIA_CONTROLLER` node id created in this frame. */
@@ -124,7 +137,7 @@ class SplitNavDemoTest {
         // HomeView's "Open kitchen sink" button declares `.navigate("/kitchen")` — a
         // component *inside* the NavigationContainer, so the emitter resolves it to the
         // nearest enclosing router and registers it in navigateActions (spec DSL.md §4.5).
-        FrameOpcodeSink sink = new FrameOpcodeSink();
+        RecordingSink sink = new RecordingSink();
         Mount mount = mount(sink, "/home");
 
         assertTrue(mount.result().navigateActions().size() >= 1,
@@ -132,13 +145,13 @@ class SplitNavDemoTest {
         mount.result().navigateActions().values().iterator().next().run();
         assertEquals("/kitchen", mount.activePath().get(),
                 "the declarative .navigate button changed the route (mirrored into the active path)");
-        assertTrue(anySetText(sink.frame(), "Pathland Kitchensink"),
+        assertTrue(anyFrame(sink, f -> anySetText(f, "Pathland Kitchensink")),
                 "the content area swapped to the kitchen sink");
     }
 
     @Test
     void menuClickSwapsTheContentArea() {
-        FrameOpcodeSink sink = new FrameOpcodeSink();
+        RecordingSink sink = new RecordingSink();
         Mount mount = mount(sink, "/home");
 
         // The menu rows capture the router explicitly (the sidebar sits outside the
@@ -154,10 +167,10 @@ class SplitNavDemoTest {
             }
         }
         assertTrue(reachedKitchen, "clicking the Kitchen sink menu row navigates the content area");
-        ProtocolFrame delta = sink.frame();
-        assertTrue(anySetText(delta, "Pathland Kitchensink"),
+        assertTrue(anyFrame(sink, f -> anySetText(f, "Pathland Kitchensink")),
                 "the kitchen sink content swap is emitted as deltas");
-        assertEquals("/kitchen", routeOf(delta));
+        assertTrue(anyFrame(sink, f -> "/kitchen".equals(routeOfOrNull(f))),
+                "the content swap carries the new ROUTE");
     }
 
     @Test

@@ -25,7 +25,7 @@ public final class Ellipse implements View, Configurable<Ellipse.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.SHAPE);
         node.properties.put(Properties.SHAPE_KIND, (float) ShapeKind.ELLIPSE.wire());
         return node;

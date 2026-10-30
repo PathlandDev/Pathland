@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -251,5 +252,49 @@ class SignalsTest {
         assertEquals(5, derived.get());
         assertEquals(5, derived.get());
         assertEquals(1, runs.get(), "no re-computation for an immutable constant");
+    }
+
+    // --- tracked (emitter per-component render) ---
+
+    @Test
+    void trackedRunsSynchronouslyAndRecomputes() {
+        WritableSignal<Integer> a = Signals.signal(1);
+        List<Integer> values = new ArrayList<>();
+        Tracked<Integer> tracked = Signals.tracked(a::get, values::add);
+
+        assertEquals(1, tracked.initial(), "the first run is synchronous");
+        a.set(2);
+        assertEquals(List.of(2), values);
+        tracked.destroy();
+        a.set(3);
+        assertEquals(List.of(2), values, "a destroyed computation stops");
+    }
+
+    @Test
+    void trackedNestedComputationDoesNotLeakReadsToTheParent() {
+        WritableSignal<Integer> outer = Signals.signal(1);
+        WritableSignal<Integer> inner = Signals.signal(10);
+        AtomicInteger parentRuns = new AtomicInteger();
+        AtomicInteger childRuns = new AtomicInteger();
+        List<Integer> parentValues = new ArrayList<>();
+        AtomicReference<Tracked<Integer>> child = new AtomicReference<>();
+
+        Tracked<Integer> parent = Signals.tracked(() -> {
+            parentRuns.incrementAndGet();
+            child.set(Signals.tracked(
+                    () -> {
+                        childRuns.incrementAndGet();
+                        return inner.get();
+                    },
+                    value -> { }));
+            return outer.get() + child.get().initial();
+        }, parentValues::add);
+
+        assertEquals(11, parent.initial());
+        inner.set(20);
+        assertEquals(1, parentRuns.get(), "the inner read belongs to the child computation");
+        assertEquals(2, childRuns.get(), "the child recomputes");
+        outer.set(2);
+        assertEquals(2, parentRuns.get(), "the outer read belongs to the parent");
     }
 }

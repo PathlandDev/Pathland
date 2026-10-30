@@ -77,7 +77,7 @@ public final class LazyVStack implements View, Configurable<LazyVStack.Config>, 
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.LAZY_VSTACK);
         if (config.alignment != null) {
             node.property(Properties.ALIGNMENT, config.alignment);

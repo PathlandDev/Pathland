@@ -26,12 +26,12 @@ final class EnvironmentView implements View {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         EnvironmentValues scope = Environment.current().with(key, value);
         EnvironmentValues previous = Environment.current();
         Environment.within(scope);
         try {
-            return content.render(env);
+            return content.renderNode(env);
         } finally {
             Environment.restore(previous);
         }

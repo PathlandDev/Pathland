@@ -47,11 +47,11 @@ public final class TextEditor implements View, Configurable<TextEditor.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.TEXT_EDITOR);
         if (config.binding != null) {
             node.textBinding = config.binding;
-            node.text = config.binding.get();
+            node.text = dev.pathland.view.signal.Signals.untracked(config.binding::get);
             node.textInput = config.binding::set;
         }
         return node;

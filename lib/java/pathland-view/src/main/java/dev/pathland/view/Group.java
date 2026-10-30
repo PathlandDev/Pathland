@@ -44,7 +44,7 @@ public final class Group implements View, Configurable<Group.Config>, ChildrenVi
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.VSTACK);
         for (View child : children) {
             node.children.add(child.render(env));

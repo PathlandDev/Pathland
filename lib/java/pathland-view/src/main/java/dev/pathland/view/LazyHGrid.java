@@ -109,7 +109,7 @@ public final class LazyHGrid implements View, Configurable<LazyHGrid.Config>, Ch
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.LAZY_HGRID);
         if (config.alignment != null) {
             node.property(Properties.ALIGNMENT, config.alignment);

@@ -278,7 +278,7 @@ public final class MediaController {
         }
 
         @Override
-        public PathlandNode render(Environment env) {
+        public PathlandNode renderNode(Environment env) {
             PathlandNode node = new PathlandNode(Components.COMMENT);
             node.mediaControllerRef = controller;
             return node;

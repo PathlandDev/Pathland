@@ -46,7 +46,7 @@ public final class ViewBuilder<V extends View & Configurable<C>, C extends View.
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         if (!children.isEmpty() && view instanceof ChildrenView content) {
             content.setChildren(children);
         }
@@ -54,6 +54,6 @@ public final class ViewBuilder<V extends View & Configurable<C>, C extends View.
         for (ViewModifier modifier : modifiers) {
             result = Modified.apply(result, modifier);
         }
-        return result.render(env);
+        return result.renderNode(env);
     }
 }

@@ -10,7 +10,7 @@ import java.util.function.Consumer;
  * host forwards raw input events into these maps — it never reaches into view internals.
  *
  * <p>The routing maps are <b>live unmodifiable views</b> of the emitter's maps: a
- * structural reconcile (spec DSL.md §3.4 — a {@code Conditional.when} branch swap, a
+ * structural reconcile (spec DSL.md §3.4 — a reactive component-body branch swap, a
  * navigation destination change) adds/removes entries after mount, and a host reading
  * the maps per event sees the current routing.
  *
@@ -20,7 +20,7 @@ import java.util.function.Consumer;
  * @param valueInputs     node id → value-input sink (VALUE_CHANGED)
  * @param editingInputs   node id → editing-changed sink (EDITING_CHANGED)
  * @param dateInputs      node id → date-input sink (DATE_CHANGED)
- * @param mediaInputs     node id → media-event sink (MEDIA_*; bound AUDIO/VIDEO)
+ * @param mediaInputs     node id → media-event sink (MEDIA_*; a MEDIA_CONTROLLER / VIDEO surface)
  * @param fitInputs       node id → fit-index sink (FIT_CHANGED; a SIZE_THAT_FITS slot)
  * @param navigateActions node id → declarative route-change action (a {@code .navigate/
  *                        push/replace} intent resolved to the nearest enclosing router)

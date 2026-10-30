@@ -177,7 +177,7 @@ class LabelTest {
         java.util.List<LabelStyle> seen = new java.util.ArrayList<>();
         View probe = new View() {
             @Override
-            public PathlandNode render(Environment env) {
+            public PathlandNode renderNode(Environment env) {
                 seen.add(Environment.value(Environment.LABEL_STYLE).get());
                 return new PathlandNode(Components.TEXT);
             }
@@ -248,7 +248,7 @@ class LabelTest {
     private static View probeStyle(java.util.List<LabelStyle> seen) {
         return new View() {
             @Override
-            public PathlandNode render(Environment env) {
+            public PathlandNode renderNode(Environment env) {
                 seen.add(Environment.value(Environment.LABEL_STYLE).get());
                 return new PathlandNode(Components.TEXT);
             }

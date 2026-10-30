@@ -11,19 +11,15 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static dev.pathland.view.Conditional.Case;
-import static dev.pathland.view.Conditional.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Structural reactivity (spec DSL.md §3.4): {@code Conditional.when} over a selector
- * signal — branch swaps emit only {@code TREE} deltas, identical recomputes emit zero
- * opcodes, nested containers reconcile independently, and reactive content stays
- * fine-grained.
+ * Reactive subtrees (spec DSL.md §3.4): {@link View#of} over a selector signal —
+ * branch swaps emit only {@code TREE} deltas, identical recomputes emit zero opcodes,
+ * nested slots reconcile independently, and reactive content stays fine-grained.
  */
-class ConditionalTest {
+class ViewOfTest {
 
     private static long countOps(ProtocolFrame frame, int category, int command) {
         return frame.opcodes().stream()
@@ -37,8 +33,9 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> show = Signals.signal(true);
         AtomicInteger taps = new AtomicInteger();
-        View root = VStack.children(when(show, Text.make(t -> t.text("A")),
-                Button.make(b -> b.title("B").action(taps::incrementAndGet))));
+        View root = VStack.children(View.of(() -> show.get()
+                ? Text.make(t -> t.text("A"))
+                : Button.make(b -> b.title("B").action(taps::incrementAndGet))));
         RenderResult result = emitter.mount(root, Environment.DEFAULT);
 
         assertEquals(0, result.tapActions().size(), "the text branch has no tap action");
@@ -57,7 +54,7 @@ class ConditionalTest {
         assertTrue(countOps(delta, Categories.PARAMETER, Commands.Parameter.SET_PROPERTY) >= 1,
                 "button declares EVENT_LISTENERS");
 
-        // The live routing map now routes the button's tap (structural reconcile updates it).
+        // The live routing map now routes the button's tap (reconcile updates it).
         assertEquals(1, result.tapActions().size(), "tap routing is live after the swap");
         result.tapActions().values().iterator().next().run();
         assertEquals(1, taps.get(), "the swapped-in button's action fires");
@@ -65,25 +62,21 @@ class ConditionalTest {
 
     @Test
     void structureReconcileCallbackFiresOnEveryBranchSwap() {
-        // The server session uses this callback to reconcile proxy sessions against
-        // the live proxyViews map (spec/PROXY.md §7): a PROXY_VIEW node leaving the
-        // tree closes its origin connection, a new one opens a fresh connection.
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         AtomicInteger reconciled = new AtomicInteger();
         emitter.onStructureReconciled(reconciled::incrementAndGet);
 
         WritableSignal<Boolean> show = Signals.signal(true);
-        emitter.mount(VStack.children(when(show,
-                Text.make(t -> t.text("A")), Text.make(t -> t.text("B")))), Environment.DEFAULT);
+        emitter.mount(VStack.children(View.of(() -> show.get()
+                ? Text.make(t -> t.text("A"))
+                : Text.make(t -> t.text("B")))), Environment.DEFAULT);
 
-        // The initial structural effect run fires it once; the host registers the
-        // callback after mount, so that first fire is a no-op for it.
         int afterMount = reconciled.get();
         show.set(false);
         assertEquals(afterMount + 1, reconciled.get(), "a branch swap fires the reconcile callback");
         show.set(true);
-        assertEquals(afterMount + 2, reconciled.get(), "every structural reconcile fires it");
+        assertEquals(afterMount + 2, reconciled.get(), "every reconcile fires it");
     }
 
     @Test
@@ -91,10 +84,11 @@ class ConditionalTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> n = Signals.signal(1);
-        View root = when(n,
-                Case.of(1, Text.make(t -> t.text("same"))),
-                Case.of(2, Text.make(t -> t.text("same"))),
-                Case.otherwise(Text.make(t -> t.text("other"))));
+        View root = View.of(() -> switch (n.get()) {
+            case 1 -> Text.make(t -> t.text("same"));
+            case 2 -> Text.make(t -> t.text("same"));
+            default -> Text.make(t -> t.text("other"));
+        });
         emitter.mount(root, Environment.DEFAULT);
         int frames = sink.framesProduced();
 
@@ -118,10 +112,11 @@ class ConditionalTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> mode = Signals.signal(2);
-        View root = when(mode,
-                Case.of(1, Text.make(t -> t.text("Home"))),
-                Case.of(2, Text.make(t -> t.text("Users"))),
-                Case.otherwise(Text.make(t -> t.text("NotFound"))));
+        View root = View.of(() -> switch (mode.get()) {
+            case 1 -> Text.make(t -> t.text("Home"));
+            case 2 -> Text.make(t -> t.text("Users"));
+            default -> Text.make(t -> t.text("NotFound"));
+        });
         emitter.mount(root, Environment.DEFAULT);
 
         ProtocolFrame initial = sink.frame();
@@ -142,10 +137,10 @@ class ConditionalTest {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<Integer> mode = Signals.signal(1);
-        View root = when(mode, Case.of(1, Text.make(t -> t.text("A"))));
+        View root = View.of(() -> mode.get() == 1 ? Text.make(t -> t.text("A")) : null);
         emitter.mount(root, Environment.DEFAULT);
 
-        mode.set(5); // no matching branch and no otherwise -> the slot empties
+        mode.set(5); // no matching branch -> the slot empties
         ProtocolFrame delta = sink.frame();
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.REMOVE_CHILD));
         assertEquals(1, countOps(delta, Categories.TREE, Commands.Tree.DELETE_NODE));
@@ -158,13 +153,16 @@ class ConditionalTest {
     }
 
     @Test
-    void nestedWhenReconcilesIndependently() {
+    void nestedSlotsReconcileIndependently() {
         FrameOpcodeSink sink = new FrameOpcodeSink();
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> show = Signals.signal(true);
         WritableSignal<Boolean> flag = Signals.signal(true);
-        View root = when(show, when(flag, Text.make(t -> t.text("a")), Text.make(t -> t.text("b"))),
-                Text.make(t -> t.text("flat")));
+        View root = View.of(() -> show.get()
+                ? View.of(() -> flag.get()
+                        ? Text.make(t -> t.text("a"))
+                        : Text.make(t -> t.text("b")))
+                : Text.make(t -> t.text("flat")));
         emitter.mount(root, Environment.DEFAULT);
 
         // Inner swap only: same TEXT component at the same position -> one SET_TEXT.
@@ -174,8 +172,7 @@ class ConditionalTest {
         assertEquals(Commands.Parameter.SET_TEXT, inner.opcodes().get(0).command());
 
         // Outer swap replaces the whole inner slot subtree (VSTACK -> TEXT): the inner slot's
-        // structural effect and bindings must be destroyed, not leaked. DELETE_NODE covers the
-        // whole removed subtree (spec OPCODE.md), so only the subtree root is deleted.
+        // tracked render and bindings must be destroyed, not leaked.
         show.set(false);
         ProtocolFrame outer = sink.frame();
         assertEquals(1, countOps(outer, Categories.TREE, Commands.Tree.REMOVE_CHILD));
@@ -184,11 +181,10 @@ class ConditionalTest {
         assertEquals(1, countOps(outer, Categories.TREE, Commands.Tree.CREATE_NODE));
         assertEquals(1, countOps(outer, Categories.PARAMETER, Commands.Parameter.SET_TEXT));
 
-        // If the inner structural effect leaked, mutating `flag` would now emit against a
-        // deleted node. It must not.
+        // If the inner slot leaked, mutating `flag` would now emit against a deleted node.
         int frames = sink.framesProduced();
         flag.set(true);
-        assertEquals(frames, sink.framesProduced(), "destroyed inner effect must not fire");
+        assertEquals(frames, sink.framesProduced(), "destroyed inner slot must not fire");
     }
 
     @Test
@@ -197,11 +193,13 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> show = Signals.signal(true);
         WritableSignal<String> label = Signals.signal("Hi");
-        View root = when(show, Text.make(t -> t.text(label)), Text.make(t -> t.text("else")));
+        View root = View.of(() -> show.get()
+                ? Text.make(t -> t.text(label))
+                : Text.make(t -> t.text("else")));
         emitter.mount(root, Environment.DEFAULT);
 
-        // The structural effect tracks only the selector; the content's reactive text is owned
-        // by its own node-level binding effect.
+        // The slot tracks only the selector; the content's reactive text is owned by its
+        // own node-level binding effect.
         label.set("Hello");
         ProtocolFrame delta = sink.frame();
         assertEquals(1, delta.opcodes().size(), "reactive text inside a branch is one SET_TEXT");
@@ -218,7 +216,9 @@ class ConditionalTest {
         Emitter emitter = new Emitter(sink);
         WritableSignal<Boolean> show = Signals.signal(true);
         WritableSignal<String> label = Signals.signal("one");
-        View root = when(show, Text.make(t -> t.text(label)), Text.make(t -> t.text("other")));
+        View root = View.of(() -> show.get()
+                ? Text.make(t -> t.text(label))
+                : Text.make(t -> t.text("other")));
         emitter.mount(root, Environment.DEFAULT);
 
         show.set(false); // swap to the else branch (static text)

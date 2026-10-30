@@ -11,7 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /**
  * A node in the retained view tree — the app's canonical tree, produced by
@@ -31,6 +30,17 @@ public final class PathlandNode {
 
     /** Protocol component type id (see {@code dev.pathland.view.Components}). */
     public int component;
+
+    /** The component slot that owns this node (emitter-internal). A node owned by a
+     *  child slot is a component boundary; the parent slot must not register its
+     *  bindings/inputs. Null for extra nodes created directly by a slot's render. */
+    ViewSlot slot;
+
+    /** This node's parent in the retained tree (emitter-internal; null for the root). */
+    PathlandNode parent;
+
+    /** This node's index in {@link #parent}'s children (emitter-internal; -1 for root). */
+    int index = -1;
 
     /** Static text content (text node value / button label). Null when bound. */
     public String text;
@@ -75,7 +85,7 @@ public final class PathlandNode {
     /** Writable value-input sink (sliders/switches); the emitter routes VALUE_CHANGED into it. */
     public Consumer<Float> valueInput;
 
-    /** The CURRENT fit selection of a structural slot (a {@code SIZE_THAT_FITS}'s
+    /** The CURRENT fit selection of a fit component (a {@code SIZE_THAT_FITS}'s
      *  retained candidate index, 0 when unset). Recorded by the slot's fit-input
      *  consumer so a parent-subtree re-render (e.g. an outer fit slot's swap, which
      *  re-instantiates the inner slot's view with a default selection) can carry the
@@ -89,8 +99,9 @@ public final class PathlandNode {
     /** Writable date-input sink (date pickers); the emitter routes DATE_CHANGED into it. */
     public DateInput dateInput;
 
-    /** Media-event sink (bound `AUDIO`/`VIDEO`); the emitter routes the media
-     *  events (spec/EVENTS.md) into it — play state, time, ended, volume. */
+    /** Media-event sink (a bound `MEDIA_CONTROLLER` / its `VIDEO` surface); the
+     *  emitter routes the media events (spec/EVENTS.md) into it — play state,
+     *  time, ended, volume. */
     public MediaInput mediaInput;
 
     /**
@@ -128,36 +139,9 @@ public final class PathlandNode {
      * (mount + resync): a {@code SIZE_THAT_FITS} slot emits every candidate so the
      * web SSR renders all branches gated by CSS container queries (issue #141).
      * Outside snapshot emissions the slot keeps emitting its single selected
-     * <em>structuralContent</em> child — the authored DSL is unchanged. Only the
-     * emitter writes this; {@code SizeThatFits.FitSlot} reads it.
+     * child. Only the emitter writes this; {@code SizeThatFits.FitSlot} reads it.
      */
     public static final ThreadLocal<Boolean> SNAPSHOT_EMISSION = ThreadLocal.withInitial(() -> Boolean.FALSE);
-
-    /**
-     * Structural slot: when non-null this node's single child subtree is selected by
-     * a signal and **reconciled** by the emitter on selector change (spec DSL.md §3.4).
-     * The emitter re-evaluates the supplier (which reads the selector signal) and
-     * diffs the resulting subtree against the retained one, emitting only `TREE`
-     * deltas. All other reactivity stays fine-grained.
-     */
-    public Supplier<View> structuralContent;
-
-    /**
-     * Structural slot reactive STRING property: re-evaluated and re-emitted by the
-     * structural effect <em>within the same reconcile frame</em> as the subtree swap
-     * (e.g. the router's {@code ROUTE} property). Keeps a navigation to one frame.
-     */
-    public Integer structuralStringProperty;
-    public Supplier<String> structuralStringValue;
-
-    /**
-     * Structural slot reactive U32 property: re-evaluated and re-emitted by the
-     * structural effect <em>within the same reconcile frame</em> as the subtree
-     * swap (e.g. the router's {@code NAV_DEPTH} property), so native navigation
-     * adapters reconcile their page stack by depth.
-     */
-    public Integer structuralU32Property;
-    public java.util.function.Supplier<Integer> structuralU32Value;
 
     /**
      * Global navigation sink: the host forwards raw {@code NAVIGATE} events here
@@ -173,17 +157,6 @@ public final class PathlandNode {
      * {@code navigateTo} intents (spec DSL.md §4.5).
      */
     public dev.pathland.view.router.Router router;
-
-    /**
-     * The environment scope that must apply when this node's children render. A
-     * structural slot (a {@code NavigationContainer} or {@code Conditional.when}
-     * slot) captures the scope its destination subtree should see — the incoming
-     * scope plus any slot-provided bindings (e.g. the container's router) — so the
-     * emitter can re-apply it when the slot re-renders its destination in
-     * {@code Emitter.reconcileSlot} (destinations read values like
-     * {@code Navigation.ROUTER} on every re-render, not just mount).
-     */
-    public dev.pathland.view.EnvironmentValues environmentForChildren;
 
     /**
      * Listeners for the active platform path (spec DSL.md §4.5 — {@code onPathChange}):
@@ -215,7 +188,7 @@ public final class PathlandNode {
         if (signal == null) {
             return;
         }
-        properties.put(id, ReactiveValues.from(id, signal));
+        properties.put(id, ReactiveValues.initial(id, signal));
         if (!(signal instanceof ConstantSignal)) {
             propertyBindings.put(id, signal);
         }

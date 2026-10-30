@@ -2,7 +2,7 @@
 
 This document provides essential context for AI agents (or human contributors) working on the **Pathland** protocol. It captures the project's direction, architectural decisions, and implementation details to ensure consistency.
 
-**Last Updated**: October 28, 2026
+**Last Updated**: October 29, 2026
 
 ---
 
@@ -315,11 +315,29 @@ apps. Components and modifiers:
   convention is compile-enforced where the processor is wired
   (`annotationProcessorPaths`). The library's own views/styles follow the same
   shape (`Video`, `Text`, `BorderedButtonStyle`, …).
-- **SwiftUI-style `body()`**: composite views declare `View body()` (their subtree);
-  the library's primitives override `render(Environment)` to materialize a
-  `PathlandNode`. `body()` is evaluated **once at mount** — reactive values come from
-  signals (`Text.make(t -> t.text(Signal))`, `Signals.computed`), not from body
-  re-evaluation, so the emitter keeps its fine-grained `SET_TEXT`/`SET_PROPERTY` deltas.
+- **SwiftUI-style `body()` / reactive components**: composite views declare
+  `View body()` (their subtree); the library's primitives override
+  `renderNode(Environment)` to materialize a `PathlandNode` (`render(Environment)` is
+  the emitter entry point and must not be overridden). `body()` is a **tracked
+  render function**: a signal read there subscribes that component, and a later
+  write re-renders only that component and diffs its retained subtree — so plain
+  `if`/`switch`/`for` over signals works. A signal **bound** to a node
+  (`Text.make(t -> t.text(Signal))`) stays fine-grained and does not re-run the
+  body. Non-signal reads are mount-time only; render bodies must be pure/idempotent
+  and must not write signals. Each child view is a component slot; the root chain
+  (body delegation, modifiers, environment/tap/navigation wrappers) is one slot.
+  `View.of(Supplier<View>)` is the inline form (Java has no `if` expression);
+  `ForEach.of(list | Signal<List<T>>, (item, index) -> View)` is the reactive
+  list component (static lists may use streams/`for` directly).
+  `NavigationContainer` / `SizeThatFits` are ordinary components. The root
+  component type must stay stable across re-renders. (Rust parity is Phase 2.)
+- **Cross-language vocabulary** (spec DSL.md §9.3.1): the same anchors across
+  Swift, Java, Kotlin, Rust, and TypeScript — `View`, `body`/`build`, `Signal`,
+  `computed`, `State`, `ForEach`, `View.of`, `children`, `modifiers`. Use native
+  control flow (`if`/`switch` in Swift/Java, `if`/`when` in Kotlin, `if`/`match`
+  in Rust, ternary/`switch` in TypeScript); Java uses `View.of` only where an
+  inline expression is needed. Swift is the canonical SwiftUI-shaped reference;
+  Kotlin/Swift are not implemented yet and Rust parity is Phase 2.
 - **The three operations (spec DSL.md §2)**: every concrete view exposes
   `make(...)` (values — the only static; `make(Consumer<Config>)`, `make(value)`,
   `make()`), and the instance operations `.modifiers(ViewModifier...)` and
@@ -351,8 +369,8 @@ apps. Components and modifiers:
   `Configurators` helper (one construction path). The former `.of(...)` construction
   factories are **removed** — a shortcut (or the lambda / `.children(...)` / empty
   `make()` for config-less views) replaces every one. Only data/branch factories keep
-  `of`: `Color.of/rgb/argb/token`, `Case.of`, `Fit.of`, `EnvironmentKey.of`,
-  `Route.of`, `Params.of`, `Signals.*`.
+  `of`: `Color.of/rgb/argb/token`, `Fit.of`, `View.of`, `ForEach.of`,
+  `EnvironmentKey.of`, `Route.of`, `Params.of`, `Signals.*`.
   Sizing is the `Frame` modifier value
   (`frame(f -> f.width(w).height(h).alignment(..))` and the lambda
   configurator `frame(f -> f.minWidth(..).maxWidth(..).alignment(..))`

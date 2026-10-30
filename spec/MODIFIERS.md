@@ -253,7 +253,7 @@ Visual decoration. These never change layout; they decorate the element.
   applied.
 - **`TRANSITION`** is a presentation hint on a container: when its child
   subtree is structurally replaced (a `NavigationContainer` destination swap, a
-  `Conditional.when` branch change) the renderer **may** animate the swap with
+  a component-slot branch change) the renderer **may** animate the swap with
   its native transition for the hinted kind (`PlatformDefault` = the platform's
   navigation transition). A renderer that ignores it renders the new subtree
   normally. It is presentation, never state — the renderer animates its own

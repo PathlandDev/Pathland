@@ -63,7 +63,7 @@ public final class Stepper implements View, Configurable<Stepper.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.STEPPER);
         if (config.binding != null) {
             node.properties.put(Properties.VALUE, config.binding.get());

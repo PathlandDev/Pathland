@@ -25,7 +25,7 @@ public final class Divider implements View, Configurable<Divider.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         return new PathlandNode(Components.DIVIDER);
     }
 }

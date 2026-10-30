@@ -68,7 +68,7 @@ public final class ProxyView implements View, Configurable<ProxyView.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.PROXY_VIEW);
         node.proxyConfig = new ProxyConfig(config.endpoint, config.route, config.credential);
         return node;

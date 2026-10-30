@@ -93,10 +93,10 @@ public final class Icon implements View, Configurable<Icon.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.ICON);
         if (config.name != null) {
-            node.properties.put(Properties.ICON_NAME, config.name.get());
+            node.properties.put(Properties.ICON_NAME, dev.pathland.view.emit.ReactiveValues.initial(Properties.ICON_NAME, config.name));
             node.propertyBindings.put(Properties.ICON_NAME, config.name);
         }
         if (config.label != null && !config.label.isBlank()) {

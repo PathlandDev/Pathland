@@ -17,7 +17,7 @@ public enum EmptyContent implements View {
     INSTANCE;
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         return new PathlandNode(Components.VSTACK);
     }
 }

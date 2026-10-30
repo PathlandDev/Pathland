@@ -21,10 +21,9 @@ import dev.pathland.view.signal.Signal;
  * a plain value is wrapped in a constant signal, and a read made before the key is
  * bound (e.g. a field initializer) is a lazy signal resolved at render time.
  *
- * <p>Structural slots re-render their destination outside the container's render
- * path ({@code Emitter.reconcileSlot}); each node captures its incoming scope
- * ({@code PathlandNode.environmentForChildren}) so destinations that read a value
- * keep working on every re-render — including scoped styles like {@link #BUTTON_STYLE}.
+ * <p>Each component slot captures the scope in effect when it renders and re-applies
+ * it on its own re-renders ({@code ViewSlot.envScope}), so destinations that read a
+ * value keep working — including scoped styles like {@link #BUTTON_STYLE}.
  */
 public final class Environment {
 

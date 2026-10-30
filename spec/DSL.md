@@ -74,14 +74,15 @@ DSL must be *shaped* by them:
   first call and they may be chained in **any order** (see
   [§2](#2-canonical-signature-notation)); a later call overrides an earlier
   value for the same property.
-- **`body()` is evaluated once at mount.** A composite view declares its
-  subtree once; reactivity comes from **signals**, never from re-evaluating the
-  body. This is what lets the emitter produce fine-grained
-  `SET_TEXT`/`SET_PROPERTY`/`SET_DATE` deltas instead of rebuilding the tree.
-  The one sanctioned exception is a **structural container**
-  ([§3.4](#34-structural-reactivity-conditional-rendering)): its content is
-  re-evaluated on a signal change and the emitter reconciles the retained
-  subtree into `TREE` deltas.
+- **`body()` is a tracked render function.** A composite view declares its
+  subtree in `body()`; a signal read there subscribes that **component**, and a
+  later write re-renders only that component and diffs its retained subtree.
+  The wire still carries only actual changes (`SET_TEXT`/`SET_PROPERTY`/
+  `SET_DATE`/`TREE`), never a rebuilt tree. A signal **bound** to a node
+  (rather than read in `body()`) stays fine-grained: it emits one delta without
+  re-running the body. Non-signal reads are mount-time only. The render body
+  must be pure/idempotent and must not write signals. This is the
+  **per-component reactive body** ([§3.4](#34-structural-reactivity-reactive-bodies--slots)).
 - **Modifiers are decoupled from views — and never hard-bound to a view
   type.** Any modifier applies to any view (`.padding` works on a `Text` and a
   `VStack` alike), and any developer can **author a custom modifier in
@@ -246,10 +247,12 @@ canonical and always sufficient.
 - The Java realization factors both forms through the **single `Modifiers`
   facade**: one `import static com.pathland.view.Modifiers.*;` brings in every
   lowercase modifier/style function, and each delegates to the same construction
-  path (spec §5.6). There is exactly one construction path; the former `.of(...)`
-  factories and the former per-type `with(...)` overloads are **removed** — a
-  shortcut (or the lambda / `.children(...)` / empty `make()` for config-less
-  views) replaces every one.
+  path (spec §5.6). There is exactly one construction path; the former per-view
+  construction `.of(...)` factories and the former per-type `with(...)` overloads
+  are **removed** — a shortcut (or the lambda / `.children(...)` / empty `make()`
+  for config-less views) replaces every one. Only data/branch factories keep
+  `of` (`Color.of`, `Fit.of`, `View.of`, `EnvironmentKey.of`, `Route.of`,
+  `Params.of`, `Signals.*`).
 
 Eligible members (non-exhaustive; the companion tables list the surface):
 
@@ -340,67 +343,74 @@ view class; connection happens when the view renders. A generated DSL in a
 language without reflection/annotation processing MUST offer the equivalent
 explicit wiring.
 
-### 3.4 Structural reactivity (conditional rendering)
+### 3.4 Structural reactivity (reactive bodies + slots)
 
-The tree is normally static once mounted (["`body()` is evaluated once at
-mount"](#1-design-principles-dsl-flavored)); the **only** sanctioned way to
-change *structure* reactively is a **structural container**: a slot whose
-single child subtree is selected by a signal and **reconciled** when the
-signal changes. This is the foundation for `if`/`else`, `switch`, and
-navigation ([§4.5](#45-navigation)).
+The unit of structural reactivity is the **component**. Each child view rendered
+by a parent is a tracked component slot: a signal read during its `body()` /
+`renderNode()` re-renders **that component**, and the emitter diffs the fresh
+subtree against the retained nodes. Java authors therefore use ordinary control
+flow instead of a wrapper type:
 
 | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits |
 |----------------------------|----------|----------|-------|
-| `if cond { then } else { else }` in a result builder | `Conditional.when(Signal<Boolean>, View then, View else)` | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
-| `switch value { case a -> v; default -> d }` | `Conditional.when(Signal<T>, Case.of(T, View)...)` + `Case.otherwise(View)` | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
+| `if cond { then } else { else }` in a result builder | plain `if` in `body()`; `View.of(() -> …)` for an inline expression | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
+| `switch value { case a -> v; default -> d }` | plain `switch` in `body()`; `View.of(() -> switch …)` inline | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
+| `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach.of(signal, (item, i) -> …)` for a row-scoped component | plain `for` in `build()` (`ForEach` parity: Phase 2) | `TREE` deltas (reconcile) |
 
-**Java realization** (`com.pathland.view.Conditional`): statically importable
-lowercase factories on a final class with a private constructor, mirroring
-[`Signals`](#31-signal-surface):
+**Java realization** — bare control flow in a component body:
 
 ```java
-import static com.pathland.view.Conditional.when;
-import static com.pathland.view.Conditional.Case;
+@Override
+public View body() {
+    if (loading.get()) return Spinner.make();
+    if (error.get() != null) return ErrorView.make(error.get());
 
-when(showLogin, new LoginView(), new HomeView());           // if / else
-when(mode,
-    Case.of(RouteMode.HOME, new HomeView()),
-    Case.of(RouteMode.USERS, new UsersView()),
-    Case.otherwise(new NotFoundView()));                     // switch + default
+    var rows = new ArrayList<View>();
+    for (var track : tracks.get()) rows.add(TrackRow.make(track));
+    return VStack.make().children(rows.toArray(View[]::new));
+}
 ```
 
-The names `if`, `switch`, `case`, and `else` are Java reserved keywords, so
-`when` (Kotlin's `switch` analog, and a valid Java identifier) is the method
-name, and `Case.of(...)` / `Case.otherwise(...)` carry the branches. A boolean
-signal takes the two-branch overload (`then`, `else`); an enum/int/string
-signal takes keyed `Case` branches typed to the signal's value type, with an
-optional `Case.otherwise` default. (`Conditional` / `Case` are statically-imported
-**branch factories**, not views or modifiers — `Case.of(...)` is not a
-view/modifier construction factory, so it is outside the `.of(...)` removal.)
+`View.of(Supplier<View>)` is the **inline** form (Java has no `if` expression),
+used where a branch must be an argument:
 
-**Emission contract** (the body-once exception, formalized):
+```java
+VStack.make().children(
+    View.of(() -> mode.get() == Mode.LIST ? listView : gridView));
+```
 
-1. A structural container holds a **stable slot node** (a `Group`, see
-   [§8](#8-java-dsl-convergence-adopted)) whose single child is the currently
-   selected content. Selection is a **content function** over the selector
-   signal — `if`/`else` and `switch` are sugar over it, so value-parametrized
-   content (e.g. a route param) is a first-class case.
-2. On selector change the container re-evaluates the content function,
-   **renders the new subtree**, and the emitter **reconciles** it against the
-   retained snapshot — emitting only `TREE` deltas (`CREATE_NODE` /
-   `DELETE_NODE` / `INSERT_CHILD` / `REMOVE_CHILD` / `MOVE_CHILD`).
-3. **Identical structure emits zero opcodes.** The reconcile diffs old vs new;
-   a recompute that yields the same structure produces no `TREE` deltas, so no
-   equality predicate is needed on the selector signal.
-4. Structural containers **nest**: a container inside a container re-evaluates
-   and reconciles its own slot independently.
-5. All other reactivity stays fine-grained (`SET_TEXT` / `SET_PROPERTY`); a
-   structural container never re-emits siblings or ancestors.
+**Component boundary.** A component's root chain — `body()` delegation,
+modifiers, environment/tap/navigation wrappers — is one slot. Each child view
+rendered by a primitive is a **child slot**. A read in a child therefore
+re-renders only the child; a read in the parent re-renders the parent (and
+rebuilds its children, diffing them). `NavigationContainer`, `SizeThatFits`, and
+`View.of` are ordinary components, not a separate mechanism.
 
-**Rust delta**: the Rust DSL builds `Node` trees directly and the host rebuilds
-+ re-`assign_id`s + diffs on every interaction, so plain `if`/`match` in
-`build()` already produces the same reconcile — no wrapper slot and no special
-type. An optional `switch!` macro is sugar.
+**Emission contract:**
+
+1. On a signal change only the owning component re-renders; the emitter
+   reconciles its subtree and emits only `TREE` / `PARAMETER` deltas
+   (`CREATE_NODE` / `DELETE_NODE` / `INSERT_CHILD` / `REMOVE_CHILD` /
+   `MOVE_CHILD`, plus changed text/properties).
+2. **Identical recompute emits zero opcodes.** No selector equality predicate
+   is needed; the retained-tree diff decides.
+3. Components **nest** and reconcile independently. A parent re-render rebuilds
+   its child slots, but an unchanged child subtree still emits nothing.
+4. **Bindings stay fine-grained.** A signal bound to a node's text/property
+   (`Text.make(t -> t.text(signal))`) emits one delta and does **not** re-run the
+   body. Prefer bindings for high-frequency values.
+5. **Non-signal reads are mount-time only.** A plain field read in `body()` is
+   not a dependency; only signals (including `computed`) trigger a re-render.
+6. The **root component type must stay stable** across re-renders; wrap a
+   conditional root in `View.of` or another stable container.
+7. Render bodies must be **pure and idempotent** and must not write signals.
+   `MediaController` and `State` values must be fields, not created inline in
+   `body()`.
+
+**Rust delta (Phase 2 parity)**: the Rust DSL builds `Node` trees directly and
+the host rebuilds + re-assigns ids + diffs on re-emit, so plain `if`/`match` in
+`build()` has the same shape. The Rust engine does not yet track reads during
+`build()`; that and the removal of `Conditional` are the Phase 2 parity work.
 
 ---
 
@@ -543,10 +553,10 @@ the host routes the recognized tap via the emitter's tap-action registry.
 
 ### 4.5 Navigation
 
-Navigation is **structural reactivity over a route signal**
-([§3.4](#34-structural-reactivity-conditional-rendering)): a
-`NavigationContainer` is a structural container whose content function is
-route-table matching. The wire surface is minimal and entirely optional:
+Navigation is **reactive structure over a route signal**
+([§3.4](#34-structural-reactivity-reactive-bodies--slots)): a
+`NavigationContainer` is a component whose tracked render selects the current
+route-table destination. The wire surface is minimal and entirely optional:
 `ROUTE` (MODIFIERS.md `0x2019`, a STRING current-path property on the slot),
 `NAV_DEPTH` (MODIFIERS.md `0x201A`, a U32 back-stack-depth property on the
 slot), `NAV_CHROME` (MODIFIERS.md `0x201B`, an F32-enum chrome-mode property
@@ -658,8 +668,8 @@ Signal<Boolean> onKitchen = Navigation.isActive(router, "/kitchen");
   `Navigation.ROUTER` is an `EnvironmentKey<Router>`. A `NavigationContainer` scopes
   it to its destination subtree; any component reads
   `Environment.value(Navigation.ROUTER)` during render — no constructor threading,
-  nearest binding wins (nested containers override), and structural slots re-apply
-  the scope when they re-render their destination.
+  nearest binding wins (nested containers override). Each component slot captures
+  the environment scope at render time and re-applies it on its own re-renders.
 - **Environment reads always return a signal** (`Environment.value(key)` →
   `Signal<T>`): a value injected as a `Signal` comes back as the same instance, so a
   node bound to it (e.g. `Text.make(t -> t.text(Environment.value(key)))`) re-emits
@@ -770,10 +780,10 @@ contract keeps the renderer stateless:
   use (or not) of a native container is purely a presentation decision.
 
 **Java realization**: `Router` / `RouteTable` live in
-`com.pathland.view.router`; `NavigationIntent` there too; `Conditional` in
-`com.pathland.view`. The `NavigationContainer` is a structural container, so
-`if`/`switch`-style sugar is the `Conditional.when` form of
-[§3.4](#34-structural-reactivity-conditional-rendering).
+`com.pathland.view.router`; `NavigationIntent` there too; `View.of` in
+`com.pathland.view`. The `NavigationContainer` is an ordinary component whose
+tracked render reads the route signal, so a route change re-renders only its
+destination slot ([§3.4](#34-structural-reactivity-reactive-bodies--slots)).
 
 ---
 
@@ -1154,11 +1164,11 @@ A conformant DSL follows these conventions:
    expressed as an `EnvironmentKey` binding: `ButtonStyle` binds
    `Environment.BUTTON_STYLE` (`EnvironmentKey<ButtonStyle>`), exactly like the
    router and the active path.
-7. **Reactivity discipline**: `body()` is evaluated once; a signal read during
-   mount records a dependency; a later write re-emits only the bound node.
-   Never mutate signals during mount. The only structural re-evaluation is a
-   structural container ([§3.4](#34-structural-reactivity-conditional-rendering)),
-   which the emitter reconciles into `TREE` deltas.
+7. **Reactivity discipline**: `body()` is a tracked render; a signal read there
+   subscribes the component and a later write re-renders that component, whose
+   subtree is diffed into deltas. A bound node stays fine-grained (one delta, no
+   body re-run). Never write signals during render. Non-signal reads are
+   mount-time only ([§3.4](#34-structural-reactivity-reactive-bodies--slots)).
 8. **Emission contract**: each DSL call emits exactly the documented
    properties with the documented value types; the emitter diffs. The DSL never
    computes layout, never positions, never serializes full trees.
@@ -1308,7 +1318,9 @@ contract is [§4](#4-view-surface) and [§5](#5-modifier-surface).
 Adopted conventions:
 
 - **`with` / `modifiers` / `children` are the one construction path.** Every
-  concrete view/control exposes these three operations; `.of(...)` is gone.
+  concrete view/control exposes these three operations; the former per-view
+  construction `.of(...)` is gone (`View.of` is the inline reactive-subtree
+  factory, not a view-construction shortcut).
   They are available **at creation or chained, in any order**
   ([§2](#2-canonical-signature-notation)).
 - **`make(config)` is a fluent config builder.** The config holds the view's
@@ -1381,11 +1393,15 @@ are the companion specs.
   equivalent wiring) against a platform-neutral store ([§3.3](#33-persisted-state-statet)).
 - [ ] **Gestures** — `.onTapGesture` (composed from raw pointer down/up) and
   raw `pointerEvents`/`EVENT_LISTENERS` bitmask ([§4.4](#44-gestures)).
-- [ ] **Structural reactivity (conditional rendering)** — a structural
-  container over a selector signal (`Conditional.when(...)` / `Case.of` /
-  `Case.otherwise`, or the language's `if`/`switch` equivalent), reconciling
-  the slot into `TREE` deltas with zero opcodes for identical structure
-  ([§3.4](#34-structural-reactivity-conditional-rendering)).
+- [ ] **Structural reactivity (reactive bodies)** — a signal read in a
+  component body (`if`/`switch`/`for`, or the language's equivalent) re-renders
+  that component and reconciles it into `TREE` deltas with zero opcodes for
+  identical structure; `View.of` is the inline supplier form
+  ([§3.4](#34-structural-reactivity-reactive-bodies--slots)).
+- [ ] **Reactive lists** — `ForEach` over a static list or a
+  `Signal<List<T>>`, each item a child component slot; static lists MAY use
+  native iteration instead ([§3.4](#34-structural-reactivity-reactive-bodies--slots),
+  [§9.3.1](#931-cross-language-reactive-vocabulary)).
 - [ ] **Navigation** — `Router` / `RouteTable` / `NavigationContainer` /
   `NavigationLink` over a plain `Signal<Route>`, the initial route host-seeded
   before mount, emitting `ROUTE` and `TRANSITION` and consuming the `NAVIGATE`
@@ -1465,6 +1481,97 @@ Rules:
 - Names are recommendations; semantics
   ([§1](#1-design-principles-dsl-flavored)) are the contract.
 
+#### 9.3.1 Cross-language reactive vocabulary
+
+The **names and semantics** are shared; the syntax is the host language's.
+Swift is the canonical SwiftUI-shaped reference. Java spells the non-native
+helpers as `View.of` / `ForEach.of`; Kotlin and TypeScript use their native
+expression and collection forms; Rust parity is Phase 2.
+
+| Concept | Swift | Java | Kotlin | Rust | TypeScript |
+|---------|-------|------|--------|------|------------|
+| Component render | `var body: some View` | `View body()` | `View body()` | `fn build(&self)` | `body(props)` |
+| Signal read | `count` (`@State`), `signal.value` | `sig.get()` | `sig.value` / `sig()` | `sig.get()` | `sig()` |
+| Branch | `if`/`switch` in `@ViewBuilder` | `if`/`switch` in `body()`; `View.of(() -> …)` inline | `if`/`when` expressions | `if`/`match` expressions | ternary / `switch` expressions |
+| Inline subtree | `Group { … }` / `@ViewBuilder` | `View.of(() -> …)` | `View.of { … }` (rarely needed) | `View::of(\|\| …)` | `View.of(() => …)` |
+| Static list | `ForEach(items) { … }` / `for` in a builder | stream/`for` + `.children(…)` | `items.map { … }` + `.children(…)` | iterator + `.children(vec![…])` | `items.map(…)` |
+| Reactive list | `ForEach(items) { … }` | `ForEach.of(items, (item, i) -> …)` | `ForEach(items) { item, i -> … }` | `ForEach::of(items, \|item, i\| …)` | `ForEach(items, (item, i) => …)` |
+| Children | trailing closure | `.children(a, b)` | `.children(a, b)` / trailing lambda | `.children(vec![a, b])` | `children: [a, b]` |
+| Values | `VStack(spacing: 8)` | `VStack.make(v -> v.spacing(8))` | `VStack(spacing = 8)` | `VStack::new(\|v\| v.spacing(8.0))` | `VStack({ spacing: 8 })` |
+| Modifiers | `.padding(16)` / `.modifiers(…)` | `.modifiers(padding(16))` | `.modifiers(padding(16))` | `.modifiers(padding(16.0))` | `.modifiers(padding(16))` |
+| State | `@State` / `@Binding` | `State<T>` / `WritableSignal<T>` | `State<T>` / `WritableSignal<T>` | `State<T>` / `WritableSignal<T>` | `State<T>` / `WritableSignal<T>` |
+| Environment | `@Environment` | `Environment.value(key)` | `Environment.value(key)` | `Environment` | `useAppContext()` / `Environment` |
+
+Canonical examples:
+
+```swift
+struct LibraryView: View {
+    let tracks: [Track]
+    @Binding var trackIndex: Int
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("Library")
+            ForEach(tracks) { track in
+                TrackRow(track: track, trackIndex: $trackIndex)
+            }
+        }
+    }
+}
+```
+
+```java
+VStack.make(v -> v.spacing(8)).children(
+    Text.make("Library"),
+    ForEach.of(tracks, (track, index) -> TrackRowView.make(r -> r
+        .track(track)
+        .index(index)
+        .trackIndex(trackIndex))));
+```
+
+```kotlin
+VStack(spacing = 8) {
+    Text("Library")
+    ForEach(tracks) { track, index ->
+        TrackRow(TrackRowProps(track, index, trackIndex))
+    }
+}
+```
+
+```rust
+VStack::new(|v| v.spacing(8.0)).children(vec![
+    Text::new("Library").into(),
+    ForEach::of(tracks.clone(), |track, index| {
+        TrackRow::new(track, index, track_index.clone()).into()
+    }),
+])
+```
+
+```ts
+VStack({ spacing: 8 }, [
+  Text({ text: "Library" }),
+  ForEach(tracks, (track, index) =>
+    TrackRow({ track, index, trackIndex })),
+])
+```
+
+Rules:
+
+- **Use native control flow** where the language has it. `View.of` is the Java
+  inline form because Java has no `if` expression; Swift/Kotlin/Rust/TypeScript
+  use their own `if`/`switch`/`when`/`match`/ternary forms.
+- **Use native iteration for static lists.** `ForEach` is the reactive
+  (component-scoped) list; static lists MAY use streams/`map`/`for` directly.
+- **Keep the anchors**: `View`, `Signal`, `computed`, `effect`, `State`,
+  `ForEach`, `View.of`, `children`, `modifiers`. These are what make the DSLs
+  recognizable; casing and construction follow the host language.
+- **`(item, index)` order** for `ForEach`, matching JavaScript `map` and Java
+  `BiFunction`; Kotlin/Rust authors may name the lambda parameters.
+- **No keys yet.** The emitter reconciles by position + type; a keyed `ForEach`
+  is a future protocol/emitter feature, not a syntax difference.
+- **Gaps**: Rust reactive-body/`ForEach` parity is Phase 2; the TypeScript plan
+  currently defers structural reactivity; Kotlin/Swift are not implemented yet.
+
 ### 9.4 Conformance recipe
 
 A generated DSL is verified by proving it **emits the same bytes** as the
@@ -1514,7 +1621,7 @@ Representative rows; the full surface is in [§4](#4-view-surface) and
 | `.fontWeight(.bold)` | `.fontWeight(FontWeight)` | `.modifiers(FontWeight.BOLD)` | `.modifiers(FontWeight(700.0))` |
 | `.shadow(color:radius:x:y:)` | `.shadow(color:radius:x:y:)` | `.modifiers(shadow(s -> s.color(Color).radius(r).x(x).y(y)))` | (not yet) |
 | `.onTapGesture { go() }` | `.onTapGesture(action)` | `.modifiers(tapGesture(g -> g.action(() -> go())))` | `.modifiers(TapGesture::new(\|\| go()))` |
-| `if showLogin { LoginView() } else { HomeView() }` | `if/else` in a result builder | `Conditional.when(showLogin, new LoginView(), new HomeView())` | `if`/`match` in `build()` |
+| `if showLogin { LoginView() } else { HomeView() }` | `if/else` in a result builder | `if (showLogin.get()) return new LoginView(); return new HomeView();` in `body()` (or `View.of(() -> …)` inline) | `if`/`match` in `build()` |
 | `NavigationStack { … }` | `Router` + `NavigationContainer` | `NavigationContainer.make(n -> n.router(router))` | `NavigationContainer::with(\|n\| n.router(router))` |
 | `NavigationLink("Users", value:)` | `NavigationLink("label", router, to)` | `NavigationLink.make(l -> l.label("Users").router(router).to("/users"))` | `navigation_link(...)` |
 | `content.modifier(Card())` | `content.modifier(Card())` | `content.modifiers(card(c -> …))` | `.modifiers(Card)` |
@@ -1537,7 +1644,7 @@ signals in a shared `no_std` runtime (`Signal<T>`/`WritableSignal<T>`,
 `collect_input_handlers`) and **actions** (`Button::action`), plus
 **styles + environment** (a subtree `Environment` threaded through
 `View::build_env`, `ButtonStyle` applied with `ViewExt::button_style`),
-**structural reactivity + navigation** (`Conditional::when`, `RouteTable`,
+**structural reactivity + navigation** (`RouteTable`,
 `Router`, `NavigationContainer`, `NavigationLink`), and **persisted state**
 (a `StateStore` trait + `PersistentState::state` auto-load/auto-save). Both are
 per-project implementation status tracked in each project's `status.md`.

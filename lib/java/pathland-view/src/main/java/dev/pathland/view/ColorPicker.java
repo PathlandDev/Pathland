@@ -48,10 +48,10 @@ public final class ColorPicker implements View, Configurable<ColorPicker.Config>
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.COLOR_PICKER);
         if (config.binding != null) {
-            node.properties.put(Properties.COLOR_VALUE, config.binding.get());
+            node.properties.put(Properties.COLOR_VALUE, dev.pathland.view.emit.ReactiveValues.initial(Properties.COLOR_VALUE, config.binding));
             node.propertyBindings.put(Properties.COLOR_VALUE, config.binding);
             node.valueInput = v -> config.binding.set(new Color(Float.floatToRawIntBits(v), null));
         }

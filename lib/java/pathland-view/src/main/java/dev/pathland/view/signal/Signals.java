@@ -3,6 +3,7 @@ package dev.pathland.view.signal;
 import java.util.ArrayDeque;
 import java.util.Objects;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -76,6 +77,37 @@ public final class Signals {
     /** A named effect. */
     public static EffectRef effect(String name, Runnable fn) {
         return new Effect(Objects.requireNonNull(fn, "effect body"), EffectOptions.DEFAULT, name);
+    }
+
+    /**
+     * A synchronous tracked computation (emitter-internal): run {@code fn} now,
+     * returning its value, and re-run it whenever a signal it read changes, handing
+     * the fresh value to {@code onRecompute}. Unlike {@link #effect}, the first run is
+     * synchronous even inside an enclosing effect flush, so a parent render can use the
+     * value immediately. Nested tracked computations are independent: reads in a
+     * nested computation do not subscribe the outer one.
+     */
+    public static <T> Tracked<T> tracked(Supplier<T> fn, Consumer<T> onRecompute) {
+        Objects.requireNonNull(fn, "tracked body");
+        Objects.requireNonNull(onRecompute, "tracked recompute");
+        ComputedSignal<T> computed = new ComputedSignal<>(fn, Objects::equals);
+        T initial = untracked(computed::get);
+        boolean[] first = {true};
+        EffectRef effect = effect(() -> {
+            T value = computed.get();
+            if (first[0]) {
+                first[0] = false;
+                // A dependency may have changed between the synchronous first run
+                // and this queued effect run (e.g. inside the same flush). Reconcile
+                // that value instead of silently keeping the initial one.
+                if (value != initial && !Objects.equals(value, initial)) {
+                    onRecompute.accept(value);
+                }
+                return;
+            }
+            onRecompute.accept(value);
+        });
+        return new Tracked<>(initial, effect);
     }
 
     /**

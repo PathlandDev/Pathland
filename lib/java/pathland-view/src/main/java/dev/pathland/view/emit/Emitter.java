@@ -17,11 +17,14 @@ import dev.pathland.view.signal.ConstantSignal;
 import dev.pathland.view.signal.EffectRef;
 import dev.pathland.view.signal.Signal;
 import dev.pathland.view.signal.Signals;
+import dev.pathland.view.signal.Tracked;
 import dev.pathland.view.transport.Event;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -32,22 +35,16 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * The fine-grained emitter. Mounts a {@link View} tree once: assigns stable node ids,
- * emits the structural frame (TREE + PARAMETER), and registers a node-level binding effect
- * per reactive text/property. A signal change re-emits only that binding's
- * {@code SET_TEXT} / {@code SET_PROPERTY} — an unchanged signal emits zero opcodes.
+ * The component-slot emitter. Mounts a {@link View} tree as a tree of tracked
+ * {@link ViewSlot}s: each child view's {@code body()}/{@code renderNode()} runs inside
+ * its own tracked computation, so a signal read there re-renders only that component
+ * and its subtree is diffed against the retained nodes. Node-level binding effects
+ * still make a bound text/property change emit exactly one {@code SET_TEXT} /
+ * {@code SET_PROPERTY}.
  *
- * <p><b>Structural reactivity</b> (spec DSL.md §3.4): a node with a
- * {@link PathlandNode#structuralContent} slot is a <em>structural container</em> —
- * its single child subtree is selected by a signal and reconciled by a structural
- * effect. On selector change the emitter re-evaluates the content, diffs the retained
- * subtree, and emits only {@code TREE} deltas (CREATE/DELETE/INSERT); an identical
- * recompute emits zero opcodes. The slot's own subtree bindings are owned by that
- * effect, so nested structural containers work.
- *
- * <p>This mirrors the Rust engine's signal dependency graph in Java: the retained tree
- * and its signal bindings live here, and the {@link OpcodeSink} (frame or ring) carries
- * only the delta opcodes.
+ * <p>The wire is always a diff: only actual {@code TREE}/{@code PARAMETER} changes are
+ * emitted, and an identical recompute emits zero opcodes. The retained tree is the
+ * source of truth; the fresh render is a throwaway description.
  */
 public final class Emitter {
 
@@ -82,14 +79,116 @@ public final class Emitter {
     private PathlandNode tree;
     private Environment env;
 
+    /** The root component slot (the whole app). */
+    private ViewSlot rootSlot;
+
+    /** The stack of component slots currently rendering (parent = peek()). */
+    private final Deque<ViewSlot> renderStack = new ArrayDeque<>();
+
     /** Whether the next full emission (mount/resync) renders `SIZE_THAT_FITS`
      *  slots with ALL candidates as children (the web SSR container-query first
      *  paint, issue #141). Set by the SSR session before mount; internal only —
      *  the authored DSL and the live reconcile path are unchanged. */
     private boolean snapshotEmission;
 
+    /** Whether fit slots should still render their full candidate set (until the
+     *  host's first FIT_CHANGED). */
+    private boolean snapshotActive;
+
     /** Fired after a structural reconcile (see {@link #onStructureReconciled}). */
     private Runnable structureReconciled;
+
+    /** The emitter currently driving a render on this thread (null outside a mount or a
+     *  tracked slot re-run). {@link View#render(Environment)} consults this to create a
+     *  component slot instead of materializing directly. */
+    private static final ThreadLocal<Emitter> CURRENT = new ThreadLocal<>();
+
+    /** The emitter driving the current render on this thread, or null. */
+    public static Emitter current() {
+        return CURRENT.get();
+    }
+
+    /**
+     * Render one component slot (see {@link View#render(Environment)}). Creates a
+     * tracked computation for the view, runs it synchronously, and returns the
+     * retained node. A later signal write re-runs the computation and reconciles only
+     * this slot's subtree.
+     */
+    public PathlandNode renderView(View view, Environment env) {
+        ViewSlot parent = renderStack.peek();
+        ViewSlot slot = new ViewSlot(view, env, Environment.current(), parent);
+        if (parent != null) {
+            slot.oldNodeHint = oldChildHint(parent, parent.renderingChildren == null ? 0 : parent.renderingChildren.size());
+            parent.addRenderingChild(slot);
+        }
+        Tracked<PathlandNode> tracked = Signals.tracked(
+                () -> renderSlot(slot),
+                fresh -> reconcileSlot(slot, fresh));
+        slot.tracked = tracked;
+        bindings.add(tracked);
+        PathlandNode node = tracked.initial();
+        if (node == null) {
+            node = new PathlandNode(Components.VSTACK);
+        }
+        if (node.slot != null && node.slot != slot
+                && slot.renderingChildren != null && slot.renderingChildren.contains(node.slot)) {
+            throw new IllegalStateException(
+                    "View " + view.getClass().getName() + " returned a node owned by a child slot; "
+                            + "use renderNode(env) (not render(env)) for root-chain delegation");
+        }
+        slot.node = node;
+        node.slot = slot;
+        slot.finishFirstRender();
+        // The retained-node hint is only for the slot's first render (carrying state
+        // across a parent re-render); later re-runs use the slot's own signals.
+        slot.oldNodeHint = null;
+        if (parent == null) {
+            rootSlot = slot;
+        }
+        return node;
+    }
+
+    /** Run one slot render with the slot current, its environment scope applied, and
+     *  the emitter installed for nested {@link View#render} calls. */
+    private PathlandNode renderSlot(ViewSlot slot) {
+        Emitter previous = CURRENT.get();
+        CURRENT.set(this);
+        renderStack.push(slot);
+        EnvironmentValues previousEnv = Environment.current();
+        Environment.within(slot.envScope);
+        boolean previousSnapshot = PathlandNode.SNAPSHOT_EMISSION.get();
+        PathlandNode.SNAPSHOT_EMISSION.set(snapshotActive);
+        try {
+            slot.beginRenderChildren();
+            return slot.view.renderNode(slot.env);
+        } finally {
+            PathlandNode.SNAPSHOT_EMISSION.set(previousSnapshot);
+            Environment.restore(previousEnv);
+            renderStack.pop();
+            CURRENT.set(previous);
+        }
+    }
+
+    /** The old retained node a child slot would occupy at {@code index}, used to carry
+     *  retained state (a nested fit selection) across a parent re-render. */
+    private static PathlandNode oldChildHint(ViewSlot parent, int index) {
+        PathlandNode oldParent = parent.node != null ? parent.node : parent.oldNodeHint;
+        if (oldParent == null || index < 0 || index >= oldParent.children.size()) {
+            return null;
+        }
+        return oldParent.children.get(index);
+    }
+
+    /** The fit selection the current slot should inherit from the node it replaced, or
+     *  null when this is not a re-rendered fit slot. */
+    public Integer currentSlotOldFitSelection() {
+        ViewSlot slot = renderStack.peek();
+        if (slot == null || slot.oldNodeHint == null
+                || slot.oldNodeHint.component != Components.SIZE_THAT_FITS) {
+            return null;
+        }
+        return slot.oldNodeHint.fitSelection;
+    }
 
     public Emitter(OpcodeSink sink) {
         this(sink, null);
@@ -140,6 +239,342 @@ public final class Emitter {
         }
     }
 
+    // ── Component slots ──────────────────────────────────────────────────────
+
+    /** Link each retained node to its parent/index and update the owning slot's
+     *  position. Called after mount and after every slot reconcile. */
+    private void linkSlots(PathlandNode root) {
+        linkSlots(root, null, -1);
+    }
+
+    private void linkSlots(PathlandNode node, PathlandNode parent, int index) {
+        node.parent = parent;
+        node.index = index;
+        if (node.slot != null) {
+            node.slot.nodeParent = parent;
+            node.slot.nodeIndex = index;
+        }
+        for (int i = 0; i < node.children.size(); i++) {
+            linkSlots(node.children.get(i), node, i);
+        }
+    }
+
+    /**
+     * Reconcile a slot's fresh render against its retained node. Only this slot's
+     * subtree is diffed; unchanged nodes emit zero opcodes.
+     */
+    private void reconcileSlot(ViewSlot slot, PathlandNode fresh) {
+        List<ViewSlot> oldChildren = slot.children;
+        List<ViewSlot> newChildren = slot.takeRenderedChildren();
+        if (fresh == null) {
+            fresh = new PathlandNode(Components.VSTACK);
+        }
+        fresh.slot = slot;
+        // Media reads must not subscribe the component to playback signals.
+        PathlandNode freshNode = fresh;
+        Signals.untracked(() -> {
+            materializeControllers(freshNode);
+            return null;
+        });
+
+        PathlandNode old = slot.node;
+        destroySlotBindings(slot);
+        forgetSlotInputs(slot);
+
+        // SSR full-snapshot -> live downgrade (issue #141): the slot carried every
+        // candidate; now it carries one. Keep the SELECTED old candidate node as-is
+        // and drop the others instead of positionally morphing candidate 0 into the
+        // winner (the winner must not move into the loser's SSR wrapper, and keeping
+        // it makes the downgrade zero-churn).
+        if (old != null && old.component == Components.SIZE_THAT_FITS
+                && fresh.component == Components.SIZE_THAT_FITS
+                && old.children.size() > 1 && newChildren.size() == 1) {
+            reconcileSnapshotFit(slot, old, fresh, oldChildren, newChildren);
+            return;
+        }
+
+        for (ViewSlot child : oldChildren) {
+            destroySlotTree(child);
+        }
+
+        List<Runnable> ops = new ArrayList<>();
+        if (old != null && old.component == fresh.component) {
+            fresh.id = old.id;
+            reconcileNode(old, fresh, ops);
+        } else {
+            if (slot.nodeParent == null) {
+                throw new IllegalStateException(
+                        "the root view's component type must stay stable across reactive re-renders; "
+                                + "wrap it in a stable container (e.g. View.of or VStack)");
+            }
+            int oldId = old.id;
+            int parentId = slot.nodeParent.id;
+            ops.add(() -> {
+                sink.removeChild(parentId, oldId);
+                sink.deleteNode(oldId);
+            });
+            fresh.id = freshIdFor(fresh);
+            int newId = fresh.id;
+            int component = fresh.component;
+            ops.add(() -> sink.createNode(newId, component));
+            emitSubtreeInto(ops, fresh);
+            int index = slot.nodeIndex;
+            ops.add(() -> sink.insertChild(parentId, newId, index));
+        }
+
+        if (!ops.isEmpty()) {
+            sink.beginFrame();
+            for (Runnable op : ops) {
+                op.run();
+            }
+            sink.endFrame();
+        }
+
+        slot.node = fresh;
+        slot.children.clear();
+        slot.children.addAll(newChildren);
+        if (slot.nodeParent != null) {
+            slot.nodeParent.children.set(slot.nodeIndex, fresh);
+        } else {
+            this.tree = fresh;
+        }
+        linkSlots(fresh);
+        registerSlotTree(slot);
+        collectSlotTree(slot);
+        refreshNavigateHandler();
+        guardUniqueIds();
+        fireStructureReconciled();
+    }
+
+    /** Snapshot N-candidate fit slot -> one selected candidate, retaining the selected
+     *  old node (zero-churn downgrade, issue #141). */
+    private void reconcileSnapshotFit(
+            ViewSlot slot,
+            PathlandNode old,
+            PathlandNode fresh,
+            List<ViewSlot> oldChildren,
+            List<ViewSlot> newChildren) {
+        int selected = Math.min(Math.max(fresh.fitSelection, 0), old.children.size() - 1);
+        PathlandNode keep = old.children.get(selected);
+        ViewSlot keepSlot = keep.slot;
+        List<Runnable> dropOps = new ArrayList<>();
+        for (PathlandNode child : old.children) {
+            if (child != keep) {
+                int parentId = old.id;
+                int childId = child.id;
+                dropOps.add(() -> {
+                    sink.removeChild(parentId, childId);
+                    sink.deleteNode(childId);
+                });
+            }
+        }
+        for (ViewSlot child : oldChildren) {
+            if (child != keepSlot) {
+                destroySlotTree(child);
+            }
+        }
+        for (ViewSlot child : newChildren) {
+            destroySlotTree(child);
+        }
+        old.children.clear();
+        old.children.add(keep);
+        fresh.children.clear();
+        fresh.children.add(keep);
+        slot.children.clear();
+        if (keepSlot != null) {
+            slot.children.add(keepSlot);
+        }
+        fresh.id = old.id;
+        if (!dropOps.isEmpty()) {
+            sink.beginFrame();
+            for (Runnable op : dropOps) {
+                op.run();
+            }
+            sink.endFrame();
+        }
+        List<Runnable> ops = new ArrayList<>();
+        reconcileNode(old, fresh, ops);
+        if (!ops.isEmpty()) {
+            sink.beginFrame();
+            for (Runnable op : ops) {
+                op.run();
+            }
+            sink.endFrame();
+        }
+        slot.node = fresh;
+        if (slot.nodeParent != null) {
+            slot.nodeParent.children.set(slot.nodeIndex, fresh);
+        } else {
+            this.tree = fresh;
+        }
+        linkSlots(fresh);
+        registerSlotBindings(slot);
+        collectSlotInputs(slot, null);
+        refreshNavigateHandler();
+        guardUniqueIds();
+        fireStructureReconciled();
+    }
+
+    /** Register node-level bindings for a slot and all of its child slots. */
+    private void registerSlotTree(ViewSlot slot) {
+        registerSlotBindings(slot);
+        for (ViewSlot child : slot.children) {
+            registerSlotTree(child);
+        }
+    }
+
+    /** Register node-level bindings for the nodes this slot owns (not child slots). */
+    private void registerSlotBindings(ViewSlot slot) {
+        if (slot.node == null) {
+            return;
+        }
+        walkOwned(slot.node, slot, node -> registerNodeBindings(slot, node));
+    }
+
+    /** Collect input routing for a slot and all of its child slots. */
+    private void collectSlotTree(ViewSlot slot) {
+        collectSlotInputs(slot, null);
+    }
+
+    private dev.pathland.view.router.Router collectSlotInputs(
+            ViewSlot slot, dev.pathland.view.router.Router enclosing) {
+        dev.pathland.view.router.Router scope = enclosing;
+        if (slot.node != null) {
+            scope = collectOwnedInputs(slot.node, slot, enclosing);
+        }
+        for (ViewSlot child : slot.children) {
+            collectSlotInputs(child, scope);
+        }
+        return scope;
+    }
+
+    private dev.pathland.view.router.Router collectOwnedInputs(
+            PathlandNode node, ViewSlot slot, dev.pathland.view.router.Router enclosing) {
+        if (node.slot != null && node.slot != slot) {
+            return enclosing;
+        }
+        dev.pathland.view.router.Router scope = node.router != null ? node.router : enclosing;
+        collectInputsForNode(node, scope);
+        for (PathlandNode child : node.children) {
+            scope = collectOwnedInputs(child, slot, scope);
+        }
+        return scope;
+    }
+
+    private void collectInputsForNode(
+            PathlandNode node, dev.pathland.view.router.Router enclosing) {
+        for (Runnable action : node.tapActions) {
+            tapActions.put(node.id, action);
+        }
+        if (node.textInput != null) {
+            textInputs.put(node.id, node.textInput);
+        }
+        if (node.valueInput != null) {
+            valueInputs.put(node.id, node.valueInput);
+        }
+        if (node.editingInput != null) {
+            editingInputs.put(node.id, node.editingInput);
+        }
+        if (node.dateInput != null) {
+            dateInputs.put(node.id, node.dateInput);
+        }
+        if (node.mediaInput != null) {
+            mediaInputs.put(node.id, node.mediaInput);
+        }
+        if (node.fitInput != null) {
+            Consumer<Integer> inner = node.fitInput;
+            fitInputs.put(node.id, index -> {
+                snapshotActive = false;
+                inner.accept(index);
+            });
+        }
+        if (node.proxyConfig != null) {
+            proxyViews.put(node.id, node.proxyConfig);
+        }
+        if (node.navigateHandler != null) {
+            navigateHandler = node.navigateHandler;
+        }
+        if (node.navigateTo != null && enclosing != null) {
+            String to = node.navigateTo;
+            dev.pathland.view.router.NavOp op = node.navOp;
+            int id = node.id;
+            dev.pathland.view.router.Router router = enclosing;
+            navigateActions.put(id, () -> op.applyTo(router, to));
+        }
+    }
+
+    private void refreshNavigateHandler() {
+        navigateHandler = null;
+        collectNavigateHandler(this.tree);
+    }
+
+    private void collectNavigateHandler(PathlandNode node) {
+        if (node.navigateHandler != null) {
+            navigateHandler = node.navigateHandler;
+        }
+        for (PathlandNode child : node.children) {
+            collectNavigateHandler(child);
+        }
+    }
+
+    /** Destroy a slot subtree (its tracked computation, bindings, and routing). */
+    private void destroySlotTree(ViewSlot slot) {
+        for (ViewSlot child : slot.children) {
+            destroySlotTree(child);
+        }
+        destroySlotBindings(slot);
+        forgetSlotInputs(slot);
+        if (slot.tracked != null) {
+            bindings.remove(slot.tracked);
+            slot.tracked.destroy();
+            slot.tracked = null;
+        }
+    }
+
+    /** Destroy the node-level binding effects owned by this slot. */
+    private void destroySlotBindings(ViewSlot slot) {
+        for (EffectRef effect : slot.bindings) {
+            effect.destroy();
+            bindings.remove(effect);
+        }
+        slot.bindings.clear();
+        if (slot.node != null) {
+            walkOwned(slot.node, slot, node -> nodeBindings.remove(node.id));
+        }
+    }
+
+    /** Remove input routing for the nodes this slot owns (child slots handle theirs). */
+    private void forgetSlotInputs(ViewSlot slot) {
+        if (slot.node == null) {
+            return;
+        }
+        walkOwned(slot.node, slot, this::forgetInputsForNode);
+    }
+
+    private void forgetInputsForNode(PathlandNode node) {
+        tapActions.remove(node.id);
+        textInputs.remove(node.id);
+        valueInputs.remove(node.id);
+        editingInputs.remove(node.id);
+        dateInputs.remove(node.id);
+        mediaInputs.remove(node.id);
+        fitInputs.remove(node.id);
+        navigateActions.remove(node.id);
+        proxyViews.remove(node.id);
+    }
+
+    /** Visit the nodes owned by {@code slot}: its own node, extra nodes it created,
+     *  and not the subtrees owned by child slots. */
+    private void walkOwned(PathlandNode node, ViewSlot slot, Consumer<PathlandNode> visit) {
+        if (node.slot != null && node.slot != slot) {
+            return;
+        }
+        visit.accept(node);
+        for (PathlandNode child : node.children) {
+            walkOwned(child, slot, visit);
+        }
+    }
+
     /** Mount the view tree: assign ids, emit the structural frame, register bindings. */
     public RenderResult mount(View root, Environment env) {
         if (mounted) {
@@ -147,23 +582,21 @@ public final class Emitter {
         }
         mounted = true;
         this.env = env;
+        this.snapshotActive = snapshotEmission;
 
-        // A full-snapshot (SSR) emission renders fit slots with ALL candidates so
-        // the web SSR shows every branch (CSS container queries gate the first
-        // paint); the live reconcile path keeps one child. The flag is scoped to
-        // this render via a thread-local read by SizeThatFits.FitSlot.
-        boolean prevSnapshot = PathlandNode.SNAPSHOT_EMISSION.get();
-        PathlandNode.SNAPSHOT_EMISSION.set(snapshotEmission);
+        Emitter previous = CURRENT.get();
+        CURRENT.set(this);
         PathlandNode tree;
         try {
             tree = root.render(env);
         } finally {
-            PathlandNode.SNAPSHOT_EMISSION.set(prevSnapshot);
+            CURRENT.set(previous);
         }
         this.tree = tree;
         this.windowMetadata = env.windowMetadata();
         nextId = 1;
         assignIds(tree);
+        linkSlots(tree);
         // Materialize one non-visual `MEDIA_CONTROLLER` node per referenced
         // MediaController (spec/MEDIA.md) and bind each `VIDEO` surface to it.
         // The controller nodes are prepended so they are emitted before any
@@ -182,7 +615,7 @@ public final class Emitter {
         navigateActions.clear();
         proxyViews.clear();
         navigateHandler = null;
-        collectInputs(tree);
+        collectSlotTree(rootSlot);
 
         sink.beginFrame();
         emitTheme();
@@ -190,9 +623,7 @@ public final class Emitter {
         emitNode(tree);
         sink.endFrame();
 
-        bindings.clear();
-        nodeBindings.clear();
-        registerBindings(tree);
+        registerSlotTree(rootSlot);
         registerWindowMetadataBindings();
         rootId = tree.id;
         return new RenderResult(
@@ -348,6 +779,12 @@ public final class Emitter {
 
     /** Stop all registered binding effects (e.g. when tearing down the tree). */
     public void destroy() {
+        if (rootSlot != null) {
+            destroySlotTree(rootSlot);
+            rootSlot = null;
+        }
+        // Global effects (e.g. window metadata) are not slot-owned; destroy what
+        // remains after the slot tree has released its own bindings.
         for (EffectRef effect : bindings) {
             effect.destroy();
         }
@@ -544,79 +981,6 @@ public final class Emitter {
         };
     }
 
-    /** Collect tap actions + input sinks, keyed by node id, for the host's event routing. */
-    private void collectInputs(PathlandNode node) {
-        collectInputs(node, null);
-    }
-
-    private void collectInputs(PathlandNode node, dev.pathland.view.router.Router enclosing) {
-        // Descend into a NavigationContainer: its router becomes the nearest enclosing
-        // one for everything below it (nested containers override the outer router).
-        if (node.router != null) {
-            enclosing = node.router;
-        }
-        for (Runnable action : node.tapActions) {
-            tapActions.put(node.id, action);
-        }
-        if (node.textInput != null) {
-            textInputs.put(node.id, node.textInput);
-        }
-        if (node.valueInput != null) {
-            valueInputs.put(node.id, node.valueInput);
-        }
-        if (node.editingInput != null) {
-            editingInputs.put(node.id, node.editingInput);
-        }
-        if (node.dateInput != null) {
-            dateInputs.put(node.id, node.dateInput);
-        }
-        if (node.mediaInput != null) {
-            mediaInputs.put(node.id, node.mediaInput);
-        }
-        if (node.fitInput != null) {
-            fitInputs.put(node.id, node.fitInput);
-        }
-        if (node.proxyConfig != null) {
-            proxyViews.put(node.id, node.proxyConfig);
-        }
-        if (node.navigateHandler != null) {
-            navigateHandler = node.navigateHandler; // global: a NavigationContainer's router sink
-        }
-        // A declared navigation intent resolves to the nearest enclosing router.
-        if (node.navigateTo != null && enclosing != null) {
-            String to = node.navigateTo;
-            dev.pathland.view.router.NavOp op = node.navOp;
-            int id = node.id;
-            dev.pathland.view.router.Router router = enclosing;
-            navigateActions.put(id, () -> op.applyTo(router, to));
-        }
-        for (PathlandNode child : node.children) {
-            collectInputs(child, enclosing);
-        }
-    }
-
-    /** Drop input routing entries for a subtree being removed (ids stay for reused nodes). */
-    private void forgetInputs(List<PathlandNode> nodes) {
-        for (PathlandNode node : nodes) {
-            forgetInputs(node);
-        }
-    }
-
-    private void forgetInputs(PathlandNode node) {
-        tapActions.remove(node.id);
-        textInputs.remove(node.id);
-        valueInputs.remove(node.id);
-        editingInputs.remove(node.id);
-        dateInputs.remove(node.id);
-        mediaInputs.remove(node.id);
-        fitInputs.remove(node.id);
-        navigateActions.remove(node.id);
-        proxyViews.remove(node.id);
-        for (PathlandNode child : node.children) {
-            forgetInputs(child);
-        }
-    }
-
     private void emitNode(PathlandNode node) {
         sink.createNode(node.id, node.component);
 
@@ -648,7 +1012,7 @@ public final class Emitter {
      * unique, and the host already routes events by target id.
      *
      * <p>Applied on <b>every</b> emission path (mount, reconcile of a matched node,
-     * and a newly created subtree): a control materialized by a structural slot
+     * and a newly created subtree): a control materialized by a component slot
      * (e.g. the player bar's wide volume slider, created when its nested
      * {@code SIZE_THAT_FITS} swaps) must be gated too, or the renderer silently
      * drops its raw inputs.
@@ -677,45 +1041,17 @@ public final class Emitter {
         return Objects.equals(a, b);
     }
 
-    /**
-     * Register a node-level binding effect for every reactive text/property in the
-     * tree. When the bound signal changes, only that node's delta opcode is emitted.
-     * The effect's first (immediate) run reads the current value and finds it equal to
-     * the node's value already emitted at mount, so no duplicate opcode is produced.
-     *
-     * <p>A structural slot ({@link PathlandNode#structuralContent}) does not recurse
-     * into its child subtree here: its structural effect owns that subtree entirely
-     * (it re-registers bindings after each reconcile), which keeps nested structural
-     * containers correct.
-     */
-    private void registerBindings(PathlandNode node) {
-        registerNodeBindings(node);
-        if (node.structuralContent != null) {
-            EffectRef structural = Signals.effect(() -> reconcileSlot(node));
-            bindings.add(structural);
-            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(structural);
-            // A full-snapshot fit slot (web SSR, issue #141) has every candidate as
-            // a child before the renderer reports; register their bindings too so
-            // the CSS-visible candidate stays reactive in the multi-candidate form.
-            // On the first FIT_CHANGED the reconcile collapses to one child and
-            // re-registers just that subtree (zero-op identical recompute).
-            if (node.children.size() > 1) {
-                for (PathlandNode child : node.children) {
-                    registerBindings(child);
-                }
-            }
-        } else {
-            for (PathlandNode child : node.children) {
-                registerBindings(child);
-            }
-        }
-    }
-
     private static boolean isConstant(Signal<?> signal) {
         return signal instanceof ConstantSignal;
     }
 
-    private void registerNodeBindings(PathlandNode node) {
+    private void trackBinding(ViewSlot slot, int nodeId, EffectRef effect) {
+        slot.bindings.add(effect);
+        bindings.add(effect);
+        nodeBindings.computeIfAbsent(nodeId, k -> new ArrayList<>()).add(effect);
+    }
+
+    private void registerNodeBindings(ViewSlot slot, PathlandNode node) {
         if (node.textBinding != null && !isConstant(node.textBinding)) {
             EffectRef effect = Signals.effect(() -> {
                 String value = node.textBinding.get();
@@ -726,8 +1062,7 @@ public final class Emitter {
                     sink.endFrame();
                 }
             });
-            bindings.add(effect);
-            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);
+            trackBinding(slot, node.id, effect);
         }
         if (node.dateBinding != null && !isConstant(node.dateBinding)) {
             EffectRef effect = Signals.effect(() -> {
@@ -739,8 +1074,7 @@ public final class Emitter {
                     sink.endFrame();
                 }
             });
-            bindings.add(effect);
-            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);
+            trackBinding(slot, node.id, effect);
         }
         for (Map.Entry<Integer, Signal<?>> entry : node.propertyBindings.entrySet()) {
             int property = entry.getKey();
@@ -759,8 +1093,7 @@ public final class Emitter {
                     sink.endFrame();
                 }
             });
-            bindings.add(effect);
-            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);
+            trackBinding(slot, node.id, effect);
         }
         // Active-path listeners (onPathChange, spec DSL.md §4.5): fire on each change
         // (including the initial value). Node-level, destroyed on subtree replace.
@@ -772,137 +1105,8 @@ public final class Emitter {
                     listener.accept(path);
                 }
             }, dev.pathland.view.signal.EffectOptions.allowWrites());
-            bindings.add(effect);
-            nodeBindings.computeIfAbsent(node.id, k -> new ArrayList<>()).add(effect);
+            trackBinding(slot, node.id, effect);
         }
-    }
-
-    /**
-     * Reconcile a structural slot's child subtree against the retained one. Runs inside
-     * a {@code Signals.effect}: the content supplier reads the selector signal (the
-     * tracked dependency), then renders the new content <em>untracked</em> so reactive
-     * values inside it stay fine-grained (owned by their own node-level binding effects).
-     */
-    private void reconcileSlot(PathlandNode slot) {
-        // Read the selector FIRST (the tracked dependency) so this structural effect
-        // subscribes to the fit-index signal; the gate below must not starve it.
-        View content = slot.structuralContent.get(); // tracked: subscribes to the selector
-        // A full-snapshot fit slot (issue #141) carries every candidate until the
-        // renderer reports. The structural effect fires immediately at mount AND
-        // on the selector read — before the first FIT_CHANGED we must keep the
-        // multi-candidate presentation (the web SSR's container-query first paint),
-        // so a no-op gate collapses nothing. The first FIT_CHANGED sets fitReported
-        // (before the incoming index) → the gate opens → the normal reconcile
-        // below downgrades N → 1 selected child.
-        if (slot.children.size() > 1 && !slot.fitReported) {
-            return;
-        }
-        // Snapshot → live downgrade (issue #141): the slot carried EVERY candidate
-        // (in FIT_QUERY order); now keep the SELECTED candidate's node as-is and
-        // remove the others. NEVER positionally diff here — both candidates are
-        // frequently the same component, and morphing the loser's node into the
-        // winner would relocate the winner into the SSR's LOSER wrapper, breaking
-        // the renderer's candidate-position CSS gate (the wide content would end up
-        // behind the hidden wrapper → blank page). Keeping the selected node also
-        // makes the transition zero-churn (its id + subtree are retained).
-        if (slot.children.size() > 1) {
-            int keepIndex = Math.min(Math.max(slot.fitSelection, 0), slot.children.size() - 1);
-            PathlandNode keep = slot.children.get(keepIndex);
-            List<PathlandNode> dropped = new ArrayList<>(slot.children);
-            dropped.remove(keepIndex);
-            destroySubtreeBindings(dropped);
-            forgetInputs(dropped);
-            slot.children.clear();
-            slot.children.add(keep);
-            if (!dropped.isEmpty()) {
-                sink.beginFrame();
-                for (PathlandNode old : dropped) {
-                    int parentId = slot.id, oldId = old.id;
-                    sink.removeChild(parentId, oldId);
-                    sink.deleteNode(oldId);
-                }
-                sink.endFrame();
-            }
-            // A **shared** subtree (e.g. the music player's mainArea, which holds the
-            // media controller) is rendered once per candidate, so the kept and
-            // dropped subtrees contain nodes with the SAME ids. `forgetInputs(dropped)`
-            // therefore removed the kept subtree's routing entries too (tap actions,
-            // media sinks, …) — re-collect them, or a controller's media reports are
-            // silently dropped after the snapshot→live downgrade (spec/MEDIA.md).
-            collectInputs(keep, slot.router);
-            guardUniqueIds();
-            fireStructureReconciled();
-            return;
-        }
-        // Re-apply the scope the destination should see (the slot's incoming
-        // environment + any slot-provided bindings like the router), so destinations
-        // that read environment values keep working on every re-render.
-        EnvironmentValues envScope = slot.environmentForChildren;
-        EnvironmentValues previous = Environment.current();
-        PathlandNode fresh;
-        if (envScope != null) {
-            Environment.within(envScope);
-        }
-        try {
-            fresh = content == null ? null : Signals.untracked(() -> content.render(env));
-        } finally {
-            Environment.restore(previous);
-        }
-        List<PathlandNode> oldChildren = slot.children;
-        List<PathlandNode> newChildren = fresh == null ? List.of() : List.of(fresh);
-
-        destroySubtreeBindings(oldChildren);
-        forgetInputs(oldChildren);
-
-        List<Runnable> ops = new ArrayList<>();
-        // Materialize the fresh subtree's controllers in place (binds nothing yet:
-        // ids are assigned by the diff below).
-        if (fresh != null) {
-            materializeControllers(fresh);
-        }
-        reconcileChildren(slot, oldChildren, newChildren, ops);
-        slot.children.clear();
-        slot.children.addAll(newChildren);
-
-        // Coalesce a slot-level STRING property change (e.g. ROUTE) into the same frame.
-        if (slot.structuralStringProperty != null) {
-            int property = slot.structuralStringProperty;
-            String value = Signals.untracked(slot.structuralStringValue);
-            if (!Objects.equals(value, slot.properties.get(property))) {
-                slot.properties.put(property, value);
-                int id = slot.id;
-                ops.add(() -> emitProperty(id, property, value));
-            }
-        }
-        // Coalesce a slot-level U32 property change (e.g. NAV_DEPTH) the same way.
-        if (slot.structuralU32Property != null) {
-            int property = slot.structuralU32Property;
-            Integer value = Signals.untracked(slot.structuralU32Value);
-            if (!Objects.equals(value, slot.properties.get(property))) {
-                slot.properties.put(property, value);
-                int id = slot.id;
-                ops.add(() -> emitProperty(id, property, value));
-            }
-        }
-
-        if (!ops.isEmpty()) {
-            sink.beginFrame();
-            for (Runnable op : ops) {
-                op.run();
-            }
-            sink.endFrame();
-        }
-
-        if (fresh != null) {
-            // Re-register the destination subtree's routing under the slot's own router
-            // (a NavigationContainer's router), so declarative nav intents resolve even
-            // after a structural reconcile (spec DSL.md §4.5).
-            collectInputs(fresh, slot.router);
-            registerBindings(fresh);
-        }
-        // The routing maps (incl. proxyViews) now reflect the reconciled subtree.
-        guardUniqueIds();
-        fireStructureReconciled();
     }
 
     /**
@@ -918,17 +1122,6 @@ public final class Emitter {
             PathlandNode fresh = i < newList.size() ? newList.get(i) : null;
             if (old != null && fresh != null && old.component == fresh.component) {
                 fresh.id = old.id; // stable id: reused across the swap
-                // A nested structural slot is retained state: re-rendering its parent
-                // subtree (an outer slot's candidate swap, a custom style's body re-run)
-                // re-instantiates the inner slot's View with a DEFAULT selection. Carry
-                // the previously selected candidate across the match before the diff —
-                // otherwise a nested fit (the player bar's controls slot under the root
-                // row) resets to compact and stays there (the DOM client never re-reports
-                // an unchanged width). "Identical recompute" then still emits zero ops.
-                if (fresh.structuralContent != null && old.structuralContent != null
-                        && old.fitSelection != fresh.fitSelection) {
-                    restoreFitSelection(old, fresh);
-                }
                 reconcileNode(old, fresh, ops);
             } else {
                 if (old != null) {
@@ -979,53 +1172,6 @@ public final class Emitter {
         reconcileChildren(fresh, old.children, fresh.children, ops);
     }
 
-    /**
-     * Carry a nested structural slot's selection across a parent-subtree re-render.
-     * Re-rendering the parent (an outer slot's candidate swap, a custom style's body
-     * re-run) re-instantiates the inner slot with a DEFAULT selection (index 0), so
-     * re-apply the retained index to the fresh slot's signal and re-render its chosen
-     * candidate BEFORE the diff — the diff then compares like for like and emits
-     * nothing (a nested fit keeps its candidate; "identical recompute" stays zero-op).
-     */
-    private void restoreFitSelection(PathlandNode old, PathlandNode fresh) {
-        int selected = old.fitSelection;
-        if (fresh.fitInput != null) {
-            // The reconcile runs inside a structural slot's effect, where direct signal
-            // writes are guarded — this is a deliberate retained-selection write, so
-            // scope it out of the reactive context (`untracked` clears the current
-            // node): the fresh slot's signal gets the carried index without tripping
-            // the write guard, and no consumer is flushed yet (the fresh subtree's
-            // bindings are (re)registered after the reconcile).
-            Signals.untracked(() -> {
-                fresh.fitInput.accept(selected);
-                return null;
-            });
-        }
-        fresh.fitSelection = selected;
-        fresh.children.clear();
-        PathlandNode content = renderStructuralContent(fresh);
-        if (content != null) {
-            fresh.children.add(content);
-        }
-    }
-
-    /** Render a structural slot's currently selected candidate within its captured scope. */
-    private PathlandNode renderStructuralContent(PathlandNode slot) {
-        EnvironmentValues envScope = slot.environmentForChildren;
-        EnvironmentValues previous = Environment.current();
-        if (envScope != null) {
-            Environment.within(envScope);
-        }
-        try {
-            return Signals.untracked(() -> {
-                View view = slot.structuralContent == null ? null : slot.structuralContent.get();
-                return view == null ? null : view.render(env);
-            });
-        } finally {
-            Environment.restore(previous);
-        }
-    }
-
     /** Emit a newly created node's content + its whole child subtree (children get fresh ids). */
     private void emitSubtreeInto(List<Runnable> ops, PathlandNode node) {
         ensureBindingId(node);
@@ -1051,26 +1197,6 @@ public final class Emitter {
             emitSubtreeInto(ops, child);
             int parentId = node.id;
             ops.add(() -> sink.insertChild(parentId, id, -1));
-        }
-    }
-
-    /** Destroy the binding effects owned by a subtree (before it is replaced). */
-    private void destroySubtreeBindings(List<PathlandNode> nodes) {
-        for (PathlandNode node : nodes) {
-            destroySubtreeBindings(node);
-        }
-    }
-
-    private void destroySubtreeBindings(PathlandNode node) {
-        List<EffectRef> refs = nodeBindings.remove(node.id);
-        if (refs != null) {
-            for (EffectRef ref : refs) {
-                ref.destroy();
-            }
-            bindings.removeAll(refs);
-        }
-        for (PathlandNode child : node.children) {
-            destroySubtreeBindings(child);
         }
     }
 

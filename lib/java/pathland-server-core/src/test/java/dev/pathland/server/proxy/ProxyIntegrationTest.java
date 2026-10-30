@@ -10,6 +10,7 @@ import dev.pathland.view.Commands;
 import dev.pathland.view.ProxyView;
 import dev.pathland.view.Text;
 import dev.pathland.view.VStack;
+import dev.pathland.view.View;
 import dev.pathland.view.emit.Opcode;
 import dev.pathland.view.emit.ProtocolFrame;
 import dev.pathland.view.signal.Signals;
@@ -28,7 +29,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
-import static dev.pathland.view.Conditional.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -135,9 +135,9 @@ class ProxyIntegrationTest {
         // SizeThatFits slot): when the slot swaps it out the origin connection must
         // close; re-adding it opens a fresh one (spec/PROXY.md §7).
         WritableSignal<Boolean> show = Signals.signal(true);
-        PathlandApp app = () -> VStack.children(when(show,
-                VStack.children(ProxyView.make(p -> p.endpoint("http://b.example"))),
-                Text.make("no ad")));
+        PathlandApp app = () -> VStack.children(View.of(() -> show.get()
+                ? (View) VStack.children(ProxyView.make(p -> p.endpoint("http://b.example")))
+                : (View) Text.make("no ad")));
 
         PathlandSession session = new PathlandSession(
                 "s1", new InMemoryStateStore(), app, EnvironmentData.of("/"),
