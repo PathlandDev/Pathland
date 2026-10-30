@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M65KV650WTKM8A0WT0P7GMWY",
+  "strategy": "manual-commit",
+  "branch": "feat/reactive-body-per-component",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-demo-views/src/test/java/dev/pathland/demo/SplitNavDemoTest.java",
+    "lib/java/pathland-view/src/main/java/dev/pathland/view/WindowMetadata.java"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1487252,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 22144896,
+    "output_tokens": 12477,
+    "api_call_count": 49
+  }
+}
