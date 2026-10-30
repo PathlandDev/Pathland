@@ -1,6 +1,6 @@
 # pathland-view (Java) — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** October 29, 2026
 
 The hand-written, framework-agnostic Java 17+ DSL (`dev.pathland.view`):
 declarative views, Angular-style signals, fine-grained emitter, `PLPL` wire
@@ -10,7 +10,18 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 ## Implemented
 
 - **Window metadata** (`windowMetadata(w -> w.title(...).description(...).locale(...))`): a root-scoped `ViewModifier` with signal-backed fields. The emitter emits the initial `META::SET_WINDOW_METADATA` fields at mount, re-emits only the changed field on a signal write, and re-sends every field in `renderFull` (resync). `FrameOpcodeSink` and the JNA `RingOpcodeSink` carry it; a route title is a `computed` over the router.
-
+- **Per-component reactive bodies (#88)**: `body()` / `renderNode(Environment)` is a
+  tracked render. Each child view is a `ViewSlot` with its own synchronous
+  `Signals.tracked` computation; a signal read there re-renders only that component
+  and the emitter diffs its retained subtree. Plain `if`/`switch`/`for` over signals
+  now works in `body()` (bare control flow), with `View.of(Supplier<View>)` as the
+  inline supplier form. The root chain (`body()` delegation, modifiers,
+  environment/tap/navigation wrappers) stays in one slot; child views are child
+  slots. A bound signal (`Text.make(t -> t.text(signal))`) remains fine-grained and
+  does not re-run the body (initial binding reads are untracked). Non-signal reads
+  are mount-time only. The root component type must stay stable. `render(Environment)`
+  is the emitter entry point; primitives override `renderNode(Environment)`.
+  `Conditional`/`Case` are removed (replaced by bare control flow + `View.of`).
 - **`ProxyView`** (`ProxyView.make(p -> p.endpoint(...).route(...).credential(...))`):
   a `PROXY_VIEW` (0x1E) container whose child subtree is served by **another**
   Pathland server (spec/PROXY.md). It authors **no** children — the origin root is
@@ -26,30 +37,28 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   a structural slot (`SIZE_THAT_FITS` 0x17) emitting `FIT_QUERY` (LIST, ascending
   thresholds) + the single selected child — unselected candidates never transmit.
   The host routes `FIT_CHANGED` into the slot's fit sink
-  (`RenderResult.fitInputs`, via `InputDispatcher`), which swaps the child through
-  the structural reconcile (an unchanged index re-emits zero opcodes). The LIST
+  (`RenderResult.fitInputs`, via `InputDispatcher`), which re-renders only the fit
+  component (an unchanged index re-emits zero opcodes). The LIST
   value type is written by `FrameOpcodeSink`/`RingOpcodeSink`
   (`[count][f32 × count]` arena entries). A slot's selection is **retained node
-  state** (`PathlandNode.fitSelection`): a parent-subtree re-render (an outer
-  slot's candidate swap, a custom style body re-run) may rebuild a nested slot
-  with a default index, so the reconcile **carries the previous selection across
-  the match** (`Emitter.restoreFitSelection`) — a nested fit (the player bar's
-  controls slot under the root row) keeps its candidate instead of resetting to
-  compact (a reset would strand the DOM client, which never re-reports an
-  unchanged width). The **web-SSR full-snapshot emission** (issue #141) is an
+  state** (`PathlandNode.fitSelection`): a parent re-render creates a fresh fit
+  component with a default index, so the emitter seeds it from the node it replaces
+  (`ViewSlot.oldNodeHint` / `Emitter.currentSlotOldFitSelection`) — a nested fit
+  (the player bar's controls slot under the root row) keeps its candidate instead
+  of resetting to compact (a reset would strand the DOM client, which never
+  re-reports an unchanged width). The **web-SSR full-snapshot emission** (issue #141) is an
   internal emitter mode (`Emitter.snapshotEmission(true)`, armed by
   `PathlandSession`): on mount/resync the slot emits EVERY candidate in `FIT_QUERY`
   order so the SSR renders all branches gated by CSS container queries (a no-JS
   correct first paint) — the authored DSL is unchanged. `PathlandNode.fitReported`
-  gates the mount-time structural effect so the multi-candidate presentation is
-  not collapsed before the renderer reports; the first `FIT_CHANGED` (recorded
-  before the incoming index) downgrades the slot to the single selected child via
-  the normal reconcile, and the web client unwraps the gated branches. The
-  downgrade is a **clean N→1**: it keeps the SELECTED candidate's node as-is
-  (retaining its id + subtree, zero churn) and removes the others — it never
-  positionally diffs, because both candidates are frequently the same component
-  and morphing the loser's node into the winner would relocate the winner into
-  the SSR's loser wrapper and break the renderer's candidate-position CSS gate.
+  and the emitter's `snapshotActive` flag keep the multi-candidate presentation
+  until the first `FIT_CHANGED`; that report re-renders the fit component with one
+  selected child, and the web client unwraps the gated branches. The downgrade is a
+  **clean N→1** (`Emitter.reconcileSnapshotFit`): it keeps the SELECTED candidate's
+  node as-is (retaining its id + subtree, zero churn) and removes the others — it
+  never positionally diffs, because both candidates are frequently the same
+  component and morphing the loser's node into the winner would relocate the winner
+  into the SSR's loser wrapper and break the renderer's candidate-position CSS gate.
   **View reuse** (issue #159): the same `View` instance may not be the candidate
   of two `Fit`s — `SizeThatFits.make` rejects it (`IllegalStateException`), since
   it would be materialized once per candidate and leak shared state / ids.
@@ -97,7 +106,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `fontSize(sizeSignal)` — pure sugar for the lambda, via the package-private
   `Configurators` helper), and the lambda / `.children(...)` / empty `make()` (for
   config-less or value-less views) covers the rest. Only data/branch factories keep
-  `of` (`Color.of/rgb/argb/token`, `Case.of`, `Fit.of`, `EnvironmentKey.of`, `Route.of`,
+  `of` (`Color.of/rgb/argb/token`, `Fit.of`, `View.of`, `EnvironmentKey.of`, `Route.of`,
   `Params.of`). The `View` interface carries no per-modifier factory
   methods (spec `DSL.md` §5.6).
 - **Signals-first configs (spec DSL.md §2)**: **every value member** exposes a raw
@@ -327,16 +336,13 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   modifier holds one `Signal<T>` per reactive value (the raw `of(T)` overload is
   sugar for a constant); the emitter treats a constant as a plain, non-reactive
   property (no binding/effect).
-- **Structural reactivity** (spec DSL.md §3.4): `Conditional.when(Signal<Boolean>,
-  then, else)` and `when(Signal<T>, Case.of(...)...) / Case.otherwise(...)` —
-  statically importable lowercase factories on a final class (mirrors
-  `Signals`; `if`/`switch`/`case`/`else` are Java keywords). A structural
-  container materializes as a `Group` slot (bare `VSTACK` node); the emitter's
-  structural effect reconciles the slot's single child on selector change —
-  position+type-stable ids, `TREE` deltas only, identical recompute emits
-  **zero** opcodes, nested containers work, and the slot's subtree owns its own
-  bindings. `RenderResult` routing maps are now live unmodifiable views (a swap
-  updates tap/text/value/date routing after mount).
+- **Structural reactivity** (spec DSL.md §3.4): per-component tracked bodies
+  (above). `NavigationContainer`, `SizeThatFits`, and `View.of` are ordinary
+  components whose render reads their selector signal; a change re-renders only
+  that component — position+type-stable ids, `TREE`/`PARAMETER` deltas only,
+  identical recompute emits **zero** opcodes, nested components reconcile
+  independently. `RenderResult` routing maps are live unmodifiable views (a
+  re-render updates tap/text/value/date/media/fit routing).
 - **Router** (`dev.pathland.view.router`, spec DSL.md §4.5): `Route` (absolute
   path, `pathOnly()` strips query/fragment), `RouteTable` (literal + `:param`
   patterns, guards → `replace()` redirect, `fallback` 404), `Router`
@@ -357,8 +363,8 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   (`environmentBinding(e -> e.key(key).value(value))`) +
   `Environment.value(key)` — the `.environment` style, hierarchical nearest-
   wins; a `NavigationContainer` scopes `Navigation.ROUTER` to its destination
-  subtree and structural slots re-apply the incoming scope on re-render via
-  `PathlandNode.environmentForChildren`/`Emitter.reconcileSlot`; **reads always
+  subtree, and each component slot captures its environment scope at render and
+  re-applies it on its own re-renders (`ViewSlot.envScope`); **reads always
   return a signal** — `Environment.value(key)` → `Signal<T>`, a value injected as
   a `Signal` comes back as the same instance (bindable for reactive updates) and a
   plain value is wrapped in a constant signal; a read made before the key is bound
@@ -458,7 +464,8 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
 ## Verified by
 
 `mvn test` (JDK 17+) — emitter, codec round-trips (incl. `NAVIGATE`), signals,
-state, structural-reactivity (`ConditionalTest`) and the router (`RouterTest`:
+state, reactive bodies (`ReactiveBodyTest`), reactive slots (`ViewOfTest`) and the
+router (`RouterTest`:
 initial route + `ROUTE` property + `NAV_DEPTH` depth tracking + `NAV_CHROME`
 chrome mode, destination swap deltas, back-stack, params, guard redirect,
 fallback, `NAVIGATE` routing, `NavigationLink`, the **declarative nav

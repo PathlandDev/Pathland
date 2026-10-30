@@ -91,7 +91,7 @@ public final class VStack implements View, Configurable<VStack.Config>, Children
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.VSTACK);
         if (config.alignment != null) {
             node.property(Properties.ALIGNMENT, config.alignment);

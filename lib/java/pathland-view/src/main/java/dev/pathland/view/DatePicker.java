@@ -62,13 +62,13 @@ public final class DatePicker implements View, Configurable<DatePicker.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.DATE_PICKER);
         if (config.mode != null) {
             node.property(Properties.DATE_PICKER_MODE, config.mode);
         }
         if (config.days != null) {
-            node.days = config.days.get();
+            node.days = dev.pathland.view.signal.Signals.untracked(config.days::get);
             node.dateBinding = config.days;
             node.dateInput = (d, m) -> config.days.set(d);
         }

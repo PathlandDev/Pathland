@@ -91,7 +91,7 @@ public final class HStack implements View, Configurable<HStack.Config>, Children
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.HSTACK);
         if (config.alignment != null) {
             node.property(Properties.ALIGNMENT, config.alignment);

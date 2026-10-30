@@ -21,8 +21,8 @@ final class PathChangeView implements View {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
-        PathlandNode node = content.render(env);
+    public PathlandNode renderNode(Environment env) {
+        PathlandNode node = content.renderNode(env);
         node.pathChangeListeners.add(listener);
         // The active-path signal provided by the host; null when not provided (inert).
         node.activePath = Environment.value(Platform.ACTIVE_PATH);

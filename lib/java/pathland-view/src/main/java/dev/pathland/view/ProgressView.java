@@ -80,7 +80,7 @@ public final class ProgressView implements View, Configurable<ProgressView.Confi
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.PROGRESS_VIEW);
         if (config.indeterminate || config.value == null) {
             node.properties.put(Properties.IS_INDETERMINATE, 1);

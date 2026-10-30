@@ -3,6 +3,7 @@ package dev.pathland.view.emit;
 import dev.pathland.view.ValueTypes;
 import dev.pathland.view.WireValue;
 import dev.pathland.view.signal.Signal;
+import dev.pathland.view.signal.Signals;
 
 /**
  * Converts a reactive signal's value into the typed property value stored on a
@@ -14,6 +15,12 @@ import dev.pathland.view.signal.Signal;
 public final class ReactiveValues {
 
     private ReactiveValues() {}
+
+    /** Read the signal for an initial render value without subscribing the component;
+     *  the node-level binding effect owns subsequent changes. */
+    public static Object initial(int property, Signal<?> signal) {
+        return Signals.untracked(() -> from(property, signal));
+    }
 
     /** Read the signal and normalize its value for storage as a node property. */
     public static Object from(int property, Signal<?> signal) {

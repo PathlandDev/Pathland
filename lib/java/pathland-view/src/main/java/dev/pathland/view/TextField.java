@@ -64,14 +64,14 @@ public final class TextField implements View, Configurable<TextField.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.TEXT_FIELD);
         if (config.placeholder != null) {
             node.property(Properties.PROMPT, config.placeholder);
         }
         if (config.binding != null) {
             node.textBinding = config.binding;
-            node.text = config.binding.get();
+            node.text = dev.pathland.view.signal.Signals.untracked(config.binding::get);
             node.textInput = config.binding::set;
         }
         return node;

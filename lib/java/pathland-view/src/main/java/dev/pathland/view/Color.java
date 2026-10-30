@@ -55,7 +55,7 @@ public record Color(int argb, String token) implements View, TokenPath {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.COLOR);
         node.properties.put(Properties.COLOR, this);
         return node;

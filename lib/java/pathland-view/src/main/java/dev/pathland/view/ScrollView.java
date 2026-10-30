@@ -57,7 +57,7 @@ public final class ScrollView implements View, Configurable<ScrollView.Config>, 
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.SCROLLVIEW);
         if (config.axis != ScrollAxis.VERTICAL) {
             node.property(Properties.SCROLL_AXIS, Signals.constant(config.axis));

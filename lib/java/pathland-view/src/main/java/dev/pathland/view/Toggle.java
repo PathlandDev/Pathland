@@ -76,18 +76,18 @@ public final class Toggle implements View, Configurable<Toggle.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.TOGGLE);
         node.property(Properties.TOGGLE_STYLE,
                 config.style != null ? config.style : Signals.constant(ToggleStyle.SWITCH));
         if (config.binding != null) {
-            node.properties.put(Properties.SELECTED, config.binding.get() ? 1 : 0);
+            node.properties.put(Properties.SELECTED, dev.pathland.view.emit.ReactiveValues.initial(Properties.SELECTED, config.binding));
             node.propertyBindings.put(Properties.SELECTED, config.binding);
             node.valueInput = v -> config.binding.set(v > 0f);
         }
         if (config.label != null) {
             node.textBinding = config.label;
-            node.text = config.label.get();
+            node.text = dev.pathland.view.signal.Signals.untracked(config.label::get);
         }
         return node;
     }

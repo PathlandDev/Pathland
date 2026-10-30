@@ -76,7 +76,7 @@ public final class Picker implements View, Configurable<Picker.Config>, Children
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.PICKER);
         node.property(Properties.PICKER_STYLE,
                 config.style != null ? config.style : Signals.constant(PickerStyle.MENU));

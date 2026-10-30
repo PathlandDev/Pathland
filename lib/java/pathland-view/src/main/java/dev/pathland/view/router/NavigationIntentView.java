@@ -25,8 +25,8 @@ final class NavigationIntentView implements View {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
-        PathlandNode node = content.render(env);
+    public PathlandNode renderNode(Environment env) {
+        PathlandNode node = content.renderNode(env);
         node.navigateTo = to;
         node.navOp = op;
         return node;

@@ -1,5 +1,6 @@
 package dev.pathland.view;
 
+import dev.pathland.view.emit.Emitter;
 import dev.pathland.view.emit.PathlandNode;
 import dev.pathland.view.signal.Signals;
 import dev.pathland.view.signal.WritableSignal;
@@ -17,7 +18,7 @@ import java.util.Objects;
  * `minWidth`s, ascending) plus the selected child. The renderer measures its
  * own allocated width, derives the fit locally, and reports `FIT_CHANGED`; the
  * host routes it into this slot's fit sink, which swaps the child through the
- * structural reconcile (an unchanged selection re-emits **zero** opcodes).
+ * component re-render (an unchanged selection re-emits **zero** opcodes).
  *
  * <p>Candidates are ordered by their `minWidth` in the emitted `FIT_QUERY`
  * (ascending, stable); the fit index is the item position, so with a
@@ -87,57 +88,66 @@ public final class SizeThatFits {
         List<Fit> sorted = new ArrayList<>(List.of(fits));
         sorted.sort(Comparator.comparingDouble(Fit::minWidth));
         WritableSignal<Integer> fitIndex = Signals.signal(0);
-        return new FitSlot(sorted, fitIndex);
+        WritableSignal<Boolean> fitReported = Signals.signal(false);
+        return new FitSlot(sorted, fitIndex, fitReported);
     }
 
-    /** The structural slot: a `SIZE_THAT_FITS` node with `FIT_QUERY` + one child
-     *  (the selected candidate), reconciled on `FIT_CHANGED`. */
+    /** The component slot: a `SIZE_THAT_FITS` node with `FIT_QUERY` + one child
+     *  (the selected candidate). The fit index and the first-report flag are signals
+     *  read by the slot's tracked render, so a `FIT_CHANGED` re-renders only this
+     *  component (an unchanged selection emits zero opcodes). */
     static final class FitSlot implements View {
 
         private final List<Fit> fits;
         private final WritableSignal<Integer> fitIndex;
+        private final WritableSignal<Boolean> fitReported;
 
-        FitSlot(List<Fit> fits, WritableSignal<Integer> fitIndex) {
+        FitSlot(
+                List<Fit> fits,
+                WritableSignal<Integer> fitIndex,
+                WritableSignal<Boolean> fitReported) {
             this.fits = fits;
             this.fitIndex = fitIndex;
+            this.fitReported = fitReported;
         }
 
         @Override
-        public PathlandNode render(Environment env) {
+        public PathlandNode renderNode(Environment env) {
             PathlandNode node = new PathlandNode(Components.SIZE_THAT_FITS);
-            // Capture the incoming scope so the slot re-renders its candidate with
-            // the same environment after a fit reconcile (Emitter.reconcileSlot).
-            node.environmentForChildren = Environment.current();
             float[] thresholds = new float[fits.size()];
             for (int i = 0; i < fits.size(); i++) {
                 thresholds[i] = fits.get(i).minWidth();
             }
             node.properties.put(Properties.FIT_QUERY, thresholds);
-            // The selection reads the fit index inside the supplier, so the
-            // emitter's structural effect tracks it and reconciles on change.
-            node.structuralContent = () -> selectedView();
-            // The host routes FIT_CHANGED here; a no-op index (already selected)
-            // re-reads the same view and the reconcile emits zero opcodes. The
-            // selection is recorded on the node (`fitSelection`) so a parent-subtree
-            // re-render can carry it across the reconcile (a nested fit slot must
-            // not reset to compact when an outer slot re-renders its candidate).
-            // `fitReported` is set first: a full-snapshot slot (all candidates
-            // present) stays full until the renderer reports, then the structural
-            // reconcile collapses it to the single selected child.
-            node.fitInput = index -> {
-                if (index != null && index >= 0 && index < fits.size()) {
+            // A parent re-render creates a fresh FitSlot (default index 0). Carry the
+            // retained selection across that re-render from the node this slot replaces.
+            Emitter emitter = Emitter.current();
+            Integer hint = emitter == null ? null : emitter.currentSlotOldFitSelection();
+            if (hint != null && hint != fitIndex.get()) {
+                Signals.untracked(() -> {
+                    fitIndex.set(hint);
+                    return null;
+                });
+            }
+            int index = Math.min(Math.max(fitIndex.get(), 0), Math.max(fits.size() - 1, 0));
+            boolean reported = fitReported.get();
+            node.fitSelection = index;
+            node.fitReported = reported;
+            // The host routes FIT_CHANGED here; the flag makes even a no-op index
+            // (already selected) collapse the SSR full-snapshot form to one child.
+            node.fitInput = incoming -> {
+                if (incoming != null && incoming >= 0 && incoming < fits.size()) {
                     node.fitReported = true;
-                    node.fitSelection = index;
-                    fitIndex.set(index);
+                    node.fitSelection = incoming;
+                    fitIndex.set(incoming);
+                    fitReported.set(true);
                 }
             };
-            node.fitSelection = fitIndex.get();
             // In a full/snapshot emission (web SSR, issue #141) the slot carries
             // EVERY candidate as a child, in FIT_QUERY order, so the SSR renders all
             // branches gated by CSS container queries (correct first paint). The
-            // live form keeps the single `structuralContent` selection below (only
-            // changes travel). The authored DSL is identical either way.
-            if (PathlandNode.SNAPSHOT_EMISSION.get()) {
+            // live form keeps the single selected candidate.
+            if (PathlandNode.SNAPSHOT_EMISSION.get() && !reported) {
                 for (Fit fit : fits) {
                     View candidate = fit.view();
                     if (candidate != null) {
@@ -145,20 +155,12 @@ public final class SizeThatFits {
                     }
                 }
             } else {
-                View selected = selectedView();
+                View selected = fits.isEmpty() ? null : fits.get(index).view();
                 if (selected != null) {
                     node.children.add(selected.render(env));
                 }
             }
             return node;
-        }
-
-        private View selectedView() {
-            if (fits.isEmpty()) {
-                return null;
-            }
-            int index = Math.min(Math.max(fitIndex.get(), 0), fits.size() - 1);
-            return fits.get(index).view();
         }
     }
 }

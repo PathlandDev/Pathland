@@ -69,10 +69,10 @@ public final class Text implements View, Configurable<Text.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.TEXT);
         node.textBinding = config.binding();
-        node.text = config.binding().get();
+        node.text = dev.pathland.view.signal.Signals.untracked(config.binding()::get);
         return node;
     }
 }

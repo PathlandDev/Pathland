@@ -51,7 +51,7 @@ public final class RoundedRectangle implements View, Configurable<RoundedRectang
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.SHAPE);
         node.properties.put(Properties.SHAPE_KIND, (float) ShapeKind.ROUNDED_RECTANGLE.wire());
         if (config.cornerRadius != null) {

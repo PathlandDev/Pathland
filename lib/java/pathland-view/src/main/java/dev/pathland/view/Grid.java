@@ -122,7 +122,7 @@ public final class Grid implements View, Configurable<Grid.Config>, ChildrenView
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.GRID);
         if (config.alignment != null) {
             node.property(Properties.ALIGNMENT, config.alignment);

@@ -151,8 +151,8 @@ class PathlandSessionTest {
         store.save("greeting:w1", "Hello window");
         PathlandApp app = () -> new View() {
             @Override
-            public PathlandNode render(Environment env) {
-                return Text.make(t -> t.text(env.state().signal("greeting", "hi"))).render(env);
+            public PathlandNode renderNode(Environment env) {
+                return Text.make(t -> t.text(env.state().signal("greeting", "hi"))).renderNode(env);
             }
         };
         PathlandRegistry registry = new PathlandRegistry(app, store);
@@ -235,8 +235,8 @@ class PathlandSessionTest {
         // the app's router is mount-relative, so it must see the stripped route.
         PathlandApp app = () -> new View() {
             @Override
-            public PathlandNode render(Environment env) {
-                return Text.make(t -> t.text(Environment.value(Platform.ACTIVE_PATH))).render(env);
+            public PathlandNode renderNode(Environment env) {
+                return Text.make(t -> t.text(Environment.value(Platform.ACTIVE_PATH))).renderNode(env);
             }
         };
         PathlandRegistry registry = new PathlandRegistry("/app2", app, STORE, false);

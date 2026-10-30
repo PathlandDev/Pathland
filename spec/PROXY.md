@@ -244,7 +244,7 @@ applies A's single live stream — it requires **no proxy awareness**.
 - **Proxy lifetime = node lifetime (MUST).** A proxy lives **exactly while its
   `PROXY_VIEW` node is in A's retained tree**. A **structural reconcile** that
   removes the node — e.g. a `SIZE_THAT_FITS` slot dropping the candidate that
-  held it, a `Conditional` branch swap — MUST close the origin connection (stop
+  held it, a component-slot branch swap — MUST close the origin connection (stop
   forwarding, release the id block). Re-adding the node (a fresh reconcile) MUST
   open a **fresh** origin connection and re-seed it from a `META::RESYNC`. The
   proxying server therefore reconciles its origin connections against the live

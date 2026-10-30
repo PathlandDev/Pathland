@@ -77,7 +77,7 @@ public final class Gauge implements View, Configurable<Gauge.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.GAUGE);
         if (config.value != null) {
             node.property(Properties.VALUE, config.value);

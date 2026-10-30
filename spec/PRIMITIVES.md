@@ -230,7 +230,7 @@ from the primitives in this file, so no component IDs are allocated:
 | SwiftUI view | Composition |
 |--------------|-------------|
 | `List` | `ScrollView` + `VStack` of rows; row selection via `SELECTED` per row |
-| `NavigationStack` | app-held navigation state emitting the current destination into a stable `Group` slot (a structural container, [DSL.md §3.4](./DSL.md#34-structural-reactivity-conditional-rendering)); the slot's child swaps on route change, producing `TREE` deltas |
+| `NavigationStack` | app-held navigation state emitting the current destination into a stable `Group` slot (a reactive component slot, [DSL.md §3.4](./DSL.md#34-structural-reactivity-reactive-bodies--slots)); the slot's child swaps on route change, producing `TREE` deltas |
 | `NavigationSplitView` | `HStack` (sidebar + detail) |
 | `Label` | `HStack` + `IMAGE` (or `ICON`) + `TEXT` |
 

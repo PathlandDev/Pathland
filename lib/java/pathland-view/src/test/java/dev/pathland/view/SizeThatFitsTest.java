@@ -283,7 +283,7 @@ class SizeThatFitsTest {
         PathlandNode cached = new PathlandNode(Components.TEXT);
         View shared = new View() {
             @Override
-            public PathlandNode render(Environment env) {
+            public PathlandNode renderNode(Environment env) {
                 return cached;
             }
         };
@@ -470,10 +470,10 @@ class SizeThatFitsTest {
     private static View rebuiltNested(String suffix) {
         return new View() {
             @Override
-            public PathlandNode render(Environment env) {
+            public PathlandNode renderNode(Environment env) {
                 View nested = SizeThatFits.make(Fit.of(Text.make(t -> t.text("wide")), 600f),
                         Fit.of(Text.make(t -> t.text("compact"))));
-                return VStack.children(nested, Text.make(t -> t.text(suffix))).render(env);
+                return VStack.children(nested, Text.make(t -> t.text(suffix))).renderNode(env);
             }
         };
     }

@@ -62,7 +62,7 @@ public final class Menu implements View, Configurable<Menu.Config>, ChildrenView
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.MENU);
         for (View child : children) {
             node.children.add(child.render(env));

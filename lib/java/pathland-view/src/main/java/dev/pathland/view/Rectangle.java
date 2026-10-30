@@ -25,7 +25,7 @@ public final class Rectangle implements View, Configurable<Rectangle.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.SHAPE);
         node.properties.put(Properties.SHAPE_KIND, (float) ShapeKind.RECTANGLE.wire());
         return node;

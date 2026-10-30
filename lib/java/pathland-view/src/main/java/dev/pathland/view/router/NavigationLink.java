@@ -82,7 +82,7 @@ public final class NavigationLink implements View, Configurable<NavigationLink.C
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         Objects.requireNonNull(config.to, "to");
         View label = config.labelView != null
                 ? config.labelView
@@ -90,7 +90,7 @@ public final class NavigationLink implements View, Configurable<NavigationLink.C
         if (config.router != null) {
             return Button.make(b -> b.action(() -> config.router.push(config.to)))
                     .children(label)
-                    .render(env);
+                    .renderNode(env);
         }
         // The tap's real effect is the declared navigation intent (`.push`), which the
         // host routes via navigateActions before tapActions; the button action is a
@@ -98,6 +98,6 @@ public final class NavigationLink implements View, Configurable<NavigationLink.C
         return Button.make(b -> b.action(() -> {}))
                 .children(label)
                 .modifiers(NavigationIntent.push(config.to))
-                .render(env);
+                .renderNode(env);
     }
 }

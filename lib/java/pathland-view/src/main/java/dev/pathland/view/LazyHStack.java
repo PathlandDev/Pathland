@@ -77,7 +77,7 @@ public final class LazyHStack implements View, Configurable<LazyHStack.Config>, 
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.LAZY_HSTACK);
         if (config.alignment != null) {
             node.property(Properties.ALIGNMENT, config.alignment);

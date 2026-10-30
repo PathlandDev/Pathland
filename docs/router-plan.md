@@ -2,7 +2,12 @@
 
 **Status:** Approved — in progress (Phases 0–3, 5a/5b/5c, 6 complete)
 **Branch:** `feat/router-structural-reactivity`
-**Last Updated:** September 8, 2026
+**Last Updated:** October 29, 2026
+
+> **Superseded API note (Oct 2026):** the Java `Conditional`/`Case` surface was
+> replaced by per-component reactive bodies (#88) + `View.of(Supplier<View>)`.
+> The router design below is unchanged; read `Conditional.when` as "a component
+> whose tracked render selects the branch" and `ConditionalTest` as `ViewOfTest`.
 
 ---
 

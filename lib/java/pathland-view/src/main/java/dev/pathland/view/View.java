@@ -2,17 +2,23 @@ package dev.pathland.view;
 
 import dev.pathland.view.emit.PathlandNode;
 
+import java.util.Objects;
+import java.util.function.Supplier;
+
 /**
  * A composable view. Composite views declare their subtree with
  * {@link #body()}; the library's primitives (leaves, stacks, controls) instead override
- * {@link #render(Environment)} to materialize a {@link PathlandNode}. The interface is
- * open: the library ships the leaf primitives and modifier wrappers, and application
- * code (Quarkus, Spring Boot, desktop) defines its own views by implementing
- * {@code View} directly.
+ * {@link #renderNode(Environment)} to materialize a {@link PathlandNode}. The interface
+ * is open: the library ships the leaf primitives and modifier wrappers, and
+ * application code (Quarkus, Spring Boot, desktop) defines its own views by
+ * implementing {@code View} directly.
  *
- * <p>{@link #body()} is evaluated once at mount — reactivity comes from signals
- * ({@code Text.make(t -> t.text(Signal))}, {@code Signals.computed}), not from body
- * re-evaluation.
+ * <p>{@link #body()} / {@link #renderNode(Environment)} form a tracked render
+ * computation: a signal read during them subscribes the owning component, and a
+ * later write re-renders that component and diffs its subtree. The render body must
+ * be pure/idempotent and must not write signals. Non-signal reads are mount-time
+ * only. {@link #render(Environment)} is the emitter entry point and must not be
+ * overridden.
  *
  * <p>Modifiers are {@link ViewModifier} values applied with {@link #modifiers(ViewModifier...)}
  * — built-in and application-authored modifiers share one mechanism (spec DSL.md
@@ -34,28 +40,40 @@ public interface View {
     /**
      * Declarative composition: a composite view returns its subtree here. Primitives
      * return {@code this} (the identity body) and instead override
-     * {@link #render(Environment)}.
+     * {@link #renderNode(Environment)}.
      */
     default View body() {
         return this;
     }
 
     /**
-     * Materialize this view into retained node(s). Composite views resolve
-     * {@link #body()} first (recursively); primitives override this to build a
-     * {@link PathlandNode}.
+     * The emitter entry point: render this view as a tracked component slot. Called by
+     * a parent view for each child ({@code child.render(env)}). The emitter installs a
+     * {@link dev.pathland.view.emit.Emitter#current() current} render context; direct
+     * calls outside an emitter fall back to {@link #renderNode(Environment)}.
      */
     default PathlandNode render(Environment env) {
+        dev.pathland.view.emit.Emitter emitter = dev.pathland.view.emit.Emitter.current();
+        return emitter == null ? renderNode(env) : emitter.renderView(this, env);
+    }
+
+    /**
+     * The root-chain render: composite views resolve {@link #body()} and delegate to
+     * the resolved view's {@code renderNode} (same component); wrappers delegate to
+     * their inner view's {@code renderNode}; primitives build a {@link PathlandNode}
+     * and call {@code child.render(env)} for child views (new component slots).
+     */
+    default PathlandNode renderNode(Environment env) {
         dev.pathland.view.state.PersistentState state = env.state();
         if (state != null) {
             state.connect(this); // wire this view's State fields (idempotent)
         }
         View resolved = body();
         if (resolved != this) {
-            return resolved.render(env);
+            return resolved.renderNode(env);
         }
         throw new UnsupportedOperationException(
-                getClass().getName() + " must override body() (composite) or render() (primitive)");
+                getClass().getName() + " must override body() (composite) or renderNode() (primitive)");
     }
 
     /**
@@ -71,5 +89,19 @@ public interface View {
             result = Modified.apply(result, modifier);
         }
         return result;
+    }
+
+    /**
+     * A reactive subtree from a supplier: the inline form of control flow. The supplier
+     * is read during this component's tracked render, so any signal it reads re-renders
+     * the slot; the selected view is a child component slot.
+     *
+     * <pre>{@code
+     * VStack.make().children(
+     *     View.of(() -> mode.get() == Mode.LIST ? listView : gridView));
+     * }</pre>
+     */
+    static View of(Supplier<View> content) {
+        return new ReactiveSlotView(Objects.requireNonNull(content, "content"));
     }
 }

@@ -25,7 +25,7 @@ public final class Spacer implements View, Configurable<Spacer.Config> {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         return new PathlandNode(Components.SPACER);
     }
 }

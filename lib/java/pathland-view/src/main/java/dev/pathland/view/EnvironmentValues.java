@@ -8,7 +8,7 @@ import java.util.Map;
  * ({@code EnvironmentValues}): a parent chain where each node adds (or overrides)
  * one {@link EnvironmentKey} → value binding. Lookup returns the nearest binding,
  * so a scoped {@code EnvironmentBinding} overrides an outer one for its
- * subtree only. Values are resolved during render; structural slots re-apply the
+ * subtree only. Values are resolved during render; each component slot re-applies the
  * incoming scope when they re-render their destination.
  *
  * <p>Built cheaply: {@link #with} returns a new node sharing the parent, so scoping

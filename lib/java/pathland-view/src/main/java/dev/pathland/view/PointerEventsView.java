@@ -14,8 +14,8 @@ final class PointerEventsView implements View {
     }
 
     @Override
-    public PathlandNode render(Environment env) {
-        PathlandNode node = content.render(env);
+    public PathlandNode renderNode(Environment env) {
+        PathlandNode node = content.renderNode(env);
         Object existing = node.properties.get(Properties.EVENT_LISTENERS);
         int current = existing instanceof Integer i ? i : 0;
         node.properties.put(Properties.EVENT_LISTENERS, current | mask);

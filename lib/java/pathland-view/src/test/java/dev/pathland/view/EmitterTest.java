@@ -312,7 +312,7 @@ class EmitterTest {
         WritableSignal<Float> value = Signals.signal(0f);
         View slider = new View() {
             @Override
-            public PathlandNode render(Environment env) {
+            public PathlandNode renderNode(Environment env) {
                 PathlandNode node = new PathlandNode(Components.SLIDER);
                 node.valueInput = value::set;
                 return node;

@@ -72,37 +72,31 @@ public final class NavigationContainer implements View, Configurable<NavigationC
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         Router router = Objects.requireNonNull(config.router, "router");
         Chrome chrome = Objects.requireNonNull(config.chrome, "chrome");
         PathlandNode node = new PathlandNode(Components.VSTACK); // Group-backed slot
-        node.structuralContent = router::destination; // reads the route signal (tracked)
         // Scope the router to this subtree (a component inside a destination reads
-        // `env.value(Navigation.ROUTER)`), and capture the scope the destination should
-        // see so `Emitter.reconcileSlot` re-applies it on every re-render.
+        // `env.value(Navigation.ROUTER)`). The destination is a child component slot,
+        // so it captures this scope and re-applies it on its own re-renders.
         EnvironmentValues scope = Environment.current().with(Navigation.ROUTER, router);
-        node.environmentForChildren = scope;
         EnvironmentValues previous = Environment.current();
         Environment.within(scope);
         try {
-            View selected = router.destination();
+            View selected = router.destination(); // tracked: a route change re-renders this slot
             if (selected != null) {
                 node.children.add(selected.render(env));
             }
         } finally {
             Environment.restore(previous);
         }
-        // ROUTE: the current path, re-emitted by the structural effect in the same frame
-        // as a destination swap (spec DSL.md §4.5 URL sync). NAV_DEPTH: the back-stack
-        // depth, so native navigation adapters reconcile their page stack by depth.
+        // ROUTE: the current path; NAV_DEPTH: the back-stack depth, so native navigation
+        // adapters reconcile their page stack by depth. Both are read during the tracked
+        // render, so a route change diffs them in the same frame as the destination swap.
         // TRANSITION: a presentation hint (PlatformDefault) so renderers may animate
         // the swap — never state.
         node.properties.put(Properties.ROUTE, router.path());
-        node.structuralStringProperty = Properties.ROUTE;
-        node.structuralStringValue = router::path;
         node.properties.put(Properties.NAV_DEPTH, router.depth());
-        node.structuralU32Property = Properties.NAV_DEPTH;
-        node.structuralU32Value = router::depth;
         // Chrome mode: a static property (never varies per destination) — the
         // renderer supplies default chrome, or the developer owns all nav UI.
         node.properties.put(Properties.NAV_CHROME, (float) chrome.wire());

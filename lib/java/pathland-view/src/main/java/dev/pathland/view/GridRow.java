@@ -42,7 +42,7 @@ public final class GridRow implements View, Configurable<GridRow.Config>, Childr
     }
 
     @Override
-    public PathlandNode render(Environment env) {
+    public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.GRID_ROW);
         for (View child : children) {
             node.children.add(child.render(env));
