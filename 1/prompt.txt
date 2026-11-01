@@ -1,0 +1,1 @@
+I have an issue with the current Java DSL. It is not a friendly to read as I would like. It is a bit hard for a human to see the structure of the UI. On of the things is the nautral indention of the IDE's may break the overview. Also the builtin collapse features in IDE's does not collapse each structral element of the UI. Can you investigate and suggest improvements.
