@@ -1,15 +1,17 @@
 package dev.pathland.view.dsl
 
 import dev.pathland.view.core.Alignment
+import dev.pathland.view.core.ProxyConfig
 import dev.pathland.view.core.protocol.Components
 import dev.pathland.view.core.protocol.Properties
 import dev.pathland.view.core.signal.Signals
-import dev.pathland.view.Fit as JFit
+import dev.pathland.view.engine.Emitter
+import dev.pathland.view.engine.PathlandNode
+import dev.pathland.view.core.Environment
+import java.util.function.Consumer
 import dev.pathland.view.core.HorizontalAlignment
 import dev.pathland.view.core.Length as JLength
-import dev.pathland.view.ProxyView as JProxyView
 import dev.pathland.view.core.ScrollAxis
-import dev.pathland.view.SizeThatFits as JSizeThatFits
 import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
 import dev.pathland.view.core.signal.Signal
@@ -243,30 +245,72 @@ private fun gridTracks(tracks: List<GridItem>): String = tracks.joinToString(","
 /* ViewThatFits / Fit                                                         */
 /* ------------------------------------------------------------------------- */
 
-/** A candidate in a [ViewThatFits] slot. */
-fun Fit(view: View, minWidth: Float = 0f): JFit = JFit.of(view, minWidth)
+/** A `ViewThatFits` candidate: a view plus the minimum width at which it is selected. */
+data class FitCandidate(val view: View, val minWidth: Float = 0f)
+
+/** A candidate with an explicit minimum width. */
+fun Fit(view: View, minWidth: Float = 0f): FitCandidate = FitCandidate(view, minWidth)
 
 /** A candidate whose subtree is built in an isolated block (no outer child leak). */
-fun Fit(minWidth: Float = 0f, content: () -> Unit): JFit {
+fun Fit(minWidth: Float = 0f, content: () -> Unit): FitCandidate {
     val children = collectChildren(content)
     val view = when (children.size) {
         0 -> groupView(emptyList())
         1 -> children[0]
         else -> groupView(children)
     }
-    return JFit.of(view, minWidth)
+    return FitCandidate(view, minWidth)
 }
 
-/**
- * The first candidate that fits the available width (SwiftUI `ViewThatFits`).
- * Each view declared in [content] is one candidate, with the default min width.
- */
+private class FitSlot(private val fits: List<FitCandidate>) : View {
+    private val fitIndex = Signals.signal(0)
+    private val fitReported = Signals.signal(false)
+
+    override fun renderNode(env: Environment): PathlandNode {
+        val node = PathlandNode(Components.SIZE_THAT_FITS)
+        node.properties[Properties.FIT_QUERY] = FloatArray(fits.size) { fits[it].minWidth }
+        val hint = Emitter.current()?.currentSlotOldFitSelection()
+        if (hint != null && hint != fitIndex.get()) {
+            Signals.untracked { fitIndex.set(hint); null }
+        }
+        val index = fitIndex.get().coerceIn(0, (fits.size - 1).coerceAtLeast(0))
+        node.fitSelection = index
+        node.fitReported = fitReported.get()
+        node.fitInput = Consumer { incoming ->
+            if (incoming != null && incoming in fits.indices) {
+                node.fitReported = true
+                node.fitSelection = incoming
+                fitIndex.set(incoming)
+                fitReported.set(true)
+            }
+        }
+        if (PathlandNode.SNAPSHOT_EMISSION.get() && !fitReported.get()) {
+            fits.forEach { node.children.add(it.view.render(env)) }
+        } else {
+            fits.getOrNull(index)?.let { node.children.add(it.view.render(env)) }
+        }
+        return node
+    }
+}
+
+private fun sizeThatFits(fits: Array<FitCandidate>): View {
+    val sorted = fits.sortedBy { it.minWidth }
+    for (i in sorted.indices) {
+        for (j in i + 1 until sorted.size) {
+            check(sorted[i].view !== sorted[j].view) {
+                "a View instance can be used as the candidate of at most one SizeThatFits Fit"
+            }
+        }
+    }
+    return FitSlot(sorted).registerChild()
+}
+
+/** The first candidate that fits the available width (SwiftUI `ViewThatFits`). */
 fun ViewThatFits(content: () -> Unit): View =
-    JSizeThatFits.make(*childrenOf(content)).registerChild()
+    sizeThatFits(childrenOf(content).map { Fit(it) }.toTypedArray())
 
 /** The first candidate that fits, with explicit min-width thresholds. */
-fun ViewThatFits(vararg fits: JFit): View =
-    JSizeThatFits.make(*fits).registerChild()
+fun ViewThatFits(vararg fits: FitCandidate): View = sizeThatFits(arrayOf(*fits))
 
 /* ------------------------------------------------------------------------- */
 /* ProxyView                                                                  */
@@ -276,7 +320,6 @@ fun ProxyView(
     endpoint: String,
     route: String = "/",
     credential: String? = null,
-): View = JProxyView.make { c ->
-    c.endpoint(endpoint).route(route)
-    if (credential != null) c.credential(credential)
+): View = coreView(Components.PROXY_VIEW) { node, _ ->
+    node.proxyConfig = ProxyConfig(endpoint, route, credential)
 }.registerChild()

@@ -7,12 +7,10 @@ import dev.pathland.view.core.protocol.Components
 import dev.pathland.view.core.protocol.Properties
 import dev.pathland.view.core.signal.Signals
 import java.util.function.Consumer
-import dev.pathland.view.DatePicker as JDatePicker
 import dev.pathland.view.core.DatePickerMode
 import dev.pathland.view.core.ToggleStyle
 import dev.pathland.view.engine.DateInput
 import dev.pathland.view.core.IconName
-import dev.pathland.view.Label as JLabel
 import dev.pathland.view.core.MediaController
 import dev.pathland.view.core.ShapeKind
 import dev.pathland.view.core.signal.Signal
@@ -86,15 +84,21 @@ fun Text(text: String): dev.pathland.view.core.View = textView(text).registerChi
 
 fun Text(text: Signal<String>): dev.pathland.view.core.View = textView(text).registerChild()
 
-fun Image(source: String): dev.pathland.view.core.View = coreView(Components.IMAGE) { node, _ ->
+internal fun imageView(source: String): dev.pathland.view.core.View = coreView(Components.IMAGE) { node, _ ->
     node.properties[Properties.IMAGE_SOURCE] = source
-}.registerChild()
+}
 
-fun Image(source: Signal<String>): dev.pathland.view.core.View = coreView(Components.IMAGE) { node, _ ->
+internal fun imageView(source: Signal<String>): dev.pathland.view.core.View = coreView(Components.IMAGE) { node, _ ->
     node.property(Properties.IMAGE_SOURCE, source)
-}.registerChild()
+}
 
-fun Image(): dev.pathland.view.core.View = coreView(Components.IMAGE).registerChild()
+internal fun imageView(): dev.pathland.view.core.View = coreView(Components.IMAGE)
+
+fun Image(source: String): dev.pathland.view.core.View = imageView(source).registerChild()
+
+fun Image(source: Signal<String>): dev.pathland.view.core.View = imageView(source).registerChild()
+
+fun Image(): dev.pathland.view.core.View = imageView().registerChild()
 
 private fun iconView(name: Signal<String>, label: String? = null): dev.pathland.view.core.View =
     coreView(Components.ICON) { node, _ ->
@@ -163,32 +167,6 @@ fun Gauge(value: Signal<Float>, min: Float = 0f, max: Float = 1f): dev.pathland.
         node.property(Properties.MIN_VALUE, Signals.constant(min))
         node.property(Properties.MAX_VALUE, Signals.constant(max))
     }.registerChild()
-
-fun Label(title: String, icon: String? = null): dev.pathland.view.core.View =
-    JLabel.make { c ->
-        c.title(title)
-        if (icon != null) c.icon(icon)
-    }.registerChild()
-
-fun Label(title: Signal<String>, icon: String? = null): dev.pathland.view.core.View =
-    JLabel.make { c ->
-        c.title(title)
-        if (icon != null) c.icon(icon)
-    }.registerChild()
-
-fun Label(title: String, icon: dev.pathland.view.core.View): dev.pathland.view.core.View =
-    JLabel.make { c -> c.title(title).icon(icon) }.registerChild()
-
-/** A label whose icon subtree is built in an isolated block (no outer child leak). */
-fun Label(title: String, icon: () -> Unit): dev.pathland.view.core.View {
-    val parts = collectChildren(icon)
-    val iconView = when (parts.size) {
-        0 -> JLabel.make(title).registerChild()
-        1 -> JLabel.make { c -> c.title(title).icon(parts[0]) }.registerChild()
-        else -> JLabel.make { c -> c.title(title).icon(groupView(parts)) }.registerChild()
-    }
-    return iconView
-}
 
 /** The picker presentation styles (SwiftUI `PickerStyle` parity). */
 enum class PickerStyle(val wire: Int) {

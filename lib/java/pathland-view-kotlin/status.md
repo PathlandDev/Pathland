@@ -3,21 +3,19 @@
 **Last updated:** November 1, 2026
 
 The idiomatic Kotlin authoring surface (`dev.pathland.view.dsl`). Phase 3 is
-migrating it from a Java DSL facade to Kotlin-owned views over
-`pathland-view-core`; the engine, signals, emitter, and wire codec are already
-core-owned and Kotlin trees remain byte-identical to the Java DSL.
+complete: every production view/modifier is Kotlin-owned over
+`pathland-view-core`; the Java DSL is a test-scope parity oracle only.
 
-## Phase 3 progress
+## Phase 3
 
-- **Core-owned in Kotlin**: `Text`, `Image`, `Icon`, `Color`, shapes, `Divider`,
-  `Spacer`, `ProgressView`, `Gauge`, `VStack`, `HStack`, `ZStack`, `Group`,
-  `Grid`, `GridRow`, `ScrollView`, lazy stacks/grids, `ForEach`, `Button`,
-  `TextField`/`SecureField`/`TextEditor`, `Toggle`, `Slider`, `Stepper`,
-  `DatePicker`, `Picker`, `Menu`, `ColorPicker`, `Video`, `NavigationLink`.
-- **Still using the Java DSL**: the modifier vocabulary (`padding`, `frame`,
-  fonts, colors, effects, …) and the composite `Label` / `SizeThatFits` /
-  `ProxyView` helpers. These are the remaining Phase 3 surface.
-- Tests now compare the core-owned controls against the Java DSL byte-for-byte.
+- **Core-owned in Kotlin**: all primitives, shapes, stacks, grids, scroll/lazy
+  containers, `ForEach`, `Button`, text/value controls, media, navigation,
+  `Label`, `ViewThatFits`/`Fit`, `ProxyView`, and the complete modifier
+  vocabulary (padding/frame/fonts/colors/borders/shadows/effects/transforms/
+  interaction/accessibility/environment/styles/window metadata).
+- **Dependency boundary**: main depends on `pathland-view-core` only; the Java
+  DSL is test-scope for byte-for-byte parity comparisons.
+- Tests compare the Kotlin-owned views and modifiers against the Java DSL.
 
 ## Implemented
 
@@ -60,13 +58,12 @@ core-owned and Kotlin trees remain byte-identical to the Java DSL.
 
 ## Not implemented / gaps
 
-- Reactive **layout value** combinations that need several signals at once are
-  available through the Java config builders (`Grid.make { ... }`); the Kotlin
-  named-argument overloads cover raw values plus the common single-signal cases.
+- The Kotlin modifier config types (`Padding`, `Frame`, `Border`, `Shadow`,
+  `ClipShape`, `Font`) are Kotlin ownership types; code migrating from the Java
+  DSL should use the Kotlin `Modifiers` sugar instead of Java config classes.
 - A Kotlin-native annotation processor is intentionally not used. `state(...)`
   works on `KotlinView` subclasses; a plain `View` implementation should use
   signals directly or extend `KotlinView`.
-- No Kotlin Multiplatform target yet — the module is JVM-only over the Java
-  library.
-- `SecureField` is implemented in the Kotlin facade (`TEXT_FIELD` + `IS_SECURE`)
-  because the Java `TextField.Config` does not yet expose `secure`.
+- No Kotlin Multiplatform target yet — the module is JVM-only over
+  `pathland-view-core`.
+- `SecureField` is Kotlin-owned (`TEXT_FIELD` + `IS_SECURE`).

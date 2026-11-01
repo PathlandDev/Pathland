@@ -1571,7 +1571,7 @@ Rules:
   is a future protocol/emitter feature, not a syntax difference.
 - **Gaps**: Rust reactive-body/`ForEach` parity is Phase 2; the TypeScript plan
   currently defers structural reactivity; Swift is not implemented yet. Kotlin is
-  implemented by `lib/java/pathland-view-kotlin` (a facade over the Java library;
+  implemented by `lib/java/pathland-view-kotlin` (Kotlin-owned views over core;
   `Text("…")`, `VStack(spacing = 8) { … }`, `.padding(16)`), with its surface and
   gaps tracked in that module's `status.md`.
 
