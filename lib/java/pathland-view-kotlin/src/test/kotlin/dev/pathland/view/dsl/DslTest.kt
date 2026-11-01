@@ -56,6 +56,32 @@ class DslTest {
     }
 
     @Test
+    fun coreOwnedControlsEmitTheSameBytesAsJava() {
+        val name = signal("")
+        val on = signal(true)
+        val value = signal(0.5f)
+        val color = signal(dev.pathland.view.core.Color.RED)
+
+        val kotlinRoot = VStack {
+            TextField("Name", name)
+            Toggle("On", on)
+            Slider(value, 0f..1f)
+            ColorPicker(color)
+        }
+        val javaRoot = dev.pathland.view.VStack.children(
+            dev.pathland.view.TextField.make { c -> c.placeholder("Name").text(name) },
+            dev.pathland.view.Toggle.make { c -> c.label("On").isOn(on) },
+            dev.pathland.view.Slider.make { c -> c.value(value).`in`(0f, 1f) },
+            dev.pathland.view.ColorPicker.make { c -> c.selection(color) },
+        )
+
+        val (_, kotlinFrame) = mount(kotlinRoot)
+        val (_, javaFrame) = mount(javaRoot)
+        assertEquals(javaFrame.opcodes(), kotlinFrame.opcodes())
+        assertArrayEquals(javaFrame.strings(), kotlinFrame.strings())
+    }
+
+    @Test
     fun trailingBlocksAutoCollectNestedChildren() {
         val root = VStack(spacing = 4f) {
             Text("a")

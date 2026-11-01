@@ -4,7 +4,6 @@ import dev.pathland.view.core.View
 import dev.pathland.view.core.router.Chrome
 import dev.pathland.view.core.router.Navigation
 import dev.pathland.view.core.router.NavigationIntent
-import dev.pathland.view.NavigationLink as JNavigationLink
 import dev.pathland.view.core.router.Router
 import dev.pathland.view.core.signal.Signal
 
@@ -43,10 +42,14 @@ fun NavigationLink(
     label: String,
     to: String,
     router: Router? = null,
-): View = JNavigationLink.make { c ->
-    c.label(label).to(to)
-    if (router != null) c.router(router)
-}.registerChild()
+): View = navigationLinkView(textView(label), to, router)
+
+private fun navigationLinkView(label: View, to: String, router: Router?): View {
+    val action = if (router == null) ({}) else ({ router.push(to) })
+    val button = buttonView(null, action, listOf(label))
+    return if (router == null) button.modifiers(NavigationIntent.push(to)).registerChild()
+    else button.registerChild()
+}
 
 /** A navigation link with a custom label subtree. */
 fun NavigationLink(
@@ -56,14 +59,11 @@ fun NavigationLink(
 ): View {
     val children = collectChildren(content)
     val label = when (children.size) {
-        0 -> dev.pathland.view.Text.make("")
+        0 -> textView("")
         1 -> children[0]
-        else -> dev.pathland.view.Group.children(*children.toTypedArray())
+        else -> groupView(children)
     }
-    return JNavigationLink.make { c ->
-        c.label(label).to(to)
-        if (router != null) c.router(router)
-    }.registerChild()
+    return navigationLinkView(label, to, router)
 }
 
 /** A reactive "is this the active route" signal. */

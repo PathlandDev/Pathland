@@ -1,10 +1,23 @@
 # pathland-view-kotlin — implementation status
 
-**Last updated:** October 30, 2026
+**Last updated:** November 1, 2026
 
-The idiomatic Kotlin authoring surface (`dev.pathland.view.dsl`). A thin facade over
-the Java `pathland-view` DSL, signals, emitter, and wire codec, so Kotlin-authored
-trees emit byte-identical opcodes.
+The idiomatic Kotlin authoring surface (`dev.pathland.view.dsl`). Phase 3 is
+migrating it from a Java DSL facade to Kotlin-owned views over
+`pathland-view-core`; the engine, signals, emitter, and wire codec are already
+core-owned and Kotlin trees remain byte-identical to the Java DSL.
+
+## Phase 3 progress
+
+- **Core-owned in Kotlin**: `Text`, `Image`, `Icon`, `Color`, shapes, `Divider`,
+  `Spacer`, `ProgressView`, `Gauge`, `VStack`, `HStack`, `ZStack`, `Group`,
+  `Grid`, `GridRow`, `ScrollView`, lazy stacks/grids, `ForEach`, `Button`,
+  `TextField`/`SecureField`/`TextEditor`, `Toggle`, `Slider`, `Stepper`,
+  `DatePicker`, `Picker`, `Menu`, `ColorPicker`, `Video`, `NavigationLink`.
+- **Still using the Java DSL**: the modifier vocabulary (`padding`, `frame`,
+  fonts, colors, effects, …) and the composite `Label` / `SizeThatFits` /
+  `ProxyView` helpers. These are the remaining Phase 3 surface.
+- Tests now compare the core-owned controls against the Java DSL byte-for-byte.
 
 ## Implemented
 

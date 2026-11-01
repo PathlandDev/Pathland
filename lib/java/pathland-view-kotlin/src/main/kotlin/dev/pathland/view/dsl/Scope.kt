@@ -67,8 +67,8 @@ internal fun <T : View> T.registerChild(): T {
 internal fun rowView(content: () -> Unit): View {
     val children = collectChildren(content)
     return when (children.size) {
-        0 -> dev.pathland.view.Group.children()
+        0 -> groupView(emptyList())
         1 -> children[0]
-        else -> dev.pathland.view.Group.children(*children.toTypedArray())
+        else -> groupView(children)
     }
 }

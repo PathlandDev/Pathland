@@ -18,8 +18,9 @@
         Idiomatic Kotlin authoring surface for Pathland: SwiftUI-shaped view builders
         (Text("…"), VStack(spacing = 8) { … }, Button("Save") { … }), modifier sugar
         (.padding(16), .frame(width = …)), Kotlin signal conveniences, property-delegate
-        State, navigation, and media helpers. A thin facade over the Java pathland-view
-        emitter/signals/wire codec, so Kotlin trees emit byte-identical opcodes.
+        State, navigation, and media helpers. Phase 3 migrates the facade to
+        Kotlin-owned views over pathland-view-core; Kotlin trees emit byte-identical
+        opcodes to the Java DSL.
     </description>
 
     <dependencies>

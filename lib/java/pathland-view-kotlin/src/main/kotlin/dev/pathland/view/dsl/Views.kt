@@ -1,28 +1,20 @@
 package dev.pathland.view.dsl
 
-import dev.pathland.view.Capsule as JCapsule
-import dev.pathland.view.Circle as JCircle
 import dev.pathland.view.core.Color as JColor
+import dev.pathland.view.core.EmptyContent
+import dev.pathland.view.core.protocol.Commands
+import dev.pathland.view.core.protocol.Components
+import dev.pathland.view.core.protocol.Properties
+import dev.pathland.view.core.signal.Signals
+import java.util.function.Consumer
 import dev.pathland.view.DatePicker as JDatePicker
 import dev.pathland.view.core.DatePickerMode
-import dev.pathland.view.Divider as JDivider
-import dev.pathland.view.Ellipse as JEllipse
-import dev.pathland.view.ForEach as JForEach
-import dev.pathland.view.Gauge as JGauge
-import dev.pathland.view.Group as JGroup
-import dev.pathland.view.Icon as JIcon
+import dev.pathland.view.core.ToggleStyle
+import dev.pathland.view.engine.DateInput
 import dev.pathland.view.core.IconName
-import dev.pathland.view.Image as JImage
 import dev.pathland.view.Label as JLabel
 import dev.pathland.view.core.MediaController
-import dev.pathland.view.ProgressView as JProgressView
-import dev.pathland.view.Rectangle as JRectangle
-import dev.pathland.view.RoundedRectangle as JRoundedRectangle
-import dev.pathland.view.Shape as JShape
 import dev.pathland.view.core.ShapeKind
-import dev.pathland.view.Spacer as JSpacer
-import dev.pathland.view.Text as JText
-import dev.pathland.view.Video as JVideo
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.WritableSignal
 
@@ -44,10 +36,12 @@ object Color {
     fun token(path: String): JColor = JColor.token(path)
 
     /** A solid-color fill view. */
-    operator fun invoke(argb: Int): dev.pathland.view.core.View = JColor.of(argb).registerChild()
+    operator fun invoke(argb: Int): dev.pathland.view.core.View =
+        coreView(Components.COLOR) { node, _ -> node.properties[Properties.COLOR] = JColor.of(argb) }.registerChild()
 
     /** A solid-color fill view from a data value. */
-    operator fun invoke(color: JColor): dev.pathland.view.core.View = color.registerChild()
+    operator fun invoke(color: JColor): dev.pathland.view.core.View =
+        coreView(Components.COLOR) { node, _ -> node.properties[Properties.COLOR] = color }.registerChild()
 }
 
 /** Length (device-point value or design-token reference) helpers. */
@@ -57,71 +51,118 @@ object Length {
     operator fun invoke(value: Float) = of(value)
 }
 
-/** Grid track helpers (SwiftUI `GridItem` parity). */
-object GridItem {
-    fun flexible() = dev.pathland.view.GridItem.flexible()
-    fun fixed(points: Float) = dev.pathland.view.GridItem.fixed(points)
-    fun adaptive(minPoints: Float) = dev.pathland.view.GridItem.adaptive(minPoints)
+/** A grid track spec (`flex`, `fixed:<points>`, or `adaptive:<points>`). */
+class GridItem private constructor(val token: String) {
+    companion object {
+        fun flexible() = GridItem("flex")
+        fun fixed(points: Float) = GridItem("fixed:${fmt(points)}")
+        fun adaptive(minPoints: Float) = GridItem("adaptive:${fmt(minPoints)}")
+
+        private fun fmt(value: Float): String =
+            if (value == kotlin.math.floor(value) && !value.isInfinite()) {
+                value.toLong().toString()
+            } else {
+                value.toString()
+            }
+    }
 }
 
 /* ------------------------------------------------------------------------- */
 /* Primitive drawing                                                          */
 /* ------------------------------------------------------------------------- */
 
-fun Text(text: String): dev.pathland.view.core.View = JText.make(text).registerChild()
-
-fun Text(text: Signal<String>): dev.pathland.view.core.View = JText.make(text).registerChild()
-
-fun Image(source: String): dev.pathland.view.core.View = JImage.make(source).registerChild()
-
-fun Image(source: Signal<String>): dev.pathland.view.core.View = JImage.make(source).registerChild()
-
-fun Image(): dev.pathland.view.core.View = JImage.make().registerChild()
-
-fun Icon(name: IconName, label: String? = null): dev.pathland.view.core.View {
-    val view = if (label == null) JIcon.make(name) else JIcon.labeled(name, label)
-    return view.registerChild()
+internal fun textView(text: String): dev.pathland.view.core.View = coreView(Components.TEXT) { node, _ ->
+    val constant = Signals.constant(text)
+    node.text = text
+    node.textBinding = constant
 }
 
-fun Icon(name: String, label: String? = null): dev.pathland.view.core.View {
-    val builder = if (label == null) JIcon.make(name) else JIcon.make(name).let { b ->
-        b.modifiers(dev.pathland.view.Modifiers.accessibilityLabel(label))
+internal fun textView(text: Signal<String>): dev.pathland.view.core.View = coreView(Components.TEXT) { node, _ ->
+    node.text = Signals.untracked { text.get() }
+    node.textBinding = text
+}
+
+fun Text(text: String): dev.pathland.view.core.View = textView(text).registerChild()
+
+fun Text(text: Signal<String>): dev.pathland.view.core.View = textView(text).registerChild()
+
+fun Image(source: String): dev.pathland.view.core.View = coreView(Components.IMAGE) { node, _ ->
+    node.properties[Properties.IMAGE_SOURCE] = source
+}.registerChild()
+
+fun Image(source: Signal<String>): dev.pathland.view.core.View = coreView(Components.IMAGE) { node, _ ->
+    node.property(Properties.IMAGE_SOURCE, source)
+}.registerChild()
+
+fun Image(): dev.pathland.view.core.View = coreView(Components.IMAGE).registerChild()
+
+private fun iconView(name: Signal<String>, label: String? = null): dev.pathland.view.core.View =
+    coreView(Components.ICON) { node, _ ->
+        node.property(Properties.ICON_NAME, name)
+        if (!label.isNullOrBlank()) node.properties[Properties.LABEL] = label
     }
-    return builder.registerChild()
-}
 
-fun Icon(name: Signal<String>): dev.pathland.view.core.View = JIcon.make(name).registerChild()
+fun Icon(name: IconName, label: String? = null): dev.pathland.view.core.View =
+    iconView(Signals.constant(name.wire()), label).registerChild()
 
-fun Rectangle(): dev.pathland.view.core.View = JRectangle.make().registerChild()
+fun Icon(name: String, label: String? = null): dev.pathland.view.core.View =
+    iconView(Signals.constant(name), label).registerChild()
 
-fun Circle(): dev.pathland.view.core.View = JCircle.make().registerChild()
+fun Icon(name: Signal<String>): dev.pathland.view.core.View =
+    iconView(name).registerChild()
 
-fun Ellipse(): dev.pathland.view.core.View = JEllipse.make().registerChild()
+private fun shapeView(kind: ShapeKind, cornerRadius: Float? = null): dev.pathland.view.core.View =
+    coreView(Components.SHAPE) { node, _ ->
+        node.properties[Properties.SHAPE_KIND] = kind.wire().toFloat()
+        if (cornerRadius != null) node.properties[Properties.BORDER_RADIUS] = cornerRadius
+    }
 
-fun Capsule(): dev.pathland.view.core.View = JCapsule.make().registerChild()
+fun Rectangle(): dev.pathland.view.core.View = shapeView(ShapeKind.RECTANGLE).registerChild()
+
+fun Circle(): dev.pathland.view.core.View = shapeView(ShapeKind.CIRCLE).registerChild()
+
+fun Ellipse(): dev.pathland.view.core.View = shapeView(ShapeKind.ELLIPSE).registerChild()
+
+fun Capsule(): dev.pathland.view.core.View = shapeView(ShapeKind.CAPSULE).registerChild()
 
 fun RoundedRectangle(cornerRadius: Float): dev.pathland.view.core.View =
-    JRoundedRectangle.make(cornerRadius).registerChild()
+    shapeView(ShapeKind.ROUNDED_RECTANGLE, cornerRadius).registerChild()
 
-fun Shape(kind: ShapeKind): dev.pathland.view.core.View = JShape.make(kind).registerChild()
+fun Shape(kind: ShapeKind): dev.pathland.view.core.View = shapeView(kind).registerChild()
 
-fun Divider(): dev.pathland.view.core.View = JDivider.make().registerChild()
+fun Divider(): dev.pathland.view.core.View = coreView(Components.DIVIDER).registerChild()
 
-fun Spacer(): dev.pathland.view.core.View = JSpacer.make().registerChild()
+fun Spacer(): dev.pathland.view.core.View = coreView(Components.SPACER).registerChild()
 
-fun ProgressView(value: Float): dev.pathland.view.core.View = JProgressView.make(value).registerChild()
+fun ProgressView(value: Float): dev.pathland.view.core.View =
+    coreView(Components.PROGRESS_VIEW) { node, _ ->
+        node.property(Properties.PROGRESS, Signals.constant(value))
+    }.registerChild()
 
 fun ProgressView(value: Signal<Float>): dev.pathland.view.core.View =
-    JProgressView.make(value).registerChild()
+    coreView(Components.PROGRESS_VIEW) { node, _ ->
+        node.property(Properties.PROGRESS, value)
+    }.registerChild()
 
 /** An indeterminate progress indicator. */
-fun ProgressView(): dev.pathland.view.core.View = JProgressView.indeterminate().registerChild()
+fun ProgressView(): dev.pathland.view.core.View =
+    coreView(Components.PROGRESS_VIEW) { node, _ ->
+        node.properties[Properties.IS_INDETERMINATE] = 1
+    }.registerChild()
 
 fun Gauge(value: Float, min: Float = 0f, max: Float = 1f): dev.pathland.view.core.View =
-    JGauge.make { c -> c.value(value).minValue(min).maxValue(max) }.registerChild()
+    coreView(Components.GAUGE) { node, _ ->
+        node.property(Properties.VALUE, Signals.constant(value))
+        node.property(Properties.MIN_VALUE, Signals.constant(min))
+        node.property(Properties.MAX_VALUE, Signals.constant(max))
+    }.registerChild()
 
 fun Gauge(value: Signal<Float>, min: Float = 0f, max: Float = 1f): dev.pathland.view.core.View =
-    JGauge.make { c -> c.value(value).minValue(min).maxValue(max) }.registerChild()
+    coreView(Components.GAUGE) { node, _ ->
+        node.property(Properties.VALUE, value)
+        node.property(Properties.MIN_VALUE, Signals.constant(min))
+        node.property(Properties.MAX_VALUE, Signals.constant(max))
+    }.registerChild()
 
 fun Label(title: String, icon: String? = null): dev.pathland.view.core.View =
     JLabel.make { c ->
@@ -144,97 +185,160 @@ fun Label(title: String, icon: () -> Unit): dev.pathland.view.core.View {
     val iconView = when (parts.size) {
         0 -> JLabel.make(title).registerChild()
         1 -> JLabel.make { c -> c.title(title).icon(parts[0]) }.registerChild()
-        else -> JLabel.make { c -> c.title(title).icon(JGroup.children(*parts.toTypedArray())) }.registerChild()
+        else -> JLabel.make { c -> c.title(title).icon(groupView(parts)) }.registerChild()
     }
     return iconView
 }
 
-private class SecureFieldView(
-    private val placeholder: String?,
-    private val text: WritableSignal<String>,
-) : dev.pathland.view.core.View {
-    override fun renderNode(env: dev.pathland.view.core.Environment): dev.pathland.view.engine.PathlandNode {
-        val node = dev.pathland.view.TextField.make { c ->
-            if (placeholder != null) c.placeholder(placeholder)
-            c.text(text)
-        }.renderNode(env)
-        node.properties.put(dev.pathland.view.core.protocol.Properties.IS_SECURE, 1)
-        return node
-    }
+/** The picker presentation styles (SwiftUI `PickerStyle` parity). */
+enum class PickerStyle(val wire: Int) {
+    MENU(0),
+    SEGMENTED(1),
+    WHEEL(2),
+    RADIO_GROUP(3),
 }
 
 /** A secure text field (`TEXT_FIELD` + `IS_SECURE`). */
 fun SecureField(placeholder: String, text: WritableSignal<String>): dev.pathland.view.core.View =
-    SecureFieldView(placeholder, text).registerChild()
+    coreView(Components.TEXT_FIELD) { node, _ ->
+        node.property(Properties.PROMPT, Signals.constant(placeholder))
+        node.textBinding = text
+        node.text = Signals.untracked { text.get() }
+        node.textInput = Consumer { text.set(it) }
+        node.properties[Properties.IS_SECURE] = 1
+    }.registerChild()
 
 fun SecureField(text: WritableSignal<String>, placeholder: String? = null): dev.pathland.view.core.View =
-    SecureFieldView(placeholder, text).registerChild()
+    coreView(Components.TEXT_FIELD) { node, _ ->
+        if (placeholder != null) node.property(Properties.PROMPT, Signals.constant(placeholder))
+        node.textBinding = text
+        node.text = Signals.untracked { text.get() }
+        node.textInput = Consumer { text.set(it) }
+        node.properties[Properties.IS_SECURE] = 1
+    }.registerChild()
 
 /* ------------------------------------------------------------------------- */
 /* Containers                                                                 */
 /* ------------------------------------------------------------------------- */
 
-fun Group(content: () -> Unit): dev.pathland.view.core.View {
-    val children = collectChildren(content)
-    return JGroup.children(*children.toTypedArray()).registerChild()
-}
+fun Group(content: () -> Unit): dev.pathland.view.core.View =
+    groupView(collectChildren(content)).registerChild()
 
 fun <T> ForEach(items: List<T>, content: (T, Int) -> Unit): dev.pathland.view.core.View =
-    JForEach.of(items) { item, index -> rowView { content(item, index) } }.registerChild()
+    coreView(Components.VSTACK) { node, env ->
+        items.forEachIndexed { index, item ->
+            node.children.add(rowView { content(item, index) }.render(env))
+        }
+    }.registerChild()
 
 fun <T> ForEach(items: Signal<List<T>>, content: (T, Int) -> Unit): dev.pathland.view.core.View =
-    JForEach.of(items) { item, index -> rowView { content(item, index) } }.registerChild()
+    coreView(Components.VSTACK) { node, env ->
+        items.get().forEachIndexed { index, item ->
+            node.children.add(rowView { content(item, index) }.render(env))
+        }
+    }.registerChild()
 
 /* ------------------------------------------------------------------------- */
 /* Media                                                                      */
 /* ------------------------------------------------------------------------- */
 
-fun Video(controller: MediaController): dev.pathland.view.core.View =
-    JVideo.make(controller).registerChild()
+private object KotlinNativeVideoStyle : dev.pathland.view.core.VideoStyle {
+    override fun makeBody(config: dev.pathland.view.core.VideoStyle.Configuration): dev.pathland.view.core.View =
+        EmptyContent.INSTANCE
+}
 
-/** A text field bound to a writable signal (the control owns the two-way binding). */
+fun Video(controller: MediaController): dev.pathland.view.core.View =
+    coreView(Components.VIDEO) { node, env ->
+        val style = dev.pathland.view.core.Environment.value(dev.pathland.view.core.Environment.VIDEO_STYLE).get()
+            ?: KotlinNativeVideoStyle
+        val content = style.makeBody(dev.pathland.view.core.VideoStyle.Configuration(controller))
+        if (content !== EmptyContent.INSTANCE) node.children.add(content.render(env))
+        node.mediaControllerRef = controller
+    }.registerChild()
+
+/* ------------------------------------------------------------------------- */
+/* Text controls                                                              */
+/* ------------------------------------------------------------------------- */
+
 fun TextField(placeholder: String, text: WritableSignal<String>): dev.pathland.view.core.View =
-    dev.pathland.view.TextField.make { c -> c.placeholder(placeholder).text(text) }.registerChild()
+    coreView(Components.TEXT_FIELD) { node, _ ->
+        node.property(Properties.PROMPT, Signals.constant(placeholder))
+        node.textBinding = text
+        node.text = Signals.untracked { text.get() }
+        node.textInput = Consumer { text.set(it) }
+    }.registerChild()
 
 fun TextField(placeholder: Signal<String>, text: WritableSignal<String>): dev.pathland.view.core.View =
-    dev.pathland.view.TextField.make { c -> c.placeholder(placeholder).text(text) }.registerChild()
+    coreView(Components.TEXT_FIELD) { node, _ ->
+        node.property(Properties.PROMPT, placeholder)
+        node.textBinding = text
+        node.text = Signals.untracked { text.get() }
+        node.textInput = Consumer { text.set(it) }
+    }.registerChild()
 
 fun TextField(text: WritableSignal<String>, placeholder: String? = null): dev.pathland.view.core.View =
-    dev.pathland.view.TextField.make { c ->
-        if (placeholder != null) c.placeholder(placeholder)
-        c.text(text)
+    coreView(Components.TEXT_FIELD) { node, _ ->
+        if (placeholder != null) node.property(Properties.PROMPT, Signals.constant(placeholder))
+        node.textBinding = text
+        node.text = Signals.untracked { text.get() }
+        node.textInput = Consumer { text.set(it) }
     }.registerChild()
 
 fun TextEditor(text: WritableSignal<String>): dev.pathland.view.core.View =
-    dev.pathland.view.TextEditor.make { c -> c.text(text) }.registerChild()
+    coreView(Components.TEXT_EDITOR) { node, _ ->
+        node.textBinding = text
+        node.text = Signals.untracked { text.get() }
+        node.textInput = Consumer { text.set(it) }
+    }.registerChild()
+
+/* ------------------------------------------------------------------------- */
+/* Value controls                                                             */
+/* ------------------------------------------------------------------------- */
 
 fun Toggle(
     label: String? = null,
     isOn: WritableSignal<Boolean>,
-    style: dev.pathland.view.core.ToggleStyle = dev.pathland.view.core.ToggleStyle.SWITCH,
+    style: ToggleStyle = ToggleStyle.SWITCH,
 ): dev.pathland.view.core.View =
-    dev.pathland.view.Toggle.make { c ->
-        c.style(style).isOn(isOn)
-        if (label != null) c.label(label)
+    coreView(Components.TOGGLE) { node, _ ->
+        node.property(Properties.TOGGLE_STYLE, Signals.constant(style))
+        node.property(Properties.SELECTED, isOn)
+        node.valueInput = Consumer { isOn.set(it > 0f) }
+        if (label != null) {
+            node.textBinding = Signals.constant(label)
+            node.text = label
+        }
     }.registerChild()
 
 fun Toggle(
     label: Signal<String>,
     isOn: WritableSignal<Boolean>,
-    style: dev.pathland.view.core.ToggleStyle = dev.pathland.view.core.ToggleStyle.SWITCH,
+    style: ToggleStyle = ToggleStyle.SWITCH,
 ): dev.pathland.view.core.View =
-    dev.pathland.view.Toggle.make { c -> c.style(style).isOn(isOn).label(label) }.registerChild()
+    coreView(Components.TOGGLE) { node, _ ->
+        node.property(Properties.TOGGLE_STYLE, Signals.constant(style))
+        node.property(Properties.SELECTED, isOn)
+        node.valueInput = Consumer { isOn.set(it > 0f) }
+        node.textBinding = label
+        node.text = Signals.untracked { label.get() }
+    }.registerChild()
 
 fun Slider(
     value: WritableSignal<Float>,
     range: ClosedFloatingPointRange<Float>? = null,
     onEditingChanged: ((Boolean) -> Unit)? = null,
 ): dev.pathland.view.core.View =
-    dev.pathland.view.Slider.make { c ->
-        c.value(value)
-        val changed = onEditingChanged
-        if (range != null) c.`in`(range.start, range.endInclusive)
-        if (changed != null) c.onEditingChanged { changed(it) }
+    coreView(Components.SLIDER) { node, _ ->
+        node.property(Properties.VALUE, value)
+        if (range != null) {
+            node.properties[Properties.MIN_VALUE] = range.start
+            node.properties[Properties.MAX_VALUE] = range.endInclusive
+        }
+        if (onEditingChanged != null) {
+            val current = node.properties[Properties.EVENT_LISTENERS] as? Int ?: 0
+            node.properties[Properties.EVENT_LISTENERS] = current or Commands.Listeners.EDITING
+            node.editingInput = Consumer { onEditingChanged(it) }
+        }
     }.registerChild()
 
 fun Stepper(
@@ -242,35 +346,50 @@ fun Stepper(
     range: ClosedFloatingPointRange<Float>? = null,
     step: Float? = null,
 ): dev.pathland.view.core.View =
-    dev.pathland.view.Stepper.make { c ->
-        c.value(value)
-        if (range != null) c.`in`(range.start, range.endInclusive)
-        if (step != null) c.step(step)
+    coreView(Components.STEPPER) { node, _ ->
+        node.property(Properties.VALUE, value)
+        if (range != null) {
+            node.properties[Properties.MIN_VALUE] = range.start
+            node.properties[Properties.MAX_VALUE] = range.endInclusive
+        }
+        if (step != null) node.properties[Properties.STEP_VALUE] = step
     }.registerChild()
 
 fun DatePicker(
     selection: WritableSignal<Int>,
     mode: DatePickerMode = DatePickerMode.DATE,
 ): dev.pathland.view.core.View =
-    JDatePicker.make { c -> c.mode(mode).selection(selection) }.registerChild()
+    coreView(Components.DATE_PICKER) { node, _ ->
+        node.property(Properties.DATE_PICKER_MODE, Signals.constant(mode))
+        node.days = Signals.untracked { selection.get() }
+        node.dateBinding = selection
+        node.dateInput = DateInput { days, _ -> selection.set(days) }
+    }.registerChild()
 
 fun Picker(
     selection: WritableSignal<Int>,
-    style: dev.pathland.view.PickerStyle = dev.pathland.view.PickerStyle.MENU,
+    style: PickerStyle = PickerStyle.MENU,
     content: () -> Unit,
 ): dev.pathland.view.core.View {
     val options = collectChildren(content)
-    return dev.pathland.view.Picker.make { c -> c.style(style).selection(selection) }
-        .children(*options.toTypedArray())
-        .registerChild()
+    return coreView(Components.PICKER, options) { node, _ ->
+        node.property(Properties.PICKER_STYLE, Signals.constant(style))
+        node.property(Properties.SELECTION, selection)
+        node.valueInput = Consumer { selection.set(Math.round(it)) }
+    }.registerChild()
 }
 
 fun Menu(selection: WritableSignal<Int>? = null, content: () -> Unit): dev.pathland.view.core.View {
     val children = collectChildren(content)
-    return dev.pathland.view.Menu.make { c ->
-        if (selection != null) c.selection(selection)
-    }.children(*children.toTypedArray()).registerChild()
+    return coreView(Components.MENU, children) { node, _ ->
+        if (selection != null) {
+            node.valueInput = Consumer { selection.set(Math.round(it)) }
+        }
+    }.registerChild()
 }
 
 fun ColorPicker(selection: WritableSignal<JColor>): dev.pathland.view.core.View =
-    dev.pathland.view.ColorPicker.make { c -> c.selection(selection) }.registerChild()
+    coreView(Components.COLOR_PICKER) { node, _ ->
+        node.property(Properties.COLOR_VALUE, selection)
+        node.valueInput = Consumer { selection.set(JColor(it.toRawBits(), null)) }
+    }.registerChild()
