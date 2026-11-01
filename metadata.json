@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6B1BKDP8VR1RQEWG2F7WBT2",
+  "strategy": "manual-commit",
+  "branch": "refactor/jvm-engine-core",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "lib/java/pathland-view-core/src/main/java/dev/pathland/view/engine/Emitter.java",
+    "lib/java/pathland-view/src/test/java/dev/pathland/view/EngineTraceTest.java",
+    "lib/rust/crates/pathland-engine-golden/src/main.rs",
+    "lib/rust/crates/pathland-engine-golden/status.md",
+    "lib/rust/crates/pathland-engine/src/engine.rs",
+    "lib/rust/crates/pathland-engine/tests/engine.rs",
+    "spec/ENGINE.md",
+    "spec/engine-traces/structural_add_remove/000-mount.plpl.hex",
+    "spec/engine-traces/structural_add_remove/001-add-child.plpl.hex",
+    "spec/engine-traces/structural_add_remove/002-remove-child.plpl.hex"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 32422,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 16880000,
+    "output_tokens": 8904,
+    "api_call_count": 34
+  }
+}
