@@ -118,7 +118,7 @@ When a tree changes structurally:
 | Change | Required opcodes |
 |--------|------------------|
 | Node added | `CREATE_NODE` + `INSERT_CHILD` + node content |
-| Node removed | `DELETE_NODE` |
+| Node removed | `REMOVE_CHILD` (when parented) + `DELETE_NODE` |
 | Child reordered | `MOVE_CHILD` (same node ids) |
 | Parent changed | remove from old parent + insert under new parent |
 
@@ -162,6 +162,7 @@ Fixtures live under `spec/engine-traces/<scenario>/<step>.plpl.hex`.
 | `signal_text_delta` | `000-mount`, `001-set-text` | Mount + text-signal delta only |
 | `property_signal_delta` | `000-mount`, `001-set-spacing` | Mount + property-signal delta only |
 | `styled_text_mount` | `000-mount` | Property-before-text emission order |
+| `structural_add_remove` | `000-mount`, `001-add-child`, `002-remove-child` | Create/insert append, remove+delete |
 
 ### Generate
 

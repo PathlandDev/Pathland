@@ -323,12 +323,7 @@ public final class Emitter {
                 sink.deleteNode(oldId);
             });
             fresh.id = freshIdFor(fresh);
-            int newId = fresh.id;
-            int component = fresh.component;
-            ops.add(() -> sink.createNode(newId, component));
-            emitSubtreeInto(ops, fresh);
-            int index = slot.nodeIndex;
-            ops.add(() -> sink.insertChild(parentId, newId, index));
+            emitSubtreeInto(ops, fresh, parentId, slot.nodeIndex);
         }
 
         if (!ops.isEmpty()) {
@@ -533,10 +528,11 @@ public final class Emitter {
         }
         destroySlotBindings(slot);
         forgetSlotInputs(slot);
-        if (slot.tracked != null) {
-            bindings.remove(slot.tracked);
-            slot.tracked.destroy();
+        Tracked<PathlandNode> tracked = slot.tracked;
+        if (tracked != null) {
             slot.tracked = null;
+            bindings.remove(tracked);
+            tracked.destroy();
         }
     }
 
@@ -1157,11 +1153,7 @@ public final class Emitter {
                     if (fresh.id == 0) {
                         fresh.id = freshIdFor(fresh);
                     }
-                    int id = fresh.id, component = fresh.component, index = i;
-                    ops.add(() -> sink.createNode(id, component));
-                    emitSubtreeInto(ops, fresh);
-                    int parentId = parent.id;
-                    ops.add(() -> sink.insertChild(parentId, id, index));
+                    emitSubtreeInto(ops, fresh, parent.id, i);
                 }
             }
         }
@@ -1173,19 +1165,19 @@ public final class Emitter {
         // (or was first created before the gate existed): ensure the marker is in
         // the property set so the diff below emits it.
         ensureBindingId(fresh);
-        String oldText = old.text; // last-emitted text (kept current by bindings)
-        String freshText = currentText(fresh);
-        if (!Objects.equals(oldText, freshText)) {
-            int id = fresh.id;
-            String text = freshText;
-            ops.add(() -> sink.setText(id, text));
-        }
         for (Map.Entry<Integer, Object> entry : fresh.properties.entrySet()) {
             if (!propertyValuesEqual(entry.getValue(), old.properties.get(entry.getKey()))) {
                 int id = fresh.id, property = entry.getKey();
                 Object value = entry.getValue();
                 ops.add(() -> emitProperty(id, property, value));
             }
+        }
+        String oldText = old.text; // last-emitted text (kept current by bindings)
+        String freshText = currentText(fresh);
+        if (!Objects.equals(oldText, freshText)) {
+            int id = fresh.id;
+            String text = freshText;
+            ops.add(() -> sink.setText(id, text));
         }
         if (old.days != fresh.days || old.millisOfDay != fresh.millisOfDay) {
             int id = fresh.id, days = fresh.days, millis = fresh.millisOfDay;
@@ -1194,31 +1186,33 @@ public final class Emitter {
         reconcileChildren(fresh, old.children, fresh.children, ops);
     }
 
-    /** Emit a newly created node's content + its whole child subtree (children get fresh ids). */
-    private void emitSubtreeInto(List<Runnable> ops, PathlandNode node) {
+    /** Emit a newly created node and its whole child subtree (children get fresh ids). */
+    private void emitSubtreeInto(
+            List<Runnable> ops, PathlandNode node, int parentId, int index) {
         ensureBindingId(node);
+        int id = node.id;
+        int component = node.component;
+        ops.add(() -> sink.createNode(id, component));
+        ops.add(() -> sink.insertChild(parentId, id, index));
+        for (Map.Entry<Integer, Object> entry : node.properties.entrySet()) {
+            int property = entry.getKey();
+            Object value = entry.getValue();
+            ops.add(() -> emitProperty(id, property, value));
+        }
         String text = currentText(node);
         if (text != null && !text.isEmpty()) {
-            int id = node.id;
             String t = text;
             ops.add(() -> sink.setText(id, t));
         }
         if (node.dateBinding != null) {
-            int id = node.id, days = node.days, millis = node.millisOfDay;
+            int days = node.days;
+            int millis = node.millisOfDay;
             ops.add(() -> sink.setDate(id, days, millis));
         }
-        for (Map.Entry<Integer, Object> entry : node.properties.entrySet()) {
-            int id = node.id, property = entry.getKey();
-            Object value = entry.getValue();
-            ops.add(() -> emitProperty(id, property, value));
-        }
+        int childIndex = 0;
         for (PathlandNode child : node.children) {
             child.id = freshIdFor(child);
-            int id = child.id, component = child.component;
-            ops.add(() -> sink.createNode(id, component));
-            emitSubtreeInto(ops, child);
-            int parentId = node.id;
-            ops.add(() -> sink.insertChild(parentId, id, -1));
+            emitSubtreeInto(ops, child, id, childIndex++);
         }
     }
 

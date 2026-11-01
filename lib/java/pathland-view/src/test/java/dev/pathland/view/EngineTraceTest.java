@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HexFormat;
+import java.util.List;
 
 import static dev.pathland.view.Modifiers.fontSize;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -54,6 +55,23 @@ class EngineTraceTest {
 
         text.set("World");
         assertFrame("signal_text_delta", "001-set-text", sink.frame());
+    }
+
+    @Test
+    void structuralAddRemoveMatchesTheRustEngine() throws IOException {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+        WritableSignal<List<String>> items = Signals.signal(List.of("a"));
+
+        View root = ForEach.of(items, (item, index) -> Text.make(item));
+        emitter.mount(root, Environment.DEFAULT);
+        assertFrame("structural_add_remove", "000-mount", sink.frame());
+
+        items.set(List.of("a", "b"));
+        assertFrame("structural_add_remove", "001-add-child", sink.frame());
+
+        items.set(List.of("a"));
+        assertFrame("structural_add_remove", "002-remove-child", sink.frame());
     }
 
     @Test

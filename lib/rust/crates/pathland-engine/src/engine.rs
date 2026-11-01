@@ -132,6 +132,10 @@ impl Engine {
         for (id, slot) in self.snapshot.iter_mut().enumerate() {
             if let Some(s) = slot {
                 if s.gen != self.gen {
+                    if let Some(parent) = s.parent {
+                        guest.remove_child(parent, id as u32)?;
+                        out += 1;
+                    }
                     guest.delete_node(id as u32)?;
                     out += 1;
                     *slot = None;

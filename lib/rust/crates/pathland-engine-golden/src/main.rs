@@ -170,12 +170,36 @@ fn styled_text_mount() -> Scenario {
     }
 }
 
+fn structural_add_remove() -> Scenario {
+    let mut engine = Engine::new();
+    let mut root = vstack(vec![text_node("a")]);
+    assign_ids(&mut root, &mut 1);
+    let mount = emit_frame(&mut engine, &root);
+
+    root.children.push(text_node("b"));
+    assign_ids(&mut root, &mut 1);
+    let added = emit_frame(&mut engine, &root);
+
+    root.children.pop();
+    let removed = emit_frame(&mut engine, &root);
+
+    Scenario {
+        name: "structural_add_remove",
+        steps: vec![
+            ("000-mount", mount),
+            ("001-add-child", added),
+            ("002-remove-child", removed),
+        ],
+    }
+}
+
 fn scenarios() -> Vec<Scenario> {
     vec![
         mount_text_stack(),
         signal_text_delta(),
         property_signal_delta(),
         styled_text_mount(),
+        structural_add_remove(),
     ]
 }
 

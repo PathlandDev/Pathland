@@ -13,6 +13,8 @@ is a self-contained PLPL batch (opcodes + string table) stored as hex under
 - `property_signal_delta`: mount a bound `SPACING` signal, then change `8 → 12`.
 - `styled_text_mount`: styled text with `FONT_SIZE` and `SET_TEXT`, proving the
   canonical property-before-text order.
+- `structural_add_remove`: append a text child, then remove it
+  (`REMOVE_CHILD` + `DELETE_NODE`).
 - `--emit` regenerates the committed fixtures.
 - `--check` compares the committed fixtures with current engine output.
 - CI runs `--check` (via regeneration + `git diff --exit-code`).

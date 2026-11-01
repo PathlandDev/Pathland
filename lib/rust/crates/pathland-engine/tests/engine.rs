@@ -244,9 +244,11 @@ fn node_removed_emits_delete() {
 
     root.children.pop();
     let ops = emit_and_collect(&mut engine, &root);
-    assert_eq!(ops.len(), 1);
-    assert_eq!(ops[0].command(), tree::DELETE_NODE);
-    assert_eq!(ops[0].a(), 3);
+    assert_eq!(ops.len(), 2);
+    assert_eq!(ops[0].command(), tree::REMOVE_CHILD);
+    assert_eq!(ops[0].b(), 3);
+    assert_eq!(ops[1].command(), tree::DELETE_NODE);
+    assert_eq!(ops[1].a(), 3);
 }
 
 #[test]
