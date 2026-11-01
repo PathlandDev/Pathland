@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HexFormat;
 
+import static dev.pathland.view.Modifiers.fontSize;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 /**
@@ -53,6 +54,17 @@ class EngineTraceTest {
 
         text.set("World");
         assertFrame("signal_text_delta", "001-set-text", sink.frame());
+    }
+
+    @Test
+    void styledTextMountMatchesTheRustEngine() throws IOException {
+        FrameOpcodeSink sink = new FrameOpcodeSink();
+        Emitter emitter = new Emitter(sink);
+
+        View root = Text.make("Hello").modifiers(fontSize(17f));
+        emitter.mount(root, Environment.DEFAULT);
+
+        assertFrame("styled_text_mount", "000-mount", sink.frame());
     }
 
     @Test

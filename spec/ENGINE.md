@@ -161,6 +161,7 @@ Fixtures live under `spec/engine-traces/<scenario>/<step>.plpl.hex`.
 | `mount_text_stack` | `000-mount` | Create/insert order, `SPACING`, `SET_TEXT` |
 | `signal_text_delta` | `000-mount`, `001-set-text` | Mount + text-signal delta only |
 | `property_signal_delta` | `000-mount`, `001-set-spacing` | Mount + property-signal delta only |
+| `styled_text_mount` | `000-mount` | Property-before-text emission order |
 
 ### Generate
 

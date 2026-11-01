@@ -158,11 +158,24 @@ fn property_signal_delta() -> Scenario {
     }
 }
 
+fn styled_text_mount() -> Scenario {
+    let mut engine = Engine::new();
+    let mut root = text_node("Hello");
+    root.properties
+        .insert(pathland_core::property_id::FONT_SIZE, 17.0f32.to_bits());
+    assign_ids(&mut root, &mut 1);
+    Scenario {
+        name: "styled_text_mount",
+        steps: vec![("000-mount", emit_frame(&mut engine, &root))],
+    }
+}
+
 fn scenarios() -> Vec<Scenario> {
     vec![
         mount_text_stack(),
         signal_text_delta(),
         property_signal_delta(),
+        styled_text_mount(),
     ]
 }
 
