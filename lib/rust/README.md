@@ -53,6 +53,16 @@ each language owns its own representation. Regenerate after changing
 cargo run -p pathland-protocol-manifest
 ```
 
+## Engine trace fixtures
+
+`pathland-engine-golden` emits shared self-contained PLPL frames under
+`spec/engine-traces/`; the JVM `EngineTraceTest` compares against them
+byte-for-byte. Regenerate after an emission change:
+
+```bash
+cargo run -p pathland-engine-golden -- --emit
+```
+
 ## Run tests
 
 ```bash

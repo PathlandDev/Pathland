@@ -12,6 +12,10 @@ This document provides **golden byte arrays** for the Pathland opcode protocol (
 The vectors are enforced by the reference Rust encoder (`pathland-core`,
 `crates/pathland-core/src/conformance.rs`).
 
+Engine-level frames (mount order, signal deltas, zero-op recomputes) are defined
+in [ENGINE.md](./ENGINE.md) and enforced by the shared
+[`engine-traces/`](./engine-traces/) fixtures.
+
 Companion catalogs: [PRIMITIVES.md](./PRIMITIVES.md) (views), [MODIFIERS.md](./MODIFIERS.md)
 (modifiers/properties), [EVENTS.md](./EVENTS.md) (events), [TOKENS.md](./TOKENS.md)
 (design tokens / theming). New IDs allocated there must gain vectors before

@@ -42,6 +42,10 @@ renderer modules depend on core only.
   `ValueTypes`) are checked against `spec/protocol.tsv` — including no extra
   public numeric constants and the full `ValueTypes.forProperty` mapping. No
   Java source is generated.
+- **Shared engine traces**: `EngineTraceTest` (in `pathland-view`) runs the
+  mount/text/property scenarios against the Rust-emitted PLPL fixtures under
+  `spec/engine-traces/`, byte-for-byte. The canonical order lives in
+  `spec/ENGINE.md`.
 - **Test coverage**: the Java DSL module's test suite exercises the engine
   end-to-end (emitter/reconcile, signals, state, router, transport, JNA ring),
   plus the server/HTML/desktop consumers.

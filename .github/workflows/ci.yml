@@ -133,6 +133,13 @@ jobs:
           cargo run -p pathland-protocol-manifest
           git -C ../.. diff --exit-code -- spec/protocol.tsv
 
+      # The shared engine traces are emitted by the canonical Rust engine and
+      # compared byte-for-byte by the JVM engine test. Verify the committed
+      # fixtures have not drifted from the current engine behavior.
+      - name: Verify engine trace fixtures are current (no drift)
+        working-directory: lib/rust
+        run: cargo run -p pathland-engine-golden -- --check
+
       - name: Build the C ABI (cdylib, used by the Java JNA ring interop / native hosts)
         working-directory: lib/rust
         run: cargo build -p pathland-core-capi

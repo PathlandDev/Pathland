@@ -479,7 +479,8 @@ contract: `spec/`. Runs on every LTS from Java 17.
 
 ## Verified by
 
-`mvn test` (JDK 17+) — emitter, codec round-trips (incl. `NAVIGATE`), signals,
+`mvn test` (JDK 17+) — emitter, shared engine traces (`EngineTraceTest` against
+`spec/engine-traces/`), codec round-trips (incl. `NAVIGATE`), signals,
 state, reactive bodies (`ReactiveBodyTest`), reactive slots (`ViewOfTest`),
 reactive lists (`ForEachTest`) and the router (`RouterTest`:
 initial route + `ROUTE` property + `NAV_DEPTH` depth tracking + `NAV_CHROME`

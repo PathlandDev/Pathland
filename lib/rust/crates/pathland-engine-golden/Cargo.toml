@@ -1,0 +1,18 @@
+[package]
+name = "pathland-engine-golden"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Emits shared engine trace fixtures from the canonical Rust engine"
+repository = "https://github.com/PathlandDev/Pathland"
+categories = ["development-tools::testing"]
+keywords = ["ui", "protocol", "opcode", "conformance", "golden"]
+
+[[bin]]
+name = "pathland-engine-golden"
+path = "src/main.rs"
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }
+pathland-core-transport = { path = "../pathland-core-transport" }
+pathland-engine = { path = "../pathland-engine" }

@@ -991,8 +991,25 @@ public final class Emitter {
     }
 
     private void emitNode(PathlandNode node) {
-        sink.createNode(node.id, node.component);
+        emitNode(node, null, -1);
+    }
 
+    /**
+     * Emit one node, then attach it to its parent (when any), then its text and
+     * properties, then recurse. This ordering is part of the engine trace
+     * contract: a child is attached immediately after it is created, before its
+     * own content/properties.
+     */
+    private void emitNode(PathlandNode node, Integer parentId, int index) {
+        sink.createNode(node.id, node.component);
+        if (parentId != null) {
+            sink.insertChild(parentId, node.id, index);
+        }
+
+        ensureBindingId(node);
+        for (Map.Entry<Integer, Object> entry : node.properties.entrySet()) {
+            emitProperty(node.id, entry.getKey(), entry.getValue());
+        }
         String text = node.textValue();
         if (text != null && !text.isEmpty()) {
             sink.setText(node.id, text);
@@ -1000,13 +1017,9 @@ public final class Emitter {
         if (node.dateBinding != null) {
             sink.setDate(node.id, node.days, node.millisOfDay);
         }
-        ensureBindingId(node);
-        for (Map.Entry<Integer, Object> entry : node.properties.entrySet()) {
-            emitProperty(node.id, entry.getKey(), entry.getValue());
-        }
+        int childIndex = 0;
         for (PathlandNode child : node.children) {
-            emitNode(child);
-            sink.insertChild(node.id, child.id, -1);
+            emitNode(child, node.id, childIndex++);
         }
     }
 

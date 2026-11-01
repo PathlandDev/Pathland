@@ -26,8 +26,9 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
   `pathland-state-redis`, `pathland-demo-views`, the Quarkus/Spring demos, and
   the TypeScript DOM renderer (`lib/typescript`).
 - `spec/` — the protocol contract: `OPCODE.md` (primary), `PRIMITIVES.md`,
-  `MODIFIERS.md`, `EVENTS.md`, `CONFORMANCE.md` (golden vectors), `DSL.md`
-  (authoring surface), and `protocol.tsv` (the target-neutral ID manifest).
+  `MODIFIERS.md`, `EVENTS.md`, `CONFORMANCE.md` (golden vectors), `ENGINE.md`
+  (retained-tree behavior), `DSL.md` (authoring surface), `protocol.tsv` (the
+  target-neutral ID manifest), and `engine-traces/` (shared frame fixtures).
 
 Implementation status per project lives in each crate/module's `status.md`.
 
@@ -49,6 +50,9 @@ cd lib/rust && ./check-wasm.sh
 
 # Regenerate the target-neutral protocol manifest after changing Rust constants
 cd lib/rust && cargo run -p pathland-protocol-manifest
+
+# Regenerate the shared engine trace fixtures after an emission change
+cd lib/rust && cargo run -p pathland-engine-golden -- --emit
 
 # C ABI (cdylib) used by Java JNA / native hosts
 cd lib/rust && cargo build -p pathland-core-capi

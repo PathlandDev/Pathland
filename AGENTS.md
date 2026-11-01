@@ -524,6 +524,11 @@ must match a Java constant, no extra public numeric constants may exist, and
 `ValueTypes.forProperty` must match `property_value_type`. CI regenerates the
 manifest from Rust and fails on drift.
 
+Engine behavior beyond individual opcodes is specified in `spec/ENGINE.md` and
+enforced by shared self-contained frame traces under `spec/engine-traces/`.
+`pathland-engine-golden` emits them from the Rust engine and the JVM
+`EngineTraceTest` compares its encoded frames byte-for-byte.
+
 ### Categories
 
 | Category | Value | Direction | Description |
@@ -628,8 +633,10 @@ and the canonical catalog / color-scheme contract in [spec/TOKENS.md](./spec/TOK
    updated `spec/protocol.tsv`
 4. Update the hand-written JVM protocol constants (the Java manifest test fails
    with the exact missing/stale row otherwise)
-5. Verify backward compatibility; update `pathland-core`/renderers + tests
-6. Update the affected project(s)' `status.md`
+5. If emission behavior changed, run
+   `cargo run -p pathland-engine-golden -- --emit` and commit the trace fixtures
+6. Verify backward compatibility; update `pathland-core`/renderers + tests
+7. Update the affected project(s)' `status.md`
 
 ### Changing the Wire Format
 - Bump the wire `version` field in `spec/OPCODE.md` and `pathland-core`'s header (currently 1). Pre-release format changes are acceptable while version stays 1.
@@ -675,7 +682,7 @@ implementing project.
 
 ## Quick Start
 
-1. Read this file and `spec/OPCODE.md`
+1. Read this file, `spec/OPCODE.md`, and `spec/ENGINE.md`
 2. Run Rust tests: `cd lib/rust && cargo test` (runs all crates)
 3. Build/test the Java libraries: `cd lib/java && mvn install`
 4. Make small changes, verify they work
