@@ -59,6 +59,8 @@
         <module>pathland-quarkus-deployment</module>
         <module>pathland-quarkus-java</module>
         <module>pathland-quarkus-java-deployment</module>
+        <module>pathland-quarkus-kotlin</module>
+        <module>pathland-quarkus-kotlin-deployment</module>
         <module>pathland-quarkus-starter</module>
         <module>pathland-demo-views</module>
         <module>pathland-gtk-demo</module>
