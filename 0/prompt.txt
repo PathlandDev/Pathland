@@ -1,1 +1,1 @@
-Lets start working on a DSL for kotlin. spec folder contains the needed details. And lib/java/pathland-view and lib/java/pathland-view-processor contains java dsl. We want to lean agaist swiftui ergonomics.
+Great..  Move this to a new branch, commit phase 1 and start on phase 2
