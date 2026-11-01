@@ -47,18 +47,26 @@ final class PathlandAssets {
     }
 
     private static volatile String bundleName;
+    private static volatile ClassLoader bundleLoader;
 
     private PathlandAssets() {}
 
     /** The current bundle filename (hashed on the demo classpath, literal otherwise). */
     static String bundleName() {
+        // A framework host may load this core in a parent extension classloader while
+        // the application's static resources live in a child runtime classloader (the
+        // Quarkus extension path). Resolve through the thread context classloader first,
+        // and keep the cache tied to that loader so a fallback from one loader cannot
+        // poison a request served by another.
+        ClassLoader loader = contextLoader();
         String name = bundleName;
-        if (name != null) {
+        if (name != null && bundleLoader == loader) {
             return name;
         }
         synchronized (PathlandAssets.class) {
-            if (bundleName == null) {
-                bundleName = resolve(PathlandAssets::openClasspath);
+            if (bundleName == null || bundleLoader != loader) {
+                bundleName = resolve(path -> openClasspath(loader, path));
+                bundleLoader = loader;
             }
             return bundleName;
         }
@@ -68,7 +76,13 @@ final class PathlandAssets {
     static void resetForTests() {
         synchronized (PathlandAssets.class) {
             bundleName = null;
+            bundleLoader = null;
         }
+    }
+
+    private static ClassLoader contextLoader() {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        return loader != null ? loader : PathlandAssets.class.getClassLoader();
     }
 
     /** Deterministic resolution against an explicit resource lookup (tests). */
@@ -89,8 +103,19 @@ final class PathlandAssets {
         return FALLBACK;
     }
 
-    private static InputStream openClasspath(String path) {
-        return PathlandAssets.class.getClassLoader().getResourceAsStream(path);
+    private static InputStream openClasspath(ClassLoader preferred, String path) {
+        InputStream in = preferred == null ? null : preferred.getResourceAsStream(path);
+        if (in != null) {
+            return in;
+        }
+        ClassLoader own = PathlandAssets.class.getClassLoader();
+        if (own != null && own != preferred) {
+            in = own.getResourceAsStream(path);
+            if (in != null) {
+                return in;
+            }
+        }
+        return ClassLoader.getSystemResourceAsStream(path);
     }
 
     private static String readFirstLine(InputStream in) throws IOException {

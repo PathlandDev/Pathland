@@ -15,8 +15,9 @@ authored with `pathland-view-kotlin` and hosted by `pathland-quarkus-kotlin`.
   annotations, `jvmTarget=17`.
 - Maven Enforcer bans `pathland-view` and `pathland-demo-views`: the demo is
   Kotlin-DSL-only.
-- `KotlinDemoSmokeTest` (`@QuarkusTest`) asserts the CDI bean is discovered and
-  SSR renders the Kotlin tree.
+- `KotlinDemoSmokeTest` (`@QuarkusTest`) asserts the CDI bean is discovered, SSR
+  renders the Kotlin tree, and the SSR document references the content-hashed DOM
+  bundle (a GET on that URL returns 200).
 - The DOM renderer bundle + service worker are copied by
   `lib/typescript/scripts/copy-to-demos.mjs`.
 - Run with `scripts/run-quarkus-kotlin-demo.sh` → `http://localhost:8080`.
