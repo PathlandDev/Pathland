@@ -35,5 +35,5 @@ build_qt_dylibs() {
 # newer JDK to run; they are not required to launch the other demos).
 java_install() {
   (cd "$ROOT/lib/java" && mvn -q install -DskipTests \
-    -pl '!pathland-quarkus-demo,!pathland-spring-boot-demo')
+    -pl '!pathland-quarkus-demo,!pathland-quarkus-kotlin-demo,!pathland-spring-boot-demo')
 }

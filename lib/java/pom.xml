@@ -66,6 +66,7 @@
         <module>pathland-gtk-demo</module>
         <module>pathland-qt-demo</module>
         <module>pathland-quarkus-demo</module>
+        <module>pathland-quarkus-kotlin-demo</module>
         <module>pathland-spring-boot-demo</module>
     </modules>
 
