@@ -4,7 +4,7 @@
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
-replacing the two duplicated `app.js` files in the demos. Protocol contract:
+replacing the duplicated `app.js` files in the demos. Protocol contract:
 `spec/`.
 
 ## Implemented
@@ -13,7 +13,7 @@ replacing the two duplicated `app.js` files in the demos. Protocol contract:
 
 - **Single source, unified**: `src/` is the one client; `npm run build` emits
   `dist/pathland-dom-renderer.js` (IIFE, minified via esbuild), and
-  `npm run copy-to-demos` copies it into both the Quarkus and Spring Boot demos'
+  `npm run copy-to-demos` copies it into the Quarkus (Java + Kotlin) and Spring Boot demos'
   static resource dirs under a **content-hashed name** (`dom-renderer-<sha256>.js`),
   pruning stale `dom-renderer-*.js` and the pre-hash literal `dom-renderer.js` (the old
   duplicated `app.js` is long since removed). A one-line pointer manifest

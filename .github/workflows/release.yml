@@ -228,15 +228,19 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: >-
           mvn -B -P release deploy
-          -pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'
+          -pl '!pathland-demo-views,!pathland-gtk-demo,!pathland-quarkus-demo,!pathland-quarkus-kotlin-demo,!pathland-spring-boot-demo'
 
       - name: Collect the published main jars
         run: |
           set -euo pipefail
           mkdir -p dist/jars
-          for m in pathland-view-core pathland-view pathland-view-processor pathland-render-html pathland-state-redis \
-                   pathland-server-core pathland-observability pathland-test-kit \
-                   pathland-spring-boot-starter pathland-quarkus-starter; do
+          for m in pathland-view-core pathland-view pathland-view-processor pathland-view-kotlin \
+                   pathland-render-html pathland-state-redis pathland-server-core \
+                   pathland-observability pathland-test-kit pathland-spring-boot-starter \
+                   pathland-quarkus pathland-quarkus-deployment \
+                   pathland-quarkus-java pathland-quarkus-java-deployment \
+                   pathland-quarkus-kotlin pathland-quarkus-kotlin-deployment \
+                   pathland-quarkus-starter; do
             cp lib/java/"$m"/target/"$m"-*.jar dist/jars/ 2>/dev/null || true
           done
           rm -f dist/jars/*-sources.jar dist/jars/*-javadoc.jar

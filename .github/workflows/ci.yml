@@ -223,7 +223,7 @@ jobs:
         working-directory: lib/typescript
         run: |
           npm run copy-to-demos
-          git diff --exit-code -- lib/java/pathland-quarkus-demo/src/main/resources lib/java/pathland-spring-boot-demo/src/main/resources
+          git diff --exit-code -- lib/java/pathland-quarkus-demo/src/main/resources lib/java/pathland-quarkus-kotlin-demo/src/main/resources lib/java/pathland-spring-boot-demo/src/main/resources
 
       # Real-browser guard for the per-window-id service worker: the browser-variance
       # bugs (WebKit reports an empty clientId on navigations; relative cache keys are
