@@ -1,14 +1,14 @@
 package dev.pathland.server.proxy;
 
 import dev.pathland.server.PathlandTelemetry;
-import dev.pathland.view.Categories;
-import dev.pathland.view.Commands;
-import dev.pathland.view.ProxyConfig;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.transport.EnvironmentData;
-import dev.pathland.view.transport.Event;
-import dev.pathland.view.transport.FrameCodec;
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.ProxyConfig;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.EnvironmentData;
+import dev.pathland.view.core.transport.Event;
+import dev.pathland.view.core.transport.FrameCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

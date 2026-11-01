@@ -1,11 +1,13 @@
 package dev.pathland.demo.counter;
 
+import dev.pathland.view.core.signal.Signals;
+
 import dev.pathland.view.Button;
 import dev.pathland.view.HStack;
 import dev.pathland.view.Text;
-import dev.pathland.view.View;
-import static dev.pathland.view.signal.Signals.*;
-import dev.pathland.view.state.State;
+import dev.pathland.view.core.View;
+import static dev.pathland.view.core.signal.Signals.*;
+import dev.pathland.view.core.state.State;
 import dev.pathland.view.Padding;
 import static dev.pathland.view.Modifiers.*;
 

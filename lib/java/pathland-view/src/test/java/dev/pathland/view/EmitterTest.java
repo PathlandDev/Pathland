@@ -1,18 +1,34 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.emit.FrameOpcodeSink;
-import dev.pathland.view.emit.InputDispatcher;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.emit.RenderResult;
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.WritableSignal;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.transport.Event;
-import dev.pathland.view.transport.EnvironmentData;
-import dev.pathland.view.transport.FrameCodec;
+import dev.pathland.view.core.AdaptiveTheme;
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.DatePickerMode;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.Length;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.Theme;
+import dev.pathland.view.core.ThemeData;
+import dev.pathland.view.core.ThemeMode;
+import dev.pathland.view.core.ToggleStyle;
+import dev.pathland.view.core.protocol.ValueTypes;
+import dev.pathland.view.core.View;
+
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.FrameOpcodeSink;
+import dev.pathland.view.engine.InputDispatcher;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.engine.RenderResult;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.WritableSignal;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.transport.Event;
+import dev.pathland.view.core.transport.EnvironmentData;
+import dev.pathland.view.core.transport.FrameCodec;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;

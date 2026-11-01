@@ -1,7 +1,7 @@
 package dev.pathland.demo.music;
 
-import dev.pathland.view.signal.WritableSignal;
-import dev.pathland.view.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
+import dev.pathland.view.core.signal.Signals;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

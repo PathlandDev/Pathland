@@ -1,5 +1,7 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.View;
+
 import java.util.Objects;
 
 /**

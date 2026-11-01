@@ -1,27 +1,30 @@
 package dev.pathland.server;
 
+import dev.pathland.view.core.router.Route;
+import dev.pathland.view.core.router.Router;
+import dev.pathland.view.core.state.State;
+
 import dev.pathland.render.html.HtmlRenderer;
 import dev.pathland.server.proxy.ProxyHost;
 import dev.pathland.server.proxy.ProxySession;
-import dev.pathland.view.Environment;
-import dev.pathland.view.EnvironmentBinding;
-import dev.pathland.view.Platform;
-import dev.pathland.view.ProxyConfig;
-import dev.pathland.view.ThemeData;
-import dev.pathland.view.ThemeMode;
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.emit.FrameOpcodeSink;
-import dev.pathland.view.emit.InputDispatcher;
-import dev.pathland.view.emit.RenderResult;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
-import dev.pathland.view.state.PersistentState;
-import dev.pathland.view.state.StateStore;
-import dev.pathland.view.transport.EnvironmentData;
-import dev.pathland.view.transport.Event;
-import dev.pathland.view.transport.FrameCodec;
-import static dev.pathland.view.Modifiers.*;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.EnvironmentBinding;
+import dev.pathland.view.core.Platform;
+import dev.pathland.view.core.ProxyConfig;
+import dev.pathland.view.core.ThemeData;
+import dev.pathland.view.core.ThemeMode;
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.FrameOpcodeSink;
+import dev.pathland.view.engine.InputDispatcher;
+import dev.pathland.view.engine.RenderResult;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
+import dev.pathland.view.core.state.PersistentState;
+import dev.pathland.view.core.state.StateStore;
+import dev.pathland.view.core.transport.EnvironmentData;
+import dev.pathland.view.core.transport.Event;
+import dev.pathland.view.core.transport.FrameCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,7 +160,7 @@ public final class PathlandSession {
         // active path is injected as a scoped environment value; any root works (with or
         // without navigation).
         RenderResult result = emitter.mount(
-                app.newRoot().modifiers(environmentBinding(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
+                app.newRoot().modifiers(EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
                 new Environment(state));
         this.inputDispatcher = new InputDispatcher(result, activePath);
         this.rootId = result.rootId();

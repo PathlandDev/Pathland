@@ -40,7 +40,7 @@ A DSL in a new language is **conformant** when it:
 
 > **Implementation status** is tracked per implementing project (a `status.md`
 > in each protocol crate/library), **not** in this specification. The Java DSL
-> (`com.pathland.view`) and the Rust DSL (`pathland-view`) are the two reference
+> (`dev.pathland.view`) and the Rust DSL (`pathland-view`) are the two reference
 > realizations; the "Java DSL" / "Rust DSL" columns below record the **agreed
 > reference shapes**, not implementation status. This document defines the
 > contract only.
@@ -245,7 +245,7 @@ canonical and always sufficient.
   `Signal<T>` (same rule as the config setters above). A two-way control value is
   never a shortcut — it stays a `WritableSignal` config member.
 - The Java realization factors both forms through the **single `Modifiers`
-  facade**: one `import static com.pathland.view.Modifiers.*;` brings in every
+  facade**: one `import static dev.pathland.view.Modifiers.*;` brings in every
   lowercase modifier/style function, and each delegates to the same construction
   path (spec §5.6). There is exactly one construction path; the former per-view
   construction `.of(...)` factories and the former per-type `with(...)` overloads
@@ -266,7 +266,7 @@ Per-language adaptation summary:
 | Language | Case | Composition mechanism | Example |
 |----------|------|-----------------------|---------|
 | SwiftUI | `camelCase` | trailing closures + result builder | `VStack(alignment: .center, spacing: 8) { Text("x").padding(16) }` |
-| Java (`com.pathland.view`) | `camelCase` | `make(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.make(v -> v.spacing(8)).children(Text.make(t -> t.text("x")).modifiers(padding(p -> p.uniform(16))))` |
+| Java (`dev.pathland.view`) | `camelCase` | `make(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.make(v -> v.spacing(8)).children(Text.make(t -> t.text("x")).modifiers(padding(p -> p.uniform(16))))` |
 | Rust (`pathland-view`) | `snake_case` | assoc fn + `ViewExt` trait + macros | `vstack![text("x").modifiers(Padding(16.0))]` |
 
 ---
@@ -278,7 +278,7 @@ reactive core every DSL exposes.
 
 ### 3.1 Signal surface
 
-| Canonical | Java DSL (`com.pathland.view.signal`) | Semantics |
+| Canonical | Java DSL (`dev.pathland.view.core.signal`) | Semantics |
 |-----------|--------------------------------------|-----------|
 | `signal(initial)` | `Signals.signal(T)` | a writable signal |
 | `signal(name, initial)` | `Signals.signal(String, T)` | named (names surface in dependency errors) |
@@ -780,8 +780,8 @@ contract keeps the renderer stateless:
   use (or not) of a native container is purely a presentation decision.
 
 **Java realization**: `Router` / `RouteTable` live in
-`com.pathland.view.router`; `NavigationIntent` there too; `View.of` in
-`com.pathland.view`. The `NavigationContainer` is an ordinary component whose
+`dev.pathland.view.core.router`; `NavigationIntent` there too; `View.of` in
+`dev.pathland.view`. The `NavigationContainer` is an ordinary component whose
 tracked render reads the route signal, so a route change re-renders only its
 destination slot ([§3.4](#34-structural-reactivity-reactive-bodies--slots)).
 
@@ -962,7 +962,7 @@ every conformant DSL: modifiers are never hard-bound to a view type.
   constructed by a lowercase static function named for the modifier ([§5.0](#50-authoring-a-modifier))
   and single-value modifiers pass the value directly.
 
-| | Canonical | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view`) |
+| | Canonical | Java DSL (`dev.pathland.view`) | Rust DSL (`pathland-view`) |
 |-|-----------|-------------------------------|----------------------------|
 | authoring | `struct Card: ViewModifier { func body(content: Content) -> some View }` | `@FunctionalInterface ViewModifier { View body(View content) }` | `trait ViewModifier { fn apply(&mut Node) }` |
 | applying | `content.modifier(Card())` | `content.modifiers(card(c -> …))` / `content.modifiers(A, B)` | `content.modifiers(Card)` |
@@ -1235,7 +1235,7 @@ A **theme** is a batch of token overrides. Every override defines **exactly one
 value**; combine a light and a dark `Theme` via `AdaptiveTheme` for adaptive
 theming.
 
-| Canonical (SwiftUI-shaped) | Java DSL (`com.pathland.view`) | Rust DSL (`pathland-view` / `pathland-engine`) | Emits |
+| Canonical (SwiftUI-shaped) | Java DSL (`dev.pathland.view`) | Rust DSL (`pathland-view` / `pathland-engine`) | Emits |
 |----------------------------|--------------------------------|-----------------------------------------------|-------|
 | `Theme()` — one-scheme override batch | `new Theme().color(...)...` | `Theme::new()` | one `PARAMETER::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
 | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `COLOR`-typed override (sRGB `0xAARRGGBB`) |
@@ -1300,7 +1300,7 @@ emission path. Rust exposes `Engine::reset_theme` / `set_color_scheme` (and
 
 ## 8. Java DSL convergence (adopted)
 
-The Java DSL (`com.pathland.view`) has the complete surface. The convergence
+The Java DSL (`dev.pathland.view`) has the complete surface. The convergence
 below has been **adopted**: construction through the three operations
 (`with` / `modifiers` / `children`), and modifiers as `ViewModifier` values with
 **no `Mod` suffix** and **no per-modifier sugar on `View`**. The canonical
@@ -1570,7 +1570,10 @@ Rules:
 - **No keys yet.** The emitter reconciles by position + type; a keyed `ForEach`
   is a future protocol/emitter feature, not a syntax difference.
 - **Gaps**: Rust reactive-body/`ForEach` parity is Phase 2; the TypeScript plan
-  currently defers structural reactivity; Kotlin/Swift are not implemented yet.
+  currently defers structural reactivity; Swift is not implemented yet. Kotlin is
+  implemented by `lib/java/pathland-view-kotlin` (a facade over the Java library;
+  `Text("…")`, `VStack(spacing = 8) { … }`, `.padding(16)`), with its surface and
+  gaps tracked in that module's `status.md`.
 
 ### 9.4 Conformance recipe
 
@@ -1590,9 +1593,9 @@ reference implementations:
    (the specs are the source of truth, never the reference code).
 
 **Reference implementations to read**: Java — `lib/java/pathland-view`
-(`com.pathland.view`, `com.pathland.view.signal`, `com.pathland.view.state`,
-`com.pathland.view.emit`); Rust — `lib/rust/crates/pathland-view` +
-`pathland-engine` + `pathland-core::signal`.
+(the DSL: `dev.pathland.view`) + `lib/java/pathland-view-core`
+(`dev.pathland.view.core*` + `dev.pathland.view.engine`); Rust —
+`lib/rust/crates/pathland-view` + `pathland-engine` + `pathland-core::signal`.
 
 ---
 

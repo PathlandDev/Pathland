@@ -24,7 +24,7 @@
     <dependencies>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view</artifactId>
+            <artifactId>pathland-view-core</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

@@ -1,5 +1,12 @@
 package dev.pathland.processor;
 
+import dev.pathland.view.core.ButtonStyle;
+import dev.pathland.view.core.LabelStyle;
+import dev.pathland.view.core.state.State;
+import dev.pathland.view.core.Style;
+import dev.pathland.view.core.VideoStyle;
+import dev.pathland.view.core.View;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -21,8 +28,8 @@ import java.util.Set;
  * authoring surfaces that take a value config:
  *
  * <ul>
- *   <li>a custom {@code dev.pathland.view.View}, and</li>
- *   <li>a custom style ({@code dev.pathland.view.Style} — {@code ButtonStyle},
+ *   <li>a custom {@code dev.pathland.view.core.View}, and</li>
+ *   <li>a custom style ({@code dev.pathland.view.core.Style} — {@code ButtonStyle},
  *       {@code LabelStyle}, {@code AudioStyle}, {@code VideoStyle} implementations).</li>
  * </ul>
  *
@@ -61,12 +68,12 @@ public final class ViewAuthoringProcessor extends AbstractProcessor {
         }
         Elements elements = processingEnv.getElementUtils();
         Types types = processingEnv.getTypeUtils();
-        TypeElement viewType = elements.getTypeElement("dev.pathland.view.View");
+        TypeElement viewType = elements.getTypeElement("dev.pathland.view.core.View");
         if (viewType == null) {
             return false; // pathland-view not on the processing classpath
         }
         TypeMirror viewErasure = types.erasure(viewType.asType());
-        TypeElement styleType = elements.getTypeElement("dev.pathland.view.Style");
+        TypeElement styleType = elements.getTypeElement("dev.pathland.view.core.Style");
         TypeMirror styleErasure = styleType == null ? null : types.erasure(styleType.asType());
 
         for (Element root : roundEnv.getRootElements()) {

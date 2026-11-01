@@ -1,8 +1,18 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.Signals;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Configurators;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.IconName;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.engine.ReactiveValues;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
 
 import java.util.function.Consumer;
 
@@ -96,7 +106,7 @@ public final class Icon implements View, Configurable<Icon.Config> {
     public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.ICON);
         if (config.name != null) {
-            node.properties.put(Properties.ICON_NAME, dev.pathland.view.emit.ReactiveValues.initial(Properties.ICON_NAME, config.name));
+            node.properties.put(Properties.ICON_NAME, dev.pathland.view.engine.ReactiveValues.initial(Properties.ICON_NAME, config.name));
             node.propertyBindings.put(Properties.ICON_NAME, config.name);
         }
         if (config.label != null && !config.label.isBlank()) {

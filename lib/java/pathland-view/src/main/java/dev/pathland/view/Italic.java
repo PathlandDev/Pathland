@@ -1,5 +1,11 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.FontStyle;
+import dev.pathland.view.core.Modified;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewModifier;
+
 /**
  * italicizes the text ({@code FONT_STYLE=Italic}).
  */

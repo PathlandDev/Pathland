@@ -1,16 +1,18 @@
 package dev.pathland.demo.counter;
 
-import dev.pathland.view.Categories;
-import dev.pathland.view.Commands;
-import dev.pathland.view.Environment;
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.emit.FrameOpcodeSink;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.emit.RenderResult;
-import dev.pathland.view.state.InMemoryStateStore;
-import dev.pathland.view.state.PersistentState;
-import dev.pathland.view.state.StateStore;
+import dev.pathland.view.core.state.State;
+
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.FrameOpcodeSink;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.engine.RenderResult;
+import dev.pathland.view.core.state.InMemoryStateStore;
+import dev.pathland.view.core.state.PersistentState;
+import dev.pathland.view.core.state.StateStore;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;

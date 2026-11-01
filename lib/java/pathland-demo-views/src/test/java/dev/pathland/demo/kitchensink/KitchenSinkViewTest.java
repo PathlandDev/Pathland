@@ -1,18 +1,23 @@
 package dev.pathland.demo.kitchensink;
 
+import dev.pathland.view.core.MediaController;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.state.State;
+import dev.pathland.view.core.protocol.ValueTypes;
+
 import dev.pathland.demo.DemoTheme;
-import dev.pathland.view.Categories;
-import dev.pathland.view.Commands;
-import dev.pathland.view.Components;
-import dev.pathland.view.Environment;
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.emit.FrameOpcodeSink;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.emit.RenderResult;
-import dev.pathland.view.state.InMemoryStateStore;
-import dev.pathland.view.state.PersistentState;
-import dev.pathland.view.state.StateStore;
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.FrameOpcodeSink;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.engine.RenderResult;
+import dev.pathland.view.core.state.InMemoryStateStore;
+import dev.pathland.view.core.state.PersistentState;
+import dev.pathland.view.core.state.StateStore;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -80,7 +85,7 @@ class KitchenSinkViewTest {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER
                     && op.command() == Commands.Parameter.SET_PROPERTY
-                    && (op.b() & 0xFFFF) == dev.pathland.view.Properties.MEDIA_CONTROLLER_ID
+                    && (op.b() & 0xFFFF) == dev.pathland.view.core.protocol.Properties.MEDIA_CONTROLLER_ID
                     && op.c() == controllerId) {
                 return true;
             }
@@ -150,7 +155,7 @@ class KitchenSinkViewTest {
     private static boolean anyDesignTokenRef(ProtocolFrame frame, String path) {
         for (Opcode op : frame.opcodes()) {
             if (op.category() == Categories.PARAMETER && op.command() == Commands.Parameter.SET_PROPERTY
-                    && ((op.b() >>> 16) & 0xFF) == dev.pathland.view.ValueTypes.DESIGN_TOKEN
+                    && ((op.b() >>> 16) & 0xFF) == dev.pathland.view.core.protocol.ValueTypes.DESIGN_TOKEN
                     && path.equals(frame.stringAt(op.c()))) {
                 return true;
             }

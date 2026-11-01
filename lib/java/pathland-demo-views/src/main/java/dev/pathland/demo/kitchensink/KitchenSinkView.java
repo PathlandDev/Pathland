@@ -1,5 +1,13 @@
 package dev.pathland.demo.kitchensink;
 
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.FontWeight;
+import dev.pathland.view.core.HorizontalAlignment;
+import dev.pathland.view.core.MediaController;
+import dev.pathland.view.core.Roles;
+import dev.pathland.view.core.state.State;
+import dev.pathland.view.core.View;
+
 import dev.pathland.view.*;
 import static dev.pathland.view.Modifiers.*;
 

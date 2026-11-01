@@ -1,7 +1,13 @@
 package dev.pathland.demo.music;
 
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.MediaController;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
 import dev.pathland.view.*;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.signal.WritableSignal;
 import static dev.pathland.view.Modifiers.*;
 
 import java.util.function.Consumer;

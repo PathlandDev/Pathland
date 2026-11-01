@@ -1,7 +1,7 @@
 package dev.pathland.state.redis;
 
-import dev.pathland.view.state.StateStore;
-import dev.pathland.view.state.StateStoreProvider;
+import dev.pathland.view.core.state.StateStore;
+import dev.pathland.view.core.state.StateStoreProvider;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;

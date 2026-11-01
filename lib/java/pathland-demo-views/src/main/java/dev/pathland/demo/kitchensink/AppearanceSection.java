@@ -1,14 +1,14 @@
 package dev.pathland.demo.kitchensink;
 
 import dev.pathland.view.Frame;
-import dev.pathland.view.Alignment;
-import dev.pathland.view.Color;
+import dev.pathland.view.core.Alignment;
+import dev.pathland.view.core.Color;
 import dev.pathland.view.HStack;
 import dev.pathland.view.Rectangle;
-import dev.pathland.view.ShapeKind;
+import dev.pathland.view.core.ShapeKind;
 import dev.pathland.view.Text;
 import dev.pathland.view.VStack;
-import dev.pathland.view.View;
+import dev.pathland.view.core.View;
 import dev.pathland.view.Background;
 import dev.pathland.view.Border;
 import dev.pathland.view.ClipShape;

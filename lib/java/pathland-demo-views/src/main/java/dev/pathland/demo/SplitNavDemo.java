@@ -1,14 +1,23 @@
 package dev.pathland.demo;
 
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.MediaController;
+import dev.pathland.view.core.router.NavigationContainer;
+import dev.pathland.view.core.Platform;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.View;
+
 import dev.pathland.demo.home.HomeView;
 import dev.pathland.demo.kitchensink.KitchenSinkView;
 import dev.pathland.demo.settings.SettingsView;
 import dev.pathland.demo.sidebar.Sidebar;
 import dev.pathland.view.*;
-import dev.pathland.view.router.Navigation;
-import dev.pathland.view.router.Router;
+import dev.pathland.view.core.router.Navigation;
+import dev.pathland.view.core.router.Router;
 import static dev.pathland.view.Modifiers.*;
-import static dev.pathland.view.signal.Signals.computed;
+import static dev.pathland.view.core.signal.Signals.computed;
 
 /**
  * A master-detail (split) navigation demo (spec PRIMITIVES.md: `NavigationSplitView` →
@@ -36,7 +45,7 @@ public final class SplitNavDemo implements View {
     /**
      * The destinations are constructed **once**, not inline in `body()`.
      * `body()` re-runs whenever the active path changes (it is read to bind the
-     * router), and a destination that owns a {@link dev.pathland.view.MediaController}
+     * router), and a destination that owns a {@link dev.pathland.view.core.MediaController}
      * must keep the same controller instance across those re-renders — otherwise a
      * new controller means a new `MEDIA_CONTROLLER` node id and the renderer
      * restarts playback (spec/MEDIA.md).

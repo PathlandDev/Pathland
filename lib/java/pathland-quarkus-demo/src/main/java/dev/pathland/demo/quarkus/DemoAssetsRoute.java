@@ -1,5 +1,7 @@
 package dev.pathland.demo.quarkus;
 
+import dev.pathland.view.core.Length;
+
 import dev.pathland.demo.assets.DemoAssets;
 import io.quarkus.runtime.StartupEvent;
 import io.vertx.ext.web.Router;

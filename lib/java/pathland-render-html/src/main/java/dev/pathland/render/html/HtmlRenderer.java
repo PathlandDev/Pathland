@@ -1,7 +1,7 @@
 package dev.pathland.render.html;
 
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.transport.FrameCodec;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.FrameCodec;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;

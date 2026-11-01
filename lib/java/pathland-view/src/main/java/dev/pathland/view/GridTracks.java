@@ -1,8 +1,8 @@
 package dev.pathland.view;
 
-import dev.pathland.view.signal.ConstantSignal;
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.Signals;
+import dev.pathland.view.core.signal.ConstantSignal;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
 
 import java.util.List;
 

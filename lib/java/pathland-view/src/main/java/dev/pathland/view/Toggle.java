@@ -1,9 +1,18 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.engine.ReactiveValues;
+import dev.pathland.view.core.ToggleStyle;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 
 import java.util.function.Consumer;
 
@@ -81,13 +90,13 @@ public final class Toggle implements View, Configurable<Toggle.Config> {
         node.property(Properties.TOGGLE_STYLE,
                 config.style != null ? config.style : Signals.constant(ToggleStyle.SWITCH));
         if (config.binding != null) {
-            node.properties.put(Properties.SELECTED, dev.pathland.view.emit.ReactiveValues.initial(Properties.SELECTED, config.binding));
+            node.properties.put(Properties.SELECTED, dev.pathland.view.engine.ReactiveValues.initial(Properties.SELECTED, config.binding));
             node.propertyBindings.put(Properties.SELECTED, config.binding);
             node.valueInput = v -> config.binding.set(v > 0f);
         }
         if (config.label != null) {
             node.textBinding = config.label;
-            node.text = dev.pathland.view.signal.Signals.untracked(config.label::get);
+            node.text = dev.pathland.view.core.signal.Signals.untracked(config.label::get);
         }
         return node;
     }

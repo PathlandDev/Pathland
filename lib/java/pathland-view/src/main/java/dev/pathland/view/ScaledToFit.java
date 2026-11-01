@@ -1,5 +1,11 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.ContentMode;
+import dev.pathland.view.core.Modified;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewModifier;
+
 /**
  * fits the content within its bounds ({@code CONTENT_MODE=Fit}).
  */

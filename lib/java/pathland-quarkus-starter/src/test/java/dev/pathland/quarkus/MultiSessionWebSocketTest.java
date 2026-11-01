@@ -1,5 +1,6 @@
 package dev.pathland.quarkus;
 
+
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.test.MultiSessionProbe;

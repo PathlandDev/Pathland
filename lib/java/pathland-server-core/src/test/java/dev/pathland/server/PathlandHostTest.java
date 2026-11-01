@@ -1,8 +1,8 @@
 package dev.pathland.server;
 
 import dev.pathland.view.Text;
-import dev.pathland.view.state.InMemoryStateStore;
-import dev.pathland.view.state.StateStore;
+import dev.pathland.view.core.state.InMemoryStateStore;
+import dev.pathland.view.core.state.StateStore;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

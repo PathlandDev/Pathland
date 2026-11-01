@@ -1,10 +1,17 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Configurators;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.LabelStyle;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
 import static dev.pathland.view.Modifiers.accessibilityLabel;
 import static dev.pathland.view.Modifiers.lineLimit;
 
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.Signals;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
 
 import java.util.function.Consumer;
 

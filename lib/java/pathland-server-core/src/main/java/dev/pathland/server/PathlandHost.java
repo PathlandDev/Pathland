@@ -1,6 +1,6 @@
 package dev.pathland.server;
 
-import dev.pathland.view.state.StateStore;
+import dev.pathland.view.core.state.StateStore;
 
 import java.util.ArrayList;
 import java.util.Comparator;

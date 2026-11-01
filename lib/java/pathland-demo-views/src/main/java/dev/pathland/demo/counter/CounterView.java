@@ -1,11 +1,13 @@
 package dev.pathland.demo.counter;
 
+import dev.pathland.view.core.state.State;
+
 import dev.pathland.view.AccessibilityRole;
-import dev.pathland.view.Color;
-import dev.pathland.view.Roles;
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.Roles;
 import dev.pathland.view.Text;
 import dev.pathland.view.VStack;
-import dev.pathland.view.View;
+import dev.pathland.view.core.View;
 import dev.pathland.view.ForegroundStyle;
 import dev.pathland.view.Padding;
 import static dev.pathland.view.Modifiers.*;

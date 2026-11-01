@@ -1,7 +1,7 @@
 package dev.pathland.demo.gtk;
 
-import dev.pathland.view.Commands;
-import dev.pathland.view.transport.Event;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.transport.Event;
 import com.sun.jna.Pointer;
 
 import java.nio.charset.StandardCharsets;

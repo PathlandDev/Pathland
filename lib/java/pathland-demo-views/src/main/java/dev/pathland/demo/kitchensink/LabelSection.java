@@ -3,14 +3,14 @@ package dev.pathland.demo.kitchensink;
 import dev.pathland.view.Button;
 import dev.pathland.view.DefaultLabelStyle;
 import dev.pathland.view.Icon;
-import dev.pathland.view.IconName;
+import dev.pathland.view.core.IconName;
 import dev.pathland.view.IconOnlyLabelStyle;
 import dev.pathland.view.Label;
 import dev.pathland.view.Padding;
 import dev.pathland.view.TitleOnlyLabelStyle;
 import dev.pathland.view.VStack;
-import dev.pathland.view.View;
-import dev.pathland.view.state.State;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.state.State;
 import static dev.pathland.view.Modifiers.*;
 
 

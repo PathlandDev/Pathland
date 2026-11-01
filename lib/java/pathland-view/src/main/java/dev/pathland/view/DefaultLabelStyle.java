@@ -1,5 +1,9 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.LabelStyle;
+import dev.pathland.view.core.VerticalAlignment;
+import dev.pathland.view.core.View;
+
 import java.util.ArrayList;
 import java.util.List;
 

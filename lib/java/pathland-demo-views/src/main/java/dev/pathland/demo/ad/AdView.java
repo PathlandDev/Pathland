@@ -1,10 +1,16 @@
 package dev.pathland.demo.ad;
 
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.FontWeight;
+import dev.pathland.view.core.HorizontalAlignment;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.View;
+
 import dev.pathland.view.*;
-import dev.pathland.view.state.State;
+import dev.pathland.view.core.state.State;
 import static dev.pathland.view.Modifiers.*;
 
-import static dev.pathland.view.signal.Signals.computed;
+import static dev.pathland.view.core.signal.Signals.computed;
 
 /**
  * A small self-contained demo app — a title and a button that reacts to clicks —

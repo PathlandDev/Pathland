@@ -1,6 +1,12 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.FontDesign;
+import dev.pathland.view.core.FontWeight;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.TextStyle;
+
+import dev.pathland.view.engine.PathlandNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

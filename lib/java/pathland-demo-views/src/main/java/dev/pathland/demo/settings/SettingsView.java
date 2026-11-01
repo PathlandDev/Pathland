@@ -1,18 +1,21 @@
 package dev.pathland.demo.settings;
 
+import dev.pathland.view.core.router.Router;
+import dev.pathland.view.core.signal.Signals;
+
 import dev.pathland.view.AccessibilityRole;
 import dev.pathland.view.FontSize;
-import dev.pathland.view.FontWeight;
+import dev.pathland.view.core.FontWeight;
 import dev.pathland.view.Padding;
-import dev.pathland.view.Roles;
+import dev.pathland.view.core.Roles;
 import dev.pathland.view.Slider;
 import dev.pathland.view.Text;
 import dev.pathland.view.Toggle;
-import dev.pathland.view.ToggleStyle;
+import dev.pathland.view.core.ToggleStyle;
 import dev.pathland.view.VStack;
-import dev.pathland.view.View;
+import dev.pathland.view.core.View;
 import static dev.pathland.view.Modifiers.*;
-import static dev.pathland.view.signal.Signals.*;
+import static dev.pathland.view.core.signal.Signals.*;
 
 /**
  * The Settings content area of the {@code SplitNavDemo}: a titled pane with a switch and a

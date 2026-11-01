@@ -1,7 +1,12 @@
 package dev.pathland.view;
 
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.Signals;
+import dev.pathland.view.core.Modified;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewModifier;
+
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
 
 import java.util.function.Consumer;
 

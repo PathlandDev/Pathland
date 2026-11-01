@@ -1,21 +1,23 @@
 package dev.pathland.demo.music;
 
-import dev.pathland.view.Categories;
-import dev.pathland.view.Commands;
-import dev.pathland.view.Components;
-import dev.pathland.view.Environment;
-import dev.pathland.view.Properties;
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.emit.FrameOpcodeSink;
-import dev.pathland.view.emit.InputDispatcher;
-import dev.pathland.view.emit.MediaInput;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.emit.RenderResult;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.state.InMemoryStateStore;
-import dev.pathland.view.state.PersistentState;
-import dev.pathland.view.state.StateStore;
+import dev.pathland.view.core.transport.Event;
+
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.FrameOpcodeSink;
+import dev.pathland.view.engine.InputDispatcher;
+import dev.pathland.view.engine.MediaInput;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.engine.RenderResult;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.state.InMemoryStateStore;
+import dev.pathland.view.core.state.PersistentState;
+import dev.pathland.view.core.state.StateStore;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -206,7 +208,7 @@ class MusicPlayerViewTest {
         var entry = result.mediaInputs().entrySet().iterator().next();
         int audioId = entry.getKey();
         MediaInput media = entry.getValue();
-        dispatcher.dispatch(dev.pathland.view.transport.Event.mediaTimeUpdated(audioId, 12.5f));
+        dispatcher.dispatch(dev.pathland.view.core.transport.Event.mediaTimeUpdated(audioId, 12.5f));
         assertEquals(Optional.of(12.5f), store.load("player.position:session-1", Float.class),
                 "time updates the position state");
         media.onVolumeChanged(0.5f);
@@ -257,7 +259,7 @@ class MusicPlayerViewTest {
         // echoed back as a MEDIA_POSITION seek command (spec/EVENTS.md Media) —
         // that per-second echo is what caused the seek jitter. The seek command
         // is written only by a user drag (seekRequest), never by a report.
-        dispatcher.dispatch(dev.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
+        dispatcher.dispatch(dev.pathland.view.core.transport.Event.mediaTimeUpdated(audioId, 30f));
         ProtocolFrame delta = sink.frame();
         assertFalse(anyProperty(delta, Properties.MEDIA_POSITION),
                 "a position report must not emit a MEDIA_POSITION seek");
@@ -309,7 +311,7 @@ class MusicPlayerViewTest {
         // (0..100 percent against the track duration) re-emits. If it doesn't, the
         // bug is server-side (the PercentSeek property binding never re-fires); if
         // it does but the browser's bar doesn't move, the bug is client-side.
-        dispatcher.dispatch(dev.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
+        dispatcher.dispatch(dev.pathland.view.core.transport.Event.mediaTimeUpdated(audioId, 30f));
         ProtocolFrame delta = sink.frame();
         assertEquals(30f / MusicPlayerView.TRACKS.get(0).duration() * 100f,
                 propertyFloat(delta, seekId, Properties.VALUE), 0.05f,
@@ -324,7 +326,7 @@ class MusicPlayerViewTest {
         InputDispatcher dispatcher = new InputDispatcher(m.result, Signals.signal("/"));
         assertFalse(m.result.mediaInputs().isEmpty(), "a controller media sink is registered");
         int audioId = m.result.mediaInputs().entrySet().iterator().next().getKey();
-        dispatcher.dispatch(dev.pathland.view.transport.Event.mediaTimeUpdated(audioId, 30f));
+        dispatcher.dispatch(dev.pathland.view.core.transport.Event.mediaTimeUpdated(audioId, 30f));
         ProtocolFrame delta = m.sink.frame();
         // Any VALUE re-emit proves the seek bar effect fired.
         boolean anyValue = false;

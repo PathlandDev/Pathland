@@ -1,5 +1,14 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.FontDesign;
+import dev.pathland.view.core.FontFamily;
+import dev.pathland.view.core.FontWeight;
+import dev.pathland.view.core.Modified;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.TextStyle;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewModifier;
+
 import java.util.ArrayList;
 import java.util.List;
 

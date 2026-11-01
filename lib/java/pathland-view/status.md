@@ -1,11 +1,16 @@
-# pathland-view (Java) — implementation status
+# pathland-view (Java DSL) — implementation status
 
-**Last updated:** October 29, 2026
+**Last updated:** November 1, 2026
 
-The hand-written, framework-agnostic Java 17+ DSL (`dev.pathland.view`):
-declarative views, Angular-style signals, fine-grained emitter, `PLPL` wire
-codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
-`spec/`. Runs on every LTS from Java 17.
+The hand-written, framework-agnostic Java 17+ authoring DSL
+(`dev.pathland.view`). The engine/runtime now lives in `pathland-view-core`
+(`dev.pathland.view.core*` + `dev.pathland.view.engine`); this module owns only
+the concrete Java views, controls, styles, and the `Modifiers` facade. Protocol
+contract: `spec/`. Runs on every LTS from Java 17.
+
+> Engine/runtime items below (signals, state, emitter, transport, router, JNA) are
+> implemented in `pathland-view-core` and are listed here because this module's
+> tests exercise them end-to-end through the Java DSL.
 
 ## Implemented
 
@@ -328,7 +333,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   `LABEL`/`PROMPT`/`FONT_FAMILY`/`IMAGE_SOURCE` → `STRING`; enum-valued
   properties ride as `F32` holding the numeric enum code. `FontWeight` uses the
   spec's numeric 100–900 scale.
-- **Signals** (`dev.pathland.view.signal`): `signal`/`computed`/`effect`/
+- **Signals** (`dev.pathland.view.core.signal`): `signal`/`computed`/`effect`/
   `untracked` — glitch-free synchronous flush, equality suppression,
   circular-dependency detection. The `Scheduler`'s global effect queue is
   **thread-safe** (all entry points synchronized) so a request/SSR-thread flush can
@@ -336,7 +341,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   An effect that **throws during a flush is not permanently unsubscribed**: its
   pre-run producer edges are restored, so it retries on the next dependency change
   (a transient error can't silently kill a node's binding).
-- **Emitter** (`emit`): mounts once, stable ids, node-level binding effects
+- **Emitter** (`dev.pathland.view.engine`): mounts once, stable ids, node-level binding effects
   (a signal change re-emits only that node), `FrameOpcodeSink` /
   `RingOpcodeSink`. For the ring path, a bound `text`/`value`/`date` control
   carries `BINDING_ID` on **every** emission path — mount, a matched reconcile,
@@ -354,7 +359,7 @@ codec, lazy JNA ring interop, and cross-platform `State`. Protocol contract:
   identical recompute emits **zero** opcodes, nested components reconcile
   independently. `RenderResult` routing maps are live unmodifiable views (a
   re-render updates tap/text/value/date/media/fit routing).
-- **Router** (`dev.pathland.view.router`, spec DSL.md §4.5): `Route` (absolute
+- **Router** (`dev.pathland.view.core.router`, spec DSL.md §4.5): `Route` (absolute
   path, `pathOnly()` strips query/fragment), `RouteTable` (literal + `:param`
   patterns, guards → `replace()` redirect, `fallback` 404), `Router`
   (`Signal<Route>` + back-stack; `navigate`/`push`/`pop`/`replace`/`back`,

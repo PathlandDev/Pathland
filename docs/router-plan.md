@@ -45,8 +45,8 @@ properties).
 ## Java conditional API
 
 ```java
-import static com.pathland.view.Conditional.when;
-import static com.pathland.view.Conditional.Case;
+import static dev.pathland.view.Conditional.when;
+import static dev.pathland.view.Conditional.Case;
 
 when(showLogin, LoginView.of(), HomeView.of());                 // if / else
 when(mode, Case.of(HOME, HomeView.of()),
@@ -150,7 +150,7 @@ transition, and native back affordances → `NAVIGATE`. See `spec/DSL.md §4.5`.
 
 ## Phase 3 — Java router ✅ complete
 
-- `com.pathland.view.router`: `Route` (`pathOnly()` strips query/fragment),
+- `dev.pathland.view.core.router`: `Route` (`pathOnly()` strips query/fragment),
   `RouteTable` (literal + `:param` matching, guards → `replace()` redirect,
   `fallback` 404), `Router` (`Signal<Route>` + back-stack;
   `navigate/push/pop/replace/back`, `handlePlatformNavigation` strips the URL to

@@ -1,5 +1,10 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.Modified;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewModifier;
+
 /**
  * clips the view to its bounds ({@code CLIPS_TO_BOUNDS}).
  */

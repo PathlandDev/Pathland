@@ -127,8 +127,8 @@ public final class MyHomeView implements View {
 ```
 
 That's it — SSR at any path, live updates over `/ws`, per-session state.
-*(Imports omitted: `com.pathland.server.PathlandApp`, `com.pathland.view.*`,
-and `import static com.pathland.view.Modifiers.*;` for the modifier function.)*
+*(Imports omitted: `dev.pathland.server.PathlandApp`, `dev.pathland.view.*`,
+and `import static dev.pathland.view.Modifiers.*;` for the modifier function.)*
 
 ## What it removes
 

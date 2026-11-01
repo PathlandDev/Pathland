@@ -1,11 +1,25 @@
 package dev.pathland.demo.sidebar;
 
+import dev.pathland.view.core.Alignment;
+import dev.pathland.view.core.ButtonStyle;
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.EnvironmentBinding;
+import dev.pathland.view.core.FontWeight;
+import dev.pathland.view.core.HorizontalAlignment;
+import dev.pathland.view.core.IconName;
+import dev.pathland.view.core.router.NavigationContainer;
+import dev.pathland.view.core.Roles;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.View;
+
 import dev.pathland.view.*;
-import dev.pathland.view.router.Navigation;
-import dev.pathland.view.router.Router;
-import dev.pathland.view.signal.Signal;
+import dev.pathland.view.core.router.Navigation;
+import dev.pathland.view.core.router.Router;
+import dev.pathland.view.core.signal.Signal;
 import static dev.pathland.view.Modifiers.*;
-import static dev.pathland.view.signal.Signals.*;
+import static dev.pathland.view.core.signal.Signals.*;
 
 public class Sidebar implements View {
     // Environment.value returns a lazy signal when the key isn't bound yet — this

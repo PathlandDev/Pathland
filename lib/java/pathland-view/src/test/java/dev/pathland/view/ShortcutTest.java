@@ -1,8 +1,12 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.Roles;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

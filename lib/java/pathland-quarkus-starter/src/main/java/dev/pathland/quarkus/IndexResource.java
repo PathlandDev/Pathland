@@ -1,5 +1,7 @@
 package dev.pathland.quarkus;
 
+import dev.pathland.view.core.Environment;
+
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandHost.MountMatch;
 import jakarta.inject.Inject;

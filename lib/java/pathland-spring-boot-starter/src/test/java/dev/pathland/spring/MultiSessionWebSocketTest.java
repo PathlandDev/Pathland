@@ -1,12 +1,13 @@
 package dev.pathland.spring;
 
+
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.test.MultiSessionProbe;
 import dev.pathland.view.Button;
 import dev.pathland.view.Text;
-import dev.pathland.view.View;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
