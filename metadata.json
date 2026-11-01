@@ -1,0 +1,27 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6C0MAEX8PVQ4NRX6JMEK5PY",
+  "strategy": "manual-commit",
+  "branch": "refactor/quarkus-dsl-extensions",
+  "checkpoints_count": 16,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    "scripts/lib.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1150756,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 6335872,
+    "output_tokens": 6196,
+    "api_call_count": 27
+  }
+}
