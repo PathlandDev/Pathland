@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6BSS323FK0E0K00R1HJYZ1R",
+  "strategy": "manual-commit",
+  "branch": "refactor/quarkus-dsl-extensions",
+  "checkpoints_count": 16,
+  "files_touched": [
+    "lib/java/pathland-quarkus-demo/pom.xml",
+    "lib/java/pathland-quarkus-deployment/pom.xml",
+    "lib/java/pathland-quarkus-deployment/src/main/java/dev/pathland/quarkus/deployment/PathlandProcessor.java",
+    "lib/java/pathland-quarkus-java-deployment/pom.xml",
+    "lib/java/pathland-quarkus-java-deployment/src/main/java/dev/pathland/quarkus/java/deployment/PathlandJavaProcessor.java",
+    "lib/java/pathland-quarkus-java/pom.xml",
+    "lib/java/pathland-quarkus-java/src/main/resources/META-INF/quarkus-extension.yaml",
+    "lib/java/pathland-quarkus-java/status.md",
+    "lib/java/pathland-quarkus-starter/pom.xml",
+    "lib/java/pathland-quarkus-starter/status.md",
+    "lib/java/pathland-quarkus/pom.xml",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/quarkus-extension.yaml",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-view-core/src/main/java/dev/pathland/view/core/state/PersistentState.java",
+    "lib/java/pathland-view-core/status.md",
+    "lib/java/pom.xml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 79608,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 10797824,
+    "output_tokens": 13499,
+    "api_call_count": 60
+  }
+}
