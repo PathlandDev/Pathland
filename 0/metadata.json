@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6B1XA94XE7460HRJJMSZW5V",
+  "session_id": "ses_e74aadd7effe9xwsiDiV5kGFY6",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-01T07:59:24.146424Z",
+  "branch": "refactor/jvm-engine-core",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-view-kotlin/pom.xml",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Button.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Containers.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/CoreView.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Navigation.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Scope.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Views.kt",
+    "lib/java/pathland-view-kotlin/src/test/kotlin/dev/pathland/view/dsl/DslTest.kt",
+    "lib/java/pathland-view-kotlin/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "184b408b4a01",
+  "checkpoint_transcript_start": 471,
+  "transcript_lines_at_start": 471,
+  "compact_transcript_start": 471,
+  "token_usage": {
+    "input_tokens": 1339017,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 29203328,
+    "output_tokens": 23587,
+    "api_call_count": 54
+  },
+  "session_metrics": {
+    "turn_count": 21
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-01T07:59:23.566106Z",
+    "agent_lines": 446,
+    "agent_removed": 231,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 446,
+    "total_lines_changed": 677,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
