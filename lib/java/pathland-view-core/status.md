@@ -37,6 +37,11 @@ renderer modules depend on core only.
   `Environment*`, `Platform`, `Theme*`, `MediaController`, `WindowMetadata`,
   `ProxyConfig`, `Color`, `Length`, shared enums, style protocols, and modifier
   wrappers.
+- **Protocol manifest validation** (`ProtocolManifestTest`): the hand-written
+  protocol constants (`Components`, `Properties`, `Commands`, `Categories`,
+  `ValueTypes`) are checked against `spec/protocol.tsv` — including no extra
+  public numeric constants and the full `ValueTypes.forProperty` mapping. No
+  Java source is generated.
 - **Test coverage**: the Java DSL module's test suite exercises the engine
   end-to-end (emitter/reconcile, signals, state, router, transport, JNA ring),
   plus the server/HTML/desktop consumers.

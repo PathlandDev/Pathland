@@ -27,7 +27,7 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
   the TypeScript DOM renderer (`lib/typescript`).
 - `spec/` — the protocol contract: `OPCODE.md` (primary), `PRIMITIVES.md`,
   `MODIFIERS.md`, `EVENTS.md`, `CONFORMANCE.md` (golden vectors), `DSL.md`
-  (authoring surface).
+  (authoring surface), and `protocol.tsv` (the target-neutral ID manifest).
 
 Implementation status per project lives in each crate/module's `status.md`.
 
@@ -46,6 +46,9 @@ cd lib/rust && cargo test
 
 # no_std / wasm32 direction guard (requires: rustup target add wasm32-unknown-unknown)
 cd lib/rust && ./check-wasm.sh
+
+# Regenerate the target-neutral protocol manifest after changing Rust constants
+cd lib/rust && cargo run -p pathland-protocol-manifest
 
 # C ABI (cdylib) used by Java JNA / native hosts
 cd lib/rust && cargo build -p pathland-core-capi

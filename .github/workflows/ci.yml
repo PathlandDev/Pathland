@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, 'docs/**', 'feature/**', 'fix/**', 'spec/**']
+    branches: [main, 'docs/**', 'feature/**', 'fix/**', 'refactor/**', 'spec/**']
   pull_request:
 
 jobs:
@@ -122,6 +122,16 @@ jobs:
             lib/typescript/src/constants.ts \
             lib/typescript/src/generated \
             lib/typescript/test/fixtures/ssr
+
+      # The neutral protocol manifest is the machine-readable mirror consumed by
+      # non-Rust bindings. Regenerate it from the canonical Rust constants and fail
+      # if the committed `spec/protocol.tsv` drifted. The Java job validates its
+      # hand-written constants against this file.
+      - name: Verify the protocol manifest is current (no drift)
+        working-directory: lib/rust
+        run: |
+          cargo run -p pathland-protocol-manifest
+          git -C ../.. diff --exit-code -- spec/protocol.tsv
 
       - name: Build the C ABI (cdylib, used by the Java JNA ring interop / native hosts)
         working-directory: lib/rust

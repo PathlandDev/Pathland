@@ -3,7 +3,8 @@
 **Wire protocol version:** 1
 **Status:** Draft
 **Format:** Fixed-size (16-byte) opcode engine
-**Last Updated:** October 1, 2026
+**Machine-readable IDs:** `spec/protocol.tsv`
+**Last Updated:** November 1, 2026
 
 ---
 
@@ -14,6 +15,11 @@ The Pathland Opcode Protocol is the **fixed-size instruction engine** at the hea
 **The engine does not compute layout and does not emit rects.** Native renderers lay out their own native elements from the constraint properties the engine passes through. This is the Pathland principle: *always render through that platform's native elements.*
 
 This specification supersedes the historical variable-length binary instruction format (which has been removed from the repository).
+
+The concrete numeric IDs are also emitted as the target-neutral `protocol.tsv`
+manifest from the canonical Rust constants; language bindings validate their
+hand-written constants against it. The prose tables remain authoritative for
+semantics, the manifest for exact wire numbers.
 
 ### Goals
 

@@ -67,6 +67,8 @@ public final class Properties {
     public static final int BORDER_WIDTH = 0x1003;
     public static final int BORDER_COLOR = 0x1004;
     public static final int BORDER_RADIUS = 0x1005;
+    /** Reserved padding-style slot (no current Java modifier emits it). */
+    public static final int PADDING_STYLE = 0x1006;
     public static final int FONT_SIZE = 0x1007;
     public static final int FONT_WEIGHT = 0x1008;
     public static final int FONT_FAMILY = 0x1009;

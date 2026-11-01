@@ -13,6 +13,7 @@ members = [
     "crates/pathland-render-html",
     "crates/pathland-html-golden",
     "crates/pathland-ts-codegen",
+    "crates/pathland-protocol-manifest",
     "crates/pathland-render-qt",
     "crates/pathland-render-qt-demo",
 ]

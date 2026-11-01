@@ -42,6 +42,17 @@ The reusable Java libraries live in `../java/` (Maven reactor, `dev.pathland`):
 - [`spec/OPCODE.md`](../../spec/OPCODE.md) — the 16-byte opcode protocol
 - [`spec/CONFORMANCE.md`](../../spec/CONFORMANCE.md) — golden byte vectors
 
+## Protocol manifest
+
+`pathland-protocol-manifest` emits `spec/protocol.tsv`, the target-neutral
+machine-readable ID manifest consumed by non-Rust bindings. It emits data only;
+each language owns its own representation. Regenerate after changing
+`pathland-core` constants:
+
+```bash
+cargo run -p pathland-protocol-manifest
+```
+
 ## Run tests
 
 ```bash

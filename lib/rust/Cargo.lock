@@ -639,6 +639,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "pathland-protocol-manifest"
+version = "0.1.5"
+dependencies = [
+ "pathland-core",
+]
+
+[[package]]
 name = "pathland-render-core"
 version = "0.1.5"
 dependencies = [

@@ -510,6 +510,20 @@ Every opcode is exactly 16 bytes:
 
 See `spec/OPCODE.md` for the full format, ring buffer, arena, and frame lifecycle.
 
+### Machine-readable protocol manifest
+
+`spec/protocol.tsv` is the target-neutral ID manifest emitted from
+`pathland_core::constants` by `pathland-protocol-manifest` (`cargo run -p
+pathland-protocol-manifest`). It contains only `kind`, `group`, `name`, and
+`value`; each language binding keeps its own representation and validates or
+reads the manifest. There is no Rust→Java source generation.
+
+The JVM mirror is hand-written and checked by
+`pathland-view-core/src/test/java/.../ProtocolManifestTest`: every manifest row
+must match a Java constant, no extra public numeric constants may exist, and
+`ValueTypes.forProperty` must match `property_value_type`. CI regenerates the
+manifest from Rust and fails on drift.
+
 ### Categories
 
 | Category | Value | Direction | Description |
@@ -610,8 +624,12 @@ and the canonical catalog / color-scheme contract in [spec/TOKENS.md](./spec/TOK
 ### Modifying Protocol
 1. Update `spec/OPCODE.md` first (and `spec/CONFORMANCE.md` vectors)
 2. Update `constants.rs` and `pathland-core` encoding/emitters
-3. Verify backward compatibility; update `pathland-core`/`pathland-render-gtk` + tests
-4. Update the affected project(s)' `status.md`
+3. Run `cd lib/rust && cargo run -p pathland-protocol-manifest` and commit the
+   updated `spec/protocol.tsv`
+4. Update the hand-written JVM protocol constants (the Java manifest test fails
+   with the exact missing/stale row otherwise)
+5. Verify backward compatibility; update `pathland-core`/renderers + tests
+6. Update the affected project(s)' `status.md`
 
 ### Changing the Wire Format
 - Bump the wire `version` field in `spec/OPCODE.md` and `pathland-core`'s header (currently 1). Pre-release format changes are acceptable while version stays 1.

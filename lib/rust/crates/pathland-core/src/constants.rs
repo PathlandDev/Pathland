@@ -687,6 +687,7 @@ pub fn value_type_for(prop: u16) -> u8 {
         | property_id::PROMPT
         | property_id::FONT_FAMILY
         | property_id::IMAGE_SOURCE
+        | property_id::GRID_TRACKS
         | property_id::MEDIA_SOURCE
         | property_id::ICON_NAME
         | property_id::ROUTE => value_type::STRING,
@@ -694,8 +695,10 @@ pub fn value_type_for(prop: u16) -> u8 {
         | property_id::SELECTION
         | property_id::ACTION_ID
         | property_id::BINDING_ID
+        | property_id::PLAYBACK_STATE
         | property_id::MEDIA_CONTROLLER_ID
         | property_id::NAV_DEPTH => value_type::U32,
+        property_id::FIT_QUERY => value_type::LIST,
         _ => value_type::F32,
     }
 }
