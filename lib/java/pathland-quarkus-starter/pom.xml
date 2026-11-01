@@ -69,11 +69,14 @@
             <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Applications author their root view through the Java DSL. -->
+        <!-- The runtime integration is DSL-neutral. The Java tests still author their
+             fixture view through the Java DSL; production consumers bring their own
+             authoring DSL (pathland-view or pathland-view-kotlin). -->
         <dependency>
             <groupId>dev.pathland</groupId>
             <artifactId>pathland-view</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>dev.pathland</groupId>
