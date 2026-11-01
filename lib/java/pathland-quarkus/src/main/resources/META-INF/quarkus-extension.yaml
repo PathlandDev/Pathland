@@ -1,0 +1,11 @@
+name: "Pathland"
+description: "Server-side Pathland UI: SSR plus live 16-byte opcode deltas over WebSocket."
+metadata:
+  keywords:
+    - "pathland"
+    - "ui"
+    - "ssr"
+    - "websocket"
+  categories:
+    - "web"
+  status: "experimental"

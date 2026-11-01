@@ -55,6 +55,10 @@
         <module>pathland-observability</module>
         <module>pathland-test-kit</module>
         <module>pathland-spring-boot-starter</module>
+        <module>pathland-quarkus</module>
+        <module>pathland-quarkus-deployment</module>
+        <module>pathland-quarkus-java</module>
+        <module>pathland-quarkus-java-deployment</module>
         <module>pathland-quarkus-starter</module>
         <module>pathland-demo-views</module>
         <module>pathland-gtk-demo</module>
@@ -136,6 +140,16 @@
                     <groupId>io.quarkus</groupId>
                     <artifactId>quarkus-maven-plugin</artifactId>
                     <version>${quarkus.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-extension-maven-plugin</artifactId>
+                    <version>${quarkus.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.5.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
