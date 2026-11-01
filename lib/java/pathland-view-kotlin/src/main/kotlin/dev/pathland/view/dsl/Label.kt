@@ -52,8 +52,10 @@ fun Label(title: String, icon: String? = null): View =
 fun Label(title: Signal<String>, icon: String? = null): View =
     LabelView(title, icon?.let { Signals.constant(it) }, null).registerChild()
 
-fun Label(title: String, icon: View): View =
-    LabelView(Signals.constant(title), null, icon).registerChild()
+fun Label(title: String, icon: View): View {
+    ViewScopes.unregister(icon)
+    return LabelView(Signals.constant(title), null, icon).registerChild()
+}
 
 /** A label whose icon subtree is built in an isolated block (no outer child leak). */
 fun Label(title: String, icon: () -> Unit): View {

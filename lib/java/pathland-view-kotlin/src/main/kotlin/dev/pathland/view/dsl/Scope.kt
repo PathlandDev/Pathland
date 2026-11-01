@@ -32,6 +32,10 @@ internal object ViewScopes {
             scope.add(view)
         }
     }
+
+    fun unregister(view: View) {
+        current()?.removeAll { it === view }
+    }
 }
 
 /**

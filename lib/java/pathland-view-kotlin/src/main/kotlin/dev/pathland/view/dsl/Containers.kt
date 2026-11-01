@@ -249,7 +249,12 @@ private fun gridTracks(tracks: List<GridItem>): String = tracks.joinToString(","
 data class FitCandidate(val view: View, val minWidth: Float = 0f)
 
 /** A candidate with an explicit minimum width. */
-fun Fit(view: View, minWidth: Float = 0f): FitCandidate = FitCandidate(view, minWidth)
+fun Fit(view: View, minWidth: Float = 0f): FitCandidate {
+    // A candidate view constructed inside the enclosing builder block has already
+    // auto-registered there; it belongs to the fit slot instead.
+    ViewScopes.unregister(view)
+    return FitCandidate(view, minWidth)
+}
 
 /** A candidate whose subtree is built in an isolated block (no outer child leak). */
 fun Fit(minWidth: Float = 0f, content: () -> Unit): FitCandidate {

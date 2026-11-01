@@ -121,6 +121,39 @@ class DslTest {
     }
 
     @Test
+    fun labelEmitsIconThenTitle() {
+        val (_, frame) = mount(Label("Home", "home"))
+        val created = frame.opcodes()
+            .filter { it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE }
+            .map { it.b() and 0xffff }
+        assertEquals(listOf(0x11, 0x02, 0x01), created, "label = HStack(image, text)")
+    }
+
+    @Test
+    fun compositesEmitTheSameBytesAsJava() {
+        val kotlinRoot = VStack {
+            Label("Home", "home")
+            ViewThatFits(Fit(Text("a")), Fit(Text("b"), 640f))
+            ProxyView("https://origin.example", "/music", "svc")
+        }
+        val javaRoot = dev.pathland.view.VStack.children(
+            dev.pathland.view.Label.make { c -> c.title("Home").icon("home") },
+            dev.pathland.view.SizeThatFits.make(
+                dev.pathland.view.Fit.of(dev.pathland.view.Text.make("a")),
+                dev.pathland.view.Fit.of(dev.pathland.view.Text.make("b"), 640f),
+            ),
+            dev.pathland.view.ProxyView.make { c ->
+                c.endpoint("https://origin.example").route("/music").credential("svc")
+            },
+        )
+
+        val (_, kotlinFrame) = mount(kotlinRoot)
+        val (_, javaFrame) = mount(javaRoot)
+        assertEquals(javaFrame.opcodes(), kotlinFrame.opcodes())
+        assertArrayEquals(javaFrame.strings(), kotlinFrame.strings())
+    }
+
+    @Test
     fun signalTextIsAFineGrainedDelta() {
         val label = signal("one")
         val sink = FrameOpcodeSink()
