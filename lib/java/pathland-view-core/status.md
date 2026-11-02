@@ -19,7 +19,10 @@ renderer modules depend on core only.
   caching/retry, circular-dependency detection, and a thread-safe global
   `Scheduler`.
 - **State** (`dev.pathland.view.core.state`): `State`/`PersistentState`,
-  untyped `StateStore`, in-memory store and provider.
+  untyped `StateStore`, in-memory store and provider. Generated
+  `<View>_StateBinder` classes are loaded from the view's own classloader, so
+  application views keep working when a host loads the core in a parent
+  extension classloader (Quarkus).
 - **Transport** (`dev.pathland.view.core.transport`): `ProtocolFrame`,
   `FrameCodec`, `Event`, `EnvironmentData`, `OpcodeSink`, `FrameOpcodeSink`.
 - **Router** (`dev.pathland.view.core.router`): `Route`, `RouteTable`, `Router`,

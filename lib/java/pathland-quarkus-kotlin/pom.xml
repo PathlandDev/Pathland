@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.pathland</groupId>
+        <artifactId>pathland-parent</artifactId>
+        <version>0.1.5</version>
+    </parent>
+
+    <artifactId>pathland-quarkus-kotlin</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Pathland Quarkus - Kotlin DSL</name>
+    <description>
+        Kotlin authoring DSL extension for Pathland on Quarkus. Depends on the DSL-neutral
+        pathland-quarkus extension and adds pathland-view-kotlin + Quarkus Kotlin support.
+        It deliberately has no dependency on the Java DSL.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-quarkus</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-view-kotlin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-kotlin</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-extension-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>extension-descriptor</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <capabilities>
+                        <provides>dev.pathland.quarkus.kotlin</provides>
+                    </capabilities>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>ban-java-dsl</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>dev.pathland:pathland-view</exclude>
+                                        <exclude>dev.pathland:pathland-demo-views</exclude>
+                                    </excludes>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

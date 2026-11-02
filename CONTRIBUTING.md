@@ -23,8 +23,11 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
   (`dev.pathland.view.core*` + `dev.pathland.view.engine`), `pathland-view`
   (the Java DSL, `dev.pathland.view`), `pathland-view-processor`,
   `pathland-view-kotlin` (`dev.pathland.view.dsl`), `pathland-render-html`,
-  `pathland-state-redis`, `pathland-demo-views`, the Quarkus/Spring demos, and
-  the TypeScript DOM renderer (`lib/typescript`).
+  `pathland-state-redis`, `pathland-demo-views`, the DSL-neutral
+  `pathland-quarkus` extension plus the separate `pathland-quarkus-java` and
+  `pathland-quarkus-kotlin` extensions (each with a deployment module), the
+  Quarkus/Spring demos (including the Kotlin Quarkus demo), and the TypeScript
+  DOM renderer (`lib/typescript`).
 - `spec/` — the protocol contract: `OPCODE.md` (primary), `PRIMITIVES.md`,
   `MODIFIERS.md`, `EVENTS.md`, `CONFORMANCE.md` (golden vectors), `ENGINE.md`
   (retained-tree behavior), `DSL.md` (authoring surface), `protocol.tsv` (the
@@ -59,7 +62,7 @@ cd lib/rust && cargo build -p pathland-core-capi
 
 # Java reactor (the core libraries; the Quarkus/Spring demos are excluded from
 # CI but buildable with: cd lib/java && mvn -q install)
-cd lib/java && mvn -q -B test -pl '!pathland-quarkus-demo,!pathland-spring-boot-demo'
+cd lib/java && mvn -q -B test -pl '!pathland-quarkus-demo,!pathland-quarkus-kotlin-demo,!pathland-spring-boot-demo'
 ```
 
 CI runs exactly these commands (`.github/workflows/ci.yml`).

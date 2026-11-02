@@ -1,0 +1,10 @@
+name: "Pathland - Kotlin DSL"
+description: "Kotlin authoring DSL for Pathland on Quarkus."
+metadata:
+  keywords:
+    - "pathland"
+    - "ui"
+    - "kotlin"
+  categories:
+    - "web"
+  status: "experimental"

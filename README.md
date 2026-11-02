@@ -158,8 +158,8 @@ resources. It's shipped, not maintained — all the real logic lives in your bac
 
 ## Where it runs today
 
-- **Web (SSR + live WebSocket deltas)** — Java, with Spring Boot and Quarkus
-  starters and demos; the flagship getting-started path.
+- **Web (SSR + live WebSocket deltas)** — Java and Kotlin, with Spring Boot and
+  Quarkus extensions and demos; the flagship getting-started path.
 - **Native desktop (GTK4)** — a renderer driven by the same protocol, from both the
   Rust DSL and the shared Java demo views (`pathland-gtk-demo`).
 
@@ -195,7 +195,8 @@ and launches:
 | Script | Demo | What you get |
 |--------|------|--------------|
 | `./scripts/run-spring-demo.sh` | Spring Boot SSR + WebSocket | http://localhost:8080 |
-| `./scripts/run-quarkus-demo.sh` | Quarkus SSR + WebSocket (hot reload) | http://localhost:8080 |
+| `./scripts/run-quarkus-demo.sh` | Quarkus SSR + WebSocket, Java DSL (hot reload) | http://localhost:8080 |
+| `./scripts/run-quarkus-kotlin-demo.sh` | Quarkus SSR + WebSocket, Kotlin DSL (hot reload) | http://localhost:8080 |
 | `./scripts/run-rust-gtk-demo.sh` | Rust DSL → GTK4 desktop renderer | a native window |
 | `./scripts/run-java-gtk-demo.sh` | Java DSL → GTK4 desktop renderer (the shared `SplitNavDemo`) | a native window |
 
@@ -222,8 +223,13 @@ cd lib/java/pathland-spring-boot-demo
 mvn -q package && java -jar target/pathland-spring-boot-demo-0.1.0.jar
 # → http://localhost:8080
 
-# Quarkus demo (dev mode with hot reload)
+# Quarkus Java demo (dev mode with hot reload)
 cd lib/java/pathland-quarkus-demo
+mvn quarkus:dev
+# → http://localhost:8080
+
+# Quarkus Kotlin demo (dev mode with hot reload)
+cd lib/java/pathland-quarkus-kotlin-demo
 mvn quarkus:dev
 # → http://localhost:8080
 

@@ -31,9 +31,9 @@ build_qt_dylibs() {
   (cd "$ROOT/lib/rust" && cargo build -p pathland-core-capi -p pathland-render-qt)
 }
 
-# Install the Java reactor (everything except the two web demos, which need a
-# newer JDK to run; they are not required to launch the other demos).
+# Install the Java reactor (everything except the web demos, which are launched
+# separately; they are not required to launch the other demos).
 java_install() {
   (cd "$ROOT/lib/java" && mvn -q install -DskipTests \
-    -pl '!pathland-quarkus-demo,!pathland-spring-boot-demo')
+    -pl '!pathland-quarkus-demo,!pathland-quarkus-kotlin-demo,!pathland-spring-boot-demo')
 }

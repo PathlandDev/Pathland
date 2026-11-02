@@ -44,7 +44,7 @@ src/
 npm ci
 npm test          # vitest (happy-dom): codec round-trips, TREE/STYLE apply, transport
 npm run build     # tsc --noEmit + esbuild -> dist/pathland-dom-renderer.js (IIFE, minified)
-npm run copy-to-demos   # copy the bundle into both Java demos' static dirs
+npm run copy-to-demos   # copy the bundle into the Java demos' static dirs
 ```
 
 The per-window-id service worker has a real-browser E2E (Chromium + WebKit) — the
@@ -58,7 +58,7 @@ npm run test:e2e                          # boots a fixture server + the shipped
 
 ## The bundle
 
-`dist/pathland-dom-renderer.js` is served by the Spring Boot and Quarkus demos under a
+`dist/pathland-dom-renderer.js` is served by the Spring Boot and Quarkus (Java + Kotlin) demos under a
 content-hashed name — `dom-renderer-<sha256>.js` (copied into each demo's static
 resources by `npm run copy-to-demos`, which also prunes stale copies and writes the
 `dom-renderer.current` pointer manifest the SSR layer reads to emit the `<script src>`).

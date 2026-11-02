@@ -78,7 +78,15 @@ public final class PersistentState implements AutoCloseable {
         Method binder = BINDERS.get(type);
         if (binder == null) {
             try {
-                Class<?> binderClass = Class.forName(type.getName() + "_StateBinder");
+                // Load the binder from the view's own classloader. A framework host (e.g.
+                // Quarkus) may load pathland-view-core in a parent extension classloader
+                // while application views live in a child classloader; Class.forName(name)
+                // would resolve the binder from the wrong loader and its parameter types
+                // would not match `type`.
+                ClassLoader loader = type.getClassLoader();
+                Class<?> binderClass = loader == null
+                        ? Class.forName(type.getName() + "_StateBinder")
+                        : Class.forName(type.getName() + "_StateBinder", false, loader);
                 binder = binderClass.getMethod("connect", type, PersistentState.class);
                 BINDERS.put(type, binder);
             } catch (ClassNotFoundException e) {

@@ -24,14 +24,14 @@
         Quarkus demonstration app consuming the Pathland libraries: SSR
         (pathland-render-html) for instant first paint, then live 16-byte opcode deltas +
         events over WebSocket, with cross-platform state persisted through StateStore
-        (Redis with an in-memory fallback). The entire app is the starter dependency + a
+        (Redis with an in-memory fallback). The entire app is the Java DSL extension + a
         PathlandApp bean returning the root view.
     </description>
 
     <dependencies>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-quarkus-starter</artifactId>
+            <artifactId>pathland-quarkus-java</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

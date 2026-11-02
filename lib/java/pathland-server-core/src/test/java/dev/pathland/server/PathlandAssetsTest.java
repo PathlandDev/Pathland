@@ -49,6 +49,37 @@ class PathlandAssetsTest {
     }
 
     @Test
+    void resolvesTheManifestFromTheThreadContextClassLoader() {
+        String appFixture = "dom-renderer-appclassloader.js";
+        ClassLoader appLoader = new ClassLoader(PathlandAssets.class.getClassLoader()) {
+            @Override
+            public InputStream getResourceAsStream(String name) {
+                if (name.endsWith("/" + PathlandAssets.MANIFEST)) {
+                    return new ByteArrayInputStream(
+                            (appFixture + "\n").getBytes(StandardCharsets.UTF_8));
+                }
+                return super.getResourceAsStream(name);
+            }
+        };
+
+        Thread thread = Thread.currentThread();
+        ClassLoader previous = thread.getContextClassLoader();
+        try {
+            thread.setContextClassLoader(appLoader);
+            assertEquals(appFixture, PathlandAssets.bundleName(),
+                    "the app's runtime classloader must win over the extension loader");
+        } finally {
+            thread.setContextClassLoader(previous);
+            PathlandAssets.resetForTests();
+        }
+
+        // The cache is keyed by loader: a fallback/name from the TCCL must not leak into
+        // a later request on a different classloader.
+        assertEquals(FIXTURE, PathlandAssets.bundleName(),
+                "the test classpath manifest resolves again after the TCCL changes");
+    }
+
+    @Test
     void fallsBackToTheLiteralWhenNoManifestIsPresent() {
         assertEquals(PathlandAssets.FALLBACK,
                 PathlandAssets.resolve(fixtureLookup(Map.of())),
