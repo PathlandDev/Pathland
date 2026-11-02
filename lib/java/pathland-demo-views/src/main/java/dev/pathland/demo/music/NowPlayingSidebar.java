@@ -1,14 +1,24 @@
 package dev.pathland.demo.music;
 
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.FontWeight;
+import dev.pathland.view.core.HorizontalAlignment;
+import dev.pathland.view.core.Roles;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
 import dev.pathland.view.*;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.signal.WritableSignal;
 import static dev.pathland.view.Modifiers.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static dev.pathland.view.signal.Signals.computed;
+import static dev.pathland.view.core.signal.Signals.computed;
 
 /**
  * The now-playing sidebar (right): the current track's large album art, its

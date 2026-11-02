@@ -1,9 +1,14 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.View;
+
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 
 import java.util.ArrayList;
 import java.util.Comparator;

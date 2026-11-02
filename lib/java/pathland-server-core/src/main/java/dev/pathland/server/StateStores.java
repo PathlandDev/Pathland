@@ -1,7 +1,7 @@
 package dev.pathland.server;
 
 import dev.pathland.state.redis.RedisStateStore;
-import dev.pathland.view.state.StateStore;
+import dev.pathland.view.core.state.StateStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

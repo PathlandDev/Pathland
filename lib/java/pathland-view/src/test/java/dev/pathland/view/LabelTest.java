@@ -1,17 +1,28 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.emit.FrameOpcodeSink;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.emit.OpcodeSink;
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.emit.ValueEncoder;
-import dev.pathland.view.router.Navigation;
-import dev.pathland.view.router.NavigationContainer;
-import dev.pathland.view.router.Router;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.Alignment;
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.LabelStyle;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.protocol.ValueTypes;
+import dev.pathland.view.core.View;
+
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.FrameOpcodeSink;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.core.transport.OpcodeSink;
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.protocol.ValueEncoder;
+import dev.pathland.view.core.router.Navigation;
+import dev.pathland.view.core.router.NavigationContainer;
+import dev.pathland.view.core.router.Router;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;

@@ -1,9 +1,13 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.View;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.pathland.view.emit.PathlandNode;
+import dev.pathland.view.engine.PathlandNode;
 import org.junit.jupiter.api.Test;
 import static dev.pathland.view.Modifiers.*;
 

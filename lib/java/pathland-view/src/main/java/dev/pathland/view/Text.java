@@ -1,8 +1,15 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.Signals;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Configurators;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
 
 import java.util.function.Consumer;
 
@@ -72,7 +79,7 @@ public final class Text implements View, Configurable<Text.Config> {
     public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.TEXT);
         node.textBinding = config.binding();
-        node.text = dev.pathland.view.signal.Signals.untracked(config.binding()::get);
+        node.text = dev.pathland.view.core.signal.Signals.untracked(config.binding()::get);
         return node;
     }
 }

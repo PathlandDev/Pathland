@@ -1,11 +1,23 @@
 package dev.pathland.demo.music;
 
+import dev.pathland.view.core.Alignment;
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.FontStyle;
+import dev.pathland.view.core.HorizontalAlignment;
+import dev.pathland.view.core.MediaController;
+import dev.pathland.view.core.Roles;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
 import dev.pathland.view.*;
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.state.State;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.state.State;
 import static dev.pathland.view.Modifiers.*;
 
-import static dev.pathland.view.signal.Signals.computed;
+import static dev.pathland.view.core.signal.Signals.computed;
 
 import java.util.List;
 import java.util.function.Consumer;

@@ -630,12 +630,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "pathland-engine-golden"
+version = "0.1.5"
+dependencies = [
+ "pathland-core",
+ "pathland-core-transport",
+ "pathland-engine",
+]
+
+[[package]]
 name = "pathland-html-golden"
 version = "0.1.5"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",
  "pathland-render-html",
+]
+
+[[package]]
+name = "pathland-protocol-manifest"
+version = "0.1.5"
+dependencies = [
+ "pathland-core",
 ]
 
 [[package]]

@@ -1,8 +1,10 @@
 package dev.pathland.server.proxy;
 
-import dev.pathland.view.Categories;
-import dev.pathland.view.Commands;
-import dev.pathland.view.emit.Opcode;
+import dev.pathland.view.core.transport.Event;
+
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.Opcode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

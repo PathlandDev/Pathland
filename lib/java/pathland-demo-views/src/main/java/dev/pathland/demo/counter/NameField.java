@@ -1,11 +1,13 @@
 package dev.pathland.demo.counter;
 
+import dev.pathland.view.core.signal.Signals;
+
 import dev.pathland.view.Text;
 import dev.pathland.view.TextField;
 import dev.pathland.view.VStack;
-import dev.pathland.view.View;
-import static dev.pathland.view.signal.Signals.*;
-import dev.pathland.view.state.State;
+import dev.pathland.view.core.View;
+import static dev.pathland.view.core.signal.Signals.*;
+import dev.pathland.view.core.state.State;
 
 /**
  * A view component: the name text field plus its reactive label. The {@code name} state is

@@ -19,13 +19,16 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
   (emitter/signals), `pathland-view` (DSL), `pathland-core-transport`,
   `pathland-core-capi` (C ABI), `pathland-render-gtk`, `pathland-render-html`,
   `pathland-view-native`, `pathland-render-gtk-demo`.
-- `lib/java/` — the Maven reactor: `pathland-view` (`com.pathland.view`),
-  `pathland-view-processor`, `pathland-render-html`, `pathland-state-redis`,
-  `pathland-demo-views`, the Quarkus/Spring demos, and the TypeScript DOM
-  renderer (`lib/typescript`).
+- `lib/java/` — the Maven reactor: `pathland-view-core`
+  (`dev.pathland.view.core*` + `dev.pathland.view.engine`), `pathland-view`
+  (the Java DSL, `dev.pathland.view`), `pathland-view-processor`,
+  `pathland-view-kotlin` (`dev.pathland.view.dsl`), `pathland-render-html`,
+  `pathland-state-redis`, `pathland-demo-views`, the Quarkus/Spring demos, and
+  the TypeScript DOM renderer (`lib/typescript`).
 - `spec/` — the protocol contract: `OPCODE.md` (primary), `PRIMITIVES.md`,
-  `MODIFIERS.md`, `EVENTS.md`, `CONFORMANCE.md` (golden vectors), `DSL.md`
-  (authoring surface).
+  `MODIFIERS.md`, `EVENTS.md`, `CONFORMANCE.md` (golden vectors), `ENGINE.md`
+  (retained-tree behavior), `DSL.md` (authoring surface), `protocol.tsv` (the
+  target-neutral ID manifest), and `engine-traces/` (shared frame fixtures).
 
 Implementation status per project lives in each crate/module's `status.md`.
 
@@ -44,6 +47,12 @@ cd lib/rust && cargo test
 
 # no_std / wasm32 direction guard (requires: rustup target add wasm32-unknown-unknown)
 cd lib/rust && ./check-wasm.sh
+
+# Regenerate the target-neutral protocol manifest after changing Rust constants
+cd lib/rust && cargo run -p pathland-protocol-manifest
+
+# Regenerate the shared engine trace fixtures after an emission change
+cd lib/rust && cargo run -p pathland-engine-golden -- --emit
 
 # C ABI (cdylib) used by Java JNA / native hosts
 cd lib/rust && cargo build -p pathland-core-capi

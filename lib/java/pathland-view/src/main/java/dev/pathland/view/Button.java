@@ -1,8 +1,19 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.Signals;
+import dev.pathland.view.core.ButtonStyle;
+import dev.pathland.view.core.ChildrenView;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.EmptyContent;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -88,7 +99,10 @@ public final class Button implements View, Configurable<Button.Config>, Children
                 : (config.title != null ? Text.make(t -> t.text(config.title)) : null);
 
         PathlandNode node = new PathlandNode(Components.BUTTON);
-        ButtonStyle style = env.buttonStyle();
+        ButtonStyle style = Environment.value(Environment.BUTTON_STYLE).get();
+        if (style == null) {
+            style = PlainButtonStyle.INSTANCE;
+        }
         View content = style.makeBody(new ButtonStyle.Configuration(label));
         if (content != null && content != EmptyContent.INSTANCE) {
             node.children.add(content.render(env));

@@ -1,7 +1,14 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.ChildrenView;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.WritableSignal;
 
 import java.util.List;
 import java.util.function.Consumer;

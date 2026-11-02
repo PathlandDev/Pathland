@@ -54,6 +54,12 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Applications author their root view through the Java DSL. -->
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-view</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>dev.pathland</groupId>
             <artifactId>pathland-test-kit</artifactId>

@@ -1,6 +1,16 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Configurators;
+import dev.pathland.view.core.EmptyContent;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.MediaController;
+import dev.pathland.view.core.VideoStyle;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
 
 import java.util.function.Consumer;
 
@@ -65,7 +75,10 @@ public final class Video implements View, Configurable<Video.Config> {
         // The default NativeVideoStyle supplies no content, so the node stays a leaf
         // and the renderer shows native media controls.
         PathlandNode node = new PathlandNode(Components.VIDEO);
-        VideoStyle style = env.videoStyle();
+        VideoStyle style = Environment.value(Environment.VIDEO_STYLE).get();
+        if (style == null) {
+            style = NativeVideoStyle.INSTANCE;
+        }
         View content = style.makeBody(new VideoStyle.Configuration(config.controller));
         if (content != null && content != EmptyContent.INSTANCE) {
             node.children.add(content.render(env));

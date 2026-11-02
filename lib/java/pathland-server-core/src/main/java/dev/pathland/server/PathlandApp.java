@@ -1,7 +1,9 @@
 package dev.pathland.server;
 
-import dev.pathland.view.ThemeData;
-import dev.pathland.view.View;
+import dev.pathland.view.core.state.State;
+
+import dev.pathland.view.core.ThemeData;
+import dev.pathland.view.core.View;
 
 /**
  * The application's root-view factory — the single app-specific piece the server

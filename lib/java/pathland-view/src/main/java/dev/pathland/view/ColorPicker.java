@@ -1,7 +1,16 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.engine.ReactiveValues;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.WritableSignal;
 
 import java.util.function.Consumer;
 
@@ -51,7 +60,7 @@ public final class ColorPicker implements View, Configurable<ColorPicker.Config>
     public PathlandNode renderNode(Environment env) {
         PathlandNode node = new PathlandNode(Components.COLOR_PICKER);
         if (config.binding != null) {
-            node.properties.put(Properties.COLOR_VALUE, dev.pathland.view.emit.ReactiveValues.initial(Properties.COLOR_VALUE, config.binding));
+            node.properties.put(Properties.COLOR_VALUE, dev.pathland.view.engine.ReactiveValues.initial(Properties.COLOR_VALUE, config.binding));
             node.propertyBindings.put(Properties.COLOR_VALUE, config.binding);
             node.valueInput = v -> config.binding.set(new Color(Float.floatToRawIntBits(v), null));
         }

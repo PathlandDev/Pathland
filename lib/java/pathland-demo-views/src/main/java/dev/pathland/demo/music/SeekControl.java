@@ -1,7 +1,7 @@
 package dev.pathland.demo.music;
 
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.WritableSignal;
 
 import java.util.function.UnaryOperator;
 

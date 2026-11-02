@@ -1,7 +1,14 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.WritableSignal;
 
 import java.util.function.Consumer;
 
@@ -51,7 +58,7 @@ public final class TextEditor implements View, Configurable<TextEditor.Config> {
         PathlandNode node = new PathlandNode(Components.TEXT_EDITOR);
         if (config.binding != null) {
             node.textBinding = config.binding;
-            node.text = dev.pathland.view.signal.Signals.untracked(config.binding::get);
+            node.text = dev.pathland.view.core.signal.Signals.untracked(config.binding::get);
             node.textInput = config.binding::set;
         }
         return node;

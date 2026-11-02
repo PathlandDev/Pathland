@@ -1,8 +1,8 @@
 package dev.pathland.server.proxy;
 
-import dev.pathland.view.Categories;
-import dev.pathland.view.Commands;
-import dev.pathland.view.emit.Opcode;
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.Opcode;
 
 /**
  * Node-id namespacing for proxy views (spec/PROXY.md §2).

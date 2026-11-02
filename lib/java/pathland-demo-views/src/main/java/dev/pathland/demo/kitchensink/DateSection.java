@@ -1,12 +1,14 @@
 package dev.pathland.demo.kitchensink;
 
+import dev.pathland.view.core.signal.Signals;
+
 import dev.pathland.view.DatePicker;
-import dev.pathland.view.DatePickerMode;
+import dev.pathland.view.core.DatePickerMode;
 import dev.pathland.view.Text;
 import dev.pathland.view.VStack;
-import dev.pathland.view.View;
-import static dev.pathland.view.signal.Signals.*;
-import dev.pathland.view.state.State;
+import dev.pathland.view.core.View;
+import static dev.pathland.view.core.signal.Signals.*;
+import dev.pathland.view.core.state.State;
 import dev.pathland.view.Padding;
 import static dev.pathland.view.Modifiers.*;
 

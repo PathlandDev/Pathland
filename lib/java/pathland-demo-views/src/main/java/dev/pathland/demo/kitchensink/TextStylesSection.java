@@ -1,15 +1,15 @@
 package dev.pathland.demo.kitchensink;
 
 import dev.pathland.view.Frame;
-import dev.pathland.view.Alignment;
-import dev.pathland.view.FontDesign;
-import dev.pathland.view.FontWeight;
+import dev.pathland.view.core.Alignment;
+import dev.pathland.view.core.FontDesign;
+import dev.pathland.view.core.FontWeight;
 import dev.pathland.view.Text;
-import dev.pathland.view.TextAlignment;
-import dev.pathland.view.TextCase;
-import dev.pathland.view.Truncation;
+import dev.pathland.view.core.TextAlignment;
+import dev.pathland.view.core.TextCase;
+import dev.pathland.view.core.Truncation;
 import dev.pathland.view.VStack;
-import dev.pathland.view.View;
+import dev.pathland.view.core.View;
 import dev.pathland.view.Italic;
 import dev.pathland.view.Kerning;
 import dev.pathland.view.LineLimit;

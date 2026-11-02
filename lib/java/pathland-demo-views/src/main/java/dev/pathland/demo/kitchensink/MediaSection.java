@@ -1,20 +1,20 @@
 package dev.pathland.demo.kitchensink;
 
-import dev.pathland.view.Alignment;
+import dev.pathland.view.core.Alignment;
 import dev.pathland.view.Button;
-import dev.pathland.view.Configurable;
+import dev.pathland.view.core.Configurable;
 import dev.pathland.view.Frame;
 import dev.pathland.view.HStack;
 import dev.pathland.view.Icon;
-import dev.pathland.view.IconName;
-import dev.pathland.view.MediaController;
+import dev.pathland.view.core.IconName;
+import dev.pathland.view.core.MediaController;
 import dev.pathland.view.Padding;
 import dev.pathland.view.Text;
-import dev.pathland.view.VerticalAlignment;
+import dev.pathland.view.core.VerticalAlignment;
 import dev.pathland.view.VStack;
 import dev.pathland.view.Video;
-import dev.pathland.view.View;
-import dev.pathland.view.ViewBuilder;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
 import java.util.function.Consumer;
 import static dev.pathland.view.Modifiers.*;
 

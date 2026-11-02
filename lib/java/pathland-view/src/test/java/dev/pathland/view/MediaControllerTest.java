@@ -1,11 +1,14 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.FrameOpcodeSink;
-import dev.pathland.view.emit.MediaInput;
-import dev.pathland.view.emit.RenderResult;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.MediaController;
+
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.core.transport.FrameOpcodeSink;
+import dev.pathland.view.engine.MediaInput;
+import dev.pathland.view.engine.RenderResult;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

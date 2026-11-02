@@ -3,9 +3,9 @@ package dev.pathland.quarkus;
 import dev.pathland.server.PathlandApp;
 import dev.pathland.view.Button;
 import dev.pathland.view.Text;
-import dev.pathland.view.View;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /** The counter app the multi-session WS test mounts: node 1 = Button, node 2 = Text label. */

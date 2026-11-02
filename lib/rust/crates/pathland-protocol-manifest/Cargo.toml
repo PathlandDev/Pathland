@@ -1,0 +1,16 @@
+[package]
+name = "pathland-protocol-manifest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Emits the target-neutral Pathland wire protocol manifest"
+repository = "https://github.com/PathlandDev/Pathland"
+categories = ["development-tools::build-utils"]
+keywords = ["ui", "protocol", "opcode", "manifest", "codegen"]
+
+[[bin]]
+name = "pathland-protocol-manifest"
+path = "src/main.rs"
+
+[dependencies]
+pathland-core = { path = "../pathland-core" }

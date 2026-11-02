@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.pathland</groupId>
+        <artifactId>pathland-parent</artifactId>
+        <version>0.1.5</version>
+    </parent>
+
+    <artifactId>pathland-view-core</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Pathland View Core</name>
+    <description>
+        Framework-agnostic Pathland JVM engine and runtime: the 16-byte opcode protocol
+        (dev.pathland.view.core.protocol), retained-tree diff emitter
+        (dev.pathland.view.engine), Angular-style signals, wire codec, router, state, and
+        lazy JNA ring interop. Shared by the Java and Kotlin authoring DSLs and by server
+        runtimes. Runs on every LTS from Java 17; JNA is the only runtime dependency.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Point the test JVM at the Rust cdylib for JNA ring tests.
+                         Absent the dylib, those tests are skipped via an assumption. -->
+                    <argLine>-Djava.library.path=${project.basedir}/../../rust/target/debug</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

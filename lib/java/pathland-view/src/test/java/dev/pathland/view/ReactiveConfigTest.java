@@ -1,15 +1,22 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.ShapeKind;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.pathland.view.emit.Emitter;
-import dev.pathland.view.emit.FrameOpcodeSink;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.engine.Emitter;
+import dev.pathland.view.core.transport.FrameOpcodeSink;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

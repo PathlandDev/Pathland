@@ -1,5 +1,9 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.ButtonStyle;
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.View;
+
 import static dev.pathland.view.Modifiers.border;
 import static dev.pathland.view.Modifiers.background;
 import static dev.pathland.view.Modifiers.foregroundStyle;

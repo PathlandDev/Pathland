@@ -1,7 +1,11 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signal;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.View;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signal;
 
 import java.util.List;
 import java.util.Objects;

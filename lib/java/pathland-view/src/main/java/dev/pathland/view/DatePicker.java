@@ -1,9 +1,17 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signal;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.DatePickerMode;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signal;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
 
 import java.util.function.Consumer;
 
@@ -68,7 +76,7 @@ public final class DatePicker implements View, Configurable<DatePicker.Config> {
             node.property(Properties.DATE_PICKER_MODE, config.mode);
         }
         if (config.days != null) {
-            node.days = dev.pathland.view.signal.Signals.untracked(config.days::get);
+            node.days = dev.pathland.view.core.signal.Signals.untracked(config.days::get);
             node.dateBinding = config.days;
             node.dateInput = (d, m) -> config.days.set(d);
         }

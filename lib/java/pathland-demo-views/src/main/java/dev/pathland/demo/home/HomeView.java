@@ -1,7 +1,12 @@
 package dev.pathland.demo.home;
 
+import dev.pathland.view.core.FontWeight;
+import dev.pathland.view.core.HorizontalAlignment;
+import dev.pathland.view.core.Roles;
+import dev.pathland.view.core.View;
+
 import dev.pathland.view.*;
-import dev.pathland.view.router.NavigationIntent;
+import dev.pathland.view.core.router.NavigationIntent;
 import static dev.pathland.view.Modifiers.*;
 
 /**

@@ -1,5 +1,8 @@
 package dev.pathland.demo.qt;
 
+import dev.pathland.view.core.ffm.PathlandCore;
+import dev.pathland.view.core.ffm.RingOpcodeSink;
+
 import com.sun.jna.Callback;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
@@ -11,7 +14,7 @@ import java.io.File;
  * JNA binding to the Rust Qt renderer cdylib ({@code libpathland_qt}).
  *
  * <p>The Java DSL emits opcodes into a {@code libpathland_core} ring
- * ({@code dev.pathland.view.ffm.RingOpcodeSink}); {@link #runRing} hands that
+ * ({@code dev.pathland.view.core.ffm.RingOpcodeSink}); {@link #runRing} hands that
  * borrowed ring to the in-process Qt Quick renderer ({@code pathland_qt_run_ring}),
  * which pumps it in place. Native inputs are reported back through a no-payload
  * callback; the host drains them from the ring itself — the wire is the opcode

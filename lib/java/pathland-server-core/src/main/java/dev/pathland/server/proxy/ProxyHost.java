@@ -1,9 +1,11 @@
 package dev.pathland.server.proxy;
 
+import dev.pathland.view.core.router.Route;
+
 import dev.pathland.server.PathlandTelemetry;
-import dev.pathland.view.ProxyConfig;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.transport.Event;
+import dev.pathland.view.core.ProxyConfig;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.transport.Event;
 
 import java.util.Map;
 import java.util.UUID;

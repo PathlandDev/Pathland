@@ -1,5 +1,7 @@
 package dev.pathland.quarkus;
 
+import dev.pathland.view.core.View;
+
 import dev.pathland.observability.MicrometerTelemetry;
 import dev.pathland.observability.TracingTelemetry;
 import dev.pathland.server.MountedApp;
@@ -7,7 +9,7 @@ import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandTelemetry;
 import dev.pathland.server.StateStores;
-import dev.pathland.view.state.InMemoryStateStore;
+import dev.pathland.view.core.state.InMemoryStateStore;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import jakarta.enterprise.context.ApplicationScoped;

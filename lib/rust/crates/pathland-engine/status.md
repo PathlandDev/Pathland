@@ -43,6 +43,10 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
   `META::RESET_THEME` / `META::SET_COLOR_SCHEME`; `ColorSchemeMode`
   (`Platform`/`Light`/`Dark`) mirrors the wire modes. Replacement is
   reset + apply in one frame; no tree node is re-emitted.
+- **Shared engine traces**: `pathland-engine-golden` emits self-contained
+  PLPL frames for mount and signal-delta scenarios under `spec/engine-traces/`;
+  the JVM `EngineTraceTest` compares byte-for-byte. The canonical mount order is
+  documented in `spec/ENGINE.md`.
 - **Reactive runtime** (`signal.rs`): a shared `Runtime`
   (`Rc<RefCell<Store>>`, `no_std` — no thread-local; the "current computation"
   is an explicit stack in the store) owns value signals, **computed** signals

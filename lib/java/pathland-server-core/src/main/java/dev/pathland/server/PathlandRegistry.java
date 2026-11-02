@@ -1,10 +1,13 @@
 package dev.pathland.server;
 
-import dev.pathland.view.router.Router;
-import dev.pathland.view.state.StateStore;
-import dev.pathland.view.transport.EnvironmentData;
-import dev.pathland.view.transport.Event;
-import dev.pathland.view.transport.FrameCodec;
+import dev.pathland.view.core.state.PersistentState;
+import dev.pathland.view.core.router.Route;
+
+import dev.pathland.view.core.router.Router;
+import dev.pathland.view.core.state.StateStore;
+import dev.pathland.view.core.transport.EnvironmentData;
+import dev.pathland.view.core.transport.Event;
+import dev.pathland.view.core.transport.FrameCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

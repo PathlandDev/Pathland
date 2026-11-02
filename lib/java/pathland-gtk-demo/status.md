@@ -33,7 +33,7 @@ cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
   `pathland_gtk_set_asset_root(dir)`); library resolved from the
   `pathland.gtk.lib` system property or `java.library.path`.
 - `RingEventReader` — decodes raw ring `EVENT` opcodes into
-  `dev.pathland.view.transport.Event`, resolving `TEXT_CHANGED`/`NAVIGATE`
+  `dev.pathland.view.core.transport.Event`, resolving `TEXT_CHANGED`/`NAVIGATE`
   strings from the shared host → guest event arena (header `0x40`), plus the
   `MEDIA_*` events (play state, time, ended, volume, duration) and
   `FIT_CHANGED` (routed to the emitter's fit sink, so the `SizeThatFits` slot

@@ -1,5 +1,8 @@
 package dev.pathland.view;
 
+import dev.pathland.view.core.LabelStyle;
+import dev.pathland.view.core.View;
+
 /**
  * A label style that shows only the title ({@code TitleOnlyLabelStyle}).
  * The icon is omitted; the title still drives the accessibility label.

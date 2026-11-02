@@ -1,17 +1,19 @@
 package dev.pathland.demo.kitchensink;
 
-import dev.pathland.view.Alignment;
+import dev.pathland.view.core.signal.Signals;
+
+import dev.pathland.view.core.Alignment;
 import dev.pathland.view.Button;
-import dev.pathland.view.Color;
-import dev.pathland.view.FontWeight;
+import dev.pathland.view.core.Color;
+import dev.pathland.view.core.FontWeight;
 import dev.pathland.view.HStack;
 import dev.pathland.view.Stepper;
 import dev.pathland.view.Text;
-import dev.pathland.view.VerticalAlignment;
+import dev.pathland.view.core.VerticalAlignment;
 import dev.pathland.view.VStack;
-import dev.pathland.view.View;
-import static dev.pathland.view.signal.Signals.*;
-import dev.pathland.view.state.State;
+import dev.pathland.view.core.View;
+import static dev.pathland.view.core.signal.Signals.*;
+import dev.pathland.view.core.state.State;
 import dev.pathland.view.FontSize;
 import dev.pathland.view.ForegroundStyle;
 import dev.pathland.view.Padding;

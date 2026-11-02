@@ -1,6 +1,14 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
+import dev.pathland.view.core.protocol.Components;
+import dev.pathland.view.core.Configurable;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.view.core.ShapeKind;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.ViewBuilder;
+
+import dev.pathland.view.engine.PathlandNode;
 
 /** A circle shape (a {@code SHAPE} node with {@code SHAPE_KIND = Circle}). */
 public final class Circle implements View, Configurable<Circle.Config> {

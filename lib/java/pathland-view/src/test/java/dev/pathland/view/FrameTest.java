@@ -1,6 +1,11 @@
 package dev.pathland.view;
 
-import dev.pathland.view.emit.PathlandNode;
+import dev.pathland.view.core.Alignment;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.protocol.Properties;
+
+import dev.pathland.view.engine.PathlandNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

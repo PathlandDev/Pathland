@@ -1,19 +1,20 @@
 package dev.pathland.server;
 
+
 import dev.pathland.view.Button;
-import dev.pathland.view.Environment;
+import dev.pathland.view.core.Environment;
 import dev.pathland.view.Text;
-import dev.pathland.view.View;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.emit.PathlandNode;
-import dev.pathland.view.signal.Signals;
-import dev.pathland.view.signal.WritableSignal;
-import dev.pathland.view.state.InMemoryStateStore;
-import dev.pathland.view.state.StateStore;
-import dev.pathland.view.transport.EnvironmentData;
-import dev.pathland.view.transport.Event;
-import dev.pathland.view.transport.FrameCodec;
+import dev.pathland.view.core.View;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.engine.PathlandNode;
+import dev.pathland.view.core.signal.Signals;
+import dev.pathland.view.core.signal.WritableSignal;
+import dev.pathland.view.core.state.InMemoryStateStore;
+import dev.pathland.view.core.state.StateStore;
+import dev.pathland.view.core.transport.EnvironmentData;
+import dev.pathland.view.core.transport.Event;
+import dev.pathland.view.core.transport.FrameCodec;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

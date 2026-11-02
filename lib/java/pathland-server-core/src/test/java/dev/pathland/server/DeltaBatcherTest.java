@@ -1,11 +1,11 @@
 package dev.pathland.server;
 
-import dev.pathland.view.Categories;
-import dev.pathland.view.Commands;
-import dev.pathland.view.ValueTypes;
-import dev.pathland.view.emit.ProtocolFrame;
-import dev.pathland.view.emit.Opcode;
-import dev.pathland.view.transport.FrameCodec;
+import dev.pathland.view.core.protocol.Categories;
+import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.view.core.protocol.ValueTypes;
+import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.view.core.transport.FrameCodec;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;

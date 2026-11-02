@@ -15,23 +15,20 @@
 
     <name>Pathland View</name>
     <description>
-        Framework-agnostic Pathland UI toolkit: declarative view DSL (dev.pathland.view),
-        Angular-style signals/computed/effects (dev.pathland.view.signal), a fine-grained
-        opcode emitter (dev.pathland.view.emit), the wire codec (dev.pathland.view.transport),
-        lazy JNA ring interop (dev.pathland.view.ffm), and cross-platform state
-        (dev.pathland.view.state). Runs on every LTS from Java 17; JNA is the only
-        runtime dependency.
+        Framework-agnostic Java authoring DSL (dev.pathland.view) on top of the shared
+        Pathland JVM engine (pathland-view-core). Runs on every LTS from Java 17.
     </description>
 
     <dependencies>
         <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-view-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna</artifactId>
         </dependency>
     </dependencies>
 

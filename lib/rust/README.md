@@ -32,7 +32,7 @@ crates/
 The reusable Java libraries live in `../java/` (Maven reactor, `dev.pathland`):
 
 - `pathland-view` — SwiftUI-like view DSL + Angular-style signals/computed/effects,
-  fine-grained opcode emitter, wire codec, JNA ring interop (`com.pathland.view`)
+  fine-grained opcode emitter, wire codec, JNA ring interop (`dev.pathland.view`)
 - `pathland-render-html` — pure-function HTML renderer (SSR) over the opcode stream
 - `pathland-state-redis` — Redis-backed `StateStore` (Lettuce)
 - `pathland-quarkus-demo` — Quarkus SSR + WebSocket demo consuming the libraries
@@ -41,6 +41,27 @@ The reusable Java libraries live in `../java/` (Maven reactor, `dev.pathland`):
 
 - [`spec/OPCODE.md`](../../spec/OPCODE.md) — the 16-byte opcode protocol
 - [`spec/CONFORMANCE.md`](../../spec/CONFORMANCE.md) — golden byte vectors
+
+## Protocol manifest
+
+`pathland-protocol-manifest` emits `spec/protocol.tsv`, the target-neutral
+machine-readable ID manifest consumed by non-Rust bindings. It emits data only;
+each language owns its own representation. Regenerate after changing
+`pathland-core` constants:
+
+```bash
+cargo run -p pathland-protocol-manifest
+```
+
+## Engine trace fixtures
+
+`pathland-engine-golden` emits shared self-contained PLPL frames under
+`spec/engine-traces/`; the JVM `EngineTraceTest` compares against them
+byte-for-byte. Regenerate after an emission change:
+
+```bash
+cargo run -p pathland-engine-golden -- --emit
+```
 
 ## Run tests
 

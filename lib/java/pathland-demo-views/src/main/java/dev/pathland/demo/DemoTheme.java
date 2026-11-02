@@ -1,7 +1,7 @@
 package dev.pathland.demo;
 
-import dev.pathland.view.AdaptiveTheme;
-import dev.pathland.view.Theme;
+import dev.pathland.view.core.AdaptiveTheme;
+import dev.pathland.view.core.Theme;
 
 /**
  * The demo's theme: a **light** {@link Theme} and a **dark** {@link Theme},

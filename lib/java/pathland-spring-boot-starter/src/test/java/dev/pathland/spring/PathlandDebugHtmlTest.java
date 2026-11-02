@@ -1,5 +1,7 @@
 package dev.pathland.spring;
 
+import dev.pathland.view.core.state.InMemoryStateStore;
+
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.view.Text;
@@ -41,6 +43,6 @@ class PathlandDebugHtmlTest {
     @Test
     void defaultRegistryHasDebugOff() {
         assertFalse(new dev.pathland.server.PathlandRegistry(
-                () -> Text.make("x"), new dev.pathland.view.state.InMemoryStateStore()).isDebugHtml());
+                () -> Text.make("x"), new dev.pathland.view.core.state.InMemoryStateStore()).isDebugHtml());
     }
 }
