@@ -61,7 +61,7 @@ walk. Signal values
 are one of `F32`/`U32`/`Bool`/`Enum`/`Str` (packed to the wire's `u32` value or
 arena string). Foreign hosts reach signals via the flat C ABI
 (`pathland_native_signal_create_*` / `signal_set_*` / `node_bind_text` /
-`node_bind_property`) and the Java `Signal` type. Binding then calling `emit`
+`node_bind_property`) and the Kotlin/JVM `Signal` type. Binding then calling `emit`
 records the dependency; a subsequent `set` is a partial emit. (Computed/derived
 signals + effects are the planned next step.)
 
@@ -116,7 +116,7 @@ lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer
                            #   Built to dist/pathland-dom-renderer.js and copied into both demos.
 # ── Retained-UI projection (host/driver surface) ──────────────────────────
 crates/pathland-view-native/ # NATIVE C-ABI shim + NativeHost: flat world over a zero-copy
-                          #   shared-memory ring, for Swift/Java/C#/other native hosts
+                          #   shared-memory ring, for Swift/Java/other native hosts
                           #   (cdylib name stays "pathland_native")
 crates/pathland-core-capi/ # MINIMAL RING C ABI — the SPSC ring + 16-byte opcode engine as
                           #   libpathland_core: create/destroy, pathland_ring_buffer_push,
@@ -129,10 +129,10 @@ crates/pathland-render-qt-demo/ # Rust Qt Quick demo: authors the DSL, emits int
                           #   through pathland-render-qt. Uses NO Qt APIs directly.
 ```
 
-### Java libraries (`lib/java/`, framework-agnostic)
+### JVM libraries (`lib/java/`, Kotlin-first)
 
-The reusable Java library set (`dev.pathland`, Maven reactor, Java 17+) — the same
-hand-written DSL serves Spring Boot, Quarkus, and desktop apps:
+The reusable JVM library set (`dev.pathland`, Maven reactor, Java 17+) is
+Kotlin-authored; the Kotlin DSL serves Spring Boot, Quarkus, and desktop apps:
 
 ```
 lib/java/
@@ -162,7 +162,7 @@ lib/java/
                         #   (pathland.* counters/timers + sessions gauge) + an opt-in OTel
                         #   TracingTelemetry decorator; the starters/extensions auto-wire it
   pathland-demo-common/ # DSL-neutral demo support: DemoTheme + the single embedded copy of
-                        #   the audio, cover, and lyric assets (shared by Java/Kotlin views)
+                        #   the audio, cover, and lyric assets (shared by the Java/Kotlin hosts)
   pathland-demo-views-kotlin/ # Kotlin-owned demo views: app-driven MusicPlayerView and its
                         #   library/sidebar/player-bar subviews, plus the AdView origin app
   pathland-spring-boot-starter/ # com.pathland.spring — Spring Boot auto-config: add the dep +
@@ -182,7 +182,7 @@ lib/java/
 ```
 
 - Test: `cd lib/rust && cargo test` (runs all crates).
-- Build/test the Java libraries: `cd lib/java && mvn install`.
+- Build/test the JVM libraries: `cd lib/java && mvn install`.
 - Run the GTK demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-gtk-demo`.
 - Run the Qt Quick demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-qt-demo`
   (needs Qt6 dev libs — Homebrew: `brew install qtbase qtdeclarative`; on macOS point `QMAKE`
@@ -254,7 +254,7 @@ design/build/base.css.name            # content hash: base-<sha256-12>.css
 The **desktop/cross-language zero-copy path**: `pathland-view-native` exposes the
 flat world (the flat `builder`/`engine` surface) as `pathland_native_*` C
 functions with a **shared-memory ring** the host driver reads in place. Any
-language that links the dylib (Swift/Java/C# via FFI) calls the flat surface —
+language that links the dylib (Swift/Java via FFI) calls the flat surface —
 no per-component wrappers — and consumes opcodes zero-copy.
 
 `pathland-core-capi` (`libpathland_core`) is the **minimal ring C ABI** for the
@@ -422,7 +422,7 @@ See `spec/OPCODE.md` for the full format, ring buffer, arena, and frame lifecycl
 `pathland_core::constants` by `pathland-protocol-manifest` (`cargo run -p
 pathland-protocol-manifest`). It contains only `kind`, `group`, `name`, and
 `value`; each language binding keeps its own representation and validates or
-reads the manifest. There is no Rust→Java source generation.
+reads the manifest. There is no Rust→JVM source generation.
 
 The JVM mirror is hand-written and checked by
 `pathland-view-core/src/test/java/.../ProtocolManifestTest`: every manifest row
@@ -578,7 +578,7 @@ implementing project.
 
 ## Project Status
 
-**Complete**: 16-byte opcode engine (`pathland-core`), SwiftUI-style view DSL with decoupled chainable modifiers (`pathland-view`), declarative diff-based reactive emission (`pathland-core`), **reactive signals** (`pathland-core::signal` — writable `Signal` values bound to node text/properties, so a signal change re-emits only the bound nodes, reachable from Java via the `pathland_native_signal_*` / `node_bind_*` C ABI), host reader to a native-element description (`pathland-render-gtk`), opcode transport with network-batch encode/decode + time/size batching policy (`pathland-core-transport`), golden conformance vectors (incl. raw-input EVENT and network-batch bytes), typed raw-input event encode/decode, `no_std` builds, zero-alloc steady-state emission, the **bidirectional event ring** (host → guest EVENT opcodes in shared memory, drained by the host via a generic `pathland_native_drain_events` C ABI — the renderer only writes + wakes), the **GTK4 renderer** (`pathland-render-gtk`) with Rust demos that render through it without touching GTK directly, the **native Java library set** — `pathland-view-core` (Kotlin: open `View` interface + shared value/SPI vocabulary, **Angular-parity signals/computed/effects** with synchronous flush, fine-grained retained-tree emitter with **node-level binding effects**, `PLPL` wire codec, router, lazy **JNA ring interop** into `libpathland_core`, cross-platform `StateStore` + **`PersistentState`**) and `pathland-view-kotlin` (the sole JVM authoring DSL: SwiftUI-shaped builders, modifier sugar, property-delegate state, navigation/media helpers, styles), `com.pathland.render.html` (JNA shim over the Rust HTML renderer), `com.pathland.state.redis` (Lettuce `RedisStateStore`) — and the **Quarkus Java demo** (`pathland-quarkus-demo`, a Java host mounting the Kotlin `MusicPlayerView` and Kotlin `AdView`), the **Kotlin-only Quarkus demo** (`pathland-quarkus-kotlin-demo`), and the **Spring Boot** (`pathland-spring-boot-demo`, a Java host mounting Kotlin views) **SSR + WebSocket demos** with per-window persisted `State` (Redis/in-memory — every browser window/tab gets its own UI model and state scope via a `sessionStorage` window id, so two windows never share a session). **`EVENT_LISTENERS`** (any element emits raw events via a u32 bitmask property) and **`onTapGesture`** (Rust + Kotlin DSL modifier + app-side `TapRecognizer` over the raw pointer events). **Generic input routing** — the emitter returns tap-action / text-input / value-input registries (`RenderResult`), so the host forwards raw `EVENT` batches straight into the bound signals and never reaches into a view's internals. **The media kit** (spec/MEDIA.md) — a non-visual `MEDIA_CONTROLLER` (0x30) state object owning a resource + transport as signals, referenced by a `VIDEO` (0x0A) surface and controlled by the app's own views; **audio has no view**. Implemented across spec, `pathland-core`, the GTK + HTML renderers, the TS DOM client, the Kotlin DSL/emitter, and the Rust DSL/engine (a `MediaController` + `Video` + `attach()`, with string-property signal bindings and a **pinned** controller node id so a `SIZE_THAT_FITS` band swap never restarts playback). **Tests green across the workspace.**
+**Complete**: 16-byte opcode engine (`pathland-core`), SwiftUI-style view DSL with decoupled chainable modifiers (`pathland-view`), declarative diff-based reactive emission (`pathland-core`), **reactive signals** (`pathland-core::signal` — writable `Signal` values bound to node text/properties, so a signal change re-emits only the bound nodes, reachable from Java via the `pathland_native_signal_*` / `node_bind_*` C ABI), host reader to a native-element description (`pathland-render-gtk`), opcode transport with network-batch encode/decode + time/size batching policy (`pathland-core-transport`), golden conformance vectors (incl. raw-input EVENT and network-batch bytes), typed raw-input event encode/decode, `no_std` builds, zero-alloc steady-state emission, the **bidirectional event ring** (host → guest EVENT opcodes in shared memory, drained by the host via a generic `pathland_native_drain_events` C ABI — the renderer only writes + wakes), the **GTK4 renderer** (`pathland-render-gtk`) with Rust demos that render through it without touching GTK directly, the **native JVM library set** — `pathland-view-core` (Kotlin: open `View` interface + shared value/SPI vocabulary, **Angular-parity signals/computed/effects** with synchronous flush, fine-grained retained-tree emitter with **node-level binding effects**, `PLPL` wire codec, router, lazy **JNA ring interop** into `libpathland_core`, cross-platform `StateStore` + **`PersistentState`**) and `pathland-view-kotlin` (the sole JVM authoring DSL: SwiftUI-shaped builders, modifier sugar, property-delegate state, navigation/media helpers, styles), `com.pathland.render.html` (JNA shim over the Rust HTML renderer), `com.pathland.state.redis` (Lettuce `RedisStateStore`) — and the **Quarkus Java demo** (`pathland-quarkus-demo`, a Java host mounting the Kotlin `MusicPlayerView` and Kotlin `AdView`), the **Kotlin-only Quarkus demo** (`pathland-quarkus-kotlin-demo`), and the **Spring Boot** (`pathland-spring-boot-demo`, a Java host mounting Kotlin views) **SSR + WebSocket demos** with per-window persisted `State` (Redis/in-memory — every browser window/tab gets its own UI model and state scope via a `sessionStorage` window id, so two windows never share a session). **`EVENT_LISTENERS`** (any element emits raw events via a u32 bitmask property) and **`onTapGesture`** (Rust + Kotlin DSL modifier + app-side `TapRecognizer` over the raw pointer events). **Generic input routing** — the emitter returns tap-action / text-input / value-input registries (`RenderResult`), so the host forwards raw `EVENT` batches straight into the bound signals and never reaches into a view's internals. **The media kit** (spec/MEDIA.md) — a non-visual `MEDIA_CONTROLLER` (0x30) state object owning a resource + transport as signals, referenced by a `VIDEO` (0x0A) surface and controlled by the app's own views; **audio has no view**. Implemented across spec, `pathland-core`, the GTK + HTML renderers, the TS DOM client, the Kotlin DSL/emitter, and the Rust DSL/engine (a `MediaController` + `Video` + `attach()`, with string-property signal bindings and a **pinned** controller node id so a `SIZE_THAT_FITS` band swap never restarts playback). **Tests green across the workspace.**
 
 **In progress**: —
 
@@ -590,7 +590,7 @@ implementing project.
 
 1. Read this file, `spec/OPCODE.md`, and `spec/ENGINE.md`
 2. Run Rust tests: `cd lib/rust && cargo test` (runs all crates)
-3. Build/test the Java libraries: `cd lib/java && mvn install`
+3. Build/test the JVM libraries: `cd lib/java && mvn install`
 4. Make small changes, verify they work
 
 ---

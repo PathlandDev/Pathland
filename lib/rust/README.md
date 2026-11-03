@@ -19,7 +19,7 @@ crates/
 │                           #   the only crate that touches GTK/glib/pango
 │  # ── Retained-UI projection (host/driver surface for other languages) ──
 ├── pathland-view-native/   # native C-ABI shim + NativeHost over a zero-copy shared ring
-│                           #   (Swift/Java/C#; cdylib name stays "pathland_native")
+│                           #   (Swift/Java; cdylib name stays "pathland_native")
 ├── pathland-core-capi/     # minimal shared-memory ring C ABI for foreign hosts
 │                           #   (libpathland_core): create/destroy, ring push, frame
 │                           #   boundaries, zero-copy read, event drain/send

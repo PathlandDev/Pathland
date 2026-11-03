@@ -101,8 +101,8 @@ DSL must be *shaped* by them:
   `Mod` suffix.** Where a modifier applies a single value (a font, a font
   weight, an alignment, a style), the value type itself MAY *be* the modifier
   (`FontWeight.BOLD`, `Font.headline()`, `MyButtonStyle`), so there is one name
-  for the concept. Languages that cannot merge the two (e.g. C#, whose enums
-  cannot implement interfaces) use the equivalent value form. See
+  for the concept. A language that cannot merge the two uses the equivalent
+  value form. See
   [§9.3](#93-language-adaptation-rules).
 - **There is exactly one style mechanism.** A customizable control/view takes
   its **content** from a *style* value (`ButtonStyle`, `LabelStyle`,
@@ -1424,26 +1424,25 @@ language's idioms. The canonical (SwiftUI-shaped) spelling is
 `Text("x").padding(16)`; Java spells values `make(...)` (views) / lowercase
 functions (modifiers) and chains `modifiers(...)` / `children(...)`.
 
-| Aspect | Java | C# | Rust | Go | Python |
-|--------|------|----|------|----|--------|
-| configure values | `make(c -> …)` (views) / `padding(c -> …)` (modifiers) | `Make(c => …)` | `Type::new(config)` / `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
-| single-value shortcut | `make(value)` / `padding(value)` (sugar for the lambda) | `Make(value)` | `Type::new(value)` / `Type(sig)` | `Type(val)` | `Type(val=…)` / `Type(sig)` |
-| apply modifiers | `.modifiers(…)` | `.Modifiers(…)` | `.modifiers(…)` (single or tuple) | `.Modifiers(…)` | `.modifiers(…)` |
-| supply children | `.children(…)` | `.Children(…)` | `.children(vec![…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
-| creation + chaining | static on the view; chain on the returned builder | static on the view; chain via **extension methods** | associated fn `Type::new`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
-| same-name static + chain | **builder split** (static on class, chain on builder) | extension methods (separate static class) | assoc fn + trait method | package func + method (not type-scoped) | **not expressible** (methods are last-wins) |
-| `with` name legal | yes | yes (`With`; lowercase `with` is the record keyword) | yes | yes | **no** — `with` is a keyword → kwargs / `configure` |
-| varargs children | yes | `params` | no — slices/arrays or macros | `...` | `*args` |
-| value *is* the modifier | enum OK | **enum can't implement an interface** → `record struct` / static readonly value | enum OK | typed const + method OK | enum member with `apply` OK |
+| Aspect | Java | Rust | Go | Python |
+|--------|------|------|----|--------|
+| configure values | `make(c -> …)` (views) / `padding(c -> …)` (modifiers) | `Type::new(config)` / `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
+| single-value shortcut | `make(value)` / `padding(value)` (sugar for the lambda) | `Type::new(value)` / `Type(sig)` | `Type(val)` | `Type(val=…)` / `Type(sig)` |
+| apply modifiers | `.modifiers(…)` | `.modifiers(…)` (single or tuple) | `.Modifiers(…)` | `.modifiers(…)` |
+| supply children | `.children(…)` | `.children(vec![…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
+| creation + chaining | static on the view; chain on the returned builder | associated fn `Type::new`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
+| same-name static + chain | **builder split** (static on class, chain on builder) | assoc fn + trait method | package func + method (not type-scoped) | **not expressible** (methods are last-wins) |
+| `with` name legal | yes | yes | yes | **no** — `with` is a keyword → kwargs / `configure` |
+| varargs children | yes | no — slices/arrays or macros | `...` | `*args` |
+| value *is* the modifier | enum OK | enum OK | typed const + method OK | enum member with `apply` OK |
 
 Rules:
 
 - A language that cannot express "static-or-chained under one name" (Python)
   MUST still offer the three operations — value configuration via kwargs /
   `configure(...)`, modifiers and children via chainable methods.
-- A language whose enums cannot implement the modifier interface (C#) MUST
-  supply the equivalent single-value modifier form (a `record struct`, a static
-  readonly value, or an implicit conversion).
+- A language whose enums cannot implement the modifier interface MUST supply an
+  equivalent single-value modifier form.
 - **Reactive values are config members, in every language.** A config member
   accepts a raw value or a signal ([§2](#2-canonical-signature-notation)). Rust
   realizes this with `impl Into<Reactive<T>>` on each builder setter

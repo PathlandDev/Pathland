@@ -12,14 +12,14 @@ wire format and APIs may change before 1.0.
 Pathland is first and foremost a **binary UI protocol** — not just a framework,
 and not a single rendering
 target. Your view declaration compiles to fixed 16-byte opcodes that any renderer
-applies to native elements. The wire is the contract: a view written in Java, Rust,
-C#, or anything else produces the **same opcode stream**, and any renderer can
+applies to native elements. The wire is the contract: a view written in Kotlin, Rust,
+or any other supported DSL produces the **same opcode stream**, and any renderer can
 apply it.
 
 That makes Pathland **language- and renderer-agnostic**:
 
 - **Write the UI once, declaratively.** A SwiftUI-shaped DSL in your language of
-  choice — Java, Rust, C#, anything — describes the same view structure, whatever
+  choice — Kotlin, Rust, anything — describes the same view structure, whatever
   it later runs on.
 - **Run it on any surface.** The same view code drives today's server-rendered web
   and the native GTK4 desktop renderer, and is on track for the browser via WASM,
@@ -55,7 +55,7 @@ Try the hosted Quarkus demo live: **[pathland.onrender.com](https://pathland.onr
 ## The flagship path today: SSR
 
 The fastest way to replace a BFF + JavaScript-frontend stack. You write the **whole
-UI in your backend language** — Java, C#, Rust, anything. Pathland renders the first
+UI in your backend language** — Kotlin, Rust, anything. Pathland renders the first
 page as server-side HTML, so it appears instantly, then keeps it alive with tiny
 binary updates over a WebSocket. The result is a smooth, reactive UI — delivered by
 the backend team, without npm, bundlers, an extra build pipeline, or a separate
@@ -163,8 +163,8 @@ resources. It's shipped, not maintained — all the real logic lives in your bac
 
 ## Where it runs today
 
-- **Web (SSR + live WebSocket deltas)** — Java and Kotlin, with Spring Boot and
-  Quarkus extensions and demos; the flagship getting-started path.
+- **Web (SSR + live WebSocket deltas)** — Kotlin views with Java or Kotlin hosts,
+  via the Spring Boot and Quarkus extensions and demos; the flagship getting-started path.
 - **Native desktop (GTK4 + Qt)** — renderers driven by the same protocol, from the
   Rust DSL and the shared Kotlin `MusicPlayerView` (`pathland-gtk-demo`,
   `pathland-qt-demo`).
