@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6GZ29PHQ3X2PQ5XWVTHSF16",
+  "session_id": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-03T15:05:04.151582Z",
+  "branch": "refactor/kotlin-only-jvm-dsl",
+  "checkpoints_count": 3,
+  "save_step_count": 1,
+  "files_touched": [
+    "lib/java/pathland-quarkus-demo/pom.xml",
+    "lib/java/pathland-quarkus-kotlin-demo/pom.xml",
+    "lib/java/pathland-quarkus-kotlin-demo/src/test/kotlin/dev/pathland/demo/quarkus/kotlin/KotlinDemoSmokeTest.kt",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "57a93fb66860",
+  "checkpoint_transcript_start": 411,
+  "transcript_lines_at_start": 411,
+  "compact_transcript_start": 411,
+  "token_usage": {
+    "input_tokens": 1505237,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 17745920,
+    "output_tokens": 7147,
+    "api_call_count": 27
+  },
+  "session_metrics": {
+    "turn_count": 27
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-03T15:05:03.703077Z",
+    "agent_lines": 32,
+    "agent_removed": 8,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 32,
+    "total_lines_changed": 40,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 32,
+      "agent_lines_removed": 8
+    }
+  ]
+}
