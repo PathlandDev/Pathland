@@ -16,9 +16,10 @@ import dev.pathland.view.dsl.frame
 internal class PlayerBar(
     private val trackIndex: WritableSignal<Int>,
     private val player: MediaController,
+    private val showVolume: Boolean,
 ) : KotlinView() {
 
-    override fun body(): View = PlayerControls(player, trackIndex)
+    override fun body(): View = PlayerControls(player, trackIndex, showVolume)
         .background(MusicPlayerView.BAR_BG)
         .frame {
             width(Commands.Size.FILL)

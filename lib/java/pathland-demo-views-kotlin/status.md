@@ -7,15 +7,15 @@ The first (and currently only) view is the app-driven music player.
 
 ## Implemented
 
-- **`MusicPlayerView`** — Apple Music-style root: `LibraryView` on the left,
-  `NowPlayingSidebar` on the right (inside a `SizeThatFits` wide/compact slot),
-  and the floating `PlayerBar`.
+- **`MusicPlayerView`** — Apple Music-style root: one root `SizeThatFits`
+  selects narrow (no volume), medium (volume), or wide (volume + `NowPlayingSidebar`),
+  with the floating `PlayerBar`.
 - **Persisted player state** — `player.position`, `player.playing`,
   `player.track`, `player.volume`, `player.seekRequest`, `player.volumeRequest`
   via Kotlin `KotlinView` state delegates.
-- **App-driven media** — a `MediaController` owns the source/transport; the bar
-  and sidebar drive the same controller across fit swaps. `MEDIA_*` reports feed
-  position/volume and `MEDIA_ENDED` advances the track.
+- **App-driven media** — a `MediaController` owns the source/transport; every
+  fit candidate shares the same controller. `MEDIA_*` reports feed position/volume
+  and `MEDIA_ENDED` advances the track.
 - **Seek/volume decoupling** — `SeekControl` buffers drags and commits on release;
   `PercentSeek` maps seconds to 0..100; `VolumeControl` separates report from
   command.

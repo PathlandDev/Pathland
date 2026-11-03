@@ -8,7 +8,6 @@ import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
 import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.view.dsl.Button
-import dev.pathland.view.dsl.Fit
 import dev.pathland.view.dsl.HStack
 import dev.pathland.view.dsl.Icon
 import dev.pathland.view.dsl.Image
@@ -17,7 +16,6 @@ import dev.pathland.view.dsl.Slider
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.unaryPlus
 import dev.pathland.view.dsl.VStack
-import dev.pathland.view.dsl.ViewThatFits
 import dev.pathland.view.dsl.accessibilityLabel
 import dev.pathland.view.dsl.computed
 import dev.pathland.view.dsl.fontSize
@@ -36,6 +34,7 @@ import dev.pathland.view.dsl.scaledToFit
 internal class PlayerControls(
     private val player: MediaController,
     private val trackIndex: WritableSignal<Int>,
+    private val showVolume: Boolean,
 ) : KotlinView() {
 
     override fun body(): View {
@@ -46,7 +45,7 @@ internal class PlayerControls(
         val seek = SeekControl(player.time(), player.position())
         val volumeControl = VolumeControl(player.volumeReport(), player.volume())
 
-        val playControl = HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
+        fun playControl(): View = HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
             Button(action = { prev() }) {
                 Icon(IconName.SKIP_BACK)
             }.fontSize(20f)
@@ -63,7 +62,7 @@ internal class PlayerControls(
                 .accessibilityLabel("Next track")
         }
 
-        val trackInfo = HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
+        fun trackInfo(): View = HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
             Image(computed { current.get().cover })
                 .frame(width = 36f, height = 36f)
                 .scaledToFit()
@@ -79,33 +78,22 @@ internal class PlayerControls(
             }.frame(width = 160f)
         }
 
-        val volumeView = HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
+        fun volumeView(): View = HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
             Icon(IconName.VOLUME).fontSize(16f)
             Slider(volumeControl, 0f..1f)
                 .accessibilityLabel("Volume")
         }
 
-        val compactControls = HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
-            +playControl
-            Text("|").fontSize(18f).foregroundStyle(MusicPlayerView.SECONDARY_FG)
-            +trackInfo
-        }
-
-        val controls = HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
-            +playControl
-            Text("|").fontSize(18f).foregroundStyle(MusicPlayerView.SECONDARY_FG)
-            +trackInfo
-            Text("|").fontSize(18f).foregroundStyle(MusicPlayerView.SECONDARY_FG)
-            +volumeView
-        }
-
-        val groups = ViewThatFits(
-            Fit(controls, 700f),
-            Fit(compactControls),
-        )
-
         return VStack(alignment = HorizontalAlignment.CENTER, spacing = 0f) {
-            +groups
+            HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
+                playControl()
+                Text("|").fontSize(18f).foregroundStyle(MusicPlayerView.SECONDARY_FG)
+                trackInfo()
+                if (showVolume) {
+                    Text("|").fontSize(18f).foregroundStyle(MusicPlayerView.SECONDARY_FG)
+                    volumeView()
+                }
+            }
             Slider(
                 PercentSeek(seek) { MusicPlayerView.at(trackIndex.get()).duration },
                 0f..100f,

@@ -1,5 +1,6 @@
 package dev.pathland.demo.quarkus.kotlin
 
+import dev.pathland.demo.music.MusicPlayerView
 import dev.pathland.server.PathlandApp
 import dev.pathland.view.core.View
 import jakarta.enterprise.context.ApplicationScoped
@@ -11,5 +12,5 @@ import jakarta.enterprise.context.ApplicationScoped
 @ApplicationScoped
 class KotlinDemoApplication : PathlandApp {
 
-    override fun newRoot(): View = KotlinDemoView()
+    override fun newRoot(): View = MusicPlayerView()// KotlinDemoView()
 }

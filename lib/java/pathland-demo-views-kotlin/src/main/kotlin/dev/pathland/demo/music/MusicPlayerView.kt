@@ -160,13 +160,11 @@ class MusicPlayerView @JvmOverloads constructor(
             if (playing.get()) Lyrics.previousLine(at(trackIndex.get()).title, position.get()) else ""
         }
 
-        // Authored ONCE and wrapped in the same root component (HSTACK) for both
-        // fit candidates, so a fit swap only inserts/removes the sidebar subtree.
-        val mainArea = ZStack(alignment = Alignment.BOTTOM_CENTER) {
+        fun mainArea(showVolume: Boolean): View = ZStack(alignment = Alignment.BOTTOM_CENTER) {
             LibraryView(trackIndex, position, playing, seekRequest)
             HStack {
                 Spacer()
-                PlayerBar(trackIndex, player)
+                PlayerBar(trackIndex, player, showVolume)
                     .border {
                         color(BAR_BORDER)
                         width(1f)
@@ -178,20 +176,29 @@ class MusicPlayerView @JvmOverloads constructor(
             subtitlePill(block, previous, current)
         }
 
-        val wideRow = HStack {
-            +mainArea
-            NowPlayingSidebar(trackIndex, adUrl).clipped()
+        // One root fit slot selects the complete layout for the window width:
+        // narrow (no volume), medium (volume), wide (volume + now-playing sidebar).
+        // Keeping the bar's breakpoint at the root avoids a nested fit slot whose
+        // wide-only children could survive a parent candidate swap.
+        val narrowRow = HStack {
+            mainArea(showVolume = false)
         }.frame(width = Commands.Size.FILL, height = Commands.Size.FILL)
 
-        val compactRow = HStack {
-            +mainArea
+        val mediumRow = HStack {
+            mainArea(showVolume = true)
+        }.frame(width = Commands.Size.FILL, height = Commands.Size.FILL)
+
+        val wideRow = HStack {
+            mainArea(showVolume = true)
+            NowPlayingSidebar(trackIndex, adUrl).clipped()
         }.frame(width = Commands.Size.FILL, height = Commands.Size.FILL)
 
         return VStack {
             +player.attach()
             ViewThatFits(
+                Fit(narrowRow),
+                Fit(mediumRow, 700f),
                 Fit(wideRow, 1024f),
-                Fit(compactRow),
             ).frame(width = Commands.Size.FILL, height = Commands.Size.FILL)
                 .accessibilityRole(Roles.MAIN)
         }.frame(width = Commands.Size.FILL, height = Commands.Size.FILL)

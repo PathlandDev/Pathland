@@ -77,7 +77,7 @@ class MusicPlayerViewTest {
         assertTrue(anySetText(frame, "Library"))
         assertTrue(countCreate(frame, Components.IMAGE) >= 3)
         assertTrue(anySetPropertyString(frame, Properties.IMAGE_SOURCE, COVER))
-        assertEquals(2, countCreate(frame, Components.SIZE_THAT_FITS))
+        assertEquals(1, countCreate(frame, Components.SIZE_THAT_FITS))
     }
 
     @Test
@@ -86,14 +86,13 @@ class MusicPlayerViewTest {
         val slotId = slotIdByMaxThreshold(mounted.sink.frame(), 1024f)
         assertFalse(anySetText(mounted.sink.frame(), "Now Playing"))
 
-        mounted.result.fitInputs()[slotId]!!.accept(1)
+        mounted.result.fitInputs()[slotId]!!.accept(2)
         val wide = mounted.sink.frame()
 
         assertTrue(anySetText(wide, "Now Playing"))
         assertTrue(anySetText(wide, "Up Next"))
         assertEquals(0, countCreate(wide, Components.MEDIA_CONTROLLER))
         assertEquals(0, countCreate(wide, Components.SIZE_THAT_FITS))
-        assertTrue(countCreateAnything(wide) < 40)
     }
 
     @Test
@@ -113,30 +112,27 @@ class MusicPlayerViewTest {
         assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0))
         assertTrue(anySetProperty(frame, Properties.MEDIA_POSITION, 0f))
 
-        val barSlot = slotIdByMaxThreshold(frame, 700f)
-        mounted.result.fitInputs()[barSlot]!!.accept(1)
-        val wideBar = mounted.sink.frame()
-        assertEquals(1, countCreate(wideBar, Components.SLIDER))
-        assertTrue(anySlider(wideBar, 0f, 1f))
-        assertTrue(anySliderValue(wideBar, 0.7f))
-
         val rootSlot = slotIdByMaxThreshold(frame, 1024f)
         mounted.result.fitInputs()[rootSlot]!!.accept(1)
+        val medium = mounted.sink.frame()
+        assertTrue(anySlider(medium, 0f, 1f))
+        assertTrue(anySliderValue(medium, 0.7f))
+
+        mounted.result.fitInputs()[rootSlot]!!.accept(2)
         val withSidebar = mounted.sink.frame()
-        assertFalse(anySetText(withSidebar, "|"))
-        assertEquals(0, countCreate(withSidebar, Components.SLIDER))
-        assertTrue(countCreateAnything(withSidebar) < 40)
+        assertTrue(anySetText(withSidebar, "Now Playing"))
+        assertTrue(anySetText(withSidebar, "Up Next"))
     }
 
     @Test
-    fun snapshotEmissionCarriesBothCandidates() {
+    fun snapshotEmissionCarriesEveryCandidate() {
         val mounted = mount(snapshot = true)
         val frame = mounted.sink.frame()
 
         assertTrue(anySetText(frame, "Library"))
         assertTrue(anySetText(frame, "Now Playing"))
         val rootSlot = slotIdByMaxThreshold(frame, 1024f)
-        assertEquals(2, childCount(frame, rootSlot))
+        assertEquals(3, childCount(frame, rootSlot))
     }
 
     @Test
@@ -217,6 +213,109 @@ class MusicPlayerViewTest {
             propertyFloat(delta, seekId, Properties.VALUE),
             0.05f,
         )
+    }
+
+    @Test
+    fun repeatedFitCyclesDoNotDuplicateTheVolumeControls() {
+        val store = InMemoryStateStore()
+        val state = PersistentState(store, "session-1")
+        val sink = MultiFrameSink()
+        val emitter = Emitter(sink)
+        emitter.snapshotEmission(true)
+        val result = emitter.mount(MusicPlayerView.make(), Environment(state))
+
+        val model = TreeModel()
+        var applied = 0
+        fun applyNew() {
+            while (applied < sink.frames.size) {
+                model.apply(sink.frames[applied++])
+            }
+        }
+        applyNew()
+
+        val rootSlot = findSlot(sink.frames, 1024f)
+        assertEquals(5, model.sliderCount(), "snapshot carries narrow, medium, and wide candidates")
+
+        repeat(3) { cycle ->
+            result.fitInputs()[rootSlot]!!.accept(0)
+            applyNew()
+            assertEquals(1, model.sliderCount(), "cycle $cycle: narrow layout has only the seek slider")
+
+            result.fitInputs()[rootSlot]!!.accept(1)
+            applyNew()
+            assertEquals(2, model.sliderCount(), "cycle $cycle: medium layout adds one volume slider")
+
+            result.fitInputs()[rootSlot]!!.accept(2)
+            applyNew()
+            assertEquals(2, model.sliderCount(), "cycle $cycle: wide layout keeps one volume slider")
+
+            result.fitInputs()[rootSlot]!!.accept(0)
+            applyNew()
+            assertEquals(1, model.sliderCount(), "cycle $cycle: back to narrow keeps one seek slider")
+        }
+    }
+
+    private fun findSlot(frames: List<ProtocolFrame>, maxThreshold: Float): Int {
+        for (frame in frames) {
+            for (op: Opcode in frame.opcodes()) {
+                if (op.category() == Categories.TREE &&
+                    op.command() == Commands.Tree.CREATE_NODE &&
+                    op.b() == Components.SIZE_THAT_FITS
+                ) {
+                    val thresholds = fitThresholds(frame, op.a())
+                    if (thresholds.last() == maxThreshold) return op.a()
+                }
+            }
+        }
+        throw AssertionError("no fit slot with max threshold $maxThreshold")
+    }
+
+    private class TreeModel {
+        private val components = mutableMapOf<Int, Int>()
+        private val parents = mutableMapOf<Int, Int>()
+        private val children = mutableMapOf<Int, MutableList<Int>>()
+
+        fun apply(frame: ProtocolFrame): TreeModel {
+            for (op: Opcode in frame.opcodes()) {
+                if (op.category() != Categories.TREE) continue
+                when (op.command()) {
+                    Commands.Tree.CREATE_NODE -> {
+                        components[op.a()] = op.b()
+                        children.getOrPut(op.a()) { mutableListOf() }
+                    }
+                    Commands.Tree.DELETE_NODE -> delete(op.a())
+                    Commands.Tree.INSERT_CHILD -> {
+                        val parent = op.a()
+                        val child = op.b()
+                        parents[child] = parent
+                        children.getOrPut(parent) { mutableListOf() }.let {
+                            if (child !in it) it.add(child)
+                        }
+                    }
+                    Commands.Tree.REMOVE_CHILD -> {
+                        val parent = op.a()
+                        val child = op.b()
+                        children[parent]?.remove(child)
+                        parents.remove(child)
+                    }
+                }
+            }
+            return this
+        }
+
+        fun sliderCount(): Int = components
+            .filter { it.value == Components.SLIDER && isAttached(it.key) }
+            .size
+
+        private fun isAttached(id: Int): Boolean =
+            generateSequence(id) { parents[it] }.any { it == 1 }
+
+        private fun delete(id: Int) {
+            parents[id]?.let { parent -> children[parent]?.remove(id) }
+            parents.remove(id)
+            children.remove(id)?.toList()?.forEach(::delete)
+            components.remove(id)
+        }
     }
 
     @Test
