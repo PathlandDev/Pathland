@@ -22,8 +22,9 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
 - `lib/java/` — the Maven reactor: `pathland-view-core`
   (`dev.pathland.view.core*` + `dev.pathland.view.engine`), `pathland-view`
   (the Java DSL, `dev.pathland.view`), `pathland-view-processor`,
-  `pathland-view-kotlin` (`dev.pathland.view.dsl`), `pathland-render-html`,
-  `pathland-state-redis`, `pathland-demo-views`, the DSL-neutral
+  `pathland-view-kotlin` (`dev.pathland.view.dsl`), `pathland-demo-common`,
+  `pathland-demo-views-kotlin` (the Kotlin music player), `pathland-render-html`,
+  `pathland-state-redis`, `pathland-demo-views` (remaining Java demo views), the DSL-neutral
   `pathland-quarkus` extension plus the separate `pathland-quarkus-java` and
   `pathland-quarkus-kotlin` extensions (each with a deployment module), the
   Quarkus/Spring demos (including the Kotlin Quarkus demo), and the TypeScript

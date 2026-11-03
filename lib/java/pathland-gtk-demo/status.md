@@ -1,14 +1,14 @@
 # pathland-gtk-demo (Java) — implementation status
 
-**Last updated:** September 29, 2026
+**Last updated:** November 3, 2026
 
-Runs the shared framework-agnostic demo views (`dev.pathland.demo`, e.g.
-`MusicPlayerView`) under the **native GTK4 renderer** (`libpathland_gtk`) — the
-cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
+Runs the shared Kotlin `MusicPlayerView` (`dev.pathland.demo.music` from
+`pathland-demo-views-kotlin`) under the **native GTK4 renderer**
+(`libpathland_gtk`) — the cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
 
 ## How it works
 
-- The Java DSL mounts the view through its fine-grained `Emitter` into a
+- The Kotlin DSL mounts the view through its fine-grained `Emitter` into a
   `libpathland_core` shared ring (`RingOpcodeSink`, **zero-copy**).
 - The in-process GTK renderer pumps the same ring in place
   (`pathland_gtk_run_ring`, via `PathlandCore.ringMut`); no
@@ -23,7 +23,7 @@ cross-language, shared-renderer story for Java. Protocol contract: `spec/`.
   GStreamer `playbin` (driven by the node's media control properties) and
   reports `MEDIA_*` events back through the ring. The app's web-style
   `/_pathland/assets/...` paths are resolved against a local asset root: the
-  demo extracts its audio + covers from the shared `pathland-demo-views` jar at
+  demo extracts its audio + covers from the shared `pathland-demo-common` jar at
   startup (`DemoAssets.extractToTemp`) and calls `pathland_gtk_set_asset_root`.
 
 ## Implemented

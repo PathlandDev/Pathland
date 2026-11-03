@@ -21,28 +21,33 @@
 
     <name>Pathland Qt Desktop Demo</name>
     <description>
-        Runs the shared framework-agnostic MusicPlayerView (dev.pathland.demo.music,
-        an Apple Music-style player with app-driven media) under the Qt Quick
-        renderer (libpathland_qt). The Java DSL emits opcodes into the
-        libpathland_core shared ring (RingOpcodeSink); pathland_qt_run_ring pumps
-        the same ring in place (zero-copy); native inputs round-trip as EVENT
-        opcodes that this host drains and dispatches into the app's bindings.
+        Runs the Kotlin MusicPlayerView (dev.pathland.demo.music, an Apple
+        Music-style player with app-driven media) under the Qt Quick renderer
+        (libpathland_qt). The Kotlin DSL emits opcodes into the libpathland_core
+        shared ring (RingOpcodeSink); pathland_qt_run_ring pumps the same ring in
+        place (zero-copy); native inputs round-trip as EVENT opcodes that this
+        Kotlin host drains and dispatches into the app's bindings.
     </description>
 
     <dependencies>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view</artifactId>
+            <artifactId>pathland-demo-views-kotlin</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-demo-views</artifactId>
+            <artifactId>pathland-demo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>${kotlin.version}</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -52,7 +57,35 @@
     </dependencies>
 
     <build>
+        <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
+        <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>process-test-sources</phase>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <jvmTarget>${maven.compiler.release}</jvmTarget>
+                    <languageVersion>2.4</languageVersion>
+                    <apiVersion>2.4</apiVersion>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

@@ -24,8 +24,7 @@
         Spring Boot demonstration app consuming the Pathland libraries: SSR via
         pathland-render-html, live 16-byte opcode deltas over raw WebSocket, and
         cross-platform state persisted through StateStore (State fields). The entire app is
-        the starter dependency + a PathlandApp bean returning the root view — proving the
-        same view code and annotation processor used by the Quarkus demo run unchanged.
+        the starter dependency + a PathlandApp bean returning the Kotlin MusicPlayerView.
     </description>
 
     <dependencies>
@@ -36,7 +35,12 @@
         </dependency>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-demo-views</artifactId>
+            <artifactId>pathland-demo-views-kotlin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-demo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- Observability (issue #62): Prometheus scrape at /actuator/prometheus; health at

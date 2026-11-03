@@ -17,8 +17,7 @@
     <properties>
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.javadoc.skip>true</maven.javadoc.skip>
-        <!-- Quarkus 3.39.1 manages Kotlin 2.4.10; use the same compiler for the app. -->
-        <kotlin.version>2.4.10</kotlin.version>
+        <!-- Quarkus 3.39.1 manages Kotlin 2.4.10; inherit the reactor's compiler. -->
     </properties>
 
     <name>Pathland Quarkus Kotlin Demo</name>
@@ -38,6 +37,11 @@
         <dependency>
             <groupId>dev.pathland</groupId>
             <artifactId>pathland-view-kotlin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-demo-views-kotlin</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

@@ -33,6 +33,11 @@
             <artifactId>pathland-view</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-demo-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- Order the processor module before this one in the reactor; the actual
              processing is configured via annotationProcessorPaths below. -->
         <dependency>

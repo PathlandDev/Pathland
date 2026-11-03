@@ -82,6 +82,16 @@ class DslTest {
     }
 
     @Test
+    fun childModifiersApplyInsideABuilder() {
+        val root = VStack { Text("x").fontSize(20f) }
+        val (_, frame) = mount(root)
+        assertTrue(
+            properties(frame).contains(Properties.FONT_SIZE),
+            "a modifier on a child must replace the auto-registered leaf, not be dropped",
+        )
+    }
+
+    @Test
     fun trailingBlocksAutoCollectNestedChildren() {
         val root = VStack(spacing = 4f) {
             Text("a")

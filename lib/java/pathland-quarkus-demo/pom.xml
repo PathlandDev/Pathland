@@ -24,8 +24,8 @@
         Quarkus demonstration app consuming the Pathland libraries: SSR
         (pathland-render-html) for instant first paint, then live 16-byte opcode deltas +
         events over WebSocket, with cross-platform state persisted through StateStore
-        (Redis with an in-memory fallback). The entire app is the Java DSL extension + a
-        PathlandApp bean returning the root view.
+        (Redis with an in-memory fallback). The extension provides SSR/WebSocket/state; the
+        host is Java and mounts the shared Kotlin MusicPlayerView.
     </description>
 
     <dependencies>
@@ -37,6 +37,16 @@
         <dependency>
             <groupId>dev.pathland</groupId>
             <artifactId>pathland-demo-views</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-demo-views-kotlin</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-demo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- Observability (issue #62): a Prometheus scrape endpoint at /q/metrics; health

@@ -25,9 +25,10 @@ class KotlinDemoSmokeTest {
         val response = get("/")
 
         assertEquals(200, response.statusCode())
-        assertTrue(response.body().contains("Pathland Kotlin Demo"), response.body())
-        assertTrue(response.body().contains("Count: 0"), response.body())
-        assertTrue(response.body().contains("First item"), response.body())
+        assertTrue(response.body().contains("Library"), response.body())
+        assertTrue(response.body().contains("Building on Solid Ground"), response.body())
+        assertTrue(response.body().contains("8 songs · 8 albums"), response.body())
+        assertTrue(response.body().contains("Pathland · Building on Solid Ground"), response.body())
     }
 
     @Test
