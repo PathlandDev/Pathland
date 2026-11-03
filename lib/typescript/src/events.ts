@@ -260,9 +260,9 @@ export function encodeNavigateBack(): Uint8Array {
 /**
  * The platform's environment: viewport + initial route, as a batch of
  * `META::ENVIRONMENT` field opcodes (the route rides the batch's string section).
- * The DOM client sends this as its **first** message on connect and re-sends it to
- * **enrich** the environment after connect (e.g. a window resize re-emits the
- * viewport fields). The SSR host synthesizes the same message from the HTTP request.
+ * The DOM client sends this as its **first** message on connect; a reconnect
+ * re-sends the current viewport. The SSR host synthesizes the same message from
+ * the HTTP request.
  */
 export function encodeEnvironment(width: number, height: number, route: string): Uint8Array {
   const routeBytes = new TextEncoder().encode(route);

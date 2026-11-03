@@ -438,9 +438,8 @@ and the WebSocket connection **enriches** the environment after connect
 
 **Delivery** (spec DSL.md §4.5): on SSR the host synthesizes the environment
 from the HTTP request (`ROUTE` = request path — all the request offers); over
-the WebSocket the DOM client sends it (viewport + `ROUTE`) as its first message
-and re-sends it to **enrich** after connect (a window-resize re-emits the
-viewport fields). The application applies the environment uniformly — the
+the WebSocket the DOM client sends it (viewport + `ROUTE`) as its first message;
+a reconnect re-sends it. The application applies the environment uniformly — the
 router hydrates from the `ROUTE` field before mount, so a deep-link renders
 correctly on the first frame.
 

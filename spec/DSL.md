@@ -600,9 +600,8 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
   (host → guest platform environment, OPCODE.md — the same message that carries
   the viewport): on SSR the host synthesizes it from the HTTP request (the
   request path — all the request offers), and over the WebSocket the DOM client
-  sends it (with the viewport) as its **first** message and later **enriches**
-  the environment (a window-resize re-emits the viewport; future platform
-  fields arrive the same way). The application applies the environment
+  sends it (with the viewport) as its **first** message; a reconnect re-sends it.
+  The application applies the environment
   uniformly — the router hydrates from the `ROUTE` field before mount, so a
   deep-link request renders the right destination on the first frame. The app
   never models the platform's location handling — history adaptation
