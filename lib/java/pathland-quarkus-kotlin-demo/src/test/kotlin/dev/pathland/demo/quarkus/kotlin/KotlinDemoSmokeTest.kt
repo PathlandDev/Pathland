@@ -33,16 +33,17 @@ class KotlinDemoSmokeTest {
 
     @Test
     fun adViewIsMountedAndEmbeddedThroughTheProxy() {
-        val html = get("/").body()
+        // Warm the mounted origin first: the first cold Kotlin view render can be slow on
+        // CI, and the proxy's SSR snapshot budget starts only after the parent mounts.
+        val ad = get("/ad")
+        assertEquals(200, ad.statusCode(), "the ad app is mounted at /ad")
+        assertTrue(ad.body().contains("Pathland Ads"), "the ad app renders directly at /ad")
 
+        val html = get("/").body()
         assertTrue(html.contains("Pathland Ads"), "the proxied ad app's title is embedded: $html")
         assertTrue(html.contains("Clicked 0 times"), "the ad app's counter renders through the proxy")
         assertTrue(html.contains("data-pathland-id=\"1073741825\""),
             "the ad subtree carries remapped ids from the proxy range")
-
-        val ad = get("/ad")
-        assertEquals(200, ad.statusCode(), "the ad app is mounted at /ad")
-        assertTrue(ad.body().contains("Pathland Ads"), "the ad app renders directly at /ad")
     }
 
     @Test
