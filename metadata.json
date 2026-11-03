@@ -1,0 +1,33 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6G1H6P4CE08QQ2PN7F22TEV",
+  "strategy": "manual-commit",
+  "branch": "refactor/music-player-kotlin",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/MusicPlayerView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/PlayerBar.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/PlayerControls.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/MusicPlayerViewTest.kt",
+    "lib/java/pathland-demo-views-kotlin/status.md",
+    "lib/java/pathland-quarkus-kotlin-demo/pom.xml",
+    "lib/java/pathland-quarkus-kotlin-demo/src/main/kotlin/dev/pathland/demo/quarkus/kotlin/KotlinDemoApplication.kt",
+    "lib/java/pathland-quarkus-kotlin-demo/src/test/kotlin/dev/pathland/demo/quarkus/kotlin/KotlinDemoSmokeTest.kt"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 536163,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 38767872,
+    "output_tokens": 30078,
+    "api_call_count": 97
+  }
+}
