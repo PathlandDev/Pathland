@@ -73,8 +73,8 @@
                 </executions>
                 <configuration>
                     <jvmTarget>${maven.compiler.release}</jvmTarget>
-                    <languageVersion>2.2</languageVersion>
-                    <apiVersion>2.2</apiVersion>
+                    <languageVersion>2.4</languageVersion>
+                    <apiVersion>2.4</apiVersion>
                 </configuration>
             </plugin>
             <plugin>

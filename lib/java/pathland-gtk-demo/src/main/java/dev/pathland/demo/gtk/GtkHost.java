@@ -17,10 +17,10 @@ import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 
 /**
- * Runs the shared {@link MusicPlayerView} under the native GTK4 renderer — the
- * cross-language, shared-renderer story for Java.
+ * Runs the shared Kotlin {@link MusicPlayerView} under the native GTK4 renderer —
+ * the cross-language, shared-renderer story for Java.
  *
- * <p>The Java DSL mounts the view through its fine-grained {@link Emitter} into a
+ * <p>The Kotlin DSL mounts the view through its fine-grained {@link Emitter} into a
  * {@code libpathland_core} shared ring ({@link RingOpcodeSink}, zero-copy). The
  * in-process GTK renderer pumps the same ring in place
  * ({@code pathland_gtk_run_ring}); native inputs round-trip as {@code EVENT}
@@ -74,7 +74,7 @@ public final class GtkHost {
 
             // The app references its assets with web-style /_pathland/... paths;
             // the renderer resolves them against a local copy extracted once from
-            // the shared demo-views jar (see DemoAssets).
+            // the shared demo-common jar (see DemoAssets).
             GtkRendererNative renderer = GtkRendererNative.instance();
             renderer.setAssetRoot(DemoAssets.extractToTemp().toString());
 

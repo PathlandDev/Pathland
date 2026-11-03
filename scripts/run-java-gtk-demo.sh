@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the Java + GTK4 desktop demo: the shared demo views (SplitNavDemo) under
+# Run the Java + GTK4 desktop demo: the shared Kotlin MusicPlayerView under
 # the native GTK renderer, over the libpathland_core shared ring.
 #
 # macOS must run GTK on the main thread (-XstartOnFirstThread); Linux needs no flag.

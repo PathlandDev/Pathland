@@ -1,5 +1,6 @@
 package dev.pathland.view.dsl
 
+import dev.pathland.view.core.Modified
 import dev.pathland.view.core.View
 import java.util.ArrayDeque
 
@@ -28,6 +29,17 @@ internal object ViewScopes {
 
     fun register(view: View) {
         val scope = current() ?: return
+        // A DSL leaf/container registers its base view as soon as it is constructed.
+        // A following modifier chain then registers the wrapper; replace the base in
+        // place so `.padding(16)` on a child is not silently dropped.
+        val inner = (view as? Modified)?.inner()
+        if (inner != null) {
+            val index = scope.indexOfFirst { it === inner }
+            if (index >= 0) {
+                scope[index] = view
+                return
+            }
+        }
         if (scope.none { it === view }) {
             scope.add(view)
         }

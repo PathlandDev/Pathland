@@ -46,6 +46,11 @@ public final class Modified implements View {
         return Prop.reactive(property, signal);
     }
 
+    /** The wrapped view (the next link inward in this modifier chain). */
+    public View inner() {
+        return inner;
+    }
+
     /** Build a property-modifier view from inner + props. */
     public static Modified props(View inner, Prop... props) {
         return new Modified(inner, List.of(props), null);

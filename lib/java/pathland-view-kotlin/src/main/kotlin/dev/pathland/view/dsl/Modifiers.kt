@@ -267,140 +267,144 @@ class ClipShape private constructor(private val shape: Signal<ShapeKind>) : View
 
 /* Layout & frame */
 
-fun View.padding(value: Float): View = modifiers(Padding.of(value))
+/** Apply a modifier and register the wrapper, replacing the already-registered child. */
+private fun View.modified(vararg modifiers: ViewModifier): View =
+    modifiers(*modifiers).registerChild()
+
+fun View.padding(value: Float): View = modified(Padding.of(value))
 fun View.padding(value: Int): View = padding(value.toFloat())
-fun View.padding(value: Signal<Float>): View = modifiers(Padding.of(value))
-fun View.padding(value: Length): View = modifiers(Padding.of(value))
+fun View.padding(value: Signal<Float>): View = modified(Padding.of(value))
+fun View.padding(value: Length): View = modified(Padding.of(value))
 fun View.padding(top: Float, right: Float = top, bottom: Float = top, left: Float = right): View =
-    modifiers(Padding.of { edges(top, right, bottom, left) })
+    modified(Padding.of { edges(top, right, bottom, left) })
 fun View.padding(top: Int, right: Int = top, bottom: Int = top, left: Int = right): View =
     padding(top.toFloat(), right.toFloat(), bottom.toFloat(), left.toFloat())
-fun View.padding(configure: Padding.Config.() -> Unit): View = modifiers(Padding.of(configure))
+fun View.padding(configure: Padding.Config.() -> Unit): View = modified(Padding.of(configure))
 
 fun View.frame(width: Float? = null, height: Float? = null, alignment: Alignment? = null): View =
-    modifiers(Frame.of(width, height, alignment))
+    modified(Frame.of(width, height, alignment))
 fun View.frame(width: Int, height: Int? = null, alignment: Alignment? = null): View =
     frame(width.toFloat(), height?.toFloat(), alignment)
-fun View.frame(configure: Frame.Config.() -> Unit): View = modifiers(Frame.of(configure))
+fun View.frame(configure: Frame.Config.() -> Unit): View = modified(Frame.of(configure))
 
 fun View.offset(x: Float = 0f, y: Float = 0f): View =
-    modifiers(props(Modified.prop(Properties.OFFSET_X, x), Modified.prop(Properties.OFFSET_Y, y)))
+    modified(props(Modified.prop(Properties.OFFSET_X, x), Modified.prop(Properties.OFFSET_Y, y)))
 fun View.offset(x: Int, y: Int = x): View = offset(x.toFloat(), y.toFloat())
 fun View.position(x: Float, y: Float): View =
-    modifiers(props(Modified.prop(Properties.POSITION_X, x), Modified.prop(Properties.POSITION_Y, y)))
+    modified(props(Modified.prop(Properties.POSITION_X, x), Modified.prop(Properties.POSITION_Y, y)))
 fun View.position(x: Int, y: Int): View = position(x.toFloat(), y.toFloat())
 fun View.fixedSize(horizontal: Boolean = true, vertical: Boolean = true): View =
-    modifiers(props(
+    modified(props(
         Modified.prop(Properties.FIXED_SIZE_HORIZONTAL, if (horizontal) 1 else 0),
         Modified.prop(Properties.FIXED_SIZE_VERTICAL, if (vertical) 1 else 0),
     ))
-fun View.layoutPriority(value: Float): View = modifiers(prop(Properties.LAYOUT_PRIORITY, value))
-fun View.zIndex(value: Float): View = modifiers(prop(Properties.Z_INDEX, value))
+fun View.layoutPriority(value: Float): View = modified(prop(Properties.LAYOUT_PRIORITY, value))
+fun View.zIndex(value: Float): View = modified(prop(Properties.Z_INDEX, value))
 fun View.aspectRatio(ratio: Float, contentMode: ContentMode = ContentMode.FIT): View =
-    modifiers(props(
+    modified(props(
         Modified.prop(Properties.ASPECT_RATIO, ratio),
         Modified.prop(Properties.CONTENT_MODE, contentMode.wire().toFloat()),
     ))
-fun View.scaledToFit(): View = modifiers(prop(Properties.CONTENT_MODE, ContentMode.FIT.wire().toFloat()))
-fun View.scaledToFill(): View = modifiers(prop(Properties.CONTENT_MODE, ContentMode.FILL.wire().toFloat()))
-fun View.minimumScaleFactor(value: Float): View = modifiers(prop(Properties.MINIMUM_SCALE_FACTOR, value))
+fun View.scaledToFit(): View = modified(prop(Properties.CONTENT_MODE, ContentMode.FIT.wire().toFloat()))
+fun View.scaledToFill(): View = modified(prop(Properties.CONTENT_MODE, ContentMode.FILL.wire().toFloat()))
+fun View.minimumScaleFactor(value: Float): View = modified(prop(Properties.MINIMUM_SCALE_FACTOR, value))
 
 /* Text formatting */
 
-fun View.font(font: Font): View = modifiers(font)
-fun View.fontSize(size: Float): View = modifiers(prop(Properties.FONT_SIZE, size))
+fun View.font(font: Font): View = modified(font)
+fun View.fontSize(size: Float): View = modified(prop(Properties.FONT_SIZE, size))
 fun View.fontSize(size: Int): View = fontSize(size.toFloat())
-fun View.fontSize(size: Signal<Float>): View = modifiers(prop(Properties.FONT_SIZE, size))
-fun View.fontSize(size: Length): View = modifiers(prop(Properties.FONT_SIZE, size))
-fun View.fontWeight(weight: FontWeight): View = modifiers(prop(Properties.FONT_WEIGHT, weight.wire().toFloat()))
-fun View.fontFamily(family: String): View = modifiers(prop(Properties.FONT_FAMILY, family))
-fun View.fontFamily(family: Signal<String>): View = modifiers(prop(Properties.FONT_FAMILY, family))
-fun View.fontStyle(style: FontStyle): View = modifiers(prop(Properties.FONT_STYLE, style.wire().toFloat()))
-fun View.fontDesign(design: FontDesign): View = modifiers(prop(Properties.FONT_DESIGN, design.wire().toFloat()))
+fun View.fontSize(size: Signal<Float>): View = modified(prop(Properties.FONT_SIZE, size))
+fun View.fontSize(size: Length): View = modified(prop(Properties.FONT_SIZE, size))
+fun View.fontWeight(weight: FontWeight): View = modified(prop(Properties.FONT_WEIGHT, weight.wire().toFloat()))
+fun View.fontFamily(family: String): View = modified(prop(Properties.FONT_FAMILY, family))
+fun View.fontFamily(family: Signal<String>): View = modified(prop(Properties.FONT_FAMILY, family))
+fun View.fontStyle(style: FontStyle): View = modified(prop(Properties.FONT_STYLE, style.wire().toFloat()))
+fun View.fontDesign(design: FontDesign): View = modified(prop(Properties.FONT_DESIGN, design.wire().toFloat()))
 fun View.italic(): View = fontStyle(FontStyle.ITALIC)
-fun View.fontWidth(value: Float): View = modifiers(prop(Properties.FONT_WIDTH, value))
-fun View.fontWidth(value: Signal<Float>): View = modifiers(prop(Properties.FONT_WIDTH, value))
-fun View.kerning(value: Float): View = modifiers(prop(Properties.KERNING, value))
-fun View.tracking(value: Float): View = modifiers(prop(Properties.TRACKING, value))
-fun View.baselineOffset(value: Float): View = modifiers(prop(Properties.BASELINE_OFFSET, value))
-fun View.lineSpacing(value: Float): View = modifiers(prop(Properties.LINE_SPACING, value))
-fun View.lineLimit(value: Int): View = modifiers(prop(Properties.LINE_LIMIT, value))
-fun View.lineLimit(value: Signal<Int>): View = modifiers(prop(Properties.LINE_LIMIT, value))
+fun View.fontWidth(value: Float): View = modified(prop(Properties.FONT_WIDTH, value))
+fun View.fontWidth(value: Signal<Float>): View = modified(prop(Properties.FONT_WIDTH, value))
+fun View.kerning(value: Float): View = modified(prop(Properties.KERNING, value))
+fun View.tracking(value: Float): View = modified(prop(Properties.TRACKING, value))
+fun View.baselineOffset(value: Float): View = modified(prop(Properties.BASELINE_OFFSET, value))
+fun View.lineSpacing(value: Float): View = modified(prop(Properties.LINE_SPACING, value))
+fun View.lineLimit(value: Int): View = modified(prop(Properties.LINE_LIMIT, value))
+fun View.lineLimit(value: Signal<Int>): View = modified(prop(Properties.LINE_LIMIT, value))
 fun View.multilineTextAlignment(alignment: TextAlignment): View =
-    modifiers(prop(Properties.TEXT_ALIGNMENT, alignment.wire().toFloat()))
+    modified(prop(Properties.TEXT_ALIGNMENT, alignment.wire().toFloat()))
 fun View.truncationMode(mode: Truncation): View =
-    modifiers(prop(Properties.TRUNCATION_MODE, mode.wire().toFloat()))
+    modified(prop(Properties.TRUNCATION_MODE, mode.wire().toFloat()))
 fun View.textCase(textCase: TextCase): View =
-    modifiers(prop(Properties.TEXT_CASE, textCase.wire().toFloat()))
-fun View.underline(on: Boolean = true): View = modifiers(prop(Properties.UNDERLINE, if (on) 1 else 0))
-fun View.strikethrough(on: Boolean = true): View = modifiers(prop(Properties.STRIKETHROUGH, if (on) 1 else 0))
-fun View.foregroundStyle(color: Color): View = modifiers(prop(Properties.COLOR, color))
-fun View.foregroundStyle(color: Signal<Color>): View = modifiers(prop(Properties.COLOR, color))
-fun View.tint(color: Color): View = modifiers(prop(Properties.TINT, color))
+    modified(prop(Properties.TEXT_CASE, textCase.wire().toFloat()))
+fun View.underline(on: Boolean = true): View = modified(prop(Properties.UNDERLINE, if (on) 1 else 0))
+fun View.strikethrough(on: Boolean = true): View = modified(prop(Properties.STRIKETHROUGH, if (on) 1 else 0))
+fun View.foregroundStyle(color: Color): View = modified(prop(Properties.COLOR, color))
+fun View.foregroundStyle(color: Signal<Color>): View = modified(prop(Properties.COLOR, color))
+fun View.tint(color: Color): View = modified(prop(Properties.TINT, color))
 
 /* Appearance & effects */
 
-fun View.background(color: Color): View = modifiers(prop(Properties.BACKGROUND_COLOR, color))
-fun View.background(color: Signal<Color>): View = modifiers(prop(Properties.BACKGROUND_COLOR, color))
+fun View.background(color: Color): View = modified(prop(Properties.BACKGROUND_COLOR, color))
+fun View.background(color: Signal<Color>): View = modified(prop(Properties.BACKGROUND_COLOR, color))
 fun View.border(color: Color, width: Float = 1f, radius: Float? = null): View =
-    modifiers(Border.of { color(color).width(width); if (radius != null) radius(radius) })
-fun View.border(configure: Border.Config.() -> Unit): View = modifiers(Border.of(configure))
-fun View.cornerRadius(radius: Float): View = modifiers(prop(Properties.BORDER_RADIUS, radius))
+    modified(Border.of { color(color).width(width); if (radius != null) radius(radius) })
+fun View.border(configure: Border.Config.() -> Unit): View = modified(Border.of(configure))
+fun View.cornerRadius(radius: Float): View = modified(prop(Properties.BORDER_RADIUS, radius))
 fun View.cornerRadius(radius: Int): View = cornerRadius(radius.toFloat())
-fun View.cornerRadius(radius: Signal<Float>): View = modifiers(prop(Properties.BORDER_RADIUS, radius))
-fun View.cornerRadius(radius: Length): View = modifiers(prop(Properties.BORDER_RADIUS, radius))
-fun View.shadow(radius: Float): View = modifiers(Shadow.of(radius))
+fun View.cornerRadius(radius: Signal<Float>): View = modified(prop(Properties.BORDER_RADIUS, radius))
+fun View.cornerRadius(radius: Length): View = modified(prop(Properties.BORDER_RADIUS, radius))
+fun View.shadow(radius: Float): View = modified(Shadow.of(radius))
 fun View.shadow(color: Color? = null, radius: Float, x: Float = 0f, y: Float = 0f): View =
-    modifiers(Shadow.of { if (color != null) color(color); radius(radius); x(x); y(y) })
-fun View.shadow(configure: Shadow.Config.() -> Unit): View = modifiers(Shadow.of(configure))
-fun View.opacity(value: Float): View = modifiers(prop(Properties.OPACITY, value))
+    modified(Shadow.of { if (color != null) color(color); radius(radius); x(x); y(y) })
+fun View.shadow(configure: Shadow.Config.() -> Unit): View = modified(Shadow.of(configure))
+fun View.opacity(value: Float): View = modified(prop(Properties.OPACITY, value))
 fun View.opacity(value: Int): View = opacity(value.toFloat())
-fun View.opacity(value: Signal<Float>): View = modifiers(prop(Properties.OPACITY, value))
-fun View.blur(radius: Float): View = modifiers(prop(Properties.BLUR_RADIUS, radius))
+fun View.opacity(value: Signal<Float>): View = modified(prop(Properties.OPACITY, value))
+fun View.blur(radius: Float): View = modified(prop(Properties.BLUR_RADIUS, radius))
 fun View.blur(radius: Int): View = blur(radius.toFloat())
-fun View.saturation(value: Float): View = modifiers(prop(Properties.SATURATION, value))
-fun View.contrast(value: Float): View = modifiers(prop(Properties.CONTRAST, value))
-fun View.brightness(value: Float): View = modifiers(prop(Properties.BRIGHTNESS, value))
-fun View.grayscale(value: Float): View = modifiers(prop(Properties.GRAYSCALE, value))
-fun View.hueRotation(degrees: Float): View = modifiers(prop(Properties.HUE_ROTATION, degrees))
-fun View.colorMultiply(color: Color): View = modifiers(prop(Properties.COLOR_MULTIPLY, color))
-fun View.colorInvert(): View = modifiers(prop(Properties.COLOR_INVERT, 1))
-fun View.clipped(): View = modifiers(prop(Properties.CLIPS_TO_BOUNDS, 1))
-fun View.clipShape(shape: ShapeKind): View = modifiers(ClipShape.of(shape))
-fun View.clipShape(configure: ClipShape.Config.() -> Unit): View = modifiers(ClipShape.of(configure))
+fun View.saturation(value: Float): View = modified(prop(Properties.SATURATION, value))
+fun View.contrast(value: Float): View = modified(prop(Properties.CONTRAST, value))
+fun View.brightness(value: Float): View = modified(prop(Properties.BRIGHTNESS, value))
+fun View.grayscale(value: Float): View = modified(prop(Properties.GRAYSCALE, value))
+fun View.hueRotation(degrees: Float): View = modified(prop(Properties.HUE_ROTATION, degrees))
+fun View.colorMultiply(color: Color): View = modified(prop(Properties.COLOR_MULTIPLY, color))
+fun View.colorInvert(): View = modified(prop(Properties.COLOR_INVERT, 1))
+fun View.clipped(): View = modified(prop(Properties.CLIPS_TO_BOUNDS, 1))
+fun View.clipShape(shape: ShapeKind): View = modified(ClipShape.of(shape))
+fun View.clipShape(configure: ClipShape.Config.() -> Unit): View = modified(ClipShape.of(configure))
 
 /* Transform */
 
-fun View.rotationEffect(degrees: Float): View = modifiers(prop(Properties.ROTATION_DEGREES, degrees))
+fun View.rotationEffect(degrees: Float): View = modified(prop(Properties.ROTATION_DEGREES, degrees))
 fun View.rotationEffect(degrees: Int): View = rotationEffect(degrees.toFloat())
 fun View.rotation(degrees: Float): View = rotationEffect(degrees)
 fun View.rotation(degrees: Int): View = rotationEffect(degrees.toFloat())
-fun View.scaleEffect(value: Float): View = modifiers(prop(Properties.SCALE, value))
+fun View.scaleEffect(value: Float): View = modified(prop(Properties.SCALE, value))
 fun View.scaleEffect(value: Int): View = scaleEffect(value.toFloat())
 
 /* Interaction & state */
 
-fun View.hidden(): View = modifiers(prop(Properties.VISIBLE, 0))
-fun View.visible(visible: Boolean): View = modifiers(prop(Properties.VISIBLE, if (visible) 1 else 0))
-fun View.visible(visible: Signal<Boolean>): View = modifiers(prop(Properties.VISIBLE, visible))
-fun View.disabled(disabled: Boolean = true): View = modifiers(prop(Properties.ENABLED, if (disabled) 0 else 1))
-fun View.disabled(disabled: Signal<Boolean>): View = modifiers(prop(Properties.ENABLED, Signals.computed { if (disabled.get()) 0 else 1 }))
-fun View.allowsHitTesting(allowed: Boolean = true): View = modifiers(prop(Properties.ALLOWS_HIT_TESTING, if (allowed) 1 else 0))
-fun View.controlSize(size: ControlSize): View = modifiers(prop(Properties.CONTROL_SIZE, size.wire().toFloat()))
-fun View.accessibilityLabel(label: String): View = modifiers(prop(Properties.LABEL, label))
-fun View.accessibilityLabel(label: Signal<String>): View = modifiers(prop(Properties.LABEL, label))
-fun View.accessibilityRole(role: Int): View = modifiers(prop(Properties.ROLE, role.toFloat()))
-fun View.accessibilityState(state: Int): View = modifiers(prop(Properties.STATE, state.toFloat()))
-fun View.onTapGesture(action: () -> Unit): View = modifiers(TapGesture.with(Runnable(action)))
-fun View.pointerEvents(mask: Int): View = modifiers(PointerEvents.with(mask))
+fun View.hidden(): View = modified(prop(Properties.VISIBLE, 0))
+fun View.visible(visible: Boolean): View = modified(prop(Properties.VISIBLE, if (visible) 1 else 0))
+fun View.visible(visible: Signal<Boolean>): View = modified(prop(Properties.VISIBLE, visible))
+fun View.disabled(disabled: Boolean = true): View = modified(prop(Properties.ENABLED, if (disabled) 0 else 1))
+fun View.disabled(disabled: Signal<Boolean>): View = modified(prop(Properties.ENABLED, Signals.computed { if (disabled.get()) 0 else 1 }))
+fun View.allowsHitTesting(allowed: Boolean = true): View = modified(prop(Properties.ALLOWS_HIT_TESTING, if (allowed) 1 else 0))
+fun View.controlSize(size: ControlSize): View = modified(prop(Properties.CONTROL_SIZE, size.wire().toFloat()))
+fun View.accessibilityLabel(label: String): View = modified(prop(Properties.LABEL, label))
+fun View.accessibilityLabel(label: Signal<String>): View = modified(prop(Properties.LABEL, label))
+fun View.accessibilityRole(role: Int): View = modified(prop(Properties.ROLE, role.toFloat()))
+fun View.accessibilityState(state: Int): View = modified(prop(Properties.STATE, state.toFloat()))
+fun View.onTapGesture(action: () -> Unit): View = modified(TapGesture.with(Runnable(action)))
+fun View.pointerEvents(mask: Int): View = modified(PointerEvents.with(mask))
 fun View.pathChange(listener: (String) -> Unit): View =
-    modifiers(PathChange.with { c -> c.listener { listener(it) } })
-fun View.buttonStyle(style: ButtonStyle): View = modifiers(style)
-fun View.labelStyle(style: LabelStyle): View = modifiers(style)
-fun View.videoStyle(style: VideoStyle): View = modifiers(style)
+    modified(PathChange.with { c -> c.listener { listener(it) } })
+fun View.buttonStyle(style: ButtonStyle): View = modified(style)
+fun View.labelStyle(style: LabelStyle): View = modified(style)
+fun View.videoStyle(style: VideoStyle): View = modified(style)
 fun View.windowMetadata(configure: WindowMetadata.Config.() -> Unit): View =
-    modifiers(WindowMetadata.with { c -> c.configure() })
+    modified(WindowMetadata.with { c -> c.configure() })
 fun <T> View.environment(key: EnvironmentKey<T>, value: T): View =
-    modifiers(EnvironmentBinding.with { c -> c.key(key).value(value) })
+    modified(EnvironmentBinding.with { c -> c.key(key).value(value) })
 fun <T> View.environment(key: EnvironmentKey<T>, value: Signal<T>): View =
-    modifiers(EnvironmentBinding.with { c -> c.key(key).value(value) })
+    modified(EnvironmentBinding.with { c -> c.key(key).value(value) })

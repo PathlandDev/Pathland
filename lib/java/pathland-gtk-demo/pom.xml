@@ -21,8 +21,8 @@
 
     <name>Pathland GTK Desktop Demo</name>
     <description>
-        Runs the shared framework-agnostic demo views (dev.pathland.demo) under the
-        native GTK4 renderer (libpathland_gtk). The Java DSL emits opcodes into the
+        Runs the shared Kotlin MusicPlayerView (dev.pathland.demo.music) under the
+        native GTK4 renderer (libpathland_gtk). The Kotlin DSL emits opcodes into the
         libpathland_core shared ring (RingOpcodeSink); pathland_gtk_run_ring pumps the
         same ring in place (zero-copy); native inputs round-trip as EVENT opcodes that
         this host drains and dispatches into the app's bindings.
@@ -31,12 +31,12 @@
     <dependencies>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view</artifactId>
+            <artifactId>pathland-demo-views-kotlin</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-demo-views</artifactId>
+            <artifactId>pathland-demo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

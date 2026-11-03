@@ -160,8 +160,9 @@ resources. It's shipped, not maintained — all the real logic lives in your bac
 
 - **Web (SSR + live WebSocket deltas)** — Java and Kotlin, with Spring Boot and
   Quarkus extensions and demos; the flagship getting-started path.
-- **Native desktop (GTK4)** — a renderer driven by the same protocol, from both the
-  Rust DSL and the shared Java demo views (`pathland-gtk-demo`).
+- **Native desktop (GTK4 + Qt)** — renderers driven by the same protocol, from the
+  Rust DSL and the shared Kotlin `MusicPlayerView` (`pathland-gtk-demo`,
+  `pathland-qt-demo`).
 
 Two surfaces, one protocol — the demos' shared views run under both without a
 rewrite.
@@ -198,7 +199,7 @@ and launches:
 | `./scripts/run-quarkus-demo.sh` | Quarkus SSR + WebSocket, Java DSL (hot reload) | http://localhost:8080 |
 | `./scripts/run-quarkus-kotlin-demo.sh` | Quarkus SSR + WebSocket, Kotlin DSL (hot reload) | http://localhost:8080 |
 | `./scripts/run-rust-gtk-demo.sh` | Rust DSL → GTK4 desktop renderer | a native window |
-| `./scripts/run-java-gtk-demo.sh` | Java DSL → GTK4 desktop renderer (the shared `SplitNavDemo`) | a native window |
+| `./scripts/run-java-gtk-demo.sh` | Kotlin `MusicPlayerView` → GTK4 desktop renderer | a native window |
 
 ```bash
 # e.g. the Spring Boot demo
@@ -236,7 +237,7 @@ mvn quarkus:dev
 # Same protocol, native GTK desktop renderer (no browser)
 cd lib/rust && cargo run -p pathland-render-gtk-demo
 
-# Same protocol via Java: the shared demo views (SplitNavDemo) under the GTK renderer
+# Same protocol via Kotlin: the shared MusicPlayerView under the GTK renderer
 cd lib/rust && cargo build -p pathland-core-capi -p pathland-render-gtk
 cd lib/java/pathland-gtk-demo
 MAVEN_OPTS="-XstartOnFirstThread" mvn -q compile exec:java \

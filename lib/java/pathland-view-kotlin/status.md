@@ -1,6 +1,6 @@
 # pathland-view-kotlin — implementation status
 
-**Last updated:** November 1, 2026
+**Last updated:** November 3, 2026
 
 The idiomatic Kotlin authoring surface (`dev.pathland.view.dsl`). Phase 3 is
 complete: every production view/modifier is Kotlin-owned over
@@ -40,8 +40,10 @@ complete: every production view/modifier is Kotlin-owned over
   layout priority/z-index/aspect ratio, the full text-formatting surface,
   foreground/background/border/corner radius/shadow, visual effects, transforms,
   visibility/disabled/hit-testing, accessibility, tap/pointer events,
-  environment binding, styles, window metadata, and navigation intents. The
-  Java `.modifiers(...)` operation remains available as an escape hatch.
+  environment binding, styles, window metadata, and navigation intents. A child
+  modifier replaces its auto-registered leaf in the enclosing builder, so
+  `VStack { Text("x").fontSize(20f) }` keeps the modifier. The Java
+  `.modifiers(...)` operation remains available as an escape hatch.
 - **Persisted state**: `KotlinView` base class + `val count by state(0)`
   (auto-keyed by property name) or `state(0, "key")`; a `mutableState(0)` signal
   form for two-way controls. Bound to the session's `PersistentState` before the
@@ -53,8 +55,9 @@ complete: every production view/modifier is Kotlin-owned over
 - **Media**: `Video(controller)`; audio remains view-less (`controller.attach()`
   can be added with `+`).
 - **Tests**: byte-identical Kotlin-vs-Java frame comparison, auto-collection,
-  modifier property parity, fine-grained signal deltas, persisted/stateful bodies,
-  reactive `ForEach`, two-way `TextField`, navigation swaps and link intents.
+  child-modifier application, modifier property parity, fine-grained signal
+  deltas, persisted/stateful bodies, reactive `ForEach`, two-way `TextField`,
+  navigation swaps and link intents.
 
 ## Not implemented / gaps
 

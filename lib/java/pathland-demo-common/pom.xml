@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.pathland</groupId>
+        <artifactId>pathland-parent</artifactId>
+        <version>0.1.5</version>
+    </parent>
+
+    <artifactId>pathland-demo-common</artifactId>
+    <packaging>jar</packaging>
+
+    <!-- Demo support — not published to Maven Central. -->
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+    </properties>
+
+    <name>Pathland Demo Common</name>
+    <description>
+        DSL-neutral demo support shared by the Java and Kotlin demo views: the demo
+        theme and the single embedded copy of the audio, cover, and lyric assets.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-view-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
