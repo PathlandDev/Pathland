@@ -68,8 +68,6 @@
                             <rules>
                                 <bannedDependencies>
                                     <excludes>
-                                        <exclude>dev.pathland:pathland-view</exclude>
-                                        <exclude>dev.pathland:pathland-demo-views</exclude>
                                     </excludes>
                                 </bannedDependencies>
                             </rules>

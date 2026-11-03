@@ -5,6 +5,7 @@ import dev.pathland.view.core.EmptyContent
 import dev.pathland.view.core.protocol.Commands
 import dev.pathland.view.core.protocol.Components
 import dev.pathland.view.core.protocol.Properties
+import dev.pathland.view.core.protocol.WireValue
 import dev.pathland.view.core.signal.Signals
 import java.util.function.Consumer
 import dev.pathland.view.core.DatePickerMode
@@ -169,11 +170,13 @@ fun Gauge(value: Signal<Float>, min: Float = 0f, max: Float = 1f): dev.pathland.
     }.registerChild()
 
 /** The picker presentation styles (SwiftUI `PickerStyle` parity). */
-enum class PickerStyle(val wire: Int) {
+enum class PickerStyle(private val wire: Int) : WireValue {
     MENU(0),
     SEGMENTED(1),
     WHEEL(2),
-    RADIO_GROUP(3),
+    RADIO_GROUP(3);
+
+    override fun wire(): Int = wire
 }
 
 /** A secure text field (`TEXT_FIELD` + `IS_SECURE`). */
@@ -220,7 +223,7 @@ fun <T> ForEach(items: Signal<List<T>>, content: (T, Int) -> Unit): dev.pathland
 /* Media                                                                      */
 /* ------------------------------------------------------------------------- */
 
-private object KotlinNativeVideoStyle : dev.pathland.view.core.VideoStyle {
+private object FallbackVideoStyle : dev.pathland.view.core.VideoStyle {
     override fun makeBody(config: dev.pathland.view.core.VideoStyle.Configuration): dev.pathland.view.core.View =
         EmptyContent.INSTANCE
 }
@@ -228,9 +231,9 @@ private object KotlinNativeVideoStyle : dev.pathland.view.core.VideoStyle {
 fun Video(controller: MediaController): dev.pathland.view.core.View =
     coreView(Components.VIDEO) { node, env ->
         val style = dev.pathland.view.core.Environment.value(dev.pathland.view.core.Environment.VIDEO_STYLE).get()
-            ?: KotlinNativeVideoStyle
+            ?: FallbackVideoStyle
         val content = style.makeBody(dev.pathland.view.core.VideoStyle.Configuration(controller))
-        if (content !== EmptyContent.INSTANCE) node.children.add(content.render(env))
+        if (content != null && content !== EmptyContent.INSTANCE) node.children.add(content.render(env))
         node.mediaControllerRef = controller
     }.registerChild()
 

@@ -7,7 +7,7 @@ import dev.pathland.view.core.protocol.Commands
 import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.view.dsl.Divider
 import dev.pathland.view.dsl.Font
-import dev.pathland.view.dsl.KotlinView
+import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.ScrollView
 import dev.pathland.view.dsl.Spacer
 import dev.pathland.view.dsl.Text
@@ -30,7 +30,7 @@ internal class LibraryView(
     private val position: WritableSignal<Float>,
     private val playing: WritableSignal<Boolean>,
     private val seekRequest: WritableSignal<Float>,
-) : KotlinView() {
+) : Component() {
 
     override fun body(): View = VStack {
         Text("Library")

@@ -39,11 +39,11 @@ A DSL in a new language is **conformant** when it:
 | **DSL.md** (this file) | How an application **author** composes those into source code |
 
 > **Implementation status** is tracked per implementing project (a `status.md`
-> in each protocol crate/library), **not** in this specification. The Java DSL
-> (`dev.pathland.view`) and the Rust DSL (`pathland-view`) are the two reference
-> realizations; the "Java DSL" / "Rust DSL" columns below record the **agreed
-> reference shapes**, not implementation status. This document defines the
-> contract only.
+> in each protocol crate/library), **not** in this specification. The Kotlin DSL
+> (`dev.pathland.view.dsl`) and the Rust DSL (`pathland-view`) are the two
+> reference realizations; the "Kotlin DSL" / "Rust DSL" columns below record the
+> **agreed reference shapes**, not implementation status. This document defines
+> the contract only.
 
 ### Two guiding rules
 
@@ -101,8 +101,8 @@ DSL must be *shaped* by them:
   `Mod` suffix.** Where a modifier applies a single value (a font, a font
   weight, an alignment, a style), the value type itself MAY *be* the modifier
   (`FontWeight.BOLD`, `Font.headline()`, `MyButtonStyle`), so there is one name
-  for the concept. Languages that cannot merge the two (e.g. C#, whose enums
-  cannot implement interfaces) use the equivalent value form. See
+  for the concept. A language that cannot merge the two uses the equivalent
+  value form. See
   [§9.3](#93-language-adaptation-rules).
 - **There is exactly one style mechanism.** A customizable control/view takes
   its **content** from a *style* value (`ButtonStyle`, `LabelStyle`,
@@ -151,7 +151,7 @@ agnostic. Conventions used:
 
 Every concrete view exposes the same three operations — **construction**
 (`make`), **modifiers** (`.modifiers`), and **children** (`.children`). In the
-Java realization `make(...)` **is the only static of the three**; a later call
+Kotlin realization `make(...)` **is the only static of the three**; a later call
 overrides an earlier value for the same property.
 
 | Operation | Purpose | Canonical (SwiftUI-shaped) |
@@ -169,7 +169,7 @@ ViewName.make(values)              // values   — a config-builder lambda (Java
       .children(view, ...)            // children  — varargs, content-bearing views only
 ```
 
-In the Java realization a view's values entry is the static `make(...)` (the
+In the Kotlin realization a view's values entry is the static `make(...)` (the
 construction factory; empty `make()` for config-less or value-less starts).
 `modifiers(...)` is an **instance** operation available on the builder and on any
 `View` value (the interface default), so it (and `children(...)`) chain on the
@@ -211,7 +211,7 @@ in the protocol can animate. A control's two-way *value* takes a
 `WritableSignal<T>`; every other member takes a one-way `Signal<T>`.
 
 **Per-language realization.** Java cannot declare a static and an instance
-method with the same signature, so the Java realization holds the values entry
+method with the same signature, so the Kotlin realization holds the values entry
 **statically** (`make(...)`) and exposes the chainable forms on the returned
 builder/view type — `.modifiers(...)` is an instance operation (a `View`
 interface default, covariantly overridden on the builder), and static
@@ -244,14 +244,11 @@ canonical and always sufficient.
 - **Both forms exist where the member has both**: a raw value and a
   `Signal<T>` (same rule as the config setters above). A two-way control value is
   never a shortcut — it stays a `WritableSignal` config member.
-- The Java realization factors both forms through the **single `Modifiers`
-  facade**: one `import static dev.pathland.view.Modifiers.*;` brings in every
-  lowercase modifier/style function, and each delegates to the same construction
-  path (spec §5.6). There is exactly one construction path; the former per-view
-  construction `.of(...)` factories and the former per-type `with(...)` overloads
-  are **removed** — a shortcut (or the lambda / `.children(...)` / empty `make()`
-  for config-less views) replaces every one. Only data/branch factories keep
-  `of` (`Color.of`, `Fit.of`, `View.of`, `EnvironmentKey.of`, `Route.of`,
+- The Kotlin realization exposes both forms through extension functions on
+  `View` (`padding`, `foregroundStyle`, …), each delegating to the same
+  construction path (spec §5.6). There is exactly one construction path; `View.of`
+  remains the inline reactive-subtree factory, and data factories keep their `of`
+  constructors (`Color.of`, `Fit.of`, `EnvironmentKey.of`, `Route.of`,
   `Params.of`, `Signals.*`).
 
 Eligible members (non-exhaustive; the companion tables list the surface):
@@ -266,7 +263,7 @@ Per-language adaptation summary:
 | Language | Case | Composition mechanism | Example |
 |----------|------|-----------------------|---------|
 | SwiftUI | `camelCase` | trailing closures + result builder | `VStack(alignment: .center, spacing: 8) { Text("x").padding(16) }` |
-| Java (`dev.pathland.view`) | `camelCase` | `make(Consumer)` builder + `modifiers(...)` + `children(...)` | `VStack.make(v -> v.spacing(8)).children(Text.make(t -> t.text("x")).modifiers(padding(p -> p.uniform(16))))` |
+| Kotlin (`dev.pathland.view.dsl`) | `camelCase` | builders + trailing blocks + modifier sugar | `VStack(spacing = 8f) { Text("x").padding(16f) }` |
 | Rust (`pathland-view`) | `snake_case` | assoc fn + `ViewExt` trait + macros | `vstack![text("x").modifiers(Padding(16.0))]` |
 
 ---
@@ -278,7 +275,7 @@ reactive core every DSL exposes.
 
 ### 3.1 Signal surface
 
-| Canonical | Java DSL (`dev.pathland.view.core.signal`) | Semantics |
+| Canonical | Kotlin DSL (`dev.pathland.view.core.signal`) | Semantics |
 |-----------|--------------------------------------|-----------|
 | `signal(initial)` | `Signals.signal(T)` | a writable signal |
 | `signal(name, initial)` | `Signals.signal(String, T)` | named (names surface in dependency errors) |
@@ -324,40 +321,37 @@ Reading is equally fine-grained: a node's text or a property value can be
 `.modifiers(foregroundStyle(f -> f.color(colorSignal)), fontSize(s -> s.size(sizeSignal)))`
 — so a change re-emits only the bound node.
 
-### 3.3 Persisted state (`State<T>`)
+### 3.3 Persisted state (`state(...)`)
 
-A `State<T>` field is the SwiftUI-`@State`-shaped form of a persisted signal,
-**auto-wired by key**:
+A `Component` declares persisted state with a property delegate, **auto-wired
+by key**:
 
-```java
-State<Integer> count = new State<>(0);            // key = field name "count"
-State<Integer> total = new State<>(0, "total");   // explicit store key
-count.get(); count.set(0); count.update(v -> v + 1);
-count.signal();                                   // the WritableSignal (for TextField, …)
+```kotlin
+val count by state(0)          // property name is the store key
+val total by state(0, "total") // explicit store key
+count += 1                     // read/write property delegate
 ```
 
 The store (`StateStore`) is untyped and platform-neutral (in-memory, Redis,
-file, SQLite, LocalStorage, NVS flash). The Java realization wires `State`
-fields via an annotation processor that generates a `<View>_StateBinder` per
-view class; connection happens when the view renders. A generated DSL in a
-language without reflection/annotation processing MUST offer the equivalent
-explicit wiring.
+file, SQLite, LocalStorage, NVS flash). `Component` binds its state delegates to
+the session's `PersistentState` before the first `body()` render — no annotation
+processor or kapt. Other DSLs must offer equivalent explicit wiring.
 
 ### 3.4 Structural reactivity (reactive bodies + slots)
 
 The unit of structural reactivity is the **component**. Each child view rendered
 by a parent is a tracked component slot: a signal read during its `body()` /
 `renderNode()` re-renders **that component**, and the emitter diffs the fresh
-subtree against the retained nodes. Java authors therefore use ordinary control
+subtree against the retained nodes. Kotlin authors therefore use ordinary control
 flow instead of a wrapper type:
 
-| Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits |
+| Canonical (SwiftUI-shaped) | Kotlin DSL | Rust DSL | Emits |
 |----------------------------|----------|----------|-------|
 | `if cond { then } else { else }` in a result builder | plain `if` in `body()`; `View.of(() -> …)` for an inline expression | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
 | `switch value { case a -> v; default -> d }` | plain `switch` in `body()`; `View.of(() -> switch …)` inline | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
 | `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach.of(signal, (item, i) -> …)` for a row-scoped component | plain `for` in `build()` (`ForEach` parity: Phase 2) | `TREE` deltas (reconcile) |
 
-**Java realization** — bare control flow in a component body:
+**Kotlin realization** — bare control flow in a component body:
 
 ```java
 @Override
@@ -418,13 +412,13 @@ the host rebuilds + re-assigns ids + diffs on re-emit, so plain `if`/`match` in
 
 Component ids and wire behavior come from
 [PRIMITIVES.md](./PRIMITIVES.md); the tables here give the **DSL signature**.
-The `Java DSL` column is the reference realization shape. Every view exposes
+The `Kotlin DSL` column is the reference realization shape. Every view exposes
 the three operations of [§2](#2-canonical-signature-notation): `values` via
 `make(...)`, `modifiers(...)`, and — where noted — `children(...)`.
 
 ### 4.1 Primitive drawing & visual nodes
 
-| View | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
+| View | Canonical (SwiftUI-shaped) | Kotlin DSL | Emits / Binds |
 |------|---------------------------|----------|---------------|
 | `Text` | `Text("…")` / `Text(Signal<String>)` | `Text.make(t -> t.text(String))` / `Text.make(t -> t.text(Signal<String>))` | `TEXT` 0x01; content `SET_TEXT` |
 | `Image` | `Image("name")` / `Image(systemName:)` | `Image.make(i -> i.source(String))` / `Image.make(i -> i.systemName(String))` | `IMAGE` 0x02; `IMAGE_SOURCE` 0x1002 |
@@ -451,7 +445,7 @@ value passed to style-taking modifiers ([§7](#7-theme-management)).
 
 Containers are **content-bearing**: they expose `children(...)`.
 
-| View | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
+| View | Canonical (SwiftUI-shaped) | Kotlin DSL | Emits / Binds |
 |------|---------------------------|----------|---------------|
 | `VStack` | `VStack(alignment:spacing:) { … }` | `VStack.make(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `VSTACK` 0x10; `SPACING` 0x0001, `ALIGNMENT` 0x0002, `CONTENT_MARGINS` 0x0005 |
 | `HStack` | `HStack(alignment:spacing:) { … }` | `HStack.make(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `HSTACK` 0x11 |
@@ -508,7 +502,7 @@ Two-way value controls bind a `WritableSignal` (a config value). Actions bind a
 callback. Controls marked **content-bearing** expose `children(...)` for their
 content (their style turns it into the control's child, [§5.7](#57-styleable-controls-the-style-contract)).
 
-| Control | Canonical (SwiftUI-shaped) | Java DSL | Emits / Binds |
+| Control | Canonical (SwiftUI-shaped) | Kotlin DSL | Emits / Binds |
 |---------|---------------------------|----------|---------------|
 | `Button` | `Button("title", action)` / `Button(action:label:)` | **content-bearing** — `Button.make(b -> b.title(String).action(Runnable))` and/or `.children(View)`; the title string is handed to the active `ButtonStyle`, an explicit child takes precedence ([§5.7](#57-styleable-controls-the-style-contract)) | `BUTTON` 0x20 (control node); tap = composed `POINTER_DOWN`+`POINTER_UP` |
 | `TextField` | `TextField("placeholder", text: writable)` | `TextField.make(t -> t.placeholder(String).text(WritableSignal<String>))` | `TEXT_FIELD` 0x21; `TEXT_CHANGED` → text input |
@@ -541,7 +535,7 @@ bitmask (transport-aware event guards) — see [EVENTS.md](./EVENTS.md).
 
 ### 4.4 Gestures
 
-| Gesture | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL |
+| Gesture | Canonical (SwiftUI-shaped) | Kotlin DSL | Rust DSL |
 |---------|---------------------------|----------|----------|
 | tap | `.onTapGesture { action }` | `.modifiers(tapGesture(g -> g.action(Runnable)))` | `.modifiers(TapGesture::new(f))` |
 | raw pointer | `.gesture` composition from raw inputs | `.modifiers(pointerEvents(p -> p.mask(int)))` | `.pointer_events(u32 mask)` |
@@ -581,7 +575,7 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
   `NavigationContainer.make(n -> n.router(router).chrome(Chrome.CUSTOM))`.
   Renderers treat a missing `NAV_CHROME` as `PlatformDefault`.
 
-| View | Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits / Binds |
+| View | Canonical (SwiftUI-shaped) | Kotlin DSL | Rust DSL | Emits / Binds |
 |------|----------------------------|----------|----------|---------------|
 | `NavigationContainer` | `NavigationStack(path:) { destination(for:) }` | `NavigationContainer.make(n -> n.router(Router).chrome(Chrome))` | `NavigationContainer::with(|n| n.router(router))` | a `Group` slot + `ROUTE` `0x2019`, `NAV_DEPTH` `0x201A`, `NAV_CHROME` `0x201B`, `TRANSITION` `0x1031`; destination swap = `TREE` deltas |
 | `NavigationLink` | `NavigationLink("label", value:)` | `NavigationLink.make(l -> l.label(String).router(Router).to(String))` / `NavigationLink.make(l -> l.label(String).to(String))` (router-agnostic) | `navigation_link(...)` | a `BUTTON` whose tap pushes `to` (via the router, or resolved to the nearest enclosing router when router-agnostic) |
@@ -606,9 +600,8 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
   (host → guest platform environment, OPCODE.md — the same message that carries
   the viewport): on SSR the host synthesizes it from the HTTP request (the
   request path — all the request offers), and over the WebSocket the DOM client
-  sends it (with the viewport) as its **first** message and later **enriches**
-  the environment (a window-resize re-emits the viewport; future platform
-  fields arrive the same way). The application applies the environment
+  sends it (with the viewport) as its **first** message; a reconnect re-sends it.
+  The application applies the environment
   uniformly — the router hydrates from the `ROUTE` field before mount, so a
   deep-link request renders the right destination on the first frame. The app
   never models the platform's location handling — history adaptation
@@ -779,9 +772,9 @@ contract keeps the renderer stateless:
   platform — the same `NavigationContainer` works on both, and the renderer's
   use (or not) of a native container is purely a presentation decision.
 
-**Java realization**: `Router` / `RouteTable` live in
+**Kotlin realization**: `Router` / `RouteTable` live in
 `dev.pathland.view.core.router`; `NavigationIntent` there too; `View.of` in
-`dev.pathland.view`. The `NavigationContainer` is an ordinary component whose
+`dev.pathland.view.dsl`. The `NavigationContainer` is an ordinary component whose
 tracked render reads the route signal, so a route change re-renders only its
 destination slot ([§3.4](#34-structural-reactivity-reactive-bodies--slots)).
 
@@ -794,7 +787,7 @@ Properties, value types, and emission rules come from
 compound SwiftUI modifier expands to **one `SET_PROPERTY` per underlying
 property** (`.frame` → `WIDTH` + `HEIGHT` + `ALIGNMENT`; `.border` →
 `BORDER_COLOR` + `BORDER_WIDTH`; `.shadow` → `SHADOW_COLOR` + `SHADOW_RADIUS` +
-`SHADOW_X` + `SHADOW_Y`). The `Java DSL` column is the reference realization.
+`SHADOW_X` + `SHADOW_Y`). The `Kotlin DSL` column is the reference realization.
 
 ### 5.0 Authoring a modifier
 
@@ -827,7 +820,7 @@ a `ConstantSignal` (no binding overhead).
 
 ### 5.1 Layout & frame
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+| Modifier | Canonical (SwiftUI-shaped) | Kotlin DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
 | `frame` | `.frame(width:height:alignment:)` | `.modifiers(frame(f -> f.width(w).height(h).alignment(a)))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
 | `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.modifiers(frame(f -> f.minWidth(..).idealWidth(..).maxWidth(..).minHeight(..).idealHeight(..).maxHeight(..)))` (the `Frame.Builder`; unset bounds are omitted — NaN/∞ = no limit) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
@@ -853,7 +846,7 @@ absolute placement within the parent.
 
 ### 5.2 Text formatting
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+| Modifier | Canonical (SwiftUI-shaped) | Kotlin DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
 | `font` | `.font(.system(size:))` | `.modifiers(Font.system(float))` / `Font.system(size, weight, design)` | `FONT_SIZE` 0x1007 (+ `FONT_WEIGHT`/`FONT_DESIGN` when given) |
 | `font` (predefined) | `.font(.largeTitle)` | `.modifiers(Font.headline())` (the `Font` value *is* the modifier) | `TEXT_STYLE` 0x1032 |
@@ -880,7 +873,7 @@ absolute placement within the parent.
 
 ### 5.3 Appearance & effects
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+| Modifier | Canonical (SwiftUI-shaped) | Kotlin DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
 | `background` | `.background(_:)` | `.modifiers(background(b -> b.color(Color)))` / `.modifiers(background(b -> b.color(Signal<Color>)))` | `BACKGROUND_COLOR` 0x1001 |
 | `border` | `.border(_:width:)` | `.modifiers(border(b -> b.color(Color).width(float).radius(float)))` | `BORDER_COLOR` 0x1004, `BORDER_WIDTH` 0x1003, `BORDER_RADIUS` 0x1005 |
@@ -904,7 +897,7 @@ absolute placement within the parent.
 
 ### 5.4 Transform
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+| Modifier | Canonical (SwiftUI-shaped) | Kotlin DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
 | `rotationEffect` | `.rotationEffect(_:anchor:)` | `.modifiers(rotation(r -> r.degrees(float)))` | `ROTATION_DEGREES` 0x102D |
 | `scaleEffect` | `.scaleEffect(_:anchor:)` | `.modifiers(scaleEffect(s -> s.value(float)))` | `SCALE` 0x102E |
@@ -914,7 +907,7 @@ anchors. Transforms do not affect layout.
 
 ### 5.5 Interaction & state
 
-| Modifier | Canonical (SwiftUI-shaped) | Java DSL | Property(ies) |
+| Modifier | Canonical (SwiftUI-shaped) | Kotlin DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
 | `hidden` | `.hidden()` | `.modifiers(hidden())` / `.modifiers(visible(v -> v.visible(boolean)))` | `VISIBLE` 0x100E |
 | `disabled` | `.disabled(_:)` | `.modifiers(disabled(d -> d.disabled(boolean)))` | `ENABLED` 0x2003 (inverse: 1 = interactive) |
@@ -962,7 +955,7 @@ every conformant DSL: modifiers are never hard-bound to a view type.
   constructed by a lowercase static function named for the modifier ([§5.0](#50-authoring-a-modifier))
   and single-value modifiers pass the value directly.
 
-| | Canonical | Java DSL (`dev.pathland.view`) | Rust DSL (`pathland-view`) |
+| | Canonical | Kotlin DSL (`dev.pathland.view.dsl`) | Rust DSL (`pathland-view`) |
 |-|-----------|-------------------------------|----------------------------|
 | authoring | `struct Card: ViewModifier { func body(content: Content) -> some View }` | `@FunctionalInterface ViewModifier { View body(View content) }` | `trait ViewModifier { fn apply(&mut Node) }` |
 | applying | `content.modifier(Card())` | `content.modifiers(card(c -> …))` / `content.modifiers(A, B)` | `content.modifiers(Card)` |
@@ -1070,7 +1063,7 @@ author-facing shape of the protocol's **Composite Override Mode**
   renderer shows native media controls; `DefaultLabelStyle` → title + icon.
 - **Text/foreground modifiers cascade to content.** A `.foregroundStyle`/
   `.fontSize` (and the other inherited text modifiers) applied *to the control*
-  reach the content's text — SwiftUI environment semantics. In the Java DSL the
+  reach the content's text — SwiftUI environment semantics. In the Kotlin DSL the
   properties ride the control node; renderers cascade them to child text.
 - **Main-axis alignment is the content's own layout — no protocol property.**
   A control's content box centers its child by default; to left-align a
@@ -1111,7 +1104,7 @@ enum BadgeLabelStyle implements LabelStyle { INSTANCE;
 }
 ```
 
-The Java DSL ships `PlainButtonStyle`/`BorderedButtonStyle`,
+The Kotlin DSL ships `PlainButtonStyle`/`BorderedButtonStyle`,
 `DefaultLabelStyle`/`TitleOnlyLabelStyle`/`IconOnlyLabelStyle`, and
 `NativeVideoStyle`; application-authored styles implement the
 same interfaces. **Delta:** SwiftUI's `LabelStyleConfiguration.title`/`.icon`
@@ -1203,7 +1196,7 @@ reference rides the `DESIGN_TOKEN` value type (`0x08`) with the token path in
 the arena — **never** a packed literal. A property carries exactly one value
 (literal or reference, never both).
 
-| Canonical (SwiftUI-shaped) | Java DSL | Rust DSL | Emits |
+| Canonical (SwiftUI-shaped) | Kotlin DSL | Rust DSL | Emits |
 |----------------------------|----------|----------|-------|
 | `Color.token("color.primary")` | `Color.token("color.primary")` | `Color::token("color.primary")` | `DESIGN_TOKEN` ref (`0x08`) in any COLOR-typed property: `COLOR` 0x100A (`.foregroundStyle`), `BACKGROUND_COLOR` 0x1001, `BORDER_COLOR` 0x1004, `SHADOW_COLOR` 0x1021, `TINT` 0x1030, … |
 | `Color.token("dark.color.surface")` | `Color.token("dark.color.surface")` | `Color::token("dark.color.surface")` | same — an explicit dark-variant reference (resolves the dark layer in either scheme) |
@@ -1235,7 +1228,7 @@ A **theme** is a batch of token overrides. Every override defines **exactly one
 value**; combine a light and a dark `Theme` via `AdaptiveTheme` for adaptive
 theming.
 
-| Canonical (SwiftUI-shaped) | Java DSL (`dev.pathland.view`) | Rust DSL (`pathland-view` / `pathland-engine`) | Emits |
+| Canonical (SwiftUI-shaped) | Kotlin DSL (`dev.pathland.view.dsl`) | Rust DSL (`pathland-view` / `pathland-engine`) | Emits |
 |----------------------------|--------------------------------|-----------------------------------------------|-------|
 | `Theme()` — one-scheme override batch | `new Theme().color(...)...` | `Theme::new()` | one `PARAMETER::SET_DESIGN_TOKEN` per override (`A` = arena path, `B` = valueType, `C` = value) |
 | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `.color("color.primary", 0xFF2563EB)` | `COLOR`-typed override (sRGB `0xAARRGGBB`) |
@@ -1298,60 +1291,37 @@ emission path. Rust exposes `Engine::reset_theme` / `set_color_scheme` (and
 
 ---
 
-## 8. Java DSL convergence (adopted)
+## 8. Kotlin DSL realization (adopted)
 
-The Java DSL (`dev.pathland.view`) has the complete surface. The convergence
-below has been **adopted**: construction through the three operations
-(`with` / `modifiers` / `children`), and modifiers as `ViewModifier` values with
-**no `Mod` suffix** and **no per-modifier sugar on `View`**. The canonical
-contract is [§4](#4-view-surface) and [§5](#5-modifier-surface).
+The JVM reference DSL is Kotlin (`dev.pathland.view.dsl`). It is surface-complete
+and shares the canonical contract in [§4](#4-view-surface) and
+[§5](#5-modifier-surface).
 
-| Canonical | Java (adopted) | Optional / remaining |
-|-----------|----------------|----------------------|
-| `Text("…")` | `Text.make(t -> t.text("…"))` (String or `Signal<String>`) | — |
-| `Button("…", action)` / `Button(action:label:)` | `Button.make(b -> b.title("…").action(action))` and/or `.children(label)` | — |
-| `Toggle("label", isOn: writable)` | `Toggle.make(t -> t.label("…").isOn(writable))` | — |
-| `Slider(value: in:)` | `Slider.make(s -> s.value(writable).min(..).max(..))` (binding in config) | — |
-| `.border(color, width)` | `border(b -> b.color(..).width(..))` via `.modifiers(...)` | radius convenience on the same builder |
-| `DatePicker(selection:)` | `DatePicker.make(d -> d.mode(..).selection(days))` | *optional* `Date`-shaped config encoding days + millis-of-day per `SET_DATE`/`DATE_CHANGED` |
+| Canonical | Kotlin |
+|-----------|--------|
+| `Text("…")` | `Text("…")` (String or `Signal<String>`) |
+| `Button("…", action)` | `Button("…") { action() }` |
+| `Toggle("label", isOn: writable)` | `Toggle(label = "…", isOn = writable)` |
+| `Slider(value: in:)` | `Slider(value, 0f..100f)` |
+| `.border(color, width)` | `.border(color, width = 2f)` |
+| `DatePicker(selection:)` | `DatePicker(selection, DatePickerMode.DATE)` |
+| `VStack(spacing: 8) { … }` | `VStack(spacing = 8f) { … }` |
+| `.frame(width:height:)` | `.frame(width = 100f, height = 24f)` |
+| `.padding(16)` | `.padding(16f)` |
+| `.foregroundStyle(.red)` | `.foregroundStyle(Color.RED)` |
+| `if/else` in a result builder | plain `if`/`when` in `body()` |
+| `Router` + `NavigationContainer` | `navigator { route(...) }` + `NavigationStack(router)` |
+| `content.modifier(Card())` | `content.modifiers(Card())` (custom `ViewModifier`) |
 
-Adopted conventions:
-
-- **`with` / `modifiers` / `children` are the one construction path.** Every
-  concrete view/control exposes these three operations; the former per-view
-  construction `.of(...)` is gone (`View.of` is the inline reactive-subtree
-  factory, not a view-construction shortcut).
-  They are available **at creation or chained, in any order**
-  ([§2](#2-canonical-signature-notation)).
-- **`make(config)` is a fluent config builder.** The config holds the view's
-  values and is the same type a style's `makeBody(Config)` reads
-  ([§5.7](#57-styleable-controls-the-style-contract)).
-- **The `View.*` static-factory surface is removed.** The entire factory block
-  (`text`, `image`, `rectangle`, `spacer`, `vstack`, `hstack`, `zstack`,
-  `button`, `textField`, `textEditor`, `toggle`, `slider`, `stepper`,
-  `progressView`, `gauge`, `divider`, `grid`, `scrollView`, `lazyVStack`,
-  `lazyHStack`, `lazyVGrid`, `lazyHGrid`, `picker`, `menu`, `colorPicker`,
-  `datePicker`, `group`) is deleted from `View.java`.
-- **`Group` is a first-class view.** `Group.children(View...)` is a
-  transparent container view (SwiftUI `Group`).
-- **Core and custom modifiers share one mechanism.** Core modifiers are
-  `ViewModifier` values (`padding(p -> p.uniform(16))`,
-  `foregroundStyle(f -> f.color(color))`) applied via `.modifiers(...)` —
-  there is **no sugar on `View`**; several modifiers at once use
-  `.modifiers(...)`, innermost-first. Single-value modifiers pass the value
-  directly (`FontWeight.BOLD`).
-- **No `Mod` suffix.** A modifier type is named for the modifier it applies;
-  where it wraps a single value, the value type is the modifier. Main's
-  `FrameMod → Frame` (with the wire batch renamed `emit.Frame → ProtocolFrame`)
-  is the precedent; the remaining `*Mod` types are renamed accordingly
-  (`FontWeightMod → FontWeight`, `ButtonStyleMod → ButtonStyle`, …;
-  `EnvironmentMod → EnvironmentBinding`, `router/NavigationMod → NavigationIntent`).
-- **Full `ShapeKind` coverage.** `Circle.make()`, `Capsule.make()`,
-  `Ellipse.make()`, `RoundedRectangle.make(r -> r.cornerRadius(..))`, generic
-  `Shape.make(s -> s.kind(ShapeKind))` (for `Path`).
-- Implementation status: `lib/java/pathland-view/status.md`.
-
----
+- **`Component` owns composite bodies**: a signal read in `body()` subscribes the
+  component; a later write re-renders only that component and diffs its subtree.
+- **Persisted state**: `val count by state(0)` / `state(0, "key")`, bound to the
+  session's `PersistentState` before the first `body()` render.
+- **Styles** are Kotlin values: `PlainButtonStyle`, `BorderedButtonStyle`,
+  label styles, `NativeVideoStyle`.
+- **Java hosting**: a Java Spring Boot/Quarkus app mounts a Kotlin view through a
+  `PathlandApp` bean; Kotlin roots expose a public constructor or
+  `@JvmStatic make(...)`.
 
 ## 9. Generation contract for a new language
 
@@ -1453,26 +1423,25 @@ language's idioms. The canonical (SwiftUI-shaped) spelling is
 `Text("x").padding(16)`; Java spells values `make(...)` (views) / lowercase
 functions (modifiers) and chains `modifiers(...)` / `children(...)`.
 
-| Aspect | Java | C# | Rust | Go | Python |
-|--------|------|----|------|----|--------|
-| configure values | `make(c -> …)` (views) / `padding(c -> …)` (modifiers) | `Make(c => …)` | `Type::new(config)` / `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
-| single-value shortcut | `make(value)` / `padding(value)` (sugar for the lambda) | `Make(value)` | `Type::new(value)` / `Type(sig)` | `Type(val)` | `Type(val=…)` / `Type(sig)` |
-| apply modifiers | `.modifiers(…)` | `.Modifiers(…)` | `.modifiers(…)` (single or tuple) | `.Modifiers(…)` | `.modifiers(…)` |
-| supply children | `.children(…)` | `.Children(…)` | `.children(vec![…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
-| creation + chaining | static on the view; chain on the returned builder | static on the view; chain via **extension methods** | associated fn `Type::new`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
-| same-name static + chain | **builder split** (static on class, chain on builder) | extension methods (separate static class) | assoc fn + trait method | package func + method (not type-scoped) | **not expressible** (methods are last-wins) |
-| `with` name legal | yes | yes (`With`; lowercase `with` is the record keyword) | yes | yes | **no** — `with` is a keyword → kwargs / `configure` |
-| varargs children | yes | `params` | no — slices/arrays or macros | `...` | `*args` |
-| value *is* the modifier | enum OK | **enum can't implement an interface** → `record struct` / static readonly value | enum OK | typed const + method OK | enum member with `apply` OK |
+| Aspect | Java | Rust | Go | Python |
+|--------|------|------|----|--------|
+| configure values | `make(c -> …)` (views) / `padding(c -> …)` (modifiers) | `Type::new(config)` / `with(\|c\| …)` | ctor + options | kwargs / `configure(…)` |
+| single-value shortcut | `make(value)` / `padding(value)` (sugar for the lambda) | `Type::new(value)` / `Type(sig)` | `Type(val)` | `Type(val=…)` / `Type(sig)` |
+| apply modifiers | `.modifiers(…)` | `.modifiers(…)` (single or tuple) | `.Modifiers(…)` | `.modifiers(…)` |
+| supply children | `.children(…)` | `.children(vec![…])` / `vstack![…]` | ctor args / `.Children(…)` | `.children(*v)` |
+| creation + chaining | static on the view; chain on the returned builder | associated fn `Type::new`; chain via a **trait** + macros | package ctor; chain via methods | kwargs + methods |
+| same-name static + chain | **builder split** (static on class, chain on builder) | assoc fn + trait method | package func + method (not type-scoped) | **not expressible** (methods are last-wins) |
+| `with` name legal | yes | yes | yes | **no** — `with` is a keyword → kwargs / `configure` |
+| varargs children | yes | no — slices/arrays or macros | `...` | `*args` |
+| value *is* the modifier | enum OK | enum OK | typed const + method OK | enum member with `apply` OK |
 
 Rules:
 
 - A language that cannot express "static-or-chained under one name" (Python)
   MUST still offer the three operations — value configuration via kwargs /
   `configure(...)`, modifiers and children via chainable methods.
-- A language whose enums cannot implement the modifier interface (C#) MUST
-  supply the equivalent single-value modifier form (a `record struct`, a static
-  readonly value, or an implicit conversion).
+- A language whose enums cannot implement the modifier interface MUST supply an
+  equivalent single-value modifier form.
 - **Reactive values are config members, in every language.** A config member
   accepts a raw value or a signal ([§2](#2-canonical-signature-notation)). Rust
   realizes this with `impl Into<Reactive<T>>` on each builder setter
@@ -1592,8 +1561,8 @@ reference implementations:
 4. Cross-check every referenced id against PRIMITIVES.md/MODIFIERS.md/EVENTS.md
    (the specs are the source of truth, never the reference code).
 
-**Reference implementations to read**: Java — `lib/java/pathland-view`
-(the DSL: `dev.pathland.view`) + `lib/java/pathland-view-core`
+**Reference implementations to read**: Kotlin — `lib/java/pathland-view-kotlin`
+(the DSL: `dev.pathland.view.dsl`) + `lib/java/pathland-view-core`
 (`dev.pathland.view.core*` + `dev.pathland.view.engine`); Rust —
 `lib/rust/crates/pathland-view` + `pathland-engine` + `pathland-core::signal`.
 
@@ -1604,7 +1573,7 @@ reference implementations:
 Representative rows; the full surface is in [§4](#4-view-surface) and
 [§5](#5-modifier-surface).
 
-| SwiftUI | Canonical DSL | Java DSL | Rust DSL |
+| SwiftUI | Canonical DSL | Kotlin DSL | Rust DSL |
 |---------|---------------|----------|----------|
 | `Text("Hi")` | `Text("Hi")` | `Text.make(t -> t.text("Hi"))` | `text("Hi")` |
 | `VStack(alignment: .center, spacing: 8) { … }` | `VStack(alignment:spacing:) { … }` | `VStack.make(v -> v.alignment(Alignment.CENTER).spacing(8)).children(…)` | `VStack::with(\|v\| { v.spacing(8.0); }).children(vec![…])` |
@@ -1635,7 +1604,7 @@ for construction and modification alike
 [§5.6](#56-custom-modifiers-developer-authored)); built-in and
 application-authored modifiers share the same `modifiers(...)` surface.
 
-**Status deltas captured by this table**: the Java DSL is surface-complete with
+**Status deltas captured by this table**: the Kotlin DSL is surface-complete with
 the three operations, modifiers as values via `.modifiers(...)` (no sugar on
 `View`), and styles as modifiers; **every value member carries a raw + `Signal<T>`
 form** (uniform signals-first configs, so any property — layout included — can

@@ -8,7 +8,7 @@ import dev.pathland.view.core.protocol.Components
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 
-private object KotlinDefaultLabelStyle : LabelStyle {
+private object FallbackLabelStyle : LabelStyle {
     override fun makeBody(config: LabelStyle.Configuration): View {
         val parts = buildList {
             config.icon()?.let { add(it) }
@@ -31,7 +31,7 @@ private class LabelView(
 ) : View {
 
     override fun renderNode(env: Environment): dev.pathland.view.engine.PathlandNode {
-        val style = Environment.value(Environment.LABEL_STYLE).get() ?: KotlinDefaultLabelStyle
+        val style = Environment.value(Environment.LABEL_STYLE).get() ?: FallbackLabelStyle
         val titleValue = title?.get()
         val iconValue = icon?.get()
         val titlePart = if (nonBlank(titleValue)) title?.let { textView(it).lineLimit(1) } else null

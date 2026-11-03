@@ -2,7 +2,6 @@ package dev.pathland.server;
 
 import dev.pathland.view.core.router.Route;
 import dev.pathland.view.core.router.Router;
-import dev.pathland.view.core.state.State;
 
 import dev.pathland.render.html.HtmlRenderer;
 import dev.pathland.server.proxy.ProxyHost;
@@ -56,8 +55,13 @@ public final class PathlandSession {
      *  {@code /_pathland/**}, never colliding with app routes. */
     public static final String PATHLAND_BASE = "/_pathland";
 
-    /** How long the SSR path waits for a proxy's origin snapshot before rendering a placeholder. */
-    private static final long PROXY_SNAPSHOT_TIMEOUT_MILLIS = 2_000;
+    /** Default how long the SSR path waits for a proxy's origin snapshot before rendering a placeholder. */
+    private static final long DEFAULT_PROXY_SNAPSHOT_TIMEOUT_MILLIS = 2_000;
+
+    /** The effective SSR proxy-snapshot timeout ({@code pathland.proxy.snapshot-timeout-ms}). */
+    private static long proxySnapshotTimeoutMillis() {
+        return Long.getLong("pathland.proxy.snapshot-timeout-ms", DEFAULT_PROXY_SNAPSHOT_TIMEOUT_MILLIS);
+    }
 
     private final PersistentState state;
     private final WritableSignal<String> activePath;
@@ -401,7 +405,7 @@ public final class PathlandSession {
         if (proxyViews.isEmpty()) {
             return frame;
         }
-        return FrameMerger.merge(frame, proxySnapshots(PROXY_SNAPSHOT_TIMEOUT_MILLIS));
+        return FrameMerger.merge(frame, proxySnapshots(proxySnapshotTimeoutMillis()));
     }
 
     /** Start the proxies (SSR) and block for each origin's snapshot (bounded per proxy). */
@@ -417,6 +421,10 @@ public final class PathlandSession {
                 ProtocolFrame snapshot = session.awaitSnapshot(timeoutMillis);
                 if (snapshot != null) {
                     snapshots.add(snapshot);
+                } else {
+                    LOG.warn("proxy origin {} did not send a snapshot within {} ms during SSR; "
+                                    + "rendering a placeholder",
+                            session.config().endpoint(), timeoutMillis);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

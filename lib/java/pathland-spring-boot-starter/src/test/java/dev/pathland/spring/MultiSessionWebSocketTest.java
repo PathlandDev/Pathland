@@ -3,11 +3,6 @@ package dev.pathland.spring;
 
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.test.MultiSessionProbe;
-import dev.pathland.view.Button;
-import dev.pathland.view.Text;
-import dev.pathland.view.core.View;
-import dev.pathland.view.core.signal.Signals;
-import dev.pathland.view.core.signal.WritableSignal;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -30,11 +25,7 @@ class MultiSessionWebSocketTest {
     static class TestApp {
         @Bean
         PathlandApp pathlandApp() {
-            return () -> {
-                WritableSignal<Integer> count = Signals.signal(0);
-                return Button.make(b -> b.action(() -> count.update(i -> i + 1)))
-                        .children(Text.make(Signals.computed(() -> "n=" + count.get())));
-            };
+            return () -> KotlinFixtures.counterProbe();
         }
     }
 

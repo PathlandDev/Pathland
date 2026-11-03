@@ -12,8 +12,8 @@ Quarkus extension for the Kotlin authoring DSL. It depends on the DSL-neutral
 - Provides the `dev.pathland.quarkus.kotlin` capability.
 - No server/runtime logic of its own; SSR, WebSocket, sessions, state and assets
   stay in `pathland-quarkus`.
-- **No Java DSL dependency**: Maven Enforcer bans `pathland-view` and
-  `pathland-demo-views` from the dependency tree.
+- **No Java DSL dependency**: the removed Java DSL/processor are not in the
+  dependency tree; Kotlin is the only authoring surface.
 
 ## Build contract
 

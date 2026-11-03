@@ -10,17 +10,13 @@ import dev.pathland.view.core.protocol.Properties
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.engine.PathlandNode
 
-private object KotlinPlainButtonStyle : ButtonStyle {
-    override fun makeBody(config: ButtonStyle.Configuration): View? = config.label()
-}
-
 internal fun buttonView(
     title: Signal<String>?,
     action: (() -> Unit)?,
     children: List<View>,
 ): View = coreView(Components.BUTTON) { node, env ->
     val label = children.firstOrNull() ?: title?.let { textView(it) }
-    val style = Environment.value(Environment.BUTTON_STYLE).get() ?: KotlinPlainButtonStyle
+    val style = Environment.value(Environment.BUTTON_STYLE).get() ?: PlainButtonStyle
     val content = style.makeBody(ButtonStyle.Configuration(label))
     if (content != null && content !== EmptyContent.INSTANCE) {
         node.children.add(content.render(env))

@@ -201,15 +201,6 @@ function boot(): void {
     hydrateFitElement(el, renderer);
   }
 
-  // Enrich the environment after connect: a window resize re-emits the viewport
-  // fields (the mechanism future platform fields ride too).
-  window.addEventListener("resize", () => {
-    if (transport.open) {
-      log.debug("route", `viewport resize -> ${window.innerWidth}x${window.innerHeight}`);
-      transport.send(encodeEnvironment(window.innerWidth, window.innerHeight, location.pathname));
-    }
-  });
-
   // URL mirroring (spec DSL.md §4.5): the server emits the app-relative route as ROUTE;
   // we push the app's real URL (mount prefix prepended) so the browser URL follows the
   // app — a reload of `/app2/home` reaches the `/app2` app. pushState never fires

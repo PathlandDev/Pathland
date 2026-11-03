@@ -1,6 +1,5 @@
 package dev.pathland.server;
 
-import dev.pathland.view.Text;
 import dev.pathland.view.core.state.InMemoryStateStore;
 import dev.pathland.view.core.state.StateStore;
 import org.junit.jupiter.api.Test;
@@ -23,7 +22,7 @@ class PathlandHostTest {
     private static final StateStore STORE = new InMemoryStateStore();
 
     private static PathlandApp app(String label) {
-        return () -> Text.make(t -> t.text(label));
+        return () -> ServerFixtures.text(label);
     }
 
     private static PathlandHost host(MountedApp... mounts) {

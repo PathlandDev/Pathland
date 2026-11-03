@@ -1,7 +1,6 @@
 package dev.pathland.spring;
 
 import dev.pathland.server.PathlandApp;
-import dev.pathland.view.Text;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -29,7 +28,7 @@ class ServiceWorkerHeadersTest {
     static class TestApp {
         @Bean
         PathlandApp pathlandApp() {
-            return () -> Text.make("Hello Pathland");
+            return () -> KotlinFixtures.text("Hello Pathland");
         }
     }
 

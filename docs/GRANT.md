@@ -151,9 +151,9 @@ protocol:
 | Spring Boot SSR + WebSocket | `lib/java/pathland-spring-boot-demo` |
 | Quarkus SSR + WebSocket | `lib/java/pathland-quarkus-demo` |
 | Native GTK4 desktop (Rust DSL) | `lib/rust/crates/pathland-render-gtk-demo` |
-| Native GTK4 desktop (Java DSL, shared ring) | `lib/java/pathland-gtk-demo` |
+| Native GTK4 desktop (Java host, Kotlin views, shared ring) | `lib/java/pathland-gtk-demo` |
 
-Two DSLs (Rust `pathland-view`, Java `dev.pathland.view`) drive the same
+Two DSLs (Rust `pathland-view`, JVM Kotlin `dev.pathland.view.dsl`) drive the same
 renderers over the same opcode stream, proving the polyglot claim. The hosted
 Quarkus SSR demo, screenshots, and CI already exist as application evidence
 (submitted with the proposal). WP5 adds the **WCAG/ARIA compliance pass** and the

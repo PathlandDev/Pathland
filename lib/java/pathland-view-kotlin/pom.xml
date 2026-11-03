@@ -15,11 +15,11 @@
 
     <name>Pathland View Kotlin</name>
     <description>
-        Idiomatic Kotlin authoring surface for Pathland: SwiftUI-shaped view builders
-        (Text("…"), VStack(spacing = 8) { … }, Button("Save") { … }), modifier sugar
-        (.padding(16), .frame(width = …)), Kotlin signal conveniences, property-delegate
-        State, navigation, and media helpers. Kotlin-owned views and modifiers over
-        pathland-view-core; Kotlin trees emit byte-identical opcodes to the Java DSL.
+        The sole JVM authoring DSL for Pathland: idiomatic Kotlin/SwiftUI-shaped view
+        builders (Text("…"), VStack(spacing = 8) { … }, Button("Save") { … }), modifier
+        sugar (.padding(16), .frame(width = …)), signals, property-delegate state,
+        navigation, media, and styles. Java Spring Boot/Quarkus hosts mount these views
+        through PathlandApp.
     </description>
 
     <dependencies>
@@ -36,13 +36,6 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Parity tests compare Kotlin-owned views with the Java DSL. -->
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view</artifactId>
-            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

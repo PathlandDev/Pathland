@@ -10,7 +10,7 @@ import dev.pathland.view.core.View
 import dev.pathland.view.core.protocol.Commands
 import dev.pathland.view.dsl.Fit
 import dev.pathland.view.dsl.HStack
-import dev.pathland.view.dsl.KotlinView
+import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.Spacer
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.unaryPlus
@@ -44,7 +44,7 @@ import dev.pathland.view.dsl.accessibilityRole
  */
 class MusicPlayerView @JvmOverloads constructor(
     private val adUrl: String? = null,
-) : KotlinView() {
+) : Component() {
 
     companion object {
         const val SIDEBAR_WIDTH = 280f

@@ -11,7 +11,7 @@ import dev.pathland.view.dsl.Button
 import dev.pathland.view.dsl.HStack
 import dev.pathland.view.dsl.Icon
 import dev.pathland.view.dsl.Image
-import dev.pathland.view.dsl.KotlinView
+import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.Slider
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.unaryPlus
@@ -35,7 +35,7 @@ internal class PlayerControls(
     private val player: MediaController,
     private val trackIndex: WritableSignal<Int>,
     private val showVolume: Boolean,
-) : KotlinView() {
+) : Component() {
 
     override fun body(): View {
         val current = computed { MusicPlayerView.at(trackIndex.get()) }

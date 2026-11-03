@@ -207,9 +207,8 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   commits on release.
 - **Platform environment** (spec/OPCODE.md §Environment fields): the client sends
   `encodeEnvironment` as its **first** WS message (`transport.ts` `onOpen`, before
-  any resync) so the server session seeds its router from the `ROUTE` field, and
-  re-sends it on `window.resize` to **enrich** the environment after connect
-  (viewport + future fields ride the same message).
+  any resync) so the server session seeds its router from the `ROUTE` field; a
+  reconnect re-sends it. It is not re-sent on `window.resize`.
 - **URL mirroring + back/forward** (spec DSL.md §4.5): a slot's `ROUTE`
   (STRING) property updates `data-pathland-route` and fires the `onRoute` hook
   (`src/index.ts` wires it to `history.pushState` — never called on hydrate, so

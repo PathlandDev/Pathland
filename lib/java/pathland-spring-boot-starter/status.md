@@ -9,6 +9,10 @@ subpaths (the BFF layout).
 
 ## Implemented
 
+- **Java host / Kotlin views**: `KotlinViewMountTest` proves a Java-only
+  `@SpringBootApplication` bean returning `PathlandApp` mounts a Kotlin-authored
+  fixture view, renders it through SSR, and receives a live signal delta.
+
 - **Crawler endpoints**: `/robots.txt` (text/plain) and `/sitemap.xml` (application/xml) are real routes before the SPA catch-all, so Lighthouse does not parse the HTML shell as robots.txt.
 
 - **`PathlandAutoConfiguration`** (`@AutoConfiguration`, `@EnableWebSocket` since Spring

@@ -11,11 +11,11 @@
 
     <name>Pathland Java</name>
     <description>
-        Framework-agnostic Java libraries for the Pathland UI protocol: a declarative
-        view DSL with Angular-style signals/computed/effects, a fine-grained opcode
-        emitter, the wire codec, JNA ring interop, a reusable HTML renderer, and
-        cross-platform state stores. Usable from Spring Boot, Quarkus, or desktop apps.
-        Runs on every LTS from Java 17.
+        Framework-agnostic JVM libraries for the Pathland UI protocol: a Kotlin
+        authoring DSL with Angular-style signals/computed/effects, a Kotlin opcode
+        engine/SPI, the wire codec, JNA ring interop, a reusable HTML renderer, and
+        cross-platform state stores. Java hosts (Spring Boot, Quarkus, desktop) mount
+        Kotlin-authored views. Runs on every LTS from Java 17.
     </description>
 
     <url>https://github.com/PathlandDev/Pathland</url>
@@ -46,8 +46,6 @@
 
     <modules>
         <module>pathland-view-core</module>
-        <module>pathland-view</module>
-        <module>pathland-view-processor</module>
         <module>pathland-view-kotlin</module>
         <module>pathland-demo-common</module>
         <module>pathland-demo-views-kotlin</module>
@@ -59,12 +57,8 @@
         <module>pathland-spring-boot-starter</module>
         <module>pathland-quarkus</module>
         <module>pathland-quarkus-deployment</module>
-        <module>pathland-quarkus-java</module>
-        <module>pathland-quarkus-java-deployment</module>
         <module>pathland-quarkus-kotlin</module>
         <module>pathland-quarkus-kotlin-deployment</module>
-        <module>pathland-quarkus-starter</module>
-        <module>pathland-demo-views</module>
         <module>pathland-gtk-demo</module>
         <module>pathland-qt-demo</module>
         <module>pathland-quarkus-demo</module>
@@ -121,6 +115,32 @@
     </dependencyManagement>
 
     <build>
+        <plugins>
+            <!-- The Java DSL and its integrations are removed: keep them out. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>ban-removed-java-dsl</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>dev.pathland:pathland-view</exclude>
+                                        <exclude>dev.pathland:pathland-view-processor</exclude>
+                                        <exclude>dev.pathland:pathland-quarkus-java</exclude>
+                                        <exclude>dev.pathland:pathland-quarkus-starter</exclude>
+                                    </excludes>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
         <pluginManagement>
             <plugins>
                 <plugin>

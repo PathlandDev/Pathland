@@ -61,6 +61,13 @@
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Dpathland.proxy.snapshot-timeout-ms=10000</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <version>${kotlin.version}</version>
@@ -124,8 +131,6 @@
                             <rules>
                                 <bannedDependencies>
                                     <excludes>
-                                        <exclude>dev.pathland:pathland-view</exclude>
-                                        <exclude>dev.pathland:pathland-demo-views</exclude>
                                     </excludes>
                                 </bannedDependencies>
                             </rules>

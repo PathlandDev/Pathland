@@ -10,7 +10,7 @@ import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.view.dsl.Button
 import dev.pathland.view.dsl.HStack
 import dev.pathland.view.dsl.Image
-import dev.pathland.view.dsl.KotlinView
+import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.Spacer
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.VStack
@@ -35,7 +35,7 @@ internal class TrackRowView(
     private val position: WritableSignal<Float>,
     private val playing: WritableSignal<Boolean>,
     private val seekRequest: WritableSignal<Float>,
-) : KotlinView() {
+) : Component() {
 
     override fun body(): View {
         val isCurrent = computed { MusicPlayerView.at(trackIndex.get()) === track }

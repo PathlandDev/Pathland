@@ -4,10 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.pathland.view.Button;
-import dev.pathland.view.Text;
-import dev.pathland.view.VStack;
-import static dev.pathland.view.Modifiers.windowMetadata;
 import dev.pathland.view.core.state.InMemoryStateStore;
 import dev.pathland.view.core.transport.EnvironmentData;
 import java.io.ByteArrayInputStream;
@@ -129,11 +125,7 @@ class PathlandAssetsTest {
 
     @Test
     void ssrCarriesWindowMetadataAndInjectsHostAttrs() {
-        PathlandApp app = () -> VStack.children(Text.make("x"))
-                .modifiers(windowMetadata(w -> w
-                        .title("Library")
-                        .description("8 songs")
-                        .locale("da")));
+        PathlandApp app = () -> ServerFixtures.windowMetadata(ServerFixtures.text("x"), "Library", "8 songs", "da");
         PathlandSession session = new PathlandSession(
                 "s", new InMemoryStateStore(), app, EnvironmentData.of("/"));
         try {
@@ -149,7 +141,7 @@ class PathlandAssetsTest {
     }
 
     private static String newPathlandSessionHtml() {
-        PathlandApp app = () -> Button.make(b -> b.title("t").action(() -> {}));
+        PathlandApp app = () -> ServerFixtures.button("t", () -> {});
         PathlandSession session = new PathlandSession(
                 "s", new InMemoryStateStore(), app,
                 EnvironmentData.of("/"));

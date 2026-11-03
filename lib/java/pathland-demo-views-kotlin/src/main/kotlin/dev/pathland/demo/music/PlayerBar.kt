@@ -4,7 +4,7 @@ import dev.pathland.view.core.MediaController
 import dev.pathland.view.core.View
 import dev.pathland.view.core.protocol.Commands
 import dev.pathland.view.core.signal.WritableSignal
-import dev.pathland.view.dsl.KotlinView
+import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.background
 import dev.pathland.view.dsl.frame
 
@@ -17,7 +17,7 @@ internal class PlayerBar(
     private val trackIndex: WritableSignal<Int>,
     private val player: MediaController,
     private val showVolume: Boolean,
-) : KotlinView() {
+) : Component() {
 
     override fun body(): View = PlayerControls(player, trackIndex, showVolume)
         .background(MusicPlayerView.BAR_BG)

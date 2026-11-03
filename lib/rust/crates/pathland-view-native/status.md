@@ -3,7 +3,7 @@
 **Last updated:** August 28, 2026
 
 The **native C-ABI shim + `NativeHost`**: a flat world over the shared-memory
-ring for foreign hosts (Swift/Java/C# via FFI). Protocol contract: `spec/`.
+ring for foreign hosts (Swift/Java via FFI). Protocol contract: `spec/`.
 
 ## Implemented
 
