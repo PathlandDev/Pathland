@@ -5,11 +5,9 @@ import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandConnection;
 import dev.pathland.server.PathlandSession;
 import dev.pathland.server.PathlandTelemetry;
+import dev.pathland.server.ServerFixtures;
 import dev.pathland.view.core.protocol.Categories;
 import dev.pathland.view.core.protocol.Commands;
-import dev.pathland.view.ProxyView;
-import dev.pathland.view.Text;
-import dev.pathland.view.VStack;
 import dev.pathland.view.core.View;
 import dev.pathland.view.core.protocol.Opcode;
 import dev.pathland.view.core.transport.ProtocolFrame;
@@ -46,9 +44,9 @@ class ProxyIntegrationTest {
     @Test
     void aProxyViewOpensAnOriginConnectionAndRoutesItsEvents() throws Exception {
         AtomicReference<ProxySessionTest.FakeTransport> originRef = new AtomicReference<>();
-        PathlandApp app = () -> VStack.children(
-                Text.make("local"),
-                ProxyView.make(p -> p.endpoint("http://b.example").route("/x")));
+        PathlandApp app = () -> ServerFixtures.vstack(
+                ServerFixtures.text("local"),
+                ServerFixtures.proxy("http://b.example", "/x"));
 
         PathlandSession session = new PathlandSession(
                 "s1", new InMemoryStateStore(), app, EnvironmentData.of("/"),
@@ -101,9 +99,9 @@ class ProxyIntegrationTest {
                 stringSection("origin-text")));
         assumeTrue(HtmlRenderer.tryInstance() != null, "the Rust HTML renderer is available");
 
-        PathlandApp app = () -> VStack.children(
-                Text.make("local"),
-                ProxyView.make(p -> p.endpoint("http://b.example")));
+        PathlandApp app = () -> ServerFixtures.vstack(
+                ServerFixtures.text("local"),
+                ServerFixtures.proxy("http://b.example"));
         PathlandSession session = new PathlandSession(
                 "s1", new InMemoryStateStore(), app, EnvironmentData.of("/"),
                 false, "/_pathland", "scope", PathlandTelemetry.NOOP, "/");
@@ -135,9 +133,9 @@ class ProxyIntegrationTest {
         // SizeThatFits slot): when the slot swaps it out the origin connection must
         // close; re-adding it opens a fresh one (spec/PROXY.md §7).
         WritableSignal<Boolean> show = Signals.signal(true);
-        PathlandApp app = () -> VStack.children(View.of(() -> show.get()
-                ? (View) VStack.children(ProxyView.make(p -> p.endpoint("http://b.example")))
-                : (View) Text.make("no ad")));
+        PathlandApp app = () -> ServerFixtures.vstack(View.of(() -> show.get()
+                ? (View) ServerFixtures.vstack(ServerFixtures.proxy("http://b.example"))
+                : (View) ServerFixtures.text("no ad")));
 
         PathlandSession session = new PathlandSession(
                 "s1", new InMemoryStateStore(), app, EnvironmentData.of("/"),

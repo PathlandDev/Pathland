@@ -62,7 +62,7 @@ It grew from a worker-thread experiment: separate a declarative UI model from th
 
 > Primary users are enterprise backend developers: teams that want professional, performant UIs without a separate frontend team, a separate frontend application, or an extra BFF layer. Secondary audiences are tooling authors — the DSL is defined by the specification, so new DSLs can be produced from it — and later, embedded developers.
 >
-> Dependencies are deliberately modest. The protocol core is a `no_std` + `alloc` Rust crate with no runtime dependencies. The Java DSL runs on every LTS from Java 17 and plugs into Spring Boot/Quarkus as host frameworks (not dependencies). The native desktop renderer uses GTK4 + libadwaita; cross-language interop uses JNA. Nothing is proprietary or single-vendor.
+> Dependencies are deliberately modest. The protocol core is a `no_std` + `alloc` Rust crate with no runtime dependencies. The Kotlin JVM DSL runs on every LTS from Java 17 and plugs into Spring Boot/Quarkus as host frameworks (not dependencies). The native desktop renderer uses GTK4 + libadwaita; cross-language interop uses JNA. Nothing is proprietary or single-vendor.
 >
 > The first concrete adopter is internal: SOS International, where Lumen (my earlier design system) is in production and where the Java + SSR path directly addresses the microfrontend/BFF pain. Near term, I aim to present the protocol at WebDevCon (if accepted) and am considering FOSDEM (free, volunteer-run) as an open-source venue. Embedded outreach is deferred until embedded enters the roadmap in a later phase.
 

@@ -15,14 +15,18 @@
 
     <name>Pathland View Core</name>
     <description>
-        Framework-agnostic Pathland JVM engine and runtime: the 16-byte opcode protocol
-        (dev.pathland.view.core.protocol), retained-tree diff emitter
-        (dev.pathland.view.engine), Angular-style signals, wire codec, router, state, and
-        lazy JNA ring interop. Shared by the Java and Kotlin authoring DSLs and by server
-        runtimes. Runs on every LTS from Java 17; JNA is the only runtime dependency.
+        Framework-agnostic Pathland JVM engine and runtime, written in Kotlin: the
+        16-byte opcode protocol, retained-tree diff emitter, Angular-style signals,
+        wire codec, router, state, and lazy JNA ring interop. The Kotlin DSL and all
+        server runtimes depend on this module. Runs on every LTS from Java 17.
     </description>
 
     <dependencies>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>${kotlin.version}</version>
+        </dependency>
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
@@ -36,6 +40,47 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>process-test-sources</phase>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/test/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/test/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <jvmTarget>${maven.compiler.release}</jvmTarget>
+                    <languageVersion>2.4</languageVersion>
+                    <apiVersion>2.4</apiVersion>
+                    <args>
+                        <arg>-Xjvm-default=all</arg>
+                    </args>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

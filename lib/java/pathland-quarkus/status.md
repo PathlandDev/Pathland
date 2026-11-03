@@ -5,10 +5,14 @@
 DSL-neutral Quarkus extension for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding this extension + a
 `PathlandApp` CDI bean gives a running app; `MountedApp` beans host more apps at
-their own subpaths (the BFF layout). Author the root view with `pathland-view`
-(Java DSL extension) or `pathland-view-kotlin` (Kotlin DSL extension).
+their own subpaths (the BFF layout). Author the root view with
+`pathland-view-kotlin`; Java hosts return Kotlin views from a `PathlandApp` bean.
 
 ## Implemented
+
+- **Java host / Kotlin views**: `CounterApp` is a Java CDI bean whose
+  `newRoot()` returns a Kotlin-authored fixture view; the multi-session
+  WebSocket tests prove SSR + live deltas work through that mount.
 
 - **Crawler endpoints**: `/robots.txt` (text/plain) and `/sitemap.xml` (application/xml) are real routes before the SPA catch-all, so Lighthouse does not parse the HTML shell as robots.txt.
 
@@ -83,7 +87,8 @@ their own subpaths (the BFF layout). Author the root view with `pathland-view`
 - `META-INF/beans.xml` so Quarkus discovers the extension.
 - **Quarkus extension metadata** — runtime + `pathland-quarkus-deployment`; the
   runtime provides the `dev.pathland.quarkus` capability. The runtime has no
-  dependency on either authoring DSL (`pathland-view` / `pathland-view-kotlin`).
+  dependency on the authoring DSL. Tests use Kotlin-authored fixture views to prove
+  a Java CDI bean can mount them.
 
 ## App DX
 

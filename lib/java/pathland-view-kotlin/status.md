@@ -2,20 +2,21 @@
 
 **Last updated:** November 3, 2026
 
-The idiomatic Kotlin authoring surface (`dev.pathland.view.dsl`). Phase 3 is
-complete: every production view/modifier is Kotlin-owned over
-`pathland-view-core`; the Java DSL is a test-scope parity oracle only.
+The sole JVM authoring surface (`dev.pathland.view.dsl`), Kotlin-owned over the
+Kotlin `pathland-view-core`. The Java DSL, its processor, and its Java-only
+Quarkus extension/starter alias are removed.
 
-## Phase 3
+## Authoring surface
 
-- **Core-owned in Kotlin**: all primitives, shapes, stacks, grids, scroll/lazy
+- **Kotlin-owned**: all primitives, shapes, stacks, grids, scroll/lazy
   containers, `ForEach`, `Button`, text/value controls, media, navigation,
-  `Label`, `ViewThatFits`/`Fit`, `ProxyView`, and the complete modifier
-  vocabulary (padding/frame/fonts/colors/borders/shadows/effects/transforms/
-  interaction/accessibility/environment/styles/window metadata).
-- **Dependency boundary**: main depends on `pathland-view-core` only; the Java
-  DSL is test-scope for byte-for-byte parity comparisons.
-- Tests compare the Kotlin-owned views and modifiers against the Java DSL.
+  `Label`, `ViewThatFits`/`Fit`, `ProxyView`, styles (`PlainButtonStyle`,
+  `BorderedButtonStyle`, label styles, `NativeVideoStyle`), and the complete
+  modifier vocabulary (padding/frame/fonts/colors/borders/shadows/effects/
+  transforms/interaction/accessibility/environment/styles/window metadata).
+- **Dependency boundary**: main depends on `pathland-view-core` only.
+- Tests are Kotlin-only; golden engine traces and opcode/property assertions
+  replace the former Java-vs-Kotlin parity oracle.
 
 ## Implemented
 
@@ -29,7 +30,7 @@ complete: every production view/modifier is Kotlin-owned over
   `TextEditor`, `Toggle`, `Slider`, `Stepper`, `DatePicker`, `Picker`, `Menu`,
   `ColorPicker`.
 - **Automatic child collection**: `VStack { Text("a"); Text("b") }` needs no
-  `.children(...)`. A custom `KotlinView` constructed inline in a block
+  `.children(...)`. A custom `Component` constructed inline in a block
   auto-registers; a view stored as a field is added explicitly with `+field`
   inside `body()` (it does not leak into the enclosing scope). An explicit
   `view.add()` / `+view` is available for Java-constructed views (e.g.
@@ -42,9 +43,9 @@ complete: every production view/modifier is Kotlin-owned over
   visibility/disabled/hit-testing, accessibility, tap/pointer events,
   environment binding, styles, window metadata, and navigation intents. A child
   modifier replaces its auto-registered leaf in the enclosing builder, so
-  `VStack { Text("x").fontSize(20f) }` keeps the modifier. The Java
-  `.modifiers(...)` operation remains available as an escape hatch.
-- **Persisted state**: `KotlinView` base class + `val count by state(0)`
+  `VStack { Text("x").fontSize(20f) }` keeps the modifier. The core
+  `View.modifiers(...)` operation remains available as an escape hatch.
+- **Persisted state**: `Component` base class + `val count by state(0)`
   (auto-keyed by property name) or `state(0, "key")`; a `mutableState(0)` signal
   form for two-way controls. Bound to the session's `PersistentState` before the
   first `body()` render — no kapt and no annotation processor.
@@ -54,19 +55,28 @@ complete: every production view/modifier is Kotlin-owned over
   `isActive`, and `.navigate`/`.push`/`.replace` intents.
 - **Media**: `Video(controller)`; audio remains view-less (`controller.attach()`
   can be added with `+`).
-- **Tests**: byte-identical Kotlin-vs-Java frame comparison, auto-collection,
+- **Tests**: structure/opcode/property assertions, auto-collection,
   child-modifier application, modifier property parity, fine-grained signal
   deltas, persisted/stateful bodies, reactive `ForEach`, two-way `TextField`,
   navigation swaps and link intents.
 
+## Naming
+
+- The composite base is `Component` (renamed from `KotlinView` now that the Java
+  DSL is gone). Whether to align the authoring type with SwiftUI's single `View`
+  protocol is tracked by #174.
+
+## Java hosting
+
+- A Java Spring Boot / Quarkus app mounts a Kotlin view through the Java-friendly
+  `PathlandApp` functional interface (`return () -> MusicPlayerView.make();`).
+- Kotlin root views expose public constructors and/or `@JvmStatic make(...)`
+  factories with Java-friendly parameter types.
+- Tests in `pathland-spring-boot-starter` and `pathland-quarkus` prove a Java
+  host renders a Kotlin fixture and receives live signal deltas.
+
 ## Not implemented / gaps
 
-- The Kotlin modifier config types (`Padding`, `Frame`, `Border`, `Shadow`,
-  `ClipShape`, `Font`) are Kotlin ownership types; code migrating from the Java
-  DSL should use the Kotlin `Modifiers` sugar instead of Java config classes.
-- A Kotlin-native annotation processor is intentionally not used. `state(...)`
-  works on `KotlinView` subclasses; a plain `View` implementation should use
-  signals directly or extend `KotlinView`.
 - No Kotlin Multiplatform target yet — the module is JVM-only over
   `pathland-view-core`.
 - `SecureField` is Kotlin-owned (`TEXT_FIELD` + `IS_SECURE`).

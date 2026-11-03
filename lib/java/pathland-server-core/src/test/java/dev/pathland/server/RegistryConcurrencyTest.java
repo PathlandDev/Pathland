@@ -1,9 +1,7 @@
 package dev.pathland.server;
 
 
-import dev.pathland.view.Button;
 import dev.pathland.view.core.Environment;
-import dev.pathland.view.Text;
 import dev.pathland.view.core.View;
 import dev.pathland.view.core.transport.ProtocolFrame;
 import dev.pathland.view.core.protocol.Opcode;
@@ -109,9 +107,7 @@ class RegistryConcurrencyTest {
 
     /** A counter button: node 1 = Button, node 2 = Text label {@code n=<count>}. */
     private static View counterApp() {
-        WritableSignal<Integer> count = Signals.signal(0);
-        return Button.make(b -> b.action(() -> count.update(i -> i + 1)))
-                .children(Text.make(t -> t.text(Signals.computed(() -> "n=" + count.get()))));
+        return ServerFixtures.counter();
     }
 
     private static void sleep(long millis) {

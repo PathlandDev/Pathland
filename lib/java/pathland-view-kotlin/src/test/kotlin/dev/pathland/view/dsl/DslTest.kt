@@ -2,6 +2,7 @@ package dev.pathland.view.dsl
 
 import dev.pathland.view.core.protocol.Categories
 import dev.pathland.view.core.protocol.Commands
+import dev.pathland.view.core.protocol.Components
 import dev.pathland.view.core.Environment
 import dev.pathland.view.core.protocol.Properties
 import dev.pathland.view.core.View
@@ -38,47 +39,43 @@ class DslTest {
             .map { it.b() and 0xffff }
 
     @Test
-    fun kotlinTreeEmitsTheSameBytesAsJava() {
-        val kotlinRoot = VStack(spacing = 8f) {
+    fun kotlinTreeEmitsTheExpectedStructure() {
+        val root = VStack(spacing = 8f) {
             Text("Hello")
             Button("Tap") {}
         }
-        val javaRoot = dev.pathland.view.VStack.make { c -> c.spacing(8f) }.children(
-            dev.pathland.view.Text.make("Hello"),
-            dev.pathland.view.Button.make { c -> c.title("Tap").action {} },
-        )
 
-        val (_, kotlinFrame) = mount(kotlinRoot)
-        val (_, javaFrame) = mount(javaRoot)
-
-        assertEquals(javaFrame.opcodes(), kotlinFrame.opcodes(), "Kotlin builders must emit identical opcodes")
-        assertArrayEquals(javaFrame.strings(), kotlinFrame.strings(), "arena strings must match")
+        val (_, frame) = mount(root)
+        val created = frame.opcodes()
+            .filter { it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE }
+            .map { it.b() and 0xffff }
+        assertEquals(listOf(Components.VSTACK, Components.TEXT, Components.BUTTON, Components.TEXT), created)
+        assertEquals(listOf("Hello", "Tap"), texts(frame))
     }
 
     @Test
-    fun coreOwnedControlsEmitTheSameBytesAsJava() {
+    fun coreOwnedControlsEmitTheirProperties() {
         val name = signal("")
         val on = signal(true)
         val value = signal(0.5f)
         val color = signal(dev.pathland.view.core.Color.RED)
 
-        val kotlinRoot = VStack {
+        val (_, frame) = mount(VStack {
             TextField("Name", name)
             Toggle("On", on)
             Slider(value, 0f..1f)
             ColorPicker(color)
-        }
-        val javaRoot = dev.pathland.view.VStack.children(
-            dev.pathland.view.TextField.make { c -> c.placeholder("Name").text(name) },
-            dev.pathland.view.Toggle.make { c -> c.label("On").isOn(on) },
-            dev.pathland.view.Slider.make { c -> c.value(value).`in`(0f, 1f) },
-            dev.pathland.view.ColorPicker.make { c -> c.selection(color) },
-        )
+        })
 
-        val (_, kotlinFrame) = mount(kotlinRoot)
-        val (_, javaFrame) = mount(javaRoot)
-        assertEquals(javaFrame.opcodes(), kotlinFrame.opcodes())
-        assertArrayEquals(javaFrame.strings(), kotlinFrame.strings())
+        val created = frame.opcodes()
+            .filter { it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE }
+            .map { it.b() and 0xffff }
+        assertEquals(listOf(Components.VSTACK, Components.TEXT_FIELD, Components.TOGGLE,
+            Components.SLIDER, Components.COLOR_PICKER), created)
+        assertTrue(properties(frame).contains(Properties.PROMPT))
+        assertTrue(properties(frame).contains(Properties.SELECTED))
+        assertTrue(properties(frame).contains(Properties.VALUE))
+        assertTrue(properties(frame).contains(Properties.COLOR_VALUE))
     }
 
     @Test
@@ -106,7 +103,7 @@ class DslTest {
 
     @Test
     fun customViewConstructedInABlockAutoRegisters() {
-        class Greeting : KotlinView() {
+        class Greeting : Component() {
             override fun body(): View = Text("hi")
         }
 
@@ -115,16 +112,9 @@ class DslTest {
     }
 
     @Test
-    fun modifierSugarEmitsTheSamePropertiesAsTheModifiersFacade() {
+    fun modifierSugarEmitsTheExpectedProperties() {
         val sugared = Text("x").padding(16f).frame(width = 100f, height = 20f)
-        val explicit = dev.pathland.view.Text.make("x").modifiers(
-            dev.pathland.view.Modifiers.padding(16f),
-            dev.pathland.view.Modifiers.frame { c -> c.width(100f).height(20f) },
-        )
-
         val (_, sugaredFrame) = mount(sugared)
-        val (_, explicitFrame) = mount(explicit)
-        assertEquals(explicitFrame.opcodes(), sugaredFrame.opcodes())
         assertTrue(properties(sugaredFrame).contains(Properties.PADDING))
         assertTrue(properties(sugaredFrame).contains(Properties.WIDTH))
         assertTrue(properties(sugaredFrame).contains(Properties.HEIGHT))
@@ -140,27 +130,20 @@ class DslTest {
     }
 
     @Test
-    fun compositesEmitTheSameBytesAsJava() {
-        val kotlinRoot = VStack {
+    fun compositesEmitTheExpectedStructure() {
+        val root = VStack {
             Label("Home", "home")
             ViewThatFits(Fit(Text("a")), Fit(Text("b"), 640f))
             ProxyView("https://origin.example", "/music", "svc")
         }
-        val javaRoot = dev.pathland.view.VStack.children(
-            dev.pathland.view.Label.make { c -> c.title("Home").icon("home") },
-            dev.pathland.view.SizeThatFits.make(
-                dev.pathland.view.Fit.of(dev.pathland.view.Text.make("a")),
-                dev.pathland.view.Fit.of(dev.pathland.view.Text.make("b"), 640f),
-            ),
-            dev.pathland.view.ProxyView.make { c ->
-                c.endpoint("https://origin.example").route("/music").credential("svc")
-            },
-        )
 
-        val (_, kotlinFrame) = mount(kotlinRoot)
-        val (_, javaFrame) = mount(javaRoot)
-        assertEquals(javaFrame.opcodes(), kotlinFrame.opcodes())
-        assertArrayEquals(javaFrame.strings(), kotlinFrame.strings())
+        val (result, frame) = mount(root)
+        val created = frame.opcodes()
+            .filter { it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE }
+            .map { it.b() and 0xffff }
+        assertTrue(created.contains(Components.SIZE_THAT_FITS))
+        assertEquals(1, result.proxyViews().size, "the proxy node exposes its config")
+        assertEquals("https://origin.example", result.proxyViews().values.single().endpoint())
     }
 
     @Test
@@ -178,7 +161,7 @@ class DslTest {
 
     @Test
     fun stateDelegateIsPersistedAndReactive() {
-        class Counter : KotlinView() {
+        class Counter : Component() {
             var count by state(0)
 
             override fun body(): View = VStack {
@@ -273,10 +256,10 @@ class DslTest {
 
     @Test
     fun fieldSubviewDoesNotLeakIntoTheParentScope() {
-        class Child : KotlinView() {
+        class Child : Component() {
             override fun body(): View = Text("child")
         }
-        class Parent : KotlinView() {
+        class Parent : Component() {
             private val child = Child()
             override fun body(): View = VStack {
                 Text("parent")

@@ -16,19 +16,17 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
 ## Project map
 
 - `lib/rust/` — the Rust workspace: `pathland-core` (protocol), `pathland-engine`
-  (emitter/signals), `pathland-view` (DSL), `pathland-core-transport`,
-  `pathland-core-capi` (C ABI), `pathland-render-gtk`, `pathland-render-html`,
-  `pathland-view-native`, `pathland-render-gtk-demo`.
+  (emitter/signals), `pathland-core-transport`, `pathland-core-capi` (C ABI),
+  `pathland-render-gtk`, `pathland-render-html`, `pathland-view-native`,
+  `pathland-render-gtk-demo`.
 - `lib/java/` — the Maven reactor: `pathland-view-core`
-  (`dev.pathland.view.core*` + `dev.pathland.view.engine`), `pathland-view`
-  (the Java DSL, `dev.pathland.view`), `pathland-view-processor`,
-  `pathland-view-kotlin` (`dev.pathland.view.dsl`), `pathland-demo-common`,
-  `pathland-demo-views-kotlin` (the Kotlin music player), `pathland-render-html`,
-  `pathland-state-redis`, `pathland-demo-views` (remaining Java demo views), the DSL-neutral
-  `pathland-quarkus` extension plus the separate `pathland-quarkus-java` and
-  `pathland-quarkus-kotlin` extensions (each with a deployment module), the
-  Quarkus/Spring demos (including the Kotlin Quarkus demo), and the TypeScript
-  DOM renderer (`lib/typescript`).
+  (Kotlin `dev.pathland.view.core*` + `dev.pathland.view.engine`),
+  `pathland-view-kotlin` (the sole JVM authoring DSL, `dev.pathland.view.dsl`),
+  `pathland-demo-common`, `pathland-demo-views-kotlin` (the Kotlin music player
+  and ad app), `pathland-render-html`, `pathland-state-redis`, the DSL-neutral
+  `pathland-quarkus` extension plus `pathland-quarkus-kotlin`,
+  the Quarkus/Spring demos (including the Kotlin Quarkus demo), and the
+  TypeScript DOM renderer (`lib/typescript`).
 - `spec/` — the protocol contract: `OPCODE.md` (primary), `PRIMITIVES.md`,
   `MODIFIERS.md`, `EVENTS.md`, `CONFORMANCE.md` (golden vectors), `ENGINE.md`
   (retained-tree behavior), `DSL.md` (authoring surface), `protocol.tsv` (the

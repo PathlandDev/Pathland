@@ -2,7 +2,6 @@ package dev.pathland.server;
 
 import dev.pathland.view.core.router.Route;
 import dev.pathland.view.core.router.Router;
-import dev.pathland.view.core.state.State;
 
 import dev.pathland.render.html.HtmlRenderer;
 import dev.pathland.server.proxy.ProxyHost;

@@ -168,7 +168,7 @@ transition, and native back affordances → `NAVIGATE`. See `spec/DSL.md §4.5`.
   round-trip through `FrameCodec`.
 - `RouterTest` (11 tests): initial route + ROUTE emission, destination-swap
   deltas, back-stack, params, guard redirect, fallback, NAVIGATE routing,
-  NavigationLink, equality suppression. `mvn -pl pathland-view test` — 58 tests
+  NavigationLink, equality suppression. `mvn -pl pathland-view-kotlin test` — 58 tests
   green.
 
 ## Phase 4 — Rust (on deck)
@@ -209,7 +209,7 @@ transition, and native back affordances → `NAVIGATE`. See `spec/DSL.md §4.5`.
     Sessions are created **lazily on the first message** so the router seeds
     from the `ROUTE` field before mount — deep links render correctly on the
     first frame and the WS tree stays consistent with the SSR HTML.
-21. ✅ `pathland-demo-views`: `SplitNavDemo` is the demo root (sidebar + content;
+21. ✅ The Kotlin demo views: `MusicPlayerView` is the demo root (sidebar + content;
     `/kitchen` keeps the showcase); both `SessionApp` apply the environment
     (seed + `applyEnvironment` enrichment) and forward `NAVIGATE` events.
 22. ✅ **Verified in the browser**: both demos run; `curl /kitchen` → the
@@ -217,8 +217,8 @@ transition, and native back affordances → `NAVIGATE`. See `spec/DSL.md §4.5`.
     content; unknown paths → sidebar + "Not Found"; JS bundle served. 76 Java
     tests + 61 TS tests + core vectors 26–27 green.
 23. ✅ **status.md updates** (per AGENTS.md): `pathland-core`,
-    `pathland-core-transport`, `lib/java/pathland-view`, `pathland-render-html`,
-    `lib/typescript`, `pathland-demo-views` — in their landing changes.
+    `pathland-core-transport`, `lib/java/pathland-view-kotlin`, `pathland-render-html`,
+    `lib/typescript`, `pathland-view-kotlin` — in their landing changes.
 
 ### Fix (post-Phase-6): SPA catch-all no longer shadows `/ws`
 

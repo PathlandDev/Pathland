@@ -108,27 +108,32 @@ public class MyApp implements PathlandApp {
 }
 ```
 
-`MyHomeView` is just Java views — the same code runs on both:
+`MyHomeView` is a Kotlin view — authored once and mounted by any JVM host:
+
+```kotlin
+class MyHomeView : Component() {
+    private var count by state(0)   // persisted per session, automatically
+
+    override fun body(): View =
+        VStack(alignment = HorizontalAlignment.CENTER, spacing = 8f) {
+            Text(computed { "Clicked $count times" })
+            Button("Click me") { count += 1 }
+        }.padding(24f)
+}
+```
+
+A Java Spring Boot or Quarkus app mounts it without any Kotlin authoring code:
 
 ```java
-public final class MyHomeView implements View {
-
-    State<Integer> count = new State<>(0);   // persisted per session, automatically
-
-    @Override
-    public View body() {
-        return VStack.make(v -> v.alignment(HorizontalAlignment.CENTER).spacing(8))
-                .modifiers(padding(24))
-                .children(
-                        Text.make(Signals.computed(() -> "Clicked " + count.get() + " times")),
-                        Button.make(b -> b.title("Click me").action(() -> count.update(v -> v + 1))));
-    }
+@Bean
+PathlandApp pathlandApp() {
+    return () -> new MyHomeView();
 }
 ```
 
 That's it — SSR at any path, live updates over `/ws`, per-session state.
-*(Imports omitted: `dev.pathland.server.PathlandApp`, `dev.pathland.view.*`,
-and `import static dev.pathland.view.Modifiers.*;` for the modifier function.)*
+*(Imports omitted: the Kotlin view DSL lives in `dev.pathland.view.dsl`; Java
+hosts only need `dev.pathland.server.PathlandApp` and a Kotlin view factory.)*
 
 ## What it removes
 
@@ -196,8 +201,8 @@ and launches:
 | Script | Demo | What you get |
 |--------|------|--------------|
 | `./scripts/run-spring-demo.sh` | Spring Boot SSR + WebSocket | http://localhost:8080 |
-| `./scripts/run-quarkus-demo.sh` | Quarkus SSR + WebSocket, Java DSL (hot reload) | http://localhost:8080 |
-| `./scripts/run-quarkus-kotlin-demo.sh` | Quarkus SSR + WebSocket, Kotlin DSL (hot reload) | http://localhost:8080 |
+| `./scripts/run-quarkus-demo.sh` | Quarkus SSR + WebSocket, Java host + Kotlin views (hot reload) | http://localhost:8080 |
+| `./scripts/run-quarkus-kotlin-demo.sh` | Quarkus SSR + WebSocket, Kotlin DSL, player + `/ad` proxy (hot reload) | http://localhost:8080 |
 | `./scripts/run-rust-gtk-demo.sh` | Rust DSL → GTK4 desktop renderer | a native window |
 | `./scripts/run-java-gtk-demo.sh` | Kotlin `MusicPlayerView` → GTK4 desktop renderer | a native window |
 

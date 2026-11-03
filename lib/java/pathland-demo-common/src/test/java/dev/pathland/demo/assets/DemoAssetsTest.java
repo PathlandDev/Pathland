@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The demo's media + icon assets are embedded **once** in this project (the shared
- * {@code pathland-demo-views} jar), served by the web demos from
+ * {@code pathland-demo-common} jar), served by the web demos from
  * {@code META-INF/resources} and extracted by the GTK/TUI desktop hosts. A
  * missing/renamed asset must fail the build here, not 404 silently in a demo.
  */

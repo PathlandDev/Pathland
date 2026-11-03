@@ -31,12 +31,7 @@
     <dependencies>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-quarkus-java</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-demo-views</artifactId>
+            <artifactId>pathland-quarkus</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

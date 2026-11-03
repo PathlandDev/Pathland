@@ -9,7 +9,7 @@ import dev.pathland.view.core.protocol.Commands
 import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.view.dsl.Divider
 import dev.pathland.view.dsl.Image
-import dev.pathland.view.dsl.KotlinView
+import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.ProxyView
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.VStack
@@ -32,7 +32,7 @@ import dev.pathland.view.dsl.scaledToFill
 internal class NowPlayingSidebar(
     private val trackIndex: WritableSignal<Int>,
     private val adUrl: String?,
-) : KotlinView() {
+) : Component() {
 
     override fun body(): View = VStack(alignment = HorizontalAlignment.LEADING, spacing = 14f) {
         Text("Now Playing")

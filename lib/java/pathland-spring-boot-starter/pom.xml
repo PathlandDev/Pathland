@@ -54,11 +54,19 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Applications author their root view through the Java DSL. -->
+        <!-- Tests prove a Java host can mount a Kotlin-authored view. Production stays
+             DSL-neutral; applications add their chosen authoring DSL themselves. -->
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view</artifactId>
+            <artifactId>pathland-view-kotlin</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>${kotlin.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>dev.pathland</groupId>
@@ -67,4 +75,33 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <executions>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>process-test-sources</phase>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/test/kotlin</sourceDir>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <jvmTarget>${maven.compiler.release}</jvmTarget>
+                    <languageVersion>2.4</languageVersion>
+                    <apiVersion>2.4</apiVersion>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

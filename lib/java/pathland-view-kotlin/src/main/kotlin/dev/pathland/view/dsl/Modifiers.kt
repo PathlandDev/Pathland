@@ -393,7 +393,10 @@ fun View.allowsHitTesting(allowed: Boolean = true): View = modified(prop(Propert
 fun View.controlSize(size: ControlSize): View = modified(prop(Properties.CONTROL_SIZE, size.wire().toFloat()))
 fun View.accessibilityLabel(label: String): View = modified(prop(Properties.LABEL, label))
 fun View.accessibilityLabel(label: Signal<String>): View = modified(prop(Properties.LABEL, label))
-fun View.accessibilityRole(role: Int): View = modified(prop(Properties.ROLE, role.toFloat()))
+fun View.accessibilityRole(role: Int): View {
+    require(dev.pathland.view.core.Roles.isDefined(role)) { "undefined semantic role: $role" }
+    return modified(prop(Properties.ROLE, role.toFloat()))
+}
 fun View.accessibilityState(state: Int): View = modified(prop(Properties.STATE, state.toFloat()))
 fun View.onTapGesture(action: () -> Unit): View = modified(TapGesture.with(Runnable(action)))
 fun View.pointerEvents(mask: Int): View = modified(PointerEvents.with(mask))

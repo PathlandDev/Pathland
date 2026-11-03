@@ -5,7 +5,7 @@ import dev.pathland.view.core.View
 import dev.pathland.view.dsl.Button
 import dev.pathland.view.dsl.ForEach
 import dev.pathland.view.dsl.HStack
-import dev.pathland.view.dsl.KotlinView
+import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.TextField
 import dev.pathland.view.dsl.VStack
@@ -19,7 +19,7 @@ import dev.pathland.view.dsl.padding
  * A small Kotlin-owned view that exercises persisted state, two-way text input,
  * reactive plain-Kotlin control flow, `ForEach`, and the Kotlin modifier sugar.
  */
-class KotlinDemoView : KotlinView() {
+class KotlinDemoView : Component() {
 
     private var count by state(0)
     private val name = mutableState("", "demo.name")

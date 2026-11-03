@@ -59,7 +59,7 @@ successful publish).
 The Java deploy runs on **Maven 3.9.9** (pinned in the workflow): Maven 3.10
 writes a `maven-metadata-local.xml` beside each artifact in the Central staging,
 which the Portal rejects ("content that does NOT have a .pom file"). The demos
-are **excluded from the release reactor** (`-pl '!pathland-demo-common,!pathland-demo-views-kotlin,!pathland-demo-views,!pathland-gtk-demo,!pathland-qt-demo,!pathland-quarkus-demo,!pathland-quarkus-kotlin-demo,!pathland-spring-boot-demo'`)
+are **excluded from the release reactor** (`-pl '!pathland-demo-common,!pathland-demo-views-kotlin,!pathland-gtk-demo,!pathland-qt-demo,!pathland-quarkus-demo,!pathland-quarkus-kotlin-demo,!pathland-spring-boot-demo'`)
 — `central-publishing-maven-plugin` bundles every reactor module, ignoring
 `maven.deploy.skip`, and the demos must not be published.
 
@@ -98,14 +98,13 @@ pathland-core → pathland-engine → pathland-view → pathland-core-transport 
 
 ## Published Java modules
 
-`pathland-view-core`, `pathland-view`, `pathland-view-processor`,
-`pathland-view-kotlin`, `pathland-render-html`, `pathland-state-redis`,
+`pathland-view-core` (Kotlin JVM engine/SPI), `pathland-view-kotlin` (the sole
+JVM authoring DSL), `pathland-render-html`, `pathland-state-redis`,
 `pathland-server-core`, `pathland-observability`, `pathland-test-kit`,
 `pathland-spring-boot-starter`, `pathland-quarkus`, `pathland-quarkus-deployment`,
-`pathland-quarkus-java`, `pathland-quarkus-java-deployment`,
-`pathland-quarkus-kotlin`, `pathland-quarkus-kotlin-deployment`,
-`pathland-quarkus-starter` (plus the `pathland-parent` POM). The demo modules
+`pathland-quarkus-kotlin`, `pathland-quarkus-kotlin-deployment`
+(plus the `pathland-parent` POM). The demo modules
 (`pathland-demo-common`, `pathland-demo-views-kotlin`,
-`pathland-demo-views`, `pathland-gtk-demo`, `pathland-qt-demo`,
+`pathland-gtk-demo`, `pathland-qt-demo`,
 `pathland-quarkus-demo`, `pathland-quarkus-kotlin-demo`,
 `pathland-spring-boot-demo`) set `maven.deploy.skip`.

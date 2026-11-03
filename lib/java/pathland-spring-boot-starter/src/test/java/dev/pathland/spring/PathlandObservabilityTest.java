@@ -3,7 +3,6 @@ package dev.pathland.spring;
 import dev.pathland.observability.MicrometerTelemetry;
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandTelemetry;
-import dev.pathland.view.Text;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +34,7 @@ class PathlandObservabilityTest {
     static class TestApp {
         @Bean
         PathlandApp pathlandApp() {
-            return () -> Text.make("Hello Pathland");
+            return () -> KotlinFixtures.text("Hello Pathland");
         }
     }
 

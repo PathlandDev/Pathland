@@ -1,7 +1,5 @@
 package dev.pathland.server;
 
-import dev.pathland.view.Button;
-import dev.pathland.view.Text;
 import dev.pathland.view.core.View;
 import dev.pathland.view.core.transport.ProtocolFrame;
 import dev.pathland.view.core.protocol.Opcode;
@@ -36,7 +34,7 @@ class PathlandTelemetryTest {
     void registryEmitsLifecycleAndThroughputEvents() {
         RecordingTelemetry telemetry = new RecordingTelemetry();
         PathlandRegistry registry = new PathlandRegistry(
-                "/", () -> Button.make(b -> b.title("Tap").action(() -> {})), STORE, false, telemetry);
+                "/", () -> ServerFixtures.button("Tap", () -> {}), STORE, false, telemetry);
 
         // SSR render (synchronous) emits ssrRendered.
         registry.renderHtml("/");
@@ -69,7 +67,7 @@ class PathlandTelemetryTest {
     void hostBindsTheActiveSessionsGauge() {
         RecordingTelemetry telemetry = new RecordingTelemetry();
         PathlandHost host = new PathlandHost(
-                List.of(MountedApp.of("/", () -> Button.make(b -> b.title("Tap").action(() -> {})))), STORE, false, telemetry);
+                List.of(MountedApp.of("/", () -> ServerFixtures.button("Tap", () -> {}))), STORE, false, telemetry);
 
         assertNotNull(telemetry.activeSessions, "the host binds the gauge supplier");
         assertEquals(0, telemetry.activeSessions.getAsInt(), "no sessions yet");
@@ -87,7 +85,7 @@ class PathlandTelemetryTest {
     @Test
     void sessionReportsConnectionFailures() {
         RecordingTelemetry telemetry = new RecordingTelemetry();
-        PathlandApp app = () -> Button.make(b -> b.title("Tap").action(() -> {}));
+        PathlandApp app = () -> ServerFixtures.button("Tap", () -> {});
         PathlandSession session = new PathlandSession(
                 "s1", STORE, app, EnvironmentData.of("/"), false, "/_pathland", "s1", telemetry, "/");
 

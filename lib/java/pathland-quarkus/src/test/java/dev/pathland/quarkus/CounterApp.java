@@ -1,21 +1,18 @@
 package dev.pathland.quarkus;
 
 import dev.pathland.server.PathlandApp;
-import dev.pathland.view.Button;
-import dev.pathland.view.Text;
 import dev.pathland.view.core.View;
-import dev.pathland.view.core.signal.Signals;
-import dev.pathland.view.core.signal.WritableSignal;
 import jakarta.enterprise.context.ApplicationScoped;
 
-/** The counter app the multi-session WS test mounts: node 1 = Button, node 2 = Text label. */
+/**
+ * A Java CDI bean mounting a Kotlin-authored view: the host is Java, the view is
+ * not. Node 1 is the button and node 2 its `n=<count>` label (see KotlinFixtures).
+ */
 @ApplicationScoped
 public class CounterApp implements PathlandApp {
 
     @Override
     public View newRoot() {
-        WritableSignal<Integer> count = Signals.signal(0);
-        return Button.make(b -> b.action(() -> count.update(i -> i + 1)))
-                .children(Text.make(Signals.computed(() -> "n=" + count.get())));
+        return KotlinFixtures.counterProbe();
     }
 }

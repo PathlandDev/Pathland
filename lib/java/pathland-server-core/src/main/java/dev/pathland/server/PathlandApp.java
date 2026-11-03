@@ -1,6 +1,5 @@
 package dev.pathland.server;
 
-import dev.pathland.view.core.state.State;
 
 import dev.pathland.view.core.ThemeData;
 import dev.pathland.view.core.View;

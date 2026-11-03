@@ -4,7 +4,6 @@ import dev.pathland.view.core.state.InMemoryStateStore;
 
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandHost;
-import dev.pathland.view.Text;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -28,7 +27,7 @@ class PathlandDebugHtmlTest {
     static class TestApp {
         @Bean
         PathlandApp pathlandApp() {
-            return () -> Text.make("Hello Pathland");
+            return () -> KotlinFixtures.text("Hello Pathland");
         }
     }
 
@@ -43,6 +42,6 @@ class PathlandDebugHtmlTest {
     @Test
     void defaultRegistryHasDebugOff() {
         assertFalse(new dev.pathland.server.PathlandRegistry(
-                () -> Text.make("x"), new dev.pathland.view.core.state.InMemoryStateStore()).isDebugHtml());
+                () -> KotlinFixtures.text("x"), new dev.pathland.view.core.state.InMemoryStateStore()).isDebugHtml());
     }
 }
