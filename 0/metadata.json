@@ -1,0 +1,585 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6M3QZB9NMCYW0F31334KR16",
+  "session_id": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-04T20:24:34.627652Z",
+  "branch": "refactor/kotlin-only-jvm-dsl",
+  "checkpoints_count": 24,
+  "save_step_count": 23,
+  "files_touched": [
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/ad/AdView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/Controls.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/LibraryView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/Lyrics.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/MusicPlayerView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/NowPlayingSidebar.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/PlayerBar.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/PlayerControls.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/Track.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/TrackRowView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/library/LibraryView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/library/TrackRowView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/model/Lyrics.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/model/Track.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerBar.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerControls.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/PercentSeek.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/SeekControl.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/VolumeControl.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/NowPlayingSidebar.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/LyricsTest.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/MusicPlayerViewTest.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/SeekControlTest.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/model/LyricsTest.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/player/controls/SeekControlTest.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt",
+    "lib/java/pathland-demo-views-kotlin/status.md",
+    "lib/java/pathland-qt-demo/src/main/kotlin/dev/pathland/demo/qt/QtRendererNative.kt",
+    "lib/java/pathland-render-html/src/test/kotlin/dev/pathland/render/html/HtmlRendererTest.kt",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/PathlandSessionTest.java",
+    "lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/ServerFixtures.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Color.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Configurators.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Environment.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/EnvironmentKey.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/EnvironmentValues.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/FontFamily.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/FontWidth.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Length.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/MediaController.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Modified.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/PathChange.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/PointerEvents.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/ProxyConfig.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Roles.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/TapGesture.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/WindowMetadata.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/ffm/PathlandCore.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Opcode.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/ValueEncoder.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/router/Navigation.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/router/NavigationContainer.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/router/NavigationIntent.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/router/Params.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/router/Route.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/router/RouteTable.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/signal/Signals.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/state/PersistentState.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/engine/Emitter.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/engine/ReactiveValues.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/core/signal/SignalsStateTest.kt",
+    "lib/java/pathland-view-core/status.md",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Component.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Containers.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/CoreView.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Scope.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Styles.kt",
+    "lib/java/pathland-view-kotlin/src/main/kotlin/dev/pathland/view/dsl/Views.kt",
+    "lib/java/pathland-view-kotlin/src/test/kotlin/dev/pathland/view/dsl/MediaProjectionTest.kt",
+    "lib/java/pathland-view-kotlin/status.md",
+    "spec/ENGINE.md",
+    "spec/MEDIA.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "d928a30a71ac",
+  "checkpoint_transcript_start": 443,
+  "transcript_lines_at_start": 443,
+  "compact_transcript_start": 443,
+  "token_usage": {
+    "input_tokens": 5538710,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 96087424,
+    "output_tokens": 70816,
+    "api_call_count": 194
+  },
+  "session_metrics": {
+    "turn_count": 51
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 5,
+      "user_lines_removed": 5,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/ad/AdView.kt": 5
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/ad/AdView.kt": 5
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 5,
+      "agent_lines_removed": 5
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 5,
+      "agent_lines_removed": 5
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 5,
+      "agent_lines_removed": 5
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 7,
+      "user_lines_removed": 5,
+      "agent_lines_added": 1061,
+      "agent_lines_removed": 894,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 7
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 5
+      }
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 7,
+      "user_lines_removed": 5,
+      "agent_lines_added": 1061,
+      "agent_lines_removed": 894,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 7
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 5
+      }
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 7,
+      "user_lines_removed": 5,
+      "agent_lines_added": 1061,
+      "agent_lines_removed": 894,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 7
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 5
+      }
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 7,
+      "user_lines_removed": 5,
+      "agent_lines_added": 1061,
+      "agent_lines_removed": 894,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 7
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 5
+      }
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 7,
+      "user_lines_removed": 5,
+      "agent_lines_added": 1061,
+      "agent_lines_removed": 894,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 7
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 5
+      }
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 58,
+      "user_lines_removed": 79,
+      "agent_lines_added": 1289,
+      "agent_lines_removed": 987,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 9,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10
+      }
+    },
+    {
+      "checkpoint_number": 11,
+      "user_lines_added": 62,
+      "user_lines_removed": 83,
+      "agent_lines_added": 1316,
+      "agent_lines_removed": 1016,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10
+      }
+    },
+    {
+      "checkpoint_number": 12,
+      "user_lines_added": 62,
+      "user_lines_removed": 83,
+      "agent_lines_added": 1316,
+      "agent_lines_removed": 1016,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10
+      }
+    },
+    {
+      "checkpoint_number": 13,
+      "user_lines_added": 62,
+      "user_lines_removed": 83,
+      "agent_lines_added": 1317,
+      "agent_lines_removed": 1099,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10
+      }
+    },
+    {
+      "checkpoint_number": 14,
+      "user_lines_added": 62,
+      "user_lines_removed": 83,
+      "agent_lines_added": 1317,
+      "agent_lines_removed": 1099,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10
+      }
+    },
+    {
+      "checkpoint_number": 15,
+      "user_lines_added": 62,
+      "user_lines_removed": 83,
+      "agent_lines_added": 1317,
+      "agent_lines_removed": 1099,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10
+      }
+    },
+    {
+      "checkpoint_number": 16,
+      "user_lines_added": 62,
+      "user_lines_removed": 83,
+      "agent_lines_added": 1317,
+      "agent_lines_removed": 1099,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10
+      }
+    },
+    {
+      "checkpoint_number": 17,
+      "user_lines_added": 71,
+      "user_lines_removed": 120,
+      "agent_lines_added": 1384,
+      "agent_lines_removed": 1109,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 7,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 24
+      }
+    },
+    {
+      "checkpoint_number": 18,
+      "user_lines_added": 71,
+      "user_lines_removed": 120,
+      "agent_lines_added": 1384,
+      "agent_lines_removed": 1109,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 7,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 24
+      }
+    },
+    {
+      "checkpoint_number": 19,
+      "user_lines_added": 71,
+      "user_lines_removed": 120,
+      "agent_lines_added": 1384,
+      "agent_lines_removed": 1109,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 7,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 24
+      }
+    },
+    {
+      "checkpoint_number": 20,
+      "user_lines_added": 71,
+      "user_lines_removed": 120,
+      "agent_lines_added": 1384,
+      "agent_lines_removed": 1109,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 7,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 24
+      }
+    },
+    {
+      "checkpoint_number": 21,
+      "user_lines_added": 71,
+      "user_lines_removed": 120,
+      "agent_lines_added": 1384,
+      "agent_lines_removed": 1109,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 7,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 24
+      }
+    },
+    {
+      "checkpoint_number": 22,
+      "user_lines_added": 71,
+      "user_lines_removed": 120,
+      "agent_lines_added": 1384,
+      "agent_lines_removed": 1109,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 7,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 24
+      }
+    },
+    {
+      "checkpoint_number": 23,
+      "user_lines_added": 71,
+      "user_lines_removed": 120,
+      "agent_lines_added": 1384,
+      "agent_lines_removed": 1109,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 7,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 24
+      }
+    },
+    {
+      "checkpoint_number": 24,
+      "user_lines_added": 72,
+      "user_lines_removed": 123,
+      "agent_lines_added": 1794,
+      "agent_lines_removed": 1170,
+      "user_added_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 13,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 4,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 12,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 11,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 2
+      },
+      "user_removed_per_file": {
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt": 20,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt": 5,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt": 24,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt": 8,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt": 16,
+        "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt": 10,
+        "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt": 24
+      }
+    }
+  ]
+}
