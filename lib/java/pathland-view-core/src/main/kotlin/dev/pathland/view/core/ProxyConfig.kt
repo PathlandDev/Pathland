@@ -18,7 +18,6 @@ data class ProxyConfig(
     fun credential(): String? = credential
 
     companion object {
-        @JvmStatic
         fun of(endpoint: String, route: String?, credential: String?): ProxyConfig =
             ProxyConfig(endpoint, if (route.isNullOrBlank()) "/" else route, credential)
     }

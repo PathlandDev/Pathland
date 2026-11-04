@@ -1,4 +1,4 @@
-package dev.pathland.demo.music
+package dev.pathland.demo.music.player.controls
 
 import dev.pathland.view.core.signal.Signals
 import org.junit.jupiter.api.Assertions.assertEquals

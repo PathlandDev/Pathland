@@ -16,7 +16,6 @@ data class Route(val path: String) {
 
     companion object {
         /** A route for an absolute path. */
-        @JvmStatic
         fun of(path: String): Route = Route(path)
 
         private fun pathOnly(path: String): String {

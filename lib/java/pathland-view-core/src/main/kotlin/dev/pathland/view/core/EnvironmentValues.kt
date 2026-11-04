@@ -54,7 +54,6 @@ class EnvironmentValues private constructor(
         private val EMPTY = EnvironmentValues(null, null, null)
 
         /** The empty scope (no bindings). */
-        @JvmStatic
         fun empty(): EnvironmentValues = EMPTY
     }
 }

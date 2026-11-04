@@ -18,6 +18,5 @@ object Roles {
     const val SEARCH = 13
 
     /** Whether [code] is a defined semantic role. */
-    @JvmStatic
     fun isDefined(code: Int): Boolean = code in NONE..SEARCH
 }

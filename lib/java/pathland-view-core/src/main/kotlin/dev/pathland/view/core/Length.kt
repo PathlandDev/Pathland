@@ -12,11 +12,9 @@ data class Length(val value: Float, val token: String?) : TokenPath {
 
     companion object {
         /** A literal length in device pixels/points. */
-        @JvmStatic
         fun of(value: Float): Length = Length(value, null)
 
         /** A design-token reference. */
-        @JvmStatic
         fun token(path: String): Length = Length(0f, path)
     }
 }

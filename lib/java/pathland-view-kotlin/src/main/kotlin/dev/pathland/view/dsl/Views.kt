@@ -1,6 +1,5 @@
 package dev.pathland.view.dsl
 
-import dev.pathland.view.core.Color as JColor
 import dev.pathland.view.core.EmptyContent
 import dev.pathland.view.core.protocol.Commands
 import dev.pathland.view.core.protocol.Components
@@ -23,23 +22,23 @@ import dev.pathland.view.core.signal.WritableSignal
 
 /** Color data helpers plus the layout-greedy `Color` view constructor. */
 object Color {
-    val CLEAR: JColor get() = JColor.CLEAR
-    val BLACK: JColor get() = JColor.BLACK
-    val WHITE: JColor get() = JColor.WHITE
-    val RED: JColor get() = JColor.RED
-    val BLUE: JColor get() = JColor.BLUE
+    val CLEAR: dev.pathland.view.core.Color get() = dev.pathland.view.core.Color.CLEAR
+    val BLACK: dev.pathland.view.core.Color get() = dev.pathland.view.core.Color.BLACK
+    val WHITE: dev.pathland.view.core.Color get() = dev.pathland.view.core.Color.WHITE
+    val RED: dev.pathland.view.core.Color get() = dev.pathland.view.core.Color.RED
+    val BLUE: dev.pathland.view.core.Color get() = dev.pathland.view.core.Color.BLUE
 
-    fun rgb(r: Int, g: Int, b: Int): JColor = JColor.rgb(r, g, b)
-    fun argb(a: Int, r: Int, g: Int, b: Int): JColor = JColor.argb(a, r, g, b)
-    fun of(argb: Int): JColor = JColor.of(argb)
-    fun token(path: String): JColor = JColor.token(path)
+    fun rgb(r: Int, g: Int, b: Int): dev.pathland.view.core.Color = dev.pathland.view.core.Color.rgb(r, g, b)
+    fun argb(a: Int, r: Int, g: Int, b: Int): dev.pathland.view.core.Color = dev.pathland.view.core.Color.argb(a, r, g, b)
+    fun of(argb: Int): dev.pathland.view.core.Color = dev.pathland.view.core.Color.of(argb)
+    fun token(path: String): dev.pathland.view.core.Color = dev.pathland.view.core.Color.token(path)
 
     /** A solid-color fill view. */
     operator fun invoke(argb: Int): dev.pathland.view.core.View =
-        coreView(Components.COLOR) { node, _ -> node.properties[Properties.COLOR] = JColor.of(argb) }.registerChild()
+        coreView(Components.COLOR) { node, _ -> node.properties[Properties.COLOR] = dev.pathland.view.core.Color.of(argb) }.registerChild()
 
     /** A solid-color fill view from a data value. */
-    operator fun invoke(color: JColor): dev.pathland.view.core.View =
+    operator fun invoke(color: dev.pathland.view.core.Color): dev.pathland.view.core.View =
         coreView(Components.COLOR) { node, _ -> node.properties[Properties.COLOR] = color }.registerChild()
 }
 
@@ -369,8 +368,8 @@ fun Menu(selection: WritableSignal<Int>? = null, content: () -> Unit): dev.pathl
     }.registerChild()
 }
 
-fun ColorPicker(selection: WritableSignal<JColor>): dev.pathland.view.core.View =
+fun ColorPicker(selection: WritableSignal<dev.pathland.view.core.Color>): dev.pathland.view.core.View =
     coreView(Components.COLOR_PICKER) { node, _ ->
         node.property(Properties.COLOR_VALUE, selection)
-        node.valueInput = Consumer { selection.set(JColor(it.toRawBits(), null)) }
+        node.valueInput = Consumer { selection.set(dev.pathland.view.core.Color(it.toRawBits(), null)) }
     }.registerChild()

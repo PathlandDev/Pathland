@@ -6,7 +6,6 @@ class EnvironmentKey<T> private constructor(private val name: String) {
 
     companion object {
         /** A named environment key (identity is by instance). */
-        @JvmStatic
         fun <T> of(name: String): EnvironmentKey<T> = EnvironmentKey(name)
     }
 }

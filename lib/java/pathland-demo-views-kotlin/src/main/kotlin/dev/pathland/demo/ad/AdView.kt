@@ -1,6 +1,6 @@
 package dev.pathland.demo.ad
 
-import dev.pathland.view.core.Color as JColor
+import dev.pathland.view.core.Color
 import dev.pathland.view.core.FontWeight
 import dev.pathland.view.core.HorizontalAlignment
 import dev.pathland.view.core.View
@@ -41,15 +41,15 @@ class AdView : Component() {
                 .fontWeight(FontWeight.BOLD)
             Text("A second app, served on this same server, embedded here via a proxy view.")
                 .fontSize(12f)
-                .foregroundStyle(JColor.rgb(0x4B, 0x55, 0x63))
+                .foregroundStyle(Color.rgb(0x4B, 0x55, 0x63))
             Button("Click me") { clicks += 1 }
             Text(computed {
                 if (clicks == 1) "Clicked 1 time" else "Clicked $clicks times"
             }).fontSize(13f).fontWeight(FontWeight.SEMIBOLD)
         }
-            .padding(16f)
-            .background(JColor.rgb(0xE8, 0xEF, 0xFF))
-            .cornerRadius(10f)
+        .padding(16f)
+        .background(Color.rgb(0xE8, 0xEF, 0xFF))
+        .cornerRadius(10f)
 
     companion object {
         /** Java-compatible factory. */

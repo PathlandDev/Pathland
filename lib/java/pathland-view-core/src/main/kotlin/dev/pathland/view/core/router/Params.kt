@@ -49,11 +49,9 @@ class Params private constructor(
         private val NONE = Params(emptyMap(), null)
 
         /** An empty param set. */
-        @JvmStatic
         fun none(): Params = NONE
 
         /** Wrap captured path params plus the matched path. */
-        @JvmStatic
         fun of(values: Map<String, String>, path: String?): Params =
             Params(Collections.unmodifiableMap(values), path)
     }

@@ -2,10 +2,12 @@
 
 package dev.pathland.server
 
+import dev.pathland.view.core.MediaController
 import dev.pathland.view.core.View
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.view.dsl.Button
+import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.ProxyView
 import dev.pathland.view.dsl.Slider
 import dev.pathland.view.dsl.Text
@@ -45,6 +47,16 @@ fun buttonWithLabel(action: Runnable, label: Signal<String>): View =
 
 /** A Kotlin-authored slider over the given signal. */
 fun slider(value: WritableSignal<Float>): View = Slider(value, 0f..100f)
+
+/** A stack that registers [controller] for root media projection, then renders [children]. */
+fun registering(controller: MediaController, vararg children: View): View = object : Component() {
+    override fun body(): View {
+        controller.register()
+        return VStack {
+            for (child in children) +child
+        }
+    }
+}
 
 /** A Kotlin-authored proxy view. */
 fun proxy(endpoint: String): View = ProxyView(endpoint)

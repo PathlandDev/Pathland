@@ -66,7 +66,6 @@ class WindowMetadata private constructor(
 
     companion object {
         /** Configure the window/surface metadata. */
-        @JvmStatic
         fun with(configure: Consumer<Config>): WindowMetadata {
             val config = Config()
             configure.accept(config)

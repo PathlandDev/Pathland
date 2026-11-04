@@ -1,4 +1,4 @@
-package dev.pathland.demo.music
+package dev.pathland.demo.music.model
 
 import java.io.InputStream
 import java.nio.charset.StandardCharsets

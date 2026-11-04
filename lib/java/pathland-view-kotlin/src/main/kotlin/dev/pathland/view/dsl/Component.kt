@@ -15,7 +15,7 @@ import kotlin.reflect.KProperty
  * Base class for application-authored Kotlin views.
  *
  * A subclass declares its subtree in [body]; a signal read there re-renders only this
- * component (the Java emitter tracks the slot). Persisted state is declared with
+ * component (the emitter tracks the slot). Persisted state is declared with
  * [state] / [mutableState] and is bound to the session's [PersistentState] before the
  * first body render — no annotation processor or kapt.
  *
@@ -54,14 +54,17 @@ abstract class Component : View {
     }
 
     final override fun renderNode(env: Environment): PathlandNode {
-        env.state()?.let { persistent ->
-            stateSignals.forEach { it.bind(persistent) }
+        val persistent = env.state()
+        return PersistentState.withCurrent(persistent) {
+            persistent?.let { state ->
+                stateSignals.forEach { it.bind(state) }
+            }
+            val resolved = body()
+            check(resolved !== this) {
+                "${javaClass.name} must return its subtree from body()"
+            }
+            resolved.renderNode(env)
         }
-        val resolved = body()
-        check(resolved !== this) {
-            "${javaClass.name} must return its subtree from body()"
-        }
-        return resolved.renderNode(env)
     }
 
     abstract override fun body(): View

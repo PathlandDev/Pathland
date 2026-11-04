@@ -12,15 +12,12 @@ class NavigationIntent private constructor(
 
     companion object {
         /** A NAVIGATE route-change to [to]. */
-        @JvmStatic
         fun navigate(to: String): NavigationIntent = NavigationIntent(to, NavOp.NAVIGATE)
 
         /** A PUSH route-change to [to] (drill-down). */
-        @JvmStatic
         fun push(to: String): NavigationIntent = NavigationIntent(to, NavOp.PUSH)
 
         /** A REPLACE route-change to [to]. */
-        @JvmStatic
         fun replace(to: String): NavigationIntent = NavigationIntent(to, NavOp.REPLACE)
     }
 }

@@ -1,12 +1,15 @@
-package dev.pathland.demo.music
+package dev.pathland.demo.music.library
 
-import dev.pathland.view.core.Color as JColor
+import dev.pathland.demo.music.MusicPlayerView
+import dev.pathland.demo.music.model.Track
+import dev.pathland.demo.music.service.MediaPlayerService
+import dev.pathland.demo.music.service.mediaPlayerService
+import dev.pathland.view.core.Color
 import dev.pathland.view.core.FontWeight
 import dev.pathland.view.core.HorizontalAlignment
 import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
 import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.view.dsl.Button
 import dev.pathland.view.dsl.HStack
 import dev.pathland.view.dsl.Image
@@ -25,29 +28,21 @@ import dev.pathland.view.dsl.scaledToFit
 
 /**
  * A single track row: a cover thumbnail, the title/artist, and the duration.
- * Selecting it starts that track through the app-owned player state, and the
+ * Selecting it starts that track through the shared player service, and the
  * current row is highlighted reactively.
  */
 internal class TrackRowView(
     private val track: Track,
     private val index: Int,
-    private val trackIndex: WritableSignal<Int>,
-    private val position: WritableSignal<Float>,
-    private val playing: WritableSignal<Boolean>,
-    private val seekRequest: WritableSignal<Float>,
 ) : Component() {
 
     override fun body(): View {
-        val isCurrent = computed { MusicPlayerView.at(trackIndex.get()) === track }
-        val bg = computed { if (isCurrent.get()) MusicPlayerView.ACTIVE_ROW_BG else JColor.CLEAR }
-        val fg = computed { if (isCurrent.get()) MusicPlayerView.ACTIVE_ROW_FG else JColor.BLACK }
+        val service = mediaPlayerService()
+        val isCurrent = computed { service.currentTrack.get() === track }
+        val bg = computed { if (isCurrent.get()) MusicPlayerView.ACTIVE_ROW_BG else Color.CLEAR }
+        val fg = computed { if (isCurrent.get()) MusicPlayerView.ACTIVE_ROW_FG else Color.BLACK }
 
-        return Button(action = {
-            trackIndex.set(index)
-            position.set(0f)
-            seekRequest.set(0f)
-            playing.set(true)
-        }) {
+        return Button(action = { service.selectTrack(index) }) {
             HStack(alignment = VerticalAlignment.CENTER, spacing = 12f) {
                 Image(track.cover)
                     .frame(width = 44f, height = 44f)
@@ -62,7 +57,7 @@ internal class TrackRowView(
 
                 Spacer()
 
-                Text(MusicPlayerView.fmt(track.duration))
+                Text(MediaPlayerService.fmt(track.duration))
                     .fontSize(13f)
                     .foregroundStyle(MusicPlayerView.SECONDARY_FG)
             }

@@ -33,8 +33,7 @@ Quarkus extension/starter alias are removed.
   `.children(...)`. A custom `Component` constructed inline in a block
   auto-registers; a view stored as a field is added explicitly with `+field`
   inside `body()` (it does not leak into the enclosing scope). An explicit
-  `view.add()` / `+view` is available for Java-constructed views (e.g.
-  `mediaController.attach()`).
+  `view.add()` / `+view` is available for Java-constructed or prebuilt views.
 - **Signals**: `signal`, `computed`, `constant`, `effect`, `untracked`,
   `Signal<T>.value`, `WritableSignal<T>.value`, `Signal<T>.map`, `readonly`.
 - **Modifier sugar**: `.padding`, `.frame`, `.offset`, `.position`, `.fixedSize`,
@@ -49,16 +48,21 @@ Quarkus extension/starter alias are removed.
   (auto-keyed by property name) or `state(0, "key")`; a `mutableState(0)` signal
   form for two-way controls. Bound to the session's `PersistentState` before the
   first `body()` render — no kapt and no annotation processor.
+- **`Signals.state`**: Components and services can create persisted signals with
+  `Signals.state("key", initial)` while the framework's session state is active
+  during render. Outside a state context it falls back to an in-memory signal.
 - **Reactive bodies**: plain `if`/`when`/`for` in `body()`; `ForEach` over a static
   list or `Signal<List<T>>` with row-scoped child collection.
 - **Navigation**: `navigator { route(...) }`, `NavigationStack`, `NavigationLink`,
   `isActive`, and `.navigate`/`.push`/`.replace` intents.
-- **Media**: `Video(controller)`; audio remains view-less (`controller.attach()`
-  can be added with `+`).
+- **Media**: `Video(controller)` stays where the app places it; audio remains
+  view-less. `controller.register()` projects a controller at the root (ordinary
+  audio services call it while rendering).
 - **Tests**: structure/opcode/property assertions, auto-collection,
   child-modifier application, modifier property parity, fine-grained signal
   deltas, persisted/stateful bodies, reactive `ForEach`, two-way `TextField`,
-  navigation swaps and link intents.
+  navigation swaps and link intents, and media projection (audio root nodes,
+  authored `VIDEO` placement, stable controller ids, and late nested videos).
 
 ## Naming
 

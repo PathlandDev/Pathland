@@ -17,11 +17,9 @@ class PointerEvents private constructor(private val mask: Int) : ViewModifier {
     override fun body(content: View): View = PointerEventsView(content, mask)
 
     companion object {
-        @JvmStatic
         fun with(mask: Int): PointerEvents = PointerEvents(mask)
 
         /** Configure the listener mask. */
-        @JvmStatic
         fun with(configure: Consumer<Config>): PointerEvents {
             val config = Config()
             configure.accept(config)

@@ -38,7 +38,6 @@ class Environment(private val state: PersistentState?) {
         val DEFAULT = Environment(null)
 
         /** The current scope (empty at the top of a render). */
-        @JvmStatic
         fun current(): EnvironmentValues = VALUES.get()
 
         /** The scoped value for [key] as a signal (reactive). */
@@ -71,13 +70,11 @@ class Environment(private val state: PersistentState?) {
         }
 
         /** Temporarily set the active scope for a render. */
-        @JvmStatic
         fun within(scope: EnvironmentValues) {
             VALUES.set(scope)
         }
 
         /** Restore the previous active scope. */
-        @JvmStatic
         fun restore(previous: EnvironmentValues) {
             VALUES.set(previous)
         }

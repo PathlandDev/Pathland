@@ -28,14 +28,11 @@ class FontWidth private constructor(private val config: Config) : ViewModifier {
     }
 
     companion object {
-        @JvmStatic
         fun with(value: Float): FontWidth = FontWidth(Config().value(value))
 
-        @JvmStatic
         fun with(value: Signal<Float>): FontWidth = FontWidth(Config().value(value))
 
         /** Configure the font width. */
-        @JvmStatic
         fun with(configure: Consumer<Config>): FontWidth {
             val config = Config()
             configure.accept(config)

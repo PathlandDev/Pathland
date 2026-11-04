@@ -262,8 +262,8 @@ class PathlandSessionTest {
         MediaController player = new MediaController();
         player.source("/track.mp3");
         player.time(position);
-        PathlandApp app = () -> ServerFixtures.vstack(
-                player.attach(),
+        PathlandApp app = () -> ServerFixtures.registering(
+                player,
                 ServerFixtures.slider(position));
 
         PathlandSession session = new PathlandSession("ui", STORE, app, EnvironmentData.of("/"));

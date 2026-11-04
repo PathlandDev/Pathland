@@ -14,6 +14,7 @@ import dev.pathland.view.core.transport.Event
 import dev.pathland.view.core.transport.FrameOpcodeSink
 import dev.pathland.view.core.transport.ProtocolFrame
 import dev.pathland.view.engine.Emitter
+import dev.pathland.demo.music.service.MediaPlayerService
 import dev.pathland.view.engine.InputDispatcher
 import dev.pathland.view.engine.RenderResult
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -78,6 +79,7 @@ class MusicPlayerViewTest {
         assertTrue(countCreate(frame, Components.IMAGE) >= 3)
         assertTrue(anySetPropertyString(frame, Properties.IMAGE_SOURCE, COVER))
         assertEquals(1, countCreate(frame, Components.SIZE_THAT_FITS))
+        assertEquals(1, countCreate(frame, Components.MEDIA_CONTROLLER))
     }
 
     @Test
@@ -178,7 +180,7 @@ class MusicPlayerViewTest {
 
         val deltas = sink.frames.subList(before, sink.frames.size)
         assertTrue(deltas.any {
-            anySetPropertyString(it, Properties.MEDIA_SOURCE, MusicPlayerView.TRACKS[1].audio)
+            anySetPropertyString(it, Properties.MEDIA_SOURCE, MediaPlayerService.TRACKS[1].audio)
         })
         assertFalse(deltas.any { anyProperty(it, Properties.PLAYBACK_STATE) })
     }
@@ -209,7 +211,7 @@ class MusicPlayerViewTest {
         dispatcher.dispatch(Event.mediaTimeUpdated(audioId, 30f))
         val delta = sink.frame()
         assertEquals(
-            30f / MusicPlayerView.TRACKS[0].duration * 100f,
+            30f / MediaPlayerService.TRACKS[0].duration * 100f,
             propertyFloat(delta, seekId, Properties.VALUE),
             0.05f,
         )

@@ -1,4 +1,4 @@
-package dev.pathland.demo.music
+package dev.pathland.demo.music.model
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse

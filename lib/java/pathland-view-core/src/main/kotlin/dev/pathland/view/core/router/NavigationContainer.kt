@@ -60,11 +60,9 @@ class NavigationContainer private constructor(
 
     companion object {
         /** An empty NavigationContainer (no values). */
-        @JvmStatic
         fun make(): ViewBuilder<NavigationContainer, Config> =
             ViewBuilder(NavigationContainer(Config()))
 
-        @JvmStatic
         fun make(configure: Consumer<Config>): ViewBuilder<NavigationContainer, Config> {
             val config = Config()
             configure.accept(config)

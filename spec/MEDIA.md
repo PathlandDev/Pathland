@@ -30,9 +30,9 @@ replacement — destroy the playback, and it makes "control the same playback fr
 two places" inexpressible.
 
 The controller/surface split fixes both: playback identity is the **controller**
-node id, which the application keeps **outside** the swapping branch, so a swap
-re-attaches a view to a playback that never stopped — and for audio the swapping
-thing is just the application's own control views.
+node id, which the emitter pins **outside** the swapping branch (typically as a
+root child), so a swap re-attaches a view to a playback that never stopped — and
+for audio the swapping thing is just the application's own control views.
 
 There is **one** controller component for both audio and video — the transport is
 the same thing in both cases, exactly as SwiftUI has one `AVPlayer` for both and
@@ -128,8 +128,12 @@ A `MEDIA_CONTROLLER` is **layout-transparent**, like `COMMENT` and the
   contributes **no spacing** in a stack or grid (it is not a slot).
 - It imposes no alignment, sizing, or content-mode behavior.
 
-Its position in the tree is therefore semantically irrelevant; applications place
-it for **lifetime stability**, not for layout.
+Its position in the tree is therefore semantically irrelevant; what matters is
+**lifetime stability**, not layout. An emitter SHOULD project an application-owned
+controller as a pinned root child: audio has no media view, and a `VIDEO` surface
+only references the controller, so the application need not place the controller
+in the tree at all. Implementations that let an application place it explicitly
+MUST still keep it outside any swapping branch.
 
 ### 2.3 Transport properties
 

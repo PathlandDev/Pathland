@@ -1,4 +1,4 @@
-package dev.pathland.demo.music
+package dev.pathland.demo.music.model
 
 /**
  * A track in the demo library (fictional albums; the cover art is a local asset
