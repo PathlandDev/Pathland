@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 4.520141664000003,
+    "cost": 4.522663746000003,
     "tokens": {
-      "input": 23417596,
-      "output": 231571,
-      "reasoning": 225842,
+      "input": 23421867,
+      "output": 231857,
+      "reasoning": 225941,
       "cache": {
-        "read": 244351488,
+        "read": 244901632,
         "write": 0
       }
     },
     "time": {
       "created": 1793687503366,
-      "updated": 1793823862887
+      "updated": 1793823878111
     }
   },
   "messages": [
@@ -73087,21 +73087,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001081944,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 184116,
+          "input": 2628,
+          "output": 162,
+          "reasoning": 78,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 181248
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1793823862887
+          "created": 1793823862887,
+          "completed": 1793823874930
         },
+        "finish": "tool-calls",
         "id": "msg_1a83bf0670025Rl1LP475YV15T",
         "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS"
       },
@@ -73129,22 +73132,225 @@
           "tool": "bash",
           "callID": "call_00_5pe0vl6x682qdkwns2lsub3q",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git diff --cached --check && git commit -m \"refactor(jvm): finish Kotlin DSL cleanup and root media projection\" -m \"- group demo views and extract MediaPlayerService\n- add ambient Signals.state and drop the JColor/JLength aliases\n- register media controllers and pin them as non-visual root nodes\n- update specs, status docs, and tests\"",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland",
               "timeout": 120000
             },
+            "output": "[refactor/kotlin-only-jvm-dsl b1de7c59] refactor(jvm): finish Kotlin DSL cleanup and root media projection\n 73 files changed, 1324 insertions(+), 751 deletions(-)\n delete mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/Controls.kt\n delete mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/LibraryView.kt\n delete mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/NowPlayingSidebar.kt\n delete mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/PlayerControls.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/library/LibraryView.kt\n rename lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/{ => library}/TrackRowView.kt (71%)\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt\n rename lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/{ => model}/Lyrics.kt (99%)\n rename lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/{ => model}/Track.kt (90%)\n rename lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/{ => player}/PlayerBar.kt (55%)\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerControls.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/PercentSeek.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/SeekControl.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/VolumeControl.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/NowPlayingSidebar.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt\n rename lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/{ => model}/LyricsTest.kt (99%)\n rename lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/{ => player/controls}/SeekControlTest.kt (96%)\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Configurators.kt\n create mode 100644 lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/core/signal/SignalsStateTest.kt\n create mode 100644 lib/java/pathland-view-kotlin/src/test/kotlin/dev/pathland/view/dsl/MediaProjectionTest.kt\n",
+            "metadata": {
+              "output": "[refactor/kotlin-only-jvm-dsl b1de7c59] refactor(jvm): finish Kotlin DSL cleanup and root media projection\n 73 files changed, 1324 insertions(+), 751 deletions(-)\n delete mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/Controls.kt\n delete mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/LibraryView.kt\n delete mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/NowPlayingSidebar.kt\n delete mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/PlayerControls.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/library/LibraryView.kt\n rename lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/{ => library}/TrackRowView.kt (71%)\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/lyrics/SubtitlePill.kt\n rename lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/{ => model}/Lyrics.kt (99%)\n rename lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/{ => model}/Track.kt (90%)\n rename lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/{ => player}/PlayerBar.kt (55%)\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerControls.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/PlayerMainArea.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TrackInfoView.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/TransportControls.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/VolumeControls.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/PercentSeek.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/SeekControl.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/player/controls/VolumeControl.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/NowPlayingSidebar.kt\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/sidebar/UpNextRowView.kt\n rename lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/{ => model}/LyricsTest.kt (99%)\n rename lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/{ => player/controls}/SeekControlTest.kt (96%)\n create mode 100644 lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/service/MediaPlayerServiceTest.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Configurators.kt\n create mode 100644 lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/core/signal/SignalsStateTest.kt\n create mode 100644 lib/java/pathland-view-kotlin/src/test/kotlin/dev/pathland/view/dsl/MediaProjectionTest.kt\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git diff --cached --check && git commit -m \"refactor(jvm): finish Kotlin DSL cleanup and root media projection\" -m \"- group demo views and extract MediaPlayerService\n- add ambient Signals.state and drop the JColor/JLength aliases\n- register media controllers and pin them as non-visual root nodes\n- update specs, status docs, and tests\"",
             "time": {
-              "start": 1793823866084
+              "start": 1793823866084,
+              "end": 1793823874816
             }
           },
           "id": "prt_1a83bfac0001rWOLG2BtfI933F",
           "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
           "messageID": "msg_1a83bf0670025Rl1LP475YV15T"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "6873f54180e043cad4b5dd097cb9b0f199d425dd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 184116,
+            "input": 2628,
+            "output": 162,
+            "reasoning": 78,
+            "cache": {
+              "write": 0,
+              "read": 181248
+            }
+          },
+          "cost": 0.001081944,
+          "id": "prt_1a83c1f3c001i9uul61wO9VXhf",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83bf0670025Rl1LP475YV15T"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1a83b84e7001q2aHf81p4UtOz6",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000808974,
+        "tokens": {
+          "total": 185279,
+          "input": 1389,
+          "output": 77,
+          "reasoning": 5,
+          "cache": {
+            "write": 0,
+            "read": 183808
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793823874967,
+          "completed": 1793823878077
+        },
+        "finish": "tool-calls",
+        "id": "msg_1a83c1f97002V2GJMoSoyf014t",
+        "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS"
+      },
+      "parts": [
+        {
+          "snapshot": "6873f54180e043cad4b5dd097cb9b0f199d425dd",
+          "type": "step-start",
+          "id": "prt_1a83c2a16001vEoE7PdjqlfdrH",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83c1f97002V2GJMoSoyf014t"
+        },
+        {
+          "type": "reasoning",
+          "text": "Need check status clean.",
+          "time": {
+            "start": 1793823877656,
+            "end": 1793823877658
+          },
+          "id": "prt_1a83c2a1800147hu7KinHFfW6I",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83c1f97002V2GJMoSoyf014t"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_iyzzjzjmy2pqq7bjpzzvpj72",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short; git log --oneline -3",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "b1de7c59 refactor(jvm): finish Kotlin DSL cleanup and root media projection\n57721411 fix(proxy): avoid SSR snapshot timeouts on cold CI\n48eee607 fix(dom): stop sending environment updates on window resize\n",
+            "metadata": {
+              "output": "b1de7c59 refactor(jvm): finish Kotlin DSL cleanup and root media projection\n57721411 fix(proxy): avoid SSR snapshot timeouts on cold CI\n48eee607 fix(dom): stop sending environment updates on window resize\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short; git log --oneline -3",
+            "time": {
+              "start": 1793823877870,
+              "end": 1793823877917
+            }
+          },
+          "id": "prt_1a83c2a1b001YSKlqpVU3w1BPu",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83c1f97002V2GJMoSoyf014t"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "6873f54180e043cad4b5dd097cb9b0f199d425dd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 185279,
+            "input": 1389,
+            "output": 77,
+            "reasoning": 5,
+            "cache": {
+              "write": 0,
+              "read": 183808
+            }
+          },
+          "cost": 0.000808974,
+          "id": "prt_1a83c2b81001pS7U7gDp1bLKh0",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83c1f97002V2GJMoSoyf014t"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1a83b84e7001q2aHf81p4UtOz6",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000631164,
+        "tokens": {
+          "total": 185405,
+          "input": 254,
+          "output": 47,
+          "reasoning": 16,
+          "cache": {
+            "write": 0,
+            "read": 185088
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793823878111,
+          "completed": 1793823880801
+        },
+        "finish": "stop",
+        "id": "msg_1a83c2bdf002dSAq14cVkwE7Jd",
+        "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS"
+      },
+      "parts": [
+        {
+          "snapshot": "6873f54180e043cad4b5dd097cb9b0f199d425dd",
+          "type": "step-start",
+          "id": "prt_1a83c34cf001FnKvDMzU6LI49Y",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83c2bdf002dSAq14cVkwE7Jd"
+        },
+        {
+          "type": "reasoning",
+          "text": "Status empty. Final concise. Mention commit hash, tests passed. No push.",
+          "time": {
+            "start": 1793823880401,
+            "end": 1793823880478
+          },
+          "id": "prt_1a83c34d10012MJzViyp9Wxl1d",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83c2bdf002dSAq14cVkwE7Jd"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `b1de7c59`.\n\n`refactor(jvm): finish Kotlin DSL cleanup and root media projection`\n\nWorking tree is clean. Full `mvn -q -B test` passed before commit.",
+          "time": {
+            "start": 1793823880479,
+            "end": 1793823880683
+          },
+          "id": "prt_1a83c351f001TK61eClqavOaYm",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83c2bdf002dSAq14cVkwE7Jd"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "6873f54180e043cad4b5dd097cb9b0f199d425dd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 185405,
+            "input": 254,
+            "output": 47,
+            "reasoning": 16,
+            "cache": {
+              "write": 0,
+              "read": 185088
+            }
+          },
+          "cost": 0.000631164,
+          "id": "prt_1a83c3628001My9QSGUFG4igN9",
+          "sessionID": "ses_e5fe4bdf9ffe7HlDT6Hghd0VeS",
+          "messageID": "msg_1a83c2bdf002dSAq14cVkwE7Jd"
         }
       ]
     }
