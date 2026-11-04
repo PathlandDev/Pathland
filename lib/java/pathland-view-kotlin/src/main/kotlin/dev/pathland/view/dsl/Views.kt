@@ -310,6 +310,7 @@ fun Slider(
 ): dev.pathland.view.core.View =
     coreView(Components.SLIDER) { node, _ ->
         node.property(Properties.VALUE, value)
+        node.valueInput = Consumer { value.set(it) }
         if (range != null) {
             node.properties[Properties.MIN_VALUE] = range.start
             node.properties[Properties.MAX_VALUE] = range.endInclusive
@@ -328,6 +329,7 @@ fun Stepper(
 ): dev.pathland.view.core.View =
     coreView(Components.STEPPER) { node, _ ->
         node.property(Properties.VALUE, value)
+        node.valueInput = Consumer { value.set(it) }
         if (range != null) {
             node.properties[Properties.MIN_VALUE] = range.start
             node.properties[Properties.MAX_VALUE] = range.endInclusive

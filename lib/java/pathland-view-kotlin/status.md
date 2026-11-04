@@ -60,8 +60,9 @@ Quarkus extension/starter alias are removed.
   audio services call it while rendering).
 - **Tests**: structure/opcode/property assertions, auto-collection,
   child-modifier application, modifier property parity, fine-grained signal
-  deltas, persisted/stateful bodies, reactive `ForEach`, two-way `TextField`,
-  navigation swaps and link intents, and media projection (audio root nodes,
+  deltas, persisted/stateful bodies, reactive `ForEach`, two-way
+  `TextField`/`Slider`/`Stepper`, navigation swaps and link intents, and media
+  projection (audio root nodes,
   authored `VIDEO` placement, stable controller ids, and late nested videos).
 
 ## Naming

@@ -218,6 +218,63 @@ class MusicPlayerViewTest {
     }
 
     @Test
+    fun seekDragCommitsOnRelease() {
+        val store = InMemoryStateStore()
+        val state = PersistentState(store, "session-1")
+        val sink = FrameOpcodeSink()
+        val result = Emitter(sink).mount(MusicPlayerView.make(), Environment(state))
+        val seekId = seekSliderId(sink.frame())
+        val dispatcher = InputDispatcher(result, Signals.signal("/"))
+        val halfDuration = MediaPlayerService.TRACKS[0].duration / 2f
+
+        dispatcher.dispatch(Event.editingChanged(seekId, true))
+        dispatcher.dispatch(Event.valueChanged(seekId, 50f))
+        assertEquals(
+            0.0,
+            store.load("player.seekRequest:session-1", java.lang.Float::class.java).get().toDouble(),
+            0.001,
+            "a drag is buffered until release",
+        )
+
+        dispatcher.dispatch(Event.editingChanged(seekId, false))
+        assertEquals(
+            halfDuration.toDouble(),
+            store.load("player.seekRequest:session-1", java.lang.Float::class.java).get().toDouble(),
+            0.05,
+        )
+        assertEquals(
+            halfDuration.toDouble(),
+            store.load("player.position:session-1", java.lang.Float::class.java).get().toDouble(),
+            0.05,
+        )
+    }
+
+    @Test
+    fun volumeDragUpdatesTheVolumeRequest() {
+        val store = InMemoryStateStore()
+        val state = PersistentState(store, "session-1")
+        val sink = FrameOpcodeSink()
+        val result = Emitter(sink).mount(MusicPlayerView.make(), Environment(state))
+        val rootSlot = slotIdByMaxThreshold(sink.frame(), 1024f)
+        result.fitInputs()[rootSlot]!!.accept(1)
+        val volumeId = volumeSliderId(sink.frame())
+        val dispatcher = InputDispatcher(result, Signals.signal("/"))
+
+        dispatcher.dispatch(Event.valueChanged(volumeId, 0.4f))
+
+        assertEquals(
+            0.4,
+            store.load("player.volume:session-1", java.lang.Float::class.java).get().toDouble(),
+            0.001,
+        )
+        assertEquals(
+            0.4,
+            store.load("player.volumeRequest:session-1", java.lang.Float::class.java).get().toDouble(),
+            0.001,
+        )
+    }
+
+    @Test
     fun repeatedFitCyclesDoNotDuplicateTheVolumeControls() {
         val store = InMemoryStateStore()
         val state = PersistentState(store, "session-1")
@@ -430,17 +487,23 @@ class MusicPlayerViewTest {
         return Float.NaN
     }
 
-    private fun seekSliderId(frame: ProtocolFrame): Int {
+    private fun seekSliderId(frame: ProtocolFrame): Int =
+        sliderIdByMax(frame, 100f, "seek")
+
+    private fun volumeSliderId(frame: ProtocolFrame): Int =
+        sliderIdByMax(frame, 1f, "volume")
+
+    private fun sliderIdByMax(frame: ProtocolFrame, max: Float, label: String): Int {
         for (op: Opcode in frame.opcodes()) {
             if (op.category() == Categories.PARAMETER &&
                 op.command() == Commands.Parameter.SET_PROPERTY &&
                 (op.b() and 0xFFFF) == Properties.MAX_VALUE &&
-                java.lang.Float.intBitsToFloat(op.c()) == 100f
+                java.lang.Float.intBitsToFloat(op.c()) == max
             ) {
                 return op.a()
             }
         }
-        throw AssertionError("the 0..100 seek slider is not in the mount frame")
+        throw AssertionError("the $label slider is not in the frame")
     }
 
     private fun fitThresholds(frame: ProtocolFrame, slotId: Int): FloatArray {
