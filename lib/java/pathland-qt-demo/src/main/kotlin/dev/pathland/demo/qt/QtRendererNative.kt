@@ -60,11 +60,9 @@ class QtRendererNative private constructor() {
         private val INSTANCE: QtRendererNative by lazy { QtRendererNative() }
 
         /** The process-wide binding; lazily links `libpathland_qt` on first call. */
-        @JvmStatic
         fun instance(): QtRendererNative = INSTANCE
 
         /** Resolve the native library's full path (system property, then `java.library.path`). */
-        @JvmStatic
         internal fun resolveLibraryPath(): String? {
             val override = System.getProperty("pathland.qt.lib")
             if (override != null) return override

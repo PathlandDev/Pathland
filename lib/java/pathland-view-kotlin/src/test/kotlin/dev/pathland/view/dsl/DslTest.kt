@@ -214,6 +214,24 @@ class DslTest {
     }
 
     @Test
+    fun twoWaySliderWritesBackIntoTheBoundSignal() {
+        val value = signal(0.2f)
+        val (result, _) = mount(Slider(value, 0f..1f))
+        assertEquals(1, result.valueInputs().size)
+        result.valueInputs().values.single().accept(0.6f)
+        assertEquals(0.6f, value.value)
+    }
+
+    @Test
+    fun twoWayStepperWritesBackIntoTheBoundSignal() {
+        val value = signal(1f)
+        val (result, _) = mount(Stepper(value, 0f..10f, 1f))
+        assertEquals(1, result.valueInputs().size)
+        result.valueInputs().values.single().accept(4f)
+        assertEquals(4f, value.value)
+    }
+
+    @Test
     fun navigationBuildsAndSwapsDestinations() {
         val router = navigator("/") {
             route("/", Text("home"))

@@ -1,10 +1,9 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Components
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.WritableSignal
-import dev.pathland.view.engine.PathlandNode
+import dev.pathland.view.engine.Emitter
 
 /** A media playback controller: owns a media resource and its transport as signals. */
 class MediaController {
@@ -123,16 +122,18 @@ class MediaController {
     fun onEnded(): Runnable = onEnded
 
     /**
-     * A non-visual marker that materializes this controller's `MEDIA_CONTROLLER`
-     * node in the tree (needed for pure-audio playback).
+     * Register this controller with the active emitter. The emitter materializes
+     * it as a pinned, non-visual root node, so audio controllers need no view in
+     * the tree. Registration is idempotent and a no-op outside a render.
      */
-    fun attach(): View = AttachMarker(this)
+    fun register(): MediaController {
+        Emitter.current()?.registerMediaController(this)
+        return this
+    }
 
-    private class AttachMarker(private val controller: MediaController) : View {
-        override fun renderNode(env: Environment): PathlandNode {
-            val node = PathlandNode(Components.COMMENT)
-            node.mediaControllerRef = controller
-            return node
-        }
+    /** Remove this controller from the active emitter's root projection. */
+    fun unregister(): MediaController {
+        Emitter.current()?.unregisterMediaController(this)
+        return this
     }
 }

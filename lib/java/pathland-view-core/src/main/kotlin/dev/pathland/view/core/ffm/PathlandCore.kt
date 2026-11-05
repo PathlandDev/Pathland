@@ -119,7 +119,6 @@ class PathlandCore private constructor() {
         fun instance(): PathlandCore = Holder.INSTANCE
 
         /** Resolve the native library's full path. */
-        @JvmStatic
         fun resolveLibraryPath(): String? {
             val override = System.getProperty("pathland.core.lib")
             if (override != null) return override

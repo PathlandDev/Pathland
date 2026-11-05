@@ -8,12 +8,10 @@ import dev.pathland.view.core.signal.Signals
 /** Converts a reactive signal's value into the typed property value stored on a node. */
 object ReactiveValues {
     /** Read the signal for an initial render value without subscribing the component. */
-    @JvmStatic
     fun initial(property: Int, signal: Signal<*>): Any? =
         Signals.untracked { from(property, signal) }
 
     /** Read the signal and normalize its value for storage as a node property. */
-    @JvmStatic
     fun from(property: Int, signal: Signal<*>): Any? {
         var value: Any? = signal.get()
         if (value is Boolean) {

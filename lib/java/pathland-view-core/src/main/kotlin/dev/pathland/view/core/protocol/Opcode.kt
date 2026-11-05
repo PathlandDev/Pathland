@@ -40,7 +40,6 @@ data class Opcode(
         const val SIZE = 16
 
         /** Deserialize from the 16-byte little-endian wire representation. */
-        @JvmStatic
         fun fromBytes(bytes: ByteArray): Opcode {
             require(bytes.size == SIZE) { "opcode must be $SIZE bytes" }
             return Opcode(

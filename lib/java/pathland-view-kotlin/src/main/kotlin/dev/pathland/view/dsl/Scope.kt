@@ -6,7 +6,7 @@ import java.util.ArrayDeque
 
 /**
  * Marks the Kotlin DSL entry points. The builder is synchronous and single-threaded
- * (the same contract as the emitter and the Java environment), so a thread-local
+ * (the same contract as the emitter and the environment), so a thread-local
  * child stack is the equivalent of SwiftUI's result builder.
  */
 @DslMarker
@@ -51,12 +51,12 @@ internal object ViewScopes {
 }
 
 /**
- * Add a view built outside the DSL builders (e.g. a Java `View` or
- * `mediaController.attach()`) to the current block.
+ * Add a view built outside the DSL builders (e.g. a non-DSL `View` or a
+ * pre-constructed component) to the current block.
  */
 fun View.add(): View = registerChild()
 
-/** Prefix form: `+mediaController.attach()`. */
+/** Prefix form: `+prebuiltView`. */
 operator fun View.unaryPlus(): View = registerChild()
 
 /**

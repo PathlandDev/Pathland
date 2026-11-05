@@ -46,4 +46,25 @@ class PersistentState(
         persistEffects.clear()
         signals.clear()
     }
+
+    companion object {
+        private val CURRENT = ThreadLocal.withInitial { ArrayList<PersistentState?>() }
+
+        /** The session state active during the current component render, if any. */
+        fun current(): PersistentState? = CURRENT.get().lastOrNull()
+
+        /**
+         * Run [block] with [state] as the ambient session state for [Signals.state].
+         * Nested component renders restore the previous binding afterwards.
+         */
+        fun <T> withCurrent(state: PersistentState?, block: () -> T): T {
+            val stack = CURRENT.get()
+            stack.add(state)
+            return try {
+                block()
+            } finally {
+                stack.removeAt(stack.size - 1)
+            }
+        }
+    }
 }

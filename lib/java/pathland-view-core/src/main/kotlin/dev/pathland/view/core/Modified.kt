@@ -22,10 +22,8 @@ class Modified private constructor(
         fun signal(): Signal<*>? = signal
 
         companion object {
-            @JvmStatic
             fun value(property: Int, value: Any?): Prop = Prop(property, value, null)
 
-            @JvmStatic
             fun reactive(property: Int, signal: Signal<*>): Prop = Prop(property, null, signal)
         }
     }
@@ -52,19 +50,15 @@ class Modified private constructor(
 
     companion object {
         /** A static property mod. */
-        @JvmStatic
         fun prop(property: Int, value: Any?): Prop = Prop.value(property, value)
 
         /** A reactive property mod. */
-        @JvmStatic
         fun prop(property: Int, signal: Signal<*>): Prop = Prop.reactive(property, signal)
 
         /** Build a property-modifier view from inner + props. */
-        @JvmStatic
         fun props(inner: View, vararg props: Prop): Modified = Modified(inner, props.toList(), null)
 
         /** A custom-view-modifier wrapper. */
-        @JvmStatic
         fun apply(inner: View, modifier: ViewModifier): Modified = Modified(inner, emptyList(), modifier)
     }
 }

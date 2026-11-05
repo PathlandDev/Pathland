@@ -135,7 +135,6 @@ class RouteTable private constructor(
 
     companion object {
         /** Start building a route table. */
-        @JvmStatic
         fun builder(): Builder = Builder()
     }
 }

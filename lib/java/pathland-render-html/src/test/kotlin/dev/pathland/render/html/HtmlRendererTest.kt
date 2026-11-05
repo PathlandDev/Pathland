@@ -29,7 +29,6 @@ import dev.pathland.view.dsl.buttonStyle
 import dev.pathland.view.dsl.font
 import dev.pathland.view.dsl.scaledToFill
 import dev.pathland.view.dsl.signal
-import dev.pathland.view.dsl.unaryPlus
 import dev.pathland.view.engine.Emitter
 import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.Test
@@ -181,7 +180,6 @@ class HtmlRendererTest {
     fun rendersMedia() {
         val player = MediaController("https://example.com/sample.mp4")
         val root = VStack {
-            +player.attach()
             Video(player)
             Image("/_pathland/assets/icons/home.svg")
                 .accessibilityLabel("Home")

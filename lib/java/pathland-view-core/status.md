@@ -14,10 +14,11 @@ Java hosts consume the same API through Kotlin/JVM interop.
 - **Protocol** (`dev.pathland.view.core.protocol`): `Components`, `Properties`,
   `Commands`, `Categories`, `ValueTypes`, `Opcode`, `ValueEncoder`, `WireValue`,
   `TokenPath`.
-- **Signals** (`dev.pathland.view.core.signal`): `signal`/`computed`/`effect`/
-  `untracked`, synchronous glitch-free flush, equality suppression, error
+- **Signals** (`dev.pathland.view.core.signal`): `signal`/`state`/`computed`/
+  `effect`/`untracked`, synchronous glitch-free flush, equality suppression, error
   caching/retry, circular-dependency detection, and a thread-safe global
-  `Scheduler`.
+  `Scheduler`. `Signals.state` binds to the ambient session `PersistentState`
+  during a component render.
 - **State** (`dev.pathland.view.core.state`): `PersistentState`, untyped
   `StateStore`, in-memory store and provider. Kotlin `Component` state delegates
   bind directly before `body()`; the Java `State` field/binder machinery and
@@ -33,9 +34,11 @@ Java hosts consume the same API through Kotlin/JVM interop.
   `RenderResult`, `InputDispatcher`, `ReactiveValues`, `DateInput`, `MediaInput`.
   Implements mount/id assignment, diff-based reactive emission, node-level binding
   effects, structural reconciliation, fit/media/navigation routing, and the
-  zero-opcode unchanged recompute contract.
+  zero-opcode unchanged recompute contract. Registered `MediaController`s are
+  projected as pinned, non-visual root children; `unregisterMediaController`
+  removes them without touching the app tree.
 - **Shared SPI/values** (`dev.pathland.view.core`): `View`, `ViewModifier`,
-  `Configurable`, `ChildrenView`, `Modified`, `ViewBuilder`, `Configurators`,
+  `Configurable`, `ChildrenView`, `Modified`, `ViewBuilder`,
   `Environment*`, `Platform`, `Theme*`, `MediaController`, `WindowMetadata`,
   `ProxyConfig`, `Color`, `Length`, shared enums, style protocols, and modifier
   wrappers.

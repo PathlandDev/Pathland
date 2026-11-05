@@ -14,12 +14,10 @@ object Navigation {
     val ROUTER: EnvironmentKey<Router> = EnvironmentKey.of("router")
 
     /** The navigation container over [router]. */
-    @JvmStatic
     fun container(router: Router): ViewBuilder<NavigationContainer, NavigationContainer.Config> =
         container(router, Chrome.PLATFORM_DEFAULT)
 
     /** The navigation container over [router] with an explicit chrome mode. */
-    @JvmStatic
     fun container(
         router: Router,
         chrome: Chrome,
@@ -27,15 +25,12 @@ object Navigation {
         NavigationContainer.make { n -> n.router(router).chrome(chrome) }
 
     /** A route list builder for a router seeded at `/`. */
-    @JvmStatic
     fun navigator(): Builder = Builder("/")
 
     /** A route list builder seeded at [initialPath]. */
-    @JvmStatic
     fun navigator(initialPath: String): Builder = Builder(initialPath)
 
     /** A reactive "is this the active route" signal. */
-    @JvmStatic
     fun isActive(router: Router, path: String): Signal<Boolean> =
         Signals.computed { router.path() == path }
 

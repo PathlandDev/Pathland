@@ -48,17 +48,13 @@ class FontFamily private constructor(private val config: Config) : ViewModifier 
     }
 
     companion object {
-        @JvmStatic
         fun with(value: String): FontFamily = FontFamily(Config().family(value))
 
-        @JvmStatic
         fun with(value: Signal<String>): FontFamily = FontFamily(Config().family(value))
 
-        @JvmStatic
         fun with(token: Token): FontFamily = FontFamily(Config().family(token))
 
         /** Configure the font family. */
-        @JvmStatic
         fun with(configure: Consumer<Config>): FontFamily {
             val config = Config()
             configure.accept(config)

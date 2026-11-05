@@ -10,7 +10,6 @@ import dev.pathland.view.engine.PathlandNode
 import dev.pathland.view.core.Environment
 import java.util.function.Consumer
 import dev.pathland.view.core.HorizontalAlignment
-import dev.pathland.view.core.Length as JLength
 import dev.pathland.view.core.ScrollAxis
 import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
@@ -47,7 +46,7 @@ fun VStack(
 }.registerChild()
 
 fun VStack(
-    spacing: JLength,
+    spacing: dev.pathland.view.core.Length,
     alignment: HorizontalAlignment? = null,
     content: () -> Unit = {},
 ): View = coreView(Components.VSTACK, childrenOf(content).toList()) { node, _ ->
@@ -93,7 +92,7 @@ fun HStack(
 }.registerChild()
 
 fun HStack(
-    spacing: JLength,
+    spacing: dev.pathland.view.core.Length,
     alignment: VerticalAlignment? = null,
     content: () -> Unit = {},
 ): View = coreView(Components.HSTACK, childrenOf(content).toList()) { node, _ ->

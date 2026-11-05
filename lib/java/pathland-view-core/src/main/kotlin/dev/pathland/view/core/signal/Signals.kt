@@ -5,6 +5,7 @@ import java.util.Objects
 import java.util.function.BiPredicate
 import java.util.function.Consumer
 import java.util.function.Supplier
+import dev.pathland.view.core.state.PersistentState
 
 /** Factory for Angular-style reactive primitives. */
 object Signals {
@@ -23,6 +24,14 @@ object Signals {
     @JvmStatic
     fun <T> signal(name: String, initial: T): WritableSignal<T> =
         WritableSignalImpl(initial, Objects::equals, name)
+
+    /**
+     * A persisted writable signal for [name], backed by the session state active
+     * during this component render. Outside a state context it falls back to an
+     * in-memory signal.
+     */
+    fun <T : Any> state(name: String, initial: T): WritableSignal<T> =
+        PersistentState.current()?.signal(name, initial) ?: signal(initial)
 
     /** An immutable signal carrying a static value. */
     @JvmStatic

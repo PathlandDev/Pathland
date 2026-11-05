@@ -52,7 +52,6 @@ class BorderedButtonStyle private constructor(private val config: Config) : Butt
     }
 
     companion object {
-        @JvmStatic
         fun make(configure: Config.() -> Unit): BorderedButtonStyle {
             val config = Config()
             config.configure()

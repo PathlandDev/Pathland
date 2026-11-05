@@ -135,8 +135,9 @@ These are engine-owned surfaces with the same diff discipline:
   snapshot/SSR emission may include every candidate for first paint.
   `FIT_CHANGED` re-renders only the fit component.
 - **Media**: one non-visual `MEDIA_CONTROLLER` node per controller, stable id;
-  a `VIDEO` surface references it via `MEDIA_CONTROLLER_ID`. Transport changes
-  emit only the changed controller property.
+  registered controllers are pinned as root children (so audio needs no view),
+  and a `VIDEO` surface references its controller via `MEDIA_CONTROLLER_ID`.
+  Transport changes emit only the changed controller property.
 - **Navigation**: a `NavigationContainer` is an ordinary tracked component; a
   route change re-renders only its destination slot.
 

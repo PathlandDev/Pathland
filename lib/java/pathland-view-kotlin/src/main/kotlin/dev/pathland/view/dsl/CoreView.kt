@@ -6,8 +6,8 @@ import dev.pathland.view.engine.PathlandNode
 
 /**
  * A Kotlin-owned view over the shared engine's [PathlandNode]. This is the base
- * for the Kotlin DSL's primitives and containers; it has no dependency on the
- * Java authoring DSL.
+ * for the Kotlin DSL's primitives and containers; it is independent of any
+ * authoring DSL.
  */
 internal class CoreView(
     private val component: Int,

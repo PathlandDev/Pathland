@@ -140,7 +140,9 @@ dependency — framework glue lives in the starters.
   routes client events back (target unmapped), replies `PONG` to origin `PING`,
   translates origin `META::RESET` into a **scoped** subtree teardown (never a
   global reset), tears the subtree down on disconnect (the origin session is
-  per-connection), and reconnects with exponential backoff. The service
+  per-connection), and reconnects with exponential backoff. While an SSR
+  snapshot is pending, `awaitSnapshot` retries `META::RESYNC` every 500 ms, so a
+  lost first handshake cannot consume the whole SSR budget. The service
   credential + a cycle-guard instance id ride the handshake headers.
   **Backpressure** (spec/PROXY.md §8): a "chatty origin" breaker (a per-second
   batch cap → drop + `RESYNC`) and event coalescing (pointer-moves coalesce by
@@ -188,9 +190,10 @@ them on close.
 ## Verified by
 
 `mvn test` — `PathlandSessionTest`: mounts + routes taps through the binding maps,
-`applyEnvironment`/`resync`/`close` idempotent, registry SSR + lifecycle/teardown, and
+`applyEnvironment`/`resync`/`close` idempotent, registry SSR + lifecycle/teardown,
 **two windows with the same `wid` still get separate sessions** (a tap to one never
-reaches the other).
+reaches the other), and **message-before-open ordering** (environment/resync that
+race `open` still attach the connection and emit the snapshot).
 `PathlandHostTest`: longest-prefix dispatch + route stripping, mount-boundary
 respect, no-root-mount 404, per-app base + state scope, duplicate-mount rejection,
 normalization, SSR emits the mounted app's base.
@@ -202,8 +205,9 @@ flushed batch.
 and the opcode remap (TREE/PARAMETER node ids remapped, APPEND/META untouched,
 EVENT targets unmapped).
 `proxy.ProxySessionTest` (a fake origin transport): the ENVIRONMENT+RESYNC
-handshake + handshake headers, snapshot remap + root attachment, delta remap with
-the string section passed through verbatim, event egress unmapped, pointer-move
+handshake + handshake headers, snapshot retry when the first RESYNC is lost,
+snapshot remap + root attachment, delta remap with the string section passed
+through verbatim, event egress unmapped, pointer-move
 coalescing, `META::RESET` → scoped teardown, disconnect teardown, and the
 chatty-origin drop+resync breaker.
 `proxy.ProxyIntegrationTest`: a `ProxyView` in the app tree opens an origin

@@ -51,6 +51,7 @@ class Emitter {
     private val fitInputs = LinkedHashMap<Int, Consumer<Int>>()
     private val navigateActions = LinkedHashMap<Int, Runnable>()
     private val proxyViews = LinkedHashMap<Int, ProxyConfig>()
+    private val registeredMediaControllers = LinkedHashSet<MediaController>()
     private val mediaControllers = IdentityHashMap<MediaController, PathlandNode>()
     private val mediaControllerIds = IdentityHashMap<MediaController, Int>()
     private val bindings = ArrayList<EffectRef>()
@@ -176,14 +177,20 @@ class Emitter {
         val newChildren = slot.takeRenderedChildren()
         var fresh = freshIn ?: PathlandNode(Components.VSTACK)
         fresh.slot = slot
-        Signals.untracked { materializeControllers(fresh); null }
+        Signals.untracked { collectVideoControllers(fresh); null }
+        if (slot.parent == null) {
+            appendRootControllers(fresh)
+        } else {
+            tree?.let { syncRootControllers(it) }
+        }
+        bindVideoControllers(fresh)
         val old = slot.node
         destroySlotBindings(slot)
         forgetSlotInputs(slot)
 
         if (old != null && old.component == Components.SIZE_THAT_FITS &&
             fresh.component == Components.SIZE_THAT_FITS &&
-            old.children.size > 1 && newChildren.size == 1
+            old.children.count { !isControllerNode(it) } > 1 && newChildren.size == 1
         ) {
             reconcileSnapshotFit(slot, old, fresh, oldChildren, newChildren)
             return
@@ -237,26 +244,38 @@ class Emitter {
         oldChildren: List<ViewSlot>,
         newChildren: List<ViewSlot>,
     ) {
-        val selected = minOf(maxOf(fresh.fitSelection, 0), old.children.size - 1)
-        val keep = old.children[selected]
+        val candidates = old.children.filterNot { isControllerNode(it) }
+        val selected = minOf(maxOf(fresh.fitSelection, 0), candidates.size - 1)
+        val keep = candidates[selected]
         val keepSlot = keep.slot
+        val controllers = LinkedHashSet<PathlandNode>()
+        controllers.addAll(old.children.filter {
+            isControllerNode(it) && registeredMediaControllers.contains(it.mediaControllerRef)
+        })
+        controllers.addAll(fresh.children.filter {
+            isControllerNode(it) && registeredMediaControllers.contains(it.mediaControllerRef)
+        })
         val dropOps = ArrayList<Runnable>()
         for (child in old.children) {
-            if (child !== keep) {
-                val parentId = old.id
-                val childId = child.id
-                dropOps.add(Runnable {
-                    sink.removeChild(parentId, childId)
-                    sink.deleteNode(childId)
-                })
-            }
+            if (child === keep) continue
+            if (isControllerNode(child) &&
+                registeredMediaControllers.contains(child.mediaControllerRef)
+            ) continue
+            val parentId = old.id
+            val childId = child.id
+            dropOps.add(Runnable {
+                sink.removeChild(parentId, childId)
+                sink.deleteNode(childId)
+            })
         }
         for (child in oldChildren) if (child !== keepSlot) destroySlotTree(child)
         for (child in newChildren) destroySlotTree(child)
         old.children.clear()
         old.children.add(keep)
+        old.children.addAll(controllers)
         fresh.children.clear()
         fresh.children.add(keep)
+        fresh.children.addAll(controllers)
         slot.children.clear()
         if (keepSlot != null) slot.children.add(keepSlot)
         fresh.id = old.id
@@ -414,10 +433,12 @@ class Emitter {
         this.windowMetadata = env.windowMetadata()
         nextId = 1
         assignIds(tree)
-        linkSlots(tree)
         mediaControllers.clear()
         mediaControllerIds.clear()
-        materializeControllers(tree)
+        collectVideoControllers(tree)
+        appendRootControllers(tree)
+        bindVideoControllers(tree)
+        linkSlots(tree)
         guardUniqueIds()
         tapActions.clear()
         textInputs.clear()
@@ -456,6 +477,22 @@ class Emitter {
     }
 
     fun rootId(): Int = rootId
+
+    /**
+     * Project [controller] as a pinned, non-visual root node. Registration is
+     * idempotent; outside a render it is applied immediately, during a render it
+     * is folded into the current reconcile.
+     */
+    fun registerMediaController(controller: MediaController) {
+        if (!registeredMediaControllers.add(controller)) return
+        if (mounted && renderStack.isEmpty()) tree?.let { syncRootControllers(it) }
+    }
+
+    /** Remove [controller] from the root projection. */
+    fun unregisterMediaController(controller: MediaController) {
+        if (!registeredMediaControllers.remove(controller)) return
+        if (mounted && renderStack.isEmpty()) tree?.let { syncRootControllers(it) }
+    }
 
     /** Re-emit the complete retained tree as one full-snapshot frame. */
     fun renderFull() {
@@ -540,6 +577,9 @@ class Emitter {
         for (effect in bindings) effect.destroy()
         bindings.clear()
         nodeBindings.clear()
+        registeredMediaControllers.clear()
+        mediaControllers.clear()
+        mediaControllerIds.clear()
     }
 
     private fun assignIds(node: PathlandNode) {
@@ -579,27 +619,113 @@ class Emitter {
         }
     }
 
-    private fun materializeControllers(scanRoot: PathlandNode) {
-        val nodes = flatten(scanRoot)
-        for (node in nodes) {
-            val controller = node.mediaControllerRef
-            if (controller != null && node.component == Components.COMMENT) {
-                node.component = Components.MEDIA_CONTROLLER
-                applyController(node, controller)
-                var stable = mediaControllerIds[controller]
-                if (stable == null) {
-                    stable = nextFreeId()
-                    mediaControllerIds[controller] = stable
-                }
-                node.id = stable
-                mediaControllers[controller] = node
+    private fun isControllerNode(node: PathlandNode): Boolean =
+        node.component == Components.MEDIA_CONTROLLER && node.mediaControllerRef != null
+
+    /** A `VIDEO` surface references its controller, so it also keeps it registered. */
+    private fun collectVideoControllers(scanRoot: PathlandNode) {
+        for (node in flatten(scanRoot)) {
+            if (node.component == Components.VIDEO) {
+                node.mediaControllerRef?.let { registeredMediaControllers.add(it) }
             }
         }
-        for (node in nodes) {
+    }
+
+    /**
+     * Append the registered controllers to a root node. Existing controller nodes
+     * are reused by identity, so the root reconcile preserves their ids and does
+     * not restart playback.
+     */
+    private fun appendRootControllers(root: PathlandNode) {
+        for (controller in registeredMediaControllers) {
+            val existing = mediaControllers[controller]
+            if (existing != null) {
+                if (root.children.none { it === existing }) root.children.add(existing)
+                continue
+            }
+            val node = newControllerNode(controller)
+            mediaControllers[controller] = node
+            root.children.add(node)
+        }
+    }
+
+    private fun newControllerNode(controller: MediaController): PathlandNode {
+        val node = PathlandNode(Components.MEDIA_CONTROLLER)
+        node.mediaControllerRef = controller
+        applyController(node, controller)
+        val stable = mediaControllerIds[controller]
+        node.id = stable ?: nextFreeId().also { mediaControllerIds[controller] = it }
+        return node
+    }
+
+    private fun bindVideoControllers(scanRoot: PathlandNode) {
+        for (node in flatten(scanRoot)) {
             val controller = node.mediaControllerRef
             if (controller == null || node.component != Components.VIDEO) continue
             mediaControllerIds[controller]?.let { node.properties[Properties.MEDIA_CONTROLLER_ID] = it }
         }
+    }
+
+    /**
+     * Reconcile the root's controller children after a structural change outside
+     * a root re-render (e.g. a nested branch adding a `VIDEO`) or after an
+     * out-of-render register/unregister.
+     */
+    private fun syncRootControllers(root: PathlandNode) {
+        val ops = ArrayList<Runnable>()
+        val added = ArrayList<PathlandNode>()
+        val iterator = root.children.iterator()
+        while (iterator.hasNext()) {
+            val node = iterator.next()
+            if (!isControllerNode(node)) continue
+            val controller = node.mediaControllerRef!!
+            if (registeredMediaControllers.contains(controller)) continue
+            iterator.remove()
+            val id = node.id
+            val rootId = root.id
+            ops.add(Runnable {
+                sink.removeChild(rootId, id)
+                sink.deleteNode(id)
+            })
+            destroyNodeEffects(node)
+        }
+        for (controller in registeredMediaControllers) {
+            if (root.children.any { isControllerNode(it) && it.mediaControllerRef === controller }) continue
+            val existing = mediaControllers[controller]
+            val node = existing ?: newControllerNode(controller).also { mediaControllers[controller] = it }
+            if (existing != null) {
+                node.propertyBindings.clear()
+                applyController(node, controller)
+            }
+            val index = root.children.size
+            root.children.add(node)
+            node.parent = root
+            node.index = index
+            emitSubtreeInto(ops, node, root.id, index)
+            added.add(node)
+        }
+        if (ops.isNotEmpty()) {
+            sink.beginFrame()
+            for (op in ops) op.run()
+            sink.endFrame()
+        }
+        val slot = rootSlot
+        if (slot != null) {
+            for (node in added) {
+                registerNodeBindings(slot, node)
+                collectInputsForNode(node, null)
+            }
+        }
+    }
+
+    private fun destroyNodeEffects(node: PathlandNode) {
+        nodeBindings.remove(node.id)?.let { effects ->
+            for (effect in effects) {
+                effect.destroy()
+                bindings.remove(effect)
+            }
+        }
+        forgetInputsForNode(node)
     }
 
     private fun applyController(node: PathlandNode, c: MediaController) {
@@ -808,11 +934,9 @@ class Emitter {
         private val CURRENT = ThreadLocal<Emitter>()
 
         /** The emitter driving the current render on this thread, or null. */
-        @JvmStatic
         fun current(): Emitter? = CURRENT.get()
 
         /** The ids that occur more than once in [root]'s subtree, in pre-order. */
-        @JvmStatic
         fun duplicateIds(root: PathlandNode): List<Int> {
             val seen = LinkedHashSet<Int>()
             val duplicates = LinkedHashSet<Int>()

@@ -18,7 +18,6 @@ class PathChange private constructor(private val listener: Consumer<String>?) : 
 
     companion object {
         /** Configure the path-change listener. */
-        @JvmStatic
         fun with(configure: Consumer<Config>): PathChange {
             val config = Config()
             configure.accept(config)

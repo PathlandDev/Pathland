@@ -5,20 +5,35 @@
 Kotlin-owned demo views over `pathland-view-kotlin`, with no Java-DSL dependency.
 It owns the app-driven music player and the small sponsored-proxy ad app.
 
+## Structure
+
+- `music/` — the root `MusicPlayerView` (public, Java-mountable).
+- `music/model/` — `Track`, `Lyrics`.
+- `music/library/` — `LibraryView`, `TrackRowView`.
+- `music/player/` — `PlayerMainArea`, `PlayerBar`, `PlayerControls`,
+  `TransportControls`, `TrackInfoView`, `VolumeControls`.
+- `music/player/controls/` — `SeekControl`, `PercentSeek`, `VolumeControl`.
+- `music/service/` — `MediaPlayerService`: per-session player state, playlist,
+  `MediaController`, and the environment key shared by the views.
+- `music/lyrics/` — `SubtitlePill`.
+- `music/sidebar/` — `NowPlayingSidebar`, `UpNextRowView`.
+- `ad/` — `AdView`.
+
 ## Implemented
 
 - **`MusicPlayerView`** — Apple Music-style root: one root `SizeThatFits`
   selects narrow (no volume), medium (volume), or wide (volume + `NowPlayingSidebar`),
   with the floating `PlayerBar`.
-- **Persisted player state** — `player.position`, `player.playing`,
-  `player.track`, `player.volume`, `player.seekRequest`, `player.volumeRequest`
-  via Kotlin `Component` state delegates.
-- **App-driven media** — a `MediaController` owns the source/transport; every
-  fit candidate shares the same controller. `MEDIA_*` reports feed position/volume
+- **Persisted player state** — owned by `MediaPlayerService` (`player.position`, `player.playing`,
+  `player.track`, `player.volume`, `player.seekRequest`, `player.volumeRequest`)
+  and created with `Signals.state` while the framework's session state is active.
+- **App-driven media** — `MediaPlayerService` owns and registers the
+  `MediaController`, and the emitter projects it as a pinned root node; every fit
+  candidate shares the same controller. `MEDIA_*` reports feed position/volume
   and `MEDIA_ENDED` advances the track.
 - **Seek/volume decoupling** — `SeekControl` buffers drags and commits on release;
   `PercentSeek` maps seconds to 0..100; `VolumeControl` separates report from
-  command.
+  command (each in its own file under `player/controls/`).
 - **Lyrics** — synchronized two-line karaoke pill driven by the parsed SRT cues.
 - **Window metadata** — track-derived title/description and `locale("en")`.
 - **Sponsored proxy** — optional `adUrl` appends a `ProxyView` in the sidebar.
@@ -29,6 +44,6 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 ## Verified by
 
 `mvn test -pl pathland-demo-views-kotlin` — `LyricsTest`, `SeekControlTest`,
-`MusicPlayerViewTest` (tree/render, fit swaps, media state, seek echo guard,
-snapshot emission, sponsored proxy), and `AdViewTest` (button click / persisted
-counter delta).
+`MediaPlayerServiceTest` (persisted keys, select/next/previous), `MusicPlayerViewTest`
+(tree/render, fit swaps, media state, seek echo guard, snapshot emission, sponsored
+proxy), and `AdViewTest` (button click / persisted counter delta).
