@@ -77,6 +77,36 @@ class ProxySessionTest {
     }
 
     @Test
+    void awaitSnapshotRetriesWhenTheInitialResyncIsLost() throws Exception {
+        start();
+        transport.sent.clear(); // simulate the origin losing the handshake's first RESYNC
+        Thread responder = new Thread(() -> {
+            long deadline = System.nanoTime() + 3_000_000_000L;
+            while (System.nanoTime() < deadline) {
+                if (transport.sent.stream().anyMatch(FrameCodec::isResync)) {
+                    transport.deliver(snapshot());
+                    return;
+                }
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }, "proxy-snapshot-responder");
+        responder.setDaemon(true);
+        responder.start();
+
+        ProtocolFrame snapshot = session.awaitSnapshot(3_000);
+        responder.join(1_000);
+
+        assertNotNull(snapshot, "a retried RESYNC gets the snapshot");
+        assertTrue(transport.sent.stream().anyMatch(FrameCodec::isResync),
+                "awaitSnapshot re-requests the snapshot");
+    }
+
+    @Test
     void remapsOriginSnapshotAndAttachesTheRootUnderTheProxyNode() {
         start();
         // Origin snapshot: CREATE_NODE 1 VSTACK, CREATE_NODE 2 TEXT, INSERT_CHILD 1 2.

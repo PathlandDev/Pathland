@@ -61,6 +61,9 @@ public final class ProxySession {
     /** Coalesced pointer-move flush cadence. */
     private static final long MOVE_FLUSH_MILLIS = 16;
 
+    /** While an SSR snapshot is pending, re-ask a healthy origin if the first RESYNC was lost. */
+    private static final long SNAPSHOT_RETRY_MILLIS = 500;
+
     private final int proxyId;
     private final int block;
     private final ProxyConfig config;
@@ -195,13 +198,23 @@ public final class ProxySession {
      */
     public ProtocolFrame awaitSnapshot(long timeoutMillis) throws InterruptedException {
         long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
+        long nextResync = System.nanoTime() + SNAPSHOT_RETRY_MILLIS * 1_000_000L;
         synchronized (lock) {
             while (pendingSnapshot == null && !closed) {
-                long remaining = deadline - System.nanoTime();
+                long now = System.nanoTime();
+                long remaining = deadline - now;
                 if (remaining <= 0) {
                     break;
                 }
-                lock.wait(Math.max(1, remaining / 1_000_000L));
+                if (now >= nextResync) {
+                    // The origin's first RESYNC can race its own session wiring. Retry
+                    // while the caller still has SSR budget, then fall back to the
+                    // documented placeholder + live hydration path.
+                    requestOriginSnapshot();
+                    nextResync = now + SNAPSHOT_RETRY_MILLIS * 1_000_000L;
+                }
+                long untilRetry = Math.max(1L, nextResync - now);
+                lock.wait(Math.max(1L, Math.min(remaining, untilRetry) / 1_000_000L));
             }
             return pendingSnapshot;
         }

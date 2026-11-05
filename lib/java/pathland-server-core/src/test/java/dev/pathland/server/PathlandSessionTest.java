@@ -139,6 +139,31 @@ class PathlandSessionTest {
     }
 
     @Test
+    void registryAttachesConnectionWhenMessagesArriveBeforeOpen() {
+        PathlandRegistry registry = new PathlandRegistry(
+                () -> ServerFixtures.button("Tap", () -> {}), STORE);
+        RecordingConnection connection = new RecordingConnection();
+
+        // A proxy origin can send ENVIRONMENT + RESYNC before the endpoint's open task
+        // reaches the registry actor. The open must attach, not replace, that session.
+        registry.environment("ui-early", EnvironmentData.of("/kitchen"));
+        registry.resync("ui-early");
+        registry.open("ui-early", "win-early", connection);
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (connection.sent == 0 && System.nanoTime() < deadline) {
+            sleep(10);
+        }
+        registry.close("ui-early");
+        registry.shutdown();
+
+        assertTrue(connection.sent > 0, "the raced session receives its snapshot");
+        ProtocolFrame snapshot = FrameCodec.decodeFrame(
+                connection.frames().get(connection.frames().size() - 1));
+        assertFalse(snapshot.opcodes().isEmpty(), "the snapshot carries the mounted tree");
+    }
+
+    @Test
     void renderHtmlWithWindowIdRendersThatWindowsPersistedState() {
         // A reload's SSR carries the wid (the client reflects it into the URL), so the
         // throwaway session renders THIS window's persisted state — the HTML is already

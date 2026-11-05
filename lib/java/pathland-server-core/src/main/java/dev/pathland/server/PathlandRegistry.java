@@ -34,7 +34,8 @@ import java.util.concurrent.Executors;
  * environment ({@code META::ENVIRONMENT}, spec/OPCODE.md) arrives as the DOM client's
  * first message, and its {@code ROUTE} field seeds the router before mount — so a
  * deep-linked URL renders the right destination and the WebSocket tree stays consistent
- * with the SSR HTML. {@code open} only registers the pending connection; later
+ * with the SSR HTML. {@code open} registers the pending connection, or attaches it
+ * to a session already created by a first message that raced ahead; later
  * environment messages **enrich** the session via {@code applyEnvironment}.
  *
  * <p>All session work is serialized on a single actor thread (signals are single-threaded
@@ -188,9 +189,16 @@ public final class PathlandRegistry {
      */
     public void open(String uiId, String windowId, PathlandConnection connection) {
         actor.execute(() -> {
-            PathlandSession previous = sessions.remove(uiId);
-            if (previous != null) {
-                previous.close();
+            // A WebSocket's first messages can reach the actor before this open task (the
+            // transport delivers messages while the endpoint is still wiring the
+            // connection). If environment/resync already created the session, attach the
+            // connection instead of replacing the session, and re-send the snapshot that
+            // may have raced ahead of the connection.
+            PathlandSession existing = sessions.get(uiId);
+            if (existing != null) {
+                existing.connect(connection);
+                existing.resync();
+                return;
             }
             pending.put(uiId, new PendingSession(stateScope(windowId), connection));
         });
