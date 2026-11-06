@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 1.2983712240000007,
+    "cost": 1.3035646920000008,
     "tokens": {
-      "input": 4599656,
-      "output": 138446,
-      "reasoning": 119953,
+      "input": 4602270,
+      "output": 138821,
+      "reasoning": 120091,
       "cache": {
-        "read": 151127808,
+        "read": 152625664,
         "write": 0
       }
     },
     "time": {
       "created": 1793955616684,
-      "updated": 1793965227768
+      "updated": 1793965243515
     }
   },
   "messages": [
@@ -104007,21 +104007,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001963194,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 500032,
+          "input": 1603,
+          "output": 258,
+          "reasoning": 123,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 498048
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1793965227767
+          "created": 1793965227767,
+          "completed": 1793965240362
         },
+        "finish": "tool-calls",
         "id": "msg_1b0a8fef70026V18c4m3ebGmNm",
         "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA"
       },
@@ -104049,21 +104052,213 @@
           "tool": "bash",
           "callID": "call_e13dd590b2ea4598879f6e6c",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git commit -m \"feat(text): attributed text and built-in inline Markdown\" -m \"Adds PARAMETER::SET_ATTRIBUTED_TEXT (0x05) with an arena payload for\nrange-scoped style runs and links, plus the shared no_std pathland-markdown\nparser and its C ABI.\n\nBoth DSLs now parse inline Markdown in Text by default (bold/strong,\nitalic/emphasis, monospaced, strikethrough, links, escapes, underscores).\nKotlin embeds the shared parser in pathland-view-core; Rust parses in the\nengine on text changes. Plain results keep the compact SET_TEXT path and\nrich results emit SET_ATTRIBUTED_TEXT.\n\nRenderers: GTK Pango markup, SSR HTML spans/anchors, DOM client rich-text\napplication; Qt uses the plain fallback.\" && git status --short --branch | head",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland"
             },
+            "output": "[feat/attributed-string-markdown fdec4b9] feat(text): attributed text and built-in inline Markdown\n 75 files changed, 3837 insertions(+), 167 deletions(-)\n create mode 100644 lib/java/pathland-view-core/src/main/java/dev/pathland/markdown/Markdown.java\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/AttributedString.kt\n create mode 100644 lib/java/pathland-view-core/src/test/java/dev/pathland/markdown/MarkdownTest.java\n create mode 100644 lib/rust/crates/pathland-core/src/attributed.rs\n create mode 100644 lib/rust/crates/pathland-markdown-capi/Cargo.toml\n create mode 100644 lib/rust/crates/pathland-markdown-capi/src/lib.rs\n create mode 100644 lib/rust/crates/pathland-markdown-capi/status.md\n create mode 100644 lib/rust/crates/pathland-markdown/Cargo.toml\n create mode 100644 lib/rust/crates/pathland-markdown/src/lib.rs\n create mode 100644 lib/rust/crates/pathland-markdown/status.md\n create mode 100644 spec/engine-traces/attributed_text_mount/000-mount.plpl.hex\n## feat/attributed-string-markdown\n",
+            "metadata": {
+              "output": "[feat/attributed-string-markdown fdec4b9] feat(text): attributed text and built-in inline Markdown\n 75 files changed, 3837 insertions(+), 167 deletions(-)\n create mode 100644 lib/java/pathland-view-core/src/main/java/dev/pathland/markdown/Markdown.java\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/AttributedString.kt\n create mode 100644 lib/java/pathland-view-core/src/test/java/dev/pathland/markdown/MarkdownTest.java\n create mode 100644 lib/rust/crates/pathland-core/src/attributed.rs\n create mode 100644 lib/rust/crates/pathland-markdown-capi/Cargo.toml\n create mode 100644 lib/rust/crates/pathland-markdown-capi/src/lib.rs\n create mode 100644 lib/rust/crates/pathland-markdown-capi/status.md\n create mode 100644 lib/rust/crates/pathland-markdown/Cargo.toml\n create mode 100644 lib/rust/crates/pathland-markdown/src/lib.rs\n create mode 100644 lib/rust/crates/pathland-markdown/status.md\n create mode 100644 spec/engine-traces/attributed_text_mount/000-mount.plpl.hex\n## feat/attributed-string-markdown\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git commit -m \"feat(text): attributed text and built-in inline Markdown\" -m \"Adds PARAMETER::SET_ATTRIBUTED_TEXT (0x05) with an arena payload for\nrange-scoped style runs and links, plus the shared no_std pathland-markdown\nparser and its C ABI.\n\nBoth DSLs now parse inline Markdown in Text by default (bold/strong,\nitalic/emphasis, monospaced, strikethrough, links, escapes, underscores).\nKotlin embeds the shared parser in pathland-view-core; Rust parses in the\nengine on text changes. Plain results keep the compact SET_TEXT path and\nrich results emit SET_ATTRIBUTED_TEXT.\n\nRenderers: GTK Pango markup, SSR HTML spans/anchors, DOM client rich-text\napplication; Qt uses the plain fallback.\" && git status --short --branch | head",
             "time": {
-              "start": 1793965232847
+              "start": 1793965232847,
+              "end": 1793965240230
             }
           },
           "id": "prt_1b0a90a9e001buPmGCC6yeI7LK",
           "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
           "messageID": "msg_1b0a8fef70026V18c4m3ebGmNm"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "79df8bc4be4be6371441011cfc35fbbbbc794c27",
+          "type": "step-finish",
+          "tokens": {
+            "total": 500032,
+            "input": 1603,
+            "output": 258,
+            "reasoning": 123,
+            "cache": {
+              "write": 0,
+              "read": 498048
+            }
+          },
+          "cost": 0.001963194,
+          "id": "prt_1b0a92fe5001Aq3Wl3V9WlMCoi",
+          "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
+          "messageID": "msg_1b0a8fef70026V18c4m3ebGmNm"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b0a88731001fiDUwHl8DjlJvn",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001669302,
+        "tokens": {
+          "total": 500442,
+          "input": 765,
+          "output": 78,
+          "reasoning": 15,
+          "cache": {
+            "write": 0,
+            "read": 499584
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793965240391,
+          "completed": 1793965243486
+        },
+        "finish": "tool-calls",
+        "id": "msg_1b0a93047002MJnv0o33bBDgA8",
+        "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA"
+      },
+      "parts": [
+        {
+          "snapshot": "79df8bc4be4be6371441011cfc35fbbbbc794c27",
+          "type": "step-start",
+          "id": "prt_1b0a93a190014tJBbbPj5ucuYh",
+          "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
+          "messageID": "msg_1b0a93047002MJnv0o33bBDgA8"
+        },
+        {
+          "type": "reasoning",
+          "text": "Committed. Need maybe mention commit hash. Also ensure working tree clean.",
+          "time": {
+            "start": 1793965242907,
+            "end": 1793965242945
+          },
+          "id": "prt_1b0a93a1b0014U0Gb6WkCMYY8D",
+          "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
+          "messageID": "msg_1b0a93047002MJnv0o33bBDgA8"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_de8193cf683848a18fab951a",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short && git log --oneline -1",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "fdec4b95 feat(text): attributed text and built-in inline Markdown\n",
+            "metadata": {
+              "output": "fdec4b95 feat(text): attributed text and built-in inline Markdown\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short && git log --oneline -1",
+            "time": {
+              "start": 1793965243328,
+              "end": 1793965243368
+            }
+          },
+          "id": "prt_1b0a93a42001lzU3WTYUPFaDnM",
+          "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
+          "messageID": "msg_1b0a93047002MJnv0o33bBDgA8"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "79df8bc4be4be6371441011cfc35fbbbbc794c27",
+          "type": "step-finish",
+          "tokens": {
+            "total": 500442,
+            "input": 765,
+            "output": 78,
+            "reasoning": 15,
+            "cache": {
+              "write": 0,
+              "read": 499584
+            }
+          },
+          "cost": 0.001669302,
+          "id": "prt_1b0a93c25001vqoyZVWa2kLmth",
+          "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
+          "messageID": "msg_1b0a93047002MJnv0o33bBDgA8"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b0a88731001fiDUwHl8DjlJvn",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001560972,
+        "tokens": {
+          "total": 500509,
+          "input": 246,
+          "output": 39,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 500224
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793965243515,
+          "completed": 1793965245735
+        },
+        "finish": "stop",
+        "id": "msg_1b0a93c7b002gEXyywDtWRk1S5",
+        "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA"
+      },
+      "parts": [
+        {
+          "snapshot": "79df8bc4be4be6371441011cfc35fbbbbc794c27",
+          "type": "step-start",
+          "id": "prt_1b0a9441900188mAManJbYaOba",
+          "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
+          "messageID": "msg_1b0a93c7b002gEXyywDtWRk1S5"
+        },
+        {
+          "type": "text",
+          "text": "Committed on `feat/attributed-string-markdown`:\n\n`fdec4b95 feat(text): attributed text and built-in inline Markdown`\n\nWorking tree is clean.",
+          "time": {
+            "start": 1793965245468,
+            "end": 1793965245610
+          },
+          "id": "prt_1b0a9441c001Jo7IB3EBhf4ywV",
+          "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
+          "messageID": "msg_1b0a93c7b002gEXyywDtWRk1S5"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "79df8bc4be4be6371441011cfc35fbbbbc794c27",
+          "type": "step-finish",
+          "tokens": {
+            "total": 500509,
+            "input": 246,
+            "output": 39,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 500224
+            }
+          },
+          "cost": 0.001560972,
+          "id": "prt_1b0a944ee001XQgO9x6A61ASh0",
+          "sessionID": "ses_e4fe9a853ffe6Z4eh0Y7sNNAJA",
+          "messageID": "msg_1b0a93c7b002gEXyywDtWRk1S5"
         }
       ]
     }
