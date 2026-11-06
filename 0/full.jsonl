@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.024252432,
+    "cost": 0.024917004,
     "tokens": {
-      "input": 95268,
-      "output": 5167,
-      "reasoning": 6606,
+      "input": 96134,
+      "output": 5347,
+      "reasoning": 6656,
       "cache": {
-        "read": 966144,
+        "read": 1098368,
         "write": 0
       }
     },
     "time": {
       "created": 1793986480529,
-      "updated": 1793986673687
+      "updated": 1793986679975
     }
   },
   "messages": [
@@ -4474,21 +4474,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.00039171,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 66619,
+          "input": 501,
+          "output": 153,
+          "reasoning": 45,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 65920
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1793986673686
+          "created": 1793986673686,
+          "completed": 1793986679967
         },
+        "finish": "tool-calls",
         "id": "msg_1b1f03c160023MCnQRsgNYS20n",
         "sessionID": "ses_e4e12b66effeUE4hx5GmK2JcJl"
       },
@@ -4516,21 +4519,127 @@
           "tool": "bash",
           "callID": "call_00_cxq0lbr6golv76v0vv5dkswh",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add docs/DEPLOY.md docs/HARDENING.md lib/java/pathland-quarkus-demo/src/main/resources/application.properties lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/SecurityHeadersTest.java lib/java/pathland-quarkus/status.md && git commit -m \"fix(hosting): enable HSTS in the Quarkus demo\"",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland"
             },
+            "output": "[main 559dcc59] fix(hosting): enable HSTS in the Quarkus demo\n 5 files changed, 49 insertions(+), 2 deletions(-)\n",
+            "metadata": {
+              "output": "[main 559dcc59] fix(hosting): enable HSTS in the Quarkus demo\n 5 files changed, 49 insertions(+), 2 deletions(-)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add docs/DEPLOY.md docs/HARDENING.md lib/java/pathland-quarkus-demo/src/main/resources/application.properties lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/SecurityHeadersTest.java lib/java/pathland-quarkus/status.md && git commit -m \"fix(hosting): enable HSTS in the Quarkus demo\"",
             "time": {
-              "start": 1793986676059
+              "start": 1793986676059,
+              "end": 1793986679849
             }
           },
           "id": "prt_1b1f0452b0010lHMjOGQx8daMj",
           "sessionID": "ses_e4e12b66effeUE4hx5GmK2JcJl",
           "messageID": "msg_1b1f03c160023MCnQRsgNYS20n"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "c780ebcff864586867fe8e663c259ad1b73b93ab",
+          "type": "step-finish",
+          "tokens": {
+            "total": 66619,
+            "input": 501,
+            "output": 153,
+            "reasoning": 45,
+            "cache": {
+              "write": 0,
+              "read": 65920
+            }
+          },
+          "cost": 0.00039171,
+          "id": "prt_1b1f05465001fUgLNUIZEY9d8S",
+          "sessionID": "ses_e4e12b66effeUE4hx5GmK2JcJl",
+          "messageID": "msg_1b1f03c160023MCnQRsgNYS20n"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b1f02e87001VRl6jcbv12QyL8",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000272862,
+        "tokens": {
+          "total": 66701,
+          "input": 365,
+          "output": 27,
+          "reasoning": 5,
+          "cache": {
+            "write": 0,
+            "read": 66304
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793986679974,
+          "completed": 1793986682024
+        },
+        "finish": "stop",
+        "id": "msg_1b1f054a600275U7T4a85uPsxT",
+        "sessionID": "ses_e4e12b66effeUE4hx5GmK2JcJl"
+      },
+      "parts": [
+        {
+          "snapshot": "c780ebcff864586867fe8e663c259ad1b73b93ab",
+          "type": "step-start",
+          "id": "prt_1b1f05b40001cBFdQhXtzgmv4I",
+          "sessionID": "ses_e4e12b66effeUE4hx5GmK2JcJl",
+          "messageID": "msg_1b1f054a600275U7T4a85uPsxT"
+        },
+        {
+          "type": "reasoning",
+          "text": "Done. Concise.",
+          "time": {
+            "start": 1793986681666,
+            "end": 1793986681691
+          },
+          "id": "prt_1b1f05b42001DNvxYkrm0O8Fmi",
+          "sessionID": "ses_e4e12b66effeUE4hx5GmK2JcJl",
+          "messageID": "msg_1b1f054a600275U7T4a85uPsxT"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `559dcc59` — `fix(hosting): enable HSTS in the Quarkus demo`.",
+          "time": {
+            "start": 1793986681693,
+            "end": 1793986681906
+          },
+          "id": "prt_1b1f05b5d0015UsCQjmlDkTcdT",
+          "sessionID": "ses_e4e12b66effeUE4hx5GmK2JcJl",
+          "messageID": "msg_1b1f054a600275U7T4a85uPsxT"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "c780ebcff864586867fe8e663c259ad1b73b93ab",
+          "type": "step-finish",
+          "tokens": {
+            "total": 66701,
+            "input": 365,
+            "output": 27,
+            "reasoning": 5,
+            "cache": {
+              "write": 0,
+              "read": 66304
+            }
+          },
+          "cost": 0.000272862,
+          "id": "prt_1b1f05c72001uGkAepUyf9OjC7",
+          "sessionID": "ses_e4e12b66effeUE4hx5GmK2JcJl",
+          "messageID": "msg_1b1f054a600275U7T4a85uPsxT"
         }
       ]
     }

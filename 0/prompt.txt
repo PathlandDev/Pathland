@@ -1,4 +1,1 @@
-I get these when scanning security for the hosted quarkus demo at pathland.onrender.com. Security Headers
-
-Missing Strict-Transport-Security security header. HTTP Strict Transport Security (HSTS) not enforced
-Without HSTS enforced, people browsing this site are more susceptible to man-in-the-middle attacks. The server should be configured to support HSTS.
+commit
