@@ -3,6 +3,7 @@ package dev.pathland.demo.quarkus;
 import dev.pathland.demo.DemoTheme;
 import dev.pathland.demo.ad.AdView;
 import dev.pathland.demo.music.MusicPlayerView;
+import dev.pathland.demo.quarkus.kotlin.KotlinDemoView;
 import dev.pathland.server.MountedApp;
 import dev.pathland.server.PathlandApp;
 import dev.pathland.view.core.ThemeData;
@@ -47,6 +48,17 @@ public class QuarkusDemoApp {
     @Singleton
     MountedApp adApp() {
         return MountedApp.of("/ad", demoApp(AdView::new));
+    }
+
+    /**
+     * A second mounted app authored entirely in Kotlin ({@link KotlinDemoView}):
+     * persisted state, two-way text input, reactive computed text, {@code ForEach}
+     * and modifier sugar at {@code /kotlin}.
+     */
+    @Produces
+    @Singleton
+    MountedApp kotlinApp() {
+        return MountedApp.of("/kotlin", demoApp(KotlinDemoView::new));
     }
 
     /** A fresh root per session (1:1 sessions own their own retained tree + state). */

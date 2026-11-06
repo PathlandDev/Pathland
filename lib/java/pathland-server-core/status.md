@@ -73,8 +73,9 @@ dependency — framework glue lives in the starters.
   merge-encode time), SSR render latency, resync requests, and send failures; the host
   binds a pull-based active-sessions gauge. `PathlandHost`/`PathlandRegistry`/
   `PathlandSession`/`DeltaBatcher` thread it through (a host with no telemetry pays
-  nothing). `pathland-observability` provides the Micrometer + OpenTelemetry adapters;
-  the starters auto-wire them. Logging is **SLF4J** (both frameworks bind it) — the old
+  nothing). This module also ships the `dev.pathland.observability` Micrometer +
+  OpenTelemetry adapters; the starters auto-wire them. Logging is **SLF4J** (both
+  frameworks bind it) — the old
   ad-hoc `System.out` is gone. See issue #62.
 - **Concurrency stress** — `RegistryConcurrencyTest`: 100 sessions driven through the
   registry concurrently (clicks on each session's button) while SSR-style requests
@@ -82,11 +83,18 @@ dependency — framework glue lives in the starters.
   cross-session corruption guard. Each session must reach exactly its own click count
   (no lost effects, no cross-session values).
 - **Shared WS test harness** — `dev.pathland.server.test.{WsSession,MultiSessionProbe}`
-  (a JDK-WebSocket client speaking the PLPL protocol: env/resync/click/ping) lives in the
-  **`pathland-test-kit`** module (main scope, so package builds resolve it as a normal
-  jar); the starters' 100-session stress tests reuse it.
+  (a JDK-WebSocket client speaking the PLPL protocol: env/resync/click/ping) lives in
+  this module in main scope, so package builds resolve it as a normal jar; the starters'
+  100-session stress tests reuse it.
 - **`StateStores`** — default state store: Redis when reachable, else the supplied
-  fallback.
+  fallback. The `dev.pathland.state.redis.RedisStateStore` (Lettuce) ships in this
+  module too.
+- **Observability adapters** — `dev.pathland.observability.MicrometerTelemetry` turns
+  the seam into `pathland.*` meters (counters, timers, a distribution summary, a
+  pull-based sessions gauge, every meter tagged by `mount`); the optional
+  `TracingTelemetry` decorator emits an OpenTelemetry span per frame send / inbound
+  event batch / SSR render. Micrometer is a compile dependency; the OTel API is
+  `optional`, so a host that does not enable tracing pays nothing.
 - **SSR debug comments (property-gated)**: `PathlandSession`/`PathlandRegistry` take a
   `debugHtml` flag (constructor + `isDebugHtml()`); when set, `renderHtml` uses the
   renderer's debug mode so every rendered node is prefixed with an HTML comment naming

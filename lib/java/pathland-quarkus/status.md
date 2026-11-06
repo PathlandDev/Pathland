@@ -2,11 +2,13 @@
 
 **Last updated:** November 1, 2026
 
-DSL-neutral Quarkus extension for Pathland: SSR at any path, live deltas over each
+Quarkus extension for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding this extension + a
 `PathlandApp` CDI bean gives a running app; `MountedApp` beans host more apps at
 their own subpaths (the BFF layout). Author the root view with
-`pathland-view-kotlin`; Java hosts return Kotlin views from a `PathlandApp` bean.
+`pathland-view-core`'s Kotlin DSL; Java hosts return Kotlin views from a
+`PathlandApp` bean. The extension also provides the `dev.pathland.quarkus.kotlin`
+capability and pulls in `quarkus-kotlin`.
 
 ## Implemented
 

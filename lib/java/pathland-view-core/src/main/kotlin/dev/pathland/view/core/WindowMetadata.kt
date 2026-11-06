@@ -12,6 +12,7 @@ class WindowMetadata private constructor(
     private val locale: Signal<String>?,
 ) : ViewModifier {
 
+    @PathlandDsl
     class Config {
         var title: Signal<String>? = null
         var description: Signal<String>? = null

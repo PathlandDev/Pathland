@@ -46,23 +46,14 @@
 
     <modules>
         <module>pathland-view-core</module>
-        <module>pathland-view-kotlin</module>
-        <module>pathland-demo-common</module>
         <module>pathland-demo-views-kotlin</module>
         <module>pathland-render-html</module>
-        <module>pathland-state-redis</module>
         <module>pathland-server-core</module>
-        <module>pathland-observability</module>
-        <module>pathland-test-kit</module>
         <module>pathland-spring-boot-starter</module>
         <module>pathland-quarkus</module>
         <module>pathland-quarkus-deployment</module>
-        <module>pathland-quarkus-kotlin</module>
-        <module>pathland-quarkus-kotlin-deployment</module>
-        <module>pathland-gtk-demo</module>
-        <module>pathland-qt-demo</module>
+        <module>pathland-desktop-demo</module>
         <module>pathland-quarkus-demo</module>
-        <module>pathland-quarkus-kotlin-demo</module>
         <module>pathland-spring-boot-demo</module>
     </modules>
 

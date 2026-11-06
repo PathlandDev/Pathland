@@ -13,12 +13,13 @@
     <artifactId>pathland-view-core</artifactId>
     <packaging>jar</packaging>
 
-    <name>Pathland View Core</name>
+    <name>Pathland View</name>
     <description>
-        Framework-agnostic Pathland JVM engine and runtime, written in Kotlin: the
+        The Pathland JVM engine, runtime and authoring DSL, written in Kotlin: the
         16-byte opcode protocol, retained-tree diff emitter, Angular-style signals,
-        wire codec, router, state, and lazy JNA ring interop. The Kotlin DSL and all
-        server runtimes depend on this module. Runs on every LTS from Java 17.
+        wire codec, router, state, lazy JNA ring interop, and the SwiftUI-shaped
+        `dev.pathland.view.dsl` builders/modifiers every JVM host mounts. All server
+        runtimes depend on this module. Runs on every LTS from Java 17.
     </description>
 
     <dependencies>

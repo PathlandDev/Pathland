@@ -27,11 +27,6 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-observability</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
@@ -57,21 +52,9 @@
         <!-- Tests prove a Java host can mount a Kotlin-authored view. Production stays
              DSL-neutral; applications add their chosen authoring DSL themselves. -->
         <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view-kotlin</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib</artifactId>
             <version>${kotlin.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-test-kit</artifactId>
-            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

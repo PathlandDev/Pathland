@@ -1,6 +1,7 @@
 package dev.pathland.view.core.router
 
 import dev.pathland.view.core.EnvironmentKey
+import dev.pathland.view.core.PathlandDsl
 import dev.pathland.view.core.View
 import dev.pathland.view.core.ViewBuilder
 import dev.pathland.view.core.signal.Signal
@@ -35,6 +36,7 @@ object Navigation {
         Signals.computed { router.path() == path }
 
     /** A fluent route list → seeded Router builder. */
+    @PathlandDsl
     class Builder internal constructor(private val initialPath: String) {
         private val table = RouteTable.builder()
 

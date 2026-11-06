@@ -177,7 +177,7 @@ cargo run -p pathland-engine-golden -- --emit
 
 ```bash
 cd lib/rust && cargo run -p pathland-engine-golden -- --check
-cd lib/java && mvn -q -pl pathland-view-kotlin -am test -Dtest=EngineTraceTest
+cd lib/java && mvn -q -pl pathland-view-core -am test -Dtest=EngineTraceTest
 ```
 
 CI regenerates the fixtures from Rust and fails on drift; the Java reactor runs

@@ -16,7 +16,7 @@ case "$(uname -s)" in
   *) echo "unsupported OS: $(uname -s)" >&2; exit 1 ;;
 esac
 
-cd "$ROOT/lib/java/pathland-gtk-demo"
+cd "$ROOT/lib/java/pathland-desktop-demo"
 
 CPFILE="$(mktemp)"
 trap 'rm -f "$CPFILE"' EXIT
@@ -26,4 +26,4 @@ CP="target/classes:$(cat "$CPFILE")"
 exec java $MAINTHREAD \
   -Dpathland.core.lib="$ROOT/lib/rust/target/debug/libpathland_core$EXT" \
   -Dpathland.gtk.lib="$ROOT/lib/rust/target/debug/libpathland_gtk$EXT" \
-  -cp "$CP" com.pathland.demo.gtk.GtkHost
+  -cp "$CP" dev.pathland.demo.gtk.GtkHost

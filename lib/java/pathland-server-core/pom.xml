@@ -16,17 +16,13 @@
     <name>Pathland Server Core</name>
     <description>
         Transport-agnostic Pathland server runtime: one Pathland app instance per session
-        (SSR + live 16-byte opcode deltas + environment) and the session registry, shared by
-        the Spring Boot and Quarkus starters. Framework glue only lives in the starters.
+        (SSR + live 16-byte opcode deltas + environment), the session registry, the
+        Micrometer/OpenTelemetry telemetry adapters, the Redis StateStore, and the shared
+        WebSocket test harness, all used by the Spring Boot and Quarkus starters. Framework
+        glue only lives in the starters.
     </description>
 
     <dependencies>
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view-kotlin</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib</artifactId>
@@ -44,9 +40,19 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-state-redis</artifactId>
-            <version>${project.version}</version>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+        </dependency>
+        <!-- The OTel API is optional: only needed when the host enables tracing. The
+             starters add the OTel bridge/exporters that bring it in. -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -55,6 +61,17 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- A real OTel SDK (test scope) to assert the tracing decorator emits spans. -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-testing</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -1,13 +1,14 @@
-# pathland-view-core (JVM engine) — implementation status
+# pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 3, 2026
+**Last updated:** November 5, 2026
 
-The shared, framework-agnostic JVM engine and runtime for the Pathland protocol,
-now written entirely in Kotlin. It owns the `View` SPI and shared authoring
-vocabulary, the retained-tree diff emitter, signals/computed/effects, the wire
-codec, router, cross-platform state, and JNA ring interop. `pathland-view-kotlin`
-is the sole authoring layer; server and renderer modules depend on core only.
-Java hosts consume the same API through Kotlin/JVM interop.
+The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
+Pathland protocol, written entirely in Kotlin. It owns the `View` SPI and shared
+authoring vocabulary, the retained-tree diff emitter,
+signals/computed/effects, the wire codec, router, cross-platform state, JNA ring
+interop, and the `dev.pathland.view.dsl` SwiftUI-shaped builders/modifiers.
+Server and renderer modules depend on this one module; Java hosts consume the
+Kotlin-authored views through JVM interop.
 
 ## Implemented
 
@@ -54,13 +55,57 @@ Java hosts consume the same API through Kotlin/JVM interop.
   protocol-manifest tests; Kotlin DSL tests exercise the emitter end-to-end, and
   the server/HTML/desktop consumers cover their integration paths.
 
+## Authoring DSL (`dev.pathland.view.dsl`)
+
+- **SwiftUI-shaped builders**: `Text`, `Image`, `Icon`, `Color`, `Rectangle`,
+  `Circle`, `Ellipse`, `Capsule`, `RoundedRectangle`, `Shape`, `Divider`, `Spacer`,
+  `ProgressView`, `Gauge`, `Label`, `Group`.
+- **Containers**: `VStack`, `HStack`, `ZStack`, `Grid`, `GridRow`, `ScrollView`,
+  `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `ViewThatFits`/`Fit`,
+  `ProxyView`, `ForEach`.
+- **Controls**: `Button` (title or label subtree), `TextField`, `SecureField`,
+  `TextEditor`, `Toggle`, `Slider`, `Stepper`, `DatePicker`, `Picker`, `Menu`,
+  `ColorPicker`.
+- **Automatic child collection**: `VStack { Text("a"); Text("b") }` needs no
+  `.children(...)`. A custom `Component` constructed inline in a block
+  auto-registers; a view stored as a field is added explicitly with `+field`.
+- **Scope isolation** (`@PathlandDsl`): every view builder lambda takes a
+  `PathlandScope` receiver, and `PathlandScope`, `Navigation.Builder`, and the
+  modifier/style `Config` receivers carry the same `@DslMarker`. An outer
+  router/config receiver therefore cannot be captured implicitly inside a
+  nested view builder (e.g. `fallback(...)` inside `VStack { }` is a compile
+  error). Child collection itself is unchanged — the thread-local `ViewScopes`
+  stack still drives auto-registration.
+- **Signals**: `signal`, `computed`, `constant`, `effect`, `untracked`,
+  `Signal<T>.value`, `WritableSignal<T>.value`, `Signal<T>.map`, `readonly`.
+- **Modifier sugar**: `.padding`, `.frame`, `.offset`, `.position`, `.fixedSize`,
+  layout priority/z-index/aspect ratio, the full text-formatting surface,
+  foreground/background/border/corner radius/shadow, visual effects, transforms,
+  visibility/disabled/hit-testing, accessibility, tap/pointer events,
+  environment binding, styles, window metadata, and navigation intents.
+- **Persisted state**: `Component` base class + `val count by state(0)`
+  (auto-keyed by property name) or `state(0, "key")`; a `mutableState(0)` signal
+  form for two-way controls.
+- **Reactive bodies**: plain `if`/`when`/`for` in `body()`; `ForEach` over a static
+  list or `Signal<List<T>>` with row-scoped child collection.
+- **Navigation**: `navigator { route(...) }`, `NavigationStack`, `NavigationLink`,
+  `isActive`, and `.navigate`/`.push`/`.replace` intents.
+- **Media**: `Video(controller)` stays where the app places it; audio remains
+  view-less. `controller.register()` projects a controller at the root.
+- **Naming**: the composite base is `Component` (renamed from `KotlinView` now
+  that the Java DSL is gone); see #174.
+- **Java hosting**: a Java Spring Boot / Quarkus app mounts a Kotlin view through
+  the Java-friendly `PathlandApp` functional interface
+  (`return () -> MusicPlayerView.make();`). Kotlin roots expose public
+  constructors and/or `@JvmStatic make(...)` factories.
+
 ## Package boundary
 
-- `pathland-view-core` is one Maven module for now: `core`/`engine` are logical
+- `pathland-view-core` is one Maven module: `core`/`engine`/`dsl` are logical
   subpackages inside it, with a few deliberate intra-module references
   (`Color`/`MediaController`/`Modified` materialize `PathlandNode`). Splitting
-  `core` and `engine` into separate artifacts requires a node SPI first.
+  them into separate artifacts would require a node SPI first.
 - Production runtimes/renderers (`pathland-server-core`,
-  `pathland-render-html`, `pathland-state-redis`, `pathland-test-kit`) depend on
-  core. Java-module tests add `pathland-view-kotlin` in test scope and mount
-  Kotlin-authored fixture views; production starters remain DSL-neutral.
+  `pathland-render-html`) depend on this module. Framework starters remain
+  DSL-neutral at compile time; they mount Kotlin-authored fixture views in test
+  scope.

@@ -1540,7 +1540,7 @@ Rules:
   is a future protocol/emitter feature, not a syntax difference.
 - **Gaps**: Rust reactive-body/`ForEach` parity is Phase 2; the TypeScript plan
   currently defers structural reactivity; Swift is not implemented yet. Kotlin is
-  implemented by `lib/java/pathland-view-kotlin` (Kotlin-owned views over core;
+  implemented by `lib/java/pathland-view-core` (Kotlin-owned views over the engine;
   `Text("…")`, `VStack(spacing = 8) { … }`, `.padding(16)`), with its surface and
   gaps tracked in that module's `status.md`.
 
@@ -1561,9 +1561,9 @@ reference implementations:
 4. Cross-check every referenced id against PRIMITIVES.md/MODIFIERS.md/EVENTS.md
    (the specs are the source of truth, never the reference code).
 
-**Reference implementations to read**: Kotlin — `lib/java/pathland-view-kotlin`
-(the DSL: `dev.pathland.view.dsl`) + `lib/java/pathland-view-core`
-(`dev.pathland.view.core*` + `dev.pathland.view.engine`); Rust —
+**Reference implementations to read**: Kotlin — `lib/java/pathland-view-core`
+(the DSL: `dev.pathland.view.dsl`, plus `dev.pathland.view.core*` and
+`dev.pathland.view.engine`); Rust —
 `lib/rust/crates/pathland-view` + `pathland-engine` + `pathland-core::signal`.
 
 ---

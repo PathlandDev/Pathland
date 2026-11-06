@@ -24,7 +24,7 @@ case "$(uname -s)" in
   *) echo "unsupported OS: $(uname -s)" >&2; exit 1 ;;
 esac
 
-cd "$ROOT/lib/java/pathland-qt-demo"
+cd "$ROOT/lib/java/pathland-desktop-demo"
 
 CPFILE="$(mktemp)"
 trap 'rm -f "$CPFILE"' EXIT

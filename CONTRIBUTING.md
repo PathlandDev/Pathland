@@ -20,13 +20,12 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
   `pathland-render-gtk`, `pathland-render-html`, `pathland-view-native`,
   `pathland-render-gtk-demo`.
 - `lib/java/` — the Maven reactor: `pathland-view-core`
-  (Kotlin `dev.pathland.view.core*` + `dev.pathland.view.engine`),
-  `pathland-view-kotlin` (the sole JVM authoring DSL, `dev.pathland.view.dsl`),
-  `pathland-demo-common`, `pathland-demo-views-kotlin` (the Kotlin music player
-  and ad app), `pathland-render-html`, `pathland-state-redis`, the DSL-neutral
-  `pathland-quarkus` extension plus `pathland-quarkus-kotlin`,
-  the Quarkus/Spring demos (including the Kotlin Quarkus demo), and the
-  TypeScript DOM renderer (`lib/typescript`).
+  (Kotlin `dev.pathland.view.core*`, `dev.pathland.view.engine`, and the sole
+  JVM authoring DSL `dev.pathland.view.dsl`), `pathland-demo-views-kotlin` (the
+  Kotlin music player, ad app, shared theme and assets), `pathland-render-html`,
+  `pathland-server-core` (runtime + telemetry + Redis + shared WS test harness),
+  the `pathland-quarkus` extension, the desktop (GTK/Qt) and Quarkus/Spring
+  demos, and the TypeScript DOM renderer (`lib/typescript`).
 - `spec/` — the protocol contract: `OPCODE.md` (primary), `PRIMITIVES.md`,
   `MODIFIERS.md`, `EVENTS.md`, `CONFORMANCE.md` (golden vectors), `ENGINE.md`
   (retained-tree behavior), `DSL.md` (authoring surface), `protocol.tsv` (the
@@ -61,7 +60,7 @@ cd lib/rust && cargo build -p pathland-core-capi
 
 # Java reactor (the core libraries; the Quarkus/Spring demos are excluded from
 # CI but buildable with: cd lib/java && mvn -q install)
-cd lib/java && mvn -q -B test -pl '!pathland-quarkus-demo,!pathland-quarkus-kotlin-demo,!pathland-spring-boot-demo'
+cd lib/java && mvn -q -B test -pl '!pathland-quarkus-demo,!pathland-spring-boot-demo'
 ```
 
 CI runs exactly these commands (`.github/workflows/ci.yml`).

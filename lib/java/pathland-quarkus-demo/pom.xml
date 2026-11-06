@@ -24,8 +24,8 @@
         Quarkus demonstration app consuming the Pathland libraries: SSR
         (pathland-render-html) for instant first paint, then live 16-byte opcode deltas +
         events over WebSocket, with cross-platform state persisted through StateStore
-        (Redis with an in-memory fallback). The extension provides SSR/WebSocket/state; the
-        host is Java and mounts the shared Kotlin MusicPlayerView.
+        (Redis with an in-memory fallback). The host is Java and mounts the shared Kotlin
+        MusicPlayerView; a second mount demonstrates a Kotlin-only authored view.
     </description>
 
     <dependencies>
@@ -37,11 +37,6 @@
         <dependency>
             <groupId>dev.pathland</groupId>
             <artifactId>pathland-demo-views-kotlin</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-demo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <!-- Observability (issue #62): a Prometheus scrape endpoint at /q/metrics; health
@@ -57,6 +52,11 @@
             <artifactId>quarkus-logging-json</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+            <version>${kotlin.version}</version>
+        </dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
             <scope>test</scope>
@@ -65,6 +65,44 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin.version}</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>process-test-sources</phase>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/test/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/test/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <jvmTarget>${maven.compiler.release}</jvmTarget>
+                    <languageVersion>2.4</languageVersion>
+                    <apiVersion>2.4</apiVersion>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>

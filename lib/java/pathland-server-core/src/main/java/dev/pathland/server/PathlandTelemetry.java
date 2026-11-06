@@ -13,8 +13,8 @@ import java.util.function.IntSupplier;
  * the actor thread and the batcher scheduler, so an implementation should be
  * cheap (Micrometer's registry is thread-safe and allocation-light).
  *
- * <p>See {@code pathland-observability} for the Micrometer + OpenTelemetry
- * adapters and the metric catalog.
+ * <p>See {@code dev.pathland.observability} (shipped in this module) for the
+ * Micrometer + OpenTelemetry adapters and the metric catalog.
  */
 public interface PathlandTelemetry {
 

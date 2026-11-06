@@ -1,11 +1,12 @@
 name: "Pathland"
-description: "Server-side Pathland UI: SSR plus live 16-byte opcode deltas over WebSocket."
+description: "Server-side Pathland UI: SSR plus live 16-byte opcode deltas over WebSocket, with the Kotlin authoring DSL."
 metadata:
   keywords:
     - "pathland"
     - "ui"
     - "ssr"
     - "websocket"
+    - "kotlin"
   categories:
     - "web"
   status: "experimental"

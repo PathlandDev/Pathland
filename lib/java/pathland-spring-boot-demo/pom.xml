@@ -38,11 +38,6 @@
             <artifactId>pathland-demo-views-kotlin</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-demo-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <!-- Observability (issue #62): Prometheus scrape at /actuator/prometheus; health at
              /actuator/health (actuator comes from the starter). OpenTelemetry spans are
              opt-in via micrometer-tracing-bridge-otel (see the application.properties flag). -->
