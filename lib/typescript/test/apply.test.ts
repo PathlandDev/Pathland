@@ -420,6 +420,70 @@ describe("applyBatch · STYLE", () => {
     expect(span.querySelector("a")?.getAttribute("href")).toBe("x");
   });
 
+  it("does not render an unsafe javascript: attributed link", () => {
+    const span = document.createElement("span");
+    span.setAttribute("data-pathland-id", "1");
+    const r = renderer();
+    r.byId.set(1, span);
+
+    const text = new TextEncoder().encode("Hi");
+    const url = new TextEncoder().encode("javascript:alert(1)");
+    const payload = new Uint8Array(4 + text.length + 4 + 4 + 12 + url.length);
+    const view = new DataView(payload.buffer);
+    let p = 0;
+    view.setUint32(p, text.length, true); p += 4;
+    payload.set(text, p); p += text.length;
+    view.setUint32(p, 0, true); p += 4; // runCount
+    view.setUint32(p, 1, true); p += 4; // linkCount
+    view.setUint32(p, 0, true); p += 4; // start
+    view.setUint32(p, 2, true); p += 4; // end
+    view.setUint32(p, url.length, true); p += 4;
+    payload.set(url, p);
+
+    const strings = new Uint8Array(4 + payload.length);
+    new DataView(strings.buffer).setUint32(0, payload.length, true);
+    strings.set(payload, 4);
+
+    applyBatch(
+      parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_ATTRIBUTED_TEXT, 0, 1, 0, 0]], strings)),
+      r,
+    );
+    expect(span.textContent).toBe("Hi");
+    expect(span.querySelector("a")).toBeNull();
+  });
+
+  it("does not apply an unsafe javascript: image source", () => {
+    const img = document.createElement("img");
+    img.setAttribute("data-pathland-id", "1");
+    const r = renderer();
+    r.byId.set(1, img);
+    applyBatch(
+      parseBatch(buildBatch([
+        [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (VAL_STRING << 16) | PROP_IMAGE_SOURCE, 0],
+      ], stringEntry("javascript:alert(1)"))),
+      r,
+    );
+    expect(img.getAttribute("src")).toBeNull();
+  });
+
+  it("rejects an unknown value type before mutating the DOM", () => {
+    const span = document.createElement("span");
+    span.setAttribute("data-pathland-id", "1");
+    span.textContent = "keep";
+    const r = renderer();
+    r.byId.set(1, span);
+    expect(() =>
+      applyBatch(
+        parseBatch(buildBatch([
+          [CAT_PARAMETER, CMD_SET_TEXT, 0, 1, 0, 0],
+          [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 1, (0x7f << 16) | PROP_TEXT, 0],
+        ], stringEntry("changed"))),
+        r,
+      ),
+    ).toThrow(/unknown value type/);
+    expect(span.textContent).toBe("keep");
+  });
+
   it("applies SET_TEXT to a text field's input", () => {
     const tf = document.createElement("label");
     tf.className = "pathland-textfield";

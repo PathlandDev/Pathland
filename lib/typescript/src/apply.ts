@@ -83,14 +83,24 @@ import {
   PROP_TEXT_STYLE,
   PROP_UNDERLINE,
   PROP_VALUE,
+  VAL_COLOR,
   VAL_DESIGN_TOKEN,
   VAL_ENUM,
+  VAL_F32,
+  VAL_I32,
   VAL_LIST,
   VAL_STRING,
   VAL_U8,
+  VAL_U32,
 } from "./constants";
 import type { AttributedText, Batch, Opcode, TextRunAttribute } from "./plpl";
-import { attributedSegments, readAttributed, readList, readString } from "./plpl";
+import {
+  ProtocolError,
+  attributedSegments,
+  readAttributed,
+  readList,
+  readString,
+} from "./plpl";
 import { childrenContainer, createElement } from "./elements";
 import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty, updateRangeFill } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
@@ -361,8 +371,93 @@ export interface DomRenderer {
   onFitEvent?: (batch: Uint8Array) => void;
 }
 
+/** Hard cap on live hydrated nodes (a hostile stream cannot grow the DOM unbounded). */
+const MAX_NODES = 100_000;
+
+/** Every value type the wire may carry in a `SET_PROPERTY` opcode. `0` is the
+ *  historical "unspecified" fallback used by a few property paths. */
+const KNOWN_VALUE_TYPES = new Set<number>([
+  0,
+  VAL_U8,
+  VAL_U32,
+  VAL_I32,
+  VAL_F32,
+  VAL_STRING,
+  VAL_ENUM,
+  VAL_COLOR,
+  VAL_DESIGN_TOKEN,
+  VAL_LIST,
+]);
+
+/**
+ * Structurally validate a batch before applying any mutation. A malformed batch
+ * is rejected atomically (no half-applied DOM), and unknown value types can no
+ * longer fall through into the numeric property path.
+ */
+function validateBatch(batch: Batch, renderer: DomRenderer): void {
+  let created = 0;
+  for (const op of batch.opcodes) {
+    switch (op.category) {
+      case CAT_TREE:
+        if (op.command === CMD_CREATE_NODE) {
+          if (op.b > 0xffff) {
+            throw new ProtocolError(`invalid component id ${op.b}`);
+          }
+          created++;
+        }
+        break;
+      case CAT_PARAMETER:
+        validateParameter(op, batch.strings);
+        break;
+      case CAT_META:
+        if (op.command === CMD_SET_WINDOW_METADATA) {
+          readString(batch.strings, op.b);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  if (renderer.byId.size + created > MAX_NODES) {
+    throw new ProtocolError("node limit exceeded");
+  }
+}
+
+function validateParameter(op: Opcode, strings: Uint8Array): void {
+  switch (op.command) {
+    case CMD_SET_TEXT:
+      readString(strings, op.b);
+      break;
+    case CMD_SET_DESIGN_TOKEN: {
+      readString(strings, op.a); // token path
+      if ((op.b & 0xff) === VAL_STRING) {
+        readString(strings, op.c); // string-valued token override
+      }
+      break;
+    }
+    case CMD_SET_ATTRIBUTED_TEXT:
+      readAttributed(strings, op.b);
+      break;
+    case CMD_SET_PROPERTY: {
+      const valueType = (op.b >>> 16) & 0xff;
+      if (!KNOWN_VALUE_TYPES.has(valueType)) {
+        throw new ProtocolError(`unknown value type ${valueType}`);
+      }
+      if (valueType === VAL_STRING || valueType === VAL_DESIGN_TOKEN) {
+        readString(strings, op.c);
+      } else if (valueType === VAL_LIST) {
+        readList(strings, op.c);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 /** Apply every opcode in a batch to the DOM (TREE structure + PARAMETER/META deltas). */
 export function applyBatch(batch: Batch, renderer: DomRenderer): void {
+  validateBatch(batch, renderer);
   // SSR snapshot fit slots (`data-pathland-fit-cands`) touched by a structural
   // removal in this batch. The gate is torn down AFTER the whole batch, gated on
   // the slot's FINAL state (issue #141): a removal that does NOT reduce the slot
@@ -999,6 +1094,51 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   }
 }
 
+/** A safe navigational URL for an attributed-text link (`javascript:` etc. rejected). */
+function safeHref(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) {
+    return null;
+  }
+  try {
+    const url = new URL(value, document.baseURI);
+    switch (url.protocol) {
+      case "http:":
+      case "https:":
+      case "mailto:":
+      case "tel:":
+        return value;
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+/** A safe resource URL for an image/media source (`javascript:`/`data:text` rejected). */
+function safeSrc(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) {
+    return "";
+  }
+  try {
+    const url = new URL(value, document.baseURI);
+    switch (url.protocol) {
+      case "http:":
+      case "https:":
+      case "blob:":
+        return value;
+      case "data:":
+        return /^data:(?:image|audio|video)\//i.test(value) ? value : null;
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
 /** Apply a `SET_ATTRIBUTED_TEXT` payload to a TEXT element. */
 function applyAttributedText(el: HTMLElement, value: AttributedText): void {
   const doc = el.ownerDocument;
@@ -1008,13 +1148,14 @@ function applyAttributedText(el: HTMLElement, value: AttributedText): void {
   for (const segment of attributedSegments(value)) {
     const text = new TextDecoder().decode(value.textBytes.subarray(segment.start, segment.end));
     const css = runCss(segment.attributes);
-    if (!css && !segment.link) {
+    const href = segment.link ? safeHref(segment.link) : null;
+    if (!css && !href) {
       nodes.push(doc.createTextNode(text));
       continue;
     }
-    const node = doc.createElement(segment.link ? "a" : "span");
-    if (segment.link) {
-      node.setAttribute("href", segment.link);
+    const node = doc.createElement(href ? "a" : "span");
+    if (href) {
+      node.setAttribute("href", href);
     }
     if (css) {
       node.setAttribute("style", css);
@@ -1198,8 +1339,9 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
     }
     case PROP_IMAGE_SOURCE: {
       const img = el.matches("img") ? el : el.querySelector("img");
-      if (img instanceof HTMLImageElement) {
-        img.src = text;
+      const src = safeSrc(text);
+      if (img instanceof HTMLImageElement && src !== null) {
+        img.src = src;
       }
       break;
     }
@@ -1207,8 +1349,9 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
       // A controller's resource: the playback element it owns (itself when the
       // node adopted a media element, else an inner one).
       const media = mediaElementOf(el);
-      if (media) {
-        media.src = text;
+      const src = safeSrc(text);
+      if (media && src !== null) {
+        media.src = src;
       }
       break;
     }

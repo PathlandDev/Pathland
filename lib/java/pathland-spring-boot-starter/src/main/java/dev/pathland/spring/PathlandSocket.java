@@ -1,6 +1,7 @@
 package dev.pathland.spring;
 
 import dev.pathland.server.PathlandRegistry;
+import dev.pathland.server.WindowIds;
 import dev.pathland.view.core.transport.FrameCodec;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
@@ -54,6 +55,11 @@ public class PathlandSocket extends AbstractWebSocketHandler {
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
         if (message instanceof BinaryMessage binary) {
             byte[] bytes = toByteArray(binary.getPayload());
+            if (bytes.length > PathlandRegistry.MAX_INBOUND_BATCH_BYTES) {
+                // Drop oversized input before parsing it (the session registry repeats
+                // this check, but the heartbeat/environment probes below parse first).
+                return;
+            }
             if (FrameCodec.isResync(bytes)) {
                 registry.resync(uiId(session));
             } else if (FrameCodec.isPing(bytes)) {
@@ -111,7 +117,7 @@ public class PathlandSocket extends AbstractWebSocketHandler {
     private ConnectionIds resolveIds(WebSocketSession session) {
         String uiId = UUID.randomUUID().toString();
         String wid = queryParam(session.getUri(), "wid");
-        return new ConnectionIds(uiId, wid == null || wid.isBlank() ? UUID.randomUUID().toString() : wid);
+        return new ConnectionIds(uiId, WindowIds.orRandom(wid));
     }
 
     /** Read a query parameter from the handshake URI (the client's per-window id), else null. */

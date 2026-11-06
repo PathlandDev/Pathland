@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** October 28, 2026
+**Last updated:** November 6, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -9,6 +9,17 @@ dependency — framework glue lives in the starters.
 
 ## Implemented
 
+- **Security hardening (issue #63)**: `WindowIds` validates the client-supplied
+  `wid` (≤128 chars, `[A-Za-z0-9._-]`; a colon is rejected so it cannot collide
+  with the mount-qualified state scope). Invalid ids are treated as absent (SSR
+  defaults) or replaced with a fresh UUID on the WebSocket. `InboundRateLimiter`
+  bounds inbound batches/bytes per connection before actor work is queued
+  (`pathland.max-inbound-batches-per-second`, default 500;
+  `pathland.max-inbound-bytes-per-second`, default 2 MiB) and reports drops via
+  `PathlandTelemetry.inboundDropped` (`pathland.inbound.dropped`). The SSR script
+  tag now carries `integrity="sha384-…"` from the manifest's second
+  line (`PathlandAssets.bundleIntegrity()`); an older one-line manifest simply
+  omits it.
 - **Attributed text transport**: `FrameRebase` rebases `SET_ATTRIBUTED_TEXT`'s
   string-section offset (like `SET_TEXT`) for delta batching/frame merging, and
   `ProxyIdMap` remaps its node id.
@@ -76,8 +87,9 @@ dependency — framework glue lives in the starters.
 - **`PathlandConnection`** — the transport seam (`send(byte[])`/`isOpen()`); each starter
   adapts its WebSocket type to it.
 - **Observability seam** — `PathlandTelemetry` (default `NOOP`): the runtime emits
-  session open/close, inbound event batches, flushed batches (frames/opcodes/bytes +
-  merge-encode time), SSR render latency, resync requests, and send failures; the host
+  session open/close, inbound event batches, inbound drops (oversize/rate), flushed
+  batches (frames/opcodes/bytes + merge-encode time), SSR render latency, resync
+  requests, and send failures; the host
   binds a pull-based active-sessions gauge. `PathlandHost`/`PathlandRegistry`/
   `PathlandSession`/`DeltaBatcher` thread it through (a host with no telemetry pays
   nothing). This module also ships the `dev.pathland.observability` Micrometer +

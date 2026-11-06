@@ -21,8 +21,34 @@ export interface Batch {
 /** A protocol-level decode failure (truncation, bad magic, unsupported version). */
 export class ProtocolError extends Error {}
 
+// Decoder resource caps. These bound a hostile or corrupt server stream: the
+// protocol never needs an opcode count, string, list, or attributed-text
+// envelope larger than these in a single batch.
+export const MAX_OPCODES = 1 << 16;
+export const MAX_STRING_BYTES = 1 << 20;
+export const MAX_LIST_COUNT = 1 << 16;
+export const MAX_ATTRIBUTED_RUNS = 1 << 14;
+export const MAX_ATTRIBUTED_LINKS = 1 << 14;
+export const MAX_ATTRIBUTES_PER_RUN = 1 << 8;
+
 function dv(bytes: Uint8Array): DataView {
   return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+}
+
+/** Bound a `[u32 len][bytes…]` entry at `offset` without decoding it. */
+function checkEntry(strings: Uint8Array, offset: number): { start: number; len: number } {
+  if (!Number.isInteger(offset) || offset < 0 || offset + 4 > strings.length) {
+    throw new ProtocolError("entry offset out of bounds");
+  }
+  const len = dv(strings).getUint32(offset, true);
+  if (len > MAX_STRING_BYTES) {
+    throw new ProtocolError("entry length exceeds the decoder limit");
+  }
+  const start = offset + 4;
+  if (start + len > strings.length) {
+    throw new ProtocolError("entry length out of bounds");
+  }
+  return { start, len };
 }
 
 /**
@@ -46,6 +72,9 @@ export function parseBatch(bytes: Uint8Array): Batch {
   const flags = view.getUint16(6, true);
   const sequence = view.getUint32(8, true);
   const opcodeCount = view.getUint32(12, true);
+  if (opcodeCount > MAX_OPCODES) {
+    throw new ProtocolError("opcode count exceeds the decoder limit");
+  }
   const opcodesEnd = HEADER_SIZE + opcodeCount * OPCODE_SIZE;
   if (opcodesEnd + 4 > bytes.length) {
     throw new ProtocolError("batch truncated (opcodes)");
@@ -63,6 +92,9 @@ export function parseBatch(bytes: Uint8Array): Batch {
     });
   }
   const stringsLen = view.getUint32(opcodesEnd, true);
+  if (stringsLen > MAX_STRING_BYTES) {
+    throw new ProtocolError("string section exceeds the decoder limit");
+  }
   const stringsStart = opcodesEnd + 4;
   if (stringsStart + stringsLen > bytes.length) {
     throw new ProtocolError("batch truncated (strings)");
@@ -78,15 +110,7 @@ export function parseBatch(bytes: Uint8Array): Batch {
 
 /** Read a length-prefixed string (`[u32 len][utf8…]`) at a relative offset into the string section. */
 export function readString(strings: Uint8Array, offset: number): string {
-  if (offset + 4 > strings.length) {
-    throw new ProtocolError("string offset out of bounds");
-  }
-  const view = dv(strings);
-  const len = view.getUint32(offset, true);
-  const start = offset + 4;
-  if (start + len > strings.length) {
-    throw new ProtocolError("string length out of bounds");
-  }
+  const { start, len } = checkEntry(strings, offset);
   return new TextDecoder().decode(strings.subarray(start, start + len));
 }
 
@@ -94,11 +118,14 @@ export function readString(strings: Uint8Array, offset: number): string {
  *  offset into the string section (the `LIST` value type — e.g. a `FIT_QUERY`
  *  threshold table). */
 export function readList(strings: Uint8Array, offset: number): number[] {
-  if (offset + 4 > strings.length) {
+  if (!Number.isInteger(offset) || offset < 0 || offset + 4 > strings.length) {
     throw new ProtocolError("list offset out of bounds");
   }
   const view = dv(strings);
   const count = view.getUint32(offset, true);
+  if (count > MAX_LIST_COUNT) {
+    throw new ProtocolError("list count exceeds the decoder limit");
+  }
   const start = offset + 4;
   if (start + count * 4 > strings.length) {
     throw new ProtocolError("list length out of bounds");
@@ -140,14 +167,7 @@ export interface AttributedText {
 
 /** Read a `[u32 len][bytes]` entry (binary-safe) at a relative string offset. */
 export function readEntryBytes(strings: Uint8Array, offset: number): Uint8Array {
-  if (offset + 4 > strings.length) {
-    throw new ProtocolError("entry offset out of bounds");
-  }
-  const len = dv(strings).getUint32(offset, true);
-  const start = offset + 4;
-  if (start + len > strings.length) {
-    throw new ProtocolError("entry length out of bounds");
-  }
+  const { start, len } = checkEntry(strings, offset);
   return strings.subarray(start, start + len);
 }
 
@@ -166,6 +186,9 @@ export function readAttributed(strings: Uint8Array, offset: number): AttributedT
   };
   need(4);
   const textLen = view.getUint32(p, true);
+  if (textLen > MAX_STRING_BYTES) {
+    throw new ProtocolError("attributed text exceeds the decoder limit");
+  }
   p += 4;
   need(textLen);
   const textBytes = bytes.subarray(p, p + textLen);
@@ -173,6 +196,9 @@ export function readAttributed(strings: Uint8Array, offset: number): AttributedT
 
   need(4);
   const runCount = view.getUint32(p, true);
+  if (runCount > MAX_ATTRIBUTED_RUNS) {
+    throw new ProtocolError("attributed run count exceeds the decoder limit");
+  }
   p += 4;
   const runs: AttributedRun[] = [];
   for (let i = 0; i < runCount; i++) {
@@ -180,6 +206,12 @@ export function readAttributed(strings: Uint8Array, offset: number): AttributedT
     const start = view.getUint32(p, true);
     const end = view.getUint32(p + 4, true);
     const attrCount = view.getUint32(p + 8, true);
+    if (start > end || end > textLen) {
+      throw new ProtocolError("attributed run range out of bounds");
+    }
+    if (attrCount > MAX_ATTRIBUTES_PER_RUN) {
+      throw new ProtocolError("attributed attribute count exceeds the decoder limit");
+    }
     p += 12;
     const attributes: TextRunAttribute[] = [];
     for (let j = 0; j < attrCount; j++) {
@@ -195,6 +227,9 @@ export function readAttributed(strings: Uint8Array, offset: number): AttributedT
 
   need(4);
   const linkCount = view.getUint32(p, true);
+  if (linkCount > MAX_ATTRIBUTED_LINKS) {
+    throw new ProtocolError("attributed link count exceeds the decoder limit");
+  }
   p += 4;
   const links: AttributedLink[] = [];
   for (let i = 0; i < linkCount; i++) {
@@ -202,6 +237,12 @@ export function readAttributed(strings: Uint8Array, offset: number): AttributedT
     const start = view.getUint32(p, true);
     const end = view.getUint32(p + 4, true);
     const urlLen = view.getUint32(p + 8, true);
+    if (start > end || end > textLen) {
+      throw new ProtocolError("attributed link range out of bounds");
+    }
+    if (urlLen > MAX_STRING_BYTES) {
+      throw new ProtocolError("attributed link exceeds the decoder limit");
+    }
     p += 12;
     need(urlLen);
     const url = new TextDecoder().decode(bytes.subarray(p, p + urlLen));

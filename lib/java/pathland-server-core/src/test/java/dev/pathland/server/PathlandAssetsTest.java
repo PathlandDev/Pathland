@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 class PathlandAssetsTest {
 
     private static final String FIXTURE = "dom-renderer-3f9ac1d0e2ab.js";
+    private static final String INTEGRITY = "sha384-3f9ac1d0e2ab";
 
     private static final Map<String, String> DEMO_MANIFEST = Map.of(
             "META-INF/resources/_pathland/" + PathlandAssets.MANIFEST, FIXTURE);
@@ -35,6 +36,24 @@ class PathlandAssetsTest {
     void readsTheHashedNameFromTheManifest() {
         assertEquals(FIXTURE, PathlandAssets.resolve(fixtureLookup(DEMO_MANIFEST)),
                 "a Quarkus-style classpath manifest yields the hashed name");
+    }
+
+    @Test
+    void readsTheIntegrityDigestFromTheSecondManifestLine() {
+        String manifest = FIXTURE + "\n" + INTEGRITY + "\n";
+        PathlandAssets.Manifest resolved = PathlandAssets.resolveManifest(
+                fixtureLookup(Map.of("META-INF/resources/_pathland/" + PathlandAssets.MANIFEST, manifest)));
+        assertEquals(FIXTURE, resolved.name());
+        assertEquals(INTEGRITY, resolved.integrity());
+    }
+
+    @Test
+    void ignoresAMalformedIntegrityLine() {
+        String manifest = FIXTURE + "\nnot-a-digest\n";
+        PathlandAssets.Manifest resolved = PathlandAssets.resolveManifest(
+                fixtureLookup(Map.of("_pathland/" + PathlandAssets.MANIFEST, manifest)));
+        assertEquals(FIXTURE, resolved.name());
+        assertEquals("", resolved.integrity());
     }
 
     @Test
@@ -109,6 +128,8 @@ class PathlandAssetsTest {
                 "native renderer embedded");
         assertTrue(html.contains("/_pathland/" + FIXTURE),
                 "the SSR HTML references the manifest's content-hashed bundle");
+        assertTrue(html.contains(" integrity=\"" + INTEGRITY + "\""),
+                "the SSR script tag carries the manifest's SRI digest");
         assertFalse(html.contains("dom-renderer.js\""),
                 "the pre-hash literal is not referenced while a manifest is present");
     }

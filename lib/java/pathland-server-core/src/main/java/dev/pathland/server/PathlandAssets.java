@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Resolves the DOM-client bundle name that the SSR HTML must reference.
@@ -13,12 +15,14 @@ import java.nio.charset.StandardCharsets;
  * reserved framework prefix as a <strong>content-hashed</strong> filename
  * ({@code dom-renderer-&lt;sha256-12&gt;.js} — see the TypeScript
  * {@code copy-to-demos} script) because the asset is served with immutable
- * cache headers; a fresh name per build is what busts the cache. A one-line
- * pointer manifest {@code dom-renderer.current} sits next to the copies so the
- * server can emit the current name without re-hashing:
+ * cache headers; a fresh name per build is what busts the cache. A pointer
+ * manifest {@code dom-renderer.current} sits next to the copies so the server
+ * can emit the current name without re-hashing, plus the Subresource Integrity
+ * digest for the {@code <script>} tag:
  *
  * <pre>
  *   dom-renderer-3f9ac1d0e2ab.js
+ *   sha384-…
  * </pre>
  *
  * <p>The manifest is looked up on the classpath — the Quarkus demo keeps its
@@ -26,8 +30,8 @@ import java.nio.charset.StandardCharsets;
  * {@code static/_pathland/} (both resolve to {@code _pathland/} on the
  * classpath). Resolved once per JVM and cached; when no manifest is present
  * (a library-only consumer without an embedded bundle, or a unit test) the
- * pre-hash literal {@code dom-renderer.js} is returned so behaviour is
- * unchanged.
+ * pre-hash literal {@code dom-renderer.js} is returned and no integrity is
+ * emitted, so behaviour is unchanged.
  */
 final class PathlandAssets {
 
@@ -46,36 +50,48 @@ final class PathlandAssets {
         InputStream open(String path);
     }
 
-    private static volatile String bundleName;
+    /** The manifest's name + optional SRI digest. */
+    record Manifest(String name, String integrity) {}
+
+    private static volatile Manifest manifest;
     private static volatile ClassLoader bundleLoader;
 
     private PathlandAssets() {}
 
     /** The current bundle filename (hashed on the demo classpath, literal otherwise). */
     static String bundleName() {
+        return manifest().name();
+    }
+
+    /** The bundle's SRI digest ({@code sha384-…}), or an empty string when unavailable. */
+    static String bundleIntegrity() {
+        return manifest().integrity();
+    }
+
+    private static Manifest manifest() {
         // A framework host may load this core in a parent extension classloader while
         // the application's static resources live in a child runtime classloader (the
         // Quarkus extension path). Resolve through the thread context classloader first,
         // and keep the cache tied to that loader so a fallback from one loader cannot
         // poison a request served by another.
         ClassLoader loader = contextLoader();
-        String name = bundleName;
-        if (name != null && bundleLoader == loader) {
-            return name;
+        Manifest cached = manifest;
+        if (cached != null && bundleLoader == loader) {
+            return cached;
         }
         synchronized (PathlandAssets.class) {
-            if (bundleName == null || bundleLoader != loader) {
-                bundleName = resolve(path -> openClasspath(loader, path));
+            if (manifest == null || bundleLoader != loader) {
+                manifest = resolveManifest(path -> openClasspath(loader, path));
                 bundleLoader = loader;
             }
-            return bundleName;
+            return manifest;
         }
     }
 
-    /** Forget the cached name (tests). */
+    /** Forget the cached manifest (tests). */
     static void resetForTests() {
         synchronized (PathlandAssets.class) {
-            bundleName = null;
+            manifest = null;
             bundleLoader = null;
         }
     }
@@ -87,20 +103,27 @@ final class PathlandAssets {
 
     /** Deterministic resolution against an explicit resource lookup (tests). */
     static String resolve(Lookup lookup) {
+        return resolveManifest(lookup).name();
+    }
+
+    /** Resolve the name + optional SRI digest against an explicit lookup (tests). */
+    static Manifest resolveManifest(Lookup lookup) {
         for (String path : MANIFEST_PATHS) {
             try (InputStream in = lookup.open(path)) {
                 if (in == null) {
                     continue;
                 }
-                String name = readFirstLine(in);
+                List<String> lines = readLines(in, 2);
+                String name = lines.isEmpty() ? "" : lines.get(0).trim();
                 if (validBundleName(name)) {
-                    return name;
+                    String integrity = lines.size() > 1 ? lines.get(1).trim() : "";
+                    return new Manifest(name, validIntegrity(integrity) ? integrity : "");
                 }
             } catch (IOException ignored) {
                 // fall through to the fallback
             }
         }
-        return FALLBACK;
+        return new Manifest(FALLBACK, "");
     }
 
     private static InputStream openClasspath(ClassLoader preferred, String path) {
@@ -118,12 +141,19 @@ final class PathlandAssets {
         return ClassLoader.getSystemResourceAsStream(path);
     }
 
-    private static String readFirstLine(InputStream in) throws IOException {
+    private static List<String> readLines(InputStream in, int max) throws IOException {
+        List<String> lines = new ArrayList<>(max);
         try (BufferedReader reader =
                 new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            String line = reader.readLine();
-            return line == null ? "" : line.trim();
+            for (int i = 0; i < max; i++) {
+                String line = reader.readLine();
+                if (line == null) {
+                    break;
+                }
+                lines.add(line);
+            }
         }
+        return lines;
     }
 
     /** A bare basename: letters, digits, dot, underscore, hyphen — never a path. */
@@ -133,5 +163,17 @@ final class PathlandAssets {
                 && name.endsWith(".js")
                 && name.chars().allMatch(c ->
                         Character.isLetterOrDigit(c) || c == '.' || c == '_' || c == '-');
+    }
+
+    /** A `sha384-<base64>` SRI digest (bounded, base64 alphabet only). */
+    private static boolean validIntegrity(String integrity) {
+        if (integrity == null || !integrity.startsWith("sha384-")) {
+            return false;
+        }
+        String digest = integrity.substring("sha384-".length());
+        return !digest.isEmpty()
+                && digest.length() <= 128
+                && digest.chars().allMatch(c ->
+                        Character.isLetterOrDigit(c) || c == '+' || c == '/' || c == '=');
     }
 }

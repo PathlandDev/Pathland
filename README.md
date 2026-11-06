@@ -254,6 +254,9 @@ conformance vectors, and the implementation notes — lives in [`spec/`](./spec/
 - [PRIMITIVES.md](./spec/PRIMITIVES.md), [MODIFIERS.md](./spec/MODIFIERS.md), [EVENTS.md](./spec/EVENTS.md)
 - [CONFORMANCE.md](./spec/CONFORMANCE.md) — golden byte vectors
 
+Deployment guidance — CSP, WebSocket origin checks, transport limits, and
+reverse-proxy hardening — lives in [docs/HARDENING.md](./docs/HARDENING.md).
+
 ## Status & license
 
 Proof of concept. See [CONTRIBUTING.md](./CONTRIBUTING.md),

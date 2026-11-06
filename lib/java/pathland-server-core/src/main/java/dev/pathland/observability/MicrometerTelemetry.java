@@ -69,6 +69,13 @@ public final class MicrometerTelemetry implements PathlandTelemetry {
     }
 
     @Override
+    public void inboundDropped(String mount, String reason) {
+        // The reason is intentionally not a tag (unbounded cardinality); the counter
+        // records that the guard fired for this mount.
+        counter("inbound.dropped", mount).increment();
+    }
+
+    @Override
     public void batchFlushed(String mount, int frames, int opcodes, int bytes, long nanos) {
         counter("batches.sent", mount).increment();
         counter("frames.sent", mount).increment(frames);

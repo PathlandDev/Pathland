@@ -36,6 +36,9 @@ public interface PathlandTelemetry {
     /** An inbound event batch was routed to a session ({@code events} decoded events). */
     default void eventBatchReceived(String mount, int events) {}
 
+    /** An inbound message was dropped by the per-connection rate/oversize guard. */
+    default void inboundDropped(String mount, String reason) {}
+
     /**
      * An outbound delta batch was flushed to the connection.
      *

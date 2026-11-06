@@ -1,6 +1,6 @@
 # pathland-quarkus — implementation status
 
-**Last updated:** November 1, 2026
+**Last updated:** November 6, 2026
 
 Quarkus extension for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding this extension + a
@@ -12,6 +12,15 @@ capability and pulls in `quarkus-kotlin`.
 
 ## Implemented
 
+- **Security defaults (issue #63)**: the deployment module contributes
+  overridable runtime defaults via `RunTimeConfigurationDefaultBuildItem`:
+  `quarkus.http.cors.enabled=true` (no origins → same-origin, which covers
+  WebSocket upgrades because the CORS filter runs before routes),
+  `quarkus.websockets-next.server.max-message-size`/`max-frame-size=65536`, and
+  CSP + `X-Content-Type-Options`/`Referrer-Policy`/`X-Frame-Options` headers via
+  `quarkus.http.header.*`. See `docs/HARDENING.md` for overrides, CSP rollout,
+  reverse-proxy/TLS guidance, and edge rate limiting. The `wid` handshake query
+  is validated by server-core (`WindowIds`).
 - **Java host / Kotlin views**: `CounterApp` is a Java CDI bean whose
   `newRoot()` returns a Kotlin-authored fixture view; the multi-session
   WebSocket tests prove SSR + live deltas work through that mount.
@@ -55,7 +64,13 @@ capability and pulls in `quarkus-kotlin`.
   `Service-Worker-Allowed: /` + `Cache-Control: no-cache`, so the client's root-scoped
   registration succeeds. A `Filters` handler always runs before routes, so it wins over
   Quarkus's static-resource handler (which sends neither header, and whose configured
-  max-age would otherwise cache the script and delay update detection).
+  max-age would otherwise cache the script and delay update detection). The script is
+  resolved through the thread-context classloader first, then the extension's own
+  loader, then the system loader: extension runtime classes live in Quarkus's base
+  runtime classloader and cannot see the application's `META-INF/resources` copy. The
+  extension jar bundles the worker as a fallback (the TS copy script writes it), and
+  `pathland-quarkus-demo`'s integration test asserts the headers on both the root and a
+  mounted base — the packaged-app classloader path the module-local test could not see.
 - **Observability (issue #62)** — `quarkus-micrometer` (a `MeterRegistry` bean) +
   `quarkus-smallrye-health`: the producer builds a `MicrometerTelemetry` over the
   registry and decorates it with `TracingTelemetry` when a `Tracer` bean is present and

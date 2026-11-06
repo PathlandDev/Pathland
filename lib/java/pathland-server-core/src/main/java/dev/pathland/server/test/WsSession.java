@@ -86,8 +86,20 @@ public final class WsSession implements AutoCloseable {
 
     /** Connect a Pathland session to {@code wsUrl}/_pathland/ws?wid=… (blocking up to 10 s). */
     public static WsSession connect(String wsBaseUrl, String wid) throws Exception {
+        return connect(wsBaseUrl, wid, null);
+    }
+
+    /**
+     * Connect with an explicit {@code Origin} header (origin-policy tests). A {@code null}
+     * origin omits the header (a non-browser client).
+     */
+    public static WsSession connect(String wsBaseUrl, String wid, String origin) throws Exception {
         Listener listener = new Listener();
-        WebSocket socket = HTTP.newWebSocketBuilder()
+        WebSocket.Builder builder = HTTP.newWebSocketBuilder();
+        if (origin != null) {
+            builder.header("Origin", origin);
+        }
+        WebSocket socket = builder
                 .buildAsync(URI.create(wsBaseUrl + "?wid=" + wid), listener)
                 .get(10, TimeUnit.SECONDS);
         return new WsSession(socket, listener);

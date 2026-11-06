@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** October 15, 2026
+**Last updated:** November 6, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -9,6 +9,16 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 
 ## Implemented
 
+- **Decoder hardening (issue #63)**: `parseBatch`/`readString`/`readList`/
+  `readEntryBytes`/`readAttributed` enforce opcode, string-section, list,
+  run/link/attribute, and text-range caps; `applyBatch` validates the whole
+  batch structurally before mutating the DOM (no half-applied batch, unknown
+  value types rejected). Attributed-text links and image/media sources are
+  URL-scheme allowlisted (`javascript:` and non-media `data:` rejected). The
+  transport rejects inbound messages over 2 MiB and closes after five
+  consecutive malformed batches so the reconnect path requests a clean
+  `META::RESYNC`. **SRI**: `copy-to-demos` writes a `sha384-…` second manifest
+  line; the server emits `integrity` on the script tag.
 - **Attributed text**: decodes `SET_ATTRIBUTED_TEXT` payloads and applies them to
   the hydrated text element as styled `<span>`/`<a href>` runs (v1 attributes:
   font size/weight/color/style/design/underline/strikethrough). An explicit
@@ -22,10 +32,11 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   `npm run copy-to-demos` copies it into the Quarkus (Java + Kotlin) and Spring Boot demos'
   static resource dirs under a **content-hashed name** (`dom-renderer-<sha256>.js`),
   pruning stale `dom-renderer-*.js` and the pre-hash literal `dom-renderer.js` (the old
-  duplicated `app.js` is long since removed). A one-line pointer manifest
-  `dom-renderer.current` sits next to the copies; the SSR layer reads it
-  (`PathlandAssets`) to emit the right `<script src>` — the fresh URL per build busts
-  the immutable asset cache without any hard refresh.
+  duplicated `app.js` is long since removed). A pointer manifest
+  `dom-renderer.current` sits next to the copies (content-hashed name + a `sha384-…`
+  SRI digest); the SSR layer reads it (`PathlandAssets`) to emit the right
+  `<script src integrity="sha384-…">` — the fresh URL per build busts the immutable
+  asset cache without any hard refresh.
 - **Per-window identity (`wid`)**: the client keeps a window id in `sessionStorage`
   (fresh per window/tab, kept across reloads of the same tab) and appends it as
   `?wid=` to the WebSocket URL (the server's per-window persisted-state scope). The
