@@ -33,6 +33,10 @@ dependency — framework glue lives in the starters.
     ROUTE fields, **and inbound `NAVIGATE` URLs** (browser back/forward sends the real
     address, e.g. `http://host/app2/home`), so a mounted app always sees its own route
     space (`/app2/home` → `/home`). `Router.pathOf` is reused for URL→path extraction.
+  - `shutdown()` — serialized on the actor and idempotent: work enqueued after shutdown
+    starts is dropped, sessions are closed on the actor thread, then the executor is
+    stopped and awaited. Teardown can no longer race a queued mount/resync mutating the
+    same emitter (regression-tested by `shutdownSerializesWithQueuedActorWork`).
 - **Per-window isolation (no session cookie)**: session <b>identity</b> (the `uiId`
   map key) is deliberately separate from the <b>persisted-state scope</b> (the client's
   `wid`, carried only on the WebSocket URL — never in the page URL, so the address bar

@@ -164,6 +164,25 @@ class PathlandSessionTest {
     }
 
     @Test
+    void shutdownSerializesWithQueuedActorWork() {
+        // shutdown() must not close sessions from the caller's thread while the actor is
+        // still mounting/resyncing them: that raced Emitter.destroy against a concurrent
+        // reconcile (ConcurrentModificationException). Repeat to make the race reliable.
+        for (int i = 0; i < 50; i++) {
+            PathlandRegistry registry = new PathlandRegistry(
+                    () -> ServerFixtures.button("Tap", () -> {}), STORE);
+            String uiId = "ui-shutdown-" + i;
+            String windowId = "win-shutdown-" + i;
+            registry.environment(uiId, EnvironmentData.of("/"));
+            registry.resync(uiId);
+            registry.open(uiId, windowId, new NoopConnection());
+            registry.close(uiId);
+            registry.shutdown();
+            registry.shutdown(); // idempotent
+        }
+    }
+
+    @Test
     void renderHtmlWithWindowIdRendersThatWindowsPersistedState() {
         // A reload's SSR carries the wid (the client reflects it into the URL), so the
         // throwaway session renders THIS window's persisted state — the HTML is already
