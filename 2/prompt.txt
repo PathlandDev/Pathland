@@ -1,0 +1,10 @@
+Research the Pathland Rust repo at /Users/michael/Development/michaelkrog/Pathland (read-only). I need a precise map of the Rust text-emission pipeline relevant to adding a new protocol command `PARAMETER::SET_ATTRIBUTED_TEXT` (rich text with style runs + links carried in the arena).
+
+Explore and report, with file:line references:
+1. `pathland-view`: how `Text` is defined, how it stores text, how signals could bind text, modifier application. Key types and methods.
+2. `pathland-engine`: retained Node tree, how text is diffed/emitted (`SET_TEXT`), signal binding/dependency recording, `set_signal` partial emit, arena allocation usage, zero-alloc requirements. Show the exact emit path for text and how string values are allocated in the arena (`alloc_str`, relative offsets).
+3. `pathland-core`: `Guest` API for writing opcodes + arena (alloc/alloc_str), Opcode encoding, Host decoding / render-core `HostNode` text representation.
+4. How `pathland-engine-golden` and `pathland-protocol-manifest` are generated, what must be updated when adding a command/property.
+5. Existing tests for text emission and signal re-emission that a new feature should extend.
+
+Be concrete: name structs/enums/functions and line numbers. Do NOT modify anything.

@@ -3,7 +3,7 @@
   "checkpoint_id": "01M6REQTQWP28Z8PJ7VP5X14GA",
   "strategy": "manual-commit",
   "branch": "feat/pure-java-markdown",
-  "checkpoints_count": 4,
+  "checkpoints_count": 5,
   "files_touched": [
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
@@ -47,13 +47,20 @@
       "compact_transcript": "/1/transcript.jsonl",
       "content_hash": "/1/content_hash.txt",
       "prompt": "/1/prompt.txt"
+    },
+    {
+      "metadata": "/2/metadata.json",
+      "transcript": "/2/full.jsonl",
+      "compact_transcript": "/2/transcript.jsonl",
+      "content_hash": "/2/content_hash.txt",
+      "prompt": "/2/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 2679299,
+    "input_tokens": 2834640,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 26399360,
-    "output_tokens": 67388,
-    "api_call_count": 122
+    "cache_read_tokens": 28108800,
+    "output_tokens": 78822,
+    "api_call_count": 138
   }
 }
