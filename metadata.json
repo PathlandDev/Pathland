@@ -1,0 +1,38 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6RWJTQ30NH4Z189ZAM3GJ42",
+  "strategy": "manual-commit",
+  "branch": "fix/hosted-forwarded-headers",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "docs/HARDENING.md",
+    "lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/ForwardedHeaderOverrideTest.java",
+    "lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/ForwardedHeaderTest.java",
+    "lib/java/pathland-quarkus-deployment/src/main/java/dev/pathland/quarkus/deployment/PathlandProcessor.java",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/IndexResource.java",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/test/WsSession.java",
+    "lib/java/pathland-spring-boot-starter/src/main/java/dev/pathland/spring/PathlandEnvironmentPostProcessor.java",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/META-INF/spring.factories",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/ForwardedHeaderOverrideTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/PathlandAutoConfigurationTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/WebSocketOriginTest.java",
+    "lib/java/pathland-spring-boot-starter/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 567152,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 37189376,
+    "output_tokens": 27158,
+    "api_call_count": 110
+  }
+}
