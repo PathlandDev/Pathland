@@ -244,6 +244,9 @@ A run of styled text. The server dictates content and style; the client measures
 and renders.
 
 - **Protocol**: a leaf node; content via `PARAMETER::SET_TEXT` or a bound signal.
+  Rich content (range-scoped style runs + links) uses
+  `PARAMETER::SET_ATTRIBUTED_TEXT`; its plain text is the fallback for renderers
+  without rich-text support (see [OPCODE.md](./OPCODE.md#attributed-text-payload-set_attributed_text)).
 - **Properties**: `LINE_LIMIT` (0x000B, U32), `TEXT_ALIGNMENT` (0x000C, enum
   code), `TRUNCATION_MODE` (0x000D, enum code), plus all text-formatting and
   appearance modifiers from [MODIFIERS.md](./MODIFIERS.md).

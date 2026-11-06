@@ -9,7 +9,8 @@
 //! format). It does not contain Java source, packages, or formatting.
 
 use pathland_core::{
-    category, init_memory, parameter, value_type, Guest, Host, MemoryLayout, Opcode,
+    category, init_memory, parameter, value_type, AttributedString, Guest, Host, LinkRun,
+    MemoryLayout, Opcode, StyleRun,
 };
 use pathland_core_transport::encode_frame;
 use pathland_engine::{assign_ids, Component, Engine, Node, SignalId, SignalValue};
@@ -51,7 +52,8 @@ fn used_arena(frame: &pathland_core::Frame<'_>) -> Vec<u8> {
     let mut max = 0usize;
     for op in frame.opcodes() {
         match (op.category(), op.command()) {
-            (category::PARAMETER, parameter::SET_TEXT) => {
+            (category::PARAMETER, parameter::SET_TEXT)
+            | (category::PARAMETER, parameter::SET_ATTRIBUTED_TEXT) => {
                 note_arena_ref(frame, op.b(), &mut max);
             }
             (category::PARAMETER, parameter::SET_PROPERTY) => {
@@ -170,6 +172,24 @@ fn styled_text_mount() -> Scenario {
     }
 }
 
+fn attributed_text_mount() -> Scenario {
+    let mut engine = Engine::new();
+    let mut root = text_node("Hi");
+    root.attributed_text = Some(
+        AttributedString::new(
+            "Hi",
+            vec![StyleRun::new(0, 2).bold()],
+            vec![LinkRun::new(1, 2, "x")],
+        )
+        .expect("valid attributed text"),
+    );
+    assign_ids(&mut root, &mut 1);
+    Scenario {
+        name: "attributed_text_mount",
+        steps: vec![("000-mount", emit_frame(&mut engine, &root))],
+    }
+}
+
 fn structural_add_remove() -> Scenario {
     let mut engine = Engine::new();
     let mut root = vstack(vec![text_node("a")]);
@@ -199,6 +219,7 @@ fn scenarios() -> Vec<Scenario> {
         signal_text_delta(),
         property_signal_delta(),
         styled_text_mount(),
+        attributed_text_mount(),
         structural_add_remove(),
     ]
 }

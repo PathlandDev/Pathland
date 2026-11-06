@@ -56,6 +56,14 @@ open class FrameOpcodeSink : OpcodeSink {
         push(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, nodeId, offset, 0)
     }
 
+    override fun setAttributedText(nodeId: Int, value: dev.pathland.view.core.AttributedString) {
+        val offset = strings.size()
+        val payload = value.encode()
+        writeIntLE(payload.size)
+        strings.writeBytes(payload)
+        push(Categories.PARAMETER, Commands.Parameter.SET_ATTRIBUTED_TEXT, 0, nodeId, offset, 0)
+    }
+
     override fun setProperty(nodeId: Int, property: Int, valueType: Int, value: Any) {
         val b = (valueType shl 16) or (property and 0xFFFF)
         when (valueType) {

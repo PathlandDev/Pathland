@@ -53,6 +53,7 @@ command	Parameter	SET_PROPERTY	0x01
 command	Parameter	SET_DESIGN_TOKEN	0x02
 command	Parameter	SET_TEXT	0x03
 command	Parameter	SET_DATE	0x04
+command	Parameter	SET_ATTRIBUTED_TEXT	0x05
 command	Event	POINTER_DOWN	0x01
 command	Event	POINTER_MOVE	0x02
 command	Event	POINTER_UP	0x03

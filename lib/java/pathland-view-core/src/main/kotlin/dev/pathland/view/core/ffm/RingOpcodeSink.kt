@@ -53,6 +53,11 @@ class RingOpcodeSink : OpcodeSink, AutoCloseable {
         push(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, nodeId, ref, 0)
     }
 
+    override fun setAttributedText(nodeId: Int, value: dev.pathland.view.core.AttributedString) {
+        val ref = core.arenaAlloc(handle, value.encode())
+        push(Categories.PARAMETER, Commands.Parameter.SET_ATTRIBUTED_TEXT, 0, nodeId, ref, 0)
+    }
+
     override fun setProperty(nodeId: Int, property: Int, valueType: Int, value: Any) {
         val b = (valueType shl 16) or (property and 0xFFFF)
         when (valueType) {

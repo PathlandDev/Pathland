@@ -17,6 +17,11 @@ Statelessness). Protocol contract: `spec/`.
   proxying server spliced in — the renderer holds no notion of "remote"
   (spec/PROXY.md §5). Without this arm the component fell to the `_ => String::new()`
   default and the spliced subtree was dropped. Covered by a unit test.
+- **Attributed text**: `SET_ATTRIBUTED_TEXT` decodes the binary payload into the
+  node model and renders non-overlapping `<span style>` runs plus `<a href>`
+  links (v1 attributes: font size/weight/color/style/design/underline/
+  strikethrough); text and URLs are escaped, and the plain text remains the
+  fallback. Covered by a unit test.
 - **Stateless streaming API**: `HtmlRenderer::render_document(opcodes, strings, root)`
   / `render_fragment(...)` build a transient decode map per call and stream HTML;
   the retained `apply`/`apply_frame`/`render` model is removed.

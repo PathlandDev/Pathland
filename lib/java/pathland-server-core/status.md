@@ -9,6 +9,9 @@ dependency — framework glue lives in the starters.
 
 ## Implemented
 
+- **Attributed text transport**: `FrameRebase` rebases `SET_ATTRIBUTED_TEXT`'s
+  string-section offset (like `SET_TEXT`) for delta batching/frame merging, and
+  `ProxyIdMap` remaps its node id.
 - **Window metadata + SSR head attrs**: `PathlandSession.renderHtml` injects host attrs into the renderer's opening `<html …>` (which now carries `lang`), and `FrameRebase` rebases `SET_WINDOW_METADATA` string offsets. Proxy origin metadata is dropped with the other META opcodes.
 
 - **`PathlandApp`** — the app's root-view factory (`View newRoot()` + optional

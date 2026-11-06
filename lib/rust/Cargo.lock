@@ -627,6 +627,7 @@ name = "pathland-engine"
 version = "0.1.5"
 dependencies = [
  "pathland-core",
+ "pathland-markdown",
 ]
 
 [[package]]
@@ -645,6 +646,21 @@ dependencies = [
  "pathland-core",
  "pathland-core-transport",
  "pathland-render-html",
+]
+
+[[package]]
+name = "pathland-markdown"
+version = "0.1.5"
+dependencies = [
+ "pathland-core",
+]
+
+[[package]]
+name = "pathland-markdown-capi"
+version = "0.1.5"
+dependencies = [
+ "pathland-core",
+ "pathland-markdown",
 ]
 
 [[package]]
@@ -738,6 +754,7 @@ version = "0.1.5"
 dependencies = [
  "pathland-core",
  "pathland-engine",
+ "pathland-markdown",
 ]
 
 [[package]]

@@ -9,6 +9,12 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 
 ## Implemented
 
+- **Attributed text**: decodes `SET_ATTRIBUTED_TEXT` payloads and applies them to
+  the hydrated text element as styled `<span>`/`<a href>` runs (v1 attributes:
+  font size/weight/color/style/design/underline/strikethrough). An explicit
+  `SET_TEXT` clears the rich-text marker; plain `TEXT`/`LABEL` updates never wipe
+  rich spans. Full rebuild on payload change; the optional surgical `Range`
+  fast path is deferred.
 - **Window metadata**: the DOM client applies `META::SET_WINDOW_METADATA` at runtime — `TITLE` → `document.title`, `DESCRIPTION` → meta description, `LOCALE` → `<html lang>`; empty clears to the renderer default. `LABEL` also names buttons and slider inputs; the media shell is `aria-hidden`.
 
 - **Single source, unified**: `src/` is the one client; `npm run build` emits

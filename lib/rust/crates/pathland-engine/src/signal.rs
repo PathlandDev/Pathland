@@ -42,6 +42,8 @@ pub enum SignalValue {
     Enum(u8),
     /// A string (text content, font family).
     Str(String),
+    /// Attributed text (style runs + links).
+    Attributed(pathland_core::AttributedString),
 }
 
 impl SignalValue {
@@ -57,7 +59,7 @@ impl SignalValue {
             SignalValue::U32(u) => Some(*u),
             SignalValue::Bool(b) => Some(if *b { 1 } else { 0 }),
             SignalValue::Enum(e) => Some((*e as f32).to_bits()),
-            SignalValue::Str(_) => None,
+            SignalValue::Str(_) | SignalValue::Attributed(_) => None,
         }
     }
 
@@ -65,6 +67,14 @@ impl SignalValue {
     pub fn to_text(&self) -> Option<&str> {
         match self {
             SignalValue::Str(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    /// The attributed text for an attributed binding.
+    pub fn to_attributed(&self) -> Option<&pathland_core::AttributedString> {
+        match self {
+            SignalValue::Attributed(value) => Some(value),
             _ => None,
         }
     }
@@ -80,6 +90,8 @@ pub struct SignalId(pub u32);
 pub enum Dep {
     /// The node's text is bound to the signal.
     Text { node: u32 },
+    /// The node's attributed text is bound to the signal.
+    AttributedText { node: u32 },
     /// A node property is bound to the signal.
     Property { node: u32, prop: u16 },
     /// A `STRING`-valued node property is bound to the signal (e.g. a media
@@ -150,6 +162,18 @@ impl SignalValueKind for String {
     fn from_signal_value(value: &SignalValue) -> Option<Self> {
         match value {
             SignalValue::Str(v) => Some(v.clone()),
+            _ => None,
+        }
+    }
+}
+
+impl SignalValueKind for pathland_core::AttributedString {
+    fn into_signal_value(self) -> SignalValue {
+        SignalValue::Attributed(self)
+    }
+    fn from_signal_value(value: &SignalValue) -> Option<Self> {
+        match value {
+            SignalValue::Attributed(v) => Some(v.clone()),
             _ => None,
         }
     }
@@ -252,8 +276,7 @@ impl Runtime {
     /// Create a **computed** signal (lazily evaluated, memoized, equality
     /// suppressed). The closure reads other signals via their handles.
     pub fn computed<T: SignalValueKind>(&self, compute: impl Fn() -> T + 'static) -> Signal<T> {
-        let wrapped: Rc<dyn Fn() -> SignalValue> =
-            Rc::new(move || compute().into_signal_value());
+        let wrapped: Rc<dyn Fn() -> SignalValue> = Rc::new(move || compute().into_signal_value());
         let mut store = self.store.borrow_mut();
         let id = SignalId(store.cells.len() as u32);
         store.cells.push(Cell {
@@ -702,11 +725,20 @@ mod tests {
 
     #[test]
     fn packing_matches_protocol_convention() {
-        assert_eq!(SignalValue::F32(4.0).to_property_u32(), Some(4.0f32.to_bits()));
-        assert_eq!(SignalValue::U32(0xFF_0000FF).to_property_u32(), Some(0xFF_0000FF));
+        assert_eq!(
+            SignalValue::F32(4.0).to_property_u32(),
+            Some(4.0f32.to_bits())
+        );
+        assert_eq!(
+            SignalValue::U32(0xFF_0000FF).to_property_u32(),
+            Some(0xFF_0000FF)
+        );
         assert_eq!(SignalValue::Bool(true).to_property_u32(), Some(1));
         assert_eq!(SignalValue::Bool(false).to_property_u32(), Some(0));
-        assert_eq!(SignalValue::Enum(2).to_property_u32(), Some(2.0f32.to_bits()));
+        assert_eq!(
+            SignalValue::Enum(2).to_property_u32(),
+            Some(2.0f32.to_bits())
+        );
         assert_eq!(SignalValue::Str("x".into()).to_property_u32(), None);
         assert_eq!(SignalValue::Str("x".into()).to_text(), Some("x"));
         assert_eq!(SignalValue::F32(1.0).to_text(), None);

@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    category, init_memory, listener, property_id, size, parameter, tree, value_type, Guest, Host,
-    MemoryLayout, Opcode,
+    category, init_memory, listener, parameter, property_id, size, tree, value_type,
+    AttributedString, Guest, Host, MemoryLayout, Opcode, StyleRun,
 };
 use pathland_engine::{assign_ids, component_type_id, Component, Engine, Node};
 
@@ -43,9 +43,12 @@ fn text_node(text: &str) -> Node {
         children: Vec::new(),
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
-    list_properties: BTreeMap::new(),
+        list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
+        markdown_text: false,
+        attributed_text: None,
+        attributed_binding: None,
         property_bindings: BTreeMap::new(),
         string_bindings: BTreeMap::new(),
         media_controller: None,
@@ -60,9 +63,12 @@ fn vstack(children: Vec<Node>) -> Node {
         children,
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
-    list_properties: BTreeMap::new(),
+        list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
+        markdown_text: false,
+        attributed_text: None,
+        attributed_binding: None,
         property_bindings: BTreeMap::new(),
         string_bindings: BTreeMap::new(),
         media_controller: None,
@@ -77,9 +83,12 @@ fn hstack(children: Vec<Node>) -> Node {
         children,
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
-    list_properties: BTreeMap::new(),
+        list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
+        markdown_text: false,
+        attributed_text: None,
+        attributed_binding: None,
         property_bindings: BTreeMap::new(),
         string_bindings: BTreeMap::new(),
         media_controller: None,
@@ -91,8 +100,10 @@ fn hstack(children: Vec<Node>) -> Node {
 fn first_emit_produces_full_structure() {
     let mut engine = Engine::new();
     let mut root = vstack(vec![text_node("ab"), text_node("cd")]);
-    root.properties.insert(property_id::SPACING, 4.0f32.to_bits());
-    root.properties.insert(property_id::PADDING, 8.0f32.to_bits());
+    root.properties
+        .insert(property_id::SPACING, 4.0f32.to_bits());
+    root.properties
+        .insert(property_id::PADDING, 8.0f32.to_bits());
     assign_ids(&mut root, &mut 1);
 
     let ops = emit_and_collect(&mut engine, &root);
@@ -162,7 +173,10 @@ fn emit_and_read_token(engine: &mut Engine, root: &Node) -> (u16, u8, String) {
         if op.category() == category::PARAMETER && op.command() == parameter::SET_PROPERTY {
             let prop = op.b() as u16;
             let vt = (op.b() >> 16) as u8;
-            let path = frame.arena_str(op.c()).map(str::to_owned).unwrap_or_default();
+            let path = frame
+                .arena_str(op.c())
+                .map(str::to_owned)
+                .unwrap_or_default();
             return (prop, vt, path);
         }
     }
@@ -189,7 +203,11 @@ fn unchanged_token_ref_emits_zero_opcodes() {
         .insert(property_id::COLOR, "color.primary".into());
     emit_and_collect(&mut engine, &root);
     let ops = emit_and_collect(&mut engine, &root);
-    assert_eq!(ops.len(), 0, "no arena churn / no re-emission for an unchanged ref");
+    assert_eq!(
+        ops.len(),
+        0,
+        "no arena churn / no re-emission for an unchanged ref"
+    );
 }
 
 #[test]
@@ -207,6 +225,89 @@ fn token_ref_change_emits_single_design_token_delta() {
     assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
     assert_eq!(ops[0].b() as u16, property_id::COLOR);
     assert_eq!(ops[0].b() >> 16, value_type::DESIGN_TOKEN as u32);
+}
+
+#[test]
+fn attributed_text_mount_and_delta_emit_set_attributed_text() {
+    let mut engine = Engine::new();
+    let mut root = built(text_node("Hi"));
+    root.attributed_text =
+        Some(AttributedString::new("Hi", vec![StyleRun::new(0, 2).bold()], vec![]).unwrap());
+    let ops = emit_and_collect(&mut engine, &root);
+    assert_eq!(
+        ops.iter()
+            .filter(|o| o.command() == parameter::SET_TEXT)
+            .count(),
+        0,
+        "attributed text supersedes plain SET_TEXT"
+    );
+    assert_eq!(
+        ops.iter()
+            .filter(|o| o.command() == parameter::SET_ATTRIBUTED_TEXT)
+            .count(),
+        1
+    );
+
+    // Unchanged payload: zero opcodes.
+    assert!(emit_and_collect(&mut engine, &root).is_empty());
+
+    // A changed payload re-emits exactly one opcode.
+    root.attributed_text =
+        Some(AttributedString::new("Hi", vec![StyleRun::new(0, 2).italic()], vec![]).unwrap());
+    let ops = emit_and_collect(&mut engine, &root);
+    assert_eq!(ops.len(), 1);
+    assert_eq!(ops[0].command(), parameter::SET_ATTRIBUTED_TEXT);
+    assert_eq!(ops[0].a(), 1);
+}
+
+#[test]
+fn text_auto_parses_inline_markdown() {
+    let mut engine = Engine::new();
+    let mut root = built(text_node("**Hi**"));
+    root.markdown_text = true;
+    let ops = emit_and_collect(&mut engine, &root);
+    assert_eq!(
+        ops.iter()
+            .filter(|o| o.command() == parameter::SET_ATTRIBUTED_TEXT)
+            .count(),
+        1
+    );
+    assert_eq!(
+        ops.iter().filter(|o| o.command() == parameter::SET_TEXT).count(),
+        0
+    );
+
+    // Plain content still uses the compact SET_TEXT path.
+    let mut plain_engine = Engine::new();
+    let mut plain = built(text_node("Hi"));
+    plain.markdown_text = true;
+    let ops = emit_and_collect(&mut plain_engine, &plain);
+    assert_eq!(
+        ops.iter().filter(|o| o.command() == parameter::SET_TEXT).count(),
+        1
+    );
+    assert_eq!(
+        ops.iter()
+            .filter(|o| o.command() == parameter::SET_ATTRIBUTED_TEXT)
+            .count(),
+        0
+    );
+
+    // Opt-out keeps the Markdown markers literal.
+    let mut literal_engine = Engine::new();
+    let mut literal = built(text_node("**Hi**"));
+    literal.markdown_text = false;
+    let ops = emit_and_collect(&mut literal_engine, &literal);
+    assert_eq!(
+        ops.iter().filter(|o| o.command() == parameter::SET_TEXT).count(),
+        1
+    );
+    assert_eq!(
+        ops.iter()
+            .filter(|o| o.command() == parameter::SET_ATTRIBUTED_TEXT)
+            .count(),
+        0
+    );
 }
 
 #[test]
@@ -232,8 +333,12 @@ fn node_added_emits_create_and_insert() {
     assign_ids(&mut root, &mut 1);
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 3);
-    assert!(ops.iter().any(|o| o.command() == tree::CREATE_NODE && o.a() == 3));
-    assert!(ops.iter().any(|o| o.command() == tree::INSERT_CHILD && o.b() == 3));
+    assert!(ops
+        .iter()
+        .any(|o| o.command() == tree::CREATE_NODE && o.a() == 3));
+    assert!(ops
+        .iter()
+        .any(|o| o.command() == tree::INSERT_CHILD && o.b() == 3));
 }
 
 #[test]
@@ -269,9 +374,12 @@ fn child_reordered_emits_move() {
 fn frame_emits_width_height_alignment_as_ordinary_properties() {
     let mut engine = Engine::new();
     let mut root = text_node("x");
-    root.properties.insert(property_id::WIDTH, size::FILL.to_bits());
-    root.properties.insert(property_id::HEIGHT, 24.0f32.to_bits());
-    root.properties.insert(property_id::ALIGNMENT, 1.0f32.to_bits());
+    root.properties
+        .insert(property_id::WIDTH, size::FILL.to_bits());
+    root.properties
+        .insert(property_id::HEIGHT, 24.0f32.to_bits());
+    root.properties
+        .insert(property_id::ALIGNMENT, 1.0f32.to_bits());
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 5);
     let width = ops
@@ -295,12 +403,16 @@ fn frame_emits_width_height_alignment_as_ordinary_properties() {
 fn frame_change_emits_only_size_delta() {
     let mut engine = Engine::new();
     let mut root = text_node("x");
-    root.properties.insert(property_id::WIDTH, 100.0f32.to_bits());
-    root.properties.insert(property_id::HEIGHT, 24.0f32.to_bits());
-    root.properties.insert(property_id::ALIGNMENT, 0.0f32.to_bits());
+    root.properties
+        .insert(property_id::WIDTH, 100.0f32.to_bits());
+    root.properties
+        .insert(property_id::HEIGHT, 24.0f32.to_bits());
+    root.properties
+        .insert(property_id::ALIGNMENT, 0.0f32.to_bits());
     emit_and_collect(&mut engine, &root);
 
-    root.properties.insert(property_id::WIDTH, 120.0f32.to_bits());
+    root.properties
+        .insert(property_id::WIDTH, 120.0f32.to_bits());
     let ops = emit_and_collect(&mut engine, &root);
     assert_eq!(ops.len(), 1, "only the width delta should emit");
     assert_eq!(ops[0].command(), parameter::SET_PROPERTY);
@@ -322,10 +434,7 @@ fn event_listeners_emits_u32_value_type() {
         .find(|o| o.b() as u16 == property_id::EVENT_LISTENERS)
         .unwrap();
     assert_eq!(listeners.b() >> 16, value_type::U32 as u32);
-    assert_eq!(
-        listeners.c(),
-        listener::POINTER_DOWN | listener::POINTER_UP
-    );
+    assert_eq!(listeners.c(), listener::POINTER_DOWN | listener::POINTER_UP);
 }
 
 #[test]
@@ -362,8 +471,10 @@ fn emit_is_zero_alloc_in_steady_state() {
 
     let (mut mem, layout) = with_guest();
     let mut root = vstack(vec![text_node("one"), text_node("two")]);
-    root.properties.insert(property_id::SPACING, 4.0f32.to_bits());
-    root.properties.insert(property_id::PADDING, 8.0f32.to_bits());
+    root.properties
+        .insert(property_id::SPACING, 4.0f32.to_bits());
+    root.properties
+        .insert(property_id::PADDING, 8.0f32.to_bits());
     // Token-ref properties must also be steady-state zero-alloc (no fresh map,
     // no arena re-alloc on an unchanged ref).
     root.children[0]
@@ -466,6 +577,9 @@ fn list_property_emits_fit_query_with_the_list_value_type() {
         list_properties: BTreeMap::from([(property_id::FIT_QUERY, vec![0f32, 640.0])]),
         token_properties: BTreeMap::new(),
         text_binding: None,
+        markdown_text: false,
+        attributed_text: None,
+        attributed_binding: None,
         property_bindings: BTreeMap::new(),
         string_bindings: BTreeMap::new(),
         media_controller: None,
@@ -477,7 +591,10 @@ fn list_property_emits_fit_query_with_the_list_value_type() {
         .iter()
         .find(|o| o.category() == category::TREE && o.command() == tree::CREATE_NODE)
         .expect("slot created");
-    assert_eq!(create.b() as u16, component_type_id(&Component::SizeThatFits));
+    assert_eq!(
+        create.b() as u16,
+        component_type_id(&Component::SizeThatFits)
+    );
 
     let query = ops
         .iter()

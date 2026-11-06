@@ -154,6 +154,13 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 Apply to `Text`, `Label`, `Button` labels, and text-bearing controls. Renderers
 map them to their native text attributes.
 
+The same property vocabulary scopes to character ranges in
+`PARAMETER::SET_ATTRIBUTED_TEXT` style runs. V1 run attributes are `FONT_SIZE`,
+`FONT_WEIGHT`, `COLOR`, `FONT_STYLE`, `FONT_DESIGN`, `UNDERLINE`, and
+`STRIKETHROUGH`; `FONT_FAMILY` (a `STRING`) and the remaining line/effect
+properties stay node-level only. See
+[OPCODE.md](./OPCODE.md#attributed-text-payload-set_attributed_text).
+
 | SwiftUI modifier | Protocol property(ies) | Type | Emission |
 | ------------------ | ------------------------ | ------ | ---------- |
 | `.font(.system(size:))` | `FONT_SIZE` 0x1007 | F32 | one |

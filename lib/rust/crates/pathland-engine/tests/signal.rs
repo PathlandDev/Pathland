@@ -3,7 +3,8 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    category, init_memory, property_id, parameter, value_type, Guest, Host, MemoryLayout, Opcode,
+    category, init_memory, parameter, property_id, value_type, AttributedString, Guest, Host,
+    MemoryLayout, Opcode, StyleRun,
 };
 use pathland_engine::{assign_ids, Component, Engine, Node, SignalId, SignalValue};
 
@@ -21,9 +22,12 @@ fn text_node(text: &str) -> Node {
         children: Vec::new(),
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
-    list_properties: BTreeMap::new(),
+        list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
+        markdown_text: false,
+        attributed_text: None,
+        attributed_binding: None,
         property_bindings: BTreeMap::new(),
         string_bindings: BTreeMap::new(),
         media_controller: None,
@@ -38,9 +42,12 @@ fn vstack(children: Vec<Node>) -> Node {
         children,
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
-    list_properties: BTreeMap::new(),
+        list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
+        markdown_text: false,
+        attributed_text: None,
+        attributed_binding: None,
         property_bindings: BTreeMap::new(),
         string_bindings: BTreeMap::new(),
         media_controller: None,
@@ -129,6 +136,77 @@ fn unrelated_node_emits_nothing_on_signal_change() {
 }
 
 #[test]
+fn markdown_text_signal_parses_on_change_and_uses_the_plain_fast_path() {
+    let mut engine = Engine::new();
+    let sig = engine.create_signal(SignalValue::Str("**Hi**".into()));
+
+    let (mut mem, layout) = with_guest();
+    let mut root = vstack(vec![text_node("**Hi**")]);
+    root.children[0].text_binding = Some(sig);
+    root.children[0].markdown_text = true;
+    assign_ids(&mut root, &mut 1);
+    emit_full(&mut engine, &root, &mut mem, &layout);
+
+    let (_, ops) = set_and_collect(
+        &mut engine,
+        sig,
+        SignalValue::Str("plain".into()),
+        &mut mem,
+        &layout,
+    );
+    assert_eq!(ops.len(), 1);
+    assert_eq!(ops[0].command(), parameter::SET_TEXT);
+
+    let (_, ops) = set_and_collect(
+        &mut engine,
+        sig,
+        SignalValue::Str("__Bold__".into()),
+        &mut mem,
+        &layout,
+    );
+    assert_eq!(ops.len(), 1);
+    assert_eq!(ops[0].command(), parameter::SET_ATTRIBUTED_TEXT);
+}
+
+#[test]
+fn attributed_signal_change_emits_set_attributed_text() {
+    let mut engine = Engine::new();
+    let initial = AttributedString::new("Hi", vec![StyleRun::new(0, 2).bold()], vec![]).unwrap();
+    let sig = engine.create_signal(SignalValue::Attributed(initial.clone()));
+
+    let (mut mem, layout) = with_guest();
+    let mut root = text_node("Hi");
+    root.attributed_text = Some(initial);
+    root.attributed_binding = Some(sig);
+    assign_ids(&mut root, &mut 1);
+    emit_full(&mut engine, &root, &mut mem, &layout);
+
+    let updated = AttributedString::new("Hi", vec![StyleRun::new(0, 2).italic()], vec![]).unwrap();
+    let (n, ops) = set_and_collect(
+        &mut engine,
+        sig,
+        SignalValue::Attributed(updated.clone()),
+        &mut mem,
+        &layout,
+    );
+    assert_eq!(n, 1);
+    assert_eq!(ops.len(), 1);
+    assert_eq!(ops[0].command(), parameter::SET_ATTRIBUTED_TEXT);
+    assert_eq!(ops[0].a(), 1);
+
+    // Re-setting the same value emits nothing (steady state).
+    let (n, ops) = set_and_collect(
+        &mut engine,
+        sig,
+        SignalValue::Attributed(updated),
+        &mut mem,
+        &layout,
+    );
+    assert_eq!(n, 0);
+    assert!(ops.is_empty());
+}
+
+#[test]
 fn property_signal_change_emits_set_property() {
     let mut engine = Engine::new();
     let sig = engine.create_signal(SignalValue::F32(4.0));
@@ -140,13 +218,7 @@ fn property_signal_change_emits_set_property() {
 
     emit_full(&mut engine, &root, &mut mem, &layout);
 
-    let (n, ops) = set_and_collect(
-        &mut engine,
-        sig,
-        SignalValue::F32(12.0),
-        &mut mem,
-        &layout,
-    );
+    let (n, ops) = set_and_collect(&mut engine, sig, SignalValue::F32(12.0), &mut mem, &layout);
     assert_eq!(n, 1);
     assert_eq!(ops.len(), 1);
     assert_eq!(ops[0].category(), category::PARAMETER);
@@ -176,7 +248,10 @@ fn color_signal_packs_as_color_value_type() {
         &layout,
     );
     assert_eq!(n, 1);
-    let op = ops.iter().find(|o| o.b() as u16 == property_id::COLOR).unwrap();
+    let op = ops
+        .iter()
+        .find(|o| o.b() as u16 == property_id::COLOR)
+        .unwrap();
     assert_eq!(op.b() >> 16, value_type::COLOR as u32);
     assert_eq!(op.c(), 0xFF_00FF00);
 }
@@ -242,7 +317,10 @@ fn typed_signal_read_write_and_binding() {
     let mut engine = Engine::new();
     let label = engine.signal(String::from("hello"));
     // Typed read returns the current value.
-    assert_eq!(engine.read(label.as_readonly()), Some(String::from("hello")));
+    assert_eq!(
+        engine.read(label.as_readonly()),
+        Some(String::from("hello"))
+    );
 
     let (mut mem, layout) = with_guest();
     let mut root = vstack(vec![text_node("")]);
@@ -258,7 +336,10 @@ fn typed_signal_read_write_and_binding() {
         .unwrap();
     guest.end_frame();
     assert_eq!(n, 1);
-    assert_eq!(engine.read(label.as_readonly()), Some(String::from("world")));
+    assert_eq!(
+        engine.read(label.as_readonly()),
+        Some(String::from("world"))
+    );
 }
 
 #[test]
@@ -269,15 +350,14 @@ fn typed_numeric_signal_packs_by_kind() {
 
     let (mut mem, layout) = with_guest();
     let mut root = vstack(vec![text_node("x")]);
-    root.property_bindings.insert(property_id::SPACING, spacing.id());
+    root.property_bindings
+        .insert(property_id::SPACING, spacing.id());
     assign_ids(&mut root, &mut 1);
     emit_full(&mut engine, &root, &mut mem, &layout);
 
     let mut guest = Guest::new(&mut mem, &layout);
     guest.begin_frame();
-    let n = engine
-        .set(spacing.clone(), 12.0f32, &mut guest)
-        .unwrap();
+    let n = engine.set(spacing.clone(), 12.0f32, &mut guest).unwrap();
     guest.end_frame();
     assert_eq!(n, 1);
 
@@ -297,7 +377,11 @@ fn computed_signal_reemits_its_bound_node() {
     let n = engine.signal(2.0f32);
     let nc = n.clone();
     let label = engine.computed(move || {
-        String::from(if nc.get().unwrap() > 1.0 { "big" } else { "small" })
+        String::from(if nc.get().unwrap() > 1.0 {
+            "big"
+        } else {
+            "small"
+        })
     });
 
     let (mut mem, layout) = with_guest();
@@ -307,13 +391,25 @@ fn computed_signal_reemits_its_bound_node() {
     emit_full(&mut engine, &root, &mut mem, &layout);
 
     // Setting the source recomputes the computed and re-emits the bound node.
-    let (count, ops) = set_and_collect(&mut engine, n.id(), SignalValue::F32(0.0), &mut mem, &layout);
+    let (count, ops) = set_and_collect(
+        &mut engine,
+        n.id(),
+        SignalValue::F32(0.0),
+        &mut mem,
+        &layout,
+    );
     assert_eq!(count, 1);
     assert_eq!(ops[0].command(), parameter::SET_TEXT);
     assert_eq!(ops[0].a(), 2);
 
     // A second set that leaves the computed value unchanged emits nothing.
-    let (count, ops) = set_and_collect(&mut engine, n.id(), SignalValue::F32(-5.0), &mut mem, &layout);
+    let (count, ops) = set_and_collect(
+        &mut engine,
+        n.id(),
+        SignalValue::F32(-5.0),
+        &mut mem,
+        &layout,
+    );
     assert_eq!(count, 0);
     assert!(ops.is_empty());
 }

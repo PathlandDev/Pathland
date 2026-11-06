@@ -292,6 +292,7 @@
                                 <arguments>
                                     <argument>build</argument>
                                     <argument>--package=pathland-render-html</argument>
+                                    <argument>--package=pathland-markdown-capi</argument>
                                 </arguments>
                             </configuration>
                         </execution>
@@ -318,7 +319,7 @@
                                 <arguments>
                                     <argument>-q</argument>
                                     <argument>-pl</argument>
-                                    <argument>pathland-render-html</argument>
+                                    <argument>pathland-view-core,pathland-render-html</argument>
                                     <argument>process-resources</argument>
                                 </arguments>
                             </configuration>

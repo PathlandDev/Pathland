@@ -2609,6 +2609,16 @@ fn style_css(node: &HostNode) -> String {
 /// Pango attributes. A predefined `TEXT_STYLE` supplies the default size/weight;
 /// explicit `FONT_SIZE`/`FONT_WEIGHT` override it (raw modifiers layer on top).
 fn apply_text_style(label: &Label, node: &HostNode) {
+    // Rich text uses Pango **markup** (not an `AttrList`): pango 0.20 has no
+    // link attribute, and markup gives us `<a href>` plus nested spans for the
+    // style runs. Plain text keeps the existing `AttrList` path.
+    if let Some(markup) = attributed_markup(node) {
+        label.set_attributes(None);
+        label.set_markup(&markup);
+        apply_text_layout(label, node);
+        return;
+    }
+
     let attrs = pango::AttrList::new();
     let style = node
         .properties
@@ -2659,13 +2669,14 @@ fn apply_text_style(label: &Label, node: &HostNode) {
         attrs.insert(fg);
     }
     label.set_attributes(Some(&attrs));
+    apply_text_layout(label, node);
+}
 
-    // Layout (spec LAYOUT.md §content fitting): a Fixed `WIDTH` wraps the text
-    // within the box (a GTK label otherwise takes its natural un-wrapped width);
-    // `LINE_LIMIT` clamps the line count and truncates with an ellipsis, whose
-    // position follows `TRUNCATION_MODE` when present (Tail default). A
-    // `TRUNCATION_MODE` **alone** has no observable effect (SwiftUI-aligned):
-    // it never forces a single line and never truncates by itself.
+/// Content fitting (spec LAYOUT.md): a Fixed `WIDTH` wraps the text within the
+/// box; `LINE_LIMIT` clamps the line count and truncates with an ellipsis whose
+/// position follows `TRUNCATION_MODE` (Tail default). A `TRUNCATION_MODE` alone
+/// has no observable effect (SwiftUI-aligned).
+fn apply_text_layout(label: &Label, node: &HostNode) {
     let fixed_width = fixed_size(node, property_id::WIDTH).is_some();
     let line_limit = node.properties.get(&property_id::LINE_LIMIT).copied();
     let trunc = node
@@ -2679,9 +2690,6 @@ fn apply_text_style(label: &Label, node: &HostNode) {
     if let Some(n) = line_limit {
         if n > 0 {
             label.set_lines(n as i32);
-            // Only a LINE_LIMIT clamp truncates; TRUNCATION_MODE positions the
-            // ellipsis (renderer-owned fidelity: Start/Middle are reliable for
-            // single-line labels, best-effort on a multi-line clamp).
             label.set_ellipsize(
                 trunc
                     .map(layout::ellipsize_from)
@@ -2689,6 +2697,146 @@ fn apply_text_style(label: &Label, node: &HostNode) {
             );
         }
     }
+}
+
+/// Build Pango markup for an attributed-text node: base node styles as an outer
+/// span, then one span per non-overlapping segment, with `<a href>` for links.
+/// Returns `None` for plain text (the `AttrList` path owns it).
+fn attributed_markup(node: &HostNode) -> Option<String> {
+    let attributed = node.attributed.as_ref()?;
+    let base = node_markup_attrs(node);
+    let mut out = String::new();
+    if !base.is_empty() {
+        out.push_str("<span ");
+        out.push_str(&base);
+        out.push('>');
+    }
+    for segment in attributed.segments() {
+        let text = &attributed.text()[segment.start as usize..segment.end as usize];
+        let body = escape_pango(text);
+        let attrs = run_markup_attrs(&segment.attributes);
+        let body = if attrs.is_empty() {
+            body
+        } else {
+            format!("<span {attrs}>{body}</span>")
+        };
+        let body = match segment.link {
+            Some(url) => format!("<a href=\"{}\">{body}</a>", escape_pango_attr(url)),
+            None => body,
+        };
+        out.push_str(&body);
+    }
+    if !base.is_empty() {
+        out.push_str("</span>");
+    }
+    Some(out)
+}
+
+/// The node-level text-format properties as Pango markup attributes.
+fn node_markup_attrs(node: &HostNode) -> String {
+    let mut parts = Vec::new();
+    if let Some(v) = node.properties.get(&property_id::FONT_SIZE) {
+        let size = f32::from_bits(*v);
+        if size > 0.0 {
+            parts.push(format!("size=\"{size}pt\""));
+        }
+    }
+    if let Some(v) = node.properties.get(&property_id::FONT_WEIGHT) {
+        let weight = f32::from_bits(*v);
+        if weight > 0.0 {
+            parts.push(format!("weight=\"{weight}\""));
+        }
+    }
+    if let Some(v) = node.properties.get(&property_id::FONT_STYLE) {
+        if f32::from_bits(*v) as u8 == 1 {
+            parts.push("style=\"italic\"".to_string());
+        }
+    }
+    if let Some(family) = node.string_property(property_id::FONT_FAMILY) {
+        parts.push(format!("font_family=\"{}\"", escape_pango_attr(family)));
+    } else if let Some(v) = node.properties.get(&property_id::FONT_DESIGN) {
+        if let Some(family) = font_design_family(f32::from_bits(*v) as u8) {
+            parts.push(format!("font_family=\"{family}\""));
+        }
+    }
+    if let Some(v) = node.properties.get(&property_id::COLOR) {
+        let c = *v;
+        parts.push(format!(
+            "foreground=\"#{:02x}{:02x}{:02x}\"",
+            (c >> 16) & 0xFF,
+            (c >> 8) & 0xFF,
+            c & 0xFF
+        ));
+    }
+    if node.u32_property(property_id::UNDERLINE, 0) != 0 {
+        parts.push("underline=\"single\"".to_string());
+    }
+    if node.u32_property(property_id::STRIKETHROUGH, 0) != 0 {
+        parts.push("strikethrough=\"true\"".to_string());
+    }
+    parts.join(" ")
+}
+
+/// The v1 run attributes as Pango markup attributes.
+fn run_markup_attrs(attributes: &[pathland_core::TextAttribute]) -> String {
+    let mut parts = Vec::new();
+    for attr in attributes {
+        match attr.property {
+            property_id::FONT_SIZE => {
+                let size = f32::from_bits(attr.value);
+                if size > 0.0 {
+                    parts.push(format!("size=\"{size}pt\""));
+                }
+            }
+            property_id::FONT_WEIGHT => {
+                let weight = f32::from_bits(attr.value);
+                if weight > 0.0 {
+                    parts.push(format!("weight=\"{weight}\""));
+                }
+            }
+            property_id::FONT_STYLE => {
+                if f32::from_bits(attr.value) as u8 == 1 {
+                    parts.push("style=\"italic\"".to_string());
+                }
+            }
+            property_id::FONT_DESIGN => {
+                if let Some(family) = font_design_family(f32::from_bits(attr.value) as u8) {
+                    parts.push(format!("font_family=\"{family}\""));
+                }
+            }
+            property_id::COLOR => {
+                let c = attr.value;
+                parts.push(format!(
+                    "foreground=\"#{:02x}{:02x}{:02x}\"",
+                    (c >> 16) & 0xFF,
+                    (c >> 8) & 0xFF,
+                    c & 0xFF
+                ));
+            }
+            property_id::UNDERLINE => {
+                if attr.value != 0 {
+                    parts.push("underline=\"single\"".to_string());
+                }
+            }
+            property_id::STRIKETHROUGH => {
+                if attr.value != 0 {
+                    parts.push("strikethrough=\"true\"".to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    parts.join(" ")
+}
+
+fn escape_pango(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+fn escape_pango_attr(value: &str) -> String {
+    escape_pango(value).replace('"', "&quot;")
 }
 
 /// Run the GTK renderer over a shared ring, pumping frames in and waking the
@@ -3528,6 +3676,7 @@ mod tests {
             id,
             component_type,
             text: None,
+            attributed: None,
             parent: None,
             children,
             properties,

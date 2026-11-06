@@ -68,8 +68,14 @@ tracks what this crate implements.
   (spec/ICONS.md) as `&str` consts + `NAMES` + `is_canonical` — the protocol
   vocabulary only; the canonical-name → native-glyph mapping is renderer-owned
   (GTK + web each define their own).
+- **Attributed text** (`PARAMETER::SET_ATTRIBUTED_TEXT`, `0x05`) +
+  `AttributedString` model/codec: text + UTF-8-byte range style runs (v1:
+  `FONT_SIZE`/`FONT_WEIGHT`/`COLOR`/`FONT_STYLE`/`FONT_DESIGN`/`UNDERLINE`/
+  `STRIKETHROUGH`) + links, arena payload encode/decode, `Guest::set_attributed_text`,
+  and overlap-resolving `segments()`. Covered by conformance vector 46.
 - **Commands**: `TREE` create/delete/insert/remove/move (append = `u32::MAX`);
-  `PARAMETER` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`; `META`
+  `PARAMETER` `SET_PROPERTY`/`SET_DESIGN_TOKEN`/`SET_TEXT`/`SET_DATE`/
+  `SET_ATTRIBUTED_TEXT`; `META`
   `RESET`/`ENVIRONMENT`/`RESYNC`. **`META::PING`/`PONG`** (0x04/0x05) are the
   transport-liveness heartbeat — **network batch transport only** (a shared-memory
   ring consumer MUST NOT emit/expect/relay them); the core engine never produces

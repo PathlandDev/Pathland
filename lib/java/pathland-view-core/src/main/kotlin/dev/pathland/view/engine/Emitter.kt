@@ -1,5 +1,6 @@
 package dev.pathland.view.engine
 
+import dev.pathland.markdown.Markdown
 import dev.pathland.view.core.AdaptiveTheme
 import dev.pathland.view.core.Color
 import dev.pathland.view.core.Environment
@@ -761,8 +762,14 @@ class Emitter {
         if (parentId != null) sink.insertChild(parentId, node.id, index)
         ensureBindingId(node)
         for ((property, value) in node.properties) emitProperty(node.id, property, value)
-        val text = node.textValue()
-        if (text != null && text.isNotEmpty()) sink.setText(node.id, text)
+        val attributed = resolvedAttributed(node)
+        val rich = attributed?.takeUnless { it.isPlain }
+        if (rich != null) {
+            sink.setAttributedText(node.id, rich)
+        } else {
+            val text = attributed?.text ?: node.textValue()
+            if (text != null && text.isNotEmpty()) sink.setText(node.id, text)
+        }
         if (node.dateBinding != null) sink.setDate(node.id, node.days, node.millisOfDay)
         var childIndex = 0
         for (child in node.children) emitNode(child, node.id, childIndex++)
@@ -803,8 +810,32 @@ class Emitter {
                     val value = textBinding.get()
                     if (value != node.text) {
                         node.text = value
+                        val attributed = if (node.markdownText) Markdown.parseOrPlain(value) else null
                         sink.beginFrame()
-                        sink.setText(node.id, value)
+                        if (attributed != null && !attributed.isPlain) {
+                            sink.setAttributedText(node.id, attributed)
+                        } else {
+                            sink.setText(node.id, attributed?.text ?: value)
+                        }
+                        sink.endFrame()
+                    }
+                }
+                trackBinding(slot, node.id, effect)
+            }
+        }
+        node.attributedBinding?.let { attributedBinding ->
+            if (!isConstant(attributedBinding)) {
+                val effect = Signals.effect {
+                    val value = attributedBinding.get()
+                    if (value != node.attributedText) {
+                        node.attributedText = value
+                        node.text = value.text
+                        sink.beginFrame()
+                        if (value.isPlain) {
+                            sink.setText(node.id, value.text)
+                        } else {
+                            sink.setAttributedText(node.id, value)
+                        }
                         sink.endFrame()
                     }
                 }
@@ -889,9 +920,28 @@ class Emitter {
         }
         val oldText = old.text
         val freshText = currentText(fresh)
-        if (oldText != freshText) {
+        val oldAttributed = old.attributedText
+        var freshAttributed = currentAttributed(fresh)
+        if (freshAttributed == null && fresh.markdownText &&
+            (oldText != freshText || !old.markdownText)
+        ) {
+            freshAttributed = freshText?.let { Markdown.parseOrPlain(it) }
+        }
+        val freshRich = freshAttributed?.takeUnless { it.isPlain }
+        if (oldAttributed != freshAttributed) {
             val id = fresh.id
-            ops.add(Runnable { sink.setText(id, freshText!!) })
+            val rich = freshRich
+            if (rich != null) {
+                ops.add(Runnable { sink.setAttributedText(id, rich) })
+            } else {
+                val text = freshAttributed?.text ?: freshText
+                if (text != null && text.isNotEmpty()) {
+                    ops.add(Runnable { sink.setText(id, text) })
+                }
+            }
+        } else if (freshAttributed == null && oldText != freshText && freshText != null) {
+            val id = fresh.id
+            ops.add(Runnable { sink.setText(id, freshText) })
         }
         if (old.days != fresh.days || old.millisOfDay != fresh.millisOfDay) {
             val id = fresh.id
@@ -911,9 +961,15 @@ class Emitter {
         for ((property, value) in node.properties) {
             ops.add(Runnable { emitProperty(id, property, value) })
         }
-        val text = currentText(node)
-        if (text != null && text.isNotEmpty()) {
-            ops.add(Runnable { sink.setText(id, text) })
+        val attributed = resolvedAttributed(node)
+        val rich = attributed?.takeUnless { it.isPlain }
+        if (rich != null) {
+            ops.add(Runnable { sink.setAttributedText(id, rich) })
+        } else {
+            val text = attributed?.text ?: currentText(node)
+            if (text != null && text.isNotEmpty()) {
+                ops.add(Runnable { sink.setText(id, text) })
+            }
         }
         if (node.dateBinding != null) {
             val days = node.days
@@ -929,6 +985,18 @@ class Emitter {
 
     private fun currentText(node: PathlandNode): String? =
         node.textBinding?.let { Signals.untracked { it.get() } } ?: node.text
+
+    private fun currentAttributed(node: PathlandNode): dev.pathland.view.core.AttributedString? =
+        node.attributedBinding?.let { Signals.untracked { it.get() } } ?: node.attributedText
+
+    /** Explicit attributed text, or inline Markdown parsed from the node's text. */
+    private fun resolvedAttributed(
+        node: PathlandNode,
+    ): dev.pathland.view.core.AttributedString? {
+        currentAttributed(node)?.let { return it }
+        if (!node.markdownText) return null
+        return currentText(node)?.let { Markdown.parseOrPlain(it) }
+    }
 
     companion object {
         private val CURRENT = ThreadLocal<Emitter>()

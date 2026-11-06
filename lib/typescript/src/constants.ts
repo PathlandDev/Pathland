@@ -27,6 +27,7 @@ export const CMD_SET_PROPERTY = 0x01;
 export const CMD_SET_DESIGN_TOKEN = 0x02;
 export const CMD_SET_TEXT = 0x03;
 export const CMD_SET_DATE = 0x04;
+export const CMD_SET_ATTRIBUTED_TEXT = 0x05;
 
 // META commands
 export const CMD_RESET = 0x01;

@@ -13,8 +13,19 @@ Kotlin-authored views through JVM interop.
 ## Implemented
 
 - **Protocol** (`dev.pathland.view.core.protocol`): `Components`, `Properties`,
-  `Commands`, `Categories`, `ValueTypes`, `Opcode`, `ValueEncoder`, `WireValue`,
-  `TokenPath`.
+  `Commands` (incl. `SET_ATTRIBUTED_TEXT`), `Categories`, `ValueTypes`, `Opcode`,
+  `ValueEncoder`, `WireValue`, `TokenPath`.
+- **Attributed text** (`dev.pathland.view.core.AttributedString`): pure-Kotlin
+  model + range-tracking builder (Kotlin char indices → UTF-8 byte offsets) and
+  payload encode/decode; `Text(AttributedString)` / `Text(Signal<AttributedString>)`
+  emit `SET_ATTRIBUTED_TEXT` through the emitter and both sinks.
+- **Built-in inline Markdown**: `Text("...")` parses the v1 subset by default
+  (`**bold**`/`__bold__`, `*italic*`/`_italic_`, `` `code` ``,
+  `~~strikethrough~~`, `[label](url)`); `markdown = false` renders literal text.
+  The shared Rust parser (`libpathland_markdown`) is embedded in the view-core
+  jar and called through `dev.pathland.markdown.Markdown` (pre-scan + bounded
+  cache). Plain results use the compact `SET_TEXT` path; rich results emit
+  `SET_ATTRIBUTED_TEXT`. Reactive `Text(Signal<String>)` parses on change.
 - **Signals** (`dev.pathland.view.core.signal`): `signal`/`state`/`computed`/
   `effect`/`untracked`, synchronous glitch-free flush, equality suppression, error
   caching/retry, circular-dependency detection, and a thread-safe global
@@ -57,9 +68,10 @@ Kotlin-authored views through JVM interop.
 
 ## Authoring DSL (`dev.pathland.view.dsl`)
 
-- **SwiftUI-shaped builders**: `Text`, `Image`, `Icon`, `Color`, `Rectangle`,
-  `Circle`, `Ellipse`, `Capsule`, `RoundedRectangle`, `Shape`, `Divider`, `Spacer`,
-  `ProgressView`, `Gauge`, `Label`, `Group`.
+- **SwiftUI-shaped builders**: `Text` (plain, `Signal<String>`, or
+  `AttributedString` / `Signal<AttributedString>`), `Image`, `Icon`, `Color`,
+  `Rectangle`, `Circle`, `Ellipse`, `Capsule`, `RoundedRectangle`, `Shape`,
+  `Divider`, `Spacer`, `ProgressView`, `Gauge`, `Label`, `Group`.
 - **Containers**: `VStack`, `HStack`, `ZStack`, `Grid`, `GridRow`, `ScrollView`,
   `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `ViewThatFits`/`Fit`,
   `ProxyView`, `ForEach`.

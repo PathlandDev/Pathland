@@ -253,6 +253,8 @@ Design-token contract: `spec/TOKENS.md`.
 
 ## Not implemented / gaps
 
+- **Rich text (`SET_ATTRIBUTED_TEXT`)**: deferred; the Qt renderer uses the
+  payload's plain `HostNode.text` fallback (runs/links are not styled yet).
 - **`MENU` popup item list**: Qt 6 has no `MenuButton`; the trigger is a
   `Button` and the action-item popup is not built (documented gap).
 - **`COLOR_PICKER`** remains a `Button` approximation (a QML color-swatch popup

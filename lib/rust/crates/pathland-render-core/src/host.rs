@@ -12,8 +12,8 @@ use std::collections::HashMap;
 
 use pathland_core::tokens::{resolve_ref as resolve_token_ref, Scheme, TokenTables, TokenValue};
 use pathland_core::{
-    category, color_scheme_mode, component_type, meta, parameter, tree, value_type, Frame, Opcode,
-    WindowMeta,
+    category, color_scheme_mode, component_type, meta, parameter, tree, value_type, AttributedString,
+    Frame, Opcode, WindowMeta,
 };
 
 /// A decoded node in the host's native-element description.
@@ -21,7 +21,10 @@ use pathland_core::{
 pub struct HostNode {
     pub id: u32,
     pub component_type: u16,
+    /// The node's plain text (also the fallback for rich text).
     pub text: Option<String>,
+    /// Decoded `PARAMETER::SET_ATTRIBUTED_TEXT` payload, if any.
+    pub attributed: Option<AttributedString>,
     pub parent: Option<u32>,
     pub children: Vec<u32>,
     /// Constraint properties (propertyId -> value) for native layout/styling.
@@ -88,6 +91,7 @@ impl Default for HostNode {
             id: 0,
             component_type: component_type::HSTACK,
             text: None,
+            attributed: None,
             parent: None,
             children: Vec::new(),
             properties: HashMap::new(),
@@ -321,6 +325,17 @@ impl RenderTree {
                 (category::PARAMETER, parameter::SET_TEXT) => {
                     if let Some(n) = self.nodes.get_mut(&op.a()) {
                         n.text = frame.arena_str(op.b()).ok().map(|s| s.to_string());
+                        n.attributed = None;
+                    }
+                }
+                (category::PARAMETER, parameter::SET_ATTRIBUTED_TEXT) => {
+                    if let Some(n) = self.nodes.get_mut(&op.a()) {
+                        if let Ok(bytes) = frame.arena_get(op.b()) {
+                            if let Ok(value) = AttributedString::decode(bytes) {
+                                n.text = Some(value.text().to_string());
+                                n.attributed = Some(value);
+                            }
+                        }
                     }
                 }
                 (category::PARAMETER, parameter::SET_DATE) => {
@@ -645,6 +660,9 @@ pub fn describe(op: &Opcode) -> String {
         (category::PARAMETER, parameter::SET_TEXT) => {
             format!("PARAMETER:SET_TEXT id={} arenaRef={}", op.a(), op.b())
         }
+        (category::PARAMETER, parameter::SET_ATTRIBUTED_TEXT) => {
+            format!("PARAMETER:SET_ATTRIBUTED_TEXT id={} arenaRef={}", op.a(), op.b())
+        }
         (category::PARAMETER, parameter::SET_DESIGN_TOKEN) => format!(
             "PARAMETER:SET_DESIGN_TOKEN pathArenaRef={} valueType=0x{:02x} value=0x{:08x}",
             op.a(),
@@ -713,6 +731,34 @@ mod tests {
         assert_eq!(child.text.as_deref(), Some("ab"));
         // No layout/rect data is present.
         assert!(!child.properties.contains_key(&pathland_core::property_id::WIDTH));
+    }
+
+    #[test]
+    fn decodes_attributed_text_and_keeps_the_plain_fallback() {
+        let layout = MemoryLayout::default();
+        let mut mem = vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        let value = AttributedString::new(
+            "Hi",
+            vec![pathland_core::StyleRun::new(0, 2).bold()],
+            vec![pathland_core::LinkRun::new(1, 2, "x")],
+        )
+        .unwrap();
+
+        let mut guest = Guest::new(&mut mem, &layout);
+        guest.begin_frame();
+        guest.create_node(1, component_type::TEXT).unwrap();
+        guest.insert_child(0, 1, pathland_core::APPEND).unwrap();
+        guest.set_attributed_text(1, &value).unwrap();
+        guest.end_frame();
+
+        let mut host = pathland_core::Host::new(&mut mem, &layout);
+        let frames = host.frames();
+        let tree = render_tree_from_frame(&frames[0]);
+        let node = tree.node(1).unwrap();
+        assert_eq!(node.text.as_deref(), Some("Hi"));
+        assert_eq!(node.attributed.as_ref(), Some(&value));
     }
 
     /// The Rust view DSL's media kit, end to end into the renderer's tree

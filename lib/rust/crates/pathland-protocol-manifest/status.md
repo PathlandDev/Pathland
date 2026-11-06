@@ -9,8 +9,9 @@ package names, class structure, or formatting.
 
 ## Implemented
 
-- Categories, components, commands, field ids, flags, listener bits, size
-  sentinels, value types, property ids, and `property → value_type` mappings.
+- Categories, components, commands (incl. `SET_ATTRIBUTED_TEXT`), field ids,
+  flags, listener bits, size sentinels, value types, property ids, and
+  `property → value_type` mappings.
 - Deterministic tab-separated output with a generated-file header.
 - `cargo run -p pathland-protocol-manifest` regenerates the committed manifest.
 - CI regenerates and fails on `spec/protocol.tsv` drift.

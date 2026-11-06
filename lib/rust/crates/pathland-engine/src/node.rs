@@ -11,7 +11,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
-use pathland_core::{component_type, property_id};
+use pathland_core::{component_type, property_id, AttributedString};
 
 use crate::media::MediaControllerRef;
 use crate::signal::SignalId;
@@ -50,6 +50,16 @@ pub struct Node {
     /// A signal the node's text is bound to (overrides `Component::Text` /
     /// `Component::Button` label when set).
     pub text_binding: Option<SignalId>,
+    /// Parse the node's text as inline Markdown during emission. Enabled by
+    /// default for `Text`; `Text::plain`/`plain_signal` disable it.
+    pub markdown_text: bool,
+    /// Static attributed text (style runs + links). When set, the engine emits
+    /// `PARAMETER::SET_ATTRIBUTED_TEXT` instead of `SET_TEXT`; the node's
+    /// `Component::Text` string stays the plain fallback.
+    pub attributed_text: Option<AttributedString>,
+    /// A signal the node's attributed text is bound to (overrides
+    /// `attributed_text` when set).
+    pub attributed_binding: Option<SignalId>,
     /// Property signals (propertyId to signal), overriding the static
     /// `properties` entry for that id when both are present.
     pub property_bindings: BTreeMap<u16, SignalId>,
@@ -78,6 +88,9 @@ impl core::fmt::Debug for Node {
             .field("token_properties", &self.token_properties)
             .field("list_properties", &self.list_properties)
             .field("text_binding", &self.text_binding)
+            .field("markdown_text", &self.markdown_text)
+            .field("attributed_text", &self.attributed_text)
+            .field("attributed_binding", &self.attributed_binding)
             .field("property_bindings", &self.property_bindings)
             .field("string_bindings", &self.string_bindings)
             .field("media_controller", &self.media_controller)
@@ -98,6 +111,9 @@ impl Node {
             token_properties: BTreeMap::new(),
             list_properties: BTreeMap::new(),
             text_binding: None,
+            markdown_text: false,
+            attributed_text: None,
+            attributed_binding: None,
             property_bindings: BTreeMap::new(),
             string_bindings: BTreeMap::new(),
             media_controller: None,

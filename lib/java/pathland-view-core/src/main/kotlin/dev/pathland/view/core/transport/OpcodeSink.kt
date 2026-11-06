@@ -13,6 +13,7 @@ interface OpcodeSink {
     fun removeChild(parent: Int, child: Int)
     fun moveChild(parent: Int, child: Int, newIndex: Int)
     fun setText(nodeId: Int, text: String)
+    fun setAttributedText(nodeId: Int, value: dev.pathland.view.core.AttributedString)
     fun setProperty(nodeId: Int, property: Int, valueType: Int, value: Any)
     fun setDate(nodeId: Int, days: Int, millisOfDay: Int)
     fun setDesignToken(path: String, valueType: Int, value: Any)

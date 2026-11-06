@@ -8,6 +8,15 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
 
 ## Implemented
 
+- **Attributed text**: `Node::attributed_text` + `attributed_binding` emit
+  `PARAMETER::SET_ATTRIBUTED_TEXT` instead of `SET_TEXT`; the snapshot stores the
+  encoded value plus its arena offset, so an unchanged payload emits zero
+  opcodes and a changed signal re-emits only the bound node. Switching back to
+  plain text re-emits `SET_TEXT`.
+- **Auto-parsed Markdown**: `Node::markdown_text` parses static text and string
+  signals through the shared `pathland-markdown` crate. The raw source is stored
+  in the snapshot so unchanged text emits zero opcodes; plain results use the
+  compact `SET_TEXT` path and only rich results emit `SET_ATTRIBUTED_TEXT`.
 - **Window metadata bindings**: `Engine::bind_window_metadata`/`bind_window_field` bind fields to signals; mount emits the initial `META::SET_WINDOW_METADATA` fields, a signal write emits only the changed field, and unchanged values emit zero opcodes.
 
 - **Retained tree** (`node.rs`): `Node` (id, component, children, properties,
