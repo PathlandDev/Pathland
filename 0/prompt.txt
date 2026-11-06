@@ -1,0 +1,1 @@
+There are a lot of maven packages. Please walk throught the dependencies between them and see if it could make sense to combine some of them
