@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.2995387379999999,
+    "cost": 0.304129758,
     "tokens": {
-      "input": 635627,
-      "output": 54237,
-      "reasoning": 53491,
+      "input": 638481,
+      "output": 54678,
+      "reasoning": 53553,
       "cache": {
-        "read": 46519296,
+        "read": 47806336,
         "write": 0
       }
     },
     "time": {
       "created": 1793973420572,
-      "updated": 1793976138943
+      "updated": 1793976161299
     }
   },
   "messages": [
@@ -35099,21 +35099,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001257468,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 321961,
+          "input": 1614,
+          "output": 64,
+          "reasoning": 27,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 320256
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1793976138942
+          "created": 1793976138942,
+          "completed": 1793976148439
         },
+        "finish": "tool-calls",
         "id": "msg_1b14f7cbe002w2nnqeYibOYQol",
         "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U"
       },
@@ -35141,20 +35144,307 @@
           "tool": "bash",
           "callID": "call_00_7lcwq6407w4wog6wrktfpvxi",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -m \"fix(security): harden decoders, ws origins, and response headers (#63)\""
             },
+            "output": "[fix/63-security-hardening 4f109a1a] fix(security): harden decoders, ws origins, and response headers (#63)\n 44 files changed, 1283 insertions(+), 105 deletions(-)\n create mode 100644 docs/HARDENING.md\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-3f5494b0aefe.js\n create mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-77eb5c6fc78d.js\n create mode 100644 lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/SecurityHeadersTest.java\n create mode 100644 lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/WebSocketOriginTest.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/InboundRateLimiter.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/WindowIds.java\n create mode 100644 lib/java/pathland-server-core/src/test/java/dev/pathland/server/InboundRateLimiterTest.java\n create mode 100644 lib/java/pathland-server-core/src/test/java/dev/pathland/server/WindowIdsTest.java\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-3f5494b0aefe.js\n create mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-77eb5c6fc78d.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/WebSocketOriginTest.java\n",
+            "metadata": {
+              "output": "[fix/63-security-hardening 4f109a1a] fix(security): harden decoders, ws origins, and response headers (#63)\n 44 files changed, 1283 insertions(+), 105 deletions(-)\n create mode 100644 docs/HARDENING.md\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-3f5494b0aefe.js\n create mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-77eb5c6fc78d.js\n create mode 100644 lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/SecurityHeadersTest.java\n create mode 100644 lib/java/pathland-quarkus-demo/src/test/java/dev/pathland/demo/quarkus/WebSocketOriginTest.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/InboundRateLimiter.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/WindowIds.java\n create mode 100644 lib/java/pathland-server-core/src/test/java/dev/pathland/server/InboundRateLimiterTest.java\n create mode 100644 lib/java/pathland-server-core/src/test/java/dev/pathland/server/WindowIdsTest.java\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-3f5494b0aefe.js\n create mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-77eb5c6fc78d.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/WebSocketOriginTest.java\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -m \"fix(security): harden decoders, ws origins, and response headers (#63)\"",
             "time": {
-              "start": 1793976142481
+              "start": 1793976142481,
+              "end": 1793976148259
             }
           },
           "id": "prt_1b14f89bb001KJn75bydHFMwoD",
           "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
           "messageID": "msg_1b14f7cbe002w2nnqeYibOYQol"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d27772dabb64a6e0a9a5a6e76e209a0b08d72ae5",
+          "type": "step-finish",
+          "tokens": {
+            "total": 321961,
+            "input": 1614,
+            "output": 64,
+            "reasoning": 27,
+            "cache": {
+              "write": 0,
+              "read": 320256
+            }
+          },
+          "cost": 0.001257468,
+          "id": "prt_1b14fa16c001vTLnil0xuYeF7e",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14f7cbe002w2nnqeYibOYQol"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b14f54ba001Lsw6qKz0fC7X2a",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001236726,
+        "tokens": {
+          "total": 322704,
+          "input": 613,
+          "output": 271,
+          "reasoning": 28,
+          "cache": {
+            "write": 0,
+            "read": 321792
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793976148473,
+          "completed": 1793976156633
+        },
+        "finish": "tool-calls",
+        "id": "msg_1b14fa1f9002VTKRmqjfiwyR1v",
+        "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U"
+      },
+      "parts": [
+        {
+          "snapshot": "d27772dabb64a6e0a9a5a6e76e209a0b08d72ae5",
+          "type": "step-start",
+          "id": "prt_1b14faf67001RRmiiCue52nle3",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fa1f9002VTKRmqjfiwyR1v"
+        },
+        {
+          "type": "reasoning",
+          "text": "Now close issue. Use gh issue close 63 with comment summary. Should we mention commit hash local? Note branch. Let's close.",
+          "time": {
+            "start": 1793976151917,
+            "end": 1793976152138
+          },
+          "id": "prt_1b14faf6d001cforLSe5Cffl1U",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fa1f9002VTKRmqjfiwyR1v"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_1x4dwfrsdlr7orkun2t0iboe",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "gh issue close 63 --comment \"Implemented on branch \\`fix/63-security-hardening\\` (commit 4f109a1a).\n\n- Fixed the Java FrameCodec opcodeCount/stringsLen integer overflow and added bounds checks.\n- Hardened the TypeScript decoder (caps, pre-apply batch validation, URL allowlisting, inbound size/error limits).\n- Added Quarkus secure defaults: same-origin CORS (WS CSRF control), 64 KiB WS message/frame limits, CSP and security headers.\n- Added SRI integrity emission; regenerated the demo bundles/manifests.\n- Added per-connection inbound batch/byte rate limiting with telemetry.\n- Added wid validation, Spring \\`pathland.allowed-origins\\` (removed the \\`*\\` default), and \\`docs/HARDENING.md\\`.\n- Session cookie flags and CSRF tokens are N/A: no session cookie exists, SSR is GET-only, and WS mutations are origin-checked.\n\nVerified: npm typecheck/tests/build:all, cargo test, and full Maven \\`clean test\\` reactor.\""
+            },
+            "output": "✓ Closed issue PathlandDev/Pathland#63 (Security hardening: WS origin checks, cookie flags, CSRF, rate limit, CSP+SRI, JS bounds)\n",
+            "metadata": {
+              "output": "✓ Closed issue PathlandDev/Pathland#63 (Security hardening: WS origin checks, cookie flags, CSRF, rate limit, CSP+SRI, JS bounds)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "gh issue close 63 --comment \"Implemented on branch \\`fix/63-security-hardening\\` (commit 4f109a1a).\n\n- Fixed the Java FrameCodec opcodeCount/stringsLen integer overflow and added bounds checks.\n- Hardened the TypeScript decoder (caps, pre-apply batch validation, URL allowlisting, inbound size/error limits).\n- Added Quarkus secure defaults: same-origin CORS (WS CSRF control), 64 KiB WS message/frame limits, CSP and security headers.\n- Added SRI integrity emission; regenerated the demo bundles/manifests.\n- Added per-connection inbound batch/byte rate limiting with telemetry.\n- Added wid validation, Spring \\`pathland.allowed-origins\\` (removed the \\`*\\` default), and \\`docs/HARDENING.md\\`.\n- Session cookie flags and CSRF tokens are N/A: no session cookie exists, SSR is GET-only, and WS mutations are origin-checked.\n\nVerified: npm typecheck/tests/build:all, cargo test, and full Maven \\`clean test\\` reactor.\"",
+            "time": {
+              "start": 1793976153709,
+              "end": 1793976156493
+            }
+          },
+          "id": "prt_1b14fb04b001XdIZIHSgCsbwp9",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fa1f9002VTKRmqjfiwyR1v"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d27772dabb64a6e0a9a5a6e76e209a0b08d72ae5",
+          "type": "step-finish",
+          "tokens": {
+            "total": 322704,
+            "input": 613,
+            "output": 271,
+            "reasoning": 28,
+            "cache": {
+              "write": 0,
+              "read": 321792
+            }
+          },
+          "cost": 0.001236726,
+          "id": "prt_1b14fc194001wsN3bFqIYksrAR",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fa1f9002VTKRmqjfiwyR1v"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b14f54ba001Lsw6qKz0fC7X2a",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001083162,
+        "tokens": {
+          "total": 322833,
+          "input": 447,
+          "output": 75,
+          "reasoning": 7,
+          "cache": {
+            "write": 0,
+            "read": 322304
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793976156678,
+          "completed": 1793976161283
+        },
+        "finish": "tool-calls",
+        "id": "msg_1b14fc206002LKsGXWooNcqf8i",
+        "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U"
+      },
+      "parts": [
+        {
+          "snapshot": "d27772dabb64a6e0a9a5a6e76e209a0b08d72ae5",
+          "type": "step-start",
+          "id": "prt_1b14fcf23001K3XggiJlq0d246",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fc206002LKsGXWooNcqf8i"
+        },
+        {
+          "type": "reasoning",
+          "text": "Confirm status clean and issue closed.",
+          "time": {
+            "start": 1793976160040,
+            "end": 1793976160177
+          },
+          "id": "prt_1b14fcf280018DStYtTqVzNOeH",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fc206002LKsGXWooNcqf8i"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_p2gh8mjh3dtcaam6yiug7vy4",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short; echo '---'; gh issue view 63 --json state,closedAt --jq '\"state=\\(.state) closedAt=\\(.closedAt)\"'"
+            },
+            "output": "---\nstate=CLOSED closedAt=2026-11-06T14:42:35Z\n",
+            "metadata": {
+              "output": "---\nstate=CLOSED closedAt=2026-11-06T14:42:35Z\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short; echo '---'; gh issue view 63 --json state,closedAt --jq '\"state=\\(.state) closedAt=\\(.closedAt)\"'",
+            "time": {
+              "start": 1793976160589,
+              "end": 1793976161160
+            }
+          },
+          "id": "prt_1b14fcfb4001M2X2tcr41nQBz2",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fc206002LKsGXWooNcqf8i"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d27772dabb64a6e0a9a5a6e76e209a0b08d72ae5",
+          "type": "step-finish",
+          "tokens": {
+            "total": 322833,
+            "input": 447,
+            "output": 75,
+            "reasoning": 7,
+            "cache": {
+              "write": 0,
+              "read": 322304
+            }
+          },
+          "cost": 0.001083162,
+          "id": "prt_1b14fd3c70017cYHL3Kqioyy88",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fc206002LKsGXWooNcqf8i"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b14f54ba001Lsw6qKz0fC7X2a",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001013664,
+        "tokens": {
+          "total": 322899,
+          "input": 180,
+          "output": 31,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 322688
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793976161298,
+          "completed": 1793976165558
+        },
+        "finish": "stop",
+        "id": "msg_1b14fd412002z4cgGKtgDzBdLd",
+        "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U"
+      },
+      "parts": [
+        {
+          "snapshot": "d27772dabb64a6e0a9a5a6e76e209a0b08d72ae5",
+          "type": "step-start",
+          "id": "prt_1b14fe317001z6UWeAnsG3mAd1",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fd412002z4cgGKtgDzBdLd"
+        },
+        {
+          "type": "text",
+          "text": "Committed on `fix/63-security-hardening` as `4f109a1a` and closed #63. Working tree is clean.",
+          "time": {
+            "start": 1793976165145,
+            "end": 1793976165430
+          },
+          "id": "prt_1b14fe319001PoaMS33DoDXkKv",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fd412002z4cgGKtgDzBdLd"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "d27772dabb64a6e0a9a5a6e76e209a0b08d72ae5",
+          "type": "step-finish",
+          "tokens": {
+            "total": 322899,
+            "input": 180,
+            "output": 31,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 322688
+            }
+          },
+          "cost": 0.001013664,
+          "id": "prt_1b14fe47d001b1O7eN1rwXZdZn",
+          "sessionID": "ses_e4ed9fde3ffezj1X7LRbszkG7U",
+          "messageID": "msg_1b14fd412002z4cgGKtgDzBdLd"
         }
       ]
     }
