@@ -15,10 +15,10 @@
 
     <name>Pathland Quarkus</name>
     <description>
-        DSL-neutral Quarkus extension for Pathland: SSR at any path, live 16-byte opcode
-        deltas over /ws, per-session state. Add this extension and a PathlandApp bean and
-        you have a running app. Author the root view with pathland-view (Java) or
-        pathland-view-kotlin (Kotlin).
+        Quarkus extension for Pathland: SSR at any path, live 16-byte opcode deltas over
+        /ws, per-session state, plus the Kotlin authoring DSL. Add this extension and a
+        PathlandApp bean and you have a running app. Author the root view with the Kotlin
+        DSL in pathland-view-core; Java hosts mount Kotlin views.
     </description>
 
     <dependencies>
@@ -29,8 +29,12 @@
         </dependency>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-observability</artifactId>
+            <artifactId>pathland-view-core</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-kotlin</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -70,26 +74,10 @@
             <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- The runtime integration is DSL-neutral. Tests prove a Java CDI bean can
-             mount a Kotlin-authored fixture view; production consumers bring their own
-             authoring DSL. -->
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view-kotlin</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib</artifactId>
             <version>${kotlin.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-test-kit</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -132,6 +120,7 @@
                 <configuration>
                     <capabilities>
                         <provides>dev.pathland.quarkus</provides>
+                        <provides>dev.pathland.quarkus.kotlin</provides>
                     </capabilities>
                 </configuration>
             </plugin>

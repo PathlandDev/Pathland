@@ -11,7 +11,7 @@ import java.util.concurrent.CompletionStage;
 
 /**
  * The default {@link ProxyTransport}: the JDK {@link HttpClient} WebSocket client
- * (no extra dependency, mirrors {@code pathland-test-kit.WsSession}). One instance
+ * (no extra dependency, mirrors {@code dev.pathland.server.test.WsSession}). One instance
  * per origin connection.
  */
 public final class JdkWebSocketTransport implements ProxyTransport {

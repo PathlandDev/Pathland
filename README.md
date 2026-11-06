@@ -166,8 +166,7 @@ resources. It's shipped, not maintained — all the real logic lives in your bac
 - **Web (SSR + live WebSocket deltas)** — Kotlin views with Java or Kotlin hosts,
   via the Spring Boot and Quarkus extensions and demos; the flagship getting-started path.
 - **Native desktop (GTK4 + Qt)** — renderers driven by the same protocol, from the
-  Rust DSL and the shared Kotlin `MusicPlayerView` (`pathland-gtk-demo`,
-  `pathland-qt-demo`).
+  Rust DSL and the shared Kotlin `MusicPlayerView` (`pathland-desktop-demo`).
 
 Two surfaces, one protocol — the demos' shared views run under both without a
 rewrite.
@@ -234,17 +233,12 @@ cd lib/java/pathland-quarkus-demo
 mvn quarkus:dev
 # → http://localhost:8080
 
-# Quarkus Kotlin demo (dev mode with hot reload)
-cd lib/java/pathland-quarkus-kotlin-demo
-mvn quarkus:dev
-# → http://localhost:8080
-
 # Same protocol, native GTK desktop renderer (no browser)
 cd lib/rust && cargo run -p pathland-render-gtk-demo
 
 # Same protocol via Kotlin: the shared MusicPlayerView under the GTK renderer
 cd lib/rust && cargo build -p pathland-core-capi -p pathland-render-gtk
-cd lib/java/pathland-gtk-demo
+cd lib/java/pathland-desktop-demo
 MAVEN_OPTS="-XstartOnFirstThread" mvn -q compile exec:java \
   -Dpathland.core.lib=$PWD/../../lib/rust/target/debug/libpathland_core.dylib \
   -Dpathland.gtk.lib=$PWD/../../lib/rust/target/debug/libpathland_gtk.dylib

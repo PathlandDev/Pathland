@@ -137,47 +137,42 @@ Kotlin-authored; the Kotlin DSL serves Spring Boot, Quarkus, and desktop apps:
 ```
 lib/java/
   pathland-view-core/   # dev.pathland.view.core(.protocol/.signal/.state/.transport/
-                        #   .router/.ffm) + dev.pathland.view.engine — the shared JVM
-                        #   engine, written in Kotlin: View SPI/value vocabulary,
-                        #   Environment/Theme/MediaController, signals/computed/effects,
-                        #   fine-grained retained-tree diff emitter, wire codec, router,
-                        #   cross-platform state, and JNA ring interop. Server runtimes and
-                        #   the Kotlin DSL consume this only.
-  pathland-view-kotlin/ # dev.pathland.view.dsl — the sole JVM authoring DSL. Kotlin-owned
-                        #   views/modifiers/styles over pathland-view-core, Java-mountable.
-  pathland-render-html/ # com.pathland.render.html — JNA shim over the Rust HTML
+                        #   .router/.ffm) + dev.pathland.view.engine + dev.pathland.view.dsl
+                        #   — the shared JVM engine AND the sole authoring DSL, written in
+                        #   Kotlin: View SPI/value vocabulary, Environment/Theme/
+                        #   MediaController, signals/computed/effects, fine-grained
+                        #   retained-tree diff emitter, wire codec, router, cross-platform
+                        #   state, JNA ring interop, and the SwiftUI-shaped builders/
+                        #   modifiers. Server runtimes consume this only.
+  pathland-render-html/ # dev.pathland.render.html — JNA shim over the Rust HTML
                         #   renderer (libpathland_render_html): one renderer, every language.
                         #   The jar embeds the Rust cdylib (META-INF/native/) so it's
                         #   self-contained. The dylib is built by CI's rust job and handed
                         #   to java via an artifact; locally, `cargo build -p
                         #   pathland-render-html` must run before `mvn test` (the jar-embed
                         #   step fails loudly if it's missing).
-  pathland-state-redis/ # com.pathland.state.redis — Lettuce RedisStateStore
   pathland-server-core/ # dev.pathland.server — transport-agnostic server runtime:
                         #   PathlandApp (root-view factory), PathlandConnection (send seam),
                         #   PathlandSession (per-session SSR + live deltas + environment),
                         #   PathlandRegistry (1:1 session lifecycle, actor thread), StateStores,
-                        #   PathlandTelemetry (observability seam; NOOP default)
-  pathland-observability/ # com.pathland.observability — the Micrometer PathlandTelemetry
-                        #   (pathland.* counters/timers + sessions gauge) + an opt-in OTel
-                        #   TracingTelemetry decorator; the starters/extensions auto-wire it
-  pathland-demo-common/ # DSL-neutral demo support: DemoTheme + the single embedded copy of
-                        #   the audio, cover, and lyric assets (shared by the Java/Kotlin hosts)
+                        #   PathlandTelemetry (observability seam; NOOP default). Also ships
+                        #   dev.pathland.observability (Micrometer + opt-in OTel adapters),
+                        #   dev.pathland.state.redis (Lettuce RedisStateStore), and
+                        #   dev.pathland.server.test (WsSession/MultiSessionProbe WS harness).
   pathland-demo-views-kotlin/ # Kotlin-owned demo views: app-driven MusicPlayerView and its
-                        #   library/sidebar/player-bar subviews, plus the AdView origin app
+                        #   library/sidebar/player-bar subviews, the AdView origin app, plus
+                        #   DemoTheme and the single embedded copy of the audio/cover/lyric
+                        #   assets (shared by the desktop and web hosts)
   pathland-spring-boot-starter/ # com.pathland.spring — Spring Boot auto-config: add the dep +
                         #   a PathlandApp bean → SSR at any path + /ws deltas + state
-  pathland-quarkus/     # DSL-neutral Quarkus extension (runtime): dev.pathland.quarkus →
-                        #   SSR + /ws + sessions/state. No authoring DSL dependency.
-  pathland-quarkus-deployment/ # build-time module for pathland-quarkus
-  pathland-quarkus-kotlin/ # Kotlin DSL Quarkus extension: pathland-quarkus +
-                        #   pathland-view-kotlin + quarkus-kotlin
-  pathland-quarkus-kotlin-deployment/
-  pathland-gtk-demo/    # com.pathland.demo.gtk — JNA desktop demo: Kotlin MusicPlayerView under the GTK4 renderer
-  pathland-qt-demo/     # com.pathland.demo.qt — fully Kotlin JNA desktop demo: Kotlin MusicPlayerView under
-                        #   the Qt Quick renderer (pathland_qt_run_ring)
-  pathland-quarkus-demo/# Quarkus SSR + WebSocket demo (com.pathland.demo.quarkus; Java host + Kotlin views)
-  pathland-quarkus-kotlin-demo/ # Kotlin Quarkus SSR + WebSocket demo (Kotlin DSL; player + /ad proxy demo)
+  pathland-quarkus/     # Quarkus extension (runtime): dev.pathland.quarkus →
+                        #   SSR + /ws + sessions/state + the Kotlin DSL/quarkus-kotlin.
+  pathland-quarkus-deployment/ # build-time module for pathland-quarkus (incl. Kotlin DSL)
+  pathland-desktop-demo/ # dev.pathland.demo.{gtk,qt} — JNA desktop demo: Kotlin
+                        #   MusicPlayerView under the GTK4 or Qt Quick renderer (shared
+                        #   headless RingEventReader)
+  pathland-quarkus-demo/# Quarkus SSR + WebSocket demo (com.pathland.demo.quarkus; Java host +
+                        #   Kotlin views, plus a Kotlin-only view mounted at /kotlin)
   pathland-spring-boot-demo/ # Spring Boot SSR + WebSocket demo (com.pathland.demo.spring)
 ```
 
@@ -189,12 +184,10 @@ lib/java/
   at `$(brew --prefix qtbase)/bin/qmake` if it isn't on PATH, see `scripts/run-rust-qt-demo.sh`).
 - Run the Kotlin Qt Quick demo (JNA, shared ring, Kotlin MusicPlayerView + app-driven media):
   `scripts/run-java-qt-demo.sh` (macOS hands Qt the main thread via `-XstartOnFirstThread`).
+- Run the Java GTK4 demo (JNA, shared ring): `scripts/run-java-gtk-demo.sh`.
 - Run the Quarkus Java demo (SSR + WebSocket deltas, dev mode):
   `cd lib/java/pathland-quarkus-demo && mvn quarkus:dev` (or `mvn package && java -jar target/quarkus-app/quarkus-run.jar`).
   Needs JDK 17+ (the whole stack runs on every LTS from 17) and Quarkus ≥ 3.18.
-- Run the Quarkus Kotlin demo (Kotlin DSL, dev mode):
-  `scripts/run-quarkus-kotlin-demo.sh` (or `cd lib/java/pathland-quarkus-kotlin-demo && mvn quarkus:dev`).
-  Needs JDK 17+ and Quarkus ≥ 3.18; `scripts/run-quarkus-kotlin-demo.sh` builds the Rust renderer first.
 - Run the Spring Boot demo (SSR + WebSocket deltas):
   `cd lib/java/pathland-spring-boot-demo && mvn package && java -jar target/pathland-spring-boot-demo-0.1.0.jar`.
   Needs JDK 17+ (the whole stack runs on every LTS from 17) and Spring Boot ≥ 3.5.
@@ -273,7 +266,8 @@ it — the demos **never call GTK or Swing directly**:
 
 - Rust demo links `pathland-render-gtk` as an `rlib` and calls `GtkRenderer::run(...)`
   with a wake closure.
-- Java demo (`pathland-gtk-demo`) loads `pathland-render-gtk` as a `cdylib` via JNA and
+- The Java/Kotlin desktop demo (`pathland-desktop-demo`) loads `pathland-render-gtk`
+  as a `cdylib` via JNA and
   calls `pathland_gtk_run_ring(ring, on_event, width, height)` over the Kotlin view's
   `libpathland_core` ring; native inputs round-trip as `EVENT` opcodes through the shared
   ring. The renderer **writes** the events and **wakes** the host (no payload); the host
@@ -294,7 +288,7 @@ path.
 line belongs to the embedding host — e.g. the JVM's `-cp`/`-D` flags — and must
 not be parsed as GTK options).
 
-### Kotlin JVM authoring DSL (`dev.pathland.view.dsl`, in `lib/java/pathland-view-kotlin`)
+### Kotlin JVM authoring DSL (`dev.pathland.view.dsl`, in `lib/java/pathland-view-core`)
 
 The **sole JVM authoring surface**. It is the SwiftUI-like DSL shared by desktop,
 Spring Boot, Quarkus, and web apps. Components and modifiers:
@@ -399,11 +393,12 @@ carry the authoritative ID allocations.
 > specs: `lib/rust/crates/pathland-core/status.md`,
 > `lib/rust/crates/pathland-render-gtk/status.md`,
 > `lib/rust/crates/pathland-render-html/status.md`,
-> `lib/java/pathland-view-core/status.md`, `lib/java/pathland-view-kotlin/status.md`,
-> `lib/java/pathland-render-html/status.md`,
+> `lib/java/pathland-view-core/status.md`, `lib/java/pathland-render-html/status.md`,
+> `lib/java/pathland-server-core/status.md`,
+> `lib/java/pathland-spring-boot-starter/status.md`,
 > `lib/java/pathland-quarkus/status.md`,
-> `lib/java/pathland-quarkus-kotlin/status.md`,
-> `lib/java/pathland-quarkus-kotlin-demo/status.md`,
+> `lib/java/pathland-demo-views-kotlin/status.md`,
+> `lib/java/pathland-desktop-demo/status.md`,
 > and the other Rust crates' `status.md` files.
 
 ### Opcode Format
@@ -578,7 +573,7 @@ implementing project.
 
 ## Project Status
 
-**Complete**: 16-byte opcode engine (`pathland-core`), SwiftUI-style view DSL with decoupled chainable modifiers (`pathland-view`), declarative diff-based reactive emission (`pathland-core`), **reactive signals** (`pathland-core::signal` — writable `Signal` values bound to node text/properties, so a signal change re-emits only the bound nodes, reachable from Java via the `pathland_native_signal_*` / `node_bind_*` C ABI), host reader to a native-element description (`pathland-render-gtk`), opcode transport with network-batch encode/decode + time/size batching policy (`pathland-core-transport`), golden conformance vectors (incl. raw-input EVENT and network-batch bytes), typed raw-input event encode/decode, `no_std` builds, zero-alloc steady-state emission, the **bidirectional event ring** (host → guest EVENT opcodes in shared memory, drained by the host via a generic `pathland_native_drain_events` C ABI — the renderer only writes + wakes), the **GTK4 renderer** (`pathland-render-gtk`) with Rust demos that render through it without touching GTK directly, the **native JVM library set** — `pathland-view-core` (Kotlin: open `View` interface + shared value/SPI vocabulary, **Angular-parity signals/computed/effects** with synchronous flush, fine-grained retained-tree emitter with **node-level binding effects**, `PLPL` wire codec, router, lazy **JNA ring interop** into `libpathland_core`, cross-platform `StateStore` + **`PersistentState`**) and `pathland-view-kotlin` (the sole JVM authoring DSL: SwiftUI-shaped builders, modifier sugar, property-delegate state, navigation/media helpers, styles), `com.pathland.render.html` (JNA shim over the Rust HTML renderer), `com.pathland.state.redis` (Lettuce `RedisStateStore`) — and the **Quarkus Java demo** (`pathland-quarkus-demo`, a Java host mounting the Kotlin `MusicPlayerView` and Kotlin `AdView`), the **Kotlin-only Quarkus demo** (`pathland-quarkus-kotlin-demo`), and the **Spring Boot** (`pathland-spring-boot-demo`, a Java host mounting Kotlin views) **SSR + WebSocket demos** with per-window persisted `State` (Redis/in-memory — every browser window/tab gets its own UI model and state scope via a `sessionStorage` window id, so two windows never share a session). **`EVENT_LISTENERS`** (any element emits raw events via a u32 bitmask property) and **`onTapGesture`** (Rust + Kotlin DSL modifier + app-side `TapRecognizer` over the raw pointer events). **Generic input routing** — the emitter returns tap-action / text-input / value-input registries (`RenderResult`), so the host forwards raw `EVENT` batches straight into the bound signals and never reaches into a view's internals. **The media kit** (spec/MEDIA.md) — a non-visual `MEDIA_CONTROLLER` (0x30) state object owning a resource + transport as signals, referenced by a `VIDEO` (0x0A) surface and controlled by the app's own views; **audio has no view**. Implemented across spec, `pathland-core`, the GTK + HTML renderers, the TS DOM client, the Kotlin DSL/emitter, and the Rust DSL/engine (a `MediaController` + `Video` + `attach()`, with string-property signal bindings and a **pinned** controller node id so a `SIZE_THAT_FITS` band swap never restarts playback). **Tests green across the workspace.**
+**Complete**: 16-byte opcode engine (`pathland-core`), SwiftUI-style view DSL with decoupled chainable modifiers (`pathland-view`), declarative diff-based reactive emission (`pathland-core`), **reactive signals** (`pathland-core::signal` — writable `Signal` values bound to node text/properties, so a signal change re-emits only the bound nodes, reachable from Java via the `pathland_native_signal_*` / `node_bind_*` C ABI), host reader to a native-element description (`pathland-render-gtk`), opcode transport with network-batch encode/decode + time/size batching policy (`pathland-core-transport`), golden conformance vectors (incl. raw-input EVENT and network-batch bytes), typed raw-input event encode/decode, `no_std` builds, zero-alloc steady-state emission, the **bidirectional event ring** (host → guest EVENT opcodes in shared memory, drained by the host via a generic `pathland_native_drain_events` C ABI — the renderer only writes + wakes), the **GTK4 renderer** (`pathland-render-gtk`) with Rust demos that render through it without touching GTK directly, the **native JVM library set** — `pathland-view-core` (Kotlin: open `View` interface + shared value/SPI vocabulary, **Angular-parity signals/computed/effects** with synchronous flush, fine-grained retained-tree emitter with **node-level binding effects**, `PLPL` wire codec, router, lazy **JNA ring interop** into `libpathland_core`, cross-platform `StateStore` + **`PersistentState`**) and the sole JVM authoring DSL `dev.pathland.view.dsl` (SwiftUI-shaped builders, modifier sugar, property-delegate state, navigation/media helpers, styles), `dev.pathland.render.html` (JNA shim over the Rust HTML renderer), `dev.pathland.state.redis` (Lettuce `RedisStateStore`, in `pathland-server-core`) — and the **Quarkus demo** (`pathland-quarkus-demo`, a Java host mounting the Kotlin `MusicPlayerView`/`AdView`, plus a Kotlin-only view at `/kotlin`), the **desktop demo** (`pathland-desktop-demo`, GTK and Qt), and the **Spring Boot** (`pathland-spring-boot-demo`, a Java host mounting Kotlin views) **SSR + WebSocket demos** with per-window persisted `State` (Redis/in-memory — every browser window/tab gets its own UI model and state scope via a `sessionStorage` window id, so two windows never share a session). **`EVENT_LISTENERS`** (any element emits raw events via a u32 bitmask property) and **`onTapGesture`** (Rust + Kotlin DSL modifier + app-side `TapRecognizer` over the raw pointer events). **Generic input routing** — the emitter returns tap-action / text-input / value-input registries (`RenderResult`), so the host forwards raw `EVENT` batches straight into the bound signals and never reaches into a view's internals. **The media kit** (spec/MEDIA.md) — a non-visual `MEDIA_CONTROLLER` (0x30) state object owning a resource + transport as signals, referenced by a `VIDEO` (0x0A) surface and controlled by the app's own views; **audio has no view**. Implemented across spec, `pathland-core`, the GTK + HTML renderers, the TS DOM client, the Kotlin DSL/emitter, and the Rust DSL/engine (a `MediaController` + `Video` + `attach()`, with string-property signal bindings and a **pinned** controller node id so a `SIZE_THAT_FITS` band swap never restarts playback). **Tests green across the workspace.**
 
 **In progress**: —
 

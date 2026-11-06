@@ -15,7 +15,7 @@ import java.nio.file.Path;
 
 /**
  * Serves the demo's media + icon assets from a **temp-dir extraction** of the
- * shared {@code pathland-demo-common} jar — fast disk serving with `Range` support
+ * shared {@code pathland-demo-views-kotlin} jar — fast disk serving with `Range` support
  * (audio seek), `Content-Length`, and caching — instead of Quarkus's jar-based
  * static handler, which reads the (larger) media entries from inside the jar on
  * every request and is slow on a remote host.

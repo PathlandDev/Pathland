@@ -168,7 +168,7 @@ transition, and native back affordances → `NAVIGATE`. See `spec/DSL.md §4.5`.
   round-trip through `FrameCodec`.
 - `RouterTest` (11 tests): initial route + ROUTE emission, destination-swap
   deltas, back-stack, params, guard redirect, fallback, NAVIGATE routing,
-  NavigationLink, equality suppression. `mvn -pl pathland-view-kotlin test` — 58 tests
+  NavigationLink, equality suppression. `mvn -pl pathland-view-core test` — 58 tests
   green.
 
 ## Phase 4 — Rust (on deck)
@@ -217,8 +217,8 @@ transition, and native back affordances → `NAVIGATE`. See `spec/DSL.md §4.5`.
     content; unknown paths → sidebar + "Not Found"; JS bundle served. 76 Java
     tests + 61 TS tests + core vectors 26–27 green.
 23. ✅ **status.md updates** (per AGENTS.md): `pathland-core`,
-    `pathland-core-transport`, `lib/java/pathland-view-kotlin`, `pathland-render-html`,
-    `lib/typescript`, `pathland-view-kotlin` — in their landing changes.
+    `pathland-core-transport`, `lib/java/pathland-view-core`, `pathland-render-html`,
+    `lib/typescript` — in their landing changes.
 
 ### Fix (post-Phase-6): SPA catch-all no longer shadows `/ws`
 

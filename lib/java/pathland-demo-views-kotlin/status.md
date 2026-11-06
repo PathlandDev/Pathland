@@ -2,7 +2,7 @@
 
 **Last updated:** November 3, 2026
 
-Kotlin-owned demo views over `pathland-view-kotlin`, with no Java-DSL dependency.
+Kotlin-owned demo views over `pathland-view-core`, with no Java-DSL dependency.
 It owns the app-driven music player and the small sponsored-proxy ad app.
 
 ## Structure
@@ -18,6 +18,14 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 - `music/lyrics/` — `SubtitlePill`.
 - `music/sidebar/` — `NowPlayingSidebar`, `UpNextRowView`.
 - `ad/` — `AdView`.
+
+## Shared demo support
+
+- **`DemoTheme`** — the demo's global `SET_DESIGN_TOKEN` theme (base + `dark.*`).
+- **`DemoAssets`** — the single embedded copy of the 8 audio tracks, 8 album
+  covers, and 8 lyric SRT files under
+  `META-INF/resources/_pathland/assets/`, plus temp-dir extraction for hosts.
+- **`DemoAssetsTest`** — guards all 24 embedded assets and extraction.
 
 ## Implemented
 

@@ -15,7 +15,8 @@
 
     <name>Pathland Quarkus - Deployment</name>
     <description>
-        Build-time deployment module for the DSL-neutral Pathland Quarkus extension.
+        Build-time deployment module for the Pathland Quarkus extension, including the
+        Kotlin authoring DSL support.
     </description>
 
     <dependencies>
@@ -47,6 +48,10 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health-deployment</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-kotlin-deployment</artifactId>
         </dependency>
     </dependencies>
 

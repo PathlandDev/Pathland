@@ -285,7 +285,7 @@ Design-token contract: `spec/TOKENS.md`.
   the renderer consumes ROUTE/NAV_DEPTH (exercised by the nav adapter tests).
 - `TRANSITION`-hint animation, back-swipe gestures, multi-step deep-link
   intermediate pages (same gaps as the GTK renderer).
-- **Java JNA demo** (`lib/java/pathland-qt-demo`) runs the shared
+- **Java/Kotlin JNA demo** (`lib/java/pathland-desktop-demo`) runs the shared
   `MusicPlayerView` (app-driven media) via `pathland_qt_run_ring`.
 - Lazy views render eagerly.
 

@@ -32,8 +32,8 @@ curl http://localhost:8080/ | grep -o 'data-pathland-id'   # hydrated SSR markup
 ```
 
 State defaults to the in-memory store (no Redis needed for the demo). To use
-Redis, pass a `REDIS_URL` and the `pathland-state-redis` store is selected at
-runtime — the standalone demo runs without it.
+Redis, pass a `REDIS_URL` and the Redis `StateStore` in `pathland-server-core` is
+selected at runtime — the standalone demo runs without it.
 
 ## Push to a registry
 

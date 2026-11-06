@@ -25,12 +25,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view-kotlin</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib</artifactId>
             <version>${kotlin.version}</version>

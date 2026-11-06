@@ -21,25 +21,14 @@
 
     <name>Pathland Demo Views Kotlin</name>
     <description>
-        Kotlin-owned demo views shared by the desktop and web demos, starting with
-        the app-driven MusicPlayerView. Depends only on pathland-view-core,
-        pathland-view-kotlin, and the DSL-neutral demo assets.
+        Kotlin-owned demo views plus the shared demo theme and embedded audio, cover
+        and lyric assets used by the desktop and web demos.
     </description>
 
     <dependencies>
         <dependency>
             <groupId>dev.pathland</groupId>
             <artifactId>pathland-view-core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view-kotlin</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.pathland</groupId>
-            <artifactId>pathland-demo-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -55,8 +44,6 @@
     </dependencies>
 
     <build>
-        <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
-        <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
@@ -69,6 +56,12 @@
                         <goals>
                             <goal>compile</goal>
                         </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>test-compile</id>
@@ -76,6 +69,12 @@
                         <goals>
                             <goal>test-compile</goal>
                         </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <sourceDir>${project.basedir}/src/test/kotlin</sourceDir>
+                                <sourceDir>${project.basedir}/src/test/java</sourceDir>
+                            </sourceDirs>
+                        </configuration>
                     </execution>
                 </executions>
                 <configuration>
