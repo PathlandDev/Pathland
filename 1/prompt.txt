@@ -1,0 +1,10 @@
+Research the Pathland repo at /Users/michael/Development/michaelkrog/Pathland (read-only), focusing on the Kotlin/JVM stack. I am planning rich text (`SET_ATTRIBUTED_TEXT`), an `AttributedString` builder, and a shared Markdown parser exposed via JNA.
+
+Report with file:line references:
+1. `lib/java/pathland-view-core`: Text DSL definition, Emitter text diff/emission path, signals binding for text, wire codec encoding of SET_TEXT + arena/string sections, Commands/Properties constants, `status.md`.
+2. JNA pattern: `lib/java/pathland-render-html` shim (loads `libpathland_render_html`), jar embedding under `META-INF/native/`, build/CI wiring; what a new markdown cdylib + jar would mirror.
+3. `ProtocolManifestTest`, `ValueTypes.forProperty`, `spec/protocol.tsv` regeneration requirements for a new command/property.
+4. `EngineTraceTest` + `spec/engine-traces` regeneration.
+5. Existing JVM text/signal tests.
+
+Be concrete with classes/functions/line numbers. Do NOT modify anything.

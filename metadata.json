@@ -3,7 +3,7 @@
   "checkpoint_id": "01M6REQTQWP28Z8PJ7VP5X14GA",
   "strategy": "manual-commit",
   "branch": "feat/pure-java-markdown",
-  "checkpoints_count": 3,
+  "checkpoints_count": 4,
   "files_touched": [
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
@@ -29,7 +29,9 @@
     "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
     "lib/java/pom.xml",
     "lib/rust/crates/pathland-render-html/status.md",
-    "scripts/lib.sh"
+    "scripts/lib.sh",
+    "scripts/run-quarkus-demo.sh",
+    "scripts/run-spring-demo.sh"
   ],
   "sessions": [
     {
@@ -38,13 +40,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 2559439,
+    "input_tokens": 2679299,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 24729088,
-    "output_tokens": 53719,
-    "api_call_count": 99
+    "cache_read_tokens": 26399360,
+    "output_tokens": 67388,
+    "api_call_count": 122
   }
 }
