@@ -22,6 +22,11 @@ subpaths (the BFF layout).
   fixture view, renders it through SSR, and receives a live signal delta.
 
 - **Crawler endpoints**: `/robots.txt` (text/plain) and `/sitemap.xml` (application/xml) are real routes before the SPA catch-all, so Lighthouse does not parse the HTML shell as robots.txt.
+- **SEO document head (issue #45)**: the SSR controller derives the canonical
+  URL from the request and passes host-default `PageMetadata` to the registry;
+  `PathlandApp.pageMetadata(...)` may override it per route before the first
+  paint. Canonical/OG/Twitter/JSON-LD are on by default and configurable via
+  `pathland.seo.{enabled,site-name,image,og-type,twitter-card,twitter-site,structured-data}`.
 
 - **`PathlandAutoConfiguration`** (`@AutoConfiguration`, `@EnableWebSocket` since Spring
   Boot 3.5 no longer auto-enables it) + `META-INF/spring/…/AutoConfiguration.imports`:

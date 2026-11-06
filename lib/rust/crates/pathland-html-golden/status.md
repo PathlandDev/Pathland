@@ -1,6 +1,6 @@
 # pathland-html-golden — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** November 6, 2026
 
 Cross-renderer **golden conformance fixtures** for the HTML renderers.
 
@@ -22,6 +22,10 @@ Cross-renderer **golden conformance fixtures** for the HTML renderers.
   `lib/typescript/test/fixtures/ssr/` (`{name}.plpl` batch bytes + `{name}.html`
   canonical `render_fragment`).
 - `--emit` (regenerate fixtures) / `--check` (verify) CLI.
+- **`document_meta` SEO document fixture** (issue #45): a full-document
+  scenario (`document_meta.plpl` + `document_meta.document.html`) rendered with
+  `DocumentMeta` (canonical + Open Graph + Twitter + JSON-LD). The Rust guard
+  and the Java `GoldenConformanceTest` both compare it byte-for-byte.
 - `tests/guard.rs`: `cargo test -p pathland-html-golden` fails if the committed
   fixtures no longer match the current renderer output.
 - The TypeScript DOM client consumes the same fixtures in

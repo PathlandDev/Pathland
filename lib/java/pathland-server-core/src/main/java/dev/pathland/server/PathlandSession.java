@@ -3,6 +3,7 @@ package dev.pathland.server;
 import dev.pathland.view.core.router.Route;
 import dev.pathland.view.core.router.Router;
 
+import dev.pathland.render.html.DocumentMeta;
 import dev.pathland.render.html.HtmlRenderer;
 import dev.pathland.server.proxy.ProxyHost;
 import dev.pathland.server.proxy.ProxySession;
@@ -347,6 +348,18 @@ public final class PathlandSession {
      * {@code META::RESYNC} (the live session shares the same scope).
      */
     public String renderHtml(boolean serviceWorker, boolean ssrScoped) {
+        return renderHtml(serviceWorker, ssrScoped, null);
+    }
+
+    /**
+     * Render the SSR HTML with per-route document metadata (canonical URL,
+     * Open Graph/Twitter cards, JSON-LD). {@code pageMetadata} is the merged
+     * host-default + app-override value (see
+     * {@link PathlandApp#pageMetadata(PageMetadataRequest)}); {@code null}
+     * keeps the legacy head.
+     */
+    public String renderHtml(
+            boolean serviceWorker, boolean ssrScoped, PageMetadata pageMetadata) {
         HtmlRenderer renderer = HtmlRenderer.tryInstance();
         if (renderer == null) {
             return "<!DOCTYPE html><html><body><h1>Pathland renderer unavailable</h1>"
@@ -354,13 +367,14 @@ public final class PathlandSession {
                     + "</body></html>";
         }
         ProtocolFrame frame = ssrFrame();
+        DocumentMeta meta = documentMeta(pageMetadata);
         // The base design is a content-hashed, immutable stylesheet under the
         // session's framework base (the same base the DOM bundle/WS use). The
         // renderer falls back to the inline document when the linked stylesheet
         // name is unavailable. Token overrides and fit-band rules remain inline.
         String html = debugHtml
-                ? renderer.renderLinkedDebug(frame, rootId, base)
-                : renderer.renderLinked(frame, rootId, base);
+                ? renderer.renderLinkedDebug(frame, rootId, base, meta)
+                : renderer.renderLinked(frame, rootId, base, meta);
         // The reserved framework path prefix (spec): host system endpoints live
         // under `/{base}/**`. Carried as `data-pathland-base` so the DOM client
         // resolves its WebSocket and the bundle from the same base. Multi-app
@@ -375,6 +389,32 @@ public final class PathlandSession {
         return injectHtmlAttributes(html, htmlAttrs)
                 .replace("</body>", "<script src=\"" + base + "/" + PathlandAssets.bundleName()
                         + "\"" + integrityAttr + " defer></script></body>");
+    }
+
+    /** Map the transport-agnostic page metadata onto the renderer option. */
+    private static DocumentMeta documentMeta(PageMetadata page) {
+        if (page == null) {
+            return DocumentMeta.none();
+        }
+        DocumentMeta meta = DocumentMeta.create()
+                .title(page.title())
+                .description(page.description())
+                .canonicalUrl(page.canonicalUrl())
+                .siteName(page.siteName())
+                .imageUrl(page.imageUrl())
+                .ogType(page.ogType())
+                .twitterCard(page.twitterCard())
+                .twitterSite(page.twitterSite());
+        if (page.openGraph() != null) {
+            meta.openGraph(page.openGraph());
+        }
+        if (page.twitter() != null) {
+            meta.twitter(page.twitter());
+        }
+        if (page.structuredData() != null) {
+            meta.structuredData(page.structuredData());
+        }
+        return meta;
     }
 
     /**

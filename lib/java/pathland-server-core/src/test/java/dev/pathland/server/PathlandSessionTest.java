@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -433,4 +434,57 @@ class PathlandSessionTest {
             return true;
         }
     }
+    @Test
+    void appPageMetadataOverridesHostDefaultsForTheActiveRoute() {
+        assumeTrue(dev.pathland.render.html.HtmlRenderer.tryInstance() != null,
+                "the HTML renderer is available");
+        AtomicReference<String> seenRoute = new AtomicReference<>();
+        PathlandApp app = new PathlandApp() {
+            @Override
+            public View newRoot() {
+                return ServerFixtures.text("Library");
+            }
+
+            @Override
+            public PageMetadata pageMetadata(PageMetadataRequest request) {
+                seenRoute.set(request.route());
+                return PageMetadata.builder()
+                        .ogType("article")
+                        .imageUrl("/cover.png")
+                        .build();
+            }
+        };
+        PathlandRegistry registry = new PathlandRegistry("/app2", app, STORE, false);
+        try {
+            String html = registry.renderHtml(
+                    "/app2/library",
+                    null,
+                    PageMetadata.seo("https://example.com/app2/library")
+                            .overlay(PageMetadata.builder().siteName("Pathland").build()));
+            assertEquals("/library", seenRoute.get(), "the app sees its mount-stripped route");
+            assertTrue(html.contains(
+                    "<link rel=\"canonical\" href=\"https://example.com/app2/library\">"), html);
+            assertTrue(html.contains("<meta property=\"og:type\" content=\"article\">"), html);
+            assertTrue(html.contains("<meta property=\"og:site_name\" content=\"Pathland\">"), html);
+            assertTrue(html.contains(
+                    "<meta property=\"og:image\" content=\"https://example.com/cover.png\">"), html);
+            assertTrue(html.contains("\"@type\":\"WebPage\""), html);
+        } finally {
+            registry.shutdown();
+        }
+    }
+
+    @Test
+    void pageMetadataOverlayKeepsBaseFieldsAndAppliesOverrides() {
+        PageMetadata base = PageMetadata.seo("https://example.com/")
+                .overlay(PageMetadata.builder().siteName("Base").twitterSite("@base").build());
+        PageMetadata app = PageMetadata.builder().ogType("article").build();
+        PageMetadata merged = base.overlay(app);
+        assertEquals("https://example.com/", merged.canonicalUrl());
+        assertEquals("Base", merged.siteName());
+        assertEquals("@base", merged.twitterSite());
+        assertEquals("article", merged.ogType());
+        assertEquals(Boolean.TRUE, merged.structuredData());
+    }
+
 }

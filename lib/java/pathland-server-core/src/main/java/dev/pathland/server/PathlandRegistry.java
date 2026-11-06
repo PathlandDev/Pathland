@@ -175,15 +175,37 @@ public final class PathlandRegistry {
      * shared/bookmarked URL may carry).
      */
     public String renderHtml(String route, String windowId) {
+        return renderHtml(route, windowId, null);
+    }
+
+    /**
+     * Render the SSR HTML with host-default document metadata (canonical URL,
+     * Open Graph/Twitter cards, JSON-LD). The app's
+     * {@link PathlandApp#pageMetadata(PageMetadataRequest)} hook runs with the
+     * active, mount-stripped route and may override any non-null field before
+     * the first paint. Existing overloads pass no defaults.
+     */
+    public String renderHtml(String route, String windowId, PageMetadata hostDefaults) {
         boolean scoped = WindowIds.isValid(windowId);
         String scope = scoped ? stateScope(windowId) : stateScope(UUID.randomUUID().toString());
         String sessionId = UUID.randomUUID().toString();
+        String appRoute = stripRoute(route);
+        PageMetadata base = hostDefaults == null ? PageMetadata.empty() : hostDefaults;
+        PageMetadata appMetadata;
+        try {
+            appMetadata = app.pageMetadata(
+                    new PageMetadataRequest(appRoute, base.canonicalUrl(), mountPath));
+        } catch (RuntimeException e) {
+            LOG.warn("dropping app page metadata for {}: {}", appRoute, e.getMessage());
+            appMetadata = PageMetadata.empty();
+        }
+        PageMetadata pageMetadata = base.overlay(appMetadata);
         long start = System.nanoTime();
         PathlandSession session = new PathlandSession(
-                sessionId, store, app, EnvironmentData.of(stripRoute(route)),
+                sessionId, store, app, EnvironmentData.of(appRoute),
                 debugHtml, base(), scope, telemetry, mountPath);
         try {
-            return session.renderHtml(serviceWorker, scoped);
+            return session.renderHtml(serviceWorker, scoped, pageMetadata);
         } finally {
             telemetry.ssrRendered(mountPath, System.nanoTime() - start);
             session.close();

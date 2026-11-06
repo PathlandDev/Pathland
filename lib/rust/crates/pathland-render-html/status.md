@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** October 28, 2026
+**Last updated:** November 6, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -17,6 +17,17 @@ Statelessness). Protocol contract: `spec/`.
 ## Implemented
 
 - **Window metadata → head**: `TITLE` → `<title>`, `DESCRIPTION` → `<meta name="description">`, `LOCALE` → `<html lang>` (default `en`/`Pathland`); values escaped. Also: generic `LABEL` → `aria-label` (icon buttons), slider names on the inner input, `aria-hidden` on the non-visual media shell.
+- **SEO document metadata (issue #45)**: `DocumentMeta` is a per-render host
+  option (`render_document_with_meta` / `render_document_linked_with_meta`) for
+  the canonical URL, Open Graph/Twitter cards, and JSON-LD. Window
+  `TITLE`/`DESCRIPTION` still win; `DocumentMeta` title/description are
+  fallbacks. JSON-LD derives a `WebPage` plus one `Article` per `ROLE_ARTICLE`
+  (headline from the first heading, description from the first paragraph, image
+  from the first `IMAGE`); `<`/`>`/`&` are unicode-escaped so app text cannot
+  break out of the script element. `pathland_html_render_with_meta` exposes the
+  same option over the C ABI (`PathlandHtmlMeta`). The canonical Rust output is
+  pinned by `document_meta.document.html` and the Java port reproduces it
+  byte-for-byte.
 
 - **`PROXY_VIEW` (0x1E)**: renders as a plain container box (a flex column,
   like a stack with one child) and lays out the (id-remapped) origin subtree the

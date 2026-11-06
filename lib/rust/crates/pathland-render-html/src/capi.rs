@@ -12,7 +12,7 @@ use std::os::raw::c_uchar;
 
 use pathland_core_transport::decode_frame;
 
-use crate::{css, HtmlRenderer};
+use crate::{DocumentMeta, css, HtmlRenderer};
 
 fn render_bytes_with_css(
     batch: *const c_uchar,
@@ -41,6 +41,58 @@ fn render_bytes_with_css(
     match CString::new(html) {
         Ok(cs) => cs.into_raw(),
         Err(_) => std::ptr::null(),
+    }
+}
+
+/// Optional document metadata for [`pathland_html_render_with_meta`]
+/// (flattened, `#[repr(C)]`). String fields are UTF-8 NUL-terminated C strings;
+/// NULL means unset. The three flag bytes are non-zero to enable Open Graph,
+/// Twitter cards, and JSON-LD structured data respectively.
+#[repr(C)]
+pub struct PathlandHtmlMeta {
+    pub title: *const c_char,
+    pub description: *const c_char,
+    pub canonical_url: *const c_char,
+    pub site_name: *const c_char,
+    pub image_url: *const c_char,
+    pub og_type: *const c_char,
+    pub twitter_card: *const c_char,
+    pub twitter_site: *const c_char,
+    pub open_graph: u8,
+    pub twitter: u8,
+    pub structured_data: u8,
+}
+
+/// Copy one nullable C string into an owned `DocumentMeta` field.
+unsafe fn meta_string(value: *const c_char) -> Option<String> {
+    if value.is_null() {
+        None
+    } else {
+        unsafe { CStr::from_ptr(value) }
+            .to_str()
+            .ok()
+            .map(str::to_string)
+    }
+}
+
+/// Decode a [`PathlandHtmlMeta`] pointer (NULL → the legacy document head).
+unsafe fn document_meta(meta: *const PathlandHtmlMeta) -> DocumentMeta {
+    if meta.is_null() {
+        return DocumentMeta::none();
+    }
+    let meta = unsafe { &*meta };
+    DocumentMeta {
+        title: unsafe { meta_string(meta.title) },
+        description: unsafe { meta_string(meta.description) },
+        canonical_url: unsafe { meta_string(meta.canonical_url) },
+        site_name: unsafe { meta_string(meta.site_name) },
+        image_url: unsafe { meta_string(meta.image_url) },
+        og_type: unsafe { meta_string(meta.og_type) },
+        twitter_card: unsafe { meta_string(meta.twitter_card) },
+        twitter_site: unsafe { meta_string(meta.twitter_site) },
+        open_graph: meta.open_graph != 0,
+        twitter: meta.twitter != 0,
+        structured_data: meta.structured_data != 0,
     }
 }
 
@@ -138,6 +190,49 @@ pub unsafe extern "C" fn pathland_html_render_linked(
         }
     };
     render_bytes_with_css(batch, len, root, false, debug != 0, css_base)
+}
+
+/// Render a self-contained PLPL batch as a **full HTML document** with
+/// host-supplied [`PathlandHtmlMeta`] (canonical URL, Open Graph/Twitter cards,
+/// JSON-LD). `css_base` may be NULL for the inline base design; `meta` may be
+/// NULL for the legacy head. `debug` non-zero enables node comments. Ownership
+/// and safety as [`pathland_html_render`].
+///
+/// # Safety
+/// `batch` must point to `len` readable bytes; `css_base` and every non-NULL
+/// string field in `meta` must be valid NUL-terminated C strings.
+#[no_mangle]
+pub unsafe extern "C" fn pathland_html_render_with_meta(
+    batch: *const c_uchar,
+    len: u32,
+    root: u32,
+    css_base: *const c_char,
+    meta: *const PathlandHtmlMeta,
+    debug: u8,
+) -> *const c_char {
+    if batch.is_null() {
+        return std::ptr::null();
+    }
+    let bytes = unsafe { std::slice::from_raw_parts(batch, len as usize) };
+    let (opcodes, strings) = match decode_frame(bytes) {
+        Ok(decoded) => decoded,
+        Err(_) => return std::ptr::null(),
+    };
+    let renderer = HtmlRenderer::new().with_debug_comments(debug != 0);
+    let meta = unsafe { document_meta(meta) };
+    let html = if css_base.is_null() {
+        renderer.render_document_with_meta(&opcodes, &strings, root, &meta)
+    } else {
+        let base = match unsafe { CStr::from_ptr(css_base) }.to_str() {
+            Ok(base) => base,
+            Err(_) => return std::ptr::null(),
+        };
+        renderer.render_document_linked_with_meta(&opcodes, &strings, root, base, &meta)
+    };
+    match CString::new(html) {
+        Ok(cs) => cs.into_raw(),
+        Err(_) => std::ptr::null(),
+    }
 }
 
 /// The generated base-design stylesheet (the bytes served at
@@ -370,5 +465,73 @@ mod tests {
 
         // NULL input → NULL.
         assert!(unsafe { pathland_html_icon_svg(std::ptr::null()) }.is_null());
+    }
+    #[test]
+    fn capi_renders_document_meta() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(
+            category::TREE,
+            tree::CREATE_NODE,
+            0,
+            1,
+            component_type::TEXT as u32,
+            0,
+        ));
+        let bytes = encode_frame(&opcodes, &[]);
+        let canonical = std::ffi::CString::new("https://example.com/library").unwrap();
+        let title = std::ffi::CString::new("Fallback title").unwrap();
+        let site = std::ffi::CString::new("Pathland Music").unwrap();
+        let meta = PathlandHtmlMeta {
+            title: title.as_ptr(),
+            description: std::ptr::null(),
+            canonical_url: canonical.as_ptr(),
+            site_name: site.as_ptr(),
+            image_url: std::ptr::null(),
+            og_type: std::ptr::null(),
+            twitter_card: std::ptr::null(),
+            twitter_site: std::ptr::null(),
+            open_graph: 1,
+            twitter: 1,
+            structured_data: 1,
+        };
+        let ptr = unsafe {
+            pathland_html_render_with_meta(
+                bytes.as_ptr(),
+                bytes.len() as u32,
+                1,
+                std::ptr::null(),
+                &meta,
+                0,
+            )
+        };
+        assert!(!ptr.is_null());
+        let html = unsafe { CStr::from_ptr(ptr) }
+            .to_string_lossy()
+            .into_owned();
+        assert!(html.contains("<title>Fallback title</title>"), "{html}");
+        assert!(
+            html.contains("<link rel=\"canonical\" href=\"https://example.com/library\">"),
+            "{html}"
+        );
+        assert!(html.contains("\"@type\":\"WebPage\""), "{html}");
+        unsafe { pathland_html_free(ptr) };
+
+        // A NULL meta pointer keeps the legacy head.
+        let plain = unsafe {
+            pathland_html_render_with_meta(
+                bytes.as_ptr(),
+                bytes.len() as u32,
+                1,
+                std::ptr::null(),
+                std::ptr::null(),
+                0,
+            )
+        };
+        let html = unsafe { CStr::from_ptr(plain) }
+            .to_string_lossy()
+            .into_owned();
+        assert!(!html.contains("rel=\"canonical\""), "{html}");
+        assert!(!html.contains("application/ld+json"), "{html}");
+        unsafe { pathland_html_free(plain) };
     }
 }

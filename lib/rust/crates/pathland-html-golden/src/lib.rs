@@ -20,10 +20,11 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use pathland_core::{
-    Opcode, category, component_type, property_id, parameter, tree, value_type,
+    Opcode, category, component_type, meta, property_id, parameter, role, text_style, tree,
+    value_type, window_field,
 };
 use pathland_core_transport::encode_frame;
-use pathland_render_html::HtmlRenderer;
+use pathland_render_html::{DocumentMeta, HtmlRenderer};
 
 /// The committed fixture directory, resolved relative to this crate so the
 /// emitted files land in the TypeScript test suite.
@@ -781,6 +782,61 @@ fn delta_scenario() -> (Scenario, Scenario) {
     (base, change)
 }
 
+/// A full-document scenario pinning the SEO head (canonical/OG/Twitter/JSON-LD).
+fn document_meta_scenario() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::VSTACK);
+    b.create(2, component_type::VSTACK);
+    b.create(3, component_type::TEXT);
+    b.create(4, component_type::TEXT);
+    b.create(5, component_type::IMAGE);
+    b.insert(1, 2);
+    b.insert(2, 3);
+    b.insert(2, 4);
+    b.insert(2, 5);
+    b.set_prop(2, value_type::F32, property_id::ROLE, (role::ARTICLE as f32).to_bits());
+    b.set_prop(3, value_type::F32, property_id::TEXT_STYLE, (text_style::TITLE as f32).to_bits());
+    b.set_prop(4, value_type::F32, property_id::ROLE, (role::PARAGRAPH as f32).to_bits());
+    b.set_string(5, property_id::IMAGE_SOURCE, "/cover.png");
+    b.set_text(3, "Library");
+    b.set_text(4, "New releases");
+
+    let title = b.string("Library");
+    b.opcodes.push(Opcode::new(
+        category::META,
+        meta::SET_WINDOW_METADATA,
+        0,
+        window_field::TITLE as u32,
+        title,
+        0,
+    ));
+    let description = b.string("New releases");
+    b.opcodes.push(Opcode::new(
+        category::META,
+        meta::SET_WINDOW_METADATA,
+        0,
+        window_field::DESCRIPTION as u32,
+        description,
+        0,
+    ));
+    let locale = b.string("en");
+    b.opcodes.push(Opcode::new(
+        category::META,
+        meta::SET_WINDOW_METADATA,
+        0,
+        window_field::LOCALE as u32,
+        locale,
+        0,
+    ));
+
+    Scenario {
+        name: "document_meta",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
 /// The emitted fixture set, keyed by file name (without extension).
 pub fn emit(renderer: &HtmlRenderer) -> io::Result<Vec<PathBuf>> {
     let dir = fixture_dir();
@@ -814,6 +870,20 @@ pub fn emit(renderer: &HtmlRenderer) -> io::Result<Vec<PathBuf>> {
         &[],
         &result_html,
     )?);
+
+    let document = document_meta_scenario();
+    let meta = DocumentMeta::seo("https://example.com/library")
+        .with_site_name("Pathland Music")
+        .with_twitter_site("@pathland");
+    let document_html =
+        renderer.render_document_with_meta(&document.opcodes, &document.strings, document.root, &meta);
+    std::fs::write(
+        dir.join(format!("{}.plpl", document.name)),
+        encode_frame(&document.opcodes, &document.strings),
+    )?;
+    let document_path = dir.join(format!("{}.document.html", document.name));
+    std::fs::write(&document_path, document_html)?;
+    written.push(document_path);
     Ok(written)
 }
 
@@ -876,6 +946,22 @@ pub fn check(renderer: &HtmlRenderer) -> Result<(), Vec<String>> {
         base.root,
         &renderer.render_fragment(&combined, &base.strings, base.root),
     );
+
+    let document = document_meta_scenario();
+    let meta = DocumentMeta::seo("https://example.com/library")
+        .with_site_name("Pathland Music")
+        .with_twitter_site("@pathland");
+    let document_html =
+        renderer.render_document_with_meta(&document.opcodes, &document.strings, document.root, &meta);
+    let document_path = dir.join(format!("{}.document.html", document.name));
+    match std::fs::read_to_string(&document_path) {
+        Ok(committed) if committed == document_html => {}
+        Ok(_) => failures.push(format!(
+            "{}: SEO document output changed — regenerate with `cargo run -p pathland-html-golden -- --emit`",
+            document_path.display()
+        )),
+        Err(e) => failures.push(format!("{}: {}", document_path.display(), e)),
+    }
 
     if failures.is_empty() {
         Ok(())

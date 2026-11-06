@@ -2,6 +2,7 @@ package dev.pathland.quarkus;
 
 import dev.pathland.view.core.Environment;
 
+import dev.pathland.server.PageMetadata;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandHost.MountMatch;
 import jakarta.inject.Inject;
@@ -14,9 +15,11 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Optional;
 
 /**
  * Server-side rendering entry point. Dispatches each request to the app whose mount path
@@ -41,11 +44,33 @@ public class IndexResource {
     /** Content-hashed assets never change under a given name. */
     private static final String IMMUTABLE = "public, max-age=31536000, immutable";
 
+    /** Emit the SEO document head (canonical/OG/Twitter/JSON-LD). */
+    @ConfigProperty(name = "pathland.seo.enabled", defaultValue = "true")
+    boolean seoEnabled;
+
+    @ConfigProperty(name = "pathland.seo.site-name")
+    Optional<String> seoSiteName;
+
+    @ConfigProperty(name = "pathland.seo.image")
+    Optional<String> seoImage;
+
+    @ConfigProperty(name = "pathland.seo.og-type", defaultValue = "website")
+    String seoOgType;
+
+    @ConfigProperty(name = "pathland.seo.twitter-card")
+    Optional<String> seoTwitterCard;
+
+    @ConfigProperty(name = "pathland.seo.twitter-site")
+    Optional<String> seoTwitterSite;
+
+    @ConfigProperty(name = "pathland.seo.structured-data", defaultValue = "true")
+    boolean seoStructuredData;
+
     /** The root page (the route is {@code /}). */
     @GET
     @Produces(MediaType.TEXT_HTML)
-    public Response index(@QueryParam("wid") String wid) {
-        return render("/", wid);
+    public Response index(@QueryParam("wid") String wid, @Context UriInfo uri) {
+        return render("/", wid, uri);
     }
 
     /** A valid crawler policy — never the SPA HTML fallback. */
@@ -82,20 +107,41 @@ public class IndexResource {
     @GET
     @Path("{path:(?!_pathland)(?!q/).*}")
     @Produces(MediaType.TEXT_HTML)
-    public Response deep(@PathParam("path") String path, @QueryParam("wid") String wid) throws IOException {
+    public Response deep(@PathParam("path") String path, @QueryParam("wid") String wid,
+            @Context UriInfo uri) throws IOException {
         int framework = path.indexOf("/_pathland/");
         if (framework >= 0) {
             return frameworkFile(path.substring(framework + "/_pathland/".length()));
         }
-        return render("/" + path, wid);
+        return render("/" + path, wid, uri);
     }
 
-    private Response render(String requestUri, String wid) {
+    private Response render(String requestUri, String wid, UriInfo uri) {
         MountMatch match = host.match(requestUri);
         if (match == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        return Response.ok(match.registry().renderHtml(match.route(), wid)).build();
+        return Response.ok(
+                match.registry().renderHtml(match.route(), wid, pageMetadata(uri))).build();
+    }
+
+    /** Host-default document metadata for this request; the app may override it by route. */
+    private PageMetadata pageMetadata(UriInfo uri) {
+        if (!seoEnabled) {
+            return PageMetadata.empty();
+        }
+        String canonical = uri.getRequestUriBuilder().replaceQuery(null).build().toString();
+        return PageMetadata.builder()
+                .canonicalUrl(canonical)
+                .siteName(seoSiteName.orElse(null))
+                .imageUrl(seoImage.orElse(null))
+                .ogType(seoOgType)
+                .twitterCard(seoTwitterCard.orElse(null))
+                .twitterSite(seoTwitterSite.orElse(null))
+                .openGraph(true)
+                .twitter(true)
+                .structuredData(seoStructuredData)
+                .build();
     }
 
     /** The renderer-owned icon glyphs at the global base — `/_pathland/icons/<name>.svg`.

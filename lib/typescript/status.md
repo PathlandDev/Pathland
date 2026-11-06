@@ -389,6 +389,11 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 
 ## Not implemented / gaps
 
+- **SSR-only document head (issue #45)**: canonical, Open Graph/Twitter, and
+  JSON-LD are emitted by the server renderer as part of the SSR head. The DOM
+  client keeps updating `title`/description/locale from
+  `META::SET_WINDOW_METADATA`, but does not rewrite canonical/OG/JSON-LD during
+  client-side navigation (a fresh request/reload gets the route's SSR head).
 - **`DESIGN_TOKEN` property references** cover the directly-mappable subset of
   the property catalog (colors, font size/weight/family, spacing/padding,
   corner radius, opacity, tint, border/shadow color, width/height). Compound

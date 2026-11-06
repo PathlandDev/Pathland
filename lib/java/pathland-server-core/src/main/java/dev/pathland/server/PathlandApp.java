@@ -23,4 +23,17 @@ public interface PathlandApp {
     default ThemeData theme() {
         return null;
     }
+
+    /**
+     * Optional per-route document metadata for the SSR head (canonical URL,
+     * Open Graph/Twitter cards, JSON-LD). Called before the first render with
+     * the active route, so an app can make metadata route-specific.
+     *
+     * <p>Returned non-null fields override the host defaults built from the
+     * request URL and {@code pathland.seo.*} config. The default returns no
+     * overrides.
+     */
+    default PageMetadata pageMetadata(PageMetadataRequest request) {
+        return PageMetadata.empty();
+    }
 }

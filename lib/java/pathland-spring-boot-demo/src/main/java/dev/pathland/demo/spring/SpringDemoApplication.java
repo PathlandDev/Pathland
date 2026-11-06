@@ -4,6 +4,8 @@ import dev.pathland.demo.DemoTheme;
 import dev.pathland.demo.assets.DemoAssets;
 import dev.pathland.demo.music.MusicPlayerView;
 import dev.pathland.server.MountedApp;
+import dev.pathland.server.PageMetadata;
+import dev.pathland.server.PageMetadataRequest;
 import dev.pathland.server.PathlandApp;
 import dev.pathland.view.core.ThemeData;
 import dev.pathland.view.core.View;
@@ -52,6 +54,16 @@ public class SpringDemoApplication {
             @Override
             public ThemeData theme() {
                 return DemoTheme.adaptive();
+            }
+
+            @Override
+            public PageMetadata pageMetadata(PageMetadataRequest request) {
+                // Route-aware SEO: the host supplies the canonical URL + defaults;
+                // the app refines them for the active (mount-stripped) route.
+                return PageMetadata.builder()
+                        .siteName("Pathland Music")
+                        .ogType(request.route().startsWith("/article") ? "article" : "website")
+                        .build();
             }
         };
     }

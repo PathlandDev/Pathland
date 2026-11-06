@@ -2,6 +2,7 @@ package dev.pathland.spring;
 
 import dev.pathland.view.core.Environment;
 
+import dev.pathland.server.PageMetadata;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandHost.MountMatch;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,6 +51,34 @@ public class PathlandIndexController {
      *  temp-dir extraction of the demo's media assets — see the demo hosts). */
     @Value("${pathland.asset-dir:}")
     private String assetDir;
+
+    /** Emit the SEO document head (canonical/OG/Twitter/JSON-LD). */
+    @Value("${pathland.seo.enabled:true}")
+    private boolean seoEnabled;
+
+    /** {@code og:site_name} for every SSR page. */
+    @Value("${pathland.seo.site-name:}")
+    private String seoSiteName;
+
+    /** Default {@code og:image}/{@code twitter:image}; empty → first IMAGE source. */
+    @Value("${pathland.seo.image:}")
+    private String seoImage;
+
+    /** {@code og:type}; default {@code website}. */
+    @Value("${pathland.seo.og-type:website}")
+    private String seoOgType;
+
+    /** {@code twitter:card}; empty → derived from image availability. */
+    @Value("${pathland.seo.twitter-card:}")
+    private String seoTwitterCard;
+
+    /** {@code twitter:site} handle (e.g. {@code @pathland}). */
+    @Value("${pathland.seo.twitter-site:}")
+    private String seoTwitterSite;
+
+    /** Emit JSON-LD structured data (WebPage + Article). */
+    @Value("${pathland.seo.structured-data:true}")
+    private boolean seoStructuredData;
 
     public PathlandIndexController(PathlandHost host) {
         this.host = host;
@@ -104,10 +133,29 @@ public class PathlandIndexController {
         if (match == null) {
             return ResponseEntity.notFound().build();
         }
-        String html = match.registry().renderHtml(match.route(), request.getParameter("wid"));
+        String html = match.registry().renderHtml(
+                match.route(), request.getParameter("wid"), pageMetadata(request));
         return ResponseEntity.ok()
                 .contentType(MediaType.TEXT_HTML)
                 .body(html);
+    }
+
+    /** Host-default document metadata for this request; the app may override it by route. */
+    private PageMetadata pageMetadata(HttpServletRequest request) {
+        if (!seoEnabled) {
+            return PageMetadata.empty();
+        }
+        return PageMetadata.builder()
+                .canonicalUrl(request.getRequestURL().toString())
+                .siteName(seoSiteName)
+                .imageUrl(seoImage)
+                .ogType(seoOgType)
+                .twitterCard(seoTwitterCard)
+                .twitterSite(seoTwitterSite)
+                .openGraph(true)
+                .twitter(true)
+                .structuredData(seoStructuredData)
+                .build();
     }
 
     /**
