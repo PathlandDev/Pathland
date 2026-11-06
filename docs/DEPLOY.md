@@ -4,22 +4,19 @@ Runs the [Pathland Quarkus demo](pathland-quarkus-demo/) (server-side HTML at an
 path + live `/ws` deltas) as a container — the application evidence for the Restack
 proposal (issue #71, `docs/PREAPPLICATION-TODO.md`).
 
-The image is multi-stage: it builds the Rust HTML renderer and inline-Markdown
-cdylibs, embeds them into the Java `pathland-render-html` and `pathland-view-core`
-jars, packages the Quarkus app, and runs it on a JRE 17 runtime.
+The image is multi-stage: it builds the Java reactor (the HTML renderer and
+inline-Markdown parser are pure-Java ports), packages the Quarkus app, and runs
+it on a JRE 17 runtime. No Rust toolchain or native library is needed.
 
 ## Build
 
-From the repository root (build context must be the root — the embed step needs
-the Rust dylib and the Java reactor sources):
+From the repository root (build context must be the root — the Java reactor plus
+the generated base-design assets under
+`lib/rust/crates/pathland-render-html/assets/`):
 
 ```bash
 docker build -f lib/java/pathland-quarkus-demo/Dockerfile -t pathland-quarkus-demo .
 ```
-
-The Rust stage builds both `libpathland_render_html.so` and
-`libpathland_markdown.so`; the Java stage copies both into
-`lib/rust/target/debug` so the renderer and view-core jar-embed steps find them.
 
 The image's Maven step selects both `pathland-quarkus-demo` and
 `pathland-quarkus-deployment`. The deployment module is not a Maven dependency of

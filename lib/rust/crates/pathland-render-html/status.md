@@ -8,6 +8,12 @@ decodes a self-contained snapshot batch into a **transient** map, walks it once,
 and emits HTML text out — no retained tree, zero cross-call state (Renderer
 Statelessness). Protocol contract: `spec/`.
 
+> **JVM note:** the Spring Boot / Quarkus paths no longer load this crate through
+> JNA. `lib/java/pathland-render-html` is a **pure-Java behavioural port**, and
+> `GoldenConformanceTest` keeps it byte-identical to this canonical renderer.
+> The Rust crate remains the cross-language (C ABI) implementation and the
+> source of the committed golden fixtures.
+
 ## Implemented
 
 - **Window metadata → head**: `TITLE` → `<title>`, `DESCRIPTION` → `<meta name="description">`, `LOCALE` → `<html lang>` (default `en`/`Pathland`); values escaped. Also: generic `LABEL` → `aria-label` (icon buttons), slider names on the inner input, `aria-hidden` on the non-visual media shell.
@@ -288,10 +294,10 @@ The built-in stylesheet is now **generated**, not hand-written in `css.rs`:
   `<link rel="stylesheet" href="{css_base}/{name}">` instead. Token overrides and
   fit-band rules stay inline after it. The C ABI adds
   `pathland_html_render_linked`, `pathland_html_base_css`, and
-  `pathland_html_base_css_name`; the Java shim + Spring/Quarkus starters use
+  `pathland_html_base_css_name`; the Java port + Spring/Quarkus starters expose
   them and serve the CSS immutable. An empty base falls back to inline.
-- The build is wired into `scripts/lib.sh` (`build_rust_html`), the Maven
-  `refresh-ide` profile, and a CI design job that runs build/check/sync-check.
+- The design bundle is wired into the Maven `refresh-ide` profile and a CI
+  design job that runs build/check/sync-check.
 
 ## Design decision (decision A, September 2026): inline-all + built-in design system
 
@@ -321,19 +327,19 @@ single `style` attribute — no external compiler, no class system, no safelist:
     `html` sets `color-scheme: light dark` + the `--pl-color-bg` background so
     native form controls and the page follow the theme.
 - **`pathland_html_*` cdylib** (`pathland_html_render` / `_render_fragment` /
-  `_free`, plus `pathland_html_icon_svg`) for cross-language hosts (Java JNA
-  shim). `pathland_html_icon_svg(name)` returns the icon glyph's full `<svg>`
+  `_free`, plus `pathland_html_icon_svg`) for non-JVM cross-language hosts
+  (Swift/.NET/…; the JVM uses the pure-Java port).
+  `pathland_html_icon_svg(name)` returns the icon glyph's full `<svg>`
   (canonical name → glyph, unknown/extension → the renderer's fallback glyph) —
   how any host serves `/_pathland/icons/<name>.svg` from ONE Rust source (the
   DOM client's lazy icon fetch) instead of per-platform static files. The
   `_tailwind_compile`
   entry point, `tw.rs`, `tailwind.rs`, `build.rs`, `scripts/fetch-tailwind.mjs`,
   `vendor/`, and the `tailwind-embed` feature are **deleted**.
-  **The cdylib must be refreshed with `cargo build -p pathland-render-html`
-  (NOT just `cargo test` — tests rebuild the rlib, not the `.dylib`) before
-  `mvn install`**: the jar-embed step only fails on a *missing* dylib, a
-  *stale* one embeds silently and hosts SSR the old component surface (e.g. a
-  blank page for a newly-added component like `SIZE_THAT_FITS`).
+  Non-JVM hosts that embed the cdylib must refresh it with `cargo build -p
+  pathland-render-html` (not just `cargo test` — tests rebuild the rlib, not
+  the shared library). The JVM no longer embeds it; `GoldenConformanceTest`
+  guards the Java port against golden-fixture drift.
 - **Debug comments** (`HtmlRenderer::with_debug_comments(true)`; C ABI
   `pathland_html_render_debug` / `_fragment_debug`): every rendered node is
   prefixed with an HTML comment naming its component type and the modifiers

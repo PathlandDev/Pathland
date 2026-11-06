@@ -1,82 +1,55 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** October 28, 2026
+**Last updated:** November 6, 2026
 
-The **Java binding to the Rust HTML renderer** (`dev.pathland.render.html`) — a
-thin **JNA shim** over `libpathland_render_html`. There is a **single renderer**
-(the Rust crate), reused by every language; the former hand-written retained
-Java renderer is removed. Protocol contract: `spec/`.
+The **pure-Java HTML renderer** (`dev.pathland.render.html`) — a behavioural
+port of the Rust `pathland-render-html` crate. Stateless: each call decodes a
+self-contained snapshot frame into a transient tree and renders it to HTML in
+one pass. No JNA and no cdylib, so a Maven dependency runs on every platform and
+is GraalVM native-image compatible (no reachability/resource config for a native
+library). Protocol contract: `spec/`.
 
 ## Implemented
 
-- **Stateless JNA shim**: `HtmlRenderer.instance()` links the Rust cdylib;
-  `render(frame, root)` / `renderFragment(frame, root)` /
-  `renderFullSnapshot(frame, root)` render a self-contained snapshot frame to
-  HTML in one pass (no retained tree, no `applyFrame`); `pathland_html_free`
-  releases native strings. Lazy-loaded; skipped (test assumption) when the dylib
-  is absent from `java.library.path`.
-- **Debug comments**: `renderDebug(frame, root)` / `renderFragmentDebug(...)`
-  bind the Rust `pathland_html_render_debug` exports — each rendered node is
-  prefixed with an HTML comment naming its component type and the modifiers
-  applied (opt-in; the plain `render` output is unchanged).
-- **Full Rust renderer surface** (canonical): all spec components render inline
+- **Pure-Java renderer**: `HtmlRenderer.instance()` / `tryInstance()` /
+  `isAvailable()` (always true); `render(frame, root)` /
+  `renderFragment(frame, root)` / `renderFullSnapshot(frame, root)` render a
+  self-contained snapshot in one pass. The public API is unchanged from the
+  former JNA shim, so `PathlandSession`, Spring, and Quarkus need no changes.
+- **Byte-identical Rust output**: `GoldenConformanceTest` renders every
+  committed `lib/typescript/test/fixtures/ssr/*.plpl` fixture and compares the
+  fragment to its `.html` fixture byte-for-byte (the same contract the TS DOM
+  client asserts), including the delta base/change/result scenario.
+- **Full renderer surface** (canonical): all spec components render inline
   (structural + decorative CSS in a single `style` attribute), ARIA/event
   attributes, `IS_SECURE` → password, `TOGGLE_STYLE` variants,
-  `DATE_PICKER_MODE`, and literal colors inline. The default `render(...)`
-  injects the renderer's built-in `<style>` block (preflight reset + design
-  tokens + `.pathland-*` component defaults) into every document — no
-  `/tailwind.css`. `renderLinked(frame, root, cssBase)` /
-  `renderLinkedDebug(...)` instead emit a content-hashed
-  `<link rel="stylesheet" href="{cssBase}/{baseCssName()}">`; token overrides
-  and fit-band rules stay inline. `baseCss()` / `baseCssName()` bind the Rust
-  `pathland_html_base_css[_name]` exports so the Spring/Quarkus starters serve
-  the renderer-owned bytes immutable. A missing linked export degrades to the
-  inline document.
-- **Icon glyphs from the shared renderer**: `iconSvg(String name)` binds the
-  Rust `pathland_html_icon_svg` export over the C ABI — the full inline `<svg>`
-  for a canonical `ICON_NAME` (unknown/extension names → the renderer's
-  fallback glyph, never null). Hosts serve `/_pathland/icons/<name>.svg` from
-  it (Spring/Quarkus route a few lines in their starters), so the DOM client's
-  lazy icon fetch gets the same glyph data SSR inlines from — one Rust source,
-  no per-platform static icon files. `HtmlRendererTest` covers it.
-- **Demos use the shim**: `SessionApp` no longer calls `applyFrame`; SSR renders
-  the mount frame through `HtmlRenderer.render(sink.frame(), rootId)`. The
-  renderer is compiled once at startup.
-- **Text fields share one component class**: `TEXT_FIELD` inputs and `TEXT_EDITOR`
-  textareas render with `class="pathland-input"` (Tailwind-style inset-outline
-  styling from the Rust renderer's CSS); the copied `@pathland/dom-renderer`
-  bundle (content-hashed `dom-renderer-<sha256>.js` in both demos) mirrors the
-  class so delta-created fields hydrate identically.
-
-## Removed (September 2026)
-
-- `compileTailwind(overrideCss)` and the `pathland_tailwind_compile` binding are
-  **deleted** — the renderer is inline-only now and needs no compiler. The demo
-  `/tailwind.css` endpoints (`TailwindCssController` / `TailwindCssResource`)
-  and the `<link rel="stylesheet" href="/tailwind.css">` in both `SessionApp`
-  files are removed.
+  `DATE_PICKER_MODE`, literal colors inline, attributed text, media
+  surfaces/controllers, proxy views, grid rows/tracks, fit bands, and
+  size-that-fits snapshots.
+- **Built-in base design**: the generated `design/build/base.css` (synced into
+  the Rust assets) is copied into the jar at build time and inlined by the
+  default `render(...)`. `renderLinked(frame, root, cssBase)` /
+  `renderLinkedDebug(...)` emit a content-hashed
+  `<link rel="stylesheet" href="{cssBase}/{baseCssName()}">`; `baseCss()` /
+  `baseCssName()` expose the renderer-owned bytes for immutable serving.
+- **Debug comments**: `renderDebug` / `renderFragmentDebug` prefix every node
+  with an HTML comment naming its component and decoded modifiers.
+- **Icon glyphs**: `iconSvg(name)` returns the full inline `<svg>` for a
+  canonical `ICON_NAME` (unknown names → the fallback glyph; `null` → `null`),
+  so hosts serve `/_pathland/icons/<name>.svg` from the same table SSR inlines.
+- **Demos use the renderer**: the Spring Boot and Quarkus starters SSR through
+  `HtmlRenderer`, and the DOM client hydrates in place.
 
 ## Not implemented / gaps
 
-- **Typography uses the platform system font stack** (`system-ui,
-  -apple-system, 'Segoe UI', Roboto, …`) — the Rust renderer's document head
-  makes no external/webfont requests, so the demo pages render without loading
-  any font files and work offline. An app can still override `font.body.family`
-  via a `SET_DESIGN_TOKEN` to any font it hosts.
-- The shim is unaffected by the Rust renderer's September 2026 shell alignment
-  (SPACER/MENU/STEPPER/GAUGE/PICKER markup now matches the DOM client's runtime
-  shells); the demos' SSR output reflects the Rust renderer as-is, pinned by the
-  `pathland-html-golden` conformance harness. `HtmlRendererTest` covers the
-  semantic-role → element mapping (`NAVIGATION`→`<nav>`, `HEADER`→`<h2>`,
-  `TEXT_STYLE` headings) and the DSL's rejection of non-semantic role codes,
-  plus media rendering (a `VIDEO` surface bound to its `MEDIA_CONTROLLER` —
-  native `<video controls>` + `data-pathland-controller`, the non-visual hidden
-  controller shell, image `alt` from the accessibility label,
-  `ContentMode Fill`→`cover`).
+- **Typography uses the platform system font stack**; the document head makes no
+  external/webfont requests.
+- The renderer is a port of the Rust implementation, not a second source of
+  truth: when the HTML output changes, update the Rust crate + golden fixtures
+  and this port together (`GoldenConformanceTest` fails on drift).
 
 ## Verified by
 
-`mvn test -pl pathland-render-html` — JNA shim tests (skip when the Rust dylib
-is absent), including the linked stylesheet link + `baseCss`/`baseCssName`
-exposure; part of the non-demo reactor run on JDK 17.
-
+`mvn test -pl pathland-render-html` — the golden conformance suite plus the
+DSL → emitter → frame → renderer round-trip tests. Part of the non-demo reactor
+run on JDK 17/21/25 and under GraalVM native-image.

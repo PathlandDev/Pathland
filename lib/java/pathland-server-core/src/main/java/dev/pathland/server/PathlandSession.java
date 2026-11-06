@@ -350,14 +350,14 @@ public final class PathlandSession {
         HtmlRenderer renderer = HtmlRenderer.tryInstance();
         if (renderer == null) {
             return "<!DOCTYPE html><html><body><h1>Pathland renderer unavailable</h1>"
-                    + "<p>Build the Rust crate so libpathland_render_html is embedded in the "
-                    + "pathland-render-html jar.</p></body></html>";
+                    + "<p>The pathland-render-html artifact is missing from the classpath.</p>"
+                    + "</body></html>";
         }
         ProtocolFrame frame = ssrFrame();
         // The base design is a content-hashed, immutable stylesheet under the
         // session's framework base (the same base the DOM bundle/WS use). The
-        // Java shim falls back to the inline document when the linked export is
-        // unavailable. Token overrides and fit-band rules remain inline.
+        // renderer falls back to the inline document when the linked stylesheet
+        // name is unavailable. Token overrides and fit-band rules remain inline.
         String html = debugHtml
                 ? renderer.renderLinkedDebug(frame, rootId, base)
                 : renderer.renderLinked(frame, rootId, base);

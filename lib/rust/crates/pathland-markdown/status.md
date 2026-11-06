@@ -17,9 +17,10 @@ directly and by foreign hosts through `pathland-markdown-capi`. It produces a
 - UTF-8 byte offsets in the produced runs; code spans do not parse inner markup.
 - Unit tests for markers, nesting, links, code, escapes, underscores, unmatched
   markers, and UTF-8 offsets.
-- Used by both authoring DSLs: Rust `pathland-engine` auto-parses
-  `Node::markdown_text`; Kotlin `Text(...)` calls it through the embedded
-  `pathland-markdown-capi` dylib in `pathland-view-core`.
+- Used by the Rust DSL: `pathland-engine` auto-parses `Node::markdown_text`.
+  The Kotlin `Text(...)` path uses a **pure-Java behavioural port** in
+  `pathland-view-core` (no native library); `pathland-markdown-capi` remains for
+  non-JVM hosts.
 
 ## Not implemented / gaps
 
