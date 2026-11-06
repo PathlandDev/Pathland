@@ -83,6 +83,7 @@ pub use alloc::vec;
 use pathland_core::property_id;
 
 pub use pathland_core;
+pub use pathland_core::{AttributedString, LinkRun, StyleRun, TextAttribute};
 pub use pathland_engine::{
     assign_ids, collect_input_handlers, collect_tap_handlers, component_type_id, AdaptiveTheme,
     Component, Engine, Gesture, InputHandlers, IntoSignalId, MediaController, MediaControllerRef,
@@ -1454,6 +1455,9 @@ fn plain_node(component: Component, children: Vec<Node>, properties: BTreeMap<u1
         list_properties: BTreeMap::new(),
         token_properties: BTreeMap::new(),
         text_binding: None,
+        markdown_text: false,
+        attributed_text: None,
+        attributed_binding: None,
         property_bindings: BTreeMap::new(),
         string_bindings: BTreeMap::new(),
         media_controller: None,
@@ -1539,34 +1543,139 @@ pub struct Text {
 }
 
 /// [`Text`] values.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TextConfig {
     /// The static text content.
     pub text: String,
     /// A signal the text binds to (overrides `text` when set).
     pub binding: Option<SignalId>,
+    /// Parse the text as inline Markdown during emission (default `true`).
+    pub markdown: bool,
+    /// Static attributed text (style runs + links). Overrides `text` on the wire.
+    pub attributed: Option<pathland_core::AttributedString>,
+    /// A signal the attributed text binds to (overrides `attributed` when set).
+    pub attributed_binding: Option<SignalId>,
+}
+
+impl Default for TextConfig {
+    fn default() -> Self {
+        Self {
+            text: String::new(),
+            binding: None,
+            markdown: true,
+            attributed: None,
+            attributed_binding: None,
+        }
+    }
 }
 
 impl TextConfig {
-    /// Set the static text content (clears any signal binding).
+    /// Set the static text content (parsed as inline Markdown).
     pub fn text(&mut self, text: impl Into<String>) -> &mut Self {
         self.text = text.into();
         self.binding = None;
+        self.markdown = true;
+        self.attributed = None;
+        self.attributed_binding = None;
         self
     }
 
-    /// Bind the text to a signal (re-emits `SET_TEXT` when it changes).
+    /// Set literal text content (no Markdown parsing).
+    pub fn plain_text(&mut self, text: impl Into<String>) -> &mut Self {
+        self.text = text.into();
+        self.binding = None;
+        self.markdown = false;
+        self.attributed = None;
+        self.attributed_binding = None;
+        self
+    }
+
+    /// Bind the text to a signal (parsed as inline Markdown on change).
     pub fn text_signal(&mut self, signal: impl IntoSignalId) -> &mut Self {
         self.binding = Some(signal.into_signal_id());
+        self.markdown = true;
+        self.attributed = None;
+        self.attributed_binding = None;
+        self
+    }
+
+    /// Bind literal text to a signal (no Markdown parsing).
+    pub fn plain_signal(&mut self, signal: impl IntoSignalId) -> &mut Self {
+        self.binding = Some(signal.into_signal_id());
+        self.markdown = false;
+        self.attributed = None;
+        self.attributed_binding = None;
+        self
+    }
+
+    /// Set attributed text (clears plain text/binding; keeps the plain text as
+    /// the fallback).
+    pub fn attributed(&mut self, value: impl Into<pathland_core::AttributedString>) -> &mut Self {
+        let value = value.into();
+        self.text = String::from(value.text());
+        self.binding = None;
+        self.markdown = false;
+        self.attributed = Some(value);
+        self.attributed_binding = None;
+        self
+    }
+
+    /// Bind the attributed text to a signal (re-emits `SET_ATTRIBUTED_TEXT`).
+    pub fn attributed_signal(&mut self, signal: impl IntoSignalId) -> &mut Self {
+        self.attributed_binding = Some(signal.into_signal_id());
+        self.binding = None;
+        self.markdown = false;
+        self.attributed = None;
+        self
+    }
+
+    /// Parse inline Markdown into attributed text explicitly.
+    pub fn markdown(&mut self, input: &str) -> &mut Self {
+        match pathland_markdown::parse(input) {
+            Some(value) => {
+                self.attributed(value);
+            }
+            None => {
+                self.text(input);
+            }
+        }
         self
     }
 }
 
 impl Text {
-    /// A text node with the given content.
+    /// A text node with the given content, parsed as inline Markdown.
     pub fn new(text: &str) -> Self {
         let mut config = TextConfig::default();
         config.text(text);
+        Self { config }
+    }
+
+    /// A text node whose content is literal (no Markdown parsing).
+    pub fn plain(text: &str) -> Self {
+        let mut config = TextConfig::default();
+        config.plain_text(text);
+        Self { config }
+    }
+
+    /// A text node with attributed content.
+    pub fn attributed(value: impl Into<pathland_core::AttributedString>) -> Self {
+        let mut config = TextConfig::default();
+        config.attributed(value);
+        Self { config }
+    }
+
+    /// A text node parsed from inline Markdown (explicit form of the default).
+    pub fn markdown(input: &str) -> Self {
+        let mut config = TextConfig::default();
+        config.markdown(input);
+        Self { config }
+    }
+
+    /// A text node bound to a literal string signal (no Markdown parsing).
+    pub fn plain_signal(signal: impl IntoSignalId) -> Self {
+        let mut config = TextConfig::default();
+        config.plain_signal(signal);
         Self { config }
     }
 }
@@ -1591,6 +1700,9 @@ impl View for Text {
             BTreeMap::new(),
         );
         node.text_binding = self.config.binding;
+        node.markdown_text = self.config.markdown && self.config.attributed.is_none();
+        node.attributed_text = self.config.attributed.clone();
+        node.attributed_binding = self.config.attributed_binding;
         node
     }
 }
@@ -3499,6 +3611,21 @@ pub fn text(content: &str) -> Text {
     Text::new(content)
 }
 
+/// Build a literal text leaf (no Markdown parsing).
+pub fn plain_text(content: &str) -> Text {
+    Text::plain(content)
+}
+
+/// Build a text leaf from attributed content.
+pub fn attributed_text(value: impl Into<pathland_core::AttributedString>) -> Text {
+    Text::attributed(value)
+}
+
+/// Build a text leaf parsed from inline Markdown.
+pub fn markdown_text(input: &str) -> Text {
+    Text::markdown(input)
+}
+
 // ---------------------------------------------------------------------------
 // SizeThatFits (fit slot)
 // ---------------------------------------------------------------------------
@@ -3607,6 +3734,20 @@ mod tests {
         })
         .build();
         assert_eq!(node.component, Component::Text { text: "hi".into() });
+    }
+
+    #[test]
+    fn text_parses_markdown_by_default_and_plain_opts_out() {
+        assert!(Text::new("**hi**").build().markdown_text);
+        assert!(!Text::plain("**hi**").build().markdown_text);
+    }
+
+    #[test]
+    fn markdown_text_builds_attributed_text() {
+        let node = Text::markdown("**hi**").build();
+        assert_eq!(node.component, Component::Text { text: "hi".into() });
+        assert!(node.attributed_text.is_some());
+        assert_eq!(node.attributed_text.unwrap().text(), "hi");
     }
 
     #[test]

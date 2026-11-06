@@ -32,7 +32,8 @@ final class FrameRebase {
             b += base;
         } else if (op.category() == Categories.PARAMETER) {
             int command = op.command();
-            if (command == Commands.Parameter.SET_TEXT) {
+            if (command == Commands.Parameter.SET_TEXT
+                    || command == Commands.Parameter.SET_ATTRIBUTED_TEXT) {
                 b += base;
             } else if (command == Commands.Parameter.SET_PROPERTY) {
                 int valueType = b >>> 16;

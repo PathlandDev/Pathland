@@ -1,5 +1,6 @@
 package dev.pathland.view.dsl
 
+import dev.pathland.view.core.AttributedString
 import dev.pathland.view.core.protocol.Categories
 import dev.pathland.view.core.protocol.Commands
 import dev.pathland.view.core.protocol.Components
@@ -51,6 +52,19 @@ class DslTest {
             .map { it.b() and 0xffff }
         assertEquals(listOf(Components.VSTACK, Components.TEXT, Components.BUTTON, Components.TEXT), created)
         assertEquals(listOf("Hello", "Tap"), texts(frame))
+    }
+
+    @Test
+    fun attributedTextEmitsSetAttributedTextInsteadOfSetText() {
+        val value = AttributedString.builder().append("Hi").bold(0, 2).build()
+        val (_, frame) = mount(Text(value))
+        assertEquals(0, frame.opcodes().count { it.command() == Commands.Parameter.SET_TEXT })
+        val ops = frame.opcodes().filter {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_ATTRIBUTED_TEXT
+        }
+        assertEquals(1, ops.size)
+        assertTrue(ops[0].b() >= 0)
     }
 
     @Test
@@ -157,6 +171,40 @@ class DslTest {
         val delta = sink.frame()
         assertEquals(1, delta.opcodes().size, "a bound text emits exactly one SET_TEXT")
         assertEquals("two", texts(delta).single())
+    }
+
+    @Test
+    fun textParsesInlineMarkdownByDefault() {
+        val (_, rich) = mount(Text("**Hi**"))
+        assertTrue(rich.opcodes().any { it.command() == Commands.Parameter.SET_ATTRIBUTED_TEXT })
+        assertTrue(rich.opcodes().none { it.command() == Commands.Parameter.SET_TEXT })
+
+        val (_, plain) = mount(Text("Hi"))
+        assertTrue(plain.opcodes().any { it.command() == Commands.Parameter.SET_TEXT })
+        assertTrue(plain.opcodes().none { it.command() == Commands.Parameter.SET_ATTRIBUTED_TEXT })
+
+        val (_, literal) = mount(Text("**Hi**", markdown = false))
+        assertTrue(literal.opcodes().any { it.command() == Commands.Parameter.SET_TEXT })
+        assertTrue(literal.opcodes().none { it.command() == Commands.Parameter.SET_ATTRIBUTED_TEXT })
+    }
+
+    @Test
+    fun reactiveTextParsesMarkdownAndFallsBackToPlain() {
+        val label = signal("**Hi**")
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        emitter.mount(Text(label), Environment.DEFAULT)
+        assertTrue(sink.frame().opcodes().any { it.command() == Commands.Parameter.SET_ATTRIBUTED_TEXT })
+
+        label.value = "plain"
+        val plain = sink.frame()
+        assertEquals(1, plain.opcodes().size)
+        assertEquals(Commands.Parameter.SET_TEXT, plain.opcodes().single().command())
+
+        label.value = "__Bold__"
+        val rich = sink.frame()
+        assertEquals(1, rich.opcodes().size)
+        assertEquals(Commands.Parameter.SET_ATTRIBUTED_TEXT, rich.opcodes().single().command())
     }
 
     @Test

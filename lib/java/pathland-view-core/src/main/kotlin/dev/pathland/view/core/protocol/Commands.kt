@@ -20,6 +20,7 @@ object Commands {
         const val SET_DESIGN_TOKEN = 0x02
         const val SET_TEXT = 0x03
         const val SET_DATE = 0x04
+        const val SET_ATTRIBUTED_TEXT = 0x05
     }
 
     /** EVENT commands (host → guest raw inputs). */

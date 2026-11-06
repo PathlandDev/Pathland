@@ -20,7 +20,8 @@ The **toolkit-free renderer core shared by every Pathland renderer** (GTK4, Qt,
   - `STYLE` ops → node properties: `SET_PROPERTY` (numeric `properties`,
     `STRING` resolved from the arena into `strings`, `DESIGN_TOKEN` refs kept
     in `token_refs`), `SET_TEXT`, `SET_DESIGN_TOKEN` (global overrides, base +
-    `dark.` split).
+    `dark.` split), and `SET_ATTRIBUTED_TEXT` (decoded into
+    `HostNode::attributed`, with the plain `text` fallback populated).
   - Node accessors: `node(id)`, `root()`, string/f32/u32 property helpers,
     `checked()`.
 - **Design tokens (spec/TOKENS.md renderer contract)**:

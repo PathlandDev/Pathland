@@ -86,10 +86,64 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- Point the test JVM at the Rust cdylib for JNA ring tests.
-                         Absent the dylib, those tests are skipped via an assumption. -->
+                    <!-- Point the test JVM at the Rust cdylibs for JNA ring and
+                         Markdown tests. -->
                     <argLine>-Djava.library.path=${project.basedir}/../../rust/target/debug</argLine>
                 </configuration>
+            </plugin>
+
+            <!-- Embed the Rust inline-Markdown cdylib so `Text(...)` auto-parsing
+                 travels with the view-core artifact (JNA extracts it at runtime).
+                 A release build stages per-platform libs under target/native;
+                 a local build embeds the host Rust debug build. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>embed-native-markdown</id>
+                        <phase>process-resources</phase>
+                        <configuration>
+                            <target>
+                                <condition property="pathland.native.ext" value=".dylib">
+                                    <os family="mac" />
+                                </condition>
+                                <condition property="pathland.native.ext" value=".dll">
+                                    <os family="windows" />
+                                </condition>
+                                <condition property="pathland.native.ext" value=".so">
+                                    <os family="unix" />
+                                </condition>
+                                <property name="pathland.native.ext" value="" />
+
+                                <property name="pathland.native.staging" value="${project.basedir}/target/native" />
+                                <available file="${pathland.native.staging}" type="dir" property="pathland.native.staged" />
+                                <property name="pathland.native.host" value="${project.basedir}/../../rust/target/debug/libpathland_markdown${pathland.native.ext}" />
+                                <available file="${pathland.native.host}" property="pathland.native.host.present" />
+
+                                <fail message="No Rust markdown library to embed: neither per-platform libs at ${pathland.native.staging}/&lt;os&gt;-&lt;arch&gt;/ (release) nor the host build at ${pathland.native.host} (local). Build it first: cargo build -p pathland-markdown-capi (in lib/rust).">
+                                    <condition>
+                                        <and>
+                                            <not><isset property="pathland.native.staged" /></not>
+                                            <not><isset property="pathland.native.host.present" /></not>
+                                        </and>
+                                    </condition>
+                                </fail>
+
+                                <mkdir dir="${project.build.outputDirectory}/META-INF/native" />
+                                <copy todir="${project.build.outputDirectory}/META-INF/native">
+                                    <fileset dir="${pathland.native.staging}" includes="*/*" erroronmissingdir="false" />
+                                </copy>
+                                <copy file="${pathland.native.host}"
+                                      tofile="${project.build.outputDirectory}/META-INF/native/libpathland_markdown${pathland.native.ext}"
+                                      failonerror="false" />
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

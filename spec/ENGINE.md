@@ -75,7 +75,8 @@ For each node, before its children:
 2. `TREE::INSERT_CHILD` (when the node has a parent)
 3. node properties (`PARAMETER::SET_PROPERTY`, including token/string/list
    properties)
-4. node text (`PARAMETER::SET_TEXT`) and date (`PARAMETER::SET_DATE`)
+4. node text (exactly one of `PARAMETER::SET_TEXT` or
+   `PARAMETER::SET_ATTRIBUTED_TEXT`) and date (`PARAMETER::SET_DATE`)
 5. recurse into children, in child order
 
 The child is attached **before** its own content/properties, so an id-keyed
@@ -91,12 +92,15 @@ deterministic and follows the engine's stored property order.
 The engine records which nodes read each signal during emission:
 
 - a text binding (`node.text_binding`);
+- an attributed-text binding (`node.attributed_binding`);
 - a property binding (`node.property_bindings`);
 - a string-property binding (`node.string_bindings`).
 
 When a signal changes, only the bound nodes re-emit:
 
 - text → `PARAMETER::SET_TEXT`
+- attributed text → `PARAMETER::SET_ATTRIBUTED_TEXT` (zero opcodes when the
+  encoded payload is unchanged)
 - property → `PARAMETER::SET_PROPERTY`
 - string property → `PARAMETER::SET_PROPERTY` with the `STRING` value type
 

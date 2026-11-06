@@ -163,6 +163,7 @@ pub fn emit_constants_ts() -> String {
         ("SET_DESIGN_TOKEN", fmt_u8(parameter::SET_DESIGN_TOKEN)),
         ("SET_TEXT", fmt_u8(parameter::SET_TEXT)),
         ("SET_DATE", fmt_u8(parameter::SET_DATE)),
+        ("SET_ATTRIBUTED_TEXT", fmt_u8(parameter::SET_ATTRIBUTED_TEXT)),
     ]);
     out.push_str("\n// META commands\n");
     write_consts(&mut out, "CMD_", &[

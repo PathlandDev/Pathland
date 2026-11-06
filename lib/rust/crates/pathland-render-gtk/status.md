@@ -25,7 +25,9 @@ compatibility.
     (id-remapped) origin subtree lays out in place,
   - `TEXT` → `GtkLabel` (text; `TEXT_STYLE`/`FONT_SIZE`/`FONT_WEIGHT`/
     `FONT_FAMILY`/`FONT_DESIGN`/`COLOR` via a Pango `FontDescription`/
-    attributes),
+    attributes). `SET_ATTRIBUTED_TEXT` renders through Pango **markup**
+    (nested spans for the v1 runs + `<a href>` links) because pango 0.20 has
+    no link attribute; the plain text stays the fallback,
   - `BUTTON` → `GtkButton` (label; composite body when it has children),
   - `ICON` → `GtkImage` (the canonical `ICON_NAME` maps through this renderer's
     own `gtk_icon_name` map to an Adwaita symbolic icon name; `FONT_SIZE` → pixel size,

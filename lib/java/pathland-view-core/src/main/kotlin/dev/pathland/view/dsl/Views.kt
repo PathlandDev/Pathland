@@ -1,5 +1,7 @@
 package dev.pathland.view.dsl
 
+import dev.pathland.markdown.Markdown
+import dev.pathland.view.core.AttributedString
 import dev.pathland.view.core.EmptyContent
 import dev.pathland.view.core.protocol.Commands
 import dev.pathland.view.core.protocol.Components
@@ -75,14 +77,52 @@ internal fun textView(text: String): dev.pathland.view.core.View = coreView(Comp
     node.textBinding = constant
 }
 
-internal fun textView(text: Signal<String>): dev.pathland.view.core.View = coreView(Components.TEXT) { node, _ ->
+internal fun textView(
+    text: Signal<String>,
+    markdown: Boolean = false,
+): dev.pathland.view.core.View = coreView(Components.TEXT) { node, _ ->
     node.text = Signals.untracked { text.get() }
     node.textBinding = text
+    node.markdownText = markdown
 }
 
-fun Text(text: String): dev.pathland.view.core.View = textView(text).registerChild()
+internal fun attributedTextView(value: AttributedString): dev.pathland.view.core.View =
+    coreView(Components.TEXT) { node, _ ->
+        node.text = value.text
+        node.attributedText = value
+    }
 
-fun Text(text: Signal<String>): dev.pathland.view.core.View = textView(text).registerChild()
+internal fun attributedTextView(value: Signal<AttributedString>): dev.pathland.view.core.View =
+    coreView(Components.TEXT) { node, _ ->
+        val initial = Signals.untracked { value.get() }
+        node.text = initial.text
+        node.attributedText = initial
+        node.attributedBinding = value
+    }
+
+@JvmOverloads
+fun Text(text: String, markdown: Boolean = true): dev.pathland.view.core.View {
+    if (!markdown) {
+        return textView(text).registerChild()
+    }
+    val value = Markdown.parseOrPlain(text)
+    return (if (value.isPlain) textView(text) else attributedTextView(value)).registerChild()
+}
+
+@JvmOverloads
+fun Text(text: Signal<String>, markdown: Boolean = true): dev.pathland.view.core.View {
+    if (!markdown) {
+        return textView(text).registerChild()
+    }
+    return textView(text, markdown = true).registerChild()
+}
+
+fun Text(value: AttributedString): dev.pathland.view.core.View =
+    attributedTextView(value).registerChild()
+
+@JvmName("AttributedTextSignal")
+fun Text(value: Signal<AttributedString>): dev.pathland.view.core.View =
+    attributedTextView(value).registerChild()
 
 internal fun imageView(source: String): dev.pathland.view.core.View = coreView(Components.IMAGE) { node, _ ->
     node.properties[Properties.IMAGE_SOURCE] = source

@@ -1,5 +1,6 @@
 package dev.pathland.view.engine
 
+import dev.pathland.view.core.AttributedString
 import dev.pathland.view.core.MediaController
 import dev.pathland.view.core.ProxyConfig
 import dev.pathland.view.core.router.NavOp
@@ -20,9 +21,13 @@ class PathlandNode(
     @JvmField internal var index: Int = -1
 
     @JvmField var text: String? = null
+    /** Parse the text (or text signal) as inline Markdown. */
+    @JvmField var markdownText: Boolean = false
+    @JvmField var attributedText: AttributedString? = null
     @JvmField val properties: MutableMap<Int, Any?> = LinkedHashMap()
     @JvmField val propertyBindings: MutableMap<Int, Signal<*>> = LinkedHashMap()
     @JvmField var textBinding: Signal<String>? = null
+    @JvmField var attributedBinding: Signal<AttributedString>? = null
     @JvmField var dateBinding: Signal<Int>? = null
     @JvmField var days: Int = 0
     @JvmField var millisOfDay: Int = 0
@@ -48,6 +53,9 @@ class PathlandNode(
     /** Whether this node carries reactive (signal-backed) text. */
     fun hasReactiveText(): Boolean = textBinding != null
 
+    /** Whether this node carries reactive (signal-backed) attributed text. */
+    fun hasReactiveAttributed(): Boolean = attributedBinding != null
+
     /** Set a property from a config value that carries a signal. */
     fun property(id: Int, signal: Signal<*>?) {
         if (signal == null) return
@@ -59,6 +67,9 @@ class PathlandNode(
 
     /** Current text value: the bound signal's value when reactive, else the static text. */
     fun textValue(): String? = textBinding?.get() ?: text
+
+    /** Current attributed value: the bound signal's value when reactive, else the static value. */
+    fun attributedValue(): AttributedString? = attributedBinding?.get() ?: attributedText
 
     companion object {
         @JvmField

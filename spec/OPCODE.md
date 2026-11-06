@@ -129,6 +129,7 @@ size hints — plus **styling modifiers** (padding, colors, fonts, borders).
 | `SET_DESIGN_TOKEN` | `0x02` | arenaRef (path) | valueType (u8) | value | — | Override a design token; path is an arena string |
 | `SET_TEXT` | `0x03` | nodeId | arenaRef (utf8) | 0 | — | Set a node's text content |
 | `SET_DATE` | `0x04` | nodeId | days since epoch (I32) | millis of day (U32) | — | Set a node's date value (e.g. a `DATE_PICKER`); see [EVENTS.md](./EVENTS.md#date) for the matching `DATE_CHANGED` event |
+| `SET_ATTRIBUTED_TEXT` | `0x05` | nodeId | arenaRef (payload) | 0 | — | Set a node's text content plus style runs and links; payload format below |
 
 `SET_PROPERTY` encodes the value type in the **high byte of `B`** (bits 24–31) and the property id in the low two bytes:
 
@@ -170,6 +171,61 @@ B = (valueType << 16) | propertyId
 > first `u32` (little-endian); a zero count is an empty list. Decoders read the
 > element count, never infer it from the arena length, so a property can re-emit
 > a shorter list with the arena entry intact.
+
+#### Attributed text payload (`SET_ATTRIBUTED_TEXT`)
+
+`PARAMETER::SET_ATTRIBUTED_TEXT` (`0x05`) sets a node's text together with
+range-scoped style runs and links. The opcode stays 16 bytes: `B` references a
+single length-prefixed arena entry (absolute offset over the shared ring,
+*relative* offset into the batch's string section over the network — the same
+dual convention as `SET_TEXT`). The payload is binary, not UTF-8:
+
+```
+[u32 textByteLen][utf8 text]
+[u32 runCount]
+  repeat runCount:
+    [u32 start][u32 end][u32 attrCount]
+    repeat attrCount:
+      [u16 propId][u8 valueType][u8 reserved = 0][u32 value]
+[u32 linkCount]
+  repeat linkCount:
+    [u32 start][u32 end][u32 urlByteLen][utf8 url]
+```
+
+All integers are little-endian. `start`/`end` are **UTF-8 byte offsets** into
+`text`, half-open `[start, end)`. A decoder MUST reject (ignore the opcode) when
+a range is not on a UTF-8 boundary or `end > textByteLen`.
+
+Style runs carry the **text-format property vocabulary** from
+[MODIFIERS.md](./MODIFIERS.md#2-text-formatting). V1 allows these scalar
+attributes only:
+
+| Property | ID | `valueType` | Value |
+|----------|----|-------------|-------|
+| `FONT_SIZE` | `0x1007` | `F32` (`0x04`) | points |
+| `FONT_WEIGHT` | `0x1008` | `F32` (`0x04`) | 100–900 |
+| `COLOR` | `0x100A` | `COLOR` (`0x07`) | `0xAARRGGBB` |
+| `FONT_STYLE` | `0x1017` | `F32` (`0x04`) | `Normal`=0, `Italic`=1 |
+| `FONT_DESIGN` | `0x1018` | `F32` (`0x04`) | `Default`=0, `Serif`=1, `Rounded`=2, `Monospaced`=3 |
+| `UNDERLINE` | `0x101F` | `U8` (`0x01`) | `0`/`1` |
+| `STRIKETHROUGH` | `0x1020` | `U8` (`0x01`) | `0`/`1` |
+
+`FONT_FAMILY` (`STRING`), `TEXT_STYLE`, `LINE_SPACING`, design-token references,
+and effects are **not** valid run attributes in v1 (runs carry scalar values
+only). A decoder ignores an unknown `propId` or unsupported `valueType`; it never
+errors the frame.
+
+Links are a separate section so style runs stay scalar-only. A link carries only
+its URL in v1; renderers own link presentation. Links and runs may overlap; the
+node's own text-format properties remain the base, and a run overrides the
+properties it sets for its range. Where multiple covering runs set the same
+property, the **later run in wire order wins**. Where multiple links cover a
+character, the later link wins.
+
+A renderer that does not implement rich text MUST still render the payload's
+`text` as plain text. The plain text is also the fallback when a payload fails
+validation. `SET_ATTRIBUTED_TEXT` supersedes `SET_TEXT` for the node: an engine
+that emits the attributed form does not also emit `SET_TEXT` for the same state.
 
 #### Constraint properties for native layout
 

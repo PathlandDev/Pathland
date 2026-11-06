@@ -62,11 +62,16 @@ struct SnapshotNode {
     /// The arena offset is reused across passes so an unchanged ref never
     /// re-allocates into the bump arena.
     token_refs: BTreeMap<u16, (String, u32)>,
+    /// Whether the node's text is parsed as inline Markdown.
+    markdown_text: bool,
+    /// The raw Markdown source last parsed (avoids re-parsing unchanged text).
+    markdown_source: Option<String>,
+    /// Last-emitted attributed text: value + arena offset. The offset is reused
+    /// across passes so an unchanged payload never re-allocates.
+    attributed: Option<(pathland_core::AttributedString, u32)>,
     /// Generation stamp set on each emit pass; used to detect deleted nodes.
     gen: u64,
 }
-
-/// Result of an emission pass.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EmitResult {
     /// Number of opcodes written to the ring.
@@ -182,7 +187,9 @@ impl Engine {
                 continue;
             }
             let text = value.as_deref().unwrap_or("");
-            let offset = guest.alloc_str(text).map_err(|_| pathland_core::RingError::Full)?;
+            let offset = guest
+                .alloc_str(text)
+                .map_err(|_| pathland_core::RingError::Full)?;
             guest.push_opcode(Opcode::new(
                 category::META,
                 meta::SET_WINDOW_METADATA,
@@ -251,10 +258,7 @@ impl Engine {
     /// Emit `META::RESET_THEME` (clear every application token override; the
     /// renderer falls back to its defaults). A replacement theme emits this
     /// immediately before its overrides in the same frame.
-    pub fn reset_theme(
-        &mut self,
-        guest: &mut Guest<'_>,
-    ) -> Result<(), pathland_core::RingError> {
+    pub fn reset_theme(&mut self, guest: &mut Guest<'_>) -> Result<(), pathland_core::RingError> {
         guest.push_opcode(Opcode::new(category::META, meta::RESET_THEME, 0, 0, 0, 0))
     }
 
@@ -401,14 +405,75 @@ impl Engine {
             match dep {
                 Dep::Text { node } => {
                     let new_text: Option<String> = value.to_text().map(ToOwned::to_owned);
-                    let prev_text = self.snapshot_text(node);
-                    if new_text.as_deref() != prev_text {
-                        if let Some(t) = new_text.as_deref() {
-                            guest.set_text(node, t)?;
-                            out += 1;
+                    let (markdown, prev_source) = match self.snapshot_mut(node) {
+                        Some(s) => (s.markdown_text, s.markdown_source.clone()),
+                        None => (false, None),
+                    };
+                    if markdown {
+                        if new_text == prev_source {
+                            continue;
                         }
-                        if let Some(s) = self.snapshot_mut(node) {
-                            s.text = new_text;
+                        let parsed = new_text
+                            .as_deref()
+                            .and_then(pathland_markdown::parse)
+                            .filter(|value| !value.is_plain());
+                        match parsed {
+                            Some(value) => {
+                                let arena = guest.set_attributed_text(node, &value)?;
+                                out += 1;
+                                if let Some(s) = self.snapshot_mut(node) {
+                                    s.text = Some(value.text().to_string());
+                                    s.markdown_source = new_text;
+                                    s.attributed = Some((value, arena));
+                                }
+                            }
+                            None => {
+                                if let Some(t) = new_text.as_deref() {
+                                    guest.set_text(node, t)?;
+                                    out += 1;
+                                }
+                                if let Some(s) = self.snapshot_mut(node) {
+                                    s.text = new_text.clone();
+                                    s.markdown_source = new_text;
+                                    s.attributed = None;
+                                }
+                            }
+                        }
+                    } else {
+                        let prev_text = self.snapshot_text(node);
+                        if new_text.as_deref() != prev_text {
+                            if let Some(t) = new_text.as_deref() {
+                                guest.set_text(node, t)?;
+                                out += 1;
+                            }
+                            if let Some(s) = self.snapshot_mut(node) {
+                                s.text = new_text;
+                            }
+                        }
+                    }
+                }
+                Dep::AttributedText { node } => {
+                    let new_value = value.to_attributed();
+                    let changed = {
+                        let prev = self
+                            .snapshot_mut(node)
+                            .and_then(|s| s.attributed.as_ref().map(|(v, _)| v));
+                        match (new_value, prev) {
+                            (Some(a), Some(b)) => a != b,
+                            (None, None) => false,
+                            _ => true,
+                        }
+                    };
+                    if changed {
+                        if let Some(a) = new_value {
+                            let arena = guest.set_attributed_text(node, a)?;
+                            out += 1;
+                            if let Some(s) = self.snapshot_mut(node) {
+                                s.text = Some(a.text().to_string());
+                                s.attributed = Some((a.clone(), arena));
+                            }
+                        } else if let Some(s) = self.snapshot_mut(node) {
+                            s.attributed = None;
                         }
                     }
                 }
@@ -517,6 +582,48 @@ impl Engine {
             .map(|sid| self.store.get(sid))
             .and_then(|v| v.to_text().map(ToOwned::to_owned));
 
+        // Attributed text: a bound signal wins over the static value.
+        let bound_attributed: Option<SignalValue> =
+            node.attributed_binding.map(|sid| self.store.get(sid));
+        let explicit_attributed: Option<&pathland_core::AttributedString> =
+            match (&bound_attributed, &node.attributed_text) {
+                (Some(value), _) => value.to_attributed(),
+                (None, Some(value)) => Some(value),
+                (None, None) => None,
+            };
+
+        // Take the previous snapshot early: Markdown parsing is skipped when the
+        // raw source is unchanged (steady state stays allocation-free).
+        let prev = self.slot_mut(node.id).take();
+        let raw_text_borrowed: Option<&str> = match (&bound_text, &node.component) {
+            (Some(s), _) => Some(s.as_str()),
+            (None, Component::Text { text }) => Some(text.as_str()),
+            (None, Component::Button { label }) => Some(label.as_str()),
+            _ => None,
+        };
+        let markdown = node.markdown_text && explicit_attributed.is_none();
+        let markdown_unchanged = markdown
+            && match &prev {
+                Some(p) => {
+                    p.markdown_text && p.markdown_source.as_deref() == raw_text_borrowed
+                }
+                None => false,
+            };
+        let parsed_attributed: Option<pathland_core::AttributedString> =
+            if markdown && !markdown_unchanged {
+                raw_text_borrowed
+                    .and_then(pathland_markdown::parse)
+                    .filter(|value| !value.is_plain())
+            } else {
+                None
+            };
+        let attributed_borrowed: Option<&pathland_core::AttributedString> =
+            explicit_attributed.or(parsed_attributed.as_ref());
+        let text_borrowed: Option<&str> = match attributed_borrowed {
+            Some(value) => Some(value.text()),
+            None => raw_text_borrowed,
+        };
+
         let merged_props: Option<BTreeMap<u16, u32>> = if node.property_bindings.is_empty() {
             None
         } else {
@@ -543,25 +650,19 @@ impl Engine {
             Some(m)
         };
 
-        let text_borrowed: Option<&str> = match (&bound_text, &node.component) {
-            (Some(s), _) => Some(s.as_str()),
-            (None, Component::Text { text }) => Some(text.as_str()),
-            (None, Component::Button { label }) => Some(label.as_str()),
-            _ => None,
-        };
         let props: &BTreeMap<u16, u32> = merged_props.as_ref().unwrap_or(&node.properties);
         let token_refs = &node.token_properties;
-        let strings: &BTreeMap<u16, String> = merged_strings
-            .as_ref()
-            .unwrap_or(&node.string_properties);
+        let strings: &BTreeMap<u16, String> =
+            merged_strings.as_ref().unwrap_or(&node.string_properties);
         let lists = &node.list_properties;
 
-        let prev = self.slot_mut(node.id).take();
         let token_changed = match &prev {
-            Some(p) => p.token_refs.len() != token_refs.len()
-                || p.token_refs
-                    .iter()
-                    .any(|(prop, (old, _))| token_refs.get(prop) != Some(old)),
+            Some(p) => {
+                p.token_refs.len() != token_refs.len()
+                    || p.token_refs
+                        .iter()
+                        .any(|(prop, (old, _))| token_refs.get(prop) != Some(old))
+            }
             None => !token_refs.is_empty(),
         };
         let strings_changed = match &prev {
@@ -584,11 +685,28 @@ impl Engine {
         };
         let props_changed = match &prev {
             Some(p) => &p.properties != props || token_changed || strings_changed || lists_changed,
-            None => !props.is_empty() || !token_refs.is_empty() || !strings.is_empty() || !lists.is_empty(),
+            None => {
+                !props.is_empty()
+                    || !token_refs.is_empty()
+                    || !strings.is_empty()
+                    || !lists.is_empty()
+            }
         };
-        let text_changed = match &prev {
-            Some(p) => p.text.as_deref() != text_borrowed,
-            None => text_borrowed.is_some(),
+        let attributed_changed = if markdown_unchanged {
+            false
+        } else {
+            match &prev {
+                Some(p) => p.attributed.as_ref().map(|(value, _)| value) != attributed_borrowed,
+                None => attributed_borrowed.is_some(),
+            }
+        };
+        let text_changed = if markdown_unchanged || attributed_borrowed.is_some() {
+            false
+        } else {
+            match &prev {
+                Some(p) => p.attributed.is_some() || p.text.as_deref() != text_borrowed,
+                None => text_borrowed.is_some(),
+            }
         };
 
         // Token-ref emission. Built only on mount or when a ref changed, so a
@@ -601,6 +719,9 @@ impl Engine {
         // List-property emission, built only on mount / when a value changed
         // (arena offsets reused from the previous snapshot otherwise).
         let mut list_emit: Option<BTreeMap<u16, (Vec<f32>, u32)>> = None;
+        // Attributed-text emission, built only on mount / when the payload
+        // changed (the previous arena offset is reused otherwise).
+        let mut attributed_emit: Option<(pathland_core::AttributedString, u32)> = None;
 
         // Properties in two passes — literals (skipping token-ref'd ids) then
         // token refs — so the steady-state emit performs no heap allocations.
@@ -656,7 +777,11 @@ impl Engine {
                     }
                     list_emit = Some(m);
                 }
-                if let Some(t) = text_borrowed {
+                if let Some(value) = attributed_borrowed {
+                    let arena = guest.set_attributed_text(node.id, value)?;
+                    attributed_emit = Some((value.clone(), arena));
+                    *out += 1;
+                } else if let Some(t) = text_borrowed {
                     guest.set_text(node.id, t)?;
                     *out += 1;
                 }
@@ -681,7 +806,21 @@ impl Engine {
                     guest.create_node(node.id, component_type)?;
                     *out += 1;
                 }
-                if text_changed {
+                if attributed_changed {
+                    match attributed_borrowed {
+                        Some(value) => {
+                            let arena = guest.set_attributed_text(node.id, value)?;
+                            attributed_emit = Some((value.clone(), arena));
+                            *out += 1;
+                        }
+                        None => {
+                            if let Some(t) = text_borrowed {
+                                guest.set_text(node.id, t)?;
+                                *out += 1;
+                            }
+                        }
+                    }
+                } else if text_changed {
                     if let Some(t) = text_borrowed {
                         guest.set_text(node.id, t)?;
                         *out += 1;
@@ -700,7 +839,9 @@ impl Engine {
                     let mut m = BTreeMap::new();
                     for (prop, path) in token_refs {
                         let (arena, changed) = match p.token_refs.get(prop) {
-                            Some((old_path, old_offset)) if old_path == path => (*old_offset, false),
+                            Some((old_path, old_offset)) if old_path == path => {
+                                (*old_offset, false)
+                            }
                             _ => {
                                 let offset = guest
                                     .alloc_str(path)
@@ -769,6 +910,8 @@ impl Engine {
         let mut prev_token_refs = None;
         let mut prev_strings = None;
         let mut prev_lists = None;
+        let mut prev_attributed = None;
+        let mut prev_markdown_source = None;
         if let Some(p) = prev {
             if !props_changed {
                 prev_props = Some(p.properties);
@@ -785,15 +928,32 @@ impl Engine {
             if !lists_changed {
                 prev_lists = Some(p.list_properties);
             }
+            if !attributed_changed {
+                prev_attributed = Some(p.attributed);
+            }
+            prev_markdown_source = p.markdown_source;
             let _ = p;
         }
         let properties = match prev_props {
             Some(props) => props,
             None => props.clone(),
         };
-        let text = match prev_text {
-            Some(t) => Some(t),
-            None => text_borrowed.map(|s| s.to_owned()),
+        let text = if attributed_changed && attributed_borrowed.is_some() {
+            attributed_borrowed.map(|value| value.text().to_owned())
+        } else {
+            match prev_text {
+                Some(t) => Some(t),
+                None => text_borrowed.map(|s| s.to_owned()),
+            }
+        };
+        let markdown_source = if markdown {
+            if markdown_unchanged {
+                prev_markdown_source
+            } else {
+                raw_text_borrowed.map(ToOwned::to_owned)
+            }
+        } else {
+            None
         };
         let token_refs_snapshot = match token_emit {
             Some(m) => m,
@@ -807,6 +967,10 @@ impl Engine {
             Some(m) => m,
             None => prev_lists.unwrap_or_default(),
         };
+        let attributed = match attributed_emit {
+            Some(value) => Some(value),
+            None => prev_attributed.unwrap_or(None),
+        };
         *self.slot_mut(node.id) = Some(SnapshotNode {
             component_type,
             parent,
@@ -816,6 +980,9 @@ impl Engine {
             string_properties,
             list_properties,
             token_refs: token_refs_snapshot,
+            markdown_text: node.markdown_text,
+            markdown_source,
+            attributed,
             gen: self.gen,
         });
 
@@ -823,13 +990,27 @@ impl Engine {
         if let Some(sid) = node.text_binding {
             self.store.add_node_dep(sid, Dep::Text { node: node.id });
         }
-        for (prop, sid) in &node.property_bindings {
+        if let Some(sid) = node.attributed_binding {
             self.store
-                .add_node_dep(*sid, Dep::Property { node: node.id, prop: *prop });
+                .add_node_dep(sid, Dep::AttributedText { node: node.id });
+        }
+        for (prop, sid) in &node.property_bindings {
+            self.store.add_node_dep(
+                *sid,
+                Dep::Property {
+                    node: node.id,
+                    prop: *prop,
+                },
+            );
         }
         for (prop, sid) in &node.string_bindings {
-            self.store
-                .add_node_dep(*sid, Dep::StringProperty { node: node.id, prop: *prop });
+            self.store.add_node_dep(
+                *sid,
+                Dep::StringProperty {
+                    node: node.id,
+                    prop: *prop,
+                },
+            );
         }
 
         for (i, child) in node.children.iter().enumerate() {

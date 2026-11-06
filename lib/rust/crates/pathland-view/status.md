@@ -13,6 +13,14 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   tuple list) and, for content-bearing views, **children**
   (`Type::children(vec![…])` / `view.children(vec![…])`). The three may be used
   at creation or chained, in any order.
+- **Rich text**: `Text::attributed(...)` / `Text::markdown(...)` and the free
+  `attributed_text` / `markdown_text` constructors; `TextConfig::attributed`,
+  `attributed_signal`, and `markdown` set `Node::attributed_text` /
+  `attributed_binding` (the shared `pathland-markdown` parser is a dependency).
+- **Auto-parse**: `Text::new`/`text(...)` and `text_signal`/`TextConfig::text`
+  set `Node::markdown_text`, so the engine parses inline Markdown by default;
+  `Text::plain`, `Text::plain_signal`, `plain_text`, `TextConfig::plain_text`,
+  and `TextConfig::plain_signal` opt out.
 - **Per-view `Config`** (`TextConfig`, `StackConfig`, `GridConfig`,
   `RangeConfig`, …) with fluent setters, consumed by the value builders. Values
   move structural properties (`spacing`/`alignment`/grid counts) into the config

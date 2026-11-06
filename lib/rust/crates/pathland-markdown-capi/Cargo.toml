@@ -1,0 +1,16 @@
+[package]
+name = "pathland-markdown-capi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "C ABI (cdylib) for Pathland's shared inline Markdown parser"
+
+[lib]
+name = "pathland_markdown"
+crate-type = ["cdylib"]
+
+[dependencies]
+pathland-core = { path = "../pathland-core", version = "0.1.5" }
+pathland-markdown-parser = { package = "pathland-markdown", path = "../pathland-markdown", version = "0.1.5" }

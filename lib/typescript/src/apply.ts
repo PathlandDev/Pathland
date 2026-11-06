@@ -17,6 +17,7 @@ import {
   CMD_REMOVE_CHILD,
   CMD_RESET,
   CMD_RESET_THEME,
+  CMD_SET_ATTRIBUTED_TEXT,
   CMD_SET_COLOR_SCHEME,
   CMD_SET_DATE,
   CMD_SET_DESIGN_TOKEN,
@@ -54,7 +55,11 @@ import {
   PROP_COLOR,
   PROP_COLOR_VALUE,
   PROP_ENABLED,
+  PROP_FONT_DESIGN,
   PROP_FONT_FAMILY,
+  PROP_FONT_SIZE,
+  PROP_FONT_STYLE,
+  PROP_FONT_WEIGHT,
   PROP_GRID_COLUMNS,
   PROP_GRID_ROWS,
   PROP_GRID_TRACKS,
@@ -73,8 +78,10 @@ import {
   PROP_ROUTE,
   PROP_SELECTED,
   PROP_SELECTION,
+  PROP_STRIKETHROUGH,
   PROP_TEXT,
   PROP_TEXT_STYLE,
+  PROP_UNDERLINE,
   PROP_VALUE,
   VAL_DESIGN_TOKEN,
   VAL_ENUM,
@@ -82,8 +89,8 @@ import {
   VAL_STRING,
   VAL_U8,
 } from "./constants";
-import type { Batch, Opcode } from "./plpl";
-import { readList, readString } from "./plpl";
+import type { AttributedText, Batch, Opcode, TextRunAttribute } from "./plpl";
+import { attributedSegments, readAttributed, readList, readString } from "./plpl";
 import { childrenContainer, createElement } from "./elements";
 import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty, updateRangeFill } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
@@ -886,7 +893,13 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   const el = node as HTMLElement;
   switch (op.command) {
     case CMD_SET_TEXT:
+      if (el.classList.contains("pathland-rich-text")) {
+        el.classList.remove("pathland-rich-text");
+      }
       setNodeText(el, readString(strings, op.b));
+      break;
+    case CMD_SET_ATTRIBUTED_TEXT:
+      applyAttributedText(el, readAttributed(strings, op.b));
       break;
     case CMD_SET_DATE: {
       const input = el.matches("input[type=date],input[type=time],input[type=datetime-local]")
@@ -986,8 +999,96 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   }
 }
 
+/** Apply a `SET_ATTRIBUTED_TEXT` payload to a TEXT element. */
+function applyAttributedText(el: HTMLElement, value: AttributedText): void {
+  const doc = el.ownerDocument;
+  const container = el.querySelector<HTMLElement>(".pathland-text") ?? el;
+  el.classList.add("pathland-rich-text");
+  const nodes: Node[] = [];
+  for (const segment of attributedSegments(value)) {
+    const text = new TextDecoder().decode(value.textBytes.subarray(segment.start, segment.end));
+    const css = runCss(segment.attributes);
+    if (!css && !segment.link) {
+      nodes.push(doc.createTextNode(text));
+      continue;
+    }
+    const node = doc.createElement(segment.link ? "a" : "span");
+    if (segment.link) {
+      node.setAttribute("href", segment.link);
+    }
+    if (css) {
+      node.setAttribute("style", css);
+    }
+    node.textContent = text;
+    nodes.push(node);
+  }
+  container.replaceChildren(...nodes);
+}
+
+/** The v1 run attributes as inline CSS. */
+function runCss(attributes: TextRunAttribute[]): string {
+  let css = "";
+  let underline = false;
+  let strikethrough = false;
+  for (const attr of attributes) {
+    switch (attr.property) {
+      case PROP_FONT_SIZE: {
+        const size = f32FromBits(attr.value);
+        if (size > 0) {
+          css += `font-size:${size}px;`;
+        }
+        break;
+      }
+      case PROP_FONT_WEIGHT: {
+        const weight = f32FromBits(attr.value);
+        if (weight > 0) {
+          css += `font-weight:${weight};`;
+        }
+        break;
+      }
+      case PROP_COLOR:
+        css += `color:${argbToRgba(attr.value)};`;
+        break;
+      case PROP_FONT_STYLE:
+        if (f32FromBits(attr.value) === 1) {
+          css += "font-style:italic;";
+        }
+        break;
+      case PROP_FONT_DESIGN: {
+        const code = Math.round(f32FromBits(attr.value));
+        const family =
+          code === 1 ? "Georgia, 'Times New Roman', serif"
+          : code === 2 ? "ui-rounded, system-ui, sans-serif"
+          : code === 3 ? "ui-monospace, monospace"
+          : "inherit";
+        css += `font-family:${family};`;
+        break;
+      }
+      case PROP_UNDERLINE:
+        underline ||= attr.valueType === VAL_U8 ? attr.value !== 0 : f32FromBits(attr.value) !== 0;
+        break;
+      case PROP_STRIKETHROUGH:
+        strikethrough ||= attr.valueType === VAL_U8 ? attr.value !== 0 : f32FromBits(attr.value) !== 0;
+        break;
+      default:
+        break;
+    }
+  }
+  if (underline || strikethrough) {
+    css += `text-decoration:${[underline ? "underline" : "", strikethrough ? "line-through" : ""]
+      .filter(Boolean)
+      .join(" ")};`;
+  }
+  return css;
+}
+
 /** Set a node's text, honoring text fields/editors and label spans (SSR structure). */
 export function setNodeText(el: HTMLElement, text: string): void {
+  // A rich-text node owns its inner spans; a plain TEXT/LABEL property update
+  // must not wipe them (an explicit SET_TEXT clears the marker instead).
+  if (el.classList.contains("pathland-rich-text")) {
+    return;
+  }
   const input = el.querySelector("input[type=text],input[type=password]");
   if (input instanceof HTMLInputElement) {
     input.value = text;

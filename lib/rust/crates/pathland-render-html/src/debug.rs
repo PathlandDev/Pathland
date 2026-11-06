@@ -380,6 +380,7 @@ mod tests {
         Node {
             component,
             text: None,
+            attributed: None,
             properties: props.iter().copied().collect(),
             strings: strings
                 .iter()

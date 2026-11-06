@@ -109,3 +109,155 @@ export function readList(strings: Uint8Array, offset: number): number[] {
   }
   return out;
 }
+
+/** A scalar text-format attribute in an attributed-text run. */
+export interface TextRunAttribute {
+  readonly property: number;
+  readonly valueType: number;
+  readonly value: number;
+}
+
+/** A range-scoped style run. */
+export interface AttributedRun {
+  readonly start: number;
+  readonly end: number;
+  readonly attributes: TextRunAttribute[];
+}
+
+/** A range-scoped link. */
+export interface AttributedLink {
+  readonly start: number;
+  readonly end: number;
+  readonly url: string;
+}
+
+/** Decoded `SET_ATTRIBUTED_TEXT` payload. Offsets are UTF-8 byte offsets. */
+export interface AttributedText {
+  readonly textBytes: Uint8Array;
+  readonly runs: AttributedRun[];
+  readonly links: AttributedLink[];
+}
+
+/** Read a `[u32 len][bytes]` entry (binary-safe) at a relative string offset. */
+export function readEntryBytes(strings: Uint8Array, offset: number): Uint8Array {
+  if (offset + 4 > strings.length) {
+    throw new ProtocolError("entry offset out of bounds");
+  }
+  const len = dv(strings).getUint32(offset, true);
+  const start = offset + 4;
+  if (start + len > strings.length) {
+    throw new ProtocolError("entry length out of bounds");
+  }
+  return strings.subarray(start, start + len);
+}
+
+/**
+ * Decode a `SET_ATTRIBUTED_TEXT` payload:
+ * `[u32 textLen][utf8][u32 runCount][runs][u32 linkCount][links]`.
+ */
+export function readAttributed(strings: Uint8Array, offset: number): AttributedText {
+  const bytes = readEntryBytes(strings, offset);
+  const view = dv(bytes);
+  let p = 0;
+  const need = (n: number): void => {
+    if (p + n > bytes.length) {
+      throw new ProtocolError("attributed text payload truncated");
+    }
+  };
+  need(4);
+  const textLen = view.getUint32(p, true);
+  p += 4;
+  need(textLen);
+  const textBytes = bytes.subarray(p, p + textLen);
+  p += textLen;
+
+  need(4);
+  const runCount = view.getUint32(p, true);
+  p += 4;
+  const runs: AttributedRun[] = [];
+  for (let i = 0; i < runCount; i++) {
+    need(12);
+    const start = view.getUint32(p, true);
+    const end = view.getUint32(p + 4, true);
+    const attrCount = view.getUint32(p + 8, true);
+    p += 12;
+    const attributes: TextRunAttribute[] = [];
+    for (let j = 0; j < attrCount; j++) {
+      need(8);
+      const property = view.getUint16(p, true);
+      const valueType = view.getUint8(p + 2);
+      const value = view.getUint32(p + 4, true);
+      p += 8;
+      attributes.push({ property, valueType, value });
+    }
+    runs.push({ start, end, attributes });
+  }
+
+  need(4);
+  const linkCount = view.getUint32(p, true);
+  p += 4;
+  const links: AttributedLink[] = [];
+  for (let i = 0; i < linkCount; i++) {
+    need(12);
+    const start = view.getUint32(p, true);
+    const end = view.getUint32(p + 4, true);
+    const urlLen = view.getUint32(p + 8, true);
+    p += 12;
+    need(urlLen);
+    const url = new TextDecoder().decode(bytes.subarray(p, p + urlLen));
+    p += urlLen;
+    links.push({ start, end, url });
+  }
+  return { textBytes, runs, links };
+}
+
+/** A non-overlapping slice with its effective attributes and link. */
+export interface AttributedSegment {
+  readonly start: number;
+  readonly end: number;
+  readonly attributes: TextRunAttribute[];
+  readonly link: string | null;
+}
+
+/** Split attributed text into non-overlapping segments (later runs/links win). */
+export function attributedSegments(value: AttributedText): AttributedSegment[] {
+  const boundaries = new Set<number>([0, value.textBytes.length]);
+  for (const run of value.runs) {
+    boundaries.add(run.start);
+    boundaries.add(run.end);
+  }
+  for (const link of value.links) {
+    boundaries.add(link.start);
+    boundaries.add(link.end);
+  }
+  const sorted = [...boundaries].sort((a, b) => a - b);
+  const out: AttributedSegment[] = [];
+  for (let i = 0; i + 1 < sorted.length; i++) {
+    const start = sorted[i]!;
+    const end = sorted[i + 1]!;
+    if (start === end) {
+      continue;
+    }
+    const attributes: TextRunAttribute[] = [];
+    for (const run of value.runs) {
+      if (run.start <= start && run.end >= end) {
+        for (const attr of run.attributes) {
+          const at = attributes.findIndex((a) => a.property === attr.property);
+          if (at >= 0) {
+            attributes[at] = attr;
+          } else {
+            attributes.push(attr);
+          }
+        }
+      }
+    }
+    let link: string | null = null;
+    for (const candidate of value.links) {
+      if (candidate.start <= start && candidate.end >= end) {
+        link = candidate.url;
+      }
+    }
+    out.push({ start, end, attributes, link });
+  }
+  return out;
+}

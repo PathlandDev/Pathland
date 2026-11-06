@@ -420,7 +420,17 @@ the three operations of [§2](#2-canonical-signature-notation): `values` via
 
 | View | Canonical (SwiftUI-shaped) | Kotlin DSL | Emits / Binds |
 |------|---------------------------|----------|---------------|
-| `Text` | `Text("…")` / `Text(Signal<String>)` | `Text.make(t -> t.text(String))` / `Text.make(t -> t.text(Signal<String>))` | `TEXT` 0x01; content `SET_TEXT` |
+| `Text` | `Text("…")` / `Text(Signal<String>)` / `Text(AttributedString)` | `Text.make(t -> t.text(String))` / `Text.make(t -> t.text(Signal<String>))` / `Text.make(t -> t.attributed(AttributedString))` | `TEXT` 0x01; content `SET_TEXT` or `SET_ATTRIBUTED_TEXT` |
+| `Markdown` | `Markdown.parse("**hi**")` (helper) | `Markdown.parse(text)` | shared inline parser → `AttributedString` (no view) |
+
+**`Text` parses inline Markdown by default** (SwiftUI-like). String content is
+parsed as the v1 subset — `**bold**`/`__bold__`, `*italic*`/`_italic_`,
+`` `code` ``, `~~strikethrough~~`, `[label](url)`, and backslash escapes — for
+both static strings and `String` signals. Plain results emit the compact
+`SET_TEXT`; rich results emit `SET_ATTRIBUTED_TEXT`. Kotlin uses
+`Text("…", markdown = false)` for literal text; Rust uses `Text::plain` /
+`TextConfig::plain_text` / `plain_signal`. The parser is inline-only; block
+Markdown (headings, lists, images) is out of scope.
 | `Image` | `Image("name")` / `Image(systemName:)` | `Image.make(i -> i.source(String))` / `Image.make(i -> i.systemName(String))` | `IMAGE` 0x02; `IMAGE_SOURCE` 0x1002 |
 | `Icon` | — (semantic symbol; SwiftUI `Image(systemName:)`) | `Icon.make(i -> i.name(IconName))` / `Icon.make(i -> i.name(String))` / `Icon.make(i -> i.name(Signal<String>))` / `Icon.labeled(IconName, String)` | `ICON` 0x0B; `ICON_NAME` 0x1038 (spec/ICONS.md) |
 | `Color` | `Color(.sRGB, red:green:blue:)` (a View) | `Color.make(c -> c.rgb(int,int,int))` (implements `View`); `Color.token(path)` as data | `COLOR` 0x03; `COLOR` 0x100A |

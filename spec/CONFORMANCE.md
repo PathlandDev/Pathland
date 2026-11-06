@@ -956,6 +956,36 @@ batch's string section by a **relative** offset.
 - `06 00 00 00` = arenaDeltaLen = 6
 - `02 00 00 00 65 6E` = `[u32 length=2]["en"]`
 
+### 46. PARAMETER:SET_ATTRIBUTED_TEXT (id=1, arenaRef=0, "Hi" + bold run + link)
+
+The opcode (A=1, B=arena offset 0, C=0):
+
+```
+02 05 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+```
+
+The referenced arena entry is the self-describing
+`[u32 byteLength=47][payload]`:
+
+```
+2F 00 00 00
+02 00 00 00 48 69
+01 00 00 00
+00 00 00 00 02 00 00 00 01 00 00 00
+08 10 04 00 00 00 2F 44
+01 00 00 00
+01 00 00 00 02 00 00 00 01 00 00 00 78
+```
+
+- `02 00 00 00` = `textByteLen` = 2
+- `48 69` = `"Hi"`
+- `01 00 00 00` = `runCount` = 1
+- `00 00 00 00 02 00 00 00 01 00 00 00` = run `[0,2)` with 1 attribute
+- `08 10 04 00 00 00 2F 44` = `FONT_WEIGHT` (`0x1008`), `valueType=F32`,
+  `value=700.0f32` (`0x442F0000`)
+- `01 00 00 00` = `linkCount` = 1
+- `01 00 00 00 02 00 00 00 01 00 00 00 78` = link `[1,2)` with URL `"x"`
+
 ---
 
 ## Design-Token Resolution Conformance

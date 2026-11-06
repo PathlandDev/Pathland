@@ -14,6 +14,9 @@ pub enum RingError {
     /// The ring is full (consumer has not caught up). The producer SHOULD
     /// publish a frame before emitting further opcodes.
     Full,
+    /// An opcode payload could not be encoded (e.g. an invalid attributed-text
+    /// range or oversized text). The producer should fix the payload.
+    InvalidPayload,
 }
 
 /// Append `op` to the ring at `writeCursor` and advance the cursor.
@@ -183,6 +186,28 @@ pub(crate) fn push_set_text(
         &Opcode::new(
             constants::category::PARAMETER,
             constants::parameter::SET_TEXT,
+            0,
+            node_id,
+            arena_ref,
+            0,
+        ),
+    )
+}
+
+pub(crate) fn push_set_attributed_text(
+    slots: &mut [u8],
+    header: &mut [u8],
+    mask: usize,
+    node_id: u32,
+    arena_ref: u32,
+) -> Result<(), RingError> {
+    push(
+        slots,
+        header,
+        mask,
+        &Opcode::new(
+            constants::category::PARAMETER,
+            constants::parameter::SET_ATTRIBUTED_TEXT,
             0,
             node_id,
             arena_ref,

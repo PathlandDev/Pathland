@@ -12,6 +12,7 @@ import {
   CMD_MOVE_CHILD,
   CMD_RESET,
   CMD_RESET_THEME,
+  CMD_SET_ATTRIBUTED_TEXT,
   CMD_SET_COLOR_SCHEME,
   CMD_SET_DATE,
   CMD_SET_DESIGN_TOKEN,
@@ -377,6 +378,46 @@ describe("applyBatch · STYLE", () => {
     const batch = parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_TEXT, 0, 1, 0, 0]], stringEntry("hi!")));
     applyBatch(batch, r);
     expect(span.textContent).toBe("hi!");
+  });
+
+  it("applies SET_ATTRIBUTED_TEXT as spans and links", () => {
+    const span = document.createElement("span");
+    span.setAttribute("data-pathland-id", "1");
+    const r = renderer();
+    r.byId.set(1, span);
+
+    const text = new TextEncoder().encode("Hi");
+    const url = new TextEncoder().encode("x");
+    const payload = new Uint8Array(4 + text.length + 4 + 12 + 8 + 4 + 12 + url.length);
+    const view = new DataView(payload.buffer);
+    let p = 0;
+    view.setUint32(p, text.length, true); p += 4;
+    payload.set(text, p); p += text.length;
+    view.setUint32(p, 1, true); p += 4;
+    view.setUint32(p, 0, true); p += 4;
+    view.setUint32(p, 2, true); p += 4;
+    view.setUint32(p, 1, true); p += 4;
+    view.setUint16(p, PROP_FONT_WEIGHT, true); p += 2;
+    view.setUint8(p, VAL_F32); p += 1;
+    view.setUint8(p, 0); p += 1;
+    view.setUint32(p, f32bits(700), true); p += 4;
+    view.setUint32(p, 1, true); p += 4;
+    view.setUint32(p, 1, true); p += 4;
+    view.setUint32(p, 2, true); p += 4;
+    view.setUint32(p, url.length, true); p += 4;
+    payload.set(url, p);
+
+    const strings = new Uint8Array(4 + payload.length);
+    new DataView(strings.buffer).setUint32(0, payload.length, true);
+    strings.set(payload, 4);
+
+    applyBatch(
+      parseBatch(buildBatch([[CAT_PARAMETER, CMD_SET_ATTRIBUTED_TEXT, 0, 1, 0, 0]], strings)),
+      r,
+    );
+    expect(span.textContent).toBe("Hi");
+    expect(span.querySelector("span")?.getAttribute("style")).toContain("font-weight:700");
+    expect(span.querySelector("a")?.getAttribute("href")).toBe("x");
   });
 
   it("applies SET_TEXT to a text field's input", () => {

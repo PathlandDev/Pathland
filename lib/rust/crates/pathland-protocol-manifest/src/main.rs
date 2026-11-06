@@ -251,6 +251,7 @@ fn emit_manifest() -> String {
         ("SET_DESIGN_TOKEN", parameter::SET_DESIGN_TOKEN),
         ("SET_TEXT", parameter::SET_TEXT),
         ("SET_DATE", parameter::SET_DATE),
+        ("SET_ATTRIBUTED_TEXT", parameter::SET_ATTRIBUTED_TEXT),
     ] {
         row(&mut out, "command", "Parameter", name, &hex_u8(value));
     }

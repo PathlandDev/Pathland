@@ -13,6 +13,8 @@ is a self-contained PLPL batch (opcodes + string table) stored as hex under
 - `property_signal_delta`: mount a bound `SPACING` signal, then change `8 → 12`.
 - `styled_text_mount`: styled text with `FONT_SIZE` and `SET_TEXT`, proving the
   canonical property-before-text order.
+- `attributed_text_mount`: `SET_ATTRIBUTED_TEXT` with a bold run + link, proving
+  the arena payload survives the trace truncation.
 - `structural_add_remove`: append a text child, then remove it
   (`REMOVE_CHILD` + `DELETE_NODE`).
 - `--emit` regenerates the committed fixtures.

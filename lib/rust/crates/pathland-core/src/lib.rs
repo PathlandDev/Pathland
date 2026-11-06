@@ -51,6 +51,7 @@ extern crate std;
 extern crate alloc;
 
 mod arena;
+pub mod attributed;
 mod conformance;
 mod constants;
 mod events;
@@ -62,6 +63,9 @@ pub mod tokens;
 mod window;
 
 pub use arena::ArenaError;
+pub use attributed::{
+    AttributedError, AttributedSegment, AttributedString, LinkRun, StyleRun, TextAttribute,
+};
 pub use constants::*;
 pub use events::{Event, EventError};
 pub use memory::MemoryLayout;
@@ -280,6 +284,21 @@ impl<'a> Guest<'a> {
     pub fn set_text(&mut self, node_id: u32, text: &str) -> Result<u32, RingError> {
         let arena_ref = arena_fn::alloc_str(self.arena, self.header, text).map_err(|_| RingError::Full)?;
         ring_fn::push_set_text(self.slots, self.header, self.mask(), node_id, arena_ref)?;
+        Ok(arena_ref)
+    }
+
+    /// Set a node's text plus style runs and links via `PARAMETER::SET_ATTRIBUTED_TEXT`.
+    ///
+    /// The payload is encoded (see [`crate::AttributedString::encode`]) into one
+    /// length-prefixed arena entry. Returns that entry's byte offset.
+    pub fn set_attributed_text(
+        &mut self,
+        node_id: u32,
+        text: &crate::AttributedString,
+    ) -> Result<u32, RingError> {
+        let payload = text.encode().map_err(|_| RingError::InvalidPayload)?;
+        let arena_ref = arena_fn::alloc(self.arena, self.header, &payload).map_err(|_| RingError::Full)?;
+        ring_fn::push_set_attributed_text(self.slots, self.header, self.mask(), node_id, arena_ref)?;
         Ok(arena_ref)
     }
 

@@ -89,8 +89,8 @@ public final class ProxyIdMap {
             // token-path arena offset (spec/OPCODE.md) — leave it (and any unknown op)
             // unchanged, or the offset becomes a huge out-of-bounds string offset.
             return switch (op.command()) {
-                case Commands.Parameter.SET_TEXT, Commands.Parameter.SET_PROPERTY,
-                     Commands.Parameter.SET_DATE -> new Opcode(
+                case Commands.Parameter.SET_TEXT, Commands.Parameter.SET_ATTRIBUTED_TEXT,
+                     Commands.Parameter.SET_PROPERTY, Commands.Parameter.SET_DATE -> new Opcode(
                         op.category(), op.command(), op.flags(), toProxyId(block, op.a()), op.b(), op.c());
                 default -> op;
             };

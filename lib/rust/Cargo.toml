@@ -15,6 +15,8 @@ members = [
     "crates/pathland-engine-golden",
     "crates/pathland-ts-codegen",
     "crates/pathland-protocol-manifest",
+    "crates/pathland-markdown",
+    "crates/pathland-markdown-capi",
     "crates/pathland-render-qt",
     "crates/pathland-render-qt-demo",
 ]

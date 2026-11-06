@@ -44,6 +44,10 @@ pub mod parameter {
     /// set a node's date value (e.g. a `DATE_PICKER`); see
     /// `spec/PRIMITIVES.md` / `spec/OPCODE.md`.
     pub const SET_DATE: u8 = 0x04;
+    /// `A=nodeId, B=arenaRef (attributed payload)` — set a node's text plus
+    /// range-scoped style runs and links (see [`crate::AttributedString`] and
+    /// `spec/OPCODE.md`). The payload is binary; the text is its plain fallback.
+    pub const SET_ATTRIBUTED_TEXT: u8 = 0x05;
 }
 
 /// Commands within the `EVENT` category.

@@ -340,6 +340,15 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x00, // C = 0
         ],
     ),
+    (
+        "PARAMETER:SET_ATTRIBUTED_TEXT (id=1, arenaRef=0)",
+        [
+            0x02, 0x05, 0x00, 0x00, // category PARAMETER, command SET_ATTRIBUTED_TEXT
+            0x01, 0x00, 0x00, 0x00, // A = nodeId = 1
+            0x00, 0x00, 0x00, 0x00, // B = arenaRef = 0
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]
@@ -526,6 +535,7 @@ mod tests {
             (0x04, 0x07, 0x0000, 0, 0, 0, VECTORS[34].1),
             (0x04, 0x08, 0x0000, 0x0001, 0, 0, VECTORS[35].1),
             (0x04, 0x08, 0x0000, 0x0003, 6, 0, VECTORS[36].1),
+            (0x02, 0x05, 0x0000, 1, 0, 0, VECTORS[37].1),
         ];
         for (cat, cmd, flags, a, b, c, expected) in cases {
             let op = Opcode::new(*cat, *cmd, *flags, *a, *b, *c);
@@ -553,5 +563,35 @@ mod tests {
         let ops: Vec<_> = host.frames()[0].opcodes().collect();
         assert_eq!(ops.len(), 1);
         assert_eq!(ops[0].to_bytes(), VECTORS[12].1, "vector 17 byte-exact");
+    }
+
+    #[test]
+    fn set_attributed_text_emits_vector_46_exactly() {
+        use crate::{init_memory, AttributedString, Guest, Host, LinkRun, MemoryLayout, StyleRun};
+        let layout = MemoryLayout::default();
+        let mut mem = vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        let value = AttributedString::new(
+            "Hi",
+            vec![StyleRun::new(0, 2).bold()],
+            vec![LinkRun::new(1, 2, "x")],
+        )
+        .unwrap();
+
+        let mut guest = Guest::new(&mut mem, &layout);
+        guest.begin_frame();
+        guest.set_attributed_text(1, &value).unwrap();
+        guest.end_frame();
+
+        let mut host = Host::new(&mut mem, &layout);
+        let frame = &host.frames()[0];
+        let ops: Vec<_> = frame.opcodes().collect();
+        assert_eq!(ops.len(), 1);
+        assert_eq!(ops[0].to_bytes(), VECTORS[37].1, "vector 46 byte-exact");
+
+        let entry = frame.arena_get(ops[0].b()).unwrap();
+        assert_eq!(entry.len(), 47);
+        assert_eq!(AttributedString::decode(entry).unwrap(), value);
     }
 }

@@ -27,6 +27,7 @@ import {
   CMD_RESET,
   CMD_RESYNC,
   CMD_SCROLL,
+  CMD_SET_ATTRIBUTED_TEXT,
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_DATE,
   CMD_SET_PROPERTY,
@@ -117,6 +118,7 @@ const PARAMETER_NAME: Record<number, string> = {
   [CMD_SET_DESIGN_TOKEN]: "SET_DESIGN_TOKEN",
   [CMD_SET_TEXT]: "SET_TEXT",
   [CMD_SET_DATE]: "SET_DATE",
+  [CMD_SET_ATTRIBUTED_TEXT]: "SET_ATTRIBUTED_TEXT",
 };
 
 const EVENT_NAME: Record<number, string> = {
@@ -285,6 +287,8 @@ function describeOpcode(batch: Batch, op: Opcode): string {
           return `STYLE ${sn}(${describeProperty(batch, op)}, node=${op.a})`;
         case CMD_SET_TEXT:
           return `STYLE ${sn}("${readString(batch.strings, op.b)}", node=${op.a})`;
+        case CMD_SET_ATTRIBUTED_TEXT:
+          return `STYLE ${sn}(node=${op.a}, arenaRef=${op.b})`;
         case CMD_SET_DATE:
           return `STYLE ${sn}(node=${op.a}, days=${op.b >>> 0}, millis=${op.c})`;
         case CMD_SET_DESIGN_TOKEN:

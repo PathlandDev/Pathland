@@ -76,6 +76,8 @@ pub struct Node {
     pub component: u16,
     /// Text content set via `PARAMETER::SET_TEXT`, if any.
     pub text: Option<String>,
+    /// Attributed text set via `PARAMETER::SET_ATTRIBUTED_TEXT`, if any.
+    pub attributed: Option<pathland_core::AttributedString>,
     /// Constraint/style properties (`propertyId → value`).
     pub properties: BTreeMap<u16, u32>,
     /// `STRING`-typed properties resolved at apply time (`propertyId → text`).
@@ -162,6 +164,7 @@ impl Node {
         Self {
             component,
             text: None,
+            attributed: None,
             properties: BTreeMap::new(),
             strings: BTreeMap::new(),
             token_refs: BTreeMap::new(),
@@ -939,6 +942,21 @@ fn decode(opcodes: &[Opcode], strings: &[u8]) -> (BTreeMap<u32, Node>, Tokens, W
     (nodes, tokens, window)
 }
 
+/// Read a `[u32 len][bytes]` entry (binary-safe) from the batch's string
+/// section at a relative offset.
+fn strings_bytes(strings: &[u8], offset: u32) -> Option<&[u8]> {
+    let offset = offset as usize;
+    if offset + 4 > strings.len() {
+        return None;
+    }
+    let len = u32::from_le_bytes(strings[offset..offset + 4].try_into().ok()?) as usize;
+    let start = offset + 4;
+    if start + len > strings.len() {
+        return None;
+    }
+    Some(&strings[start..start + len])
+}
+
 /// Read a `[u32 len][utf8]` entry from the batch's string section at a relative offset.
 fn strings_str(strings: &[u8], offset: u32) -> Option<String> {
     let offset = offset as usize;
@@ -1229,6 +1247,17 @@ fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings
             if let Some(text) = strings_str(strings, op.b()) {
                 if let Some(node) = nodes.get_mut(&op.a()) {
                     node.text = Some(text);
+                    node.attributed = None;
+                }
+            }
+        }
+        parameter::SET_ATTRIBUTED_TEXT => {
+            if let Some(bytes) = strings_bytes(strings, op.b()) {
+                if let Ok(value) = pathland_core::AttributedString::decode(bytes) {
+                    if let Some(node) = nodes.get_mut(&op.a()) {
+                        node.text = Some(value.text().to_string());
+                        node.attributed = Some(value);
+                    }
                 }
             }
         }
@@ -1568,8 +1597,11 @@ impl HtmlRenderer {
                 // `ROLE_HEADER` → `<h2>`, `ROLE_PARAGRAPH` → `<p>`; else `<span>`.
                 let tag = role_spec::text_tag(kind, node.role_code(), node.text_style_code())
                     .unwrap_or("span");
-                let text = escape(node.text.as_deref().unwrap_or_default());
-                format!("<{tag}{data_id}{event}{aria}{style}>{text}</{tag}>")
+                let content = match &node.attributed {
+                    Some(value) => render_attributed(value),
+                    None => escape(node.text.as_deref().unwrap_or_default()),
+                };
+                format!("<{tag}{data_id}{event}{aria}{style}>{content}</{tag}>")
             }
             component_type::ICON => {
                 // A semantic icon: the canonical `ICON_NAME` maps to a **filled**
@@ -2261,6 +2293,82 @@ fn escape(input: &str) -> String {
         .replace('\'', "&#39;")
 }
 
+/// Render attributed text as escaped, non-overlapping `<span>`/`<a>` segments.
+fn render_attributed(value: &pathland_core::AttributedString) -> String {
+    let text = value.text();
+    let mut out = String::new();
+    for segment in value.segments() {
+        let body = escape(&text[segment.start as usize..segment.end as usize]);
+        let css = run_style_css(&segment.attributes);
+        let rendered = match segment.link {
+            Some(url) => {
+                let style = if css.is_empty() {
+                    String::new()
+                } else {
+                    format!(" style=\"{}\"", escape_html_attr(&css))
+                };
+                format!("<a href=\"{}\"{style}>{body}</a>", escape_html_attr(url))
+            }
+            None if css.is_empty() => body,
+            None => format!("<span style=\"{}\">{body}</span>", escape_html_attr(&css)),
+        };
+        out.push_str(&rendered);
+    }
+    out
+}
+
+/// The v1 run attributes as inline CSS.
+fn run_style_css(attributes: &[pathland_core::TextAttribute]) -> String {
+    let mut css = String::new();
+    let mut underline = false;
+    let mut strikethrough = false;
+    for attr in attributes {
+        match attr.property {
+            property_id::FONT_SIZE => {
+                let value = f32::from_bits(attr.value);
+                if value > 0.0 {
+                    css.push_str(&format!("font-size:{value}px;"));
+                }
+            }
+            property_id::FONT_WEIGHT => {
+                let value = f32::from_bits(attr.value);
+                if value > 0.0 {
+                    css.push_str(&format!("font-weight:{value};"));
+                }
+            }
+            property_id::COLOR => css.push_str(&format!("color:{};", rgba(attr.value))),
+            property_id::FONT_STYLE => {
+                if f32::from_bits(attr.value) as u8 == 1 {
+                    css.push_str("font-style:italic;");
+                }
+            }
+            property_id::FONT_DESIGN => {
+                let family = match f32::from_bits(attr.value) as u8 {
+                    1 => "Georgia, 'Times New Roman', serif",
+                    2 => "ui-rounded, system-ui, sans-serif",
+                    3 => "ui-monospace, monospace",
+                    _ => "inherit",
+                };
+                css.push_str(&format!("font-family:{family};"));
+            }
+            property_id::UNDERLINE => underline |= attr.value != 0,
+            property_id::STRIKETHROUGH => strikethrough |= attr.value != 0,
+            _ => {}
+        }
+    }
+    if underline || strikethrough {
+        let mut decoration = Vec::new();
+        if underline {
+            decoration.push("underline");
+        }
+        if strikethrough {
+            decoration.push("line-through");
+        }
+        css.push_str(&format!("text-decoration:{};", decoration.join(" ")));
+    }
+    css
+}
+
 /// Slot attributes for a navigation/conditional slot node: the current path as
 /// `data-pathland-route` (the DOM client mirrors it into the URL), the
 /// `data-pathland-transition` swap hint (`platform`/`fade`/`slide`/`scale`),
@@ -2320,6 +2428,28 @@ mod tests {
         assert!(html.contains("flex-direction:column"), "stack inline flex");
         assert!(html.contains("<span data-pathland-id=\"2\">Hello</span>"));
         assert!(html.contains("data-pathland-id=\"1\""));
+    }
+
+    #[test]
+    fn renders_attributed_text_as_spans_and_links() {
+        let value = pathland_core::AttributedString::new(
+            "Hi",
+            vec![pathland_core::StyleRun::new(0, 2).bold()],
+            vec![pathland_core::LinkRun::new(1, 2, "x")],
+        )
+        .unwrap();
+        let payload = value.encode().unwrap();
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        strings.extend_from_slice(&payload);
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::TEXT as u32, 0));
+        opcodes.push(Opcode::new(category::PARAMETER, parameter::SET_ATTRIBUTED_TEXT, 0, 1, 0, 0));
+
+        let html = HtmlRenderer::new().render_fragment(&opcodes, &strings, 1);
+        assert!(html.contains("<span style=\"font-weight:700;\">H</span>"), "{html}");
+        assert!(html.contains("<a href=\"x\" style=\"font-weight:700;\">i</a>"), "{html}");
     }
 
     #[test]
