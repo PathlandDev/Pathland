@@ -15,7 +15,8 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
 
 ## Project map
 
-- `lib/rust/` — the Rust workspace: `pathland-core` (protocol), `pathland-engine`
+- `lib/rust/` — the Rust workspace: `pathland-core` (protocol), `pathland-markdown`
+  (shared inline Markdown), `pathland-markdown-capi` (C ABI), `pathland-engine`
   (emitter/signals), `pathland-core-transport`, `pathland-core-capi` (C ABI),
   `pathland-render-gtk`, `pathland-render-html`, `pathland-view-native`,
   `pathland-render-gtk-demo`.
