@@ -1,0 +1,5 @@
+I want to build a website using pathland that promotes it and also delivers a documentaion for it. For the documentation sites I would prefer to to be able to describe it using markdown. Not markdown via text views, as we need support for more markdown (images, table etc.). What do you think we lack to be able to build such a website?
+
+---
+
+It must be via the kotlin dsl.
