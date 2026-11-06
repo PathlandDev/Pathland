@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.6028134239999996,
+    "cost": 0.6057384779999996,
     "tokens": {
-      "input": 2312836,
-      "output": 68233,
+      "input": 2313437,
+      "output": 68458,
       "reasoning": 95328,
       "cache": {
-        "read": 52583808,
+        "read": 53483776,
         "write": 0
       }
     },
     "time": {
       "created": 1793861034474,
-      "updated": 1793943770367
+      "updated": 1793943777357
     }
   },
   "messages": [
@@ -37962,21 +37962,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.00150651,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 450368,
+          "input": 249,
+          "output": 199,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 449920
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1793943770366
+          "created": 1793943770366,
+          "completed": 1793943777340
         },
+        "finish": "tool-calls",
         "id": "msg_1af6194fe002GZ9iNJ5yTRtgxp",
         "sessionID": "ses_e558cde15ffe9Nb3P0OyEzjEzY"
       },
@@ -37993,20 +37996,115 @@
           "tool": "bash",
           "callID": "call_00_66dxq0x5bs4a89x6qzasv4tf",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git commit -q -m \"fix(server): serialize registry shutdown on the actor thread\" -m \"PathlandRegistry.shutdown() closed live sessions on the caller's thread while\nthe single actor could still be mounting/resyncing them, racing\nEmitter.destroy() against emitter mutation (ConcurrentModificationException\nsurfaced on the JDK 17 CI job).\n\nMake shutdown idempotent and actor-serialized: drop work enqueued after the\nshutdown flag is set, close sessions inside the actor task, then stop and await\nthe executor. Add a rapid enqueue+shutdown regression test.\" && git log --oneline -1 && git status --short | wc -l"
             },
+            "output": "a47f172d fix(server): serialize registry shutdown on the actor thread\n       0\n",
+            "metadata": {
+              "output": "a47f172d fix(server): serialize registry shutdown on the actor thread\n       0\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git commit -q -m \"fix(server): serialize registry shutdown on the actor thread\" -m \"PathlandRegistry.shutdown() closed live sessions on the caller's thread while\nthe single actor could still be mounting/resyncing them, racing\nEmitter.destroy() against emitter mutation (ConcurrentModificationException\nsurfaced on the JDK 17 CI job).\n\nMake shutdown idempotent and actor-serialized: drop work enqueued after the\nshutdown flag is set, close sessions inside the actor task, then stop and await\nthe executor. Add a rapid enqueue+shutdown regression test.\" && git log --oneline -1 && git status --short | wc -l",
             "time": {
-              "start": 1793943773317
+              "start": 1793943773317,
+              "end": 1793943777209
             }
           },
           "id": "prt_1af619ff1001daN8hBiaRIK1WN",
           "sessionID": "ses_e558cde15ffe9Nb3P0OyEzjEzY",
           "messageID": "msg_1af6194fe002GZ9iNJ5yTRtgxp"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "77949b8f8cefef784ef8a7d5ae8897c8e545eb1f",
+          "type": "step-finish",
+          "tokens": {
+            "total": 450368,
+            "input": 249,
+            "output": 199,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 449920
+            }
+          },
+          "cost": 0.00150651,
+          "id": "prt_1af61b004001ADh9ZQN5fRjdnh",
+          "sessionID": "ses_e558cde15ffe9Nb3P0OyEzjEzY",
+          "messageID": "msg_1af6194fe002GZ9iNJ5yTRtgxp"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1af61860f001mMwCzpcSn6Hlsm",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001418544,
+        "tokens": {
+          "total": 450426,
+          "input": 352,
+          "output": 26,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 450048
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793943777356,
+          "completed": 1793943780180
+        },
+        "finish": "stop",
+        "id": "msg_1af61b04c002AKwQQfwufc6rsp",
+        "sessionID": "ses_e558cde15ffe9Nb3P0OyEzjEzY"
+      },
+      "parts": [
+        {
+          "snapshot": "77949b8f8cefef784ef8a7d5ae8897c8e545eb1f",
+          "type": "step-start",
+          "id": "prt_1af61bac3001RU18f6WXJcaJO6",
+          "sessionID": "ses_e558cde15ffe9Nb3P0OyEzjEzY",
+          "messageID": "msg_1af61b04c002AKwQQfwufc6rsp"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `a47f172d fix(server): serialize registry shutdown on the actor thread`. Working tree clean.",
+          "time": {
+            "start": 1793943780039,
+            "end": 1793943780043
+          },
+          "id": "prt_1af61bac7001fJwEZlrp8Nk8Bz",
+          "sessionID": "ses_e558cde15ffe9Nb3P0OyEzjEzY",
+          "messageID": "msg_1af61b04c002AKwQQfwufc6rsp"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "77949b8f8cefef784ef8a7d5ae8897c8e545eb1f",
+          "type": "step-finish",
+          "tokens": {
+            "total": 450426,
+            "input": 352,
+            "output": 26,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 450048
+            }
+          },
+          "cost": 0.001418544,
+          "id": "prt_1af61bb14001RZLoVhGBiqyzbN",
+          "sessionID": "ses_e558cde15ffe9Nb3P0OyEzjEzY",
+          "messageID": "msg_1af61b04c002AKwQQfwufc6rsp"
         }
       ]
     }
