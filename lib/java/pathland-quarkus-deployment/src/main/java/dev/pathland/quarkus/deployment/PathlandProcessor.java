@@ -47,11 +47,25 @@ public final class PathlandProcessor {
      * before every route (including WebSocket upgrades) and, with no {@code origins}
      * configured, enforces same-origin — the WebSocket CSRF control. The WebSocket
      * message/frame caps match the server-core inbound event-batch bound.
+     *
+     * <p>Forwarded headers are trusted by default so a TLS-terminating PaaS (Render,
+     * Fly, Heroku, Cloud Run, …) works with zero configuration: the same-origin
+     * check and canonical URLs then use the external {@code https} origin instead of
+     * the internal {@code http} hop. These are defaults only — application
+     * configuration always wins. A directly exposed deployment can set
+     * {@code quarkus.http.proxy.proxy-address-forwarding=false} (or restrict
+     * {@code quarkus.http.proxy.trusted-proxies}) to harden it.
      */
     @BuildStep
     List<RunTimeConfigurationDefaultBuildItem> securityDefaults() {
         return List.of(
                 new RunTimeConfigurationDefaultBuildItem("quarkus.http.cors.enabled", "true"),
+                new RunTimeConfigurationDefaultBuildItem(
+                        "quarkus.http.proxy.proxy-address-forwarding", "true"),
+                new RunTimeConfigurationDefaultBuildItem(
+                        "quarkus.http.proxy.allow-x-forwarded", "true"),
+                new RunTimeConfigurationDefaultBuildItem(
+                        "quarkus.http.proxy.enable-forwarded-host", "true"),
                 new RunTimeConfigurationDefaultBuildItem(
                         "quarkus.websockets-next.server.max-message-size", "65536"),
                 new RunTimeConfigurationDefaultBuildItem(

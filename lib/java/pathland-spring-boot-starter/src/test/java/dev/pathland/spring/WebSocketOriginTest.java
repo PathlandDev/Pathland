@@ -9,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -55,4 +57,19 @@ class WebSocketOriginTest {
             }
         });
     }
+    @Test
+    void forwardedExternalOriginIsAcceptedByDefault() {
+        // A TLS-terminating host platform forwards plain HTTP with these headers; the
+        // starter's lowest-precedence default enables Spring's forwarded-header handling.
+        String origin = "https://example.com";
+        String wsUrl = wsUrl();
+        assertDoesNotThrow(() -> {
+            try (WsSession session = WsSession.connect(
+                    wsUrl, "w-fwd", origin,
+                    Map.of("X-Forwarded-Proto", "https", "X-Forwarded-Host", "example.com"))) {
+                session.sendEnvironment(800, 600, "/");
+            }
+        });
+    }
+
 }

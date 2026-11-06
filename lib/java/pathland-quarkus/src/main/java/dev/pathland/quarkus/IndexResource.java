@@ -12,6 +12,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -66,11 +67,16 @@ public class IndexResource {
     @ConfigProperty(name = "pathland.seo.structured-data", defaultValue = "true")
     boolean seoStructuredData;
 
+    /** Trust the proxy's forwarded scheme/host when building the canonical URL. */
+    @ConfigProperty(name = "quarkus.http.proxy.proxy-address-forwarding", defaultValue = "true")
+    boolean proxyForwarding;
+
     /** The root page (the route is {@code /}). */
     @GET
     @Produces(MediaType.TEXT_HTML)
-    public Response index(@QueryParam("wid") String wid, @Context UriInfo uri) {
-        return render("/", wid, uri);
+    public Response index(@QueryParam("wid") String wid, @Context UriInfo uri,
+            @Context HttpHeaders headers) {
+        return render("/", wid, uri, headers);
     }
 
     /** A valid crawler policy — never the SPA HTML fallback. */
@@ -108,29 +114,29 @@ public class IndexResource {
     @Path("{path:(?!_pathland)(?!q/).*}")
     @Produces(MediaType.TEXT_HTML)
     public Response deep(@PathParam("path") String path, @QueryParam("wid") String wid,
-            @Context UriInfo uri) throws IOException {
+            @Context UriInfo uri, @Context HttpHeaders headers) throws IOException {
         int framework = path.indexOf("/_pathland/");
         if (framework >= 0) {
             return frameworkFile(path.substring(framework + "/_pathland/".length()));
         }
-        return render("/" + path, wid, uri);
+        return render("/" + path, wid, uri, headers);
     }
 
-    private Response render(String requestUri, String wid, UriInfo uri) {
+    private Response render(String requestUri, String wid, UriInfo uri, HttpHeaders headers) {
         MountMatch match = host.match(requestUri);
         if (match == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         return Response.ok(
-                match.registry().renderHtml(match.route(), wid, pageMetadata(uri))).build();
+                match.registry().renderHtml(match.route(), wid, pageMetadata(uri, headers))).build();
     }
 
     /** Host-default document metadata for this request; the app may override it by route. */
-    private PageMetadata pageMetadata(UriInfo uri) {
+    private PageMetadata pageMetadata(UriInfo uri, HttpHeaders headers) {
         if (!seoEnabled) {
             return PageMetadata.empty();
         }
-        String canonical = uri.getRequestUriBuilder().replaceQuery(null).build().toString();
+        String canonical = canonicalUrl(uri, headers);
         return PageMetadata.builder()
                 .canonicalUrl(canonical)
                 .siteName(seoSiteName.orElse(null))
@@ -142,6 +148,46 @@ public class IndexResource {
                 .twitter(true)
                 .structuredData(seoStructuredData)
                 .build();
+    }
+
+    /**
+     * The external canonical URL. Quarkus's proxy wrapper fixes the WebSocket
+     * same-origin check, but JAX-RS's {@link UriInfo} is built before that wrapper,
+     * so read the resolved forwarded scheme/host here (only when proxy forwarding is
+     * enabled; an app that opts out gets the plain request URL).
+     */
+    private String canonicalUrl(UriInfo uri, HttpHeaders headers) {
+        String fallback = uri.getRequestUriBuilder().replaceQuery(null).build().toString();
+        String scheme = firstHeader(headers, "X-Forwarded-Proto");
+        String host = firstHeader(headers, "X-Forwarded-Host");
+        if (host == null) {
+            host = firstHeader(headers, "Host");
+        }
+        if (!proxyForwarding) {
+            return fallback;
+        }
+        if (scheme == null || host == null) {
+            return fallback;
+        }
+        String port = firstHeader(headers, "X-Forwarded-Port");
+        String authority = host.indexOf(':') >= 0 || port == null || defaultPort(scheme, port)
+                ? host
+                : host + ":" + port;
+        return scheme + "://" + authority + uri.getRequestUri().getRawPath();
+    }
+
+    private static String firstHeader(HttpHeaders headers, String name) {
+        String value = headers.getHeaderString(name);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        int comma = value.indexOf(',');
+        return (comma < 0 ? value : value.substring(0, comma)).trim();
+    }
+
+    private static boolean defaultPort(String scheme, String port) {
+        return ("https".equals(scheme) && "443".equals(port))
+                || ("http".equals(scheme) && "80".equals(port));
     }
 
     /** The renderer-owned icon glyphs at the global base — `/_pathland/icons/<name>.svg`.

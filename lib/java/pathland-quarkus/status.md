@@ -21,6 +21,13 @@ capability and pulls in `quarkus-kotlin`.
   `quarkus.http.header.*`. See `docs/HARDENING.md` for overrides, CSP rollout,
   reverse-proxy/TLS guidance, and edge rate limiting. The `wid` handshake query
   is validated by server-core (`WindowIds`).
+- **Hosted deployments work by default**: the same defaults set
+  `quarkus.http.proxy.proxy-address-forwarding`, `allow-x-forwarded`, and
+  `enable-forwarded-host` to `true`, so a TLS-terminating PaaS (Render, Fly,
+  Heroku, Cloud Run) gets a correct same-origin WebSocket check and an external
+  SSR canonical URL with zero configuration. These are lowest-priority defaults;
+  application config (including
+  `quarkus.http.proxy.proxy-address-forwarding=false`) always wins.
 - **Java host / Kotlin views**: `CounterApp` is a Java CDI bean whose
   `newRoot()` returns a Kotlin-authored fixture view; the multi-session
   WebSocket tests prove SSR + live deltas work through that mount.
