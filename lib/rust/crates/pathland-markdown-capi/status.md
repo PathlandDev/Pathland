@@ -2,8 +2,9 @@
 
 **Last updated:** November 6, 2026
 
-The C ABI (`cdylib` name `libpathland_markdown`) for foreign hosts (Java/JNA,
-Swift, …). It wraps the shared `pathland-markdown` parser.
+The C ABI (`cdylib` name `libpathland_markdown`) for non-JVM foreign hosts
+(Swift, .NET, …). It wraps the shared `pathland-markdown` parser. The JVM uses a
+pure-Java port in `pathland-view-core` and no longer loads this library.
 
 ## Implemented
 

@@ -219,9 +219,9 @@ Notes:
 The same commands without the scripts:
 
 ```bash
-# one-time: build the Rust HTML renderer + Markdown cdylibs (embedded in the jars),
-# then the Java reactor
-cd lib/rust && cargo build -p pathland-render-html -p pathland-markdown-capi
+# one-time: build the Rust HTML renderer cdylib (embedded in its jar),
+# then the Java reactor (the JVM Markdown parser is pure Java)
+cd lib/rust && cargo build -p pathland-render-html
 cd lib/java && mvn install
 
 # Spring Boot demo

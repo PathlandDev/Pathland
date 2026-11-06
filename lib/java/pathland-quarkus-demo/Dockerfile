@@ -7,20 +7,18 @@
 #
 # See docs/DEPLOY.md.
 
-# --- Stage 1: the Rust HTML renderer + inline-Markdown cdylibs (embedded into jars) ---
+# --- Stage 1: the Rust HTML renderer cdylib (embedded into its jar) ---
 FROM rust:1-slim AS rust
 WORKDIR /src
 COPY lib/rust ./lib/rust
 RUN cargo build --manifest-path lib/rust/Cargo.toml \
-    -p pathland-render-html -p pathland-markdown-capi
+    -p pathland-render-html
 
-# --- Stage 2: the Java reactor + the Quarkus app (jars embed the dylibs) ---
+# --- Stage 2: the Java reactor + the Quarkus app (the renderer jar embeds the dylib) ---
 FROM maven:3.9-eclipse-temurin-17 AS java
 WORKDIR /src
 COPY --from=rust /src/lib/rust/target/debug/libpathland_render_html.so \
      lib/rust/target/debug/libpathland_render_html.so
-COPY --from=rust /src/lib/rust/target/debug/libpathland_markdown.so \
-     lib/rust/target/debug/libpathland_markdown.so
 COPY lib/java ./lib/java
 # Include the extension's deployment module in the reactor: the runtime module's
 # quarkus-extension-maven-plugin validates its dependencies against it, and it is

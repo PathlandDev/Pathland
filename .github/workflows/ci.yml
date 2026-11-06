@@ -150,23 +150,16 @@ jobs:
 
       # The Java HTML renderer shim needs the Rust renderer cdylib (the jar embeds
       # it so it travels with the artifact). Build it here and hand it to the java
-      # job via an artifact.
-      - name: Build the HTML renderer and markdown cdylibs
+      # job via an artifact. (Markdown is pure Java on the JVM now.)
+      - name: Build the HTML renderer cdylib
         working-directory: lib/rust
-        run: cargo build -p pathland-render-html -p pathland-markdown-capi
+        run: cargo build -p pathland-render-html
 
       - name: Upload the renderer dylib for the java job
         uses: actions/upload-artifact@v4
         with:
           name: pathland-render-html-native
           path: lib/rust/target/debug/libpathland_render_html.so
-          retention-days: 1
-
-      - name: Upload the markdown dylib for the java job
-        uses: actions/upload-artifact@v4
-        with:
-          name: pathland-markdown-native
-          path: lib/rust/target/debug/libpathland_markdown.so
           retention-days: 1
 
   java:
@@ -190,17 +183,11 @@ jobs:
           cache: maven
 
       # The renderer jar embeds the Rust cdylib (built by the rust job). Restore it
-      # into the debug dir the jar-embed step copies.
+      # into the debug dir the jar-embed step copies. (Markdown is pure Java now.)
       - name: Download the Rust renderer dylib
         uses: actions/download-artifact@v4
         with:
           name: pathland-render-html-native
-          path: lib/rust/target/debug
-
-      - name: Download the Rust markdown dylib
-        uses: actions/download-artifact@v4
-        with:
-          name: pathland-markdown-native
           path: lib/rust/target/debug
 
       - name: Test reactor (incl. the SSR web demos)

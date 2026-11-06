@@ -22,9 +22,11 @@ Kotlin-authored views through JVM interop.
 - **Built-in inline Markdown**: `Text("...")` parses the v1 subset by default
   (`**bold**`/`__bold__`, `*italic*`/`_italic_`, `` `code` ``,
   `~~strikethrough~~`, `[label](url)`); `markdown = false` renders literal text.
-  The shared Rust parser (`libpathland_markdown`) is embedded in the view-core
-  jar and called through `dev.pathland.markdown.Markdown` (pre-scan + bounded
-  cache). Plain results use the compact `SET_TEXT` path; rich results emit
+  `dev.pathland.markdown.Markdown` is now a **pure-Java parser** (no native
+  library, so it runs on every platform and under GraalVM native-image); it is a
+  behavioural port of the Rust `pathland-markdown` crate (pre-scan + bounded
+  cache). The Rust crate remains the parser for the Rust DSL and non-JVM hosts.
+  Plain results use the compact `SET_TEXT` path; rich results emit
   `SET_ATTRIBUTED_TEXT`. Reactive `Text(Signal<String>)` parses on change.
 - **Signals** (`dev.pathland.view.core.signal`): `signal`/`state`/`computed`/
   `effect`/`untracked`, synchronous glitch-free flush, equality suppression, error

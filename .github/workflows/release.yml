@@ -139,9 +139,9 @@ jobs:
           ref: ${{ needs.version.outputs.tag }}
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Build the renderer and markdown cdylibs
+      - name: Build the renderer cdylib
         working-directory: lib/rust
-        run: cargo build --release -p pathland-render-html -p pathland-markdown-capi
+        run: cargo build --release -p pathland-render-html
 
       - name: Stage the platform libs
         shell: bash
@@ -149,34 +149,22 @@ jobs:
           set -euo pipefail
           case "${{ matrix.platform }}" in
             windows-*)
-              renderer_src="pathland_render_html.dll"; renderer_dst="libpathland_render_html.dll"
-              markdown_src="pathland_markdown.dll";    markdown_dst="libpathland_markdown.dll" ;;
+              renderer_src="pathland_render_html.dll"; renderer_dst="libpathland_render_html.dll" ;;
             macos-*)
-              renderer_src="libpathland_render_html.dylib"; renderer_dst="libpathland_render_html.dylib"
-              markdown_src="libpathland_markdown.dylib";    markdown_dst="libpathland_markdown.dylib" ;;
+              renderer_src="libpathland_render_html.dylib"; renderer_dst="libpathland_render_html.dylib" ;;
             *)
-              renderer_src="libpathland_render_html.so"; renderer_dst="libpathland_render_html.so"
-              markdown_src="libpathland_markdown.so";    markdown_dst="libpathland_markdown.so" ;;
+              renderer_src="libpathland_render_html.so"; renderer_dst="libpathland_render_html.so" ;;
           esac
           renderer_dest="lib/java/pathland-render-html/target/native/${{ matrix.platform }}"
-          markdown_dest="lib/java/pathland-view-core/target/native/${{ matrix.platform }}"
-          mkdir -p "$renderer_dest" "$markdown_dest"
+          mkdir -p "$renderer_dest"
           cp "lib/rust/target/release/$renderer_src" "$renderer_dest/$renderer_dst"
-          cp "lib/rust/target/release/$markdown_src" "$markdown_dest/$markdown_dst"
-          ls -la "$renderer_dest" "$markdown_dest"
+          ls -la "$renderer_dest"
 
       - name: Upload the renderer platform lib
         uses: actions/upload-artifact@v4
         with:
           name: native-${{ matrix.platform }}
           path: lib/java/pathland-render-html/target/native/${{ matrix.platform }}/*
-          if-no-files-found: error
-
-      - name: Upload the markdown platform lib
-        uses: actions/upload-artifact@v4
-        with:
-          name: markdown-native-${{ matrix.platform }}
-          path: lib/java/pathland-view-core/target/native/${{ matrix.platform }}/*
           if-no-files-found: error
 
   java:
@@ -224,18 +212,13 @@ jobs:
       - name: Stage the natives for the jar embed
         run: |
           set -euo pipefail
-          mkdir -p lib/java/pathland-render-html/target/native lib/java/pathland-view-core/target/native
+          mkdir -p lib/java/pathland-render-html/target/native
           for d in natives/native-*; do
             platform="${d#natives/native-}"
             mkdir -p "lib/java/pathland-render-html/target/native/$platform"
             cp "$d"/* "lib/java/pathland-render-html/target/native/$platform/"
           done
-          for d in natives/markdown-native-*; do
-            platform="${d#natives/markdown-native-}"
-            mkdir -p "lib/java/pathland-view-core/target/native/$platform"
-            cp "$d"/* "lib/java/pathland-view-core/target/native/$platform/"
-          done
-          find lib/java/pathland-render-html/target/native lib/java/pathland-view-core/target/native -type f
+          find lib/java/pathland-render-html/target/native -type f
 
       # The demos are excluded from the release reactor: central-publishing-maven-plugin
       # bundles every reactor module (it ignores maven.deploy.skip), and the demos must

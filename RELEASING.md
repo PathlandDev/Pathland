@@ -48,9 +48,9 @@ successful publish).
    - `version` — derive + validate `X.Y.Z` from the tag.
    - `rust` — set the version, test the publishable crates, publish them to
      crates.io in dependency order, upload the `.crate` files.
-   - `java-natives` — build `libpathland_render_html` and
-     `libpathland_markdown` for windows-x86_64, linux-x86_64, linux-aarch64,
-     macos-aarch64.
+   - `java-natives` — build `libpathland_render_html` for windows-x86_64,
+     linux-x86_64, linux-aarch64, macos-aarch64. (The JVM Markdown parser is
+     pure Java, so no markdown native is staged for the jars.)
     - `java` — set the version, stage the natives into the renderer jar, run
       `mvn -P release deploy` to Maven Central (auto-published after validation).
     - `bump` — commit the version back to `main`.

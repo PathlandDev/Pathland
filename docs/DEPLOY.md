@@ -17,9 +17,9 @@ the Rust dylib and the Java reactor sources):
 docker build -f lib/java/pathland-quarkus-demo/Dockerfile -t pathland-quarkus-demo .
 ```
 
-The Rust stage builds both `libpathland_render_html.so` and
-`libpathland_markdown.so`; the Java stage copies both into
-`lib/rust/target/debug` so the renderer and view-core jar-embed steps find them.
+The Rust stage builds `libpathland_render_html.so`; the Java stage copies it into
+`lib/rust/target/debug` so the renderer jar-embed step finds it. The JVM inline
+Markdown parser is pure Java and needs no native build.
 
 The image's Maven step selects both `pathland-quarkus-demo` and
 `pathland-quarkus-deployment`. The deployment module is not a Maven dependency of
