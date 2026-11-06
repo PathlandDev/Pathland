@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.19714080600000003,
+    "cost": 0.20005498200000002,
     "tokens": {
-      "input": 517797,
-      "output": 52714,
-      "reasoning": 39679,
+      "input": 520409,
+      "output": 52864,
+      "reasoning": 39724,
       "cache": {
-        "read": 21345152,
+        "read": 22146944,
         "write": 0
       }
     },
     "time": {
       "created": 1793978942643,
-      "updated": 1793981847293
+      "updated": 1793981858748
     }
   },
   "messages": [
@@ -17196,21 +17196,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001155918,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 267930,
+          "input": 1969,
+          "output": 63,
+          "reasoning": 42,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 265856
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1793981847291
+          "created": 1793981847291,
+          "completed": 1793981855596
         },
+        "finish": "tool-calls",
         "id": "msg_1b1a696fb002ZiKFmcMMxtWEO0",
         "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH"
       },
@@ -17238,20 +17241,211 @@
           "tool": "bash",
           "callID": "call_00_9uc3eeko1ianmfar94uqc6p0",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -m \"feat(ssr): SEO-hardened document metadata and structured data (#45)\""
             },
+            "output": "[feat/45-seo-hardened-ssr 580c8724] feat(ssr): SEO-hardened document metadata and structured data (#45)\n 36 files changed, 3324 insertions(+), 47 deletions(-)\n create mode 100644 lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/SeoHeadTest.java\n create mode 100644 lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/DocumentHead.java\n create mode 100644 lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/DocumentMeta.java\n create mode 100644 lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/StructuredData.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/PageMetadata.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/PageMetadataRequest.java\n create mode 100644 lib/rust/crates/pathland-render-html/src/document.rs\n create mode 100644 lib/rust/crates/pathland-render-html/src/structured_data.rs\n create mode 100644 lib/typescript/test/fixtures/ssr/document_meta.document.html\n create mode 100644 lib/typescript/test/fixtures/ssr/document_meta.plpl\n",
+            "metadata": {
+              "output": "[feat/45-seo-hardened-ssr 580c8724] feat(ssr): SEO-hardened document metadata and structured data (#45)\n 36 files changed, 3324 insertions(+), 47 deletions(-)\n create mode 100644 lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/SeoHeadTest.java\n create mode 100644 lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/DocumentHead.java\n create mode 100644 lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/DocumentMeta.java\n create mode 100644 lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/StructuredData.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/PageMetadata.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/PageMetadataRequest.java\n create mode 100644 lib/rust/crates/pathland-render-html/src/document.rs\n create mode 100644 lib/rust/crates/pathland-render-html/src/structured_data.rs\n create mode 100644 lib/typescript/test/fixtures/ssr/document_meta.document.html\n create mode 100644 lib/typescript/test/fixtures/ssr/document_meta.plpl\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -m \"feat(ssr): SEO-hardened document metadata and structured data (#45)\"",
             "time": {
-              "start": 1793981849792
+              "start": 1793981849792,
+              "end": 1793981855484
             }
           },
           "id": "prt_1b1a6a0b2001sIWOeizKgTootA",
           "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
           "messageID": "msg_1b1a696fb002ZiKFmcMMxtWEO0"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "782f0319edc89c77f8181b64d158835cacc8469e",
+          "type": "step-finish",
+          "tokens": {
+            "total": 267930,
+            "input": 1969,
+            "output": 63,
+            "reasoning": 42,
+            "cache": {
+              "write": 0,
+              "read": 265856
+            }
+          },
+          "cost": 0.001155918,
+          "id": "prt_1b1a6b734001c4wGOyw8U85vrU",
+          "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
+          "messageID": "msg_1b1a696fb002ZiKFmcMMxtWEO0"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b1a67f220012DsghE8RAOQpVd",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000904728,
+        "tokens": {
+          "total": 268299,
+          "input": 472,
+          "output": 48,
+          "reasoning": 3,
+          "cache": {
+            "write": 0,
+            "read": 267776
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793981855608,
+          "completed": 1793981858738
+        },
+        "finish": "tool-calls",
+        "id": "msg_1b1a6b778002OhM0kMuG39QH69",
+        "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH"
+      },
+      "parts": [
+        {
+          "snapshot": "782f0319edc89c77f8181b64d158835cacc8469e",
+          "type": "step-start",
+          "id": "prt_1b1a6c250001Gd1xercn9UD22g",
+          "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
+          "messageID": "msg_1b1a6b778002OhM0kMuG39QH69"
+        },
+        {
+          "type": "reasoning",
+          "text": "Verify clean.",
+          "time": {
+            "start": 1793981858394,
+            "end": 1793981858568
+          },
+          "id": "prt_1b1a6c25a001UtGJFvDF82ec8D",
+          "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
+          "messageID": "msg_1b1a6b778002OhM0kMuG39QH69"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_cj86jax5f8i1ejnmhn8etjci",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short && git log --oneline -1"
+            },
+            "output": "580c8724 feat(ssr): SEO-hardened document metadata and structured data (#45)\n",
+            "metadata": {
+              "output": "580c8724 feat(ssr): SEO-hardened document metadata and structured data (#45)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short && git log --oneline -1",
+            "time": {
+              "start": 1793981858581,
+              "end": 1793981858620
+            }
+          },
+          "id": "prt_1b1a6c309001gAxvMeV618YP4V",
+          "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
+          "messageID": "msg_1b1a6b778002OhM0kMuG39QH69"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "782f0319edc89c77f8181b64d158835cacc8469e",
+          "type": "step-finish",
+          "tokens": {
+            "total": 268299,
+            "input": 472,
+            "output": 48,
+            "reasoning": 3,
+            "cache": {
+              "write": 0,
+              "read": 267776
+            }
+          },
+          "cost": 0.000904728,
+          "id": "prt_1b1a6c3750016SSwzCAIHOPXxs",
+          "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
+          "messageID": "msg_1b1a6b778002OhM0kMuG39QH69"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b1a67f220012DsghE8RAOQpVd",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00085353,
+        "tokens": {
+          "total": 268370,
+          "input": 171,
+          "output": 39,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 268160
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793981858747,
+          "completed": 1793981860945
+        },
+        "finish": "stop",
+        "id": "msg_1b1a6c3bb002mqxrbMXKy0bEe3",
+        "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH"
+      },
+      "parts": [
+        {
+          "snapshot": "782f0319edc89c77f8181b64d158835cacc8469e",
+          "type": "step-start",
+          "id": "prt_1b1a6cb5d001zeF8lg9fIp26nv",
+          "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
+          "messageID": "msg_1b1a6c3bb002mqxrbMXKy0bEe3"
+        },
+        {
+          "type": "text",
+          "text": "Committed on `feat/45-seo-hardened-ssr`:\n\n`580c8724 feat(ssr): SEO-hardened document metadata and structured data (#45)`",
+          "time": {
+            "start": 1793981860702,
+            "end": 1793981860837
+          },
+          "id": "prt_1b1a6cb5e001ymlWFtjPUyOXfa",
+          "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
+          "messageID": "msg_1b1a6c3bb002mqxrbMXKy0bEe3"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "782f0319edc89c77f8181b64d158835cacc8469e",
+          "type": "step-finish",
+          "tokens": {
+            "total": 268370,
+            "input": 171,
+            "output": 39,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 268160
+            }
+          },
+          "cost": 0.00085353,
+          "id": "prt_1b1a6cc1c001Rve2ncTNk3Q2pS",
+          "sessionID": "ses_e4e85bb4cffeG6p11Fwlf420DH",
+          "messageID": "msg_1b1a6c3bb002mqxrbMXKy0bEe3"
         }
       ]
     }
