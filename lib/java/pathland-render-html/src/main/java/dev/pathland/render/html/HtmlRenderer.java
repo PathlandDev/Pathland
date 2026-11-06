@@ -82,25 +82,46 @@ public final class HtmlRenderer {
 
     /** Render a snapshot frame as a complete HTML document (inline base CSS). */
     public String render(ProtocolFrame frame, int root) {
-        return renderDocument(frame, root, BaseCss.styleElement(), false);
+        return render(frame, root, DocumentMeta.none());
+    }
+
+    /**
+     * Render a snapshot frame as a complete HTML document with host-supplied
+     * {@link DocumentMeta} (canonical URL, Open Graph/Twitter cards, JSON-LD).
+     * The renderer stays stateless: {@code meta} is input to this call only.
+     */
+    public String render(ProtocolFrame frame, int root, DocumentMeta meta) {
+        return renderDocument(frame, root, BaseCss.styleElement(), false, orNone(meta));
     }
 
     /** Render a snapshot frame as a complete HTML document linked to the hashed stylesheet. */
     public String renderLinked(ProtocolFrame frame, int root, String cssBase) {
+        return renderLinked(frame, root, cssBase, DocumentMeta.none());
+    }
+
+    /** {@link #renderLinked} with host-supplied document metadata. */
+    public String renderLinked(
+            ProtocolFrame frame, int root, String cssBase, DocumentMeta meta) {
         String base = cssBase == null ? "" : cssBase.trim();
         if (base.isEmpty() || BaseCss.builtinCssName().isEmpty()) {
-            return render(frame, root);
+            return render(frame, root, meta);
         }
-        return renderDocument(frame, root, linkedCssHead(base), false);
+        return renderDocument(frame, root, linkedCssHead(base), false, orNone(meta));
     }
 
     /** {@link #renderLinked} with per-node debug comments. */
     public String renderLinkedDebug(ProtocolFrame frame, int root, String cssBase) {
+        return renderLinkedDebug(frame, root, cssBase, DocumentMeta.none());
+    }
+
+    /** {@link #renderLinkedDebug} with host-supplied document metadata. */
+    public String renderLinkedDebug(
+            ProtocolFrame frame, int root, String cssBase, DocumentMeta meta) {
         String base = cssBase == null ? "" : cssBase.trim();
         if (base.isEmpty() || BaseCss.builtinCssName().isEmpty()) {
-            return renderDebug(frame, root);
+            return renderDebug(frame, root, meta);
         }
-        return renderDocument(frame, root, linkedCssHead(base), true);
+        return renderDocument(frame, root, linkedCssHead(base), true, orNone(meta));
     }
 
     /** Render a snapshot frame as an HTML fragment (no {@code <html>}). */
@@ -116,7 +137,16 @@ public final class HtmlRenderer {
 
     /** Render a complete HTML document with per-node debug comments. */
     public String renderDebug(ProtocolFrame frame, int root) {
-        return renderDocument(frame, root, BaseCss.styleElement(), true);
+        return renderDebug(frame, root, DocumentMeta.none());
+    }
+
+    /** Render a complete HTML document with debug comments and document metadata. */
+    public String renderDebug(ProtocolFrame frame, int root, DocumentMeta meta) {
+        return renderDocument(frame, root, BaseCss.styleElement(), true, orNone(meta));
+    }
+
+    private static DocumentMeta orNone(DocumentMeta meta) {
+        return meta == null ? DocumentMeta.none() : meta;
     }
 
     /** Render an HTML fragment with per-node debug comments. */
@@ -361,16 +391,28 @@ public final class HtmlRenderer {
     // Document
     // ------------------------------------------------------------------
 
-    private String renderDocument(ProtocolFrame frame, int root, String cssHead, boolean debug) {
+    private String renderDocument(
+            ProtocolFrame frame, int root, String cssHead, boolean debug, DocumentMeta meta) {
         Decoded decoded = decode(frame);
         TreeMap<Integer, RenderNode> nodes = decoded.nodes();
         String body = renderNode(nodes, root, null, debug);
-        String lang = Format.escapeHtmlAttr(decoded.window().locale == null ? "en" : decoded.window().locale);
-        String title = Format.escape(decoded.window().title == null ? "Pathland" : decoded.window().title);
-        String description = decoded.window().description == null
+        WindowMeta window = decoded.window();
+        String lang = Format.escapeHtmlAttr(window.locale == null ? "en" : window.locale);
+        String title = DocumentHead.title(window, meta);
+        String description = DocumentHead.description(window, meta);
+        String image = DocumentHead.imageUrl(meta, nodes, root);
+        image = image == null
+                ? null
+                : DocumentHead.resolveUrl(DocumentMeta.blankToNull(meta.canonicalUrl), image);
+        String descriptionTag = description == null
                 ? ""
                 : "<meta name=\"description\" content=\""
-                        + Format.escapeHtmlAttr(decoded.window().description) + "\">\n";
+                        + Format.escapeHtmlAttr(description) + "\">\n";
+        String seoTags = DocumentHead.headTags(meta, title, description, window.locale, image);
+        String jsonLd = StructuredData.render(meta, window, nodes, root);
+        if (jsonLd == null) {
+            jsonLd = "";
+        }
         String tokenRules = decoded.tokens().css();
         String tokenStyle = tokenRules.isEmpty()
                 ? ""
@@ -387,9 +429,9 @@ public final class HtmlRenderer {
         return "<!DOCTYPE html>\n<html lang=\"" + lang + "\"" + schemeAttr + ">\n<head>\n"
                 + "<meta charset=\"utf-8\">\n"
                 + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-                + "<title>" + title + "</title>\n"
-                + description + cssHead + tokenStyle + fitStyle + "\n</head>\n<body>" + body
-                + "</body>\n</html>\n";
+                + "<title>" + Format.escape(title) + "</title>\n"
+                + descriptionTag + seoTags + jsonLd + cssHead + tokenStyle + fitStyle
+                + "\n</head>\n<body>" + body + "</body>\n</html>\n";
     }
 
     private static String linkedCssHead(String cssBase) {

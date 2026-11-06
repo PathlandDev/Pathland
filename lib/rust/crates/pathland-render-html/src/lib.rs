@@ -24,9 +24,13 @@ use pathland_core::{
 mod capi;
 pub mod css;
 mod debug;
+mod document;
 pub mod icons;
 pub mod role_spec;
+mod structured_data;
 pub mod token_spec;
+
+pub use document::DocumentMeta;
 
 /// The `MEDIA_CONTROLLER` shell's inline style (spec/MEDIA.md). A media
 /// controller owns playback but renders nothing: the container is **off-flow**
@@ -1315,7 +1319,7 @@ pub struct HtmlRenderer {
 }
 
 /// Escape a value for a double-quoted HTML attribute.
-fn escape_html_attr(value: &str) -> String {
+pub(crate) fn escape_html_attr(value: &str) -> String {
     value
         .replace('&', "&amp;")
         .replace('"', "&quot;")
@@ -1361,7 +1365,25 @@ impl HtmlRenderer {
     /// library hosts and tests).
     #[must_use]
     pub fn render_document(&self, opcodes: &[Opcode], strings: &[u8], root: u32) -> String {
-        self.render_document_with_head(opcodes, strings, root, css::STYLE)
+        self.render_document_with_meta(opcodes, strings, root, &DocumentMeta::none())
+    }
+
+    /// Render a full HTML document with host-supplied [`DocumentMeta`]
+    /// (canonical URL, Open Graph/Twitter tags, JSON-LD) and the built-in base
+    /// design inlined as a `<style>` block.
+    ///
+    /// The renderer stays stateless: `meta` is input to this call only.
+    /// `META::SET_WINDOW_METADATA` title/description/locale still win over the
+    /// fallbacks in `meta`.
+    #[must_use]
+    pub fn render_document_with_meta(
+        &self,
+        opcodes: &[Opcode],
+        strings: &[u8],
+        root: u32,
+        meta: &DocumentMeta,
+    ) -> String {
+        self.render_document_with_head(opcodes, strings, root, css::STYLE, meta)
     }
 
     /// Render the subtree rooted at `root` as a full HTML document with the
@@ -1380,12 +1402,32 @@ impl HtmlRenderer {
         root: u32,
         css_base: &str,
     ) -> String {
+        self.render_document_linked_with_meta(
+            opcodes,
+            strings,
+            root,
+            css_base,
+            &DocumentMeta::none(),
+        )
+    }
+
+    /// [`render_document_linked`](Self::render_document_linked) with
+    /// host-supplied [`DocumentMeta`].
+    #[must_use]
+    pub fn render_document_linked_with_meta(
+        &self,
+        opcodes: &[Opcode],
+        strings: &[u8],
+        root: u32,
+        css_base: &str,
+        meta: &DocumentMeta,
+    ) -> String {
         let base = css_base.trim();
         if base.is_empty() {
-            return self.render_document(opcodes, strings, root);
+            return self.render_document_with_meta(opcodes, strings, root, meta);
         }
         let head = linked_css_head(base);
-        self.render_document_with_head(opcodes, strings, root, &head)
+        self.render_document_with_head(opcodes, strings, root, &head, meta)
     }
 
     fn render_document_with_head(
@@ -1394,19 +1436,38 @@ impl HtmlRenderer {
         strings: &[u8],
         root: u32,
         css_head: &str,
+        meta: &DocumentMeta,
     ) -> String {
         let (nodes, tokens, window) = decode(opcodes, strings);
         let body = self.render_node(&nodes, root, None);
         // Window metadata (`META::SET_WINDOW_METADATA`) maps onto the web
         // document head. These are renderer mappings, not the protocol concept:
         // title → <title>, description → meta description, locale → lang.
+        // Host `DocumentMeta` supplies fallbacks + web-only artifacts
+        // (canonical/OG/Twitter/JSON-LD).
+        let (title, description) = document::resolve(&window, meta);
+        let image = document::image_url(meta, &nodes, root)
+            .map(|src| document::resolve_url(meta.canonical_url.as_deref(), &src));
         let lang = escape_html_attr(window.locale.as_deref().unwrap_or("en"));
-        let title = escape(window.title.as_deref().unwrap_or("Pathland"));
-        let description = window
-            .description
+        let escaped_title = escape(&title);
+        let description_tag = description
             .as_deref()
-            .map(|d| format!("<meta name=\"description\" content=\"{}\">\n", escape_html_attr(d)))
+            .map(|d| {
+                format!(
+                    "<meta name=\"description\" content=\"{}\">\n",
+                    escape_html_attr(d)
+                )
+            })
             .unwrap_or_default();
+        let seo_tags = document::head_tags(
+            meta,
+            &title,
+            description.as_deref(),
+            window.locale.as_deref(),
+            image.as_deref(),
+        );
+        let json_ld =
+            structured_data::render_json_ld(meta, &window, &nodes, root).unwrap_or_default();
         // Token overrides render as their own `<style data-pathland-tokens>`
         // element AFTER the built-in block so their `:root` variables win the
         // cascade (same specificity, later wins) — matching the JS DOM client's
@@ -1435,8 +1496,8 @@ impl HtmlRenderer {
         format!(
             "<!DOCTYPE html>\n<html lang=\"{lang}\"{scheme_attr}>\n<head>\n<meta charset=\"utf-8\">\n\
              <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
-             <title>{title}</title>\n\
-             {description}{css_head}{token_style}{fit_style}\n</head>\n<body>{body}</body>\n</html>\n",
+             <title>{escaped_title}</title>\n\
+             {description_tag}{seo_tags}{json_ld}{css_head}{token_style}{fit_style}\n</head>\n<body>{body}</body>\n</html>\n",
         )
     }
 
@@ -4685,5 +4746,265 @@ mod tests {
         assert!(html.contains("<html lang=\"en\">"), "default lang: {html}");
         assert!(html.contains("<title>Pathland</title>"), "default title: {html}");
         assert!(!html.contains("name=\"description\""), "no description: {html}");
+    }
+
+    #[test]
+    fn document_meta_emits_canonical_open_graph_and_twitter() {
+        let meta = DocumentMeta::seo("https://example.com/library")
+            .with_title("Fallback title")
+            .with_description("Fallback description")
+            .with_site_name("Pathland Music")
+            .with_image_url("https://example.com/cover.png")
+            .with_twitter_site("@pathland");
+        let html = HtmlRenderer::new().render_document_with_meta(&[], &[], 0, &meta);
+        assert!(html.contains("<title>Fallback title</title>"), "{html}");
+        assert!(
+            html.contains("<link rel=\"canonical\" href=\"https://example.com/library\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta property=\"og:type\" content=\"website\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta property=\"og:title\" content=\"Fallback title\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta property=\"og:description\" content=\"Fallback description\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta property=\"og:url\" content=\"https://example.com/library\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta property=\"og:site_name\" content=\"Pathland Music\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta property=\"og:image\" content=\"https://example.com/cover.png\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta name=\"twitter:card\" content=\"summary_large_image\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta name=\"twitter:title\" content=\"Fallback title\">"),
+            "{html}"
+        );
+        assert!(
+            html.contains(
+                "<meta name=\"twitter:image\" content=\"https://example.com/cover.png\">"
+            ),
+            "{html}"
+        );
+        assert!(
+            html.contains("<meta name=\"twitter:site\" content=\"@pathland\">"),
+            "{html}"
+        );
+    }
+
+    #[test]
+    fn window_metadata_wins_over_document_meta_fallbacks() {
+        let strings = string_section(&["From window"]);
+        let ops = vec![
+            Opcode::new(
+                category::META,
+                meta::SET_WINDOW_METADATA,
+                0,
+                pathland_core::window_field::TITLE as u32,
+                0,
+                0,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                1,
+                component_type::TEXT as u32,
+                0,
+            ),
+        ];
+        let meta = DocumentMeta::seo("https://example.com/").with_title("Host fallback");
+        let html = HtmlRenderer::new().render_document_with_meta(&ops, &strings, 1, &meta);
+        assert!(html.contains("<title>From window</title>"), "{html}");
+        assert!(!html.contains("<title>Host fallback</title>"), "{html}");
+    }
+
+    #[test]
+    fn structured_data_emits_webpage_and_article() {
+        use pathland_core::role;
+        use pathland_core::text_style;
+        let mut strings = Vec::new();
+        let mut push = |text: &str| {
+            let offset = strings.len() as u32;
+            strings.extend_from_slice(&(text.len() as u32).to_le_bytes());
+            strings.extend_from_slice(text.as_bytes());
+            offset
+        };
+        let heading_offset = push("Library");
+        let paragraph_offset = push("New releases");
+        let cover_offset = push("/cover.png");
+        let ops = vec![
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                1,
+                component_type::VSTACK as u32,
+                0,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                2,
+                component_type::VSTACK as u32,
+                0,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                3,
+                component_type::TEXT as u32,
+                0,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                4,
+                component_type::TEXT as u32,
+                0,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                5,
+                component_type::IMAGE as u32,
+                0,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::INSERT_CHILD,
+                0,
+                1,
+                2,
+                pathland_core::APPEND,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::INSERT_CHILD,
+                0,
+                2,
+                3,
+                pathland_core::APPEND,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::INSERT_CHILD,
+                0,
+                2,
+                4,
+                pathland_core::APPEND,
+            ),
+            Opcode::new(
+                category::TREE,
+                tree::INSERT_CHILD,
+                0,
+                2,
+                5,
+                pathland_core::APPEND,
+            ),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_TEXT,
+                0,
+                3,
+                heading_offset,
+                0,
+            ),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_TEXT,
+                0,
+                4,
+                paragraph_offset,
+                0,
+            ),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                3,
+                ((value_type::F32 as u32) << 16) | property_id::TEXT_STYLE as u32,
+                (text_style::TITLE as f32).to_bits(),
+            ),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                4,
+                ((value_type::F32 as u32) << 16) | property_id::ROLE as u32,
+                (role::PARAGRAPH as f32).to_bits(),
+            ),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                2,
+                ((value_type::F32 as u32) << 16) | property_id::ROLE as u32,
+                (role::ARTICLE as f32).to_bits(),
+            ),
+            Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                5,
+                ((value_type::STRING as u32) << 16) | property_id::IMAGE_SOURCE as u32,
+                cover_offset,
+            ),
+        ];
+        let meta = DocumentMeta::seo("https://example.com/library");
+        let html = HtmlRenderer::new().render_document_with_meta(&ops, &strings, 1, &meta);
+        assert!(
+            html.contains("<script type=\"application/ld+json\">"),
+            "{html}"
+        );
+        assert!(html.contains("\"@type\":\"WebPage\""), "{html}");
+        assert!(html.contains("\"@type\":\"Article\""), "{html}");
+        assert!(html.contains("\"headline\":\"Library\""), "{html}");
+        assert!(html.contains("\"description\":\"New releases\""), "{html}");
+        assert!(
+            html.contains("\"image\":\"https://example.com/cover.png\""),
+            "{html}"
+        );
+    }
+
+    #[test]
+    fn structured_data_escapes_script_breakout() {
+        let strings = string_section(&["</script><script>alert(1)</script>"]);
+        let ops = vec![
+            Opcode::new(
+                category::TREE,
+                tree::CREATE_NODE,
+                0,
+                1,
+                component_type::TEXT as u32,
+                0,
+            ),
+            Opcode::new(category::PARAMETER, parameter::SET_TEXT, 0, 1, 0, 0),
+        ];
+        let meta = DocumentMeta::seo("https://example.com/")
+            .with_title("</script><script>alert(1)</script>");
+        let html = HtmlRenderer::new().render_document_with_meta(&ops, &strings, 1, &meta);
+        let json_start = html.find("application/ld+json").expect("JSON-LD present");
+        let json = &html[json_start..];
+        assert!(!json.contains("</script><script>"), "{json}");
+        assert!(json.contains("\\u003C/script\\u003E"), "{json}");
     }
 }

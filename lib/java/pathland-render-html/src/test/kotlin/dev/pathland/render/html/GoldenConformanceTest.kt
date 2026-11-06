@@ -26,7 +26,7 @@ class GoldenConformanceTest {
         for (batch in batches!!) {
             val name = batch.nameWithoutExtension
             // delta_change is applied to delta_base; delta_result has no batch.
-            if (name == "delta_change" || name == "delta_result" || batch.length() == 0L) {
+            if (name == "delta_change" || name == "delta_result" || name == "document_meta" || batch.length() == 0L) {
                 continue
             }
             val expected = File(fixtures, "$name.html").readText(StandardCharsets.UTF_8)
@@ -60,4 +60,18 @@ class GoldenConformanceTest {
         assertTrue(html.contains("<link rel=\"stylesheet\" href=\"/_pathland/$name\">"), html)
         assertTrue(!html.contains("<style>"), "linked document omits inline base CSS")
     }
+    @Test
+    fun reproducesTheDocumentMetaSeoFixture() {
+        val batch = File(fixtures, "document_meta.plpl")
+        assertTrue(batch.isFile, "document fixture batch exists at $batch")
+        val expected = File(fixtures, "document_meta.document.html")
+            .readText(StandardCharsets.UTF_8)
+        val frame = FrameCodec.decodeFrame(batch.readBytes())
+        val meta = DocumentMeta.seo("https://example.com/library")
+            .siteName("Pathland Music")
+            .twitterSite("@pathland")
+        val actual = HtmlRenderer.instance().render(frame, 1, meta)
+        assertEquals(expected, actual)
+    }
+
 }

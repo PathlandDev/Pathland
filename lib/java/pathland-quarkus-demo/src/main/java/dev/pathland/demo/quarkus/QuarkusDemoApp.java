@@ -5,6 +5,8 @@ import dev.pathland.demo.ad.AdView;
 import dev.pathland.demo.music.MusicPlayerView;
 import dev.pathland.demo.quarkus.kotlin.KotlinDemoView;
 import dev.pathland.server.MountedApp;
+import dev.pathland.server.PageMetadata;
+import dev.pathland.server.PageMetadataRequest;
 import dev.pathland.server.PathlandApp;
 import dev.pathland.view.core.ThemeData;
 import dev.pathland.view.core.View;
@@ -40,14 +42,14 @@ public class QuarkusDemoApp {
     @Produces
     @Singleton
     PathlandApp mainApp() {
-        return demoApp(() -> MusicPlayerView.make(adUrl));
+        return demoApp(() -> MusicPlayerView.make(adUrl), "Pathland Music");
     }
 
     /** The origin app mounted at {@code /ad}: a small title + button app the player proxies. */
     @Produces
     @Singleton
     MountedApp adApp() {
-        return MountedApp.of("/ad", demoApp(AdView::new));
+        return MountedApp.of("/ad", demoApp(AdView::new, "Pathland Ads"));
     }
 
     /**
@@ -58,11 +60,11 @@ public class QuarkusDemoApp {
     @Produces
     @Singleton
     MountedApp kotlinApp() {
-        return MountedApp.of("/kotlin", demoApp(KotlinDemoView::new));
+        return MountedApp.of("/kotlin", demoApp(KotlinDemoView::new, "Pathland Kotlin"));
     }
 
     /** A fresh root per session (1:1 sessions own their own retained tree + state). */
-    private static PathlandApp demoApp(Supplier<View> rootFactory) {
+    private static PathlandApp demoApp(Supplier<View> rootFactory, String siteName) {
         return new PathlandApp() {
             @Override
             public View newRoot() {
@@ -72,6 +74,16 @@ public class QuarkusDemoApp {
             @Override
             public ThemeData theme() {
                 return DemoTheme.adaptive();
+            }
+
+            @Override
+            public PageMetadata pageMetadata(PageMetadataRequest request) {
+                // Route-aware SEO: the host supplies the canonical URL + defaults;
+                // the app refines them for the active (mount-stripped) route.
+                return PageMetadata.builder()
+                        .siteName(siteName)
+                        .ogType(request.route().startsWith("/article") ? "article" : "website")
+                        .build();
             }
         };
     }

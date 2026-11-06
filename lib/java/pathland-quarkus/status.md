@@ -26,6 +26,11 @@ capability and pulls in `quarkus-kotlin`.
   WebSocket tests prove SSR + live deltas work through that mount.
 
 - **Crawler endpoints**: `/robots.txt` (text/plain) and `/sitemap.xml` (application/xml) are real routes before the SPA catch-all, so Lighthouse does not parse the HTML shell as robots.txt.
+- **SEO document head (issue #45)**: `IndexResource` derives the canonical URL
+  from `UriInfo` and passes host-default `PageMetadata` to the registry;
+  `PathlandApp.pageMetadata(...)` may override it per route before the first
+  paint. Canonical/OG/Twitter/JSON-LD are on by default and configurable via
+  `pathland.seo.{enabled,site-name,image,og-type,twitter-card,twitter-site,structured-data}`.
 
 - **`PathlandSocket`** — `@WebSocket("/_pathland/ws")` for the root app: 1:1 sessions
   per connection (a fresh `uiId` per connection + the client's `wid` state scope from

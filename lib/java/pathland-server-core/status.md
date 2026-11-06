@@ -24,6 +24,12 @@ dependency — framework glue lives in the starters.
   string-section offset (like `SET_TEXT`) for delta batching/frame merging, and
   `ProxyIdMap` remaps its node id.
 - **Window metadata + SSR head attrs**: `PathlandSession.renderHtml` injects host attrs into the renderer's opening `<html …>` (which now carries `lang`), and `FrameRebase` rebases `SET_WINDOW_METADATA` string offsets. Proxy origin metadata is dropped with the other META opcodes.
+- **Per-route SEO metadata (issue #45)**: `PageMetadata`/`PageMetadataRequest`
+  carry canonical URL, Open Graph/Twitter cards, and JSON-LD. `PathlandApp`
+  gains a default `pageMetadata(request)` hook (active mount-stripped route +
+  host canonical URL); `PathlandRegistry.renderHtml(route, wid, hostDefaults)`
+  merges host defaults with the app's per-route overrides before SSR. Existing
+  overloads keep the legacy head.
 
 - **`PathlandApp`** — the app's root-view factory (`View newRoot()` + optional
   `theme()`); the single app-specific piece a starter needs.

@@ -20,6 +20,12 @@ library). Protocol contract: `spec/`.
   committed `lib/typescript/test/fixtures/ssr/*.plpl` fixture and compares the
   fragment to its `.html` fixture byte-for-byte (the same contract the TS DOM
   client asserts), including the delta base/change/result scenario.
+- **SEO document metadata (issue #45)**: `DocumentMeta`/`render(frame, root,
+  meta)` / `renderLinked(..., meta)` add canonical URL, Open Graph/Twitter
+  cards, and component-derived JSON-LD (WebPage + Article for `ROLE_ARTICLE`).
+  Window `TITLE`/`DESCRIPTION` win; the metadata values are fallbacks. The
+  document output is pinned byte-for-byte against the Rust renderer's
+  `document_meta.document.html` fixture.
 - **Full renderer surface** (canonical): all spec components render inline
   (structural + decorative CSS in a single `style` attribute), ARIA/event
   attributes, `IS_SECURE` → password, `TOGGLE_STYLE` variants,

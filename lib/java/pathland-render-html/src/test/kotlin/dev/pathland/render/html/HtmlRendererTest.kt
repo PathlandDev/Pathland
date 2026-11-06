@@ -29,6 +29,7 @@ import dev.pathland.view.dsl.buttonStyle
 import dev.pathland.view.dsl.font
 import dev.pathland.view.dsl.scaledToFill
 import dev.pathland.view.dsl.signal
+import dev.pathland.view.dsl.windowMetadata
 import dev.pathland.view.engine.Emitter
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -42,7 +43,7 @@ class HtmlRendererTest {
 
     private fun frameOf(root: View): ProtocolFrame {
         val sink = FrameOpcodeSink()
-        Emitter(sink).mount(root, Environment.DEFAULT)
+        Emitter(sink).mount(root, Environment(null))
         return sink.frame()
     }
 
@@ -221,4 +222,77 @@ class HtmlRendererTest {
         assertTrue(unknown != null && unknown.contains("<circle"), "fallback glyph: $unknown")
         assertTrue(renderer.iconSvg(null) == null)
     }
+    @Test
+    fun documentMetaEmitsCanonicalOpenGraphAndTwitter() {
+        val frame = frameOf(Text("Hi"))
+        val meta = DocumentMeta.seo("https://example.com/library")
+            .title("Fallback title")
+            .description("Fallback description")
+            .siteName("Pathland Music")
+            .imageUrl("https://example.com/cover.png")
+            .twitterSite("@pathland")
+        val html = renderer().render(frame, 1, meta)
+        assertTrue(html.contains("<title>Fallback title</title>"), html)
+        assertTrue(
+            html.contains("<link rel=\"canonical\" href=\"https://example.com/library\">"), html)
+        assertTrue(html.contains("<meta property=\"og:type\" content=\"website\">"), html)
+        assertTrue(html.contains("<meta property=\"og:title\" content=\"Fallback title\">"), html)
+        assertTrue(
+            html.contains("<meta property=\"og:description\" content=\"Fallback description\">"),
+            html)
+        assertTrue(
+            html.contains("<meta property=\"og:url\" content=\"https://example.com/library\">"),
+            html)
+        assertTrue(
+            html.contains("<meta property=\"og:site_name\" content=\"Pathland Music\">"), html)
+        assertTrue(
+            html.contains("<meta property=\"og:image\" content=\"https://example.com/cover.png\">"),
+            html)
+        assertTrue(
+            html.contains("<meta name=\"twitter:card\" content=\"summary_large_image\">"), html)
+        assertTrue(html.contains("<meta name=\"twitter:title\" content=\"Fallback title\">"), html)
+        assertTrue(
+            html.contains("<meta name=\"twitter:image\" content=\"https://example.com/cover.png\">"),
+            html)
+        assertTrue(html.contains("<meta name=\"twitter:site\" content=\"@pathland\">"), html)
+    }
+
+    @Test
+    fun windowMetadataWinsOverDocumentMetaFallbacks() {
+        val frame = frameOf(Text("Hi").windowMetadata { title("From window") })
+        val meta = DocumentMeta.seo("https://example.com/").title("Host fallback")
+        val html = renderer().render(frame, 1, meta)
+        assertTrue(html.contains("<title>From window</title>"), html)
+        assertFalse(html.contains("<title>Host fallback</title>"), html)
+    }
+
+    @Test
+    fun structuredDataEmitsWebPageAndArticle() {
+        val root = VStack {
+            VStack {
+                Text("Library").font(Font.title())
+                Text("New releases").accessibilityRole(Roles.PARAGRAPH)
+                Image("/cover.png")
+            }.accessibilityRole(Roles.ARTICLE)
+        }
+        val meta = DocumentMeta.seo("https://example.com/library")
+        val html = renderer().render(frameOf(root), 1, meta)
+        assertTrue(html.contains("<script type=\"application/ld+json\">"), html)
+        assertTrue(html.contains("\"@type\":\"WebPage\""), html)
+        assertTrue(html.contains("\"@type\":\"Article\""), html)
+        assertTrue(html.contains("\"headline\":\"Library\""), html)
+        assertTrue(html.contains("\"description\":\"New releases\""), html)
+        assertTrue(html.contains("\"image\":\"https://example.com/cover.png\""), html)
+    }
+
+    @Test
+    fun structuredDataEscapesScriptBreakout() {
+        val meta = DocumentMeta.seo("https://example.com/")
+            .title("</script><script>alert(1)</script>")
+        val html = renderer().render(frameOf(Text("Hi")), 1, meta)
+        val json = html.substring(html.indexOf("application/ld+json"))
+        assertFalse(json.contains("</script><script>"), json)
+        assertTrue(json.contains("\\u003C/script\\u003E"), json)
+    }
+
 }

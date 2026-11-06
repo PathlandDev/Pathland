@@ -55,6 +55,41 @@ final class Format {
                 .replace(">", "&gt;");
     }
 
+    /**
+     * Escape a value for embedding inside a JSON string (no surrounding quotes).
+     * {@code <}, {@code >}, and {@code &} are unicode-escaped so application text
+     * can never close the surrounding {@code <script>} element. Kept byte-identical
+     * to the Rust renderer's {@code document::json_escape}.
+     */
+    static String jsonEscape(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            switch (ch) {
+                case '"' -> out.append("\\\"");
+                case '\\' -> out.append("\\\\");
+                case '\b' -> out.append("\\b");
+                case '\f' -> out.append("\\f");
+                case '\n' -> out.append("\\n");
+                case '\r' -> out.append("\\r");
+                case '\t' -> out.append("\\t");
+                case '<' -> out.append("\\u003C");
+                case '>' -> out.append("\\u003E");
+                case '&' -> out.append("\\u0026");
+                case '\u2028' -> out.append("\\u2028");
+                case '\u2029' -> out.append("\\u2029");
+                default -> {
+                    if (ch < 0x20) {
+                        out.append(String.format("\\u%04X", (int) ch));
+                    } else {
+                        out.append(ch);
+                    }
+                }
+            }
+        }
+        return out.toString();
+    }
+
     /** A token path's CSS variable name component (non-safe characters → {@code -}). */
     static String cssVarName(String path) {
         StringBuilder out = new StringBuilder(path.length());

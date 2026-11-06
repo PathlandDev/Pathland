@@ -534,7 +534,9 @@ Semantics:
 - A proxied origin's window metadata is **ignored** — an embedded app never
   retitles the host window (spec/PROXY.md).
 - Web-only artifacts (`canonical`, `robots`, sitemap) are host concerns and are
-  **not** protocol fields.
+  **not** protocol fields. A web renderer may accept them (plus Open
+  Graph/Twitter/JSON-LD) as an **out-of-band render option** for one render
+  call; this is renderer input, never guest state.
 
 ---
 
