@@ -13,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -94,10 +95,24 @@ public final class WsSession implements AutoCloseable {
      * origin omits the header (a non-browser client).
      */
     public static WsSession connect(String wsBaseUrl, String wid, String origin) throws Exception {
+        return connect(wsBaseUrl, wid, origin, Map.of());
+    }
+
+    /**
+     * Connect with an explicit {@code Origin} header plus extra handshake headers
+     * (e.g. {@code X-Forwarded-Proto}/{@code X-Forwarded-Host} for hosted-proxy tests).
+     * A {@code null} origin omits the Origin header.
+     */
+    public static WsSession connect(
+            String wsBaseUrl, String wid, String origin, Map<String, String> headers)
+            throws Exception {
         Listener listener = new Listener();
         WebSocket.Builder builder = HTTP.newWebSocketBuilder();
         if (origin != null) {
             builder.header("Origin", origin);
+        }
+        for (Map.Entry<String, String> header : headers.entrySet()) {
+            builder.header(header.getKey(), header.getValue());
         }
         WebSocket socket = builder
                 .buildAsync(URI.create(wsBaseUrl + "?wid=" + wid), listener)

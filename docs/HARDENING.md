@@ -13,6 +13,23 @@ Pathland has two distinct security surfaces:
 This guide is Quarkus-first (the primary server target) with a Spring Boot
 appendix.
 
+## Pathland defaults never override your configuration
+
+Pathland contributes framework defaults only, never programmatic overrides:
+
+- **Quarkus** uses `RunTimeConfigurationDefaultBuildItem`, which becomes a
+  lowest-priority `DefaultValuesConfigSource` (ordinal `Integer.MIN_VALUE`).
+  `application.properties`, profile-specific files, environment variables, and
+  system properties all win.
+- **Spring Boot** contributes `server.forward-headers-strategy=framework` through
+  a lowest-precedence `EnvironmentPostProcessor` property source. An explicit
+  strategy in your configuration wins.
+
+Adding Pathland can still change behavior when a setting was previously **unset**
+(that is what a default is): CORS, forwarded-header trust, WebSocket caps, and
+the baseline security headers. All are listed above and every one can be
+overridden with normal application configuration.
+
 ## What Pathland does not use
 
 - **No session cookie.** The per-window state scope (`wid`) lives in
@@ -30,6 +47,9 @@ The `pathland-quarkus` extension contributes these runtime defaults via
 
 ```properties
 quarkus.http.cors.enabled=true
+quarkus.http.proxy.proxy-address-forwarding=true
+quarkus.http.proxy.allow-x-forwarded=true
+quarkus.http.proxy.enable-forwarded-host=true
 quarkus.websockets-next.server.max-message-size=65536
 quarkus.websockets-next.server.max-frame-size=65536
 quarkus.http.header."Content-Security-Policy".value=default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; worker-src 'self'
@@ -89,14 +109,56 @@ quarkus.http.limits.max-connections=1000
   drops the batch and increments `pathland.inbound.dropped`.
 - For volumetric abuse, rate-limit at the edge (see below).
 
+### Hosted deployments (works by default)
+
+Pathland trusts the platform's forwarded headers by default so a TLS-terminating
+PaaS (Render, Fly.io, Heroku, Cloud Run, …) works with zero configuration. The
+platform sends plain HTTP to the container with `X-Forwarded-Proto: https` and
+`X-Forwarded-Host: <public-host>`; Pathland uses them for:
+
+- the WebSocket same-origin check (otherwise the browser's `https` origin never
+  matches the internal `http` hop, and the handshake is rejected with 403);
+- the SSR canonical / Open Graph URLs.
+
+```properties
+quarkus.http.proxy.proxy-address-forwarding=true   # default
+quarkus.http.proxy.allow-x-forwarded=true          # default
+quarkus.http.proxy.enable-forwarded-host=true      # default
+```
+
+These are **defaults only** (Quarkus `RunTimeConfigurationDefaultBuildItem`).
+Every application setting in `application.properties`, a profile, environment
+variables, or system properties takes precedence. Pathland never overrides an
+explicit value.
+
+### Directly exposed deployments
+
+Trusting forwarded headers is safe when the container is only reachable through
+the platform proxy (the normal hosted topology). If the app is directly exposed
+to the internet, disable forwarding or restrict which proxies are trusted:
+
+```properties
+# Option A: ignore forwarded headers entirely
+quarkus.http.proxy.proxy-address-forwarding=false
+
+# Option B: only trust private/loopback proxies
+quarkus.http.proxy.trusted-proxies=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1/32,::1/128
+```
+
+If you terminate TLS yourself (or at a proxy that does not set the headers),
+leave forwarding disabled. Ensure any edge proxy strips client-supplied
+`Forwarded` / `X-Forwarded-*` headers.
+
 ### Reverse proxy / TLS
 
-Terminate TLS at the proxy and forward `X-Forwarded-Proto` / `X-Forwarded-Host`
-(the same-origin check uses the request scheme + authority). Enable Quarkus's
-proxy forwarding only when the proxy is trusted:
+Terminate TLS at the proxy and forward `X-Forwarded-Proto` / `X-Forwarded-Host`.
+Enable Quarkus's proxy forwarding only when the proxy is trusted (it is enabled
+by default for hosted platforms, as described above).
 
 ```properties
 quarkus.http.proxy.proxy-address-forwarding=true
+quarkus.http.proxy.allow-x-forwarded=true
+quarkus.http.proxy.enable-forwarded-host=true
 ```
 
 ## Subresource Integrity
@@ -158,8 +220,15 @@ ServletServerContainerFactoryBean webSocketContainer() {
 ```
 
 Configure Tomcat/server connection limits as needed (for example
-`server.tomcat.max-connections`). Forwarded headers must be enabled when running
-behind a proxy (`server.forward-headers-strategy=framework`).
+`server.tomcat.max-connections`).
+
+The Spring starter enables forwarded-header support by default via a
+lowest-precedence `EnvironmentPostProcessor` that contributes
+`server.forward-headers-strategy=framework`. A hosted TLS terminator therefore
+works with zero configuration, and SSR canonical URLs / the WebSocket same-origin
+check use the external origin. An explicit `server.forward-headers-strategy` in
+your configuration always wins; set it to `none` (or `native`) to disable or
+replace Pathland's default.
 
 ## Edge rate limiting
 
@@ -185,5 +254,8 @@ location /_pathland/ws {
 - SSR `<script>` carries `integrity="sha384-…"`.
 - A WebSocket handshake with `Origin: https://evil.example` is rejected (403);
   same-origin succeeds.
+- With `X-Forwarded-Proto: https` + `X-Forwarded-Host: example.com`, a handshake
+  from `Origin: https://example.com` succeeds and the SSR canonical URL uses
+  `https://example.com/...`.
 - An event batch larger than 64 KiB is rejected without reaching the session.
 - `pathland.inbound.dropped` stays at zero under normal interaction.

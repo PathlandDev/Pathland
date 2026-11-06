@@ -61,4 +61,17 @@ class PathlandAutoConfigurationTest {
         assertTrue(html.contains("\"@type\":\"WebPage\""), html);
     }
 
+    @Test
+    void forwardedHeadersDriveTheCanonicalUrlByDefault() throws Exception {
+        String html = mvc.perform(get("/library")
+                        .header("X-Forwarded-Proto", "https")
+                        .header("X-Forwarded-Host", "example.com")
+                        .header("X-Forwarded-Port", "443"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertTrue(html.contains("<link rel=\"canonical\" href=\"https://example.com/library\">"), html);
+    }
+
 }

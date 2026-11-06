@@ -17,6 +17,12 @@ subpaths (the BFF layout).
   `PathlandSession`. CSP/security headers and transport limits are documented in
   `docs/HARDENING.md` (Quarkus supplies secure defaults; Spring apps add them
   through Spring Security/server configuration).
+- **Hosted deployments work by default (issue #45 follow-up)**: a
+  lowest-precedence `EnvironmentPostProcessor` contributes
+  `server.forward-headers-strategy=framework`, so a TLS-terminating PaaS gets a
+  correct WebSocket same-origin check and external SSR canonical URL with zero
+  configuration. An explicit `server.forward-headers-strategy` in application
+  config always wins (`ForwardedHeaderOverrideTest` pins this).
 - **Java host / Kotlin views**: `KotlinViewMountTest` proves a Java-only
   `@SpringBootApplication` bean returning `PathlandApp` mounts a Kotlin-authored
   fixture view, renders it through SSR, and receives a live signal delta.
