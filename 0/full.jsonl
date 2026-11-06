@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.5729770079999997,
+    "cost": 0.5773488599999997,
     "tokens": {
-      "input": 1675032,
-      "output": 71657,
-      "reasoning": 82027,
+      "input": 1677454,
+      "output": 71892,
+      "reasoning": 82055,
       "cache": {
-        "read": 76503936,
+        "read": 77787520,
         "write": 0
       }
     },
     "time": {
       "created": 1793991104205,
-      "updated": 1793997113742
+      "updated": 1793997129515
     }
   },
   "messages": [
@@ -46738,21 +46738,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001564356,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 428127,
+          "input": 1202,
+          "output": 152,
+          "reasoning": 21,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 426752
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1793997113741
+          "created": 1793997113741,
+          "completed": 1793997125063
         },
+        "finish": "tool-calls",
         "id": "msg_1b28f898d002PuMyMlbOBlLLo7",
         "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f"
       },
@@ -46780,21 +46783,212 @@
           "tool": "bash",
           "callID": "call_00_4ussjptxy2axbk8xsy08xy4m",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git commit -m \"feat(docs): add Kotlin Markdown documentation site\n\n- add pathland-docs CommonMark/GFM block renderer, docs layout, TOC, and .md repository\n- add pathland-docs-demo Quarkus marketing + documentation site\n- add WHITE_SPACE and ANCHOR protocol properties across Rust/Java/TS renderers\n- reuse commonmark-java for inline Text and add docs sitemap routes\"",
               "timeout": 120000
             },
+            "output": "[feat/docs-site 9a86b9bf] feat(docs): add Kotlin Markdown documentation site\n 67 files changed, 2435 insertions(+), 323 deletions(-)\n create mode 100644 lib/java/pathland-docs-demo/pom.xml\n create mode 100644 lib/java/pathland-docs-demo/src/main/java/dev/pathland/demo/docs/DocsDemoApp.java\n create mode 100644 lib/java/pathland-docs-demo/src/main/kotlin/dev/pathland/demo/docs/DocsSite.kt\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/pathland-docs.index\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/sw.js\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/docs-assets/screenshot_browser.png\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/docs-assets/screenshot_gtk.png\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/application.properties\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/architecture.md\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/getting-started.md\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/index.md\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/kotlin-dsl.md\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/markdown.md\n create mode 100644 lib/java/pathland-docs-demo/status.md\n create mode 100644 lib/java/pathland-docs/pom.xml\n create mode 100644 lib/java/pathland-docs/src/main/kotlin/dev/pathland/docs/DocsLayout.kt\n create mode 100644 lib/java/pathland-docs/src/main/kotlin/dev/pathland/docs/DocsPage.kt\n create mode 100644 lib/java/pathland-docs/src/main/kotlin/dev/pathland/docs/DocsRepository.kt\n create mode 100644 lib/java/pathland-docs/src/main/kotlin/dev/pathland/docs/MarkdownView.kt\n create mode 100644 lib/java/pathland-docs/src/test/kotlin/dev/pathland/docs/MarkdownViewTest.kt\n create mode 100644 lib/java/pathland-docs/status.md\n create mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-77eb5c6fc78d.js\n create mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-207d5e07bdd7.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-77eb5c6fc78d.js\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/WhiteSpace.kt\n",
+            "metadata": {
+              "output": "[feat/docs-site 9a86b9bf] feat(docs): add Kotlin Markdown documentation site\n 67 files changed, 2435 insertions(+), 323 deletions(-)\n create mode 100644 lib/java/pathland-docs-demo/pom.xml\n create mode 100644 lib/java/pathland-docs-demo/src/main/java/dev/pathland/demo/docs/DocsDemoApp.java\n create mode 100644 lib/java/pathland-docs-demo/src/main/kotlin/dev/pathland/demo/docs/DocsSite.kt\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/pathland-docs.index\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/sw.js\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/docs-assets/screenshot_browser.png\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/docs-assets/screenshot_gtk.png\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/application.properties\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/architecture.md\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/getting-started.md\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/index.md\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/kotlin-dsl.md\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/docs/markdown.md\n create mode 100644 lib/java/pathland-docs-demo/status.md\n create mode 100644 lib/java/pathland-docs/pom.xml\n create mode 100644 lib/java/pathland-docs/src/main/kotlin/dev/pathland/docs/DocsLayout.kt\n create mode 100644 lib/java/pathland-docs/src/main/kotlin/dev/pathland/docs/DocsPage.kt\n create mode 100644 lib/java/pathland-docs/src/main/kotlin/dev/pathland/docs/DocsRepository.kt\n create mode 100644 lib/java/pathland-docs/src/main/kotlin/dev/pathland/docs/MarkdownView.kt\n create mode 100644 lib/java/pathland-docs/src/test/kotlin/dev/pathland/docs/MarkdownViewTest.kt\n create mode 100644 lib/java/pathland-docs/status.md\n create mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-77eb5c6fc78d.js\n create mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-207d5e07bdd7.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-77eb5c6fc78d.js\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/WhiteSpace.kt\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git commit -m \"feat(docs): add Kotlin Markdown documentation site\n\n- add pathland-docs CommonMark/GFM block renderer, docs layout, TOC, and .md repository\n- add pathland-docs-demo Quarkus marketing + documentation site\n- add WHITE_SPACE and ANCHOR protocol properties across Rust/Java/TS renderers\n- reuse commonmark-java for inline Text and add docs sitemap routes\"",
             "time": {
-              "start": 1793997118300
+              "start": 1793997118300,
+              "end": 1793997124933
             }
           },
           "id": "prt_1b28f98b6001ajGdgWzI13juMv",
           "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
           "messageID": "msg_1b28f898d002PuMyMlbOBlLLo7"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "509d8cfd10d0512db17dd41b64e17fbb7187818a",
+          "type": "step-finish",
+          "tokens": {
+            "total": 428127,
+            "input": 1202,
+            "output": 152,
+            "reasoning": 21,
+            "cache": {
+              "write": 0,
+              "read": 426752
+            }
+          },
+          "cost": 0.001564356,
+          "id": "prt_1b28fb583001gzsyEpqczqqoi1",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b28f898d002PuMyMlbOBlLLo7"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b28f4e7a001DCbxBf8V7QXzXS",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001477212,
+        "tokens": {
+          "total": 429029,
+          "input": 1070,
+          "output": 48,
+          "reasoning": 7,
+          "cache": {
+            "write": 0,
+            "read": 427904
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793997125080,
+          "completed": 1793997129494
+        },
+        "finish": "tool-calls",
+        "id": "msg_1b28fb5d8002VuFV4FoUvvoDqb",
+        "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f"
+      },
+      "parts": [
+        {
+          "snapshot": "509d8cfd10d0512db17dd41b64e17fbb7187818a",
+          "type": "step-start",
+          "id": "prt_1b28fc5c6001evDYeGYGhl2Y1F",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b28fb5d8002VuFV4FoUvvoDqb"
+        },
+        {
+          "type": "reasoning",
+          "text": "Commit done. Check status clean.",
+          "time": {
+            "start": 1793997129160,
+            "end": 1793997129225
+          },
+          "id": "prt_1b28fc5c8001faCH2FgaL47XGx",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b28fb5d8002VuFV4FoUvvoDqb"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_47rebrz2hvj9jzfpgkwfpqgn",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short; git log --oneline -2"
+            },
+            "output": "9a86b9bf feat(docs): add Kotlin Markdown documentation site\n559dcc59 fix(hosting): enable HSTS in the Quarkus demo\n",
+            "metadata": {
+              "output": "9a86b9bf feat(docs): add Kotlin Markdown documentation site\n559dcc59 fix(hosting): enable HSTS in the Quarkus demo\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short; git log --oneline -2",
+            "time": {
+              "start": 1793997129330,
+              "end": 1793997129372
+            }
+          },
+          "id": "prt_1b28fc60a001IDDqPpXHZ7nkuX",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b28fb5d8002VuFV4FoUvvoDqb"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "509d8cfd10d0512db17dd41b64e17fbb7187818a",
+          "type": "step-finish",
+          "tokens": {
+            "total": 429029,
+            "input": 1070,
+            "output": 48,
+            "reasoning": 7,
+            "cache": {
+              "write": 0,
+              "read": 427904
+            }
+          },
+          "cost": 0.001477212,
+          "id": "prt_1b28fc6d8001zkcCihBAaIbJes",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b28fb5d8002VuFV4FoUvvoDqb"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b28f4e7a001DCbxBf8V7QXzXS",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001330284,
+        "tokens": {
+          "total": 429113,
+          "input": 150,
+          "output": 35,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 428928
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1793997129514,
+          "completed": 1793997134093
+        },
+        "finish": "stop",
+        "id": "msg_1b28fc72a002ZA6gmwOcSGLZuf",
+        "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f"
+      },
+      "parts": [
+        {
+          "snapshot": "509d8cfd10d0512db17dd41b64e17fbb7187818a",
+          "type": "step-start",
+          "id": "prt_1b28fd757001zQDvY7er8xdsqJ",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b28fc72a002ZA6gmwOcSGLZuf"
+        },
+        {
+          "type": "text",
+          "text": "Committed on `feat/docs-site`.\n\n```\n9a86b9bf feat(docs): add Kotlin Markdown documentation site\n```\n\nWorking tree is clean.",
+          "time": {
+            "start": 1793997133660,
+            "end": 1793997133954
+          },
+          "id": "prt_1b28fd75c001k87xickRAkS1aK",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b28fc72a002ZA6gmwOcSGLZuf"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "509d8cfd10d0512db17dd41b64e17fbb7187818a",
+          "type": "step-finish",
+          "tokens": {
+            "total": 429113,
+            "input": 150,
+            "output": 35,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 428928
+            }
+          },
+          "cost": 0.001330284,
+          "id": "prt_1b28fd8cd001W6IOZYaQ30Vc1W",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b28fc72a002ZA6gmwOcSGLZuf"
         }
       ]
     }
