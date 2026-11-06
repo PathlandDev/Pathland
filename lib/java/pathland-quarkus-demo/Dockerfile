@@ -19,7 +19,12 @@ WORKDIR /src
 COPY --from=rust /src/lib/rust/target/debug/libpathland_render_html.so \
      lib/rust/target/debug/libpathland_render_html.so
 COPY lib/java ./lib/java
-RUN mvn -q -B -f lib/java/pom.xml -pl pathland-quarkus-demo -am package -Dmaven.test.skip=true
+# Include the extension's deployment module in the reactor: the runtime module's
+# quarkus-extension-maven-plugin validates its dependencies against it, and it is
+# not a Maven dependency of the demo (so -am alone would omit it).
+RUN mvn -q -B -f lib/java/pom.xml \
+    -pl pathland-quarkus-demo,pathland-quarkus-deployment \
+    -am package -Dmaven.test.skip=true
 
 # --- Stage 3: runtime (JRE only) ---
 FROM eclipse-temurin:17-jre
