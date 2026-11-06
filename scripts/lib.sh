@@ -13,10 +13,16 @@ build_design() {
   "$ROOT/scripts/sync-design-css.sh"
 }
 
-# Build the Rust HTML renderer cdylib (embedded in the Java pathland-render-html jar).
+# Build the inline-Markdown cdylib (embedded in the Java pathland-view-core jar).
+build_markdown() {
+  (cd "$ROOT/lib/rust" && cargo build -p pathland-markdown-capi)
+}
+
+# Build the Rust HTML renderer cdylib (embedded in the Java pathland-render-html
+# jar) and the Markdown cdylib (embedded in pathland-view-core).
 build_rust_html() {
   build_design
-  (cd "$ROOT/lib/rust" && cargo build -p pathland-render-html)
+  (cd "$ROOT/lib/rust" && cargo build -p pathland-render-html -p pathland-markdown-capi)
 }
 
 # Build the Rust dylibs the desktop demos link: the core ring (libpathland_core)
@@ -34,6 +40,8 @@ build_qt_dylibs() {
 # Install the Java reactor (everything except the web demos, which are launched
 # separately; they are not required to launch the other demos).
 java_install() {
+  # pathland-view-core embeds the Markdown dylib during process-resources.
+  build_markdown
   (cd "$ROOT/lib/java" && mvn -q install -DskipTests \
     -pl '!pathland-quarkus-demo,!pathland-spring-boot-demo')
 }
