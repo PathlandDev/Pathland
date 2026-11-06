@@ -1,24 +1,17 @@
 # syntax=docker/dockerfile:1
 # Multi-stage image for the Pathland Quarkus SSR demo (server-side HTML + /ws deltas).
-# Build context is the repository root — the renderer and view-core jars embed
-# their Rust cdylibs, and the demo module needs the Java reactor sources:
+# Build context is the repository root. The Java path is pure JVM (the HTML
+# renderer is a Java port), so the image needs no Rust toolchain and the jar
+# embeds no native library:
 #
 #   docker build -f lib/java/pathland-quarkus-demo/Dockerfile -t pathland-quarkus-demo .
-#
-# See docs/DEPLOY.md.
 
-# --- Stage 1: the Rust HTML renderer cdylib (embedded into its jar) ---
-FROM rust:1-slim AS rust
-WORKDIR /src
-COPY lib/rust ./lib/rust
-RUN cargo build --manifest-path lib/rust/Cargo.toml \
-    -p pathland-render-html
-
-# --- Stage 2: the Java reactor + the Quarkus app (the renderer jar embeds the dylib) ---
+# --- Stage 1: the Java reactor + the Quarkus app ---
 FROM maven:3.9-eclipse-temurin-17 AS java
 WORKDIR /src
-COPY --from=rust /src/lib/rust/target/debug/libpathland_render_html.so \
-     lib/rust/target/debug/libpathland_render_html.so
+# The render-html module copies the generated base design from the Rust crate's
+# committed assets; no Rust build is needed.
+COPY lib/rust/crates/pathland-render-html/assets ./lib/rust/crates/pathland-render-html/assets
 COPY lib/java ./lib/java
 # Include the extension's deployment module in the reactor: the runtime module's
 # quarkus-extension-maven-plugin validates its dependencies against it, and it is
@@ -27,7 +20,7 @@ RUN mvn -q -B -f lib/java/pom.xml \
     -pl pathland-quarkus-demo,pathland-quarkus-deployment \
     -am package -Dmaven.test.skip=true
 
-# --- Stage 3: runtime (JRE only) ---
+# --- Stage 2: runtime (JRE only) ---
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=java /src/lib/java/pathland-quarkus-demo/target/quarkus-app/ /app/

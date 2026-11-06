@@ -30,7 +30,6 @@ import dev.pathland.view.dsl.font
 import dev.pathland.view.dsl.scaledToFill
 import dev.pathland.view.dsl.signal
 import dev.pathland.view.engine.Emitter
-import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -39,15 +38,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 /** DSL -> emitter -> frame -> Rust HtmlRenderer shim (the SSR round-trip). */
 class HtmlRendererTest {
 
-    private fun renderer(): HtmlRenderer {
-        try {
-            return HtmlRenderer.instance()
-        } catch (t: Throwable) {
-            Assumptions.assumeTrue(false,
-                "libpathland_render_html unavailable on java.library.path; shim test skipped: $t")
-            error(t)
-        }
-    }
+    private fun renderer(): HtmlRenderer = HtmlRenderer.instance()
 
     private fun frameOf(root: View): ProtocolFrame {
         val sink = FrameOpcodeSink()
@@ -212,12 +203,8 @@ class HtmlRendererTest {
     }
 
     @Test
-    fun embeddedNativeLibraryIsExtractedAndLoads() {
-        val lib = HtmlRenderer.embeddedResourcePath()
-        assertTrue(lib != null, "renderer dylib is embedded for this platform")
-        assertTrue(HtmlRenderer::class.java.getResourceAsStream(lib) != null,
-            "embedded resource is on the classpath: $lib")
-        assertTrue(HtmlRenderer.isAvailable(), "native renderer links (embedded extraction)")
+    fun isAlwaysAvailableWithoutNativeLibraries() {
+        assertTrue(HtmlRenderer.isAvailable(), "pure-Java renderer is always available")
         assertTrue(HtmlRenderer.tryInstance() != null, "tryInstance resolves the renderer")
     }
 

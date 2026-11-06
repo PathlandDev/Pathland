@@ -8,7 +8,7 @@ the version back to `main`:
 | Ecosystem | Artifacts | Registry |
 |-----------|-----------|----------|
 | Rust | `pathland-core`, `pathland-markdown`, `pathland-engine`, `pathland-view`, `pathland-core-transport`, `pathland-render-html` | crates.io |
-| Java | `dev.pathland:*` libraries (incl. the renderer + view-core native libs for windows-x86_64, linux-x86_64, linux-aarch64, macos-aarch64) | Maven Central |
+| Java | `dev.pathland:*` libraries (pure JVM — the HTML renderer and Markdown parser are Java ports) | Maven Central |
 
 ## Versioning (tag-driven)
 
@@ -48,14 +48,12 @@ successful publish).
    - `version` — derive + validate `X.Y.Z` from the tag.
    - `rust` — set the version, test the publishable crates, publish them to
      crates.io in dependency order, upload the `.crate` files.
-   - `java-natives` — build `libpathland_render_html` for windows-x86_64,
-     linux-x86_64, linux-aarch64, macos-aarch64. (The JVM Markdown parser is
-     pure Java, so no markdown native is staged for the jars.)
-    - `java` — set the version, stage the natives into the renderer jar, run
-      `mvn -P release deploy` to Maven Central (auto-published after validation).
+    - `java` — set the version, run `mvn -P release deploy` to Maven Central
+      (auto-published after validation). The Java artifacts are pure JVM, so no
+      per-platform native libs are staged.
     - `bump` — commit the version back to `main`.
-    - `release-assets` — attach the `.crate` files, the Java main jars, and the
-      native libs to the GitHub Release.
+    - `release-assets` — attach the `.crate` files and the Java main jars to the
+      GitHub Release.
 
 The Java deploy runs on **Maven 3.9.9** (pinned in the workflow): Maven 3.10
 writes a `maven-metadata-local.xml` beside each artifact in the Central staging,

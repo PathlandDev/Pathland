@@ -103,8 +103,9 @@ crates/pathland-markdown/ # PARSER — shared inline Markdown (`no_std` + alloc)
 crates/pathland-markdown-capi/ # C ABI (cdylib `libpathland_markdown`) for non-JVM hosts
                           #   (the JVM uses the pure-Java parser in pathland-view-core).
 crates/pathland-render-html/ # RENDERER — maps opcode frames onto declarative HTML (flex
-#   stacks, spans, buttons) as a pure function of the stream; the
-                           #   server-side/remote-projection target (Goal #15).
+                           #   stacks, spans, buttons) as a pure function of the stream; the
+                           #   canonical cross-language implementation. The JVM uses the
+                           #   pure-Java port in lib/java/pathland-render-html.
 # ── Web client (DOM renderer, lib/typescript) ──────────────────────────────
 lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer: a small
                            #   vanilla-TypeScript hydration client (no runtime deps):
@@ -151,13 +152,11 @@ lib/java/
                         #   SwiftUI-shaped builders/modifiers (`Text(...)` parses
                         #   inline Markdown by default; `markdown = false` opts out).
                         #   Server runtimes consume this only.
-  pathland-render-html/ # dev.pathland.render.html — JNA shim over the Rust HTML
-                        #   renderer (libpathland_render_html): one renderer, every language.
-                        #   The jar embeds the Rust cdylib (META-INF/native/) so it's
-                        #   self-contained. The dylib is built by CI's rust job and handed
-                        #   to java via an artifact; locally, `cargo build -p
-                        #   pathland-render-html` must run before `mvn test` (the jar-embed
-                        #   step fails loudly if it's missing).
+  pathland-render-html/ # dev.pathland.render.html — the PURE-JAVA HTML renderer:
+                        #   a behavioural port of the Rust crate (no JNA, no cdylib), so a
+                        #   Maven dependency runs on every platform and under GraalVM
+                        #   native-image. `GoldenConformanceTest` keeps its output
+                        #   byte-identical to the canonical Rust SSR fixtures.
   pathland-server-core/ # dev.pathland.server — transport-agnostic server runtime:
                         #   PathlandApp (root-view factory), PathlandConnection (send seam),
                         #   PathlandSession (per-session SSR + live deltas + environment),
@@ -184,10 +183,10 @@ lib/java/
 ```
 
 - Test: `cd lib/rust && cargo test` (runs all crates).
-- Build/test the JVM libraries: `cd lib/java && mvn install` (build the Rust
-  HTML renderer dylib first: `cd lib/rust && cargo build -p
-  pathland-render-html`; the jar embeds it, and `mvn -P refresh-ide
-  validate` does both). The JVM Markdown parser is pure Java.
+- Build/test the JVM libraries: `cd lib/java && mvn install`. The JVM path is
+  pure Java (the HTML renderer and the inline-Markdown parser are ports), so no
+  Rust build is required; `mvn -P refresh-ide validate` builds the design
+  assets and the DOM bundle when those change.
 - Run the GTK demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-gtk-demo`.
 - Run the Qt Quick demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-qt-demo`
   (needs Qt6 dev libs — Homebrew: `brew install qtbase qtdeclarative`; on macOS point `QMAKE`
@@ -208,11 +207,10 @@ lib/java/
   DOM bundle is content-hashed (`dom-renderer-<sha256>.js`, pointer in
   `_pathland/dom-renderer.current`) so a rebuilt bundle always busts the
   immutable asset cache by URL — restart the app (fresh HTML references the new
-  name) and reload normally; no hard refresh is needed. After any Rust/TS
-  change, refresh the two layers the IDE cannot
-  rebuild itself with `mvn -P refresh-ide validate` (root `pom.xml`: `cargo build
-  -p pathland-render-html`, `npm run build:all`, and the render-html embedded
-  dylib re-copy), then Reload/Build → Run → reload.
+  name) and reload normally; no hard refresh is needed. After any Rust/TS or
+  design change, refresh the layers the IDE cannot rebuild itself with
+  `mvn -P refresh-ide validate` (root `pom.xml`: the design build/sync and
+  `npm run build:all`), then Reload/Build → Run → reload.
 
 ### HTML base design (`design/`)
 
@@ -242,15 +240,16 @@ design/build/base.css.name            # content hash: base-<sha256-12>.css
 - `scripts/sync-design-css.sh` copies the bundle + name to
   `lib/rust/crates/pathland-render-html/assets/` (committed; `--check` fails on
   drift). `css.rs` embeds both with `include_str!` (`builtin_css()` /
-  `builtin_css_name()`).
+  `builtin_css_name()`); the Java port copies the same committed assets into
+  its jar via Maven resources (`BaseCss`).
 - The renderer's library default is inline (`render_document`); the linked mode
   (`render_document_linked`, C ABI `pathland_html_render_linked` +
   `pathland_html_base_css[_name]`, Java `renderLinked`/`baseCss`/`baseCssName`)
   emits `{base}/base-<hash>.css`. The Spring Boot and Quarkus starters use it
   and serve the renderer-owned bytes immutable (global + mounted bases); token
   overrides/fit rules stay inline.
-- `scripts/lib.sh` (`build_rust_html`), the Maven `refresh-ide` profile, and CI
-  run the design build + sync. Do not edit generated CSS by hand.
+- The Maven `refresh-ide` profile and CI run the design build + sync. Do not
+  edit generated CSS by hand.
 
 ### Native C-ABI shim (`pathland-view-native` + `pathland-core-capi`)
 
@@ -588,7 +587,7 @@ implementing project.
 
 ## Project Status
 
-**Complete**: 16-byte opcode engine (`pathland-core`), SwiftUI-style view DSL with decoupled chainable modifiers (`pathland-view`), declarative diff-based reactive emission (`pathland-core`), **reactive signals** (`pathland-core::signal` — writable `Signal` values bound to node text/properties, so a signal change re-emits only the bound nodes, reachable from Java via the `pathland_native_signal_*` / `node_bind_*` C ABI), host reader to a native-element description (`pathland-render-gtk`), opcode transport with network-batch encode/decode + time/size batching policy (`pathland-core-transport`), golden conformance vectors (incl. raw-input EVENT and network-batch bytes), typed raw-input event encode/decode, `no_std` builds, zero-alloc steady-state emission, the **bidirectional event ring** (host → guest EVENT opcodes in shared memory, drained by the host via a generic `pathland_native_drain_events` C ABI — the renderer only writes + wakes), the **GTK4 renderer** (`pathland-render-gtk`) with Rust demos that render through it without touching GTK directly, the **native JVM library set** — `pathland-view-core` (Kotlin: open `View` interface + shared value/SPI vocabulary, **Angular-parity signals/computed/effects** with synchronous flush, fine-grained retained-tree emitter with **node-level binding effects**, `PLPL` wire codec, router, lazy **JNA ring interop** into `libpathland_core`, cross-platform `StateStore` + **`PersistentState`**) and the sole JVM authoring DSL `dev.pathland.view.dsl` (SwiftUI-shaped builders, modifier sugar, property-delegate state, navigation/media helpers, styles), `dev.pathland.render.html` (JNA shim over the Rust HTML renderer), `dev.pathland.state.redis` (Lettuce `RedisStateStore`, in `pathland-server-core`) — and the **Quarkus demo** (`pathland-quarkus-demo`, a Java host mounting the Kotlin `MusicPlayerView`/`AdView`, plus a Kotlin-only view at `/kotlin`), the **desktop demo** (`pathland-desktop-demo`, GTK and Qt), and the **Spring Boot** (`pathland-spring-boot-demo`, a Java host mounting Kotlin views) **SSR + WebSocket demos** with per-window persisted `State` (Redis/in-memory — every browser window/tab gets its own UI model and state scope via a `sessionStorage` window id, so two windows never share a session). **`EVENT_LISTENERS`** (any element emits raw events via a u32 bitmask property) and **`onTapGesture`** (Rust + Kotlin DSL modifier + app-side `TapRecognizer` over the raw pointer events). **Generic input routing** — the emitter returns tap-action / text-input / value-input registries (`RenderResult`), so the host forwards raw `EVENT` batches straight into the bound signals and never reaches into a view's internals. **The media kit** (spec/MEDIA.md) — a non-visual `MEDIA_CONTROLLER` (0x30) state object owning a resource + transport as signals, referenced by a `VIDEO` (0x0A) surface and controlled by the app's own views; **audio has no view**. Implemented across spec, `pathland-core`, the GTK + HTML renderers, the TS DOM client, the Kotlin DSL/emitter, and the Rust DSL/engine (a `MediaController` + `Video` + `attach()`, with string-property signal bindings and a **pinned** controller node id so a `SIZE_THAT_FITS` band swap never restarts playback). **Attributed text** (`SET_ATTRIBUTED_TEXT`) — `AttributedString` model/codec, the shared `pathland-markdown` inline parser (+ `pathland-markdown-capi` for non-JVM hosts; the JVM parser is a pure-Java port), Rust/Kotlin DSL builders, GTK markup, SSR spans/anchors, and DOM-client application. **Built-in Markdown `Text`** — `Text("**hi**")` auto-parses in both DSLs (SwiftUI-like; `markdown = false` / `Text::plain` opt out); plain results keep the compact `SET_TEXT` path. **Tests green across the workspace.**
+**Complete**: 16-byte opcode engine (`pathland-core`), SwiftUI-style view DSL with decoupled chainable modifiers (`pathland-view`), declarative diff-based reactive emission (`pathland-core`), **reactive signals** (`pathland-core::signal` — writable `Signal` values bound to node text/properties, so a signal change re-emits only the bound nodes, reachable from Java via the `pathland_native_signal_*` / `node_bind_*` C ABI), host reader to a native-element description (`pathland-render-gtk`), opcode transport with network-batch encode/decode + time/size batching policy (`pathland-core-transport`), golden conformance vectors (incl. raw-input EVENT and network-batch bytes), typed raw-input event encode/decode, `no_std` builds, zero-alloc steady-state emission, the **bidirectional event ring** (host → guest EVENT opcodes in shared memory, drained by the host via a generic `pathland_native_drain_events` C ABI — the renderer only writes + wakes), the **GTK4 renderer** (`pathland-render-gtk`) with Rust demos that render through it without touching GTK directly, the **native JVM library set** — `pathland-view-core` (Kotlin: open `View` interface + shared value/SPI vocabulary, **Angular-parity signals/computed/effects** with synchronous flush, fine-grained retained-tree emitter with **node-level binding effects**, `PLPL` wire codec, router, lazy **JNA ring interop** into `libpathland_core`, cross-platform `StateStore` + **`PersistentState`**) and the sole JVM authoring DSL `dev.pathland.view.dsl` (SwiftUI-shaped builders, modifier sugar, property-delegate state, navigation/media helpers, styles), `dev.pathland.render.html` (pure-Java port of the Rust HTML renderer; golden-fixture-checked byte-for-byte), `dev.pathland.state.redis` (Lettuce `RedisStateStore`, in `pathland-server-core`) — and the **Quarkus demo** (`pathland-quarkus-demo`, a Java host mounting the Kotlin `MusicPlayerView`/`AdView`, plus a Kotlin-only view at `/kotlin`), the **desktop demo** (`pathland-desktop-demo`, GTK and Qt), and the **Spring Boot** (`pathland-spring-boot-demo`, a Java host mounting Kotlin views) **SSR + WebSocket demos** with per-window persisted `State` (Redis/in-memory — every browser window/tab gets its own UI model and state scope via a `sessionStorage` window id, so two windows never share a session). **`EVENT_LISTENERS`** (any element emits raw events via a u32 bitmask property) and **`onTapGesture`** (Rust + Kotlin DSL modifier + app-side `TapRecognizer` over the raw pointer events). **Generic input routing** — the emitter returns tap-action / text-input / value-input registries (`RenderResult`), so the host forwards raw `EVENT` batches straight into the bound signals and never reaches into a view's internals. **The media kit** (spec/MEDIA.md) — a non-visual `MEDIA_CONTROLLER` (0x30) state object owning a resource + transport as signals, referenced by a `VIDEO` (0x0A) surface and controlled by the app's own views; **audio has no view**. Implemented across spec, `pathland-core`, the GTK + HTML renderers, the TS DOM client, the Kotlin DSL/emitter, and the Rust DSL/engine (a `MediaController` + `Video` + `attach()`, with string-property signal bindings and a **pinned** controller node id so a `SIZE_THAT_FITS` band swap never restarts playback). **Attributed text** (`SET_ATTRIBUTED_TEXT`) — `AttributedString` model/codec, the shared `pathland-markdown` inline parser (+ `pathland-markdown-capi` for non-JVM hosts; the JVM parser is a pure-Java port), Rust/Kotlin DSL builders, GTK markup, SSR spans/anchors, and DOM-client application. **Built-in Markdown `Text`** — `Text("**hi**")` auto-parses in both DSLs (SwiftUI-like; `markdown = false` / `Text::plain` opt out); plain results keep the compact `SET_TEXT` path. **Tests green across the workspace.**
 
 **In progress**: —
 
@@ -600,9 +599,9 @@ implementing project.
 
 1. Read this file, `spec/OPCODE.md`, and `spec/ENGINE.md`
 2. Run Rust tests: `cd lib/rust && cargo test` (runs all crates)
-3. Build/test the JVM libraries: `cd lib/java && mvn install` (after
-   `cd lib/rust && cargo build -p pathland-render-html`; the jar embeds that
-   dylib). The JVM Markdown parser is pure Java.
+3. Build/test the JVM libraries: `cd lib/java && mvn install`. The JVM path is
+   pure Java (HTML renderer + inline-Markdown parser are ports); no Rust build
+   is required.
 4. Make small changes, verify they work
 
 ---

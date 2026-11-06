@@ -148,20 +148,6 @@ jobs:
         working-directory: lib/rust
         run: ./check-wasm.sh
 
-      # The Java HTML renderer shim needs the Rust renderer cdylib (the jar embeds
-      # it so it travels with the artifact). Build it here and hand it to the java
-      # job via an artifact. (Markdown is pure Java on the JVM now.)
-      - name: Build the HTML renderer cdylib
-        working-directory: lib/rust
-        run: cargo build -p pathland-render-html
-
-      - name: Upload the renderer dylib for the java job
-        uses: actions/upload-artifact@v4
-        with:
-          name: pathland-render-html-native
-          path: lib/rust/target/debug/libpathland_render_html.so
-          retention-days: 1
-
   java:
     name: Java (Maven reactor, JDK ${{ matrix.java }})
     runs-on: ubuntu-latest
@@ -181,14 +167,6 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
-
-      # The renderer jar embeds the Rust cdylib (built by the rust job). Restore it
-      # into the debug dir the jar-embed step copies. (Markdown is pure Java now.)
-      - name: Download the Rust renderer dylib
-        uses: actions/download-artifact@v4
-        with:
-          name: pathland-render-html-native
-          path: lib/rust/target/debug
 
       - name: Test reactor (incl. the SSR web demos)
         working-directory: lib/java

@@ -15,12 +15,12 @@
 
     <name>Pathland Render HTML</name>
     <description>
-        The Java binding to the Rust HTML renderer (dev.pathland.render.html): a
-        thin JNA shim over libpathland_render_html (pathland_html_render /
-        _render_fragment / _free). Stateless: each call renders
-        a full snapshot frame to HTML in one pass. The server-side/remote-projection
-        target, usable from Spring Boot, Quarkus, or any Java server. The single
-        renderer is the Rust crate reused by every language.
+        The pure-Java HTML renderer (dev.pathland.render.html): a behavioural port
+        of the Rust pathland-render-html crate. Stateless: each call decodes a
+        self-contained snapshot frame and renders it to HTML in one pass. No native
+        library is loaded, so it runs on every platform and is GraalVM native-image
+        compatible. The server-side/remote-projection target, usable from Spring
+        Boot, Quarkus, or any Java server.
     </description>
 
     <dependencies>
@@ -34,10 +34,6 @@
             <groupId>dev.pathland</groupId>
             <artifactId>pathland-view-core</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -70,76 +66,30 @@
                     <apiVersion>2.4</apiVersion>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <!-- Point the test JVM at the Rust renderer cdylib; absent the
-                         dylib, the shim tests are skipped via an assumption. -->
-                    <argLine>-Djava.library.path=${project.basedir}/../../rust/target/debug</argLine>
-                </configuration>
-            </plugin>
 
-            <!-- Embed the Rust renderer dylib in the jar so it travels with the
-                 artifact (JNA extracts it at runtime — no java.library.path needed).
-                 Copies the host-platform build into META-INF/native/. Fails loudly
-                 when the dylib is missing (the CI rust job builds it; locally run
-                 cargo build first). -->
+            <!-- The generated base design is owned by design/ and synced into the
+                 Rust renderer's assets by scripts/sync-design-css.sh. Embed those
+                 committed bytes as classpath resources for the Java port. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
+                <artifactId>maven-resources-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>embed-native-renderer</id>
+                        <id>copy-base-css</id>
                         <phase>process-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
                         <configuration>
-                            <target>
-                                <!-- Determine the platform library extension. -->
-                                <condition property="pathland.native.ext" value=".dylib">
-                                    <os family="mac" />
-                                </condition>
-                                <condition property="pathland.native.ext" value=".dll">
-                                    <os family="windows" />
-                                </condition>
-                                <condition property="pathland.native.ext" value=".so">
-                                    <os family="unix" />
-                                </condition>
-                                <property name="pathland.native.ext" value="" />
-
-                                <!-- Release builds stage one lib per platform under
-                                     target/native/<os>-<arch>/ (the CI matrix) and
-                                     this copies each into META-INF/native/<os>-<arch>/.
-                                     A local build has no staging dir and instead
-                                     embeds the host Rust debug build in the flat
-                                     META-INF/native/ layout. -->
-                                <property name="pathland.native.staging" value="${project.basedir}/target/native" />
-                                <available file="${pathland.native.staging}" type="dir" property="pathland.native.staged" />
-                                <property name="pathland.native.host" value="${project.basedir}/../../rust/target/debug/libpathland_render_html${pathland.native.ext}" />
-                                <available file="${pathland.native.host}" property="pathland.native.host.present" />
-
-                                <fail message="No Rust renderer library to embed: neither per-platform libs at ${pathland.native.staging}/&lt;os&gt;-&lt;arch&gt;/ (release) nor the host build at ${pathland.native.host} (local). Build it first: cargo build -p pathland-render-html (in lib/rust).">
-                                    <condition>
-                                        <and>
-                                            <not><isset property="pathland.native.staged" /></not>
-                                            <not><isset property="pathland.native.host.present" /></not>
-                                        </and>
-                                    </condition>
-                                </fail>
-
-                                <mkdir dir="${project.build.outputDirectory}/META-INF/native" />
-                                <!-- Release: copy each staged platform dir verbatim. -->
-                                <copy todir="${project.build.outputDirectory}/META-INF/native">
-                                    <fileset dir="${pathland.native.staging}" includes="*/*" erroronmissingdir="false" />
-                                </copy>
-                                <!-- Local dev: embed the host lib in the flat layout. -->
-                                <copy file="${pathland.native.host}"
-                                      tofile="${project.build.outputDirectory}/META-INF/native/libpathland_render_html${pathland.native.ext}"
-                                      failonerror="false" />
-                            </target>
+                            <outputDirectory>${project.build.outputDirectory}/dev/pathland/render/html</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../../rust/crates/pathland-render-html/assets</directory>
+                                    <includes>
+                                        <include>base.css</include>
+                                        <include>base.css.name</include>
+                                    </includes>
+                                </resource>
+                            </resources>
                         </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
                     </execution>
                 </executions>
             </plugin>

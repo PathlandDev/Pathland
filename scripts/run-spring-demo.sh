@@ -4,7 +4,6 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-build_rust_html
 java_install
 
 cd "$ROOT/lib/java/pathland-spring-boot-demo"
