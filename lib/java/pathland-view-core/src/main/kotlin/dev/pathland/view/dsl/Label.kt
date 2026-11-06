@@ -58,7 +58,7 @@ fun Label(title: String, icon: View): View {
 }
 
 /** A label whose icon subtree is built in an isolated block (no outer child leak). */
-fun Label(title: String, icon: () -> Unit): View {
+fun Label(title: String, icon: PathlandScope.() -> Unit): View {
     val parts = collectChildren(icon)
     val iconPart = when (parts.size) {
         0 -> null

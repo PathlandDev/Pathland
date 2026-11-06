@@ -39,13 +39,13 @@ fun Button(title: Signal<String>, action: () -> Unit): View =
  * A button with a custom label: `Button(action = { save() }) { Text("Save") }`.
  * The action is a named argument because the trailing lambda is the label.
  */
-fun Button(action: () -> Unit, content: () -> Unit): View {
+fun Button(action: () -> Unit, content: PathlandScope.() -> Unit): View {
     val children = collectChildren(content)
     return buttonView(null, action, children).registerChild()
 }
 
 /** A button with both a title and an explicit label subtree (the subtree wins). */
-fun Button(title: String, action: () -> Unit, content: () -> Unit): View {
+fun Button(title: String, action: () -> Unit, content: PathlandScope.() -> Unit): View {
     val children = collectChildren(content)
     return buttonView(dev.pathland.view.core.signal.Signals.constant(title), action, children).registerChild()
 }

@@ -312,6 +312,11 @@ Spring Boot, Quarkus, and web apps. Components and modifiers:
   `.buttonStyle(BorderedButtonStyle)`, `.windowMetadata`, navigation intents, and
   the full modifier vocabulary. Styles are Kotlin values
   (`PlainButtonStyle`, `BorderedButtonStyle`, label styles, `NativeVideoStyle`).
+- **Builder scopes**: view blocks take a `PathlandScope` receiver. `PathlandScope`,
+  `Navigation.Builder`, and modifier/style `Config` receivers share the
+  `@PathlandDsl` marker, so an outer router/config receiver cannot be captured
+  implicitly inside a nested view block (compile-time guard only; the
+  thread-local `ViewScopes` stack still collects children).
 - **Persisted state**: `Component` provides `val count by state(0)` (auto-keyed
   by property name) or `state(0, "key")`, bound to the session's
   `PersistentState` before the first `body()` render — no annotation processor or

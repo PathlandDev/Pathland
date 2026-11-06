@@ -69,6 +69,13 @@ Kotlin-authored views through JVM interop.
 - **Automatic child collection**: `VStack { Text("a"); Text("b") }` needs no
   `.children(...)`. A custom `Component` constructed inline in a block
   auto-registers; a view stored as a field is added explicitly with `+field`.
+- **Scope isolation** (`@PathlandDsl`): every view builder lambda takes a
+  `PathlandScope` receiver, and `PathlandScope`, `Navigation.Builder`, and the
+  modifier/style `Config` receivers carry the same `@DslMarker`. An outer
+  router/config receiver therefore cannot be captured implicitly inside a
+  nested view builder (e.g. `fallback(...)` inside `VStack { }` is a compile
+  error). Child collection itself is unchanged — the thread-local `ViewScopes`
+  stack still drives auto-registration.
 - **Signals**: `signal`, `computed`, `constant`, `effect`, `untracked`,
   `Signal<T>.value`, `WritableSignal<T>.value`, `Signal<T>.map`, `readonly`.
 - **Modifier sugar**: `.padding`, `.frame`, `.offset`, `.position`, `.fixedSize`,

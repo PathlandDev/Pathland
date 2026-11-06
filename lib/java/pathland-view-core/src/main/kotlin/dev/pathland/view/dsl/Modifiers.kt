@@ -13,6 +13,7 @@ import dev.pathland.view.core.FontWeight
 import dev.pathland.view.core.LabelStyle
 import dev.pathland.view.core.Length
 import dev.pathland.view.core.Modified
+import dev.pathland.view.core.PathlandDsl
 import dev.pathland.view.core.PathChange
 import dev.pathland.view.core.PointerEvents
 import dev.pathland.view.core.ShapeKind
@@ -80,6 +81,7 @@ class Font private constructor(
 }
 
 class Padding private constructor(private val config: Config) : ViewModifier {
+    @PathlandDsl
     class Config {
         var uniform: Signal<Float>? = null
         var uniformToken: Length? = null
@@ -124,6 +126,7 @@ class Padding private constructor(private val config: Config) : ViewModifier {
 }
 
 class Frame private constructor(private val config: Config) : ViewModifier {
+    @PathlandDsl
     class Config {
         var width: Signal<Float>? = null
         var height: Signal<Float>? = null
@@ -186,6 +189,7 @@ class Frame private constructor(private val config: Config) : ViewModifier {
 }
 
 class Border private constructor(private val config: Config) : ViewModifier {
+    @PathlandDsl
     class Config {
         var color: Signal<Color>? = null
         var width: Signal<Float>? = null
@@ -218,6 +222,7 @@ class Border private constructor(private val config: Config) : ViewModifier {
 }
 
 class Shadow private constructor(private val config: Config) : ViewModifier {
+    @PathlandDsl
     class Config {
         var color: Signal<Color>? = null
         var radius: Signal<Float>? = null
@@ -258,6 +263,7 @@ class ClipShape private constructor(private val shape: Signal<ShapeKind>) : View
         fun of(shape: Signal<ShapeKind>) = ClipShape(shape)
         fun of(configure: Config.() -> Unit) = ClipShape(Config().apply(configure).shape ?: Signals.constant(ShapeKind.RECTANGLE))
     }
+    @PathlandDsl
     class Config {
         var shape: Signal<ShapeKind>? = null
         fun shape(value: ShapeKind) = apply { shape = Signals.constant(value) }

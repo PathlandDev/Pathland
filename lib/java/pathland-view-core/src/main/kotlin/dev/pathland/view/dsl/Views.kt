@@ -201,17 +201,17 @@ fun SecureField(text: WritableSignal<String>, placeholder: String? = null): dev.
 /* Containers                                                                 */
 /* ------------------------------------------------------------------------- */
 
-fun Group(content: () -> Unit): dev.pathland.view.core.View =
+fun Group(content: PathlandScope.() -> Unit): dev.pathland.view.core.View =
     groupView(collectChildren(content)).registerChild()
 
-fun <T> ForEach(items: List<T>, content: (T, Int) -> Unit): dev.pathland.view.core.View =
+fun <T> ForEach(items: List<T>, content: PathlandScope.(T, Int) -> Unit): dev.pathland.view.core.View =
     coreView(Components.VSTACK) { node, env ->
         items.forEachIndexed { index, item ->
             node.children.add(rowView { content(item, index) }.render(env))
         }
     }.registerChild()
 
-fun <T> ForEach(items: Signal<List<T>>, content: (T, Int) -> Unit): dev.pathland.view.core.View =
+fun <T> ForEach(items: Signal<List<T>>, content: PathlandScope.(T, Int) -> Unit): dev.pathland.view.core.View =
     coreView(Components.VSTACK) { node, env ->
         items.get().forEachIndexed { index, item ->
             node.children.add(rowView { content(item, index) }.render(env))
@@ -351,7 +351,7 @@ fun DatePicker(
 fun Picker(
     selection: WritableSignal<Int>,
     style: PickerStyle = PickerStyle.MENU,
-    content: () -> Unit,
+    content: PathlandScope.() -> Unit,
 ): dev.pathland.view.core.View {
     val options = collectChildren(content)
     return coreView(Components.PICKER, options) { node, _ ->
@@ -361,7 +361,7 @@ fun Picker(
     }.registerChild()
 }
 
-fun Menu(selection: WritableSignal<Int>? = null, content: () -> Unit): dev.pathland.view.core.View {
+fun Menu(selection: WritableSignal<Int>? = null, content: PathlandScope.() -> Unit): dev.pathland.view.core.View {
     val children = collectChildren(content)
     return coreView(Components.MENU, children) { node, _ ->
         if (selection != null) {

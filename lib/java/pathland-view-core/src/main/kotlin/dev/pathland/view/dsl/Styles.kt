@@ -4,6 +4,7 @@ import dev.pathland.view.core.ButtonStyle
 import dev.pathland.view.core.Color
 import dev.pathland.view.core.EmptyContent
 import dev.pathland.view.core.LabelStyle
+import dev.pathland.view.core.PathlandDsl
 import dev.pathland.view.core.VideoStyle
 import dev.pathland.view.core.View
 
@@ -15,6 +16,7 @@ object PlainButtonStyle : ButtonStyle {
 /** A bordered, tinted button style. */
 class BorderedButtonStyle private constructor(private val config: Config) : ButtonStyle {
 
+    @PathlandDsl
     class Config {
         var padding: Float = 10f
         var background: Color = Color.rgb(33, 150, 243)

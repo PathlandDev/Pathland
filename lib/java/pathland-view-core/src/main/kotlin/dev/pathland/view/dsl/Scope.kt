@@ -1,16 +1,21 @@
 package dev.pathland.view.dsl
 
 import dev.pathland.view.core.Modified
+import dev.pathland.view.core.PathlandDsl
 import dev.pathland.view.core.View
 import java.util.ArrayDeque
 
 /**
- * Marks the Kotlin DSL entry points. The builder is synchronous and single-threaded
- * (the same contract as the emitter and the environment), so a thread-local
- * child stack is the equivalent of SwiftUI's result builder.
+ * The receiver for view-builder blocks. It carries no members of its own; its
+ * purpose is to give nested view builders an annotated receiver so an outer
+ * DSL receiver (a router or modifier config) cannot be captured implicitly.
+ *
+ * The builder is synchronous and single-threaded (the same contract as the
+ * emitter and the environment), so a thread-local child stack is still the
+ * equivalent of SwiftUI's result builder.
  */
-@DslMarker
-annotation class PathlandDsl
+@PathlandDsl
+object PathlandScope
 
 internal object ViewScopes {
     private val stack = ThreadLocal.withInitial { ArrayDeque<MutableList<View>>() }
@@ -64,10 +69,10 @@ operator fun View.unaryPlus(): View = registerChild()
  * into the innermost active scope, so `VStack { Text("a"); Text("b") }` needs no
  * `.children(...)` boilerplate.
  */
-fun collectChildren(content: () -> Unit): List<View> {
+fun collectChildren(content: PathlandScope.() -> Unit): List<View> {
     val scope = ViewScopes.push()
     return try {
-        content()
+        PathlandScope.content()
         scope.toList()
     } finally {
         ViewScopes.pop()
@@ -80,7 +85,7 @@ internal fun <T : View> T.registerChild(): T {
 }
 
 /** Collect a ForEach row into one child view (a single child stays unwrapped). */
-internal fun rowView(content: () -> Unit): View {
+internal fun rowView(content: PathlandScope.() -> Unit): View {
     val children = collectChildren(content)
     return when (children.size) {
         0 -> groupView(emptyList())

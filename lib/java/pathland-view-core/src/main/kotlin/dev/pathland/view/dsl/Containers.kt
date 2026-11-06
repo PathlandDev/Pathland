@@ -15,7 +15,7 @@ import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
 import dev.pathland.view.core.signal.Signal
 
-private fun childrenOf(content: () -> Unit): Array<View> = collectChildren(content).toTypedArray()
+private fun childrenOf(content: PathlandScope.() -> Unit): Array<View> = collectChildren(content).toTypedArray()
 
 /* ------------------------------------------------------------------------- */
 /* VStack                                                                     */
@@ -24,7 +24,7 @@ private fun childrenOf(content: () -> Unit): Array<View> = collectChildren(conte
 fun VStack(
     alignment: HorizontalAlignment? = null,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.VSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     if (spacing != null) node.properties[Properties.SPACING] = spacing
@@ -33,13 +33,13 @@ fun VStack(
 fun VStack(
     spacing: Int,
     alignment: HorizontalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = VStack(alignment = alignment, spacing = spacing.toFloat(), content = content)
 
 fun VStack(
     spacing: Signal<Float>,
     alignment: HorizontalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.VSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     node.property(Properties.SPACING, spacing)
@@ -48,7 +48,7 @@ fun VStack(
 fun VStack(
     spacing: dev.pathland.view.core.Length,
     alignment: HorizontalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.VSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     node.properties[Properties.SPACING] = spacing
@@ -57,7 +57,7 @@ fun VStack(
 fun VStack(
     alignment: Signal<HorizontalAlignment>,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.VSTACK, childrenOf(content).toList()) { node, _ ->
     node.property(Properties.ALIGNMENT, alignment)
     if (spacing != null) node.properties[Properties.SPACING] = spacing
@@ -70,7 +70,7 @@ fun VStack(
 fun HStack(
     alignment: VerticalAlignment? = null,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.HSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     if (spacing != null) node.properties[Properties.SPACING] = spacing
@@ -79,13 +79,13 @@ fun HStack(
 fun HStack(
     spacing: Int,
     alignment: VerticalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = HStack(alignment = alignment, spacing = spacing.toFloat(), content = content)
 
 fun HStack(
     spacing: Signal<Float>,
     alignment: VerticalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.HSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     node.property(Properties.SPACING, spacing)
@@ -94,7 +94,7 @@ fun HStack(
 fun HStack(
     spacing: dev.pathland.view.core.Length,
     alignment: VerticalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.HSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     node.properties[Properties.SPACING] = spacing
@@ -103,7 +103,7 @@ fun HStack(
 fun HStack(
     alignment: Signal<VerticalAlignment>,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.HSTACK, childrenOf(content).toList()) { node, _ ->
     node.property(Properties.ALIGNMENT, alignment)
     if (spacing != null) node.properties[Properties.SPACING] = spacing
@@ -115,14 +115,14 @@ fun HStack(
 
 fun ZStack(
     alignment: Alignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.ZSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
 }.registerChild()
 
 fun ZStack(
     alignment: Signal<Alignment>,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.ZSTACK, childrenOf(content).toList()) { node, _ ->
     node.property(Properties.ALIGNMENT, alignment)
 }.registerChild()
@@ -137,7 +137,7 @@ fun Grid(
     tracks: List<GridItem>? = null,
     alignment: Alignment? = null,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.GRID, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
@@ -146,7 +146,7 @@ fun Grid(
     if (rows != null) node.property(Properties.GRID_ROWS, Signals.constant(rows))
 }.registerChild()
 
-fun GridRow(content: () -> Unit = {}): View =
+fun GridRow(content: PathlandScope.() -> Unit = {}): View =
     coreView(Components.GRID_ROW, childrenOf(content).toList()).registerChild()
 
 /* ------------------------------------------------------------------------- */
@@ -155,7 +155,7 @@ fun GridRow(content: () -> Unit = {}): View =
 
 fun ScrollView(
     axis: ScrollAxis = ScrollAxis.VERTICAL,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.SCROLLVIEW, childrenOf(content).toList()) { node, _ ->
     if (axis != ScrollAxis.VERTICAL) node.property(Properties.SCROLL_AXIS, Signals.constant(axis))
 }.registerChild()
@@ -167,7 +167,7 @@ fun ScrollView(
 fun LazyVStack(
     alignment: HorizontalAlignment? = null,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.LAZY_VSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
@@ -176,13 +176,13 @@ fun LazyVStack(
 fun LazyVStack(
     spacing: Int,
     alignment: HorizontalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = LazyVStack(alignment = alignment, spacing = spacing.toFloat(), content = content)
 
 fun LazyVStack(
     spacing: Signal<Float>,
     alignment: HorizontalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.LAZY_VSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     node.property(Properties.SPACING, spacing)
@@ -191,7 +191,7 @@ fun LazyVStack(
 fun LazyHStack(
     alignment: VerticalAlignment? = null,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.LAZY_HSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
@@ -200,13 +200,13 @@ fun LazyHStack(
 fun LazyHStack(
     spacing: Int,
     alignment: VerticalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = LazyHStack(alignment = alignment, spacing = spacing.toFloat(), content = content)
 
 fun LazyHStack(
     spacing: Signal<Float>,
     alignment: VerticalAlignment? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.LAZY_HSTACK, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     node.property(Properties.SPACING, spacing)
@@ -217,7 +217,7 @@ fun LazyVGrid(
     tracks: List<GridItem>? = null,
     alignment: Alignment? = null,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.LAZY_VGRID, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
@@ -230,7 +230,7 @@ fun LazyHGrid(
     tracks: List<GridItem>? = null,
     alignment: Alignment? = null,
     spacing: Float? = null,
-    content: () -> Unit = {},
+    content: PathlandScope.() -> Unit = {},
 ): View = coreView(Components.LAZY_HGRID, childrenOf(content).toList()) { node, _ ->
     if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
     if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
@@ -256,7 +256,7 @@ fun Fit(view: View, minWidth: Float = 0f): FitCandidate {
 }
 
 /** A candidate whose subtree is built in an isolated block (no outer child leak). */
-fun Fit(minWidth: Float = 0f, content: () -> Unit): FitCandidate {
+fun Fit(minWidth: Float = 0f, content: PathlandScope.() -> Unit): FitCandidate {
     val children = collectChildren(content)
     val view = when (children.size) {
         0 -> groupView(emptyList())
@@ -310,7 +310,7 @@ private fun sizeThatFits(fits: Array<FitCandidate>): View {
 }
 
 /** The first candidate that fits the available width (SwiftUI `ViewThatFits`). */
-fun ViewThatFits(content: () -> Unit): View =
+fun ViewThatFits(content: PathlandScope.() -> Unit): View =
     sizeThatFits(childrenOf(content).map { Fit(it) }.toTypedArray())
 
 /** The first candidate that fits, with explicit min-width thresholds. */

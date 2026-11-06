@@ -55,7 +55,7 @@ private fun navigationLinkView(label: View, to: String, router: Router?): View {
 fun NavigationLink(
     to: String,
     router: Router? = null,
-    content: () -> Unit,
+    content: PathlandScope.() -> Unit,
 ): View {
     val children = collectChildren(content)
     val label = when (children.size) {
