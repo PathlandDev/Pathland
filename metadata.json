@@ -1,0 +1,61 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6RTD8A5PVDGEEZT7XDXG30F",
+  "strategy": "manual-commit",
+  "branch": "feat/45-seo-hardened-ssr",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "lib/java/pathland-quarkus-demo/src/main/java/dev/pathland/demo/quarkus/QuarkusDemoApp.java",
+    "lib/java/pathland-quarkus-demo/src/main/resources/application.properties",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/IndexResource.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/SeoHeadTest.java",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/DocumentHead.java",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/DocumentMeta.java",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/Format.java",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/HtmlRenderer.java",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/StructuredData.java",
+    "lib/java/pathland-render-html/src/test/kotlin/dev/pathland/render/html/GoldenConformanceTest.kt",
+    "lib/java/pathland-render-html/src/test/kotlin/dev/pathland/render/html/HtmlRendererTest.kt",
+    "lib/java/pathland-render-html/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PageMetadata.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PageMetadataRequest.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandApp.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/PathlandSessionTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-demo/src/main/java/dev/pathland/demo/spring/SpringDemoApplication.java",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/application.properties",
+    "lib/java/pathland-spring-boot-starter/src/main/java/dev/pathland/spring/PathlandIndexController.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/PathlandAutoConfigurationTest.java",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/rust/crates/pathland-html-golden/src/lib.rs",
+    "lib/rust/crates/pathland-html-golden/status.md",
+    "lib/rust/crates/pathland-render-html/src/capi.rs",
+    "lib/rust/crates/pathland-render-html/src/document.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/src/structured_data.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/typescript/status.md",
+    "lib/typescript/test/fixtures/ssr/document_meta.document.html",
+    "lib/typescript/test/fixtures/ssr/document_meta.plpl",
+    "spec/OPCODE.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 517797,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 21345152,
+    "output_tokens": 52714,
+    "api_call_count": 137
+  }
+}
