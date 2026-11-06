@@ -1,0 +1,28 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6QP3877PAYZQWF772HRHBHW",
+  "strategy": "manual-commit",
+  "branch": "refactor/consolidate-maven-modules",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/PathlandSessionTest.java",
+    "lib/java/pathland-server-core/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 189645,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 11785344,
+    "output_tokens": 7512,
+    "api_call_count": 29
+  }
+}
