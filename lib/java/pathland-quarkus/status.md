@@ -64,7 +64,13 @@ capability and pulls in `quarkus-kotlin`.
   `Service-Worker-Allowed: /` + `Cache-Control: no-cache`, so the client's root-scoped
   registration succeeds. A `Filters` handler always runs before routes, so it wins over
   Quarkus's static-resource handler (which sends neither header, and whose configured
-  max-age would otherwise cache the script and delay update detection).
+  max-age would otherwise cache the script and delay update detection). The script is
+  resolved through the thread-context classloader first, then the extension's own
+  loader, then the system loader: extension runtime classes live in Quarkus's base
+  runtime classloader and cannot see the application's `META-INF/resources` copy. The
+  extension jar bundles the worker as a fallback (the TS copy script writes it), and
+  `pathland-quarkus-demo`'s integration test asserts the headers on both the root and a
+  mounted base — the packaged-app classloader path the module-local test could not see.
 - **Observability (issue #62)** — `quarkus-micrometer` (a `MeterRegistry` bean) +
   `quarkus-smallrye-health`: the producer builds a `MicrometerTelemetry` over the
   registry and decorates it with `TracingTelemetry` when a `Tracer` bean is present and
