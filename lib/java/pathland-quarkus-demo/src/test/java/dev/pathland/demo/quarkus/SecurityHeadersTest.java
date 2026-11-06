@@ -37,6 +37,9 @@ class SecurityHeadersTest {
                 response.headers().firstValue("Referrer-Policy").orElse(""));
         assertEquals("DENY",
                 response.headers().firstValue("X-Frame-Options").orElse(""));
+        String hsts = response.headers().firstValue("Strict-Transport-Security").orElse("");
+        assertTrue(hsts.contains("max-age=31536000"), "HSTS is enabled for the demo: " + hsts);
+        assertTrue(hsts.contains("includeSubDomains"), "HSTS covers subdomains: " + hsts);
         assertTrue(response.body().contains("integrity=\"sha384-"),
                 "the SSR script tag carries the SRI digest: " + response.body());
     }

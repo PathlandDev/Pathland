@@ -93,6 +93,32 @@ quarkus.http.header."Content-Security-Policy".value=default-src 'self'; script-s
 For an initial rollout you can use `Content-Security-Policy-Report-Only`
 instead. Do not add `'unsafe-eval'` or `'unsafe-inline'` to `script-src`.
 
+### HSTS (whole-origin, app-owned)
+
+HSTS is intentionally **not** an extension default. Unlike the per-response
+headers above, it pins the **entire origin** in the browser: every path and port
+(and every subdomain with `includeSubDomains`), including other apps served by
+the same Quarkus instance. It also outlives the Pathland app. A reusable
+extension cannot know the deployment's TLS topology, so the application (or its
+edge proxy) must opt in.
+
+For a hosted, HTTPS-only app:
+
+```properties
+quarkus.http.header."Strict-Transport-Security".value=max-age=31536000; includeSubDomains
+```
+
+- Use a `max-age` of at least one year (`31536000`).
+- Only add `includeSubDomains` when **every** subdomain is HTTPS-only.
+- Only add `preload` if the domain is intentionally submitted to the HSTS
+  preload list (removal is slow).
+- Browsers ignore HSTS received over plain HTTP, so local `http://localhost`
+  development is unaffected. A TLS-terminating PaaS still emits it from the app
+  (or you can set it at the edge instead).
+
+The Quarkus demo opts in this way in
+`pathland-quarkus-demo/src/main/resources/application.properties`.
+
 ### Transport limits
 
 - The extension pins WebSocket messages/frames to 64 KiB, matching the
@@ -250,7 +276,7 @@ location /_pathland/ws {
 ## Verification checklist
 
 - `curl -I https://host/` → `Content-Security-Policy`, `X-Content-Type-Options`,
-  `Referrer-Policy`, `X-Frame-Options`.
+  `Referrer-Policy`, `X-Frame-Options`, and (when opted in) `Strict-Transport-Security`.
 - SSR `<script>` carries `integrity="sha384-…"`.
 - A WebSocket handshake with `Origin: https://evil.example` is rejected (403);
   same-origin succeeds.

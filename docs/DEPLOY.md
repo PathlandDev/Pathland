@@ -36,7 +36,13 @@ A quick check that it serves:
 ```bash
 curl -I http://localhost:8080/          # 200, text/html
 curl http://localhost:8080/ | grep -o 'data-pathland-id'   # hydrated SSR markup
+curl -sSI https://<host>/ | grep -i '^strict-transport-security'   # HSTS
 ```
+
+HSTS is app-owned (the extension does not default it): the demo sets
+`max-age=31536000; includeSubDomains` in its `application.properties`. Because
+that file is baked into the image, changing it requires a rebuild/redeploy — a
+plain restart of an existing container will not pick it up.
 
 State defaults to the in-memory store (no Redis needed for the demo). To use
 Redis, pass a `REDIS_URL` and the Redis `StateStore` in `pathland-server-core` is

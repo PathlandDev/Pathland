@@ -20,7 +20,11 @@ capability and pulls in `quarkus-kotlin`.
   CSP + `X-Content-Type-Options`/`Referrer-Policy`/`X-Frame-Options` headers via
   `quarkus.http.header.*`. See `docs/HARDENING.md` for overrides, CSP rollout,
   reverse-proxy/TLS guidance, and edge rate limiting. The `wid` handshake query
-  is validated by server-core (`WindowIds`).
+  is validated by server-core (`WindowIds`). **HSTS is deliberately not an
+  extension default** — it is a whole-origin, persistent browser policy that
+  also covers other apps on the same server, so it is owned by the application
+  or edge; the Quarkus demo opts in via `application.properties`.
+  `docs/HARDENING.md` documents the directives and override guidance.
 - **Hosted deployments work by default**: the same defaults set
   `quarkus.http.proxy.proxy-address-forwarding`, `allow-x-forwarded`, and
   `enable-forwarded-host` to `true`, so a TLS-terminating PaaS (Render, Fly,
