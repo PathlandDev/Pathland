@@ -65,6 +65,11 @@ public final class TracingTelemetry implements PathlandTelemetry {
     }
 
     @Override
+    public void inboundDropped(String mount, String reason) {
+        delegate.inboundDropped(mount, reason);
+    }
+
+    @Override
     public void batchFlushed(String mount, int frames, int opcodes, int bytes, long nanos) {
         delegate.batchFlushed(mount, frames, opcodes, bytes, nanos);
         Span span = tracer.spanBuilder("pathland.frame.send")

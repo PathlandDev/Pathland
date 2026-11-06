@@ -370,9 +370,11 @@ public final class PathlandSession {
         String htmlAttrs = " data-pathland-base=\"" + base + "\""
                 + (serviceWorker ? " data-pathland-service-worker=\"true\"" : "")
                 + (ssrScoped ? " data-pathland-ssr-scoped=\"true\"" : "");
+        String integrity = PathlandAssets.bundleIntegrity();
+        String integrityAttr = integrity.isEmpty() ? "" : " integrity=\"" + integrity + "\"";
         return injectHtmlAttributes(html, htmlAttrs)
                 .replace("</body>", "<script src=\"" + base + "/" + PathlandAssets.bundleName()
-                        + "\" defer></script></body>");
+                        + "\"" + integrityAttr + " defer></script></body>");
     }
 
     /**

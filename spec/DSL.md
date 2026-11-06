@@ -622,7 +622,7 @@ adds none. The container's chrome mode decides who supplies the navigation UI:
 system endpoints, so app routes never collide with them: the WebSocket lives at
 `/_pathland/ws`, the DOM-client bundle under a **content-hashed name**
 (`/_pathland/dom-renderer-<sha256>.js`; the current name is published next to the
-copies in the one-line pointer `/_pathland/dom-renderer.current`, read by the SSR
+copies in the pointer `/_pathland/dom-renderer.current` (name + SRI digest), read by the SSR
 layer so the page always references the built artifact — the fresh URL per build
 busts immutable asset caches), the
 renderer-owned icon glyphs at `/_pathland/icons/<name>.svg` (served from the

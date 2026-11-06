@@ -5,10 +5,10 @@
 // here.
 
 import type { Batch } from "./plpl";
-import { ProtocolError, parseBatch } from "./plpl";
+import { MAX_OPCODES, MAX_STRING_BYTES, ProtocolError, parseBatch } from "./plpl";
 import { applyBatch, type DomRenderer } from "./apply";
 import { encodePing, encodeResync } from "./events";
-import { FLAG_HOST_TO_GUEST, VERSION } from "./constants";
+import { FLAG_HOST_TO_GUEST, HEADER_SIZE, OPCODE_SIZE, VERSION } from "./constants";
 import { log } from "./log";
 import { describeBatch, describeBatchDetail } from "./describe";
 
@@ -36,6 +36,12 @@ const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 30000;
 const MAX_ATTEMPTS = 30;
 
+/** Inbound message cap (a batch is at most opcodes + a bounded string section). */
+const MAX_INBOUND_BYTES =
+  HEADER_SIZE + MAX_OPCODES * OPCODE_SIZE + 4 + MAX_STRING_BYTES + 64;
+/** Close after this many consecutive protocol/validation failures (forces a clean RESYNC). */
+const MAX_CONSECUTIVE_PROTOCOL_ERRORS = 5;
+
 // Heartbeat (spec/OPCODE.md §Transport heartbeat): the client probes server
 // liveness with META::PING every HEARTBEAT_INTERVAL_MS. It treats the connection
 // as dead when NO server batch of any kind (deltas, META::PONG) has arrived for
@@ -58,6 +64,8 @@ export class Transport {
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private watchdogTimer: ReturnType<typeof setInterval> | null = null;
   private lastActivityAt = 0;
+  /** Consecutive malformed/oversized/unsupported batches since the last good apply. */
+  private protocolErrors = 0;
   /**
    * The sequence the next guest → host delta batch must carry, or `null` before
    * the first batch / after a gap or reconnect (re-baseline on the next batch).
@@ -208,12 +216,18 @@ export class Transport {
     } else {
       bytes = new Uint8Array(0);
     }
+    if (bytes.length > MAX_INBOUND_BYTES) {
+      log.error("ws", `rejected oversized batch (${bytes.length} bytes)`);
+      this.protocolFailure();
+      return;
+    }
     let batch: Batch;
     try {
       batch = parseBatch(bytes);
     } catch (err) {
       if (err instanceof ProtocolError) {
         log.error("ws", "rejected batch:", err.message);
+        this.protocolFailure();
         return;
       }
       throw err;
@@ -245,11 +259,28 @@ export class Transport {
     } catch (err) {
       if (err instanceof ProtocolError) {
         log.error("ws", "rejected delta:", err.message);
+        this.protocolFailure();
         return;
       }
       throw err;
     }
+    this.protocolErrors = 0;
     this.options.onBatch?.(batch);
+  }
+
+  /**
+   * Count a rejected inbound batch. A persistent bad stream (corruption or a
+   * version skew) closes the socket so the reconnect flow requests a clean
+   * `META::RESYNC` instead of silently ignoring every delta forever.
+   */
+  private protocolFailure(): void {
+    this.protocolErrors++;
+    if (this.protocolErrors < MAX_CONSECUTIVE_PROTOCOL_ERRORS) {
+      return;
+    }
+    this.protocolErrors = 0;
+    log.warn("ws", "too many consecutive rejected batches — reconnecting");
+    this.ws?.close();
   }
 
   /**

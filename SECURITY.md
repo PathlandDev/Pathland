@@ -52,6 +52,14 @@ development-only tooling, and the demo application code.
 - No secrets or tokens may ever be committed; see
   [CONTRIBUTING.md](./CONTRIBUTING.md).
 
+## Deployment hardening
+
+Framework- and deployment-level controls (WebSocket origin checks, CSP and
+security headers, transport/message limits, rate limiting, TLS/reverse-proxy
+setup) are documented in [docs/HARDENING.md](./docs/HARDENING.md). The Quarkus
+extension supplies secure defaults; the Spring Boot starter requires the
+`pathland.allowed-origins` property for cross-origin hosts.
+
 ## Security testing
 
 Coverage is tracked by the hardening milestone (issues #37–#39): fuzzing for the

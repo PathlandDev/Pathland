@@ -50,7 +50,8 @@ public final class PathlandRegistry {
 
     private static final Logger LOG = LoggerFactory.getLogger(PathlandRegistry.class);
 
-    private static final int MAX_EVENT_BATCH = 1 << 16;
+    /** Largest inbound WebSocket message accepted (event batches, environment, resync). */
+    public static final int MAX_INBOUND_BATCH_BYTES = 1 << 16;
 
     private final String mountPath;
     private final PathlandApp app;
@@ -73,6 +74,9 @@ public final class PathlandRegistry {
 
     private final Map<String, PathlandSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, PendingSession> pending = new ConcurrentHashMap<>();
+
+    /** Per-connection inbound message budget, checked before actor work is queued. */
+    private final InboundRateLimiter inbound = new InboundRateLimiter();
 
     public PathlandRegistry(PathlandApp app, StateStore store) {
         this("/", app, store, false);
@@ -171,7 +175,7 @@ public final class PathlandRegistry {
      * shared/bookmarked URL may carry).
      */
     public String renderHtml(String route, String windowId) {
-        boolean scoped = windowId != null && !windowId.isBlank();
+        boolean scoped = WindowIds.isValid(windowId);
         String scope = scoped ? stateScope(windowId) : stateScope(UUID.randomUUID().toString());
         String sessionId = UUID.randomUUID().toString();
         long start = System.nanoTime();
@@ -217,13 +221,21 @@ public final class PathlandRegistry {
     /** Apply the platform environment: creates the session (seeded from its ROUTE field) on first contact, or enriches it after mount. */
     public void environment(String sessionId, EnvironmentData env) {
         EnvironmentData appEnv = stripRoute(env);
+        int cost = 64 + appEnv.route().length() * 2;
+        if (!allowInbound(sessionId, cost, "environment")) {
+            return;
+        }
         execute(() -> session(sessionId, appEnv).applyEnvironment(appEnv));
     }
 
     /** Route an inbound event batch to the owning session (NAVIGATE urls are mount-stripped first). */
     public void dispatch(String sessionId, byte[] message) {
-        if (message.length > MAX_EVENT_BATCH) {
+        if (message.length > MAX_INBOUND_BATCH_BYTES) {
             LOG.warn("dropping oversized event batch ({} bytes)", message.length);
+            telemetry.inboundDropped(mountPath, "oversized");
+            return;
+        }
+        if (!allowInbound(sessionId, message.length, "event batch")) {
             return;
         }
         execute(() -> {
@@ -241,6 +253,9 @@ public final class PathlandRegistry {
 
     /** Handle a META::RESYNC request: re-send the session's current tree as a snapshot. */
     public void resync(String sessionId) {
+        if (!allowInbound(sessionId, 16, "resync")) {
+            return;
+        }
         execute(() -> {
             telemetry.resyncRequested(mountPath);
             session(sessionId, EnvironmentData.of("/")).resync();
@@ -249,6 +264,7 @@ public final class PathlandRegistry {
 
     /** Close and remove a session (and drop any pending connection). */
     public void close(String sessionId) {
+        inbound.remove(sessionId);
         execute(() -> {
             pending.remove(sessionId);
             PathlandSession session = sessions.remove(sessionId);
@@ -257,6 +273,16 @@ public final class PathlandRegistry {
                 telemetry.sessionClosed(mountPath);
             }
         });
+    }
+
+    /** Check the per-connection inbound budget; drop + report when exceeded. */
+    private boolean allowInbound(String sessionId, int bytes, String kind) {
+        if (inbound.allow(sessionId, bytes)) {
+            return true;
+        }
+        LOG.warn("dropping {} for {}: inbound rate limit exceeded", kind, sessionId);
+        telemetry.inboundDropped(mountPath, kind);
+        return false;
     }
 
     /**
@@ -277,6 +303,7 @@ public final class PathlandRegistry {
             // Re-entrant shutdown from an actor task: run inline (a submit+get would deadlock).
             closeAll.run();
             actor.shutdown();
+            inbound.clear();
             return;
         }
         try {
@@ -297,6 +324,7 @@ public final class PathlandRegistry {
             actor.shutdownNow();
             Thread.currentThread().interrupt();
         }
+        inbound.clear();
     }
 
     /** Enqueue serialized session work; work is dropped once shutdown has started. */

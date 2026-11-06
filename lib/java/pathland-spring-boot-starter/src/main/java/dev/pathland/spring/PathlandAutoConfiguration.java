@@ -22,6 +22,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -116,12 +117,26 @@ public class PathlandAutoConfiguration {
     /**
      * Registers one WebSocket handler per mounted app at its framework base
      * ({@code /_pathland/ws} for the root mount, {@code /<path>/_pathland/ws} otherwise).
+     *
+     * <p><b>Origin policy:</b> the default is Spring's same-origin handshake check, which
+     * is the WebSocket CSRF control. Cross-origin hosts must be listed explicitly in
+     * {@code pathland.allowed-origins} (comma-separated); never use {@code *}.
      */
     @Bean
     @ConditionalOnMissingBean
-    public WebSocketConfigurer pathlandWebSocketConfigurer(PathlandHost host) {
-        return registry -> host.registries().forEach(r ->
-                registry.addHandler(new PathlandSocket(r), r.base() + "/ws").setAllowedOrigins("*"));
+    public WebSocketConfigurer pathlandWebSocketConfigurer(
+            PathlandHost host,
+            @Value("${pathland.allowed-origins:}") String allowedOrigins) {
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+        return registry -> host.registries().forEach(r -> {
+            var registration = registry.addHandler(new PathlandSocket(r), r.base() + "/ws");
+            if (!origins.isEmpty()) {
+                registration.setAllowedOrigins(origins.toArray(String[]::new));
+            }
+        });
     }
 
     /** The SSR dispatcher (per-app prefix routing) + the shared static JS bundle. */

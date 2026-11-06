@@ -15,6 +15,7 @@ import java.nio.ByteOrder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -77,6 +78,32 @@ class FrameCodecTest {
     }
 
     @Test
+    void rejectsAnOpcodeCountThatWouldOverflowIntArithmetic() {
+        // 0x20000000 * 16 overflows Int to 0. The decoder must reject it using
+        // Long arithmetic before allocating the opcode list (an OOM DoS).
+        byte[] bytes = batchHeader(0x20000000, 0);
+        assertThrows(IllegalArgumentException.class, () -> FrameCodec.decodeFrame(bytes));
+    }
+
+    @Test
+    void rejectsAHugeStringSectionLength() {
+        // 20 bytes: header + the stringsLen field. A u32 stringsLen == -1 as an
+        // Int must not reach ByteArray allocation.
+        byte[] bytes = batchHeader(0, 0xFFFFFFFF);
+        assertThrows(IllegalArgumentException.class, () -> FrameCodec.decodeFrame(bytes));
+    }
+
+    @Test
+    void rejectsAnOutOfBoundsStringOffset() {
+        ProtocolFrame frame = new ProtocolFrame(
+                java.util.List.of(new Opcode(
+                        Categories.EVENT, Commands.Event.TEXT_CHANGED, 0, 1, 999, 0)),
+                new byte[0]);
+        byte[] bytes = FrameCodec.encodeFrame(frame);
+        assertThrows(IllegalArgumentException.class, () -> FrameCodec.decodeEvents(bytes));
+    }
+
+    @Test
     void isPingDetectsAMetaPingBatch() {
         // A META::PING heartbeat probe (guest → host), the exact vector-16a bytes.
         byte[] ping = new byte[16 + 16 + 4];
@@ -89,5 +116,16 @@ class FrameCodecTest {
         assertTrue(FrameCodec.isPing(ping), "a META::PING batch is detected");
         assertFalse(FrameCodec.isResync(ping), "a PING batch is not a RESYNC");
         assertFalse(FrameCodec.isPing(FrameCodec.encodeResync()), "a RESYNC batch is not a PING");
+    }
+
+    /** A minimal batch: magic/version/counts plus the stringsLen field (no payload). */
+    private static byte[] batchHeader(int opcodeCount, int stringsLen) {
+        byte[] bytes = new byte[FrameCodec.HEADER + 4];
+        ByteBuffer view = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
+        view.putInt(0, FrameCodec.MAGIC);
+        view.putShort(4, (short) FrameCodec.VERSION);
+        view.putInt(12, opcodeCount);
+        view.putInt(FrameCodec.HEADER, stringsLen);
+        return bytes;
     }
 }

@@ -1,6 +1,6 @@
 # pathland-quarkus — implementation status
 
-**Last updated:** November 1, 2026
+**Last updated:** November 6, 2026
 
 Quarkus extension for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding this extension + a
@@ -12,6 +12,15 @@ capability and pulls in `quarkus-kotlin`.
 
 ## Implemented
 
+- **Security defaults (issue #63)**: the deployment module contributes
+  overridable runtime defaults via `RunTimeConfigurationDefaultBuildItem`:
+  `quarkus.http.cors.enabled=true` (no origins → same-origin, which covers
+  WebSocket upgrades because the CORS filter runs before routes),
+  `quarkus.websockets-next.server.max-message-size`/`max-frame-size=65536`, and
+  CSP + `X-Content-Type-Options`/`Referrer-Policy`/`X-Frame-Options` headers via
+  `quarkus.http.header.*`. See `docs/HARDENING.md` for overrides, CSP rollout,
+  reverse-proxy/TLS guidance, and edge rate limiting. The `wid` handshake query
+  is validated by server-core (`WindowIds`).
 - **Java host / Kotlin views**: `CounterApp` is a Java CDI bean whose
   `newRoot()` returns a Kotlin-authored fixture view; the multi-session
   WebSocket tests prove SSR + live deltas work through that mount.

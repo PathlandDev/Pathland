@@ -233,11 +233,15 @@ object FrameCodec {
 
     private class Parsed(val opcodes: List<Opcode>, val strings: ByteArray) {
         fun stringAt(offset: Int): String {
-            val len = (strings[offset].toInt() and 0xFF) or
-                ((strings[offset + 1].toInt() and 0xFF) shl 8) or
-                ((strings[offset + 2].toInt() and 0xFF) shl 16) or
-                ((strings[offset + 3].toInt() and 0xFF) shl 24)
-            return String(strings, offset + 4, len, StandardCharsets.UTF_8)
+            if (offset < 0 || offset.toLong() + 4L > strings.size.toLong()) {
+                throw IllegalArgumentException("string offset out of bounds")
+            }
+            val len = readUInt32LE(strings, offset)
+            val start = offset.toLong() + 4L
+            if (start + len > strings.size.toLong()) {
+                throw IllegalArgumentException("string length out of bounds")
+            }
+            return String(strings, start.toInt(), len.toInt(), StandardCharsets.UTF_8)
         }
     }
 
@@ -251,24 +255,36 @@ object FrameCodec {
         if (version != VERSION) {
             throw IllegalArgumentException("unsupported batch version $version")
         }
-        val opcodeCount = readIntLE(bytes, 12)
-        val opcodesEnd = HEADER + opcodeCount * Opcode.SIZE
-        if (opcodesEnd + 4 > bytes.size) {
+        // The opcode count is an attacker-controlled u32. Compute with Long and
+        // validate against the actual message length BEFORE allocating, so a
+        // declared count cannot overflow Int arithmetic into a small end offset
+        // and then trigger a huge ArrayList allocation (OOM).
+        val opcodeCount = readUInt32LE(bytes, 12)
+        val opcodesEnd = HEADER.toLong() + opcodeCount * Opcode.SIZE.toLong()
+        if (opcodesEnd + 4L > bytes.size.toLong()) {
             throw IllegalArgumentException("batch truncated (opcodes)")
         }
-        val opcodes = ArrayList<Opcode>(opcodeCount)
-        for (i in 0 until opcodeCount) {
+        if (opcodeCount > Int.MAX_VALUE.toLong()) {
+            throw IllegalArgumentException("opcode count out of range")
+        }
+        val opcodeCountInt = opcodeCount.toInt()
+        val opcodes = ArrayList<Opcode>(opcodeCountInt)
+        for (i in 0 until opcodeCountInt) {
             val slot = ByteArray(Opcode.SIZE)
             System.arraycopy(bytes, HEADER + i * Opcode.SIZE, slot, 0, Opcode.SIZE)
             opcodes.add(Opcode.fromBytes(slot))
         }
-        val stringsLen = readIntLE(bytes, opcodesEnd)
-        val stringsStart = opcodesEnd + 4
-        if (stringsStart + stringsLen > bytes.size) {
+        val stringsLen = readUInt32LE(bytes, opcodesEnd.toInt())
+        val stringsStart = opcodesEnd + 4L
+        if (stringsStart + stringsLen > bytes.size.toLong()) {
             throw IllegalArgumentException("batch truncated (strings)")
         }
-        val strings = ByteArray(stringsLen)
-        System.arraycopy(bytes, stringsStart, strings, 0, stringsLen)
+        if (stringsLen > Int.MAX_VALUE.toLong()) {
+            throw IllegalArgumentException("string section out of range")
+        }
+        val stringsLenInt = stringsLen.toInt()
+        val strings = ByteArray(stringsLenInt)
+        System.arraycopy(bytes, stringsStart.toInt(), strings, 0, stringsLenInt)
         return Parsed(opcodes, strings)
     }
 
@@ -302,3 +318,10 @@ object FrameCodec {
             ((bytes[offset + 2].toInt() and 0xFF) shl 16) or
             ((bytes[offset + 3].toInt() and 0xFF) shl 24)
 }
+
+/** Read a little-endian u32 as a non-negative Long (no sign/overflow surprises). */
+private fun readUInt32LE(bytes: ByteArray, offset: Int): Long =
+    (bytes[offset].toLong() and 0xFF) or
+        ((bytes[offset + 1].toLong() and 0xFF) shl 8) or
+        ((bytes[offset + 2].toLong() and 0xFF) shl 16) or
+        ((bytes[offset + 3].toLong() and 0xFF) shl 24)

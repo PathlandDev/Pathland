@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 5, 2026
+**Last updated:** November 6, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written entirely in Kotlin. It owns the `View` SPI and shared
@@ -37,6 +37,11 @@ Kotlin-authored views through JVM interop.
   annotation processor are removed.
 - **Transport** (`dev.pathland.view.core.transport`): `ProtocolFrame`,
   `FrameCodec`, `Event`, `EnvironmentData`, `OpcodeSink`, `FrameOpcodeSink`.
+  **Hardened (issue #63)**: `FrameCodec.parse` reads the attacker-controlled
+  `opcodeCount`/`stringsLen` as unsigned `Long` values and validates them
+  against the actual message length before allocating; string offsets are
+  bounds-checked (`Parsed.stringAt`). A declared `opcodeCount` that overflows
+  `Int` arithmetic now throws instead of triggering an OOM allocation.
 - **Router** (`dev.pathland.view.core.router`): `Route`, `RouteTable`, `Router`,
   `Navigation`, `NavigationContainer`, `NavigationIntent`, `Params`, `Chrome`,
   `NavOp`. `NavigationLink` and the navigation helpers live in the Kotlin DSL.

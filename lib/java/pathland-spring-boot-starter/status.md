@@ -1,6 +1,6 @@
 # pathland-spring-boot-starter — implementation status
 
-**Last updated:** October 28, 2026
+**Last updated:** November 6, 2026
 
 Spring Boot auto-configuration for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding the starter dependency + a
@@ -9,6 +9,14 @@ subpaths (the BFF layout).
 
 ## Implemented
 
+- **Security hardening (issue #63)**: the WebSocket handlers no longer hardcode
+  `setAllowedOrigins("*")`. The default is Spring's same-origin handshake check
+  (the WebSocket CSRF control); cross-origin hosts must be listed explicitly in
+  `pathland.allowed-origins` (comma-separated). The handshake `wid` is validated
+  by server-core (`WindowIds`). SSR inherits SRI (`integrity="sha384-…"`) from
+  `PathlandSession`. CSP/security headers and transport limits are documented in
+  `docs/HARDENING.md` (Quarkus supplies secure defaults; Spring apps add them
+  through Spring Security/server configuration).
 - **Java host / Kotlin views**: `KotlinViewMountTest` proves a Java-only
   `@SpringBootApplication` bean returning `PathlandApp` mounts a Kotlin-authored
   fixture view, renders it through SSR, and receives a live signal delta.

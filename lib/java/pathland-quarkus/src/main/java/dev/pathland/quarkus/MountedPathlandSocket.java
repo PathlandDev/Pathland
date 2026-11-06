@@ -2,6 +2,7 @@ package dev.pathland.quarkus;
 
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandRegistry;
+import dev.pathland.server.WindowIds;
 import dev.pathland.view.core.transport.FrameCodec;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ClientProxy;
@@ -79,6 +80,10 @@ public class MountedPathlandSocket {
 
     @OnBinaryMessage
     void onBinary(byte[] message) {
+        if (message.length > PathlandRegistry.MAX_INBOUND_BATCH_BYTES) {
+            LOG.warn("dropping oversized ws message ({} bytes)", message.length);
+            return;
+        }
         String id = connection.id();
         PathlandRegistry r = registry();
         if (r == null) {
@@ -115,7 +120,7 @@ public class MountedPathlandSocket {
         if (query != null) {
             for (String pair : query.split("&")) {
                 String[] kv = pair.split("=", 2);
-                if (kv.length == 2 && "wid".equals(kv[0]) && !kv[1].isBlank()) {
+                if (kv.length == 2 && "wid".equals(kv[0]) && WindowIds.isValid(kv[1])) {
                     return kv[1];
                 }
             }
