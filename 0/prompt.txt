@@ -1,1 +1,1 @@
-I am thinking if it would be better to implement the protocol and html renderer in kotlin or java instead of embedding rust crates? Does it make a difference for native compile via graalvm?
+commit and go with phase 2
