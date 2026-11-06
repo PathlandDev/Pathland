@@ -17,6 +17,12 @@ the Rust dylib and the Java reactor sources):
 docker build -f lib/java/pathland-quarkus-demo/Dockerfile -t pathland-quarkus-demo .
 ```
 
+The image's Maven step selects both `pathland-quarkus-demo` and
+`pathland-quarkus-deployment`. The deployment module is not a Maven dependency of
+the demo, but the runtime extension descriptor validates its dependencies against
+it; omitting it makes a fresh (empty `~/.m2`) build fail Quarkus extension
+verification.
+
 ## Run locally
 
 ```bash

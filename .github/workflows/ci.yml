@@ -194,6 +194,17 @@ jobs:
         working-directory: lib/java
         run: mvn -q -B test
 
+      # Mirror the Dockerfile's Maven selection so the deploy image path is
+      # exercised in CI. The deployment module must be selected explicitly: it is
+      # not a Maven dependency of the demo, and the runtime extension descriptor
+      # validates against it.
+      - name: Package the deployable Quarkus demo
+        working-directory: lib/java
+        run: >-
+          mvn -q -B
+          -pl pathland-quarkus-demo,pathland-quarkus-deployment -am
+          package -Dmaven.test.skip=true
+
   web-client:
     name: Web client (TypeScript DOM renderer)
     runs-on: ubuntu-latest

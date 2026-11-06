@@ -15,8 +15,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The application registry: 1:1 sessions keyed by a per-connection id. Each WebSocket
@@ -60,6 +64,12 @@ public final class PathlandRegistry {
         t.setDaemon(true);
         return t;
     });
+
+    /** Set once {@link #shutdown()} starts; new actor work is dropped. */
+    private final AtomicBoolean shuttingDown = new AtomicBoolean();
+
+    /** True while the current thread is inside an actor task (shutdown re-entry guard). */
+    private final ThreadLocal<Boolean> onActor = new ThreadLocal<>();
 
     private final Map<String, PathlandSession> sessions = new ConcurrentHashMap<>();
     private final Map<String, PendingSession> pending = new ConcurrentHashMap<>();
@@ -188,7 +198,7 @@ public final class PathlandRegistry {
      * its first message.
      */
     public void open(String uiId, String windowId, PathlandConnection connection) {
-        actor.execute(() -> {
+        execute(() -> {
             // A WebSocket's first messages can reach the actor before this open task (the
             // transport delivers messages while the endpoint is still wiring the
             // connection). If environment/resync already created the session, attach the
@@ -207,7 +217,7 @@ public final class PathlandRegistry {
     /** Apply the platform environment: creates the session (seeded from its ROUTE field) on first contact, or enriches it after mount. */
     public void environment(String sessionId, EnvironmentData env) {
         EnvironmentData appEnv = stripRoute(env);
-        actor.execute(() -> session(sessionId, appEnv).applyEnvironment(appEnv));
+        execute(() -> session(sessionId, appEnv).applyEnvironment(appEnv));
     }
 
     /** Route an inbound event batch to the owning session (NAVIGATE urls are mount-stripped first). */
@@ -216,7 +226,7 @@ public final class PathlandRegistry {
             LOG.warn("dropping oversized event batch ({} bytes)", message.length);
             return;
         }
-        actor.execute(() -> {
+        execute(() -> {
             List<Event> events;
             try {
                 events = stripNavigateUrls(FrameCodec.decodeEvents(message));
@@ -231,7 +241,7 @@ public final class PathlandRegistry {
 
     /** Handle a META::RESYNC request: re-send the session's current tree as a snapshot. */
     public void resync(String sessionId) {
-        actor.execute(() -> {
+        execute(() -> {
             telemetry.resyncRequested(mountPath);
             session(sessionId, EnvironmentData.of("/")).resync();
         });
@@ -239,7 +249,7 @@ public final class PathlandRegistry {
 
     /** Close and remove a session (and drop any pending connection). */
     public void close(String sessionId) {
-        actor.execute(() -> {
+        execute(() -> {
             pending.remove(sessionId);
             PathlandSession session = sessions.remove(sessionId);
             if (session != null) {
@@ -249,15 +259,81 @@ public final class PathlandRegistry {
         });
     }
 
-    /** Shut down the registry: close every session and stop the actor. */
+    /**
+     * Shut down the registry: close every session and stop the actor.
+     *
+     * <p>Teardown is serialized on the actor, like every other session operation. Closing
+     * sessions directly on the caller's thread would race a queued mount/resync that is
+     * mutating the same emitter (observed as a {@link java.util.ConcurrentModificationException}
+     * during {@code Emitter.destroy}). The call is idempotent and drops any work enqueued
+     * after shutdown starts.
+     */
     public void shutdown() {
+        if (!shuttingDown.compareAndSet(false, true)) {
+            return;
+        }
+        Runnable closeAll = this::closeAllSessions;
+        if (Boolean.TRUE.equals(onActor.get())) {
+            // Re-entrant shutdown from an actor task: run inline (a submit+get would deadlock).
+            closeAll.run();
+            actor.shutdown();
+            return;
+        }
+        try {
+            actor.submit(() -> runOnActor(closeAll)).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            LOG.warn("registry shutdown failed: {}", e.getCause() == null ? e.getMessage() : e.getCause().getMessage());
+        } catch (RejectedExecutionException ignored) {
+            // already shut down
+        }
+        actor.shutdown();
+        try {
+            if (!actor.awaitTermination(5, TimeUnit.SECONDS)) {
+                actor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            actor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** Enqueue serialized session work; work is dropped once shutdown has started. */
+    private void execute(Runnable task) {
+        if (shuttingDown.get()) {
+            return;
+        }
+        try {
+            actor.execute(() -> {
+                // The shutdown task may have run after this task was queued; don't create
+                // sessions/emit work after teardown.
+                if (shuttingDown.get()) {
+                    return;
+                }
+                runOnActor(task);
+            });
+        } catch (RejectedExecutionException ignored) {
+            // already shut down
+        }
+    }
+
+    private void runOnActor(Runnable task) {
+        onActor.set(Boolean.TRUE);
+        try {
+            task.run();
+        } finally {
+            onActor.remove();
+        }
+    }
+
+    private void closeAllSessions() {
         for (PathlandSession session : sessions.values()) {
             session.close();
             telemetry.sessionClosed(mountPath);
         }
         sessions.clear();
         pending.clear();
-        actor.shutdown();
     }
 
     /** The number of live sessions for this mount (a health/metrics gauge). */
