@@ -1,0 +1,116 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6W43T3T3D32BMNGJAG81M95",
+  "session_id": "ses_e481b0b6bffer8j1EmaBg5WbrZ",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-07T23:04:52.205586Z",
+  "branch": "feat/scoped-topics",
+  "checkpoints_count": 11,
+  "save_step_count": 5,
+  "files_touched": [
+    "AGENTS.md",
+    "docs/external-updates.md",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/PathlandRegistryProducer.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicMountProducer.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicSubscriptionsTest.java",
+    "lib/java/pathland-quarkus/src/test/kotlin/dev/pathland/quarkus/KotlinFixtures.kt",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/observability/MicrometerTelemetry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/observability/TracingTelemetry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandHost.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSignalHub.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandTelemetry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/SessionSubscriptions.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/SubscriptionKey.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/SubscriptionSubscriber.java",
+    "lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/TopicsTest.kt",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/java/dev/pathland/spring/PathlandAutoConfiguration.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/TopicSubscriptionsTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/kotlin/dev/pathland/spring/KotlinFixtures.kt",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/signal/Signals.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/GlobalSubject.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/SessionContext.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/Topic.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/Signals.kt",
+    "lib/java/pathland-view-core/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "d9b267722190",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 1840836,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 30971904,
+    "output_tokens": 52997,
+    "api_call_count": 163
+  },
+  "session_metrics": {
+    "turn_count": 11
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-07T23:04:52.067214Z",
+    "agent_lines": 1304,
+    "agent_removed": 57,
+    "human_added": 194,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1498,
+    "total_lines_changed": 1555,
+    "agent_percentage": 87.52411575562701,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1293,
+      "agent_lines_removed": 57
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1293,
+      "agent_lines_removed": 57
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1293,
+      "agent_lines_removed": 57
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1293,
+      "agent_lines_removed": 57
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 97,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1401,
+      "agent_lines_removed": 57,
+      "user_added_per_file": {
+        "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicSubscriptionsTest.java": 8,
+        "lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/TopicsTest.kt": 80,
+        "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/TopicSubscriptionsTest.java": 9
+      }
+    }
+  ]
+}

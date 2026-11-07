@@ -1,0 +1,54 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6W43T3T3D32BMNGJAG81M95",
+  "strategy": "manual-commit",
+  "branch": "feat/scoped-topics",
+  "checkpoints_count": 11,
+  "files_touched": [
+    "AGENTS.md",
+    "docs/external-updates.md",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/PathlandRegistryProducer.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicMountProducer.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicSubscriptionsTest.java",
+    "lib/java/pathland-quarkus/src/test/kotlin/dev/pathland/quarkus/KotlinFixtures.kt",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/observability/MicrometerTelemetry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/observability/TracingTelemetry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandHost.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSignalHub.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandTelemetry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/SessionSubscriptions.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/SubscriptionKey.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/SubscriptionSubscriber.java",
+    "lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/TopicsTest.kt",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/java/dev/pathland/spring/PathlandAutoConfiguration.java",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/TopicSubscriptionsTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/kotlin/dev/pathland/spring/KotlinFixtures.kt",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/signal/Signals.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/GlobalSubject.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/SessionContext.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/Topic.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/Signals.kt",
+    "lib/java/pathland-view-core/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1840836,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 30971904,
+    "output_tokens": 52997,
+    "api_call_count": 163
+  }
+}
