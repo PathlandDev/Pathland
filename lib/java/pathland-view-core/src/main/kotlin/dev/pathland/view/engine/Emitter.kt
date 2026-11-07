@@ -229,8 +229,13 @@ class Emitter {
         slot.children.clear()
         slot.children.addAll(newChildren)
         val parent = slot.nodeParent
-        if (parent != null) parent.children[slot.nodeIndex] = fresh else tree = fresh
-        linkSlots(fresh)
+        if (parent != null) {
+            parent.children[slot.nodeIndex] = fresh
+            linkSlots(fresh, parent, slot.nodeIndex)
+        } else {
+            tree = fresh
+            linkSlots(fresh)
+        }
         registerSlotTree(slot)
         collectSlotTree(slot)
         refreshNavigateHandler()
@@ -294,8 +299,13 @@ class Emitter {
         }
         slot.node = fresh
         val parent = slot.nodeParent
-        if (parent != null) parent.children[slot.nodeIndex] = fresh else tree = fresh
-        linkSlots(fresh)
+        if (parent != null) {
+            parent.children[slot.nodeIndex] = fresh
+            linkSlots(fresh, parent, slot.nodeIndex)
+        } else {
+            tree = fresh
+            linkSlots(fresh)
+        }
         registerSlotBindings(slot)
         collectSlotInputs(slot, null)
         refreshNavigateHandler()
