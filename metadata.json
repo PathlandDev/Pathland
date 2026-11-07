@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6TNXQED8SNNXTN2JNRAG0M1",
+  "strategy": "manual-commit",
+  "branch": "feat/layout-frame-bounds",
+  "checkpoints_count": 20,
+  "files_touched": [
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/HtmlRenderer.java",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/RenderDebug.java",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/RenderNode.java",
+    "lib/java/pathland-render-html/status.md",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Properties.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/Modifiers.kt",
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/rust/crates/pathland-html-golden/src/lib.rs",
+    "lib/rust/crates/pathland-html-golden/status.md",
+    "lib/rust/crates/pathland-protocol-manifest/src/main.rs",
+    "lib/rust/crates/pathland-render-html/src/debug.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/rust/crates/pathland-render-qt/src/qt/qt_layer.cpp",
+    "lib/rust/crates/pathland-render-qt/src/renderer.rs",
+    "lib/rust/crates/pathland-render-qt/status.md",
+    "lib/rust/crates/pathland-render-qt/todo.md",
+    "lib/rust/crates/pathland-ts-codegen/src/main.rs",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/classes.ts",
+    "lib/typescript/src/constants.ts",
+    "lib/typescript/src/elements.ts",
+    "lib/typescript/src/transport.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/fixtures/ssr/layout.html",
+    "lib/typescript/test/fixtures/ssr/maxbounds.html",
+    "lib/typescript/test/fixtures/ssr/maxbounds.plpl",
+    "lib/typescript/test/fixtures/ssr/scrollaxis.html",
+    "lib/typescript/test/fixtures/ssr/scrollaxis.plpl",
+    "lib/typescript/test/transport.test.ts",
+    "spec/DSL.md",
+    "spec/LAYOUT.md",
+    "spec/MODIFIERS.md",
+    "spec/PRIMITIVES.md",
+    "spec/protocol.tsv"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 565150,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 33522560,
+    "output_tokens": 22849,
+    "api_call_count": 71
+  }
+}
