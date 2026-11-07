@@ -110,6 +110,30 @@ public final class PathlandHost {
         return best == null ? null : new MountMatch(best, strip(best.mountPath(), uri));
     }
 
+    /**
+     * The topic hub for an exact mount ({@code "/"} for the root). Returns {@code null}
+     * when no app is mounted there.
+     */
+    public PathlandSignalHub signalHub(String mountPath) {
+        PathlandRegistry registry = registry(mountPath);
+        return registry == null ? null : registry.signalHub();
+    }
+
+    /**
+     * The default topic hub for the common single-app case: the root mount when
+     * present, otherwise the first mount. An inert host (no apps) gets a hub whose
+     * publishes go nowhere.
+     */
+    public PathlandSignalHub signalHub() {
+        PathlandRegistry root = registry("/");
+        if (root != null) {
+            return root.signalHub();
+        }
+        return registries.isEmpty()
+                ? new PathlandSignalHub("/", telemetry)
+                : registries.get(0).signalHub();
+    }
+
     /** The number of live sessions across every mount (a health/metrics gauge). */
     public int activeSessions() {
         int total = 0;

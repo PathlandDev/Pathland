@@ -60,6 +60,9 @@ public final class PathlandRegistry {
     private final PathlandTelemetry telemetry;
     private final boolean serviceWorker;
 
+    /** Topic fan-out for this mount's live sessions (external UI updates). */
+    private final PathlandSignalHub signalHub;
+
     private final ExecutorService actor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "pathland-actor");
         t.setDaemon(true);
@@ -108,6 +111,12 @@ public final class PathlandRegistry {
         this.debugHtml = debugHtml;
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         this.serviceWorker = serviceWorker;
+        this.signalHub = new PathlandSignalHub(this.mountPath, this.telemetry);
+    }
+
+    /** The topic hub external code publishes to for this mount's sessions. */
+    public PathlandSignalHub signalHub() {
+        return signalHub;
     }
 
     /** Whether the SSR opts the DOM client into the per-window-id service worker (issue #155). */
@@ -384,6 +393,7 @@ public final class PathlandRegistry {
         }
         sessions.clear();
         pending.clear();
+        signalHub.clear();
     }
 
     /** The number of live sessions for this mount (a health/metrics gauge). */
@@ -398,7 +408,8 @@ public final class PathlandRegistry {
             PendingSession pending = this.pending.remove(uiId);
             session = new PathlandSession(
                     uiId, store, app, env, debugHtml, base(),
-                    pending != null ? pending.stateScope() : stateScope(uiId), telemetry, mountPath);
+                    pending != null ? pending.stateScope() : stateScope(uiId), telemetry, mountPath,
+                    this::execute, signalHub);
             if (pending != null) {
                 session.connect(pending.connection());
             }

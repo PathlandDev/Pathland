@@ -5,6 +5,7 @@ import dev.pathland.observability.TracingTelemetry;
 import dev.pathland.server.MountedApp;
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandHost;
+import dev.pathland.server.PathlandSignalHub;
 import dev.pathland.server.PathlandTelemetry;
 import dev.pathland.server.StateStores;
 import dev.pathland.view.core.state.InMemoryStateStore;
@@ -76,6 +77,16 @@ public class PathlandAutoConfiguration {
             telemetry = new TracingTelemetry(telemetry, otel.getTracer("pathland"));
         }
         return telemetry;
+    }
+
+    /**
+     * The default topic hub for external UI updates (root mount, else the first
+     * mount). Multi-app hosts use {@code host.signalHub(mountPath)} for others.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public PathlandSignalHub pathlandSignalHub(PathlandHost host) {
+        return host.signalHub();
     }
 
     /** Readiness for the Pathland host (exposed at {@code /actuator/health}). */

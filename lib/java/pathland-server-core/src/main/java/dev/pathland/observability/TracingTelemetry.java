@@ -103,4 +103,19 @@ public final class TracingTelemetry implements PathlandTelemetry {
     public void connectionFailed(String mount, String reason) {
         delegate.connectionFailed(mount, reason);
     }
+
+    @Override
+    public void subscriptionPublished(String mount, String topic, int subscribers) {
+        delegate.subscriptionPublished(mount, topic, subscribers);
+    }
+
+    @Override
+    public void subscriptionCoalesced(String mount, String topic) {
+        delegate.subscriptionCoalesced(mount, topic);
+    }
+
+    @Override
+    public void subscriptionDropped(String mount, String topic, String reason) {
+        delegate.subscriptionDropped(mount, topic, reason);
+    }
 }

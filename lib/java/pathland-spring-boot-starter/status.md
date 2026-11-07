@@ -1,6 +1,6 @@
 # pathland-spring-boot-starter — implementation status
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
 
 Spring Boot auto-configuration for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding the starter dependency + a
@@ -23,6 +23,10 @@ subpaths (the BFF layout).
   correct WebSocket same-origin check and external SSR canonical URL with zero
   configuration. An explicit `server.forward-headers-strategy` in application
   config always wins (`ForwardedHeaderOverrideTest` pins this).
+- **Topic hub bean**: `PathlandAutoConfiguration` produces a `PathlandSignalHub`
+  bean (`host.signalHub()`: root mount, else the first mount) for external UI
+  updates. `TopicSubscriptionsTest` mounts a `/topics` app and proves a
+  background-thread publish reaches only the session subscribed for that subject.
 - **Java host / Kotlin views**: `KotlinViewMountTest` proves a Java-only
   `@SpringBootApplication` bean returning `PathlandApp` mounts a Kotlin-authored
   fixture view, renders it through SSR, and receives a live signal delta.
