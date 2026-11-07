@@ -1,0 +1,1 @@
+I can see that it is uploaded correctly and that central maven is publishing.

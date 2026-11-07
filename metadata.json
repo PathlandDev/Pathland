@@ -1,0 +1,30 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6VY7M17E1KDYS2HH1GXBF32",
+  "strategy": "manual-commit",
+  "branch": "chore/decouple-jvm-build",
+  "checkpoints_count": 5,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
+    "AGENTS.md",
+    "RELEASING.md",
+    "lib/java/pom.xml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 521555,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 9776512,
+    "output_tokens": 9865,
+    "api_call_count": 49
+  }
+}
