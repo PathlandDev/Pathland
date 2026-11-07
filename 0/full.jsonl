@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 1.8629146020000025,
+    "cost": 1.8654867420000025,
     "tokens": {
-      "input": 6386279,
-      "output": 196597,
-      "reasoning": 286249,
+      "input": 6387593,
+      "output": 196758,
+      "reasoning": 286280,
       "cache": {
-        "read": 205088384,
+        "read": 205841664,
         "write": 0
       }
     },
     "time": {
       "created": 1793991104205,
-      "updated": 1794046981233
+      "updated": 1794047002332
     }
   },
   "messages": [
@@ -97379,21 +97379,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.00133611,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 377203,
+          "input": 717,
+          "output": 135,
+          "reasoning": 31,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 376320
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1794046981411
+          "created": 1794046981411,
+          "completed": 1794046998837
         },
+        "finish": "tool-calls",
         "id": "msg_1b58875230011NuMyW3W3PYS82",
         "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f"
       },
@@ -97421,20 +97424,115 @@
           "tool": "bash",
           "callID": "call_00_f12q68oh1x1bqgtia7cawokd",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add .github/workflows/ci.yml lib/java/pathland-docs-demo/src/main/resources lib/java/pathland-quarkus-demo/src/main/resources lib/java/pathland-spring-boot-demo/src/main/resources lib/typescript/test/apply.test.ts && git diff --cached --check && git commit -m \"fix(web): ship the bounded-fill DOM renderer to demos\" && git status --short && git log --oneline -3"
             },
+            "output": "[feat/docs-site cbd799d] fix(web): ship the bounded-fill DOM renderer to demos\n 11 files changed, 71 insertions(+), 16 deletions(-)\n delete mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-cc4f54adfa24.js\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js\n create mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-cc4f54adfa24.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-207d5e07bdd7.js\n create mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-cc4f54adfa24.js\ncbd799d8 fix(web): ship the bounded-fill DOM renderer to demos\nda669d86 feat(docs): add Markdown pages, live examples, and HTML debug comments\n8c059aff feat(docs): add Kotlin Markdown documentation site\n",
+            "metadata": {
+              "output": "[feat/docs-site cbd799d] fix(web): ship the bounded-fill DOM renderer to demos\n 11 files changed, 71 insertions(+), 16 deletions(-)\n delete mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js\n create mode 100644 lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-cc4f54adfa24.js\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js\n create mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-cc4f54adfa24.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-207d5e07bdd7.js\n create mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-cc4f54adfa24.js\ncbd799d8 fix(web): ship the bounded-fill DOM renderer to demos\nda669d86 feat(docs): add Markdown pages, live examples, and HTML debug comments\n8c059aff feat(docs): add Kotlin Markdown documentation site\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add .github/workflows/ci.yml lib/java/pathland-docs-demo/src/main/resources lib/java/pathland-quarkus-demo/src/main/resources lib/java/pathland-spring-boot-demo/src/main/resources lib/typescript/test/apply.test.ts && git diff --cached --check && git commit -m \"fix(web): ship the bounded-fill DOM renderer to demos\" && git status --short && git log --oneline -3",
             "time": {
-              "start": 1794046985573
+              "start": 1794046985573,
+              "end": 1794046998711
             }
           },
           "id": "prt_1b5888228001cj0SP0iu9DrAED",
           "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
           "messageID": "msg_1b58875230011NuMyW3W3PYS82"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "d9789a894ff384361da1305013ecadc05f0853a2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 377203,
+            "input": 717,
+            "output": 135,
+            "reasoning": 31,
+            "cache": {
+              "write": 0,
+              "read": 376320
+            }
+          },
+          "cost": 0.00133611,
+          "id": "prt_1b588b8f4001D5ajlSGrw0EOgZ",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b58875230011NuMyW3W3PYS82"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b5885a8900189rAt9qFoO58W0",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00123603,
+        "tokens": {
+          "total": 377583,
+          "input": 597,
+          "output": 26,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 376960
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794046999028,
+          "completed": 1794047002286
+        },
+        "finish": "stop",
+        "id": "msg_1b588b9f4002xiVYP3S1HLF9xM",
+        "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f"
+      },
+      "parts": [
+        {
+          "snapshot": "d9789a894ff384361da1305013ecadc05f0853a2",
+          "type": "step-start",
+          "id": "prt_1b588c51c001wj5PfZWLfCXXc6",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b588b9f4002xiVYP3S1HLF9xM"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `cbd799d8 fix(web): ship the bounded-fill DOM renderer to demos`.",
+          "time": {
+            "start": 1794047001920,
+            "end": 1794047002164
+          },
+          "id": "prt_1b588c540001A22SQmMevaVShc",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b588b9f4002xiVYP3S1HLF9xM"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "d9789a894ff384361da1305013ecadc05f0853a2",
+          "type": "step-finish",
+          "tokens": {
+            "total": 377583,
+            "input": 597,
+            "output": 26,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 376960
+            }
+          },
+          "cost": 0.00123603,
+          "id": "prt_1b588c67a001O5rK2SUMrrGzfU",
+          "sessionID": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+          "messageID": "msg_1b588b9f4002xiVYP3S1HLF9xM"
         }
       ]
     }
