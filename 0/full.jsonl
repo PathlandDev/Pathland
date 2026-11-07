@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.4778535120000001,
+    "cost": 0.4801746000000001,
     "tokens": {
-      "input": 1840836,
-      "output": 52997,
-      "reasoning": 128357,
+      "input": 1843288,
+      "output": 53124,
+      "reasoning": 128457,
       "cache": {
-        "read": 30971904,
+        "read": 31577600,
         "write": 0
       }
     },
     "time": {
       "created": 1794086597780,
-      "updated": 1794092686414
+      "updated": 1794092694823
     }
   },
   "messages": [
@@ -38619,21 +38619,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001295406,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 303970,
+          "input": 1825,
+          "output": 93,
+          "reasoning": 100,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 301952
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1794092686412
+          "created": 1794092686412,
+          "completed": 1794092694799
         },
+        "finish": "tool-calls",
         "id": "msg_1b841dc4c002XhuwfYdM29Gz7w",
         "sessionID": "ses_e481b0b6bffer8j1EmaBg5WbrZ"
       },
@@ -38661,21 +38664,116 @@
           "tool": "bash",
           "callID": "call_fe1968665a184660af1d81f5",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -m \"feat(topics): scoped and global subscriptions for external UI updates\" && git status --short && git log --oneline -1",
               "timeout": 120000
             },
+            "output": "[feat/scoped-topics a8575aa4] feat(topics): scoped and global subscriptions for external UI updates\n 29 files changed, 1498 insertions(+), 57 deletions(-)\n create mode 100644 docs/external-updates.md\n create mode 100644 lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicMountProducer.java\n create mode 100644 lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicSubscriptionsTest.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSignalHub.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/SessionSubscriptions.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/SubscriptionKey.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/SubscriptionSubscriber.java\n create mode 100644 lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/TopicsTest.kt\n create mode 100644 lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/TopicSubscriptionsTest.java\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/GlobalSubject.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/SessionContext.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/Topic.kt\na8575aa4 feat(topics): scoped and global subscriptions for external UI updates\n",
+            "metadata": {
+              "output": "[feat/scoped-topics a8575aa4] feat(topics): scoped and global subscriptions for external UI updates\n 29 files changed, 1498 insertions(+), 57 deletions(-)\n create mode 100644 docs/external-updates.md\n create mode 100644 lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicMountProducer.java\n create mode 100644 lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/TopicSubscriptionsTest.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSignalHub.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/SessionSubscriptions.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/SubscriptionKey.java\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/SubscriptionSubscriber.java\n create mode 100644 lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/TopicsTest.kt\n create mode 100644 lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/TopicSubscriptionsTest.java\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/GlobalSubject.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/SessionContext.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/Topic.kt\na8575aa4 feat(topics): scoped and global subscriptions for external UI updates\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -m \"feat(topics): scoped and global subscriptions for external UI updates\" && git status --short && git log --oneline -1",
             "time": {
-              "start": 1794092689370
+              "start": 1794092689370,
+              "end": 1794092694677
             }
           },
           "id": "prt_1b841e61e001xi2hhZ0hxC018f",
           "sessionID": "ses_e481b0b6bffer8j1EmaBg5WbrZ",
           "messageID": "msg_1b841dc4c002XhuwfYdM29Gz7w"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "2bf7161d3dc47c4b8d33a4a98112b05a430a155d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 303970,
+            "input": 1825,
+            "output": 93,
+            "reasoning": 100,
+            "cache": {
+              "write": 0,
+              "read": 301952
+            }
+          },
+          "cost": 0.001295406,
+          "id": "prt_1b841fcd00016Y5196BqkmC7qR",
+          "sessionID": "ses_e481b0b6bffer8j1EmaBg5WbrZ",
+          "messageID": "msg_1b841dc4c002XhuwfYdM29Gz7w"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1b841c4db001VgBkrF6I21RLo5",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001025682,
+        "tokens": {
+          "total": 304405,
+          "input": 627,
+          "output": 34,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 303744
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794092694821,
+          "completed": 1794092696667
+        },
+        "finish": "stop",
+        "id": "msg_1b841fd250020oIZT11CcBEHzW",
+        "sessionID": "ses_e481b0b6bffer8j1EmaBg5WbrZ"
+      },
+      "parts": [
+        {
+          "snapshot": "2bf7161d3dc47c4b8d33a4a98112b05a430a155d",
+          "type": "step-start",
+          "id": "prt_1b8420320001M9TvstFZAF4IG4",
+          "sessionID": "ses_e481b0b6bffer8j1EmaBg5WbrZ",
+          "messageID": "msg_1b841fd250020oIZT11CcBEHzW"
+        },
+        {
+          "type": "text",
+          "text": "Committed on `feat/scoped-topics`:\n\n`a8575aa4 feat(topics): scoped and global subscriptions for external UI updates`",
+          "time": {
+            "start": 1794092696355,
+            "end": 1794092696519
+          },
+          "id": "prt_1b8420323001g6F88RWpJA9kAw",
+          "sessionID": "ses_e481b0b6bffer8j1EmaBg5WbrZ",
+          "messageID": "msg_1b841fd250020oIZT11CcBEHzW"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "2bf7161d3dc47c4b8d33a4a98112b05a430a155d",
+          "type": "step-finish",
+          "tokens": {
+            "total": 304405,
+            "input": 627,
+            "output": 34,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 303744
+            }
+          },
+          "cost": 0.001025682,
+          "id": "prt_1b8420414001mYYMUzqLkZyo0i",
+          "sessionID": "ses_e481b0b6bffer8j1EmaBg5WbrZ",
+          "messageID": "msg_1b841fd250020oIZT11CcBEHzW"
         }
       ]
     }
