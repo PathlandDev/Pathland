@@ -11,5 +11,5 @@ categories = ["encoding", "wasm", "graphics"]
 keywords = ["ui", "protocol", "opcode", "wasm", "retained-mode"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core", version = "0.2.1" }
-pathland-markdown = { path = "../pathland-markdown", version = "0.2.1" }
+pathland-core = { path = "../pathland-core", version = "0.2.2" }
+pathland-markdown = { path = "../pathland-markdown", version = "0.2.2" }
