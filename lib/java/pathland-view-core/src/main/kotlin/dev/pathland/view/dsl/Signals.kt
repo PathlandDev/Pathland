@@ -4,6 +4,8 @@ import dev.pathland.view.core.signal.EffectRef
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.WritableSignal
+import dev.pathland.view.core.subscription.GlobalSubject
+import dev.pathland.view.core.subscription.Topic
 
 /** A writable signal (Angular-style). */
 fun <T> signal(initial: T): WritableSignal<T> = Signals.signal(initial)
@@ -20,6 +22,20 @@ fun <T> computed(block: () -> T): Signal<T> = Signals.computed { block() }
 
 /** An immutable signal carrying a static value. */
 fun <T> constant(value: T): Signal<T> = Signals.constant(value)
+
+/**
+ * Subscribe to [topic] for [subject], returning the session's local signal.
+ * `val name = topic(Customer.NAME, customerId, initialName)`.
+ */
+fun <T, S> topic(key: Topic<T, S>, subject: S, initial: T): Signal<T> =
+    Signals.topic(key, subject, initial)
+
+/**
+ * Subscribe to an unscoped (global) topic:
+ * `val events = topic(AppTopics.EVENTS, 0L)`.
+ */
+fun <T> topic(key: Topic<T, GlobalSubject>, initial: T): Signal<T> =
+    Signals.topic(key, initial)
 
 /** Register an effect; runs immediately, then on tracked dependency changes. */
 fun effect(block: () -> Unit): EffectRef = Signals.effect { block() }

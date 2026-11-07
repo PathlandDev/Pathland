@@ -58,6 +58,22 @@ public interface PathlandTelemetry {
     /** A connection send failed and the session dropped it (the client will reconnect). */
     default void connectionFailed(String mount, String reason) {}
 
+    // ── Topic subscriptions (dev.pathland.view.core.subscription) ────────────
+
+    /**
+     * A topic value was published.
+     *
+     * @param subscribers sessions currently subscribed to the exact
+     *                    {@code (topic, subject)} pair (0 means the publish went nowhere)
+     */
+    default void subscriptionPublished(String mount, String topic, int subscribers) {}
+
+    /** A newer value replaced an unpublished value for the same subscription. */
+    default void subscriptionCoalesced(String mount, String topic) {}
+
+    /** A published value was not applied (no subscribers, unsubscribed, or an effect failed). */
+    default void subscriptionDropped(String mount, String topic, String reason) {}
+
     // ── Proxy views (spec/PROXY.md) ─────────────────────────────────────────
 
     /** A proxy's origin connection opened (after the handshake). */

@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -57,6 +57,18 @@ dependency — framework glue lives in the starters.
     starts is dropped, sessions are closed on the actor thread, then the executor is
     stopped and awaited. Teardown can no longer race a queued mount/resync mutating the
     same emitter (regression-tested by `shutdownSerializesWithQueuedActorWork`).
+- **Topic subscriptions / external UI updates**: `PathlandSignalHub` (one per mount)
+  routes `publish(topic, subject, value)` only to sessions subscribed to that exact
+  `(topic, subject)` pair (global topics use the reserved `GlobalSubject` singleton
+  and the two-argument `publish(topic, value)` overload; still only subscribed
+  sessions update); `SessionSubscriptions` holds each session's local mirror,
+  coalesces publishes latest-wins, schedules one actor drain, and unregisters on
+  close/unsubscribe. `PathlandSession.submit(Runnable)` hands arbitrary work to the
+  session actor from any thread; a session context is installed around every actor
+  task (mount, dispatch, drain, theming) so `topic(...)` resolves during render.
+  `PathlandHost.signalHub()`/`signalHub(mount)` expose the hub. Telemetry:
+  `topics.published`/`coalesced`/`dropped`. See `docs/external-updates.md` and
+  `TopicsTest`.
 - **Per-window isolation (no session cookie)**: session <b>identity</b> (the `uiId`
   map key) is deliberately separate from the <b>persisted-state scope</b> (the client's
   `wid`, carried only on the WebSocket URL — never in the page URL, so the address bar
@@ -151,6 +163,9 @@ dependency — framework glue lives in the starters.
 ## Not implemented / gaps
 
 - No multi-node/shared sessions (each server owns its sessions in-memory).
+- Topic fan-out is node-local: `PathlandSignalHub` routes to this process's
+  sessions only. A Redis/pub-sub-backed hub (each node fanning out to its local
+  sessions) is a follow-up; the topic name + subject are the stable wire keys.
 - Quarkus mounted-app WebSocket endpoints require a **single-segment** mount path
   (the `/{app}` path param); Spring supports any depth.
 
@@ -227,6 +242,12 @@ them on close.
 **two windows with the same `wid` still get separate sessions** (a tap to one never
 reaches the other), and **message-before-open ordering** (environment/resync that
 race `open` still attach the connection and emit the snapshot).
+`TopicsTest`: strongly typed `(topic, subject)` routing (customer 43 never sees
+customer 42's update), every session for a subject updates, global topics reach
+only subscribed sessions and stay isolated from a same-named scoped topic, rapid
+publishes coalesce latest-wins, updates run on the session actor, close removes
+subscriptions, unsubscribe keeps the last value, and a topic outside a session
+fails on read.
 `PathlandHostTest`: longest-prefix dispatch + route stripping, mount-boundary
 respect, no-root-mount 404, per-app base + state scope, duplicate-mount rejection,
 normalization, SSR emits the mounted app's base.

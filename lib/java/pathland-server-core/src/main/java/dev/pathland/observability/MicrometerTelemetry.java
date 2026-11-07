@@ -34,6 +34,9 @@ import java.util.function.IntSupplier;
  *   <li>{@code pathland.ssr.render} — timer (SSR render round-trip)</li>
  *   <li>{@code pathland.resync.requested} — counter</li>
  *   <li>{@code pathland.ws.failures} — counter (a send failed; the client reconnects)</li>
+ *   <li>{@code pathland.topics.published} — counter (topic publishes)</li>
+ *   <li>{@code pathland.topics.coalesced} — counter (superseded topic values)</li>
+ *   <li>{@code pathland.topics.dropped} — counter (publishes not applied)</li>
  * </ul>
  */
 public final class MicrometerTelemetry implements PathlandTelemetry {
@@ -109,6 +112,23 @@ public final class MicrometerTelemetry implements PathlandTelemetry {
         // The reason is deliberately NOT a tag (unbounded cardinality); it is carried
         // for logging adapters. Failures are rare, so a single per-mount counter suffices.
         counter("ws.failures", mount).increment();
+    }
+
+    @Override
+    public void subscriptionPublished(String mount, String topic, int subscribers) {
+        // Topic names are application constants (bounded), but the subject is not
+        // tagged: keeping the tag set to mount only avoids unbounded cardinality.
+        counter("topics.published", mount).increment();
+    }
+
+    @Override
+    public void subscriptionCoalesced(String mount, String topic) {
+        counter("topics.coalesced", mount).increment();
+    }
+
+    @Override
+    public void subscriptionDropped(String mount, String topic, String reason) {
+        counter("topics.dropped", mount).increment();
     }
 
     private Counter counter(String name, String mount) {

@@ -1,6 +1,6 @@
 # pathland-quarkus — implementation status
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
 
 Quarkus extension for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding this extension + a
@@ -32,6 +32,10 @@ capability and pulls in `quarkus-kotlin`.
   SSR canonical URL with zero configuration. These are lowest-priority defaults;
   application config (including
   `quarkus.http.proxy.proxy-address-forwarding=false`) always wins.
+- **Topic hub bean**: the extension produces a `PathlandSignalHub` singleton
+  (`host.signalHub()`: root mount, else the first mount) for external UI updates.
+  `TopicSubscriptionsTest` mounts a `/topics` app and proves a background-thread
+  publish reaches only the session subscribed for that subject.
 - **Java host / Kotlin views**: `CounterApp` is a Java CDI bean whose
   `newRoot()` returns a Kotlin-authored fixture view; the multi-session
   WebSocket tests prove SSR + live deltas work through that mount.

@@ -6,6 +6,9 @@ import java.util.function.BiPredicate
 import java.util.function.Consumer
 import java.util.function.Supplier
 import dev.pathland.view.core.state.PersistentState
+import dev.pathland.view.core.subscription.GlobalSubject
+import dev.pathland.view.core.subscription.SessionContext
+import dev.pathland.view.core.subscription.Topic
 
 /** Factory for Angular-style reactive primitives. */
 object Signals {
@@ -36,6 +39,30 @@ object Signals {
     /** An immutable signal carrying a static value. */
     @JvmStatic
     fun <T> constant(value: T): Signal<T> = ConstantSignal(value)
+
+    /**
+     * Subscribe to [topic] for [subject], returning the session's local signal.
+     *
+     * Idempotent per `(topic, subject)` within a session. The value is seeded with
+     * [initial] and updated by [dev.pathland.server.PathlandSignalHub.publish] on the
+     * session's actor. Resolution is deferred until the first read when called before
+     * the session context is installed (e.g. a root view's field initializer).
+     */
+    @JvmStatic
+    fun <T, S> topic(topic: Topic<T, S>, subject: S, initial: T): Signal<T> {
+        val context = SessionContext.current()
+        return context?.subscribe(topic, subject, initial)
+            ?: DeferredTopicSignal(topic, subject, initial)
+    }
+
+    /**
+     * Subscribe to an unscoped (global) topic. Every session that calls this
+     * receives [dev.pathland.server.PathlandSignalHub.publish] values; sessions
+     * that never subscribe are untouched.
+     */
+    @JvmStatic
+    fun <T> topic(topic: Topic<T, GlobalSubject>, initial: T): Signal<T> =
+        topic(topic, GlobalSubject, initial)
 
     /** A lazy, memoized derived signal. */
     @JvmStatic
@@ -99,5 +126,31 @@ object Signals {
         } finally {
             stack.addAll(saved)
         }
+    }
+}
+
+/**
+ * A topic signal created before the session context was installed. It resolves
+ * (and registers the subscription) on first read, then delegates normally.
+ */
+private class DeferredTopicSignal<T, S>(
+    private val topic: Topic<T, S>,
+    private val subject: S,
+    private val initial: T,
+) : Signal<T> {
+
+    private var resolvedContext: SessionContext? = null
+    private var resolved: Signal<T>? = null
+
+    override fun get(): T {
+        val context = SessionContext.current()
+            ?: throw IllegalStateException(
+                "topic '${topic.name}' must be read inside a Pathland session render",
+            )
+        if (resolved == null || resolvedContext !== context) {
+            resolved = context.subscribe(topic, subject, initial)
+            resolvedContext = context
+        }
+        return resolved!!.get()
     }
 }

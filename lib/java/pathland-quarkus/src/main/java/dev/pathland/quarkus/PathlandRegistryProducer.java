@@ -7,6 +7,7 @@ import dev.pathland.observability.TracingTelemetry;
 import dev.pathland.server.MountedApp;
 import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandHost;
+import dev.pathland.server.PathlandSignalHub;
 import dev.pathland.server.PathlandTelemetry;
 import dev.pathland.server.StateStores;
 import dev.pathland.view.core.state.InMemoryStateStore;
@@ -103,6 +104,13 @@ public class PathlandRegistryProducer {
         }
         return new PathlandHost(
                 list, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml, telemetry, serviceWorker);
+    }
+
+    /** The default topic hub (root mount, else the first mount) for external UI updates. */
+    @Produces
+    @Singleton
+    PathlandSignalHub signalHub(PathlandHost host) {
+        return host.signalHub();
     }
 
     void shutdown(@Disposes PathlandHost host) {

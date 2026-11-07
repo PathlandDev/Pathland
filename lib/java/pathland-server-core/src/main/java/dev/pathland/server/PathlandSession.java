@@ -20,6 +20,7 @@ import dev.pathland.view.engine.InputDispatcher;
 import dev.pathland.view.engine.RenderResult;
 import dev.pathland.view.core.signal.Signals;
 import dev.pathland.view.core.signal.WritableSignal;
+import dev.pathland.view.core.subscription.SessionContext;
 import dev.pathland.view.core.state.PersistentState;
 import dev.pathland.view.core.state.StateStore;
 import dev.pathland.view.core.transport.EnvironmentData;
@@ -31,6 +32,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * One Pathland application instance per session (1:1 with a client). Owns the session's
@@ -77,6 +80,14 @@ public final class PathlandSession {
     private final boolean debugHtml;
     private final PathlandTelemetry telemetry;
     private final String mount;
+
+    /** Where actor work runs (the registry's actor; inline for standalone/SSR sessions). */
+    private final Executor scheduler;
+
+    /** This session's topic subscriptions (registered with the app's hub when live). */
+    private final SessionSubscriptions subscriptions;
+
+    private volatile boolean closed;
 
     /** node id → proxy config for every {@code PROXY_VIEW} in the mounted tree (spec/PROXY.md). */
     private final Map<Integer, ProxyConfig> proxyViews;
@@ -125,10 +136,32 @@ public final class PathlandSession {
             String stateScope,
             PathlandTelemetry telemetry,
             String mount) {
+        this(sessionId, store, app, env, debugHtml, base, stateScope, telemetry, mount, null, null);
+    }
+
+    /**
+     * The full constructor: [scheduler] is where actor work runs (the registry's
+     * actor for a live session; inline for a standalone/SSR session), and [hub] is
+     * the app's topic hub (null for SSR, which renders once and is discarded).
+     */
+    public PathlandSession(
+            String sessionId,
+            StateStore store,
+            PathlandApp app,
+            EnvironmentData env,
+            boolean debugHtml,
+            String base,
+            String stateScope,
+            PathlandTelemetry telemetry,
+            String mount,
+            Executor scheduler,
+            PathlandSignalHub hub) {
         this.debugHtml = debugHtml;
         this.base = base;
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         this.mount = mount == null ? "/" : mount;
+        this.scheduler = scheduler == null ? Runnable::run : scheduler;
+        this.subscriptions = new SessionSubscriptions(hub, this::submit, this.telemetry, this.mount);
         this.state = new PersistentState(store, stateScope);
         this.stateScope = stateScope;
         // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the
@@ -163,19 +196,63 @@ public final class PathlandSession {
 
         // Mount wires State fields, then renders and emits the structural frame. The
         // active path is injected as a scoped environment value; any root works (with or
-        // without navigation).
-        RenderResult result = emitter.mount(
-                app.newRoot().modifiers(EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
-                new Environment(state));
-        this.inputDispatcher = new InputDispatcher(result, activePath);
-        this.rootId = result.rootId();
-        this.proxyViews = result.proxyViews();
-        // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a SizeThatFits
-        // slot dropping the candidate that held it) — reconcile the proxy sessions
-        // against the live proxyViews map so a proxy lives exactly while its node is
-        // in the retained tree (spec/PROXY.md §7).
-        this.emitter.onStructureReconciled(this::reconcileProxies);
-        applyEnvironment(env); // records viewport; the router already seeded from env.route()
+        // without navigation). The session context is installed first so a view can
+        // declare topic subscriptions as field initializers.
+        SessionContext previous = SessionContext.push(subscriptions);
+        try {
+            RenderResult result = emitter.mount(
+                    app.newRoot().modifiers(
+                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
+                    new Environment(state));
+            this.inputDispatcher = new InputDispatcher(result, activePath);
+            this.rootId = result.rootId();
+            this.proxyViews = result.proxyViews();
+            // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a SizeThatFits
+            // slot dropping the candidate that held it) — reconcile the proxy sessions
+            // against the live proxyViews map so a proxy lives exactly while its node is
+            // in the retained tree (spec/PROXY.md §7).
+            this.emitter.onStructureReconciled(this::reconcileProxies);
+            applyEnvironment(env); // records viewport; the router already seeded from env.route()
+        } finally {
+            SessionContext.restore(previous);
+        }
+    }
+
+    /**
+     * Run [task] on this session's actor. Safe from any thread; non-blocking. Work
+     * submitted after close is dropped, and a failing task is logged without
+     * stopping the session.
+     */
+    public void submit(Runnable task) {
+        if (task == null) {
+            return;
+        }
+        try {
+            scheduler.execute(() -> {
+                if (closed) {
+                    return;
+                }
+                runWithContext(() -> {
+                    try {
+                        task.run();
+                    } catch (RuntimeException e) {
+                        LOG.warn("session task failed: {}", e.getMessage(), e);
+                    }
+                });
+            });
+        } catch (RejectedExecutionException ignored) {
+            // the actor is already shut down
+        }
+    }
+
+    /** Install this session's context for the duration of [task]. */
+    private void runWithContext(Runnable task) {
+        SessionContext previous = SessionContext.push(subscriptions);
+        try {
+            task.run();
+        } finally {
+            SessionContext.restore(previous);
+        }
     }
 
     /** Apply (or enrich) the platform environment after mount (viewport resizes, …). */
@@ -185,12 +262,12 @@ public final class PathlandSession {
      * client. The SSR document keeps the mount theme until a resync/reload.
      */
     public void setTheme(ThemeData theme) {
-        emitter.replaceTheme(theme);
+        runWithContext(() -> emitter.replaceTheme(theme));
     }
 
     /** Clear all app token overrides (renderer defaults apply). */
     public void resetTheme() {
-        emitter.resetTheme();
+        runWithContext(emitter::resetTheme);
     }
 
     /**
@@ -198,17 +275,19 @@ public final class PathlandSession {
      * {@code DARK}); the renderer re-resolves tokens with no node re-emission.
      */
     public void setColorScheme(ThemeMode mode) {
-        emitter.setColorScheme(mode);
+        runWithContext(() -> emitter.setColorScheme(mode));
     }
 
     public void applyEnvironment(EnvironmentData env) {
-        activePath.set(env.route()); // re-route if the platform moved (guards run in the bound router)
-        if (env.viewportWidth() > 0) {
-            viewportWidth = env.viewportWidth();
-        }
-        if (env.viewportHeight() > 0) {
-            viewportHeight = env.viewportHeight();
-        }
+        runWithContext(() -> {
+            activePath.set(env.route()); // re-route if the platform moved (guards run in the bound router)
+            if (env.viewportWidth() > 0) {
+                viewportWidth = env.viewportWidth();
+            }
+            if (env.viewportHeight() > 0) {
+                viewportHeight = env.viewportHeight();
+            }
+        });
     }
 
     /** Wire the live connection AFTER mount (the initial frame was already SSR'd). */
@@ -250,14 +329,16 @@ public final class PathlandSession {
 
     /** Re-send the current tree as a full snapshot (META::RESYNC), flushed immediately. */
     public void resync() {
-        emitter.renderFull();
-        // A's own emitter does not carry the origin subtree (it is forwarded), so a
-        // client resync must also refresh the proxy regions from their origins.
-        ProxyHost host = proxyHost;
-        if (host != null) {
-            host.resyncAll();
-        }
-        batcher.flush();
+        runWithContext(() -> {
+            emitter.renderFull();
+            // A's own emitter does not carry the origin subtree (it is forwarded), so a
+            // client resync must also refresh the proxy regions from their origins.
+            ProxyHost host = proxyHost;
+            if (host != null) {
+                host.resyncAll();
+            }
+            batcher.flush();
+        });
     }
 
     /**
@@ -299,26 +380,28 @@ public final class PathlandSession {
 
     /** Route decoded events into the app's bindings (a host may pre-transform them, e.g. mount-strip NAVIGATE urls). */
     public void dispatch(Iterable<Event> events) {
-        try {
-            ProxyHost host = proxyHost;
-            if (host == null) {
-                inputDispatcher.dispatch(events);
-                return;
-            }
-            // Events whose target is in a proxy's id range belong to the origin
-            // server; everything else dispatches to the app's own bindings.
-            List<Event> local = new ArrayList<>();
-            for (Event event : events) {
-                if (!host.forward(event)) {
-                    local.add(event);
+        runWithContext(() -> {
+            try {
+                ProxyHost host = proxyHost;
+                if (host == null) {
+                    inputDispatcher.dispatch(events);
+                    return;
                 }
+                // Events whose target is in a proxy's id range belong to the origin
+                // server; everything else dispatches to the app's own bindings.
+                List<Event> local = new ArrayList<>();
+                for (Event event : events) {
+                    if (!host.forward(event)) {
+                        local.add(event);
+                    }
+                }
+                if (!local.isEmpty()) {
+                    inputDispatcher.dispatch(local);
+                }
+            } catch (RuntimeException e) {
+                LOG.warn("dropping event batch: {}", e.getMessage());
             }
-            if (!local.isEmpty()) {
-                inputDispatcher.dispatch(local);
-            }
-        } catch (RuntimeException e) {
-            LOG.warn("dropping event batch: {}", e.getMessage());
-        }
+        });
     }
 
     /** Render the SSR HTML for this session's current tree (request thread). */
@@ -476,8 +559,10 @@ public final class PathlandSession {
         return snapshots;
     }
 
-    /** Tear down: close the persistent state, unsubscribe the emitter, stop the batcher, drop the connection. */
+    /** Tear down: stop topic routing, close state, unsubscribe the emitter, stop the batcher, drop the connection. */
     public void close() {
+        closed = true;
+        subscriptions.close();
         ProxyHost host = proxyHost;
         if (host != null) {
             host.close();

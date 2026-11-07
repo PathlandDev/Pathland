@@ -33,6 +33,16 @@ Kotlin-authored views through JVM interop.
   caching/retry, circular-dependency detection, and a thread-safe global
   `Scheduler`. `Signals.state` binds to the ambient session `PersistentState`
   during a component render.
+- **Topic subscriptions** (`dev.pathland.view.core.subscription`): a strongly
+  typed `Topic<T, S>` and the DSL `topic(key, subject, initial)` (also
+  `Signals.topic`). Scoped topics name an entity subject; `Topic.global(name)`
+  declares an unscoped `Topic<T, GlobalSubject>` with the two-argument
+  `topic(key, initial)` form. Both return a normal `Signal<T>` backed by a
+  session-local mirror; the server runtime registers it with the app's hub and
+  applies published values on the session actor. `SessionContext` (thread-local,
+  installed by `PathlandSession` around every actor task) also exposes
+  `unsubscribe` and `submit`. Resolution is lazy when a root view's field
+  initializer runs before the context is installed.
 - **State** (`dev.pathland.view.core.state`): `PersistentState`, untyped
   `StateStore`, in-memory store and provider. Kotlin `Component` state delegates
   bind directly before `body()`; the Java `State` field/binder machinery and
@@ -98,7 +108,8 @@ Kotlin-authored views through JVM interop.
   error). Child collection itself is unchanged — the thread-local `ViewScopes`
   stack still drives auto-registration.
 - **Signals**: `signal`, `computed`, `constant`, `effect`, `untracked`,
-  `Signal<T>.value`, `WritableSignal<T>.value`, `Signal<T>.map`, `readonly`.
+  `topic(key, subject, initial)`, `Signal<T>.value`, `WritableSignal<T>.value`,
+  `Signal<T>.map`, `readonly`.
 - **Modifier sugar**: `.padding`, `.frame`, `.offset`, `.position`, `.fixedSize`,
   layout priority/z-index/aspect ratio, the full text-formatting surface,
   foreground/background/border/corner radius/shadow, visual effects, transforms,
