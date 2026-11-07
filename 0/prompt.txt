@@ -1,0 +1,1 @@
+We need to create an issue for releasing maven artifacts to maven central. Also, in relation to that,  we need to create and relase quarkus extentions for  pathland to the Quarkiverse Hub!
