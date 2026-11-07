@@ -78,7 +78,7 @@ jobs:
 
       - name: Test the publishable crates
         working-directory: lib/rust
-        run: cargo test -p pathland-core -p pathland-markdown -p pathland-engine -p pathland-view -p pathland-core-transport -p pathland-render-html
+        run: cargo test -p pathland-core -p pathland-markdown -p pathland-engine -p pathland-view -p pathland-render-core -p pathland-core-transport -p pathland-render-html
 
       - name: Publish in dependency order
         working-directory: lib/rust
@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
           version="${{ needs.version.outputs.version }}"
-          crates=(pathland-core pathland-markdown pathland-engine pathland-view pathland-core-transport pathland-render-html)
+          crates=(pathland-core pathland-markdown pathland-engine pathland-view pathland-render-core pathland-core-transport pathland-render-html)
           for c in "${crates[@]}"; do
             echo "::group::publish $c $version"
             # Idempotent: skip a crate+version already on crates.io.
@@ -110,7 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           # All dependencies are published by now, so packaging every crate works.
-          for c in pathland-core pathland-markdown pathland-engine pathland-view pathland-core-transport pathland-render-html; do
+          for c in pathland-core pathland-markdown pathland-engine pathland-view pathland-render-core pathland-core-transport pathland-render-html; do
             cargo package --allow-dirty -p "$c"
           done
 

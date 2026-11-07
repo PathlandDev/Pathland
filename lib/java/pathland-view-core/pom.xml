@@ -84,4 +84,45 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Maven Central requires a -javadoc.jar for every jar. This module is
+             Kotlin-first (Markdown.java is the only Java source and it imports
+             Kotlin classes), so the JDK javadoc tool cannot resolve its own
+             Kotlin declarations. Generate the javadoc jar with Dokka instead;
+             the parent's maven-javadoc-plugin is skipped for this module only.
+
+             When the remaining non-DSL Kotlin is converted to Java, delete this
+             profile and let the parent's maven-javadoc-plugin take over again. -->
+        <profile>
+            <id>release</id>
+            <properties>
+                <maven.javadoc.skip>true</maven.javadoc.skip>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jetbrains.dokka</groupId>
+                        <artifactId>dokka-maven-plugin</artifactId>
+                        <version>${dokka.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <phase>package</phase>
+                                <goals><goal>javadocJar</goal></goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <sourceDirectories>
+                                <dir>${project.basedir}/src/main/kotlin</dir>
+                                <dir>${project.basedir}/src/main/java</dir>
+                            </sourceDirectories>
+                            <languageVersion>2.4</languageVersion>
+                            <apiVersion>2.4</apiVersion>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
