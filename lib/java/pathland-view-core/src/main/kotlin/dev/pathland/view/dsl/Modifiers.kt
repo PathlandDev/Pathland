@@ -133,7 +133,7 @@ class Frame private constructor(private val config: Config) : ViewModifier {
         var widthToken: Length? = null
         var heightToken: Length? = null
         var alignment: Signal<Alignment>? = null
-        val bounds: Array<Signal<Float>?> = arrayOfNulls(6)
+        val bounds: Array<Signal<Float>?> = arrayOfNulls(4)
 
         fun width(value: Float) = apply { width = size(value); widthToken = null }
         fun width(value: Signal<Float>) = apply { width = value; widthToken = null }
@@ -143,16 +143,12 @@ class Frame private constructor(private val config: Config) : ViewModifier {
         fun height(value: Length) = apply { heightToken = value; height = null }
         fun minWidth(value: Float) = bound(0, value)
         fun minWidth(value: Signal<Float>) = apply { bounds[0] = value }
-        fun idealWidth(value: Float) = bound(1, value)
-        fun idealWidth(value: Signal<Float>) = apply { bounds[1] = value }
-        fun maxWidth(value: Float) = bound(2, value)
-        fun maxWidth(value: Signal<Float>) = apply { bounds[2] = value }
-        fun minHeight(value: Float) = bound(3, value)
-        fun minHeight(value: Signal<Float>) = apply { bounds[3] = value }
-        fun idealHeight(value: Float) = bound(4, value)
-        fun idealHeight(value: Signal<Float>) = apply { bounds[4] = value }
-        fun maxHeight(value: Float) = bound(5, value)
-        fun maxHeight(value: Signal<Float>) = apply { bounds[5] = value }
+        fun maxWidth(value: Float) = bound(1, value)
+        fun maxWidth(value: Signal<Float>) = apply { bounds[1] = value }
+        fun minHeight(value: Float) = bound(2, value)
+        fun minHeight(value: Signal<Float>) = apply { bounds[2] = value }
+        fun maxHeight(value: Float) = bound(3, value)
+        fun maxHeight(value: Signal<Float>) = apply { bounds[3] = value }
         fun alignment(value: Alignment) = apply { alignment = Signals.constant(value) }
         fun alignment(value: Signal<Alignment>) = apply { alignment = value }
         private fun bound(i: Int, value: Float) = apply {
@@ -170,8 +166,8 @@ class Frame private constructor(private val config: Config) : ViewModifier {
         else config.height?.let { list += Modified.prop(Properties.HEIGHT, it) }
         config.alignment?.let { list += Modified.prop(Properties.ALIGNMENT, it) }
         val props = intArrayOf(
-            Properties.MIN_WIDTH, Properties.IDEAL_WIDTH, Properties.MAX_WIDTH,
-            Properties.MIN_HEIGHT, Properties.IDEAL_HEIGHT, Properties.MAX_HEIGHT,
+            Properties.MIN_WIDTH, Properties.MAX_WIDTH,
+            Properties.MIN_HEIGHT, Properties.MAX_HEIGHT,
         )
         for (i in props.indices) config.bounds[i]?.let { list += Modified.prop(props[i], it) }
         return Modified.props(content, *list.toTypedArray())

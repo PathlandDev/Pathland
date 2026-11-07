@@ -99,10 +99,8 @@ enum {
     PL_PROP_POSITION_X = 0x0010,
     PL_PROP_POSITION_Y = 0x0011,
     PL_PROP_MIN_WIDTH = 0x0012,
-    PL_PROP_IDEAL_WIDTH = 0x0013,
     PL_PROP_MAX_WIDTH = 0x0014,
     PL_PROP_MIN_HEIGHT = 0x0015,
-    PL_PROP_IDEAL_HEIGHT = 0x0016,
     PL_PROP_MAX_HEIGHT = 0x0017,
     PL_PROP_FIXED_SIZE_HORIZONTAL = 0x0018,
     PL_PROP_FIXED_SIZE_VERTICAL = 0x0019,
@@ -2222,20 +2220,16 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
         item->setProperty("y", static_cast<double>(f32(value)));
         break;
     case PL_PROP_MIN_WIDTH:
-    case PL_PROP_IDEAL_WIDTH:
     case PL_PROP_MAX_WIDTH:
     case PL_PROP_MIN_HEIGHT:
-    case PL_PROP_IDEAL_HEIGHT:
     case PL_PROP_MAX_HEIGHT: {
         QQuickLayoutAttached *a = layoutAttached(item);
         if (a) {
             const double v = static_cast<double>(f32(value));
             switch (prop) {
             case PL_PROP_MIN_WIDTH: a->setMinimumWidth(v); break;
-            case PL_PROP_IDEAL_WIDTH: a->setPreferredWidth(v); break;
             case PL_PROP_MAX_WIDTH: a->setMaximumWidth(v); break;
             case PL_PROP_MIN_HEIGHT: a->setMinimumHeight(v); break;
-            case PL_PROP_IDEAL_HEIGHT: a->setPreferredHeight(v); break;
             case PL_PROP_MAX_HEIGHT: a->setMaximumHeight(v); break;
             }
         }

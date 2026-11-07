@@ -2,7 +2,7 @@
 
 **Wire protocol version:** 1
 **Status:** Draft
-**Last Updated:** October 1, 2026
+**Last Updated:** November 7, 2026
 
 ---
 
@@ -52,6 +52,42 @@ Notes:
   three reference frameworks).
 - **Content is fitted within the box** (see [Content fitting](#content-fitting)),
   never used to grow the box.
+
+### Frame bounds
+
+`MIN_WIDTH`/`MIN_HEIGHT` and `MAX_WIDTH`/`MAX_HEIGHT` are per-axis **bounds**,
+not additional size kinds. They are applied after the size kind and intrinsic
+size are resolved:
+
+1. Resolve the axis size from its kind: Fixed = its box, Fill = the available
+   space, Hug = the content's natural size (plus any greedy-primitive rule
+   below).
+2. Apply bounds:
+   - `MAX_*` caps the resolved size.
+   - `MIN_*` raises the resolved size.
+   - When both are present and conflict, `MIN_*` wins.
+3. Position the result with the parent's `ALIGNMENT` when it is smaller than
+   the available cross-axis space.
+
+A finite `MAX_*` makes that axis **bounded**:
+
+- A bounded `Fill` or greedy node still fills/grows, but only up to the cap.
+- A bounded `Hug` node remains Hug; it does not become Fill.
+- A bounded node does **not** propagate an unbounded fill demand to its
+  ancestors. Ancestors size to the capped content rather than stretching to
+  `100%`.
+- A bounded node is **not** stretched on the cross axis. Once capped, it is
+  positioned by the parent's `ALIGNMENT` (the default is start).
+- In the CSS renderers this is `width/height: auto` plus `max-width/max-height`
+  for a Hug node, and `width/height: 100%` plus the max for an explicit `Fill`;
+  either way, no `align-self: stretch` is added for the bounded axis.
+
+`MIN_*` does not create Fill; it only raises the resolved size. An explicit
+`HUG_CONTENT`/absent axis is Hug and is never stretched.
+
+`IDEAL_WIDTH` (`0x0013`) and `IDEAL_HEIGHT` (`0x0016`) are retired in v1; those
+ids must not be reused. `MAX_* = ∞` is not a constraint (the bound is omitted);
+`WIDTH/HEIGHT = ∞` normalizes to `Fill`.
 
 ---
 
@@ -244,6 +280,12 @@ renderer** (HTML + GTK4 today; SwiftUI/Compose as they land).
 | C12 | `Grid` `GRID_COLUMNS=2` with a `FILL`-width cell | a definite-width parent | the `FILL` cell **stretches to fill its column**; Hug cells keep their size; the grid does **not** propagate the `FILL` up to a Hug parent on the auto axis |
 | C13 | `ScrollView` (`SCROLL_AXIS=Vertical`, no frame) | a `FILL`-sized column, content `FILL`-width | fills the available height (scroll axis); the cross (horizontal) axis hugs — it fills only because the content has a `Fill`-width child; content taller than the viewport **scrolls**, never clips or overflows the viewport |
 | C14 | `ScrollView` `HEIGHT=HUG_CONTENT` | a Hug column | the viewport's height is the content's **natural height** (no vertical scroll); the cross axis hugs its content (no implicit width greed) |
+| C15 | `ScrollView` `SCROLL_AXIS=Horizontal`, no frame | a Hug row | fills the available **width** (scroll axis); the height hugs its content unless a `Fill`-height child propagates |
+| C16 | `ScrollView` `SCROLL_AXIS=Vertical`, content `WIDTH=Fill` | a Fill column | fills the available height; the width fills only because the content has a `Fill`-width child |
+| C17 | Hug child with `MAX_WIDTH=620` | a 1000-wide centered column | width is the content's natural width up to `620`, centered; no `width:100%`, no cross-axis stretch |
+| C18 | `WIDTH=Fill` child with `MAX_WIDTH=620` | a 1000-wide centered column | fills up to `620` and is centered; the max bounds the fill, and ancestors do not become unbounded Fill |
+| C19 | `MIN_WIDTH=700, MAX_WIDTH=620` | any parent | resolved width is at least `700` (min wins over max) |
+| C20 | `MAX_HEIGHT=200` on a ScrollView's cross-axis content | a bounded viewport | the content is capped at `200` and positioned by the parent's alignment; the viewport does not stretch past the cap |
 
 Grid/scroll/lazy allocation is specified in [PRIMITIVES.md §Grid / §ScrollView](./PRIMITIVES.md#grid--grid-0x13); the lazy containers are identical to their eager base with windowed realization only.
 

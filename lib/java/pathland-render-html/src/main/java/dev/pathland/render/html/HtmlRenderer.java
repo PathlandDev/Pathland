@@ -736,12 +736,26 @@ public final class HtmlRenderer {
                             semantic, debug);
             case Components.SCROLLVIEW -> {
                 String tag = semantic == null ? "div" : semantic;
-                String scrollStyle = Format.styleAttr("flex:1 1 auto;align-self:stretch;overflow:auto;" + css);
+                boolean scrollHorizontal = RenderNode.scrollHorizontal(node);
+                Boolean parentMain = parentComponent == null
+                        ? null
+                        : RenderNode.stackMainHorizontal(parentComponent);
+                String scrollFill;
+                if (parentMain == null) {
+                    // Root/non-stack parent: retain the legacy fill behavior.
+                    scrollFill = "flex:1 1 auto;align-self:stretch;";
+                } else if (parentMain == scrollHorizontal) {
+                    scrollFill = "flex:1 1 auto;";
+                } else {
+                    scrollFill = "";
+                }
+                String axis = scrollHorizontal ? "horizontal" : "vertical";
+                String scrollStyle = Format.styleAttr(scrollFill + "overflow:auto;" + css + derived);
                 String content = node.children.isEmpty()
                         ? ""
                         : renderNode(nodes, node.children.get(0), node.component, debug);
-                element = "<" + tag + dataId + event + aria + scrollStyle + ">" + content + "</"
-                        + tag + ">";
+                element = "<" + tag + dataId + " data-pathland-scroll-axis=\"" + axis + "\""
+                        + event + aria + scrollStyle + ">" + content + "</" + tag + ">";
             }
             case Components.ZSTACK -> element = renderZStack(nodes, id, node, dataId.toString(),
                     css, derived.toString(), event, aria, semantic, debug);

@@ -153,6 +153,8 @@ fn scenarios() -> Vec<Scenario> {
         media(),
         native_controls(),
         framebounds(),
+        scrollaxis(),
+        maxbounds(),
     ]
 }
 
@@ -174,6 +176,96 @@ fn framebounds() -> Scenario {
     b.insert(1, 2);
     Scenario {
         name: "framebounds",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+
+fn scrollaxis() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::VSTACK);
+
+    // HSTACK > horizontal SCROLLVIEW: scroll axis == parent main -> flex only.
+    b.create(2, component_type::HSTACK);
+    b.create(3, component_type::SCROLLVIEW);
+    b.set_prop(3, value_type::F32, property_id::SCROLL_AXIS, 1.0f32.to_bits());
+    b.create(4, component_type::TEXT);
+    b.set_text(4, "wide");
+    b.insert(3, 4);
+    b.insert(2, 3);
+    b.insert(1, 2);
+
+    // HSTACK > vertical SCROLLVIEW: scroll axis == parent cross -> stretch.
+    b.create(5, component_type::HSTACK);
+    b.create(6, component_type::SCROLLVIEW);
+    b.create(7, component_type::TEXT);
+    b.set_text(7, "tall");
+    b.insert(6, 7);
+    b.insert(5, 6);
+    b.insert(1, 5);
+
+    // VSTACK > vertical SCROLLVIEW: scroll axis == parent main -> flex only.
+    b.create(8, component_type::VSTACK);
+    b.create(9, component_type::SCROLLVIEW);
+    b.create(10, component_type::TEXT);
+    b.set_text(10, "main");
+    b.insert(9, 10);
+    b.insert(8, 9);
+    b.insert(1, 8);
+
+    // VSTACK > horizontal SCROLLVIEW: scroll axis == parent cross -> stretch.
+    b.create(11, component_type::VSTACK);
+    b.create(12, component_type::SCROLLVIEW);
+    b.set_prop(12, value_type::F32, property_id::SCROLL_AXIS, 1.0f32.to_bits());
+    b.create(13, component_type::TEXT);
+    b.set_text(13, "cross");
+    b.insert(12, 13);
+    b.insert(11, 12);
+    b.insert(1, 11);
+
+    Scenario {
+        name: "scrollaxis",
+        opcodes: b.opcodes,
+        strings: b.strings,
+        root: 1,
+    }
+}
+
+fn maxbounds() -> Scenario {
+    let mut b = Builder::new();
+    b.create(1, component_type::VSTACK);
+    b.set_prop(1, value_type::F32, property_id::ALIGNMENT, 1.0f32.to_bits());
+
+    // Hug + finite max: content-sized up to the cap, centered by the parent.
+    b.create(2, component_type::VSTACK);
+    b.set_prop(2, value_type::F32, property_id::MAX_WIDTH, 620.0f32.to_bits());
+    b.create(3, component_type::TEXT);
+    b.set_text(3, "hug");
+    b.insert(2, 3);
+    b.insert(1, 2);
+
+    // Fill + finite max: fills only up to the cap, centered by the parent.
+    b.create(4, component_type::VSTACK);
+    b.set_prop(4, value_type::F32, property_id::WIDTH, pathland_core::size::FILL.to_bits());
+    b.set_prop(4, value_type::F32, property_id::MAX_WIDTH, 620.0f32.to_bits());
+    b.create(5, component_type::TEXT);
+    b.set_text(5, "fill");
+    b.insert(4, 5);
+    b.insert(1, 4);
+
+    // Min wins over a smaller max.
+    b.create(6, component_type::VSTACK);
+    b.set_prop(6, value_type::F32, property_id::MIN_WIDTH, 700.0f32.to_bits());
+    b.set_prop(6, value_type::F32, property_id::MAX_WIDTH, 620.0f32.to_bits());
+    b.create(7, component_type::TEXT);
+    b.set_text(7, "min");
+    b.insert(6, 7);
+    b.insert(1, 6);
+
+    Scenario {
+        name: "maxbounds",
         opcodes: b.opcodes,
         strings: b.strings,
         root: 1,

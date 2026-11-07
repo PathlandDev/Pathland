@@ -8,7 +8,7 @@ import type { Batch } from "./plpl";
 import { MAX_OPCODES, MAX_STRING_BYTES, ProtocolError, parseBatch } from "./plpl";
 import { applyBatch, type DomRenderer } from "./apply";
 import { encodePing, encodeResync } from "./events";
-import { FLAG_HOST_TO_GUEST, HEADER_SIZE, OPCODE_SIZE, VERSION } from "./constants";
+import { CAT_META, CMD_PONG, FLAG_HOST_TO_GUEST, HEADER_SIZE, OPCODE_SIZE, VERSION } from "./constants";
 import { log } from "./log";
 import { describeBatch, describeBatchDetail } from "./describe";
 
@@ -30,6 +30,14 @@ export interface TransportOptions {
   onOpen?: (transport: Transport) => void;
   /** Injectable socket factory (tests). */
   createSocket?: (url: string) => WebSocket;
+}
+
+/** A host → guest batch containing only `META::PONG` (transport-liveness only). */
+function isTransportHeartbeat(batch: Batch): boolean {
+  return (
+    batch.opcodes.length > 0 &&
+    batch.opcodes.every((op) => op.category === CAT_META && op.command === CMD_PONG)
+  );
 }
 
 const BASE_DELAY_MS = 500;
@@ -254,6 +262,12 @@ export class Transport {
       return;
     }
     this.trackSequence(batch);
+    // Transport-liveness PONG is not application/rendered state (spec/OPCODE.md
+    // §Transport heartbeat): acknowledge it via the watchdog only, never run the
+    // DOM layout pass for it.
+    if (isTransportHeartbeat(batch)) {
+      return;
+    }
     try {
       applyBatch(batch, this.options.renderer);
     } catch (err) {

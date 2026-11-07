@@ -181,8 +181,13 @@ describe("Transport", () => {
   });
 
   describe("sequence gap detection", () => {
-    function openTransport(renderer: DomRenderer): Transport {
-      const transport = new Transport({ url: "ws://host/ws", renderer, createSocket: fakeFactory });
+    function openTransport(renderer: DomRenderer, onBatch?: (batch: unknown) => void): Transport {
+      const transport = new Transport({
+        url: "ws://host/ws",
+        renderer,
+        onBatch,
+        createSocket: fakeFactory,
+      });
       transport.start();
       FakeSocket.instances[0]!.emitOpen();
       return transport;
@@ -221,13 +226,17 @@ describe("Transport", () => {
       transport.stop();
     });
 
-    it("ignores host → guest (PONG) batches for sequence tracking", () => {
-      const { renderer } = rendererWithNode1();
-      const transport = openTransport(renderer);
+    it("ignores host → guest (PONG) batches for sequence tracking and apply", () => {
+      const { renderer, span } = rendererWithNode1();
+      const onBatch = vi.fn();
+      const transport = openTransport(renderer, onBatch);
       const socket = FakeSocket.instances[0]!;
       socket.emitMessage(deltaBatch(1).buffer);
+      const before = span.getAttribute("style");
       socket.emitMessage(pongBatch().buffer);
       socket.emitMessage(deltaBatch(2).buffer);
+      expect(span.getAttribute("style")).toBe(before);
+      expect(onBatch).toHaveBeenCalledTimes(2); // deltas only, never the PONG
       expect(socket.sent).toHaveLength(0);
       transport.stop();
     });

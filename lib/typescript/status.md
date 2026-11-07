@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -180,7 +180,7 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   - **META commands**: `RESET` clears the DOM + registry; `ENVIRONMENT` accepted.
 - **Full property applier** (`src/classes.ts`, table-driven): the complete
   spec/MODIFIERS.md + control/semantic catalog — layout (spacing/alignment/
-  margins/offset/position/frame min-ideal-max/fixed-size/layout-priority/
+  margins/offset/position/frame min-max/fixed-size/layout-priority/
   aspect-ratio/content-mode), text (align/line-limit/truncation/font-size/
   weight/style/design/width/kerning/tracking/baseline/line-spacing/text-case/
   underline/strikethrough), styling (color/background/border width-color-radius-
@@ -407,15 +407,18 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   batch** and requests a full snapshot (`META::RESYNC`), then re-baselines.
   Host → guest heartbeat (`PONG`) batches are excluded; the baseline resets on
   every (re)connect. Tests cover contiguous runs (no resync), a gap (resync +
-  skip), `PONG` exclusion, and re-baselining after a gap.
+  skip), `PONG` exclusion, and re-baselining after a gap. A `PONG`-only batch is
+  transport-liveness only: it resets the watchdog but is not applied to the DOM
+  (no layout pass, no `onBatch`).
 - **Grid/ScrollView/Lazy layout (spec/PRIMITIVES.md §Grid / §ScrollView)**:
   mirrors the Rust SSR — `grid-template-columns`/`grid-template-rows` from the
   `GRID_COLUMNS`/`GRID_ROWS` constructor properties (columns for GRID/
   LAZY_VGRID, rows for LAZY_HGRID + `grid-auto-flow:column`; never a pixel
   width/height), **`GRID_TRACKS`** per-track specs (`flex`/`fixed:<pts>`/
   `adaptive:<pts>` → `1fr`/`<pts>px`/`minmax(<pts>px,1fr)`, precedence over the
-  count), `gap` from `SPACING`, greedy scroll
-  (`flex:1 1 auto;align-self:stretch;overflow:auto`), and **per-cell grid
+  count), `gap` from `SPACING`, `SCROLL_AXIS`-aware scroll greed
+  (scroll-axis flex; cross-axis stretch only for unbounded fill), finite
+  `MAX_*` cap/bounded-fill semantics, and **per-cell grid
   alignment** — grid cells are wrapped in an auto-placed shell whose
   `justify-self`/`align-self` is `stretch` for a `FILL`/greedy cell else the
   grid `ALIGNMENT` position (`placedChild` + `applyLayout`, the ZStack mirror).

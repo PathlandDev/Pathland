@@ -1,6 +1,6 @@
 # pathland-html-golden — implementation status
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
 
 Cross-renderer **golden conformance fixtures** for the HTML renderers.
 
@@ -16,7 +16,9 @@ Cross-renderer **golden conformance fixtures** for the HTML renderers.
   (non-visual hidden controller shell), **native_controls** — picker/date/color/
   progress/video native shells carrying their design-system classes,
   **framebounds** — a fill-width frame clamped by `MAX_WIDTH` around a fit slot
-  (the player-bar first-paint regression), and a base→delta pair whose change
+  (the player-bar first-paint regression), **scrollaxis** — horizontal/vertical
+  `SCROLLVIEW` greed on the scroll axis only, **maxbounds** — finite `MAX_*`
+  cap/bounded-fill placement and `MIN > MAX`, and a base→delta pair whose change
   includes a `ROLE` change exercising the semantic-tag retag), each rendered by
   the canonical Rust SSR renderer into committed fixtures under
   `lib/typescript/test/fixtures/ssr/` (`{name}.plpl` batch bytes + `{name}.html`

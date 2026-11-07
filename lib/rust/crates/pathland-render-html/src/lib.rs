@@ -319,17 +319,14 @@ impl Node {
                 css.push_str(&format!("height:{};", size_css(v)));
             }
         }
-        // Frame bounds (SwiftUI `minWidth`/`idealWidth`/`maxWidth` and the
-        // height equivalents). The DOM client applies these after WIDTH/HEIGHT
-        // in the same order, so a player-bar frame `width(FILL).maxWidth(768)`
-        // is 768-wide on the very first SSR paint — not only after hydration.
-        // `IDEAL_*` maps onto the base size exactly like `classes.ts`.
+        // Frame bounds (SwiftUI `minWidth`/`maxWidth` and the height
+        // equivalents). The DOM client applies these after WIDTH/HEIGHT in the
+        // same order, so a player-bar frame `width(FILL).maxWidth(768)` is
+        // 768-wide on the very first SSR paint — not only after hydration.
         for (prop, css_prop) in [
             (property_id::MIN_WIDTH, "min-width"),
-            (property_id::IDEAL_WIDTH, "width"),
             (property_id::MAX_WIDTH, "max-width"),
             (property_id::MIN_HEIGHT, "min-height"),
-            (property_id::IDEAL_HEIGHT, "height"),
             (property_id::MAX_HEIGHT, "max-height"),
         ] {
             if let Some(v) = f32p(prop) {
@@ -664,6 +661,22 @@ fn stack_main_horizontal(component: u16) -> Option<bool> {
 /// `axis_horizontal` selects `WIDTH` (true) or `HEIGHT`; `main_axis` tells
 /// whether the axis is the node's parent's main axis (governs `SPACER`/`DIVIDER`
 /// greediness).
+fn axis_max(node: &Node, axis_horizontal: bool) -> Option<f32> {
+    let prop = if axis_horizontal {
+        property_id::MAX_WIDTH
+    } else {
+        property_id::MAX_HEIGHT
+    };
+    node.properties
+        .get(&prop)
+        .map(|b| f32::from_bits(*b))
+        .filter(|v| v.is_finite() && *v >= 0.0)
+}
+
+fn scroll_axis_horizontal(node: &Node) -> bool {
+    node.f32_property(property_id::SCROLL_AXIS, 0.0).round() != 0.0
+}
+
 fn fills_axis(
     nodes: &BTreeMap<u32, Node>,
     id: u32,
@@ -673,6 +686,12 @@ fn fills_axis(
     let Some(node) = nodes.get(&id) else {
         return false;
     };
+    // A finite max is a cap, not a fill request: it keeps the node content-sized
+    // up to the cap and lets the parent's ALIGNMENT position it (LAYOUT.md
+    // §frame bounds). It also stops unbounded fill propagation to ancestors.
+    if axis_max(node, axis_horizontal).is_some() {
+        return false;
+    }
     let prop = if axis_horizontal {
         property_id::WIDTH
     } else {
@@ -681,11 +700,24 @@ fn fills_axis(
     let hint = node.properties.get(&prop).map(|b| f32::from_bits(*b));
     match hint {
         Some(v) if v == size::FILL => return true,
+        Some(v) if v == size::HUG_CONTENT => return false, // explicit hug overrides greed
         Some(v) if v.is_finite() && v > 0.0 => return false, // Fixed bounds
         _ => {}
     }
+    if node.component == component_type::SCROLLVIEW {
+        let scroll_h = scroll_axis_horizontal(node);
+        if scroll_h == axis_horizontal {
+            return true; // greedy on its scroll axis
+        }
+        // Cross axis hugs; a Fill content child propagates Fill through it.
+        let child_main = scroll_h == axis_horizontal;
+        return node
+            .children
+            .first()
+            .is_some_and(|&child| fills_axis(nodes, child, axis_horizontal, child_main));
+    }
     let greedy = match node.component {
-        component_type::COLOR | component_type::SCROLLVIEW => true,
+        component_type::COLOR => true,
         component_type::SPACER => main_axis,
         component_type::DIVIDER => !main_axis,
         _ => false,
@@ -2072,19 +2104,31 @@ if indeterminate {
             }
             component_type::SCROLLVIEW => {
                 let tag = semantic.unwrap_or("div");
-                // Layout-greedy on both axes (LAYOUT.md): a scroll region fills
-                // the available space (SwiftUI `ScrollView` semantics) unless a
-                // size frame overrides it. The **first child** is the content
-                // (spec/PRIMITIVES.md §ScrollView); additional children are not
-                // rendered.
-                let combined = format!("flex:1 1 auto;align-self:stretch;overflow:auto;{css}");
+                // Greedy on its scroll axis only (LAYOUT.md §layout-greedy
+                // primitives). Cross-axis stretch is added by the parent stack's
+                // derived pass, so this branch only contributes main-axis flex.
+                // The **first child** is the content (spec/PRIMITIVES.md
+                // §ScrollView); additional children are not rendered.
+                let scroll_h = scroll_axis_horizontal(node);
+                let parent_main = parent_component.and_then(stack_main_horizontal);
+                let scroll_fill = match parent_main {
+                    Some(main_h) if main_h == scroll_h => "flex:1 1 auto;",
+                    Some(_) => "",
+                    // Root/non-stack parent: retain the legacy fill behavior.
+                    None => "flex:1 1 auto;align-self:stretch;",
+                };
+                let axis_attr = format!(
+                    " data-pathland-scroll-axis=\"{}\"",
+                    if scroll_h { "horizontal" } else { "vertical" },
+                );
+                let combined = format!("{scroll_fill}overflow:auto;{css}{derived}");
                 let scroll_style = style_attr(&combined);
                 let content = node
                     .children
                     .first()
                     .map(|&c| self.render_node(nodes, c, Some(node.component)))
                     .unwrap_or_default();
-                format!("<{tag}{data_id}{event}{aria}{scroll_style}>{content}</{tag}>")
+                format!("<{tag}{data_id}{axis_attr}{event}{aria}{scroll_style}>{content}</{tag}>")
             }
             component_type::ZSTACK => {
                 let tag = semantic.unwrap_or("div");
@@ -3914,9 +3958,10 @@ mod tests {
     }
 
     #[test]
-    fn divider_spans_cross_axis_and_scrollview_is_greedy() {
-        // DIVIDER is layout-greedy on the cross axis (width:100%); SCROLLVIEW
-        // is greedy on both axes (flex + align-self:stretch) — LAYOUT.md.
+    fn divider_spans_cross_axis_and_scrollview_is_greedy_on_scroll_axis() {
+        // DIVIDER is layout-greedy on the cross axis (width:100%); a vertical
+        // SCROLLVIEW is greedy on its scroll axis (main axis of this VStack),
+        // but hugs the cross axis — LAYOUT.md.
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::DIVIDER as u32, 0));
@@ -3927,8 +3972,13 @@ mod tests {
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("width:100%"), "divider greedy: {}", html);
         assert!(
-            html.contains("flex:1 1 auto;align-self:stretch;overflow:auto"),
-            "scrollview greedy: {}",
+            html.contains("flex:1 1 auto;overflow:auto"),
+            "scrollview greedy on its scroll axis: {}",
+            html
+        );
+        assert!(
+            !html.contains("data-pathland-scroll-axis=\"vertical\" style=\"flex:1 1 auto;align-self:stretch"),
+            "vertical scroll cross axis hugs: {}",
             html
         );
     }
@@ -4183,6 +4233,26 @@ mod tests {
         assert!(html.contains("height:100%;"), "FILL height: {html}");
         assert!(html.contains("max-height:96px;"), "max height bounds: {html}");
         assert!(html.contains("min-height:40px;"), "min height bounds: {html}");
+    }
+
+    #[test]
+    fn retired_ideal_bounds_have_no_layout_effect() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        for (prop, value) in [(0x0013u16, 123.0f32), (0x0016u16, 45.0f32)] {
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((value_type::F32 as u32) << 16) | prop as u32,
+                value.to_bits(),
+            ));
+        }
+        let html = HtmlRenderer::new().render_fragment(&opcodes, &[], 1);
+        assert!(!html.contains("width:123px"), "retired IDEAL_WIDTH ignored: {html}");
+        assert!(!html.contains("height:45px"), "retired IDEAL_HEIGHT ignored: {html}");
+        assert!(!html.contains("width:100%"), "retired ideal does not fill: {html}");
     }
 
     #[test]
