@@ -15,10 +15,10 @@ object Properties {
     const val POSITION_X = 0x0010
     const val POSITION_Y = 0x0011
     const val MIN_WIDTH = 0x0012
-    const val IDEAL_WIDTH = 0x0013
+    // 0x0013 was IDEAL_WIDTH: retired; do not reuse.
     const val MAX_WIDTH = 0x0014
     const val MIN_HEIGHT = 0x0015
-    const val IDEAL_HEIGHT = 0x0016
+    // 0x0016 was IDEAL_HEIGHT: retired; do not reuse.
     const val MAX_HEIGHT = 0x0017
     const val FIXED_SIZE_HORIZONTAL = 0x0018
     const val FIXED_SIZE_VERTICAL = 0x0019

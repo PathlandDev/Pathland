@@ -61,10 +61,8 @@ final class RenderDebug {
             case Properties.POSITION_X -> "positionX";
             case Properties.POSITION_Y -> "positionY";
             case Properties.MIN_WIDTH -> "minWidth";
-            case Properties.IDEAL_WIDTH -> "idealWidth";
             case Properties.MAX_WIDTH -> "maxWidth";
             case Properties.MIN_HEIGHT -> "minHeight";
-            case Properties.IDEAL_HEIGHT -> "idealHeight";
             case Properties.MAX_HEIGHT -> "maxHeight";
             case Properties.FIXED_SIZE_HORIZONTAL -> "fixedSizeHorizontal";
             case Properties.FIXED_SIZE_VERTICAL -> "fixedSizeVertical";

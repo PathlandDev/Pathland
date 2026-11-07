@@ -240,7 +240,8 @@ Design-token contract: `spec/TOKENS.md`.
   changes, so the diff's full-property re-send (e.g. a volume drag on the
   controller) never restarts the stream or jumps to a stale position — mirrors
   `pathland-render-gtk`.
-- **Layout/property parity**: `OFFSET_X/Y`, `POSITION_X/Y`, `MIN/IDEAL/MAX_*`,
+- **Layout/property parity**: `OFFSET_X/Y`, `POSITION_X/Y`, `MIN/MAX_*`
+  (`IDEAL_*` retired),
   `CONTENT_MODE` (image fit/fill), `CLIPS_TO_BOUNDS`, `BORDER_COLOR` /
   `BORDER_WIDTH` / `BORDER_RADIUS`, `TEXT_ALIGNMENT`, `LINE_LIMIT`,
   `TRUNCATION_MODE`, and `GRID_COLUMNS` (via the `Layout` attached properties

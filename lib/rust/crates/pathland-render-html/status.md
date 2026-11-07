@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -94,8 +94,8 @@ Statelessness). Protocol contract: `spec/`.
   `SPACER` → inline flex filler, `PROGRESS_VIEW` → `<progress>` /
   `.pathland-spinner`, `GAUGE` → `.pathland-gauge`, stacks/lazy stacks → flex
   `div`, `ZSTACK` → grid overlay `div`, grids → CSS-grid `div`, `SCROLLVIEW` →
-  overflow `div` (**gap: `SCROLL_AXIS` 0x0021 not yet implemented** — still
-  both-axis greedy), `BUTTON` → `<button>`, `TEXT_FIELD` → `<input>` (secure →
+  overflow `div` (`SCROLL_AXIS` 0x0021: greedy on the scroll axis only; the
+  cross axis hugs or fill-propagates), `BUTTON` → `<button>`, `TEXT_FIELD` → `<input>` (secure →
   `type="password"`), `TEXT_EDITOR` → `<textarea>`, `TOGGLE` → checkbox/switch
   input, `SLIDER` → `<input type="range">`, `STEPPER` → `.pathland-stepper`,
   `DATE_PICKER` → `<input type="date">`/`<input type="time">`, `PICKER` →
@@ -143,8 +143,9 @@ Statelessness). Protocol contract: `spec/`.
   (`flex-start`), never CSS `align-items:stretch`, per `spec/LAYOUT.md`; only
   `FILL`-sized children stretch via their `100%` size), `CONTENT_MARGINS`,
   `WIDTH`/`HEIGHT` (`FILL` → `width:100%`/`height:100%` expansion, `HUG` →
-  intrinsic), the frame bounds `MIN_WIDTH`/`IDEAL_WIDTH`/`MAX_WIDTH` and the
-  height equivalents (emitted on the SSR first paint, matching the DOM client),
+  intrinsic), the frame bounds `MIN_WIDTH`/`MAX_WIDTH` and the height
+  equivalents (emitted on the SSR first paint, matching the DOM client;
+  `IDEAL_*` was retired),
   `PADDING` + per-edge, `COLOR`,
   `BACKGROUND_COLOR`, `FONT_SIZE`/`WEIGHT`/`FAMILY`, `TEXT_STYLE` (the
   renderer-owned default size/weight; explicit `FONT_SIZE`/`WEIGHT` override),
@@ -175,9 +176,11 @@ Statelessness). Protocol contract: `spec/`.
   `applyLayout`.
 - **Layout contract (spec/LAYOUT.md)**: cross-axis default is **hug**
   (`flex-start`), not CSS stretch; `ALIGNMENT` positions only (`Fill`=3 → hug
-  default). `DIVIDER` is greedy on the cross axis (`width:100%`); `SCROLLVIEW`
-  is greedy on both axes (`flex:1 1 auto;align-self:stretch`); fixed frames emit
-  exact px boxes. Conformance cases C1–C6 asserted in `lib.rs` tests.
+  default). `DIVIDER` is greedy on the cross axis (`width:100%`);
+  `SCROLLVIEW` is greedy on its `SCROLL_AXIS` only; fixed frames emit exact px
+  boxes. Finite `MAX_*` bounds cap the resolved size, stop unbounded fill
+  propagation, and let the parent's `ALIGNMENT` position the capped box.
+  Conformance cases C1–C6 and C13–C20 asserted in `lib.rs` tests.
 - **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: implemented —
   `fills_axis` resolves a Hug stack/ZStack containing a `FILL` child / greedy
   primitive on an axis as `FILL`, emitting `width/height:100%` on that axis, and
@@ -395,10 +398,11 @@ contract both renderers must satisfy.
   explicit `grid-row`/`grid-column` placement; each row renders as a transparent
   `<div style="display:contents">` (its id hydrates the DOM client), and a
   short row leaves trailing columns empty. `WIDTH`/`HEIGHT` on a grid are the
-  universal pixel box, never a count. `SCROLLVIEW` is greedy
-  (`flex:1 1 auto;align-self:stretch;overflow:auto`) and renders **only its
-  first child** (the spec-pinned single content). Conformance cases C11–C14
-  covered by the SSR tests + golden fixtures (incl. the `gridrow` scenario).
+  universal pixel box, never a count. `SCROLLVIEW` is greedy on its
+  `SCROLL_AXIS` only, carries `data-pathland-scroll-axis`, and renders **only
+  its first child** (the spec-pinned single content). Conformance cases
+  C11–C20 covered by the SSR tests + golden fixtures (incl. `gridrow`,
+  `scrollaxis`, and `maxbounds`).
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
 - **Parent-path token fallback is not implemented in CSS**: overriding a

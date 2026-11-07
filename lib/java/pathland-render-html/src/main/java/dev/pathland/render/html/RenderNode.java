@@ -174,14 +174,12 @@ final class RenderNode {
         }
         int[][] frames = {
                 {Properties.MIN_WIDTH, 0},
-                {Properties.IDEAL_WIDTH, 0},
                 {Properties.MAX_WIDTH, 0},
                 {Properties.MIN_HEIGHT, 0},
-                {Properties.IDEAL_HEIGHT, 0},
                 {Properties.MAX_HEIGHT, 0},
         };
         String[] frameNames = {
-                "min-width", "width", "max-width", "min-height", "height", "max-height",
+                "min-width", "max-width", "min-height", "max-height",
         };
         for (int i = 0; i < frames.length; i++) {
             Float v = f32(frames[i][0]);
@@ -498,10 +496,26 @@ final class RenderNode {
         };
     }
 
+    static Float axisMax(RenderNode node, boolean axisHorizontal) {
+        int prop = axisHorizontal ? Properties.MAX_WIDTH : Properties.MAX_HEIGHT;
+        Float value = node.f32(prop);
+        return value != null && Float.isFinite(value) && value >= 0.0f ? value : null;
+    }
+
+    static boolean scrollHorizontal(RenderNode node) {
+        return Math.round(node.f32Property(Properties.SCROLL_AXIS, 0.0f)) != 0;
+    }
+
     static boolean fillsAxis(TreeMap<Integer, RenderNode> nodes, int id,
             boolean axisHorizontal, boolean mainAxis) {
         RenderNode node = nodes.get(id);
         if (node == null) {
+            return false;
+        }
+        // A finite max is a cap, not a fill request: it keeps the node
+        // content-sized up to the cap, lets the parent ALIGNMENT position it,
+        // and stops unbounded fill propagation to ancestors.
+        if (axisMax(node, axisHorizontal) != null) {
             return false;
         }
         int prop = axisHorizontal ? Properties.WIDTH : Properties.HEIGHT;
@@ -510,12 +524,25 @@ final class RenderNode {
             if (hint == FILL) {
                 return true;
             }
+            if (hint == HUG_CONTENT) {
+                return false; // explicit hug overrides greed
+            }
             if (Float.isFinite(hint) && hint > 0.0f) {
                 return false;
             }
         }
+        if (node.component == Components.SCROLLVIEW) {
+            boolean scrollHorizontal = scrollHorizontal(node);
+            if (scrollHorizontal == axisHorizontal) {
+                return true; // greedy on its scroll axis
+            }
+            if (node.children.isEmpty()) {
+                return false;
+            }
+            return fillsAxis(nodes, node.children.get(0), axisHorizontal, false);
+        }
         boolean greedy = switch (node.component) {
-            case Components.COLOR, Components.SCROLLVIEW -> true;
+            case Components.COLOR -> true;
             case Components.SPACER -> mainAxis;
             case Components.DIVIDER -> !mainAxis;
             default -> false;

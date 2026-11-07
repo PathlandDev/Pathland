@@ -90,11 +90,11 @@ export function createElement(component: number): Node {
     }
     case COMPONENT_SCROLLVIEW: {
       const el = document.createElement("div");
-      // Layout-greedy on both axes (LAYOUT.md): a scroll region fills the
-      // available space (mirrors the Rust SSR renderer).
-      el.style.flex = "1 1 auto";
-      el.style.alignSelf = "stretch";
+      // Greedy on its scroll axis only (LAYOUT.md): the parent stack adds
+      // cross-axis stretch when appropriate; applyLayout derives main-axis
+      // flex from SCROLL_AXIS and the parent's orientation.
       el.style.overflow = "auto";
+      el.dataset.pathlandScrollAxis = "vertical";
       return el;
     }
     case COMPONENT_SIZE_THAT_FITS: {

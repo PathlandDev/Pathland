@@ -36,6 +36,7 @@ import {
   COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_SCROLLVIEW,
+  COMPONENT_SIZE_THAT_FITS,
   COMPONENT_SHAPE,
   COMPONENT_SPACER,
   COMPONENT_TEXT,
@@ -77,6 +78,7 @@ import {
   PROP_ROLE,
   PROP_ROUTE,
   PROP_SELECTED,
+  PROP_SCROLL_AXIS,
   PROP_SELECTION,
   PROP_STRIKETHROUGH,
   PROP_TEXT,
@@ -141,20 +143,45 @@ const PROPAGATING = new Set([
   COMPONENT_LAZY_HSTACK,
 ]);
 
+function hasFiniteMax(el: HTMLElement, horizontal: boolean): boolean {
+  const raw = horizontal ? el.style.maxWidth : el.style.maxHeight;
+  if (!raw) {
+    return false;
+  }
+  const value = Number.parseFloat(raw);
+  return Number.isFinite(value) && value >= 0;
+}
+
+function scrollHorizontal(el: HTMLElement): boolean {
+  return el.getAttribute("data-pathland-scroll-axis") === "horizontal";
+}
+
 /** Whether `el` is effectively FILL-sized on `horizontal` (LAYOUT.md §fill
  *  propagation, SwiftUI/Compose parity): FILL itself (`width/height:100%`), a
  *  layout-greedy primitive, or a Hug container whose subtree carries one. A
- *  Fixed px box bounds its subtree. `mainAxis` = whether the axis is the
- *  element's parent's main axis (governs SPACER/DIVIDER greediness). A
- *  component-less shell (a ZStack child wrapper) is transparent. */
+ *  Fixed px box or a finite MAX bound caps the subtree. `mainAxis` = whether the
+ *  axis is the element's parent's main axis (governs SPACER/DIVIDER greediness).
+ *  A component-less shell (a ZStack child wrapper) is transparent. */
 function fillsAxis(el: Element, horizontal: boolean, mainAxis: boolean): boolean {
+  const html = el as HTMLElement;
+  if (hasFiniteMax(html, horizontal)) {
+    return false; // bounded fill: cap, never unbounded propagation
+  }
   const comp = componentByNode.get(el) ?? 0;
+  if (comp === COMPONENT_SCROLLVIEW || el.hasAttribute("data-pathland-scroll-axis")) {
+    const scrollH = scrollHorizontal(html);
+    if (scrollH === horizontal) {
+      return true; // greedy on its scroll axis only
+    }
+    const content = html.firstElementChild;
+    return content instanceof HTMLElement && fillsAxis(content, horizontal, false);
+  }
   if (comp === 0) {
     return Array.from(el.children).some(
       (c) => c instanceof HTMLElement && fillsAxis(c, horizontal, mainAxis),
     );
   }
-  const style = (el as HTMLElement).style;
+  const style = html.style;
   const hint = horizontal ? style.width : style.height;
   if (hint === "100%") {
     return true;
@@ -164,7 +191,6 @@ function fillsAxis(el: Element, horizontal: boolean, mainAxis: boolean): boolean
   }
   const greedy =
     comp === COMPONENT_COLOR ||
-    comp === COMPONENT_SCROLLVIEW ||
     (comp === COMPONENT_SPACER && mainAxis) ||
     (comp === COMPONENT_DIVIDER && !mainAxis);
   if (greedy) {
@@ -192,6 +218,31 @@ function applyLayout(r: DomRenderer): void {
   const els = Array.from(r.byId.values()).filter(
     (n): n is HTMLElement => n instanceof HTMLElement,
   );
+  // ScrollView main-axis fill: greedy on SCROLL_AXIS only; the parent stack's
+  // derived pass owns cross-axis stretch.
+  for (const el of els) {
+    const comp = componentByNode.get(el) ?? 0;
+    if (comp !== COMPONENT_SCROLLVIEW && !el.hasAttribute("data-pathland-scroll-axis")) {
+      continue;
+    }
+    const horizontalScroll = scrollHorizontal(el);
+    const parent = el.parentElement;
+    const parentComp = parent ? componentByNode.get(parent) ?? 0 : 0;
+    const parentMain = STACK_MAIN_HORIZONTAL.has(parentComp)
+      ? true
+      : STACK_MAIN_VERTICAL.has(parentComp)
+        ? false
+        : null;
+    if (parentMain === null) {
+      // Root/non-stack parent: retain the legacy fill behavior.
+      el.style.flex = "1 1 auto";
+      el.style.alignSelf = "stretch";
+    } else if (parentMain === horizontalScroll) {
+      el.style.flex = "1 1 auto";
+    } else {
+      el.style.flex = "";
+    }
+  }
   // Phase 1: container fill propagation + ZStack sizing + grid cell alignment.
   for (const el of els) {
     const comp = componentByNode.get(el) ?? 0;
@@ -325,8 +376,16 @@ function applyLayout(r: DomRenderer): void {
     if (!STACK_MAIN_HORIZONTAL.has(parentComp) && !STACK_MAIN_VERTICAL.has(parentComp)) {
       continue;
     }
-    if (fillsAxis(el, !mainH, false)) {
+    const comp = componentByNode.get(el) ?? 0;
+    if (comp === COMPONENT_SIZE_THAT_FITS) {
+      // A fit slot is size-taking on both axes (LAYOUT.md); its base style is
+      // align-self:stretch, independent of fill propagation.
       el.style.alignSelf = "stretch";
+    } else if (fillsAxis(el, !mainH, false)) {
+      el.style.alignSelf = "stretch";
+    } else if (el.style.alignSelf === "stretch") {
+      // A bounded/non-fill child is positioned by the parent's ALIGNMENT.
+      el.style.alignSelf = "";
     }
   }
 }
@@ -1077,6 +1136,9 @@ function applyStyle(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
           el.removeAttribute("data-pathland-nav-chrome");
         }
         updateNavBackButton(el, r);
+      } else if (propId === PROP_SCROLL_AXIS) {
+        const horizontal = Math.round(f32FromBits(op.c)) === 1;
+        el.setAttribute("data-pathland-scroll-axis", horizontal ? "horizontal" : "vertical");
       } else if (propId === PROP_PLAYBACK_STATE || propId === PROP_MEDIA_POSITION
               || propId === PROP_MEDIA_VOLUME || propId === PROP_MEDIA_MUTED
               || propId === PROP_MEDIA_LOOP || propId === PROP_MEDIA_RATE) {

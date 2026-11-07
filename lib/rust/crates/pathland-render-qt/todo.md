@@ -30,7 +30,7 @@ grid rows). Remaining work is tracked here and in `status.md`.
   `src/run.rs`): `MEDIA_SOURCE`, `PLAYBACK_STATE`, `MEDIA_POSITION`,
   `MEDIA_VOLUME`, `MEDIA_MUTED`, `MEDIA_LOOP`, `MEDIA_RATE`, and the
   `MEDIA_*` event family.
-- **Layout/property parity**: offsets/positions, min/ideal/max sizes,
+- **Layout/property parity**: offsets/positions, min/max sizes,
   content mode, clipping, border color/width/radius, text alignment/line
   limit/truncation, grid columns.
 - **Asset root** (`pathland_qt_set_asset_root`): `/_pathland/...` sources

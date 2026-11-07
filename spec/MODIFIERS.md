@@ -87,7 +87,7 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
 | SwiftUI modifier | Protocol property(ies) | Type | Emission |
 | ------------------ | ------------------------ | ------ | ---------- |
 | `.frame(width:height:alignment:)` | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 | F32, F32, ENUM | one `SET_PROPERTY` per provided axis/alignment; `ALIGNMENT` is optional — when omitted (width-only / width+height frames), a stack's own cross-axis alignment is preserved |
-| `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `MIN_WIDTH` 0x0012, `IDEAL_WIDTH` 0x0013, `MAX_WIDTH` 0x0014, `MIN_HEIGHT` 0x0015, `IDEAL_HEIGHT` 0x0016, `MAX_HEIGHT` 0x0017 | F32 | one `SET_PROPERTY` per provided bound |
+| `.frame(minWidth:maxWidth:minHeight:maxHeight:)` | `MIN_WIDTH` 0x0012, `MAX_WIDTH` 0x0014, `MIN_HEIGHT` 0x0015, `MAX_HEIGHT` 0x0017 | F32 | one `SET_PROPERTY` per provided bound; `0x0013`/`0x0016` are retired |
 | `.padding(_:)`, `.padding(edges:)`, `.padding(_:edges:)` | `PADDING` 0x1011, `PADDING_TOP` 0x1012, `PADDING_RIGHT` 0x1013, `PADDING_BOTTOM` 0x1014, `PADDING_LEFT` 0x1015 | F32 | uniform → one; per-edge → per-edge |
 | `.offset(x:y:)` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F | F32 | two |
 | `.position(x:y:)` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 | F32 | two |
@@ -118,8 +118,9 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   that axis to the native default. The full allocation contract — Fixed = an
   exact points box, container space distribution, cross-axis hug-not-stretch,
   content fitting — is in [LAYOUT.md](./LAYOUT.md).
-- **`frame(min/ideal/max)`**: each provided bound emits its own property.
-  Renderers map them to the native min/ideal/max size.
+- **`frame(min/max)`**: each provided bound emits its own property.
+  Renderers map them to the native min/max size. The former `IDEAL_WIDTH`
+  (`0x0013`) and `IDEAL_HEIGHT` (`0x0016`) ids are retired; do not reuse them.
 - **`GRID_COLUMNS` / `GRID_ROWS`** (`0x001E` / `0x001F`, F32) are **constructor
   properties** on grids (never chainable modifiers): the column/row track
   counts. A positive value pins the count (equal `1fr` tracks); `FILL` or absent

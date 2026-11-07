@@ -420,14 +420,12 @@ pub mod property_id {
     pub const POSITION_Y: u16 = 0x0011;
     /// **Draft.** Minimum width (F32). `.frame(minWidth:...)`.
     pub const MIN_WIDTH: u16 = 0x0012;
-    /// **Draft.** Ideal width (F32).
-    pub const IDEAL_WIDTH: u16 = 0x0013;
+    // 0x0013 was IDEAL_WIDTH: retired in the POC; do not reuse.
     /// **Draft.** Maximum width (F32).
     pub const MAX_WIDTH: u16 = 0x0014;
     /// **Draft.** Minimum height (F32).
     pub const MIN_HEIGHT: u16 = 0x0015;
-    /// **Draft.** Ideal height (F32).
-    pub const IDEAL_HEIGHT: u16 = 0x0016;
+    // 0x0016 was IDEAL_HEIGHT: retired in the POC; do not reuse.
     /// **Draft.** Maximum height (F32).
     pub const MAX_HEIGHT: u16 = 0x0017;
     /// **Draft.** Fixed-size hint, horizontal (U8 0/1). `.fixedSize()`.

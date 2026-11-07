@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written entirely in Kotlin. It owns the `View` SPI and shared
@@ -53,7 +53,9 @@ Kotlin-authored views through JVM interop.
   `RenderResult`, `InputDispatcher`, `ReactiveValues`, `DateInput`, `MediaInput`.
   Implements mount/id assignment, diff-based reactive emission, node-level binding
   effects, structural reconciliation, fit/media/navigation routing, and the
-  zero-opcode unchanged recompute contract. Registered `MediaController`s are
+  zero-opcode unchanged recompute contract. A replaced child is relinked to its
+  real parent (not the tree root), so a `SIZE_THAT_FITS` swap cannot detach a
+  pinned root `MEDIA_CONTROLLER` or drop its media routing. Registered `MediaController`s are
   projected as pinned, non-visual root children; `unregisterMediaController`
   removes them without touching the app tree.
 - **Shared SPI/values** (`dev.pathland.view.core`): `View`, `ViewModifier`,

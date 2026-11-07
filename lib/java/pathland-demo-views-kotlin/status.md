@@ -54,4 +54,6 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 `mvn test -pl pathland-demo-views-kotlin` — `LyricsTest`, `SeekControlTest`,
 `MediaPlayerServiceTest` (persisted keys, select/next/previous), `MusicPlayerViewTest`
 (tree/render, fit swaps, media state, seek echo guard, snapshot emission, sponsored
-proxy), and `AdViewTest` (button click / persisted counter delta).
+proxy), `MusicPlayerFitMediaTest` (the pinned media controller survives SSR
+snapshot→live and repeated fit crossings; media routing and play stay bound),
+and `AdViewTest` (button click / persisted counter delta).

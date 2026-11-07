@@ -293,10 +293,8 @@ fn is_f32_property(prop: u16) -> bool {
             | pathland_core::property_id::POSITION_X
             | pathland_core::property_id::POSITION_Y
             | pathland_core::property_id::MIN_WIDTH
-            | pathland_core::property_id::IDEAL_WIDTH
             | pathland_core::property_id::MAX_WIDTH
             | pathland_core::property_id::MIN_HEIGHT
-            | pathland_core::property_id::IDEAL_HEIGHT
             | pathland_core::property_id::MAX_HEIGHT
             | pathland_core::property_id::LAYOUT_PRIORITY
             | pathland_core::property_id::ASPECT_RATIO

@@ -372,10 +372,8 @@ const HANDLERS: Record<number, Handler> = {
     el.style.top = fmtFloat(f32(vt, c)) + "px";
   },
   [P.PROP_MIN_WIDTH]: (el, vt, c) => (el.style.minWidth = fmtFloat(f32(vt, c)) + "px"),
-  [P.PROP_IDEAL_WIDTH]: (el, vt, c) => (el.style.width = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_MAX_WIDTH]: (el, vt, c) => (el.style.maxWidth = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_MIN_HEIGHT]: (el, vt, c) => (el.style.minHeight = fmtFloat(f32(vt, c)) + "px"),
-  [P.PROP_IDEAL_HEIGHT]: (el, vt, c) => (el.style.height = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_MAX_HEIGHT]: (el, vt, c) => (el.style.maxHeight = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_FIXED_SIZE_HORIZONTAL]: (el, vt, c) => {
     el.style.width = isOn(vt, c) ? "fit-content" : "";

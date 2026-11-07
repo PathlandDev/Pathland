@@ -833,7 +833,7 @@ a `ConstantSignal` (no binding overhead).
 | Modifier | Canonical (SwiftUI-shaped) | Kotlin DSL | Property(ies) |
 |----------|---------------------------|----------|---------------|
 | `frame` | `.frame(width:height:alignment:)` | `.modifiers(frame(f -> f.width(w).height(h).alignment(a)))` — the 2D `Alignment` positions the content within the box; omitted → no `ALIGNMENT` emitted, a stack's own alignment is preserved | `WIDTH` 0x100B, `HEIGHT` 0x100C, `ALIGNMENT` 0x0002 (only when provided) |
-| `frame(min:…)` | `.frame(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)` | `.modifiers(frame(f -> f.minWidth(..).idealWidth(..).maxWidth(..).minHeight(..).idealHeight(..).maxHeight(..)))` (the `Frame.Builder`; unset bounds are omitted — NaN/∞ = no limit) | `MIN_WIDTH` 0x0012 … `MAX_HEIGHT` 0x0017 |
+| `frame(min:…)` | `.frame(minWidth:maxWidth:minHeight:maxHeight:)` | `.modifiers(frame(f -> f.minWidth(..).maxWidth(..).minHeight(..).maxHeight(..)))` (the `Frame.Builder`; unset bounds are omitted — NaN/∞ = no limit) | `MIN_WIDTH` 0x0012, `MAX_WIDTH` 0x0014, `MIN_HEIGHT` 0x0015, `MAX_HEIGHT` 0x0017 |
 | `padding` | `.padding(_:)` / `.padding(_:edges:)` | `.modifiers(padding(p -> p.uniform(float)))` / `.modifiers(padding(p -> p.edges(t, r, b, l)))` | `PADDING` 0x1011 / `PADDING_TOP` 0x1012 … `PADDING_LEFT` 0x1015 |
 | `offset` | `.offset(x:y:)` | `.modifiers(offset(o -> o.x(float).y(float)))` | `OFFSET_X` 0x000E, `OFFSET_Y` 0x000F |
 | `position` | `.position(x:y:)` | `.modifiers(position(p -> p.x(float).y(float)))` | `POSITION_X` 0x0010, `POSITION_Y` 0x0011 |
@@ -850,7 +850,7 @@ a `ConstantSignal` (no binding overhead).
 renderer. SwiftUI's `.frame(maxWidth: .infinity)` / `maxHeight: .infinity` is
 written by passing `Float.POSITIVE_INFINITY` (Java) / `f32::INFINITY` (Rust) to
 the width/height builder members, which is normalized to `FILL` before emission.
-In the min/ideal/max builder an infinite `maxWidth`/`maxHeight` means *no limit*
+In the min/max builder an infinite `maxWidth`/`maxHeight` means *no limit*
 (the bound is omitted). `OFFSET` is a post-layout translation; `POSITION` is
 absolute placement within the parent.
 

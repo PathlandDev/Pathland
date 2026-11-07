@@ -670,7 +670,10 @@ A scrollable content container. **Layout-greedy on its scroll axis** — it fill
 the available space on that axis so the content can scroll; on the **cross axis**
 it **hugs its content** by default (it shrinks to fit the content, SwiftUI
 `ScrollView` semantics). An explicit `WIDTH`/`HEIGHT` overrides either behavior
-(LAYOUT.md §layout-greedy primitives).
+(LAYOUT.md §layout-greedy primitives). A finite `MAX_WIDTH`/`MAX_HEIGHT` caps
+the greedy scroll-axis size and any cross-axis fill propagation
+(LAYOUT.md §frame bounds); the capped viewport is positioned by the parent's
+`ALIGNMENT`.
 
 **Properties**: `SCROLL_AXIS` (0x0021, F32 enum: `Vertical`=0 — the default when
 absent, `Horizontal`=1) selects the scroll axis; plus layout modifiers

@@ -1,6 +1,6 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** November 6, 2026
+**Last updated:** November 7, 2026
 
 The **pure-Java HTML renderer** (`dev.pathland.render.html`) — a behavioural
 port of the Rust `pathland-render-html` crate. Stateless: each call decodes a
@@ -16,6 +16,11 @@ library). Protocol contract: `spec/`.
   `renderFragment(frame, root)` / `renderFullSnapshot(frame, root)` render a
   self-contained snapshot in one pass. The public API is unchanged from the
   former JNA shim, so `PathlandSession`, Spring, and Quarkus need no changes.
+- **Layout parity with the Rust renderer**: `SCROLL_AXIS`-aware ScrollView
+  greed, finite `MAX_*` cap/bounded-fill semantics (no unbounded propagation or
+  cross-axis stretch), parent `ALIGNMENT` positioning, and the DOM hydration
+  `data-pathland-scroll-axis` attribute. The retired `IDEAL_*` properties are
+  ignored.
 - **Byte-identical Rust output**: `GoldenConformanceTest` renders every
   committed `lib/typescript/test/fixtures/ssr/*.plpl` fixture and compares the
   fragment to its `.html` fixture byte-for-byte (the same contract the TS DOM
