@@ -4,12 +4,15 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Pathland renderer core: shared toolkit-free opcode decode (RenderTree/HostNode) + design-token resolution, reused by every renderer"
-publish = false
+categories = ["gui", "graphics", "wasm"]
+keywords = ["ui", "protocol", "opcode", "rendering", "design-tokens"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core" }
+pathland-core = { path = "../pathland-core", version = "0.1.5" }
 
 [dev-dependencies]
-pathland-engine = { path = "../pathland-engine" }
-pathland-view = { path = "../pathland-view" }
+pathland-engine = { path = "../pathland-engine", version = "0.1.5" }
+pathland-view = { path = "../pathland-view", version = "0.1.5" }

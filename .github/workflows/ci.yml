@@ -101,6 +101,11 @@ jobs:
         working-directory: lib/rust
         run: cargo test
 
+      # Cargo only discovers an unpublished path/dev dependency at publish time.
+      # Verify the static dependency order from release.yml up front.
+      - name: Verify the crates.io publish set
+        run: scripts/check-release-crates.sh
+
       - name: Qt renderer headless smoke
         working-directory: lib/rust
         env:
@@ -171,6 +176,16 @@ jobs:
       - name: Test reactor (incl. the SSR web demos)
         working-directory: lib/java
         run: mvn -q -B test
+
+      # The Central release profile attaches sources + javadoc jars (Dokka for
+      # pathland-view-core, JDK javadoc for the Java modules). Build it here
+      # without GPG or an upload so release-only failures surface in PR CI.
+      - name: Verify the release profile (sources + javadoc jars)
+        if: matrix.java == '17'
+        working-directory: lib/java
+        run: >-
+          mvn -q -B -P release -Dgpg.skip=true -DskipTests package
+          -pl '!pathland-demo-views-kotlin,!pathland-desktop-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'
 
       # Mirror the Dockerfile's Maven selection so the deploy image path is
       # exercised in CI. The deployment module must be selected explicitly: it is

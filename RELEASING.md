@@ -75,7 +75,10 @@ dependent crates can only be dry-run once their dependencies are on crates.io,
 so the ordered CI publish validates them).
 
 Java — `mvn -P release verify` builds and signs the sources/javadoc jars without
-uploading. It needs GPG installed and a `central` server in `~/.m2/settings.xml`:
+uploading. It needs GPG installed and a `central` server in `~/.m2/settings.xml`.
+The `pathland-view-core` javadoc jar is generated with **Dokka** (the module is
+Kotlin-first and JDK javadoc cannot resolve Kotlin declarations); the pure-Java
+modules use `maven-javadoc-plugin`. Both run only under the `release` profile:
 
 ```xml
 <server>
@@ -88,13 +91,19 @@ uploading. It needs GPG installed and a `central` server in `~/.m2/settings.xml`
 ## Publishable crates (dependency order)
 
 ```
-pathland-core → pathland-markdown → pathland-engine → pathland-view → pathland-core-transport → pathland-render-html
+pathland-core → pathland-markdown → pathland-engine → pathland-view → pathland-render-core → pathland-core-transport → pathland-render-html
 ```
 
 (`pathland-view-native`, `pathland-core-capi`, `pathland-markdown-capi`,
-`pathland-render-gtk`, `pathland-render-gtk-demo`, `pathland-html-golden`,
-`pathland-ts-codegen` are **not** published — C-ABI cdylibs, the GTK renderer,
-and dev tools.)
+`pathland-render-gtk`, `pathland-render-qt`, `pathland-render-gtk-demo`,
+`pathland-engine-golden`, `pathland-html-golden`, `pathland-protocol-manifest`,
+`pathland-ts-codegen` are **not** published — C-ABI cdylibs, native renderers,
+and dev tools.) `pathland-render-core` **is** published because
+`pathland-core-transport` has it as a dev-dependency, and Cargo requires every
+dev-dependency to resolve from the registry at publish time.
+
+`scripts/check-release-crates.sh` verifies this list against `cargo metadata`
+(no unpublished path dependency, correct order). It runs in CI.
 
 ## Published Java modules
 
