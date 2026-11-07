@@ -11,9 +11,9 @@ categories = ["network-programming", "encoding", "wasm", "graphics"]
 keywords = ["ui", "protocol", "opcode", "transport", "batching"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core", version = "0.1.5" }
+pathland-core = { path = "../pathland-core", version = "0.2.1" }
 
 [dev-dependencies]
-pathland-engine = { path = "../pathland-engine", version = "0.1.5" }
-pathland-view = { path = "../pathland-view", version = "0.1.5" }
-pathland-render-core = { path = "../pathland-render-core", version = "0.1.5" }
+pathland-engine = { path = "../pathland-engine", version = "0.2.1" }
+pathland-view = { path = "../pathland-view", version = "0.2.1" }
+pathland-render-core = { path = "../pathland-render-core", version = "0.2.1" }

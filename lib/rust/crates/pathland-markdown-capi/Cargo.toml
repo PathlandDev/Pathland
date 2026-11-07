@@ -12,5 +12,5 @@ name = "pathland_markdown"
 crate-type = ["cdylib"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core", version = "0.1.5" }
-pathland-markdown-parser = { package = "pathland-markdown", path = "../pathland-markdown", version = "0.1.5" }
+pathland-core = { path = "../pathland-core", version = "0.2.1" }
+pathland-markdown-parser = { package = "pathland-markdown", path = "../pathland-markdown", version = "0.2.1" }

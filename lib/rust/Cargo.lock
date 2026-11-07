@@ -602,11 +602,11 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pathland-core"
-version = "0.1.5"
+version = "0.2.1"
 
 [[package]]
 name = "pathland-core-capi"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",
@@ -614,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-core-transport"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-engine",
@@ -624,7 +624,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-engine"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-markdown",
@@ -632,7 +632,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-engine-golden"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",
@@ -641,7 +641,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-html-golden"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",
@@ -650,14 +650,14 @@ dependencies = [
 
 [[package]]
 name = "pathland-markdown"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
 ]
 
 [[package]]
 name = "pathland-markdown-capi"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-markdown",
@@ -665,14 +665,14 @@ dependencies = [
 
 [[package]]
 name = "pathland-protocol-manifest"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
 ]
 
 [[package]]
 name = "pathland-render-core"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-engine",
@@ -681,7 +681,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-render-gtk"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "gdk-pixbuf",
  "glib",
@@ -699,7 +699,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-render-gtk-demo"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",
@@ -710,7 +710,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-render-html"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",
@@ -718,7 +718,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-render-qt"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "cc",
  "pathland-core",
@@ -731,7 +731,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-render-qt-demo"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",
@@ -742,7 +742,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-ts-codegen"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-render-html",
@@ -750,7 +750,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-view"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-engine",
@@ -759,7 +759,7 @@ dependencies = [
 
 [[package]]
 name = "pathland-view-native"
-version = "0.1.5"
+version = "0.2.1"
 dependencies = [
  "pathland-core",
  "pathland-core-transport",

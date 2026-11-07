@@ -11,6 +11,6 @@ categories = ["graphics"]
 keywords = ["ui", "dsl", "swiftui", "wasm", "retained-mode"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core", version = "0.1.5" }
-pathland-engine = { path = "../pathland-engine", version = "0.1.5" }
-pathland-markdown = { path = "../pathland-markdown", version = "0.1.5" }
+pathland-core = { path = "../pathland-core", version = "0.2.1" }
+pathland-engine = { path = "../pathland-engine", version = "0.2.1" }
+pathland-markdown = { path = "../pathland-markdown", version = "0.2.1" }
