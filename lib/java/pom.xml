@@ -44,17 +44,17 @@
         <tag>HEAD</tag>
     </scm>
 
+    <!-- The publishable JVM libraries and server starters. The demo applications
+         (and the demo-only views library) are added by the default-active
+         `demos` profile below, so activating any other profile — `release`,
+         `refresh-ide`, or `jvm-only` — leaves a demo-free reactor. -->
     <modules>
         <module>pathland-view-core</module>
-        <module>pathland-demo-views-kotlin</module>
         <module>pathland-render-html</module>
         <module>pathland-server-core</module>
         <module>pathland-spring-boot-starter</module>
         <module>pathland-quarkus</module>
         <module>pathland-quarkus-deployment</module>
-        <module>pathland-desktop-demo</module>
-        <module>pathland-quarkus-demo</module>
-        <module>pathland-spring-boot-demo</module>
     </modules>
 
     <properties>
@@ -179,19 +179,53 @@
         </pluginManagement>
     </build>
 
-    <!-- Run BEFORE an IntelliJ IDE run: refreshes the two layers the IDE cannot rebuild
-         itself — the Rust cdylib (cargo) and the DOM bundle (npm build:all) — plus the
-         render-html module's embedded dylib (its antrun embed step only runs under Maven,
-         NOT under IntelliJ's own build). IntelliJ then compiles the Java modules from its
-         module outputs (the pathland modules are imported, so no ~/.m2 is used) and copies
-         the refreshed bundle + its dom-renderer.current manifest into target/classes on
-         Build Project. Invoke with `mvn -P refresh-ide validate`, then Reload All Maven
-         Projects → Build → Run → reload. The bundle is content-hashed
-         (dom-renderer-<sha256>.js) so a rebuilt bundle busts the immutable asset cache by
-         URL — a normal reload after restart is enough, no hard refresh. -->
+    <!-- The JVM libraries are pure JVM: no Rust toolchain or cargo build is part of
+         `mvn test`, `mvn package`, or the Maven Central release. Rust is only needed
+         for the native desktop demos (scripts/lib.sh builds `libpathland_core` and the
+         GTK/Qt renderer dylibs) and for regenerating shared artifacts (the protocol
+         manifest, engine traces, HTML golden fixtures, and TS constants).
+
+         Run BEFORE an IntelliJ IDE run: refreshes the generated layers the IDE cannot
+         rebuild itself — the design CSS/tokens (npm build) and the DOM bundle
+         (npm build:all) — plus the render-html module's embedded CSS resources (its
+         Maven copy step does not run under IntelliJ's own build). IntelliJ then
+         compiles the Java modules from its module outputs (the pathland modules are
+         imported, so no ~/.m2 is used) and copies the refreshed bundle + its
+         dom-renderer.current manifest into target/classes on Build Project. Invoke with
+         `mvn -P refresh-ide validate`, then Reload All Maven Projects → Build → Run →
+         reload. The bundle is content-hashed (dom-renderer-<sha256>.js) so a rebuilt
+         bundle busts the immutable asset cache by URL — a normal reload after restart
+         is enough, no hard refresh. -->
     <profiles>
+    <!-- Default reactor: the libraries plus the demo applications. Maven deactivates
+         an activeByDefault profile as soon as any other profile in this POM is
+         activated, so `-P release`, `-P refresh-ide`, and `-P jvm-only` all leave a
+         demo-free reactor. -->
+    <profile>
+        <id>demos</id>
+        <activation>
+            <activeByDefault>true</activeByDefault>
+        </activation>
+        <modules>
+            <module>pathland-demo-views-kotlin</module>
+            <module>pathland-desktop-demo</module>
+            <module>pathland-quarkus-demo</module>
+            <module>pathland-spring-boot-demo</module>
+        </modules>
+    </profile>
+    <!-- `mvn -Pjvm-only test`: the JVM libraries and server starters only. Activating
+         this profile deactivates the default-active `demos` profile, so no demo
+         modules are in the reactor. The JVM libraries never required Rust. -->
+    <profile>
+        <id>jvm-only</id>
+        <properties>
+            <pathland.jvm-only>true</pathland.jvm-only>
+        </properties>
+    </profile>
     <!-- Maven Central publishing (`mvn -P release deploy`). Normal builds/tests are
-         unaffected: this profile only activates on demand. -->
+         unaffected: this profile only activates on demand. Because it is active, the
+         default `demos` profile is off and the reactor contains only publishable
+         modules. -->
     <profile>
         <id>release</id>
         <build>
@@ -213,8 +247,12 @@
                     <version>3.6.3</version>
                     <configuration>
                         <!-- Central requires a -javadoc jar; disable strict doclint so
-                             existing doc comments don't fail the release build. -->
+                             existing doc comments don't fail the release build.
+                             Don't link to reactor siblings' apidocs: pathland-view-core
+                             builds its javadoc with Dokka, so target/apidocs does not
+                             exist and javadoc logs "Error fetching link" noise. -->
                         <doclint>none</doclint>
+                        <detectOfflineLinks>false</detectOfflineLinks>
                     </configuration>
                     <executions>
                         <execution>

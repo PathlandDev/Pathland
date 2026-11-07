@@ -57,9 +57,11 @@ successful publish).
 
 The Java deploy runs on **Maven 3.9.9** (pinned in the workflow): Maven 3.10
 writes a `maven-metadata-local.xml` beside each artifact in the Central staging,
-which the Portal rejects ("content that does NOT have a .pom file"). The demos
-are **excluded from the release reactor** (`-pl '!pathland-demo-views-kotlin,!pathland-desktop-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'`)
-— `central-publishing-maven-plugin` bundles every reactor module, ignoring
+which the Portal rejects ("content that does NOT have a .pom file"). The demo
+modules live in the default-active `demos` profile; activating `release`
+deactivates it (Maven's `activeByDefault` rule), so the release reactor contains
+only publishable modules. This matters because
+`central-publishing-maven-plugin` bundles every reactor module, ignoring
 `maven.deploy.skip`, and the demos must not be published.
 
 The publish steps are **idempotent**: a crate+version already on crates.io is

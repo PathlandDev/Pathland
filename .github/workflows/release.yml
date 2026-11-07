@@ -158,18 +158,16 @@ jobs:
         working-directory: lib/java
         run: mvn -B -q versions:set -DnewVersion="${{ needs.version.outputs.version }}" -DgenerateBackupPoms=false -DprocessAllModules=true
 
-      # The demos are excluded from the release reactor: central-publishing-maven-plugin
-      # bundles every reactor module (it ignores maven.deploy.skip), and the demos must
-      # not be published.
+      # The demo modules live in the default-active `demos` profile. Activating
+      # `release` deactivates it, so the reactor contains only publishable modules
+      # (central-publishing-maven-plugin bundles every reactor module).
       - name: Deploy to Maven Central
         working-directory: lib/java
         env:
           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: >-
-          mvn -B -P release deploy
-          -pl '!pathland-demo-views-kotlin,!pathland-desktop-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'
+        run: mvn -B -P release deploy
 
       - name: Collect the published main jars
         run: |

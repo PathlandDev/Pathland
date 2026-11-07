@@ -156,7 +156,8 @@ jobs:
   java:
     name: Java (Maven reactor, JDK ${{ matrix.java }})
     runs-on: ubuntu-latest
-    needs: [rust]
+    # The JVM libraries are pure JVM (the engine/protocol/HTML renderer are ports),
+    # so the Java reactor does not need the Rust job to build or test.
     strategy:
       fail-fast: false
       matrix:
@@ -183,9 +184,7 @@ jobs:
       - name: Verify the release profile (sources + javadoc jars)
         if: matrix.java == '17'
         working-directory: lib/java
-        run: >-
-          mvn -q -B -P release -Dgpg.skip=true -DskipTests package
-          -pl '!pathland-demo-views-kotlin,!pathland-desktop-demo,!pathland-quarkus-demo,!pathland-spring-boot-demo'
+        run: mvn -q -B -P release -Dgpg.skip=true -DskipTests package
 
       # Mirror the Dockerfile's Maven selection so the deploy image path is
       # exercised in CI. The deployment module must be selected explicitly: it is

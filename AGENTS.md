@@ -184,9 +184,13 @@ lib/java/
 
 - Test: `cd lib/rust && cargo test` (runs all crates).
 - Build/test the JVM libraries: `cd lib/java && mvn install`. The JVM path is
-  pure Java (the HTML renderer and the inline-Markdown parser are ports), so no
-  Rust build is required; `mvn -P refresh-ide validate` builds the design
-  assets and the DOM bundle when those change.
+  pure JVM (the engine/protocol live in `pathland-view-core`; the HTML renderer
+  and inline-Markdown parser are ports), so no Rust build is required.
+  `mvn -P jvm-only test` runs the libraries and server starters without the
+  demo modules. Rust is only needed for the native desktop demos
+  (`scripts/lib.sh` builds their dylibs) and for regenerating shared artifacts
+  (protocol manifest, engine traces, HTML golden fixtures, TS constants);
+  `mvn -P refresh-ide validate` refreshes the design assets and DOM bundle.
 - Run the GTK demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-gtk-demo`.
 - Run the Qt Quick demo (native, zero-copy shared ring): `cd lib/rust && cargo run -p pathland-render-qt-demo`
   (needs Qt6 dev libs — Homebrew: `brew install qtbase qtdeclarative`; on macOS point `QMAKE`
@@ -600,8 +604,9 @@ implementing project.
 1. Read this file, `spec/OPCODE.md`, and `spec/ENGINE.md`
 2. Run Rust tests: `cd lib/rust && cargo test` (runs all crates)
 3. Build/test the JVM libraries: `cd lib/java && mvn install`. The JVM path is
-   pure Java (HTML renderer + inline-Markdown parser are ports); no Rust build
-   is required.
+   pure JVM (engine/protocol + HTML renderer + inline-Markdown parser); no Rust
+   build is required. Use `mvn -P jvm-only test` for the library/starter subset
+   without the demo modules.
 4. Make small changes, verify they work
 
 ---
