@@ -1,0 +1,55 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6TRH1G8A309WG658XCTVAWR",
+  "session_id": "ses_e4dcc2932ffe6SllAHSAY7rA1f",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-07T10:23:16.387063Z",
+  "branch": "feat/docs-site",
+  "checkpoints_count": 4,
+  "save_step_count": 1,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    "lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js",
+    "lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-cc4f54adfa24.js",
+    "lib/java/pathland-docs-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-207d5e07bdd7.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-cc4f54adfa24.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-207d5e07bdd7.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-cc4f54adfa24.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/typescript/test/apply.test.ts"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "cc194eb2d86e",
+  "checkpoint_transcript_start": 710,
+  "transcript_lines_at_start": 710,
+  "compact_transcript_start": 710,
+  "token_usage": {
+    "input_tokens": 738818,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 17389312,
+    "output_tokens": 11199,
+    "api_call_count": 54
+  },
+  "session_metrics": {
+    "turn_count": 42
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 71,
+      "agent_lines_removed": 16
+    }
+  ]
+}
