@@ -3,7 +3,7 @@
   "checkpoint_id": "01M6XJNG6723TXC24YJNAA34FB",
   "strategy": "manual-commit",
   "branch": "feat/quarkus-dev-ui",
-  "checkpoints_count": 5,
+  "checkpoints_count": 6,
   "files_touched": [
     "lib/java/pathland-quarkus-deployment/src/main/java/dev/pathland/quarkus/deployment/PathlandDevUiProcessor.java",
     "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-proxies.js",
@@ -34,6 +34,13 @@
       "transcript": "/0/full.jsonl",
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
       "prompt": ""
     }
   ],
