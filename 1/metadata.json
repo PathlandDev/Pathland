@@ -1,0 +1,39 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6XJXRX2AA9TPWPDHYPPAWDA",
+  "session_id": "ses_e46139aa7ffetBfbFrvW5p7fpv",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T12:43:04.036645Z",
+  "branch": "feat/quarkus-dev-ui",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/devui/PathlandDevUiRpc.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/devui/PathlandDevUiRpcTest.java",
+    "lib/java/pathland-quarkus/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "03e809af46ff",
+  "checkpoint_transcript_start": 24,
+  "transcript_lines_at_start": 24,
+  "compact_transcript_start": 24,
+  "token_usage": {
+    "input_tokens": 0,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 0,
+    "output_tokens": 0,
+    "api_call_count": 0
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-08T12:43:03.970626Z",
+    "agent_lines": 96,
+    "agent_removed": 18,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 96,
+    "total_lines_changed": 114,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
