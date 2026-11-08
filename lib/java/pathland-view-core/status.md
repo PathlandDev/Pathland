@@ -66,7 +66,9 @@ build) carries no JNA.
   Implements mount/id assignment, diff-based reactive emission, node-level binding
   effects, structural reconciliation, fit/media/navigation routing, and the
   zero-opcode unchanged recompute contract. `treeSize()` exposes a read-only node
-  count for diagnostic snapshots. A replaced child is relinked to its
+  count and `snapshotTree()` an immutable `NodeSnapshot` tree (id, component,
+  text, reactive flag, stringified properties, children) for diagnostic tooling.
+  A replaced child is relinked to its
   real parent (not the tree root), so a `SIZE_THAT_FITS` swap cannot detach a
   pinned root `MEDIA_CONTROLLER` or drop its media routing. Registered `MediaController`s are
   projected as pinned, non-visual root children; `unregisterMediaController`
@@ -85,6 +87,9 @@ build) carries no JNA.
   as `dev/pathland/protocol.tsv` for JVM tooling (the Quarkus Dev UI protocol
   browser). `ProtocolCatalogTest` compares the bundled lines to the repository
   spec so the copy cannot drift.
+- **State debug enumeration**: `DebugStateStore` (keys + raw get) is implemented
+  by `InMemoryStateStore`; the Dev UI state inspector uses it, while stores with
+  a non-enumerable backend report inspection as unsupported.
 - **Shared engine traces**: the Kotlin DSL tests run the mount/text/property
   scenarios against the Rust-emitted PLPL fixtures under `spec/engine-traces/`,
   byte-for-byte. The canonical order lives in `spec/ENGINE.md`.

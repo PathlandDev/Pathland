@@ -161,6 +161,16 @@ public final class ProxyHost {
         return java.util.List.copyOf(sessions.values());
     }
 
+    /** Read-only snapshots of every live origin connection (diagnostic tooling). */
+    public java.util.List<ProxySession.Snapshot> snapshots() {
+        java.util.List<ProxySession.Snapshot> snapshot = new java.util.ArrayList<>(sessions.size());
+        for (ProxySession session : sessions.values()) {
+            snapshot.add(session.snapshot());
+        }
+        snapshot.sort(java.util.Comparator.comparingInt(ProxySession.Snapshot::proxyId));
+        return java.util.List.copyOf(snapshot);
+    }
+
     /** Ask every origin for a fresh snapshot ({@code META::RESYNC}); the replies are forwarded. */
     public void resyncAll() {
         for (ProxySession session : sessions.values()) {

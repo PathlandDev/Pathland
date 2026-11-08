@@ -138,6 +138,33 @@ public final class ProxySession {
         return config;
     }
 
+    /** A read-only diagnostic snapshot of this origin connection. */
+    public record Snapshot(
+            int proxyId,
+            int block,
+            String endpoint,
+            String route,
+            boolean ready,
+            boolean snapshotReceived,
+            int attempts,
+            int originRootId) {
+    }
+
+    /** Snapshot the current connection state (diagnostic tooling). */
+    public Snapshot snapshot() {
+        synchronized (lock) {
+            return new Snapshot(
+                    proxyId,
+                    block,
+                    config.endpoint(),
+                    config.route(),
+                    ready,
+                    snapshotReceived,
+                    attempts,
+                    originRootId);
+        }
+    }
+
     /** Whether {@code id} belongs to this proxy's block. */
     public boolean ownsId(int id) {
         return ProxyIdMap.isProxyId(id) && ProxyIdMap.blockOf(id) == block;

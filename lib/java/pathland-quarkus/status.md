@@ -37,6 +37,17 @@ capability and pulls in `quarkus-kotlin`.
   toggle), and **Protocol** browses the bundled `protocol.tsv` via build-time
   data with kind/search filters. `clearTrace` keeps the id high-water mark so a
   polling client never re-fetches.
+- **Dev UI (M3)** — **Topics** lists live `(topic, subject)` subscriber counts and
+  publishes untyped values (string/number/boolean/null subject & value types);
+  **State** enumerates and deletes `InMemoryStateStore` keys via the new
+  `DebugStateStore` (other stores report "unsupported"); **Theme** forces
+  platform/light/dark and clears app token overrides; **Proxies** lists each
+  session's origin connections (endpoint, route, id block, readiness, snapshot,
+  attempts, origin root) and can resync; **Tree** renders one session's retained
+  tree with component/property names resolved from the protocol catalog. Backend:
+  `PathlandSignalHub.subscriptions()`/`publishRaw`, `ProxyHost.snapshots()`,
+  `PathlandRegistry.setColorScheme`/`resetTheme`/`treeSnapshot`, and
+  `Emitter.snapshotTree()` (`NodeSnapshot`).
 
 
 - **Security defaults (issue #63)**: the deployment module contributes
@@ -204,6 +215,8 @@ the live session list, resync (single + all), and close actions, and that the
 trace captures a resync batch, inbound events, and an SSR render; the SSR preview
 returns a document. `PathlandDevTraceStoreTest` covers bounded retention
 (oldest dropped), cursor paging, batch decoding (including the `SET_TEXT` string),
-and clear. Dev-mode manual verification confirms the Dev UI card/component
-registration and a live `pathland-quarkus_sessions` response; a packaged prod app
-serves `/q/dev-ui` as 404 with health/metrics unchanged.
+and clear. The Dev UI test also covers topics listing + a raw publish reaching a
+bound text node, state enumeration/deletion, theme color-scheme actions, and the
+retained-tree snapshot. Dev-mode manual verification confirms the Dev UI
+card/component registration and a live `pathland-quarkus_sessions` response; a
+packaged prod app serves `/q/dev-ui` as 404 with health/metrics unchanged.

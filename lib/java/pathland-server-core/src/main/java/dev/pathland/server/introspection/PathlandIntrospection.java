@@ -50,8 +50,21 @@ public final class PathlandIntrospection {
             int rootId,
             int treeNodes,
             int proxyCount,
+            List<ProxySnapshot> proxies,
             List<SubscriptionSnapshot> subscriptions,
             SessionStats stats) {
+    }
+
+    /** One proxy origin connection owned by a session. */
+    public record ProxySnapshot(
+            int proxyId,
+            int block,
+            String endpoint,
+            String route,
+            boolean ready,
+            boolean snapshotReceived,
+            int attempts,
+            int originRootId) {
     }
 
     /** One topic subscription held by a session. */

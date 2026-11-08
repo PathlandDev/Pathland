@@ -52,14 +52,28 @@ public final class PathlandSignalHub {
      */
     public <T, S> void publish(Topic<T, S> topic, S subject, T value) {
         Objects.requireNonNull(topic, "topic");
-        SubscriptionKey key = new SubscriptionKey(topic.name, subject);
+        publishTo(new SubscriptionKey(topic.name, subject), topic.name, value);
+    }
+
+    /**
+     * Publish an untyped value by topic name (Dev UI tooling): routes exactly like
+     * the typed overload. A value that does not match the subscriber's signal type
+     * is dropped by that session (the same failure path as any malformed publish).
+     */
+    public void publishRaw(String topic, Object subject, Object value) {
+        Objects.requireNonNull(topic, "topic");
+        publishTo(new SubscriptionKey(topic, subject), topic, value);
+    }
+
+    private void publishTo(SubscriptionKey key, String topicName, Object value) {
         Set<SubscriptionSubscriber> targets = subscribers.get(key);
         int count = targets == null ? 0 : targets.size();
-        telemetry.subscriptionPublished(mount, topic.name, count);
+        telemetry.subscriptionPublished(mount, topicName, count);
         if (count == 0) {
-            telemetry.subscriptionDropped(mount, topic.name, "no-subscribers");
+            telemetry.subscriptionDropped(mount, topicName, "no-subscribers");
             if (LOG.isDebugEnabled()) {
-                LOG.debug("topic '{}' for subject {} published with no subscribers", topic.name, subject);
+                LOG.debug("topic '{}' for subject {} published with no subscribers",
+                        topicName, key.subject());
             }
             return;
         }
@@ -86,6 +100,25 @@ public final class PathlandSignalHub {
         Set<SubscriptionSubscriber> targets =
                 subscribers.get(new SubscriptionKey(topic.name, subject));
         return targets == null ? 0 : targets.size();
+    }
+
+    /** One live `(topic, subject)` registration set. */
+    public record SubscriptionCount(String topic, String subject, int subscribers) {
+    }
+
+    /** A read-only snapshot of every live subscription (diagnostic tooling). */
+    public List<SubscriptionCount> subscriptions() {
+        java.util.List<SubscriptionCount> snapshot = new java.util.ArrayList<>(subscribers.size());
+        for (var entry : subscribers.entrySet()) {
+            snapshot.add(new SubscriptionCount(
+                    entry.getKey().topic(),
+                    String.valueOf(entry.getKey().subject()),
+                    entry.getValue().size()));
+        }
+        snapshot.sort(java.util.Comparator
+                .comparing(SubscriptionCount::topic)
+                .thenComparing(SubscriptionCount::subject));
+        return List.copyOf(snapshot);
     }
 
     /** The mount this hub serves. */

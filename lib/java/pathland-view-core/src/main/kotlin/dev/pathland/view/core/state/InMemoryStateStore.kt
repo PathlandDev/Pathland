@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 
 /** An in-memory, thread-safe [StateStore]. */
-class InMemoryStateStore : StateStore {
+class InMemoryStateStore : StateStore, DebugStateStore {
     private val states: ConcurrentMap<String, Any> = ConcurrentHashMap()
 
     @Suppress("UNCHECKED_CAST")
@@ -25,6 +25,10 @@ class InMemoryStateStore : StateStore {
     override fun delete(key: String) {
         states.remove(key)
     }
+
+    override fun keys(): List<String> = states.keys.sorted()
+
+    override fun get(key: String): Optional<Any> = Optional.ofNullable(states[key])
 
     override fun toString(): String = "InMemoryStateStore(${states.size} keys)"
 }

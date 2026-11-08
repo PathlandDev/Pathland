@@ -3,9 +3,14 @@ package dev.pathland.quarkus.devui;
 import dev.pathland.server.PathlandBuildInfo;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandRegistry;
+import dev.pathland.server.PathlandSignalHub;
 import dev.pathland.server.introspection.PathlandIntrospection.HostSnapshot;
 import dev.pathland.server.introspection.PathlandIntrospection.RegistrySnapshot;
 import dev.pathland.server.introspection.PathlandIntrospection.SessionSnapshot;
+import dev.pathland.view.core.ThemeMode;
+import dev.pathland.view.core.state.DebugStateStore;
+import dev.pathland.view.core.state.StateStore;
+import dev.pathland.view.engine.NodeSnapshot;
 import io.quarkus.runtime.annotations.JsonRpcDescription;
 import io.quarkus.runtime.annotations.JsonRpcUsage;
 import io.quarkus.runtime.annotations.Usage;
@@ -13,6 +18,7 @@ import jakarta.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The runtime side of the Pathland Dev UI: read-only snapshots plus a small set of
@@ -32,14 +38,22 @@ public class PathlandDevUiRpc {
     @Inject
     PathlandDevTraceStore trace;
 
+    @Inject
+    StateStore store;
+
     /** For tests / direct construction (CDI uses the no-arg constructor + field injection). */
     PathlandDevUiRpc(PathlandHost host) {
         this(host, new PathlandDevTraceStore());
     }
 
     PathlandDevUiRpc(PathlandHost host, PathlandDevTraceStore trace) {
+        this(host, trace, null);
+    }
+
+    PathlandDevUiRpc(PathlandHost host, PathlandDevTraceStore trace, StateStore store) {
         this.host = host;
         this.trace = trace;
+        this.store = store;
     }
 
     public PathlandDevUiRpc() {
@@ -172,8 +186,161 @@ public class PathlandDevUiRpc {
         }
     }
 
-    private PathlandRegistry registryFor(String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
+    /** Live topic subscriptions for a mount (or the default hub when blank). */
+    @JsonRpcDescription("List live topic subscriptions per (topic, subject)")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public List<PathlandSignalHub.SubscriptionCount> topics(String mount) {
+        PathlandSignalHub hub = hubFor(mount);
+        return hub == null ? List.of() : hub.subscriptions();
+    }
+
+    /**
+     * Publish an untyped topic value (Dev UI tooling). {@code subjectType}/{@code valueType}
+     * are {@code string}, {@code number}, {@code boolean}, or {@code null}.
+     */
+    @JsonRpcDescription("Publish a value to a (topic, subject) subscription")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public ActionResult publishTopic(
+            String mount,
+            String topic,
+            String subject,
+            String subjectType,
+            String valueType,
+            String value) {
+        PathlandSignalHub hub = hubFor(mount);
+        if (hub == null) {
+            return ActionResult.failure("unknown mount: " + mount);
+        }
+        if (topic == null || topic.isBlank()) {
+            return ActionResult.failure("topic is required");
+        }
+        try {
+            Object parsedSubject = parseValue(subjectType, subject);
+            Object parsedValue = parseValue(valueType, value);
+            hub.publishRaw(topic, parsedSubject, parsedValue);
+            return ActionResult.success();
+        } catch (RuntimeException e) {
+            return ActionResult.failure(e.getMessage());
+        }
+    }
+
+    /** Enumerate persisted state keys (InMemory state store; other stores may be unsupported). */
+    @JsonRpcDescription("List persisted session state (keys, types, values)")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public StateSnapshot state(String query) {
+        if (!(store instanceof DebugStateStore debug)) {
+            return new StateSnapshot(false, List.of(), "this StateStore does not support enumeration");
+        }
+        String filter = query == null ? "" : query.toLowerCase();
+        List<StateEntry> entries = new ArrayList<>();
+        for (String key : debug.keys()) {
+            if (!filter.isEmpty() && !key.toLowerCase().contains(filter)) {
+                continue;
+            }
+            Optional<Object> value = debug.get(key);
+            Object raw = value.orElse(null);
+            entries.add(new StateEntry(
+                    key,
+                    raw == null ? "null" : raw.getClass().getSimpleName(),
+                    preview(raw)));
+        }
+        return new StateSnapshot(true, List.copyOf(entries), null);
+    }
+
+    /** Delete one persisted state key. */
+    @JsonRpcDescription("Delete one persisted state key")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public ActionResult deleteState(String key) {
+        if (key == null || key.isBlank()) {
+            return ActionResult.failure("key is required");
+        }
+        if (store == null) {
+            return ActionResult.failure("no StateStore is available");
+        }
+        store.delete(key);
+        return ActionResult.success();
+    }
+
+    /** Force/release a session's color scheme (platform/light/dark). */
+    @JsonRpcDescription("Force a session's color scheme (platform, light, dark)")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public ActionResult setColorScheme(String sessionId, String mode) {
+        PathlandRegistry registry = registryFor(sessionId);
+        if (registry == null) {
+            return ActionResult.failure("unknown session: " + sessionId);
+        }
+        ThemeMode themeMode = switch (mode == null ? "" : mode.toLowerCase()) {
+            case "light" -> ThemeMode.LIGHT;
+            case "dark" -> ThemeMode.DARK;
+            default -> ThemeMode.PLATFORM;
+        };
+        return registry.setColorScheme(sessionId, themeMode)
+                ? ActionResult.success()
+                : ActionResult.failure("unknown session: " + sessionId);
+    }
+
+    /** Clear a session's app token overrides (renderer defaults apply). */
+    @JsonRpcDescription("Clear a session's app token overrides")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public ActionResult resetTheme(String sessionId) {
+        PathlandRegistry registry = registryFor(sessionId);
+        if (registry == null) {
+            return ActionResult.failure("unknown session: " + sessionId);
+        }
+        return registry.resetTheme(sessionId)
+                ? ActionResult.success()
+                : ActionResult.failure("unknown session: " + sessionId);
+    }
+
+    /** The retained tree of one session (component ids, text, properties, children). */
+    @JsonRpcDescription("Inspect one session's retained tree")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public TreeSnapshot tree(String sessionId) {
+        PathlandRegistry registry = registryFor(sessionId);
+        if (registry == null) {
+            return new TreeSnapshot(sessionId, null, "unknown session: " + sessionId);
+        }
+        try {
+            return new TreeSnapshot(sessionId, registry.treeSnapshot(sessionId), null);
+        } catch (RuntimeException e) {
+            return new TreeSnapshot(sessionId, null, e.getMessage());
+        }
+    }
+
+    private PathlandSignalHub hubFor(String mount) {
+        if (mount == null || mount.isBlank()) {
+            return host.signalHub();
+        }
+        return host.signalHub(mount);
+    }
+
+    private static Object parseValue(String type, String text) {
+        String kind = type == null ? "string" : type.toLowerCase();
+        return switch (kind) {
+            case "number" -> parseNumber(text);
+            case "boolean" -> Boolean.valueOf(text);
+            case "null" -> null;
+            default -> text;
+        };
+    }
+
+    private static Number parseNumber(String text) {
+        try {
+            return Long.valueOf(text);
+        } catch (NumberFormatException e) {
+            return Double.valueOf(text);
+        }
+    }
+
+    private static String preview(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        String text = String.valueOf(value);
+        return text.length() > 500 ? text.substring(0, 500) + "…" : text;
+    }
+
+    private PathlandRegistry registryFor(String sessionId) {        if (sessionId == null || sessionId.isBlank()) {
             return null;
         }
         for (PathlandRegistry registry : host.registries()) {
@@ -202,6 +369,15 @@ public class PathlandDevUiRpc {
     }
 
     public record SsrPreview(String mount, String route, String html, String error) {
+    }
+
+    public record StateEntry(String key, String type, String value) {
+    }
+
+    public record StateSnapshot(boolean supported, List<StateEntry> entries, String error) {
+    }
+
+    public record TreeSnapshot(String sessionId, NodeSnapshot root, String error) {
     }
 
     public record ActionResult(boolean ok, String error) {

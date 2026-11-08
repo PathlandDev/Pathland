@@ -27,6 +27,7 @@ import dev.pathland.view.core.state.StateStore;
 import dev.pathland.view.core.transport.EnvironmentData;
 import dev.pathland.view.core.transport.Event;
 import dev.pathland.view.core.transport.FrameCodec;
+import dev.pathland.view.engine.NodeSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -618,13 +619,37 @@ public final class PathlandSession {
         return snapshots;
     }
 
+    /** A read-only snapshot of this session's retained tree (package-private; actor-only). */
+    NodeSnapshot treeSnapshot() {
+        return emitter.snapshotTree();
+    }
+
+    private List<PathlandIntrospection.ProxySnapshot> proxySnapshots() {
+        ProxyHost host = proxyHost;
+        if (host == null) {
+            return List.of();
+        }
+        List<PathlandIntrospection.ProxySnapshot> snapshots = new ArrayList<>();
+        for (ProxySession.Snapshot proxy : host.snapshots()) {
+            snapshots.add(new PathlandIntrospection.ProxySnapshot(
+                    proxy.proxyId(),
+                    proxy.block(),
+                    proxy.endpoint(),
+                    proxy.route(),
+                    proxy.ready(),
+                    proxy.snapshotReceived(),
+                    proxy.attempts(),
+                    proxy.originRootId()));
+        }
+        return List.copyOf(snapshots);
+    }
+
     /**
      * A read-only snapshot of this session for diagnostic tooling. Package-private:
      * only the owning registry may call it, and only on the session's actor (it
      * reads the active path, the retained tree, and the actor-confined subscription
      * mirror).
-     */
-    PathlandIntrospection.SessionSnapshot snapshot() {
+     */    PathlandIntrospection.SessionSnapshot snapshot() {
         DeltaBatcher.Stats batchStats = batcher.stats();
         return new PathlandIntrospection.SessionSnapshot(
                 sessionId,
@@ -642,6 +667,7 @@ public final class PathlandSession {
                 rootId,
                 emitter.treeSize(),
                 proxyHost == null ? 0 : proxyHost.activeProxies(),
+                proxySnapshots(),
                 subscriptions.snapshot(),
                 new PathlandIntrospection.SessionStats(
                         inboundEvents.get(),

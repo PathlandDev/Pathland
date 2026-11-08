@@ -58,6 +58,8 @@ class PathlandIntrospectionTest {
             assertFalse(session.closed());
             assertTrue(session.treeNodes() >= 1, "the retained tree has at least the root");
             assertTrue(session.rootId() > 0);
+            assertEquals("PLATFORM", session.colorScheme());
+            assertTrue(session.proxies().isEmpty(), "the simple app has no proxy views");
 
             // Inbound events are counted, and a resync is visible in the stats.
             registry.dispatch("ui-1", FrameCodec.encodeEvents(List.of(Event.pointerUp(1, 0, 0))));

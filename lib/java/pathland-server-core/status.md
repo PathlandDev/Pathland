@@ -14,8 +14,14 @@ dependency — framework glue lives in the starters.
   and `PathlandSession.snapshot()` expose immutable
   `dev.pathland.server.introspection.PathlandIntrospection` records: route, state
   scope, viewport, connected/closed, color scheme, theme-override presence,
-  retained tree size, proxy count, topic subscriptions (topic/subject/pending),
-  and inbound/resync/batch counters.
+  retained tree size, proxy count + per-origin proxy snapshots, topic
+  subscriptions (topic/subject/pending), and inbound/resync/batch counters.
+  `PathlandRegistry.treeSnapshot(id)` exposes one session's retained tree (via
+  `Emitter.snapshotTree()`), and `setColorScheme`/`resetTheme` are actor-safe
+  Dev UI actions. `PathlandSignalHub.subscriptions()` lists live
+  `(topic, subject)` counts and `publishRaw` publishes untyped Dev UI values.
+  `ProxyHost.snapshots()`/`ProxySession.snapshot()` expose origin connection
+  state (endpoint, block, readiness, snapshot, attempts, origin root).
   `DeltaBatcher.stats()` supplies batch/opcode/byte/sequence counters,
   `Emitter.treeSize()` the node count, `SessionSubscriptions.snapshot()` the
   subscription list, and `PathlandBuildInfo` the DOM bundle name/integrity. No

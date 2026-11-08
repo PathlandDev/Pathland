@@ -9,9 +9,11 @@ import dev.pathland.server.PathlandRegistry;
 import dev.pathland.server.PathlandTelemetry;
 import dev.pathland.server.introspection.PathlandIntrospection.SessionSnapshot;
 import dev.pathland.view.core.state.InMemoryStateStore;
+import dev.pathland.view.core.state.StateStore;
 import dev.pathland.view.core.transport.EnvironmentData;
 import dev.pathland.view.core.transport.Event;
 import dev.pathland.view.core.transport.FrameCodec;
+import dev.pathland.view.engine.NodeSnapshot;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,20 +45,22 @@ class PathlandDevUiRpcTest {
 
     private PathlandHost host;
     private PathlandDevTraceStore trace;
+    private StateStore stateStore;
     private PathlandDevUiRpc rpc;
 
     @BeforeEach
     void setUp() {
         PathlandApp app = KotlinFixtures::counterProbe;
         trace = new PathlandDevTraceStore();
+        stateStore = new InMemoryStateStore();
         host = new PathlandHost(
                 List.of(MountedApp.of("/", app), MountedApp.of("/support", app)),
-                new InMemoryStateStore(),
+                stateStore,
                 false,
                 PathlandTelemetry.NOOP,
                 false,
                 trace);
-        rpc = new PathlandDevUiRpc(host, trace);
+        rpc = new PathlandDevUiRpc(host, trace, stateStore);
     }
 
     @AfterEach
@@ -142,6 +146,103 @@ class PathlandDevUiRpcTest {
         long lastId = rpc.clearTrace();
         assertEquals(snapshot.nextId(), lastId);
         assertTrue(rpc.trace(0, 100).entries().isEmpty(), "clear drops the retained entries");
+    }
+
+    @Test
+    void stateListsValuesAndDeletesThem() {
+        stateStore.save("count:wid-1", 7);
+        stateStore.save("name:wid-1", "Ada");
+
+        PathlandDevUiRpc.StateSnapshot snapshot = rpc.state("");
+        assertTrue(snapshot.supported());
+        assertNull(snapshot.error());
+        assertEquals(2, snapshot.entries().size());
+        assertTrue(snapshot.entries().stream().anyMatch(entry ->
+                entry.key().equals("count:wid-1") && entry.value().equals("7")));
+
+        PathlandDevUiRpc.StateSnapshot filtered = rpc.state("count");
+        assertEquals(1, filtered.entries().size());
+
+        assertTrue(rpc.deleteState("count:wid-1").ok());
+        assertTrue(rpc.state("count").entries().isEmpty());
+    }
+
+    @Test
+    void themeActionsAreVisibleInTheSessionSnapshot() {
+        open(host.registry("/"), "ui-1", "wid-1", "/home");
+        SessionSnapshot session = rpc.sessions().get(0);
+        assertEquals("PLATFORM", session.colorScheme());
+        assertFalse(session.themeOverrides());
+
+        assertTrue(rpc.setColorScheme(session.id(), "dark").ok());
+        assertEquals("DARK", rpc.sessions().get(0).colorScheme());
+
+        assertTrue(rpc.setColorScheme(session.id(), "light").ok());
+        assertEquals("LIGHT", rpc.sessions().get(0).colorScheme());
+
+        assertTrue(rpc.resetTheme(session.id()).ok());
+        assertFalse(rpc.sessions().get(0).themeOverrides());
+    }
+
+    @Test
+    void treeReturnsTheRetainedTree() {
+        open(host.registry("/"), "ui-1", "wid-1", "/home");
+        SessionSnapshot session = rpc.sessions().get(0);
+
+        PathlandDevUiRpc.TreeSnapshot tree = rpc.tree(session.id());
+        assertNull(tree.error());
+        assertNotNull(tree.root());
+        assertTrue(tree.root().getId() > 0);
+        assertFalse(tree.root().getChildren().isEmpty(), "the counter app has a label child");
+    }
+
+    @Test
+    void topicsListSubscriptionsAndRawPublishReachesTheSession() {
+        PathlandDevTraceStore topicTrace = new PathlandDevTraceStore();
+        StateStore topicStore = new InMemoryStateStore();
+        PathlandHost topicHost = new PathlandHost(
+                List.of(MountedApp.of("/topics", KotlinFixtures::customerTopicProbe)),
+                topicStore,
+                false,
+                PathlandTelemetry.NOOP,
+                false,
+                topicTrace);
+        PathlandDevUiRpc topicRpc = new PathlandDevUiRpc(topicHost, topicTrace, topicStore);
+        try {
+            open(topicHost.registry("/topics"), "t-1", "wid-t", "/42");
+            topicRpc.sessions(); // actor barrier: the session mounted and declared its subscriptions
+            List<dev.pathland.server.PathlandSignalHub.SubscriptionCount> topics = topicRpc.topics("/topics");
+            assertEquals(2, topics.size(), "both the scoped and global topic are subscribed: " + topics);
+            assertTrue(topics.stream().anyMatch(topic ->
+                    topic.topic().equals("test.customer.name") && topic.subject().equals("42")));
+
+            PathlandDevUiRpc.ActionResult published = topicRpc.publishTopic(
+                    "/topics", "test.customer.name", "42", "number", "string", "Ada");
+            assertTrue(published.ok(), published.error());
+
+            topicRpc.sessions(); // actor barrier: the topic update is applied before this returns
+            String sessionId = topicRpc.sessions().get(0).id();
+            PathlandDevUiRpc.TreeSnapshot tree = topicRpc.tree(sessionId);
+            assertTrue(containsText(tree.root(), "Ada"),
+                    "the published topic value reached the bound text node");
+        } finally {
+            topicHost.shutdown();
+        }
+    }
+
+    private static boolean containsText(NodeSnapshot node, String text) {
+        if (node == null) {
+            return false;
+        }
+        if (node.getText() != null && node.getText().contains(text)) {
+            return true;
+        }
+        for (NodeSnapshot child : node.getChildren()) {
+            if (containsText(child, text)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void open(PathlandRegistry registry, String uiId, String wid, String route) {

@@ -3,12 +3,14 @@ package dev.pathland.server;
 import dev.pathland.view.core.state.PersistentState;
 import dev.pathland.view.core.router.Route;
 import dev.pathland.server.introspection.PathlandIntrospection;
+import dev.pathland.view.core.ThemeMode;
 
 import dev.pathland.view.core.router.Router;
 import dev.pathland.view.core.state.StateStore;
 import dev.pathland.view.core.transport.EnvironmentData;
 import dev.pathland.view.core.transport.Event;
 import dev.pathland.view.core.transport.FrameCodec;
+import dev.pathland.view.engine.NodeSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -446,6 +449,34 @@ public final class PathlandRegistry {
         return sessionId != null && sessions.containsKey(sessionId);
     }
 
+    /** Force/release a session's color scheme (a Dev UI action). */
+    public boolean setColorScheme(String sessionId, ThemeMode mode) {
+        if (!hasSession(sessionId)) {
+            return false;
+        }
+        execute(() -> {
+            PathlandSession session = sessions.get(sessionId);
+            if (session != null) {
+                session.setColorScheme(mode);
+            }
+        });
+        return true;
+    }
+
+    /** Clear a session's app token overrides (a Dev UI action). */
+    public boolean resetTheme(String sessionId) {
+        if (!hasSession(sessionId)) {
+            return false;
+        }
+        execute(() -> {
+            PathlandSession session = sessions.get(sessionId);
+            if (session != null) {
+                session.resetTheme();
+            }
+        });
+        return true;
+    }
+
     /** A read-only snapshot of this mount and its live sessions (diagnostic tooling). */
     public PathlandIntrospection.RegistrySnapshot snapshot() {
         return snapshot(2_000L);
@@ -462,20 +493,46 @@ public final class PathlandRegistry {
         if (shuttingDown.get()) {
             throw new IllegalStateException("registry is shut down: " + mountPath);
         }
+        return computeOnActor("snapshot", timeoutMillis, this::snapshotOnActor);
+    }
+
+    /**
+     * A read-only snapshot of one session's retained tree (diagnostic tooling).
+     * Returns {@code null} when the session does not exist.
+     */
+    public NodeSnapshot treeSnapshot(String sessionId) {
+        if (!hasSession(sessionId)) {
+            return null;
+        }
+        if (shuttingDown.get()) {
+            throw new IllegalStateException("registry is shut down: " + mountPath);
+        }
+        return computeOnActor("tree snapshot", 2_000L, () -> {
+            PathlandSession session = sessions.get(sessionId);
+            return session == null ? null : session.treeSnapshot();
+        });
+    }
+
+    /** Run [task] on the registry actor, inline when already on it, bounded by [timeoutMillis]. */
+    private <T> T computeOnActor(String action, long timeoutMillis, Callable<T> task) {
         if (Boolean.TRUE.equals(onActor.get())) {
-            return snapshotOnActor();
+            try {
+                return task.call();
+            } catch (Exception e) {
+                throw new IllegalStateException("failed to compute " + action + " for " + mountPath, e);
+            }
         }
         try {
-            return actor.submit(this::snapshotOnActor).get(timeoutMillis, TimeUnit.MILLISECONDS);
+            return actor.submit(task).get(timeoutMillis, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("interrupted while snapshotting " + mountPath, e);
+            throw new IllegalStateException("interrupted while computing " + action + " for " + mountPath, e);
         } catch (ExecutionException e) {
             Throwable cause = e.getCause() == null ? e : e.getCause();
-            throw new IllegalStateException("failed to snapshot " + mountPath, cause);
+            throw new IllegalStateException("failed to compute " + action + " for " + mountPath, cause);
         } catch (TimeoutException e) {
             throw new IllegalStateException(
-                    "timed out snapshotting " + mountPath + " after " + timeoutMillis + " ms", e);
+                    "timed out computing " + action + " for " + mountPath + " after " + timeoutMillis + " ms", e);
         } catch (RejectedExecutionException e) {
             throw new IllegalStateException("registry is shut down: " + mountPath, e);
         }

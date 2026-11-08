@@ -498,6 +498,24 @@ class Emitter {
         return total
     }
 
+    /** An immutable snapshot of the retained tree (a read-only diagnostic; call on the actor). */
+    fun snapshotTree(): NodeSnapshot? = tree?.let { snapshotNode(it) }
+
+    private fun snapshotNode(node: PathlandNode): NodeSnapshot {
+        val properties = LinkedHashMap<Int, String>(node.properties.size)
+        for ((key, value) in node.properties) {
+            properties[key] = value?.toString() ?: "null"
+        }
+        return NodeSnapshot(
+            id = node.id,
+            component = node.component,
+            text = node.textValue(),
+            reactiveText = node.textBinding != null || node.attributedBinding != null,
+            properties = properties,
+            children = node.children.map { snapshotNode(it) },
+        )
+    }
+
     /**
      * Project [controller] as a pinned, non-visual root node. Registration is
      * idempotent; outside a render it is applied immediately, during a render it

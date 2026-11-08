@@ -14,10 +14,13 @@ import io.quarkus.devui.spi.page.Page;
 import jakarta.inject.Singleton;
 import org.jboss.jandex.DotName;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * Registers the Pathland card in the Quarkus Dev UI (local development only):
- * a live session inspector backed by {@link PathlandDevUiRpc}, plus links to the
- * running app, health, and metrics endpoints.
+ * a live session inspector backed by {@link PathlandDevUiRpc}, wire/SSR/protocol
+ * tools, and links to the running app, health, and metrics endpoints.
  *
  * <p>The build steps are gated by {@link IsLocalDevelopment}, so the RPC bean is
  * only registered (and therefore only instantiated) in dev mode. Production and
@@ -52,7 +55,29 @@ public final class PathlandDevUiProcessor {
                 .title("Protocol")
                 .icon("font-awesome-solid:book")
                 .componentLink("qwc-pathland-protocol.js"));
+        card.addPage(Page.webComponentPageBuilder()
+                .title("Topics")
+                .icon("font-awesome-solid:comments")
+                .componentLink("qwc-pathland-topics.js"));
+        card.addPage(Page.webComponentPageBuilder()
+                .title("State")
+                .icon("font-awesome-solid:database")
+                .componentLink("qwc-pathland-state.js"));
+        card.addPage(Page.webComponentPageBuilder()
+                .title("Theme")
+                .icon("font-awesome-solid:palette")
+                .componentLink("qwc-pathland-theme.js"));
+        card.addPage(Page.webComponentPageBuilder()
+                .title("Proxies")
+                .icon("font-awesome-solid:diagram-project")
+                .componentLink("qwc-pathland-proxies.js"));
+        card.addPage(Page.webComponentPageBuilder()
+                .title("Tree")
+                .icon("font-awesome-solid:sitemap")
+                .componentLink("qwc-pathland-tree.js"));
         card.addBuildTimeData("protocol", ProtocolCatalog.rows());
+        card.addBuildTimeData("components", idsByName("component"));
+        card.addBuildTimeData("properties", idsByName("property"));
         card.addAction(CardAction.actionBuilder()
                 .title("Open app")
                 .icon("font-awesome-solid:up-right-from-square")
@@ -87,5 +112,21 @@ public final class PathlandDevUiProcessor {
                 .setDefaultScope(DotName.createSimple(Singleton.class.getName()))
                 .setUnremovable()
                 .build();
+    }
+
+    /** Map numeric protocol ids to names for the tree inspector. */
+    private static Map<Integer, String> idsByName(String kind) {
+        Map<Integer, String> ids = new LinkedHashMap<>();
+        for (ProtocolCatalog.Row row : ProtocolCatalog.rows()) {
+            if (!kind.equals(row.getKind()) || !row.getValue().startsWith("0x")) {
+                continue;
+            }
+            try {
+                ids.put(Integer.parseInt(row.getValue().substring(2), 16), row.getName());
+            } catch (NumberFormatException ignored) {
+                // a non-numeric value is not an id
+            }
+        }
+        return ids;
     }
 }
