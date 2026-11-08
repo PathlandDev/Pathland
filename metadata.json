@@ -1,0 +1,62 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6X573AS704HMCC821E33EFQ",
+  "strategy": "manual-commit",
+  "branch": "feat/quarkus-native-graalvm",
+  "checkpoints_count": 9,
+  "files_touched": [
+    "AGENTS.md",
+    "docs/DEPLOY.md",
+    "docs/PREAPPLICATION-TODO.md",
+    "lib/java/.mvn/wrapper/maven-wrapper.properties",
+    "lib/java/mvnw",
+    "lib/java/mvnw.cmd",
+    "lib/java/pathland-desktop-demo/pom.xml",
+    "lib/java/pathland-desktop-demo/src/main/java/dev/pathland/demo/gtk/GtkHost.java",
+    "lib/java/pathland-desktop-demo/src/main/java/dev/pathland/demo/gtk/GtkRendererNative.java",
+    "lib/java/pathland-desktop-demo/src/main/kotlin/dev/pathland/demo/qt/QtHost.kt",
+    "lib/java/pathland-desktop-demo/src/main/kotlin/dev/pathland/demo/qt/QtRendererNative.kt",
+    "lib/java/pathland-desktop-demo/status.md",
+    "lib/java/pathland-native-core/pom.xml",
+    "lib/java/pathland-native-core/src/main/kotlin/dev/pathland/nativecore/PathlandCore.kt",
+    "lib/java/pathland-native-core/src/main/kotlin/dev/pathland/nativecore/RingOpcodeSink.kt",
+    "lib/java/pathland-native-core/status.md",
+    "lib/java/pathland-quarkus-demo/Dockerfile",
+    "lib/java/pathland-quarkus-demo/pom.xml",
+    "lib/java/pathland-quarkus-deployment/src/main/java/dev/pathland/quarkus/deployment/PathlandProcessor.java",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/PathlandRegistryProducer.java",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-server-core/pom.xml",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/StateStores.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/state/redis/RedisStateStore.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/java/dev/pathland/spring/PathlandAutoConfiguration.java",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/java/pathland-state-redis/pom.xml",
+    "lib/java/pathland-state-redis/src/main/java/dev/pathland/state/redis/RedisStateStore.java",
+    "lib/java/pathland-state-redis/src/main/java/dev/pathland/state/redis/RedisStateStores.java",
+    "lib/java/pathland-state-redis/src/main/resources/META-INF/native-image/dev.pathland/pathland-state-redis/native-image.properties",
+    "lib/java/pathland-state-redis/status.md",
+    "lib/java/pathland-view-core/pom.xml",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/ffm/PathlandCore.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/ffm/RingOpcodeSink.kt",
+    "lib/java/pathland-view-core/status.md",
+    "lib/java/pom.xml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2369969,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 28222336,
+    "output_tokens": 43378,
+    "api_call_count": 148
+  }
+}

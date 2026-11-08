@@ -1,0 +1,1 @@
+I want the quarkus demo to be build as native and run with graalvm - event when hosted va the Dockerfile. What do I need to do? Do i need some extra tools?
