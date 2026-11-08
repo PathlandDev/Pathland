@@ -1,0 +1,1 @@
+pathland-view-core has both core classes and UI dsl.  I want to move core parts to java and  seperate module called pathland-core
