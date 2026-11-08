@@ -181,7 +181,10 @@ class MusicPlayerFitMediaTest {
             "a MEDIA_TIME_UPDATED report no longer reaches the seek bar after a fit crossing",
         )
 
-        val playId = lastLabelId(mounted.sink.frames, "Play")
+        // The nested transport fit's snapshot form emits a play button for every
+        // candidate; only the surviving/attached one still has a tap action.
+        val playId = lastLabelId(mounted.sink.frames, "Play", mounted.result.tapActions().keys)
+        assertTrue(mounted.result.tapActions().containsKey(playId), "the play button is attached")
         val beforePlay = mounted.sink.frames.size
         dispatcher.dispatch(Event.pointerUp(playId, 0f, 0f))
         val playDeltas = mounted.sink.frames.drop(beforePlay)
@@ -199,20 +202,21 @@ class MusicPlayerFitMediaTest {
         )
     }
 
-    private fun lastLabelId(frames: List<ProtocolFrame>, label: String): Int {
+    private fun lastLabelId(frames: List<ProtocolFrame>, label: String, attached: Set<Int>): Int {
         var id = 0
         for (frame in frames) {
             for (op: Opcode in frame.opcodes()) {
                 if (op.category() == Categories.PARAMETER &&
                     op.command() == Commands.Parameter.SET_PROPERTY &&
                     (op.b() and 0xFFFF) == Properties.LABEL &&
-                    frame.stringAt(op.c()) == label
+                    frame.stringAt(op.c()) == label &&
+                    op.a() in attached
                 ) {
                     id = op.a()
                 }
             }
         }
-        check(id != 0) { "no node labelled '$label' in the frame stream" }
+        check(id != 0) { "no attached node labelled '$label' in the frame stream" }
         return id
     }
 }

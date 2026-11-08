@@ -13,10 +13,10 @@ import dev.pathland.view.dsl.frame
  * the service's transport signals.
  */
 internal class PlayerBar(
-    private val showVolume: Boolean,
+    private val wide: Boolean,
 ) : Component() {
 
-    override fun body(): View = PlayerControls(showVolume)
+    override fun body(): View = PlayerControls(wide)
         .background(MusicPlayerView.BAR_BG)
         .frame {
             width(Commands.Size.FILL)

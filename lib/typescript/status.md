@@ -134,6 +134,14 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   `LABEL` makes it presentable (`role="img"`/`aria-label`, else `aria-hidden`);
   the runtime mirrors the SSR svg's `data-pathland-icon` (golden `icons`
   fixture / `ssr-conformance`).
+- **Accessibility `LABEL` semantics** (`src/apply.ts`): a `LABEL` is an
+  accessible name, never visible text. Only the node itself being an icon is
+  treated as the icon (a descendant icon stays decorative), media uses `alt`, a
+  slider names its inner input, a text field updates its `.pathland-label` span,
+  and every other control/composite gets `aria-label` on the element itself.
+  This holds regardless of delta order: a fresh node (e.g. a `ViewThatFits`
+  candidate swap) receives its properties **before** its children, so a label on
+  an as-yet-empty container must not become a text node.
 - **SizeThatFits fit slots** (`src/apply.ts` + `elements.ts` + `src/events.ts`):
   a `SIZE_THAT_FITS` node is a fill-sized `div.pathland-ftf` that is
   **layout-transparent**: it forwards the parent flex container's

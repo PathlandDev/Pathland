@@ -59,19 +59,19 @@ class MusicPlayerView @JvmOverloads constructor(
         val mediaPlayer = service
 
         // One root fit slot selects the complete layout for the window width:
-        // narrow (no volume), medium (volume), wide (volume + now-playing sidebar).
-        // Keeping the bar's breakpoint at the root avoids a nested fit slot whose
-        // wide-only children could survive a parent candidate swap.
+        // narrow (no volume, compact transport), medium (volume), wide (volume +
+        // now-playing sidebar). Keeping the breakpoint at the root avoids a
+        // nested fit slot whose wide-only children could survive a candidate swap.
         val narrowRow = HStack {
-            PlayerMainArea(showVolume = false)
+            PlayerMainArea(wide = false)
         }.frame(width = Commands.Size.FILL, height = Commands.Size.FILL)
 
         val mediumRow = HStack {
-            PlayerMainArea(showVolume = true)
+            PlayerMainArea(wide = true)
         }.frame(width = Commands.Size.FILL, height = Commands.Size.FILL)
 
         val wideRow = HStack {
-            PlayerMainArea(showVolume = true)
+            PlayerMainArea(wide = true)
             NowPlayingSidebar(adUrl).clipped()
         }.frame(width = Commands.Size.FILL, height = Commands.Size.FILL)
 

@@ -11,9 +11,12 @@ import dev.pathland.view.dsl.Icon
 import dev.pathland.view.dsl.accessibilityLabel
 import dev.pathland.view.dsl.computed
 import dev.pathland.view.dsl.fontSize
+import dev.pathland.view.dsl.unaryPlus
 
 /** The previous / play-pause / next transport buttons. */
-internal class TransportControls : Component() {
+internal class TransportControls(
+    private val wide: Boolean
+) : Component() {
 
     override fun body(): View {
         val service = mediaPlayerService()
@@ -21,23 +24,30 @@ internal class TransportControls : Component() {
             if (service.controller.playing().get()) IconName.PAUSE.wire() else IconName.PLAY.wire()
         }
 
-        return HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
-            Button(action = { service.previous() }) {
+        val backButton = Button(action = { service.previous() }) {
                 Icon(IconName.SKIP_BACK)
             }.fontSize(20f)
-                .accessibilityLabel("Previous track")
+            .accessibilityLabel("Previous track")
 
-            Button(action = { service.togglePlay() }) {
-                Icon(transportIcon)
+        val playButton = Button(action = { service.togglePlay() }) {
+            Icon(transportIcon)
             }.fontSize(20f)
-                .accessibilityLabel(computed {
-                    if (service.controller.playing().get()) "Pause" else "Play"
-                })
+            .accessibilityLabel(computed {
+                if (service.controller.playing().get()) "Pause" else "Play"
+            })
 
-            Button(action = { service.next() }) {
+        val forwardButton = Button(action = { service.next() }) {
                 Icon(IconName.SKIP_FORWARD)
             }.fontSize(20f)
-                .accessibilityLabel("Next track")
+            .accessibilityLabel("Next track")
+
+        return if(!wide) HStack {
+            +playButton
+        } else HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
+            +backButton
+            +playButton
+            +forwardButton
         }
+
     }
 }

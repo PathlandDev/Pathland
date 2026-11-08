@@ -1287,7 +1287,7 @@ function runCss(attributes: TextRunAttribute[]): string {
 
 /** Set a node's text, honoring text fields/editors and label spans (SSR structure). */
 export function setNodeText(el: HTMLElement, text: string): void {
-  // A rich-text node owns its inner spans; a plain TEXT/LABEL property update
+  // A rich-text node owns its inner spans; a plain TEXT property update
   // must not wipe them (an explicit SET_TEXT clears the marker instead).
   if (el.classList.contains("pathland-rich-text")) {
     return;
@@ -1340,21 +1340,21 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
   switch (propId) {
     case PROP_TEXT:
     case PROP_LABEL: {
-      // On a media element the accessibility label is the `alt` text (mirrors
-      // the Rust SSR renderer); on a semantic icon it makes the svg presentable;
-      // elsewhere it's the caption/label span.
-      const icon = el.matches("svg.pathland-icon")
-        ? el
-        : el.querySelector("svg.pathland-icon");
+      // A LABEL is the element's accessible name; only the element ITSELF is
+      // the icon (a descendant icon is the composite's child and stays
+      // decorative — mirrors the Rust SSR renderer). A media element uses `alt`.
+      // Properties can arrive BEFORE a composite's children are emitted (e.g. a
+      // ViewThatFits candidate swap), so a LABEL must never fall through to
+      // writing visible text onto an empty container.
+      const icon = el.matches("svg.pathland-icon") ? el : null;
       const media = el.matches("img,audio,video") ? el : null;
       if (media) {
         media.setAttribute("alt", text);
       } else if (icon) {
         syncIconAria(icon, text);
-      } else {
-        // A LABEL is the element's accessible name (mirrors the Rust SSR
-        // renderer). A slider names its inner input; a text field's visible
-        // wrapping label already names it.
+      } else if (propId === PROP_LABEL) {
+        // A slider names its inner input; a text field's `.pathland-label` span
+        // is its visible caption; every other element carries `aria-label`.
         if (el.classList.contains("pathland-slider")) {
           const input = el.querySelector("input");
           if (input) {
@@ -1364,13 +1364,18 @@ function applyStringProperty(el: HTMLElement, propId: number, text: string): voi
               input.removeAttribute("aria-label");
             }
           }
-        } else if (!el.querySelector(".pathland-label")) {
-          if (text) {
+        } else {
+          const span = el.querySelector(".pathland-label");
+          if (span) {
+            span.textContent = text;
+          } else if (text) {
             el.setAttribute("aria-label", text);
           } else {
             el.removeAttribute("aria-label");
           }
         }
+      } else {
+        // TEXT is visible text (a label span / leaf, or a control's value).
         const span = el.querySelector(".pathland-label");
         if (span) {
           span.textContent = text;
