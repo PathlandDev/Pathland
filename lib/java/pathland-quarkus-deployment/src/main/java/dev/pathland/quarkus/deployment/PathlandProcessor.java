@@ -3,6 +3,7 @@ package dev.pathland.quarkus.deployment;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.RunTimeConfigurationDefaultBuildItem;
+import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceBuildItem;
 
 import java.util.List;
 
@@ -40,6 +41,20 @@ public final class PathlandProcessor {
     @BuildStep
     FeatureBuildItem feature() {
         return new FeatureBuildItem(FEATURE);
+    }
+
+    /**
+     * The renderer-owned base design is copied into the {@code pathland-render-html}
+     * jar under {@code dev/pathland/render/html/}, outside {@code META-INF/resources},
+     * so GraalVM would otherwise drop it from a native image. Register both files
+     * here so every Quarkus consumer of the extension gets a working
+     * {@code HtmlRenderer.baseCss()} without app-level native-image configuration.
+     */
+    @BuildStep
+    NativeImageResourceBuildItem nativeResources() {
+        return new NativeImageResourceBuildItem(
+                "dev/pathland/render/html/base.css",
+                "dev/pathland/render/html/base.css.name");
     }
 
     /**

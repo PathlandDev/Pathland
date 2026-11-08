@@ -32,8 +32,8 @@ Front-loaded evidence of the existing POC — not new grant work:
   `pathland-quarkus-demo` and `pathland-spring-boot-demo` in `ci.yml` (reuse the
   Rust HTML-dylib step for the jar embed); CI green across rust + java.
 - [ ] **Host the Quarkus SSR demo** (#71) — `lib/java/pathland-quarkus-demo/Dockerfile`
-  (multi-stage: Rust dylib → Java reactor → Quarkus jar → JRE 17) + `docs/DEPLOY.md`;
-  deploy to a public URL.
+  (multi-stage: Java reactor → Quarkus native executable via Mandrel 25 → UBI9 micro
+  image) + `docs/DEPLOY.md`; deploy to a public URL.
 - [ ] **Screenshots** (#69) — SSR kitchensink hero shot + GTK window (from the
   existing demos).
 - [ ] Demo video (#96) — record the ~90s clip: SSR first paint + live delta, the

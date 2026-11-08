@@ -40,7 +40,8 @@ subpaths (the BFF layout).
 
 - **`PathlandAutoConfiguration`** (`@AutoConfiguration`, `@EnableWebSocket` since Spring
   Boot 3.5 no longer auto-enables it) + `META-INF/spring/…/AutoConfiguration.imports`:
-  - default `StateStore` bean (`@ConditionalOnMissingBean` — Redis-or-in-memory),
+  - default `StateStore` bean (`@ConditionalOnMissingBean`, in-memory; add the
+    opt-in `pathland-state-redis` module + a `StateStore` bean for Redis),
   - `PathlandHost` bean (shut down with the context): every `MountedApp` bean plus the
     lone `PathlandApp` bean mounted at `/` (unless an explicit `MountedApp` claims the
     root). Without any app the host is empty and the starter is inert.

@@ -11,7 +11,7 @@ import java.util.Locale
  * JNA binding to the Rust Qt renderer cdylib (`libpathland_qt`).
  *
  * The Kotlin DSL emits opcodes into a `libpathland_core` ring
- * ([dev.pathland.view.core.ffm.RingOpcodeSink]); [runRing] hands that borrowed
+ * ([dev.pathland.nativecore.RingOpcodeSink]); [runRing] hands that borrowed
  * ring to the in-process Qt Quick renderer (`pathland_qt_run_ring`), which pumps
  * it in place. Native inputs are reported back through a no-payload callback;
  * the host drains them from the ring itself.

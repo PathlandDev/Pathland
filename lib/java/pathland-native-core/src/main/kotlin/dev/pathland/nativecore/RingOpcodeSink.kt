@@ -1,4 +1,4 @@
-package dev.pathland.view.core.ffm
+package dev.pathland.nativecore
 
 import com.sun.jna.Pointer
 import dev.pathland.view.core.protocol.Categories

@@ -6,8 +6,8 @@ import dev.pathland.demo.assets.DemoAssets
 import dev.pathland.demo.desktop.RingEventReader
 import dev.pathland.demo.music.MusicPlayerView
 import dev.pathland.view.core.Environment
-import dev.pathland.view.core.ffm.PathlandCore
-import dev.pathland.view.core.ffm.RingOpcodeSink
+import dev.pathland.nativecore.PathlandCore
+import dev.pathland.nativecore.RingOpcodeSink
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.state.InMemoryStateStore
 import dev.pathland.view.core.state.PersistentState

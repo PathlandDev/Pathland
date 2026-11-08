@@ -13,8 +13,10 @@
     <description>
         Framework-agnostic JVM libraries for the Pathland UI protocol: a Kotlin
         authoring DSL with Angular-style signals/computed/effects, a Kotlin opcode
-        engine/SPI, the wire codec, JNA ring interop, a reusable HTML renderer, and
-        cross-platform state stores. Java hosts (Spring Boot, Quarkus, desktop) mount
+        engine/SPI, the wire codec, a reusable HTML renderer, and cross-platform
+        state stores (in-memory by default; the opt-in pathland-state-redis module
+        adds Lettuce/Redis). Native desktop hosts use the opt-in JNA ring interop in
+        pathland-native-core. Java hosts (Spring Boot, Quarkus, desktop) mount
         Kotlin-authored views. Runs on every LTS from Java 17.
     </description>
 
@@ -50,8 +52,10 @@
          `refresh-ide`, or `jvm-only` — leaves a demo-free reactor. -->
     <modules>
         <module>pathland-view-core</module>
+        <module>pathland-native-core</module>
         <module>pathland-render-html</module>
         <module>pathland-server-core</module>
+        <module>pathland-state-redis</module>
         <module>pathland-spring-boot-starter</module>
         <module>pathland-quarkus</module>
         <module>pathland-quarkus-deployment</module>
@@ -60,7 +64,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Whole-stack floor: every LTS from Java 17. ScopedValue was replaced with a
-             thread-local environment and the FFM ring interop with JNA to achieve this. -->
+             thread-local environment and the FFM ring interop with JNA (isolated in
+             pathland-native-core) to achieve this. -->
         <maven.compiler.release>17</maven.compiler.release>
         <kotlin.version>2.4.10</kotlin.version>
         <jna.version>5.14.0</jna.version>

@@ -9,10 +9,11 @@ import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandSignalHub;
 import dev.pathland.server.PathlandTelemetry;
-import dev.pathland.server.StateStores;
 import dev.pathland.view.core.state.InMemoryStateStore;
+import dev.pathland.view.core.state.StateStore;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
+import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
@@ -93,17 +94,29 @@ public class PathlandRegistryProducer {
         return telemetry;
     }
 
+    /**
+     * The default state store: in-memory. An app overrides this by producing its own
+     * {@link StateStore} bean (for example {@code RedisStateStores.redisOrFallback}
+     * after adding the opt-in {@code pathland-state-redis} module). Keeping Redis out
+     * of the default path means native images never carry Lettuce.
+     */
     @Produces
     @Singleton
-    PathlandHost host(PathlandTelemetry telemetry) {
+    @DefaultBean
+    StateStore stateStore() {
+        return new InMemoryStateStore();
+    }
+
+    @Produces
+    @Singleton
+    PathlandHost host(PathlandTelemetry telemetry, StateStore store) {
         List<MountedApp> list = new ArrayList<>();
         mounts.forEach(list::add);
         PathlandApp lone = apps.stream().findFirst().orElse(null);
         if (lone != null && list.stream().noneMatch(m -> "/".equals(m.path()))) {
             list.add(0, MountedApp.of("/", lone));
         }
-        return new PathlandHost(
-                list, StateStores.redisOrFallback(new InMemoryStateStore()), debugHtml, telemetry, serviceWorker);
+        return new PathlandHost(list, store, debugHtml, telemetry, serviceWorker);
     }
 
     /** The default topic hub (root mount, else the first mount) for external UI updates. */

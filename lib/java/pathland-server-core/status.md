@@ -123,9 +123,10 @@ dependency — framework glue lives in the starters.
   (a JDK-WebSocket client speaking the PLPL protocol: env/resync/click/ping) lives in
   this module in main scope, so package builds resolve it as a normal jar; the starters'
   100-session stress tests reuse it.
-- **`StateStores`** — default state store: Redis when reachable, else the supplied
-  fallback. The `dev.pathland.state.redis.RedisStateStore` (Lettuce) ships in this
-  module too.
+- **State stores** — the starters default to `InMemoryStateStore` (or an
+  app-provided `StateStore` bean). Redis is opt-in via the separate
+  `pathland-state-redis` module (`RedisStateStores.redisOrFallback`), so server
+  runtimes and native-image builds that use in-memory state never carry Lettuce.
 - **Observability adapters** — `dev.pathland.observability.MicrometerTelemetry` turns
   the seam into `pathland.*` meters (counters, timers, a distribution summary, a
   pull-based sessions gauge, every meter tagged by `mount`); the optional

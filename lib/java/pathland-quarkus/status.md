@@ -129,6 +129,15 @@ capability and pulls in `quarkus-kotlin`.
   false-time-out and kill a healthy connection. Keep-alive pings are sent directly
   (Vert.x serializes writes — no sync with `sendBinary` needed).
 - `META-INF/beans.xml` so Quarkus discovers the extension.
+- **Native image support** — the deployment module registers the renderer-owned
+  `dev/pathland/render/html/base.css` + `.name` resources via
+  `NativeImageResourceBuildItem`, so `HtmlRenderer.baseCss()` works in a GraalVM
+  native executable without app-level `quarkus.native.resources.includes`.
+  JNA is not on the server classpath (the ring interop lives in
+  `pathland-native-core`), and Redis/Lettuce is opt-in via
+  `pathland-state-redis`, so the demo's native image carries neither.
+  The demo's Dockerfile builds with the Mandrel 25 builder image and runs the
+  resulting executable on the UBI9 Quarkus micro image.
 - **Quarkus extension metadata** — runtime + `pathland-quarkus-deployment`; the
   runtime provides the `dev.pathland.quarkus` capability. The runtime has no
   dependency on the authoring DSL. Tests use Kotlin-authored fixture views to prove

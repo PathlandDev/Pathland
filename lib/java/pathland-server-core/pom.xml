@@ -17,9 +17,9 @@
     <description>
         Transport-agnostic Pathland server runtime: one Pathland app instance per session
         (SSR + live 16-byte opcode deltas + environment), the session registry, the
-        Micrometer/OpenTelemetry telemetry adapters, the Redis StateStore, and the shared
-        WebSocket test harness, all used by the Spring Boot and Quarkus starters. Framework
-        glue only lives in the starters.
+        Micrometer/OpenTelemetry telemetry adapters, and the shared WebSocket test
+        harness, all used by the Spring Boot and Quarkus starters. Framework glue only
+        lives in the starters; Redis lives in the opt-in pathland-state-redis module.
     </description>
 
     <dependencies>
@@ -38,10 +38,6 @@
             <groupId>dev.pathland</groupId>
             <artifactId>pathland-render-html</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.lettuce</groupId>
-            <artifactId>lettuce-core</artifactId>
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>

@@ -5,10 +5,12 @@
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written entirely in Kotlin. It owns the `View` SPI and shared
 authoring vocabulary, the retained-tree diff emitter,
-signals/computed/effects, the wire codec, router, cross-platform state, JNA ring
-interop, and the `dev.pathland.view.dsl` SwiftUI-shaped builders/modifiers.
-Server and renderer modules depend on this one module; Java hosts consume the
-Kotlin-authored views through JVM interop.
+signals/computed/effects, the wire codec, router, cross-platform state, and the
+`dev.pathland.view.dsl` SwiftUI-shaped builders/modifiers. Server and renderer
+modules depend on this one module; Java hosts consume the Kotlin-authored views
+through JVM interop. JNA ring interop lives in the opt-in
+`pathland-native-core` module, so this module (and every server/native-image
+build) carries no JNA.
 
 ## Implemented
 
@@ -57,8 +59,8 @@ Kotlin-authored views through JVM interop.
 - **Router** (`dev.pathland.view.core.router`): `Route`, `RouteTable`, `Router`,
   `Navigation`, `NavigationContainer`, `NavigationIntent`, `Params`, `Chrome`,
   `NavOp`. `NavigationLink` and the navigation helpers live in the Kotlin DSL.
-- **JNA interop** (`dev.pathland.view.core.ffm`): lazy `PathlandCore` binding and
-  `RingOpcodeSink` over `libpathland_core`.
+- **JNA interop**: moved to `pathland-native-core` (`dev.pathland.nativecore`),
+  so server runtimes do not pull JNA.
 - **Emitter** (`dev.pathland.view.engine`): `Emitter`, `PathlandNode`, `ViewSlot`,
   `RenderResult`, `InputDispatcher`, `ReactiveValues`, `DateInput`, `MediaInput`.
   Implements mount/id assignment, diff-based reactive emission, node-level binding

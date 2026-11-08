@@ -7,7 +7,6 @@ import dev.pathland.server.PathlandApp;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandSignalHub;
 import dev.pathland.server.PathlandTelemetry;
-import dev.pathland.server.StateStores;
 import dev.pathland.view.core.state.InMemoryStateStore;
 import dev.pathland.view.core.state.StateStore;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -55,11 +54,15 @@ import java.util.List;
 @EnableWebSocket
 public class PathlandAutoConfiguration {
 
-    /** Default state store: Redis when reachable, else in-memory. */
+    /**
+     * Default state store: in-memory. An app overrides this by declaring its own
+     * {@link StateStore} bean (for example {@code RedisStateStores.redisOrFallback}
+     * after adding the opt-in {@code pathland-state-redis} module).
+     */
     @Bean
     @ConditionalOnMissingBean(StateStore.class)
     public StateStore pathlandStateStore() {
-        return StateStores.redisOrFallback(new InMemoryStateStore());
+        return new InMemoryStateStore();
     }
 
     /**

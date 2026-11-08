@@ -123,4 +123,22 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- `mvn package -Dnative` builds the Linux native executable with
+             GraalVM/Mandrel (via the builder image when run in the native
+             Dockerfile). Quarkus 3.39 requires GraalVM/Mandrel 25+. -->
+        <profile>
+            <id>native</id>
+            <activation>
+                <property>
+                    <name>native</name>
+                </property>
+            </activation>
+            <properties>
+                <quarkus.native.enabled>true</quarkus.native.enabled>
+                <quarkus.package.jar.enabled>false</quarkus.package.jar.enabled>
+            </properties>
+        </profile>
+    </profiles>
 </project>

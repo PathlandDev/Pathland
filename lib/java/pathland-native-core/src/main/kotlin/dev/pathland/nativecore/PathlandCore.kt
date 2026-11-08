@@ -1,4 +1,4 @@
-package dev.pathland.view.core.ffm
+package dev.pathland.nativecore
 
 import com.sun.jna.Library
 import com.sun.jna.Memory

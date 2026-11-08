@@ -11,7 +11,8 @@ shared-renderer story. Protocol contract: `spec/`.
 ## How it works
 
 - The Kotlin DSL mounts the view through its fine-grained `Emitter` into a
-  `libpathland_core` shared ring (`RingOpcodeSink`, **zero-copy**).
+  `libpathland_core` shared ring (`RingOpcodeSink` from `pathland-native-core`,
+  **zero-copy**).
 - The in-process renderer pumps the same ring in place
   (`pathland_gtk_run_ring` / `pathland_qt_run_ring`); no
   `pathland-view-native` host is involved.

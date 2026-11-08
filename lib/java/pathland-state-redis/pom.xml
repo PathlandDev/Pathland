@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.pathland</groupId>
+        <artifactId>pathland-parent</artifactId>
+        <version>0.2.2</version>
+    </parent>
+
+    <artifactId>pathland-state-redis</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Pathland State Redis</name>
+    <description>
+        Opt-in Redis StateStore (Lettuce) for the Pathland server runtime. Kept out of
+        pathland-server-core so server deployments that use the in-memory store — and
+        GraalVM native-image builds such as the Quarkus demo — never carry Lettuce.
+        Apps add this module and provide a StateStore bean when they want Redis.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>dev.pathland</groupId>
+            <artifactId>pathland-view-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
