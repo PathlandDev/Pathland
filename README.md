@@ -143,6 +143,29 @@ that layer: the backend *is* the application. There is no frontend contract to
 maintain, no client state model, and no JavaScript to write — and the same backend
 code that serves the web can drive other renderers later.
 
+## Microfrontends, composed server-side
+
+Pathland also gives you a better shape for microfrontends. A `ProxyView` embeds a
+subtree served by **another Pathland server** into the current document. Teams keep
+their independently deployed apps; the composing server connects to each origin as
+an ordinary Pathland client, splices its subtree into its own opcode stream, and the
+browser still talks to **one server over one connection** — one document, one theme,
+one live stream.
+
+```kotlin
+VStack {
+    MyHomeView()                                               // this team's app
+    ProxyView(endpoint = "https://ads.internal", route = "/")  // another team's app
+        .frame(width = 220f, height = 140f)
+}
+```
+
+There is no proxy-specific opcode. The origin serves a normal SSR + `/ws` session —
+it cannot tell a proxy from a browser — and the composing server remaps the origin's
+node ids so several independently deployed apps coexist in a single rendered tree.
+The Quarkus demo uses exactly this to embed the `/ad` app in the music player's Now
+Playing pane. See [PROXY.md](./spec/PROXY.md) for the contract.
+
 ## Why it's smooth
 
 Pathland is built for smooth 60FPS UIs:
@@ -252,6 +275,7 @@ conformance vectors, and the implementation notes — lives in [`spec/`](./spec/
 - [OPCODE.md](./spec/OPCODE.md) — the binary protocol
 - [DSL.md](./spec/DSL.md) — the authoring surface (what you write)
 - [PRIMITIVES.md](./spec/PRIMITIVES.md), [MODIFIERS.md](./spec/MODIFIERS.md), [EVENTS.md](./spec/EVENTS.md)
+- [PROXY.md](./spec/PROXY.md) — composing views from several servers (proxy views)
 - [CONFORMANCE.md](./spec/CONFORMANCE.md) — golden byte vectors
 
 Deployment guidance — CSP, WebSocket origin checks, transport limits, and
