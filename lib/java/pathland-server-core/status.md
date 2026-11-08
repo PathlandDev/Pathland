@@ -184,14 +184,17 @@ dependency — framework glue lives in the starters.
 - **`proxy.ProxyTransport`** + **`proxy.JdkWebSocketTransport`** — the outbound
   connection seam (default: the JDK `HttpClient` WebSocket client, no new
   dependency) with a `Factory` so a starter can swap a native client.
-- **`proxy.ProxySession`** — one origin connection: sends `META::ENVIRONMENT` +
-  `META::RESYNC`, **remaps** the origin snapshot into the proxy's block and
-  attaches the origin root under the proxy node, forwards live deltas remapped,
-  routes client events back (target unmapped), replies `PONG` to origin `PING`,
-  translates origin `META::RESET` into a **scoped** subtree teardown (never a
-  global reset), tears the subtree down on disconnect (the origin session is
-  per-connection), and reconnects with exponential backoff. While an SSR
-  snapshot is pending, `awaitSnapshot` retries `META::RESYNC` every 500 ms, so a
+- **`proxy.ProxySession`** — one origin connection: starts with a
+  `META::PING` readiness probe, waits for the origin's transport-level
+  `META::PONG`, then sends `META::ENVIRONMENT` + `META::RESYNC` (the probe
+  avoids racing the origin's `@OnOpen`/session wiring), **remaps** the origin
+  snapshot into the proxy's block and attaches the origin root under the proxy
+  node, forwards live deltas remapped, routes client events back (target
+  unmapped), replies `PONG` to origin `PING`, translates origin `META::RESET`
+  into a **scoped** subtree teardown (never a global reset), tears the subtree
+  down on disconnect (the origin session is per-connection), and reconnects with
+  exponential backoff. A lost probe/`RESYNC` is retried from the proxy scheduler
+  starting at 50 ms and backing off to 500 ms until the snapshot arrives, so a
   lost first handshake cannot consume the whole SSR budget. The service
   credential + a cycle-guard instance id ride the handshake headers.
   **Backpressure** (spec/PROXY.md §8): a "chatty origin" breaker (a per-second
@@ -260,8 +263,9 @@ flushed batch.
 `proxy.ProxyIdMapTest`: the reserved range, block round-trips, overflow rejection,
 and the opcode remap (TREE/PARAMETER node ids remapped, APPEND/META untouched,
 EVENT targets unmapped).
-`proxy.ProxySessionTest` (a fake origin transport): the ENVIRONMENT+RESYNC
-handshake + handshake headers, snapshot retry when the first RESYNC is lost,
+`proxy.ProxySessionTest` (a fake origin transport): the PING/PONG readiness
+probe followed by ENVIRONMENT+RESYNC and the handshake headers, PING retry while
+the origin is not ready, snapshot retry when the first RESYNC is lost,
 snapshot remap + root attachment, delta remap with the string section passed
 through verbatim, event egress unmapped, pointer-move
 coalescing, `META::RESET` → scoped teardown, disconnect teardown, and the

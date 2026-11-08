@@ -66,19 +66,43 @@ class ProxySessionTest {
     }
 
     @Test
-    void connectsAndSendsEnvironmentThenResync() {
+    void connectsWithPingThenSendsEnvironmentAndResyncAfterPong() {
         start();
-        assertEquals(2, transport.sent.size(), "ENVIRONMENT then RESYNC");
-        assertTrue(FrameCodec.isEnvironment(transport.sent.get(0)), "first message is the environment");
-        assertTrue(FrameCodec.isResync(transport.sent.get(1)), "second message requests the snapshot");
+        assertEquals(1, transport.sent.size(), "PING waits for the origin to be ready");
+        assertTrue(FrameCodec.isPing(transport.sent.get(0)), "first message is the readiness probe");
+
+        transport.deliver(FrameCodec.encodePong());
+        assertEquals(3, transport.sent.size(), "PONG unlocks ENVIRONMENT then RESYNC");
+        assertTrue(FrameCodec.isEnvironment(transport.sent.get(1)), "environment follows the probe");
+        assertTrue(FrameCodec.isResync(transport.sent.get(2)), "then the snapshot request");
         assertEquals("ws://b.example/_pathland/ws?wid=w1", transport.uri.toString());
         assertEquals("svc", transport.headers.get("X-Pathland-Credential"));
         assertNotNull(transport.headers.get("X-Pathland-Instance-Id"), "cycle-guard instance id");
     }
 
     @Test
+    void retriesPingUntilTheOriginIsReady() throws Exception {
+        start();
+        assertEquals(1, transport.sent.size());
+        assertTrue(FrameCodec.isPing(transport.sent.get(0)));
+
+        long deadline = System.nanoTime() + 1_000_000_000L;
+        while (transport.sent.stream().filter(FrameCodec::isPing).count() < 2
+                && System.nanoTime() < deadline) {
+            Thread.sleep(5);
+        }
+        assertTrue(transport.sent.stream().filter(FrameCodec::isPing).count() >= 2,
+                "the probe is retried while the origin is not ready");
+
+        transport.deliver(FrameCodec.encodePong());
+        assertTrue(transport.sent.stream().anyMatch(FrameCodec::isEnvironment));
+        assertTrue(transport.sent.stream().anyMatch(FrameCodec::isResync));
+    }
+
+    @Test
     void awaitSnapshotRetriesWhenTheInitialResyncIsLost() throws Exception {
         start();
+        transport.deliver(FrameCodec.encodePong());
         transport.sent.clear(); // simulate the origin losing the handshake's first RESYNC
         Thread responder = new Thread(() -> {
             long deadline = System.nanoTime() + 3_000_000_000L;
@@ -151,6 +175,7 @@ class ProxySessionTest {
     @Test
     void forwardsClientEventRemappedBackToTheOrigin() {
         start();
+        transport.deliver(FrameCodec.encodePong());
         int proxyTarget = base() + 2;
         session.forwardEvent(Event.pointerUp(proxyTarget, 10f, 20f));
 
@@ -163,13 +188,15 @@ class ProxySessionTest {
     @Test
     void coalescesPointerMovesPerTarget() {
         start();
+        transport.deliver(FrameCodec.encodePong());
         int proxyTarget = base() + 2;
         session.forwardEvent(Event.pointerMove(proxyTarget, 1f, 1f, 0));
         session.forwardEvent(Event.pointerMove(proxyTarget, 2f, 2f, 0));
         session.flushPendingEvents();
 
         long moves = transport.sent.stream()
-                .filter(b -> !FrameCodec.isEnvironment(b) && !FrameCodec.isResync(b))
+                .filter(b -> !FrameCodec.isEnvironment(b) && !FrameCodec.isResync(b)
+                        && !FrameCodec.isPing(b))
                 .flatMap(b -> FrameCodec.decodeEvents(b).stream())
                 .filter(Event::isPointerMove)
                 .count();

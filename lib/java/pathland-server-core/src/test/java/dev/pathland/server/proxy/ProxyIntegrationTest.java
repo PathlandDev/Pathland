@@ -62,8 +62,10 @@ class ProxyIntegrationTest {
 
         ProxySessionTest.FakeTransport origin = originRef.get();
         assertNotNull(origin, "the PROXY_VIEW opened an origin connection");
-        assertTrue(FrameCodec.isEnvironment(origin.sent.get(0)), "origin environment is sent first");
-        assertTrue(FrameCodec.isResync(origin.sent.get(1)), "then the snapshot request");
+        assertTrue(FrameCodec.isPing(origin.sent.get(0)), "the readiness probe is sent first");
+        origin.deliver(FrameCodec.encodePong());
+        assertTrue(FrameCodec.isEnvironment(origin.sent.get(1)), "origin environment follows PONG");
+        assertTrue(FrameCodec.isResync(origin.sent.get(2)), "then the snapshot request");
 
         // The origin's snapshot is remapped into the proxy block and forwarded to the client.
         origin.deliver(FrameCodec.encodeFrame(new ProtocolFrame(List.of(
@@ -187,7 +189,9 @@ class ProxyIntegrationTest {
 
         @Override
         public void send(byte[] bytes) {
-            if (FrameCodec.isResync(bytes)) {
+            if (FrameCodec.isPing(bytes)) {
+                listener.onBinary(FrameCodec.encodePong());
+            } else if (FrameCodec.isResync(bytes)) {
                 listener.onBinary(snapshot);
             }
         }

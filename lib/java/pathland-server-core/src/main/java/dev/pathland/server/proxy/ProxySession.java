@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -61,8 +62,9 @@ public final class ProxySession {
     /** Coalesced pointer-move flush cadence. */
     private static final long MOVE_FLUSH_MILLIS = 16;
 
-    /** While an SSR snapshot is pending, re-ask a healthy origin if the first RESYNC was lost. */
-    private static final long SNAPSHOT_RETRY_MILLIS = 500;
+    /** Readiness/snapshot retry: the first retry is fast; back off to the cap. */
+    private static final long RETRY_INITIAL_MILLIS = 50;
+    private static final long RETRY_MAX_MILLIS = 500;
 
     private final int proxyId;
     private final int block;
@@ -83,6 +85,9 @@ public final class ProxySession {
     private boolean closed;
     private int attempts;
     private boolean snapshotReceived;
+    private boolean ready;
+    private long retryDelayMillis = RETRY_INITIAL_MILLIS;
+    private ScheduledFuture<?> handshakeTask;
     private int originRootId = -1;
     private ProtocolFrame pendingSnapshot;
 
@@ -174,6 +179,7 @@ public final class ProxySession {
             transport = null;
             root = originRootId;
             originRootId = -1;
+            cancelHandshakeLocked();
             lock.notifyAll();
         }
         // Belt-and-braces: drop the origin subtree from the client if it was applied.
@@ -198,35 +204,107 @@ public final class ProxySession {
      */
     public ProtocolFrame awaitSnapshot(long timeoutMillis) throws InterruptedException {
         long deadline = System.nanoTime() + timeoutMillis * 1_000_000L;
-        long nextResync = System.nanoTime() + SNAPSHOT_RETRY_MILLIS * 1_000_000L;
         synchronized (lock) {
             while (pendingSnapshot == null && !closed) {
-                long now = System.nanoTime();
-                long remaining = deadline - now;
+                long remaining = deadline - System.nanoTime();
                 if (remaining <= 0) {
                     break;
                 }
-                if (now >= nextResync) {
-                    // The origin's first RESYNC can race its own session wiring. Retry
-                    // while the caller still has SSR budget, then fall back to the
-                    // documented placeholder + live hydration path.
-                    requestOriginSnapshot();
-                    nextResync = now + SNAPSHOT_RETRY_MILLIS * 1_000_000L;
-                }
-                long untilRetry = Math.max(1L, nextResync - now);
-                lock.wait(Math.max(1L, Math.min(remaining, untilRetry) / 1_000_000L));
+                lock.wait(Math.max(1L, remaining / 1_000_000L));
             }
             return pendingSnapshot;
         }
     }
 
     /**
-     * Ask the origin for a fresh snapshot ({@code META::RESYNC}, non-blocking). The
-     * reply arrives on the transport thread, is remapped, and is forwarded — so a
-     * client {@code META::RESYNC} (reconnect/reload/gap) refreshes the proxy region.
+     * Ask the origin for a fresh snapshot (non-blocking). The reply arrives on the
+     * transport thread, is remapped, and is forwarded — so a client {@code META::RESYNC}
+     * (reconnect/reload/gap) refreshes the proxy region.
      */
     public void requestOriginSnapshot() {
         sendRaw(FrameCodec.encodeResync());
+    }
+
+    // ── Readiness handshake ─────────────────────────────────────────────────
+
+    /**
+     * Start the readiness handshake: a {@code META::PING} proves the origin's
+     * WebSocket endpoint is wired before the session-dependent {@code ENVIRONMENT} +
+     * {@code RESYNC}. Sending those immediately after the client-side open races the
+     * origin's {@code @OnOpen}/session wiring; the first RESYNC can be lost.
+     */
+    private void beginHandshake() {
+        synchronized (lock) {
+            if (closed) {
+                return;
+            }
+            ready = false;
+            snapshotReceived = false;
+            pendingSnapshot = null;
+            retryDelayMillis = RETRY_INITIAL_MILLIS;
+            cancelHandshakeLocked();
+        }
+        sendRaw(FrameCodec.encodePing());
+        scheduleHandshake();
+    }
+
+    /** The origin replied {@code META::PONG}: it is ready for ENVIRONMENT + RESYNC. */
+    private void onPong() {
+        boolean start;
+        synchronized (lock) {
+            if (closed) {
+                return;
+            }
+            start = !ready;
+            if (start) {
+                ready = true;
+                retryDelayMillis = RETRY_INITIAL_MILLIS;
+                cancelHandshakeLocked();
+            }
+        }
+        if (!start) {
+            return;
+        }
+        sendRaw(FrameCodec.encodeEnvironment(
+                new EnvironmentData(config.route(), viewportWidth, viewportHeight)));
+        sendRaw(FrameCodec.encodeResync());
+        scheduleHandshake();
+    }
+
+    private void scheduleHandshake() {
+        synchronized (lock) {
+            if (closed || snapshotReceived) {
+                return;
+            }
+            cancelHandshakeLocked();
+            long delay = retryDelayMillis;
+            retryDelayMillis = Math.min(RETRY_MAX_MILLIS, retryDelayMillis * 2);
+            handshakeTask = scheduler.schedule(this::handshakeTick, delay, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void handshakeTick() {
+        boolean sendPing;
+        synchronized (lock) {
+            if (closed || snapshotReceived) {
+                return;
+            }
+            handshakeTask = null;
+            sendPing = !ready;
+        }
+        if (sendPing) {
+            sendRaw(FrameCodec.encodePing());
+        } else {
+            requestOriginSnapshot();
+        }
+        scheduleHandshake();
+    }
+
+    private void cancelHandshakeLocked() {
+        if (handshakeTask != null) {
+            handshakeTask.cancel(false);
+            handshakeTask = null;
+        }
     }
 
     // ── Client → origin (event egress) ──────────────────────────────────────
@@ -309,6 +387,11 @@ public final class ProxySession {
         if (hasMeta(ops, Commands.Meta.PING)) {
             sendRaw(FrameCodec.encodePong());
         }
+        // Readiness probe reply: the origin's endpoint is wired; send the session
+        // handshake now, not immediately after the client-side WebSocket open.
+        if (hasMeta(ops, Commands.Meta.PONG)) {
+            onPong();
+        }
         // META::RESET → scoped teardown of this proxy's subtree (never a global reset).
         if (hasMeta(ops, Commands.Meta.RESET)) {
             handleOriginReset();
@@ -359,6 +442,7 @@ public final class ProxySession {
         synchronized (lock) {
             snapshotReceived = true;
             pendingSnapshot = out;
+            cancelHandshakeLocked();
             lock.notifyAll();
         }
         frameSink.accept(out);
@@ -456,6 +540,9 @@ public final class ProxySession {
             root = originRootId;
             originRootId = -1;
             snapshotReceived = false;
+            ready = false;
+            pendingSnapshot = null;
+            cancelHandshakeLocked();
         }
         telemetry.proxyDisconnected(mount, config.endpoint(), reason);
         // The origin session is per-connection: a reconnect gets fresh ids, so tear
@@ -536,9 +623,7 @@ public final class ProxySession {
                 attempts = 0;
             }
             telemetry.proxyConnected(mount, config.endpoint());
-            sendRaw(FrameCodec.encodeEnvironment(
-                    new EnvironmentData(config.route(), viewportWidth, viewportHeight)));
-            sendRaw(FrameCodec.encodeResync());
+            beginHandshake();
         }
 
         @Override

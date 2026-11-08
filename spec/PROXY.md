@@ -137,13 +137,25 @@ origin's subtree with the standard host → guest `META::RESYNC`:
 
 1. A opens a connection to B's `/<base>/ws?wid=<A-scoped-wid>` (a WS handshake
    with A's service credentials — see §7).
-2. A sends `META::ENVIRONMENT` (viewport + the route B should render).
-3. A sends `META::RESYNC`.
-4. B replies with a full `TREE + PARAMETER` snapshot of its retained tree.
-5. A remaps the snapshot's ids (§2), attaches the origin root under the proxy
+2. A sends `META::PING` and waits for B's transport-level `META::PONG`. The
+   probe confirms B's WebSocket endpoint is wired before A sends
+   session-dependent messages; B MUST reply at the transport layer and MUST NOT
+   create a session for the probe. This avoids racing B's `@OnOpen`/session
+   wiring (a first `RESYNC` sent immediately after the client-side open can be
+   lost).
+3. A sends `META::ENVIRONMENT` (viewport + the route B should render).
+4. A sends `META::RESYNC`.
+5. B replies with a full `TREE + PARAMETER` snapshot of its retained tree.
+6. A remaps the snapshot's ids (§2), attaches the origin root under the proxy
    node with `TREE::INSERT_CHILD(proxyId, base(k)+rootId, APPEND)`, and forwards
    it.
-6. B then streams live deltas, which A remaps and forwards (§4).
+7. B then streams live deltas, which A remaps and forwards (§4).
+
+A SHOULD retry a lost probe or `RESYNC` while the snapshot is pending, starting
+quickly (e.g. 50 ms) and backing off to a bounded interval (e.g. 500 ms). The
+retry MUST stop once the snapshot arrives or the connection closes. The probe
+and retry use the existing `META::PING`/`PONG` and `META::RESYNC` opcodes; no
+new opcode is introduced.
 
 The `wid` A passes to B is A's **session-scoped** window id, so B's persisted
 state (`StateStore`) is scoped per end-user window exactly as it is for a direct
@@ -153,11 +165,11 @@ client.
 
 Server-side rendering runs on a request thread and must produce the **complete**
 document — including the origin subtree — in one pass. The proxying server
-therefore performs a **blocking** `META::RESYNC` round-trip per proxy
-(`requestSnapshot(timeout)`): send `RESYNC`, await B's snapshot batch or time
-out. On timeout the proxy renders a placeholder node and the origin subtree
-hydrates over the live connection. Blocking is bounded by the timeout and is
-safe on the SSR worker thread (one round-trip per page load).
+therefore performs a **blocking** snapshot round-trip per proxy
+(`requestSnapshot(timeout)`): run the readiness probe, send `RESYNC`, await B's
+snapshot batch or time out. On timeout the proxy renders a placeholder node and
+the origin subtree hydrates over the live connection. Blocking is bounded by the
+timeout and is safe on the SSR worker thread (one round-trip per page load).
 
 Order of operations at SSR:
 
@@ -312,6 +324,6 @@ replacing them with a snapshot never corrupts the rendered result.
 - Remapping (§2.2) is a pure offset and is unit-testable without a network: for
   any origin opcode, remap then unmap is the identity, and no remapped id ever
   falls below `0x4000_0000`.
-- The proxy path MUST reuse the existing `FrameCodec`/PLPL codec and the
-  `META::RESYNC` handshake; a conforming implementation introduces **no new
-  opcode**.
+- The proxy path MUST reuse the existing `FrameCodec`/PLPL codec, the
+  `META::PING`/`PONG` readiness probe, and the `META::RESYNC` handshake; a
+  conforming implementation introduces **no new opcode**.
