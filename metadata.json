@@ -3,7 +3,7 @@
   "checkpoint_id": "01M6XJ0CKBER7ZX4CBREQZVA3J",
   "strategy": "manual-commit",
   "branch": "feat/quarkus-dev-ui",
-  "checkpoints_count": 5,
+  "checkpoints_count": 6,
   "files_touched": [
     "lib/java/pathland-quarkus-deployment/src/main/java/dev/pathland/quarkus/deployment/PathlandDevUiProcessor.java",
     "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-protocol.js",
@@ -22,6 +22,7 @@
     "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
     "lib/java/pathland-server-core/status.md",
     "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/ProtocolCatalog.kt",
+    "lib/java/pathland-view-core/src/main/resources/dev/pathland/protocol.tsv",
     "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/core/protocol/ProtocolCatalogTest.kt",
     "lib/java/pathland-view-core/status.md"
   ],
@@ -32,13 +33,20 @@
       "compact_transcript": "/0/transcript.jsonl",
       "content_hash": "/0/content_hash.txt",
       "prompt": ""
+    },
+    {
+      "metadata": "/1/metadata.json",
+      "transcript": "/1/full.jsonl",
+      "compact_transcript": "/1/transcript.jsonl",
+      "content_hash": "/1/content_hash.txt",
+      "prompt": "/1/prompt.txt"
     }
   ],
   "token_usage": {
-    "input_tokens": 18170,
+    "input_tokens": 162541,
     "cache_creation_tokens": 0,
-    "cache_read_tokens": 19731840,
-    "output_tokens": 27129,
-    "api_call_count": 61
+    "cache_read_tokens": 21650048,
+    "output_tokens": 45247,
+    "api_call_count": 84
   }
 }

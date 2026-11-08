@@ -1,0 +1,63 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6XJ0CKBER7ZX4CBREQZVA3J",
+  "session_id": "ses_e46139aa7ffetBfbFrvW5p7fpv",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T12:27:00.476328Z",
+  "branch": "feat/quarkus-dev-ui",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "lib/java/pathland-quarkus-deployment/src/main/java/dev/pathland/quarkus/deployment/PathlandDevUiProcessor.java",
+    "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-protocol.js",
+    "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-ssr.js",
+    "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-wire.js",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/PathlandRegistryProducer.java",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/devui/PathlandDevTraceStore.java",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/devui/PathlandDevUiRpc.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/devui/PathlandDevTraceStoreTest.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/devui/PathlandDevUiRpcTest.java",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/DeltaBatcher.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandDevTrace.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandHost.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/ProtocolCatalog.kt",
+    "lib/java/pathland-view-core/src/main/resources/dev/pathland/protocol.tsv",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/core/protocol/ProtocolCatalogTest.kt",
+    "lib/java/pathland-view-core/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "",
+  "turn_id": "03e809af46ff",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 144371,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1918208,
+    "output_tokens": 18118,
+    "api_call_count": 23
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-08T12:27:00.419581Z",
+    "agent_lines": 1569,
+    "agent_removed": 14,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 1569,
+    "total_lines_changed": 1583,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}

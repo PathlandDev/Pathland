@@ -1,0 +1,17 @@
+Explore the Pathland repo at /Users/michael/Development/michaelkrog/Pathland to understand how the DOM renderer (TypeScript bundle, built to dist/pathland-dom-renderer.js, content-hashed as dom-renderer-<sha256>.js with pointer file _pathland/dom-renderer.current) is currently served in the Spring Boot starter and Quarkus extension.
+
+I need a very thorough understanding. Please find and report:
+
+1. In `lib/java/pathland-spring-boot-starter/`: every file/class that serves or references static assets, the DOM renderer bundle, HTML, CSS, `_pathland/` paths, resource handlers, controllers, auto-configuration. Show the relevant code snippets with file paths and line numbers.
+
+2. In `lib/java/pathland-quarkus/` and `lib/java/pathland-quarkus-deployment/`: same thing — everything that serves/references the DOM renderer bundle, assets, `_pathland/`, resource routing, SSR endpoints, WebSocket, static file handling. Show code snippets with paths and line numbers.
+
+3. In `lib/java/pathland-server-core/`: how SSR renders HTML and what URLs/paths it emits for the DOM renderer script, CSS, assets. Any config/seam for asset serving. Show code.
+
+4. How the demos (`lib/java/pathland-spring-boot-demo/`, `lib/java/pathland-quarkus-demo/`) themselves serve the DOM renderer bundle currently. Do they have their own static resource dirs / controllers / config? Show all relevant files and snippets (application.properties, controllers, src/main/resources structure).
+
+5. How the DOM renderer bundle gets built and copied (look under lib/typescript/, scripts/, pom.xml files, package.json, any maven plugins / npm scripts). Show the build wiring and where the bundle ends up (dist path, copied locations).
+
+6. Any existing tests related to serving assets / DOM renderer / HTML rendering in these modules.
+
+Report findings organized by module with concrete file paths, line numbers and code excerpts. Do not modify anything.
