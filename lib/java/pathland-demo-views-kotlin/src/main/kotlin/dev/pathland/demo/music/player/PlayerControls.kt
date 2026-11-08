@@ -10,6 +10,7 @@ import dev.pathland.view.core.View
 import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.HStack
 import dev.pathland.view.dsl.Slider
+import dev.pathland.view.dsl.Spacer
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.VStack
 import dev.pathland.view.dsl.accessibilityLabel
@@ -24,7 +25,7 @@ import dev.pathland.view.dsl.padding
  * over a slim, draggable seek bar that reports progress as a percent.
  */
 internal class PlayerControls(
-    private val showVolume: Boolean,
+    private val wide: Boolean,
 ) : Component() {
 
     override fun body(): View {
@@ -33,13 +34,15 @@ internal class PlayerControls(
 
         return VStack(alignment = HorizontalAlignment.CENTER, spacing = 0f) {
             HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
-                TransportControls()
+                Spacer()
+                TransportControls(wide)
                 Text("|").fontSize(18f).foregroundStyle(MusicPlayerView.SECONDARY_FG)
                 TrackInfoView()
-                if (showVolume) {
+                if (wide) {
                     Text("|").fontSize(18f).foregroundStyle(MusicPlayerView.SECONDARY_FG)
                     VolumeControls()
                 }
+                Spacer()
             }
             Slider(
                 PercentSeek(seek) { service.currentTrack.get().duration },

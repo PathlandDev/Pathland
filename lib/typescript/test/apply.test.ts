@@ -827,7 +827,8 @@ describe("applyBatch · META + design tokens + string props", () => {
 
   it("applying a LABEL to a composite never wipes its children", () => {
     // A button whose label is a composite (icon + text): re-applying its accessibility
-    // LABEL on a resync must not clobber the children (SSR renders no label on composites).
+    // LABEL on a resync must not clobber the children (SSR renders no visible label on
+    // composites — the accessible name stays on the control).
     const button = document.createElement("button");
     const img = document.createElement("img");
     const span = document.createElement("span");
@@ -849,6 +850,57 @@ describe("applyBatch · META + design tokens + string props", () => {
     expect(button.lastChild).toBe(span);
     expect(button.textContent).toBe("Home");
     expect(button.getAttribute("aria-label")).toBe("Home");
+  });
+
+  it("a LABEL emitted before a composite's children is not rendered as text", () => {
+    // Fresh nodes (e.g. a ViewThatFits candidate swap) emit CREATE + properties
+    // BEFORE the children. The label must stay an accessible name, not become a
+    // text node that precedes the later-inserted icon.
+    const r = renderer();
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_TREE, CMD_CREATE_NODE, 0, 4, COMPONENT_BUTTON, 0],
+            [CAT_PARAMETER, CMD_SET_PROPERTY, 0, 4, (VAL_STRING << 16) | PROP_LABEL, 0],
+            [CAT_TREE, CMD_CREATE_NODE, 0, 5, COMPONENT_ICON, 0],
+            [CAT_TREE, CMD_INSERT_CHILD, 0, 4, 5, 0],
+          ],
+          stringEntry("Play"),
+        ),
+      ),
+      r,
+    );
+    const button = r.byId.get(4) as HTMLButtonElement;
+    const icon = r.byId.get(5) as SVGElement;
+    expect(button.childNodes.length).toBe(1);
+    expect(button.firstChild).toBe(icon);
+    expect(button.textContent).toBe("");
+    expect(button.getAttribute("aria-label")).toBe("Play");
+    expect(icon.getAttribute("aria-hidden")).toBe("true");
+    expect(icon.getAttribute("aria-label")).toBeNull();
+  });
+
+  it("a LABEL update keeps the accessible name on the control, not its icon", () => {
+    const button = document.createElement("button");
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("class", "pathland-icon");
+    icon.setAttribute("aria-hidden", "true");
+    button.appendChild(icon);
+    const r = renderer();
+    r.byId.set(4, button);
+    r.byId.set(5, icon);
+
+    applyBatch(
+      parseBatch(
+        buildBatch([[CAT_PARAMETER, CMD_SET_PROPERTY, 0, 4, (VAL_STRING << 16) | PROP_LABEL, 0]], stringEntry("Pause")),
+      ),
+      r,
+    );
+    expect(button.getAttribute("aria-label")).toBe("Pause");
+    expect(button.textContent).toBe("");
+    expect(icon.getAttribute("aria-label")).toBeNull();
+    expect(icon.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("a LABEL names a slider's inner input", () => {
