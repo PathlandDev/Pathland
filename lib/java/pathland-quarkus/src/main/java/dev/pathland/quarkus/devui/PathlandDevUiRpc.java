@@ -29,9 +29,17 @@ public class PathlandDevUiRpc {
     @Inject
     PathlandHost host;
 
+    @Inject
+    PathlandDevTraceStore trace;
+
     /** For tests / direct construction (CDI uses the no-arg constructor + field injection). */
     PathlandDevUiRpc(PathlandHost host) {
+        this(host, new PathlandDevTraceStore());
+    }
+
+    PathlandDevUiRpc(PathlandHost host, PathlandDevTraceStore trace) {
         this.host = host;
+        this.trace = trace;
     }
 
     public PathlandDevUiRpc() {
@@ -131,6 +139,39 @@ public class PathlandDevUiRpc {
         return ActionResult.success();
     }
 
+    /** Trace entries newer than {@code sinceId} (polled by the wire page). */
+    @JsonRpcDescription("Read runtime trace entries (batches, events, SSR renders, lifecycle)")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public PathlandDevTraceStore.Snapshot trace(long sinceId, int limit) {
+        return trace.snapshot(sinceId, limit);
+    }
+
+    /** Drop retained trace entries; returns the current high-water id. */
+    @JsonRpcDescription("Clear the retained runtime trace")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public long clearTrace() {
+        trace.clear();
+        return trace.lastId();
+    }
+
+    /** Render the SSR document for a route (no window scope — the defaults view). */
+    @JsonRpcDescription("Render the SSR document for a route")
+    @JsonRpcUsage(Usage.DEV_UI)
+    public SsrPreview ssr(String mount, String route) {
+        String mountPath = mount == null || mount.isBlank() ? "/" : mount;
+        PathlandRegistry registry = host.registry(mountPath);
+        if (registry == null) {
+            return new SsrPreview(mountPath, route, null, "unknown mount: " + mountPath);
+        }
+        String requested = route == null || route.isBlank() ? "/" : route;
+        String appRoute = registry.stripRoute(requested);
+        try {
+            return new SsrPreview(registry.mountPath(), appRoute, registry.renderHtml(appRoute), null);
+        } catch (RuntimeException e) {
+            return new SsrPreview(registry.mountPath(), appRoute, null, e.getMessage());
+        }
+    }
+
     private PathlandRegistry registryFor(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {
             return null;
@@ -158,6 +199,9 @@ public class PathlandDevUiRpc {
             int activeSessions,
             boolean debugHtml,
             boolean serviceWorker) {
+    }
+
+    public record SsrPreview(String mount, String route, String html, String error) {
     }
 
     public record ActionResult(boolean ok, String error) {

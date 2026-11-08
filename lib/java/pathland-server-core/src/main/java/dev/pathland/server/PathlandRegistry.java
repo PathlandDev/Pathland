@@ -62,6 +62,7 @@ public final class PathlandRegistry {
     private final boolean debugHtml;
     private final PathlandTelemetry telemetry;
     private final boolean serviceWorker;
+    private final PathlandDevTrace trace;
 
     /** Topic fan-out for this mount's live sessions (external UI updates). */
     private final PathlandSignalHub signalHub;
@@ -108,12 +109,24 @@ public final class PathlandRegistry {
             boolean debugHtml,
             PathlandTelemetry telemetry,
             boolean serviceWorker) {
+        this(mountPath, app, store, debugHtml, telemetry, serviceWorker, PathlandDevTrace.NOOP);
+    }
+
+    public PathlandRegistry(
+            String mountPath,
+            PathlandApp app,
+            StateStore store,
+            boolean debugHtml,
+            PathlandTelemetry telemetry,
+            boolean serviceWorker,
+            PathlandDevTrace trace) {
         this.mountPath = mountPath == null || mountPath.isBlank() ? "/" : mountPath;
         this.app = app;
         this.store = store;
         this.debugHtml = debugHtml;
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         this.serviceWorker = serviceWorker;
+        this.trace = trace == null ? PathlandDevTrace.NOOP : trace;
         this.signalHub = new PathlandSignalHub(this.mountPath, this.telemetry);
     }
 
@@ -216,10 +229,20 @@ public final class PathlandRegistry {
         PathlandSession session = new PathlandSession(
                 sessionId, store, app, EnvironmentData.of(appRoute),
                 debugHtml, base(), scope, telemetry, mountPath);
+        String html = null;
         try {
-            return session.renderHtml(serviceWorker, scoped, pageMetadata);
+            html = session.renderHtml(serviceWorker, scoped, pageMetadata);
+            return html;
         } finally {
-            telemetry.ssrRendered(mountPath, System.nanoTime() - start);
+            long nanos = System.nanoTime() - start;
+            telemetry.ssrRendered(mountPath, nanos);
+            if (trace != PathlandDevTrace.NOOP) {
+                try {
+                    trace.ssrRendered(mountPath, appRoute, nanos, html == null ? -1 : html.length());
+                } catch (RuntimeException ignored) {
+                    // a diagnostic observer must never break the request
+                }
+            }
             session.close();
         }
     }
@@ -305,6 +328,13 @@ public final class PathlandRegistry {
             if (session != null) {
                 session.close();
                 telemetry.sessionClosed(mountPath);
+                if (trace != PathlandDevTrace.NOOP) {
+                    try {
+                        trace.sessionClosed(sessionId, mountPath);
+                    } catch (RuntimeException ignored) {
+                        // diagnostic only
+                    }
+                }
             }
         });
     }
@@ -390,9 +420,16 @@ public final class PathlandRegistry {
     }
 
     private void closeAllSessions() {
-        for (PathlandSession session : sessions.values()) {
-            session.close();
+        for (Map.Entry<String, PathlandSession> entry : sessions.entrySet()) {
+            entry.getValue().close();
             telemetry.sessionClosed(mountPath);
+            if (trace != PathlandDevTrace.NOOP) {
+                try {
+                    trace.sessionClosed(entry.getKey(), mountPath);
+                } catch (RuntimeException ignored) {
+                    // diagnostic only
+                }
+            }
         }
         sessions.clear();
         pending.clear();
@@ -461,12 +498,19 @@ public final class PathlandRegistry {
             session = new PathlandSession(
                     uiId, store, app, env, debugHtml, base(),
                     pending != null ? pending.stateScope() : stateScope(uiId), telemetry, mountPath,
-                    this::execute, signalHub);
+                    this::execute, signalHub, trace);
             if (pending != null) {
                 session.connect(pending.connection());
             }
             sessions.put(uiId, session);
             telemetry.sessionOpened(mountPath);
+            if (trace != PathlandDevTrace.NOOP) {
+                try {
+                    trace.sessionOpened(uiId, mountPath);
+                } catch (RuntimeException ignored) {
+                    // diagnostic only
+                }
+            }
         }
         return session;
     }

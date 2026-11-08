@@ -26,6 +26,18 @@ capability and pulls in `quarkus-kotlin`.
   `/q/dev-ui/pathland-quarkus/qwc-pathland-sessions.js` and
   `pathland-quarkus_sessions` returns live sessions) and in a packaged prod app
   (`/q/dev-ui` is 404; health/metrics unchanged).
+- **Dev UI (M2)** — a bounded `PathlandDevTraceStore` (1,000 entries, oldest
+  dropped) is installed as the `PathlandDevTrace` only in local development and
+  registered as an unremovable bean by the deployment module. It decodes outbound
+  batches (`FrameCodec`) into category/command/flags/A/B/C plus the `SET_TEXT`
+  string operand, and records inbound events, SSR renders, and session lifecycle.
+  Three pages: **Wire** polls `trace(sinceId, limit)` (newest-first timeline,
+  kind/session filters, an opcode detail view, clear), **SSR** renders a mount +
+  route through `registry.renderHtml` into a script-disabled iframe (source
+  toggle), and **Protocol** browses the bundled `protocol.tsv` via build-time
+  data with kind/search filters. `clearTrace` keeps the id high-water mark so a
+  polling client never re-fetches.
+
 
 - **Security defaults (issue #63)**: the deployment module contributes
   overridable runtime defaults via `RunTimeConfigurationDefaultBuildItem`:
@@ -188,7 +200,10 @@ check UP and `/q/metrics` exposes the `pathland.*` namespace. `BaseCssTest`
 (`@QuarkusTest`) asserts the linked SSR `<link>`, the immutable `text/css`
 response at the global and mounted bases, and a 404 for an unknown hash.
 `PathlandDevUiRpcTest` (unit, over a real `PathlandHost`) asserts the overview,
-the live session list, resync (single + all), and close actions. Dev-mode manual
-verification confirms the Dev UI card/component registration and a live
-`pathland-quarkus_sessions` response; a packaged prod app serves `/q/dev-ui` as
-404 with health/metrics unchanged.
+the live session list, resync (single + all), and close actions, and that the
+trace captures a resync batch, inbound events, and an SSR render; the SSR preview
+returns a document. `PathlandDevTraceStoreTest` covers bounded retention
+(oldest dropped), cursor paging, batch decoding (including the `SET_TEXT` string),
+and clear. Dev-mode manual verification confirms the Dev UI card/component
+registration and a live `pathland-quarkus_sessions` response; a packaged prod app
+serves `/q/dev-ui` as 404 with health/metrics unchanged.

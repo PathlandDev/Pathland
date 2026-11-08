@@ -83,6 +83,7 @@ public final class PathlandSession {
     private final boolean debugHtml;
     private final PathlandTelemetry telemetry;
     private final String mount;
+    private final PathlandDevTrace trace;
 
     /** Diagnostic lifecycle + throughput counters (read-only Dev UI snapshots). */
     private final long openedAtMillis = System.currentTimeMillis();
@@ -167,9 +168,27 @@ public final class PathlandSession {
             String mount,
             Executor scheduler,
             PathlandSignalHub hub) {
+        this(sessionId, store, app, env, debugHtml, base, stateScope, telemetry, mount, scheduler, hub,
+                PathlandDevTrace.NOOP);
+    }
+
+    public PathlandSession(
+            String sessionId,
+            StateStore store,
+            PathlandApp app,
+            EnvironmentData env,
+            boolean debugHtml,
+            String base,
+            String stateScope,
+            PathlandTelemetry telemetry,
+            String mount,
+            Executor scheduler,
+            PathlandSignalHub hub,
+            PathlandDevTrace trace) {
         this.debugHtml = debugHtml;
         this.base = base;
         this.sessionId = sessionId;
+        this.trace = trace == null ? PathlandDevTrace.NOOP : trace;
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         this.mount = mount == null ? "/" : mount;
         this.scheduler = scheduler == null ? Runnable::run : scheduler;
@@ -198,7 +217,8 @@ public final class PathlandSession {
                 }
             }
         };
-        this.batcher = new DeltaBatcher(this::sendBatch, this.telemetry, this.mount);
+        this.batcher = new DeltaBatcher(
+                this::sendBatch, this.telemetry, this.mount, sessionId, this.trace);
         this.theme = app.theme();
         this.emitter = new Emitter(sink, this.theme);
         // SSR full-snapshot emission: fit slots carry ALL candidates so the web
@@ -413,6 +433,13 @@ public final class PathlandSession {
                     }
                     all = copied;
                     inboundEvents.addAndGet(copied.size());
+                }
+                if (trace != PathlandDevTrace.NOOP) {
+                    try {
+                        trace.eventsReceived(sessionId, mount, all);
+                    } catch (RuntimeException ignored) {
+                        // a diagnostic observer must never drop an event batch
+                    }
                 }
                 ProxyHost host = proxyHost;
                 if (host == null) {

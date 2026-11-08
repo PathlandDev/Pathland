@@ -6,6 +6,7 @@ import dev.pathland.observability.MicrometerTelemetry;
 import dev.pathland.observability.TracingTelemetry;
 import dev.pathland.server.MountedApp;
 import dev.pathland.server.PathlandApp;
+import dev.pathland.server.PathlandDevTrace;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandSignalHub;
 import dev.pathland.server.PathlandTelemetry;
@@ -58,6 +59,10 @@ public class PathlandRegistryProducer {
 
     @Inject
     Instance<MountedApp> mounts;
+
+    /** Present only in local development (the Dev UI trace store). */
+    @Inject
+    Instance<PathlandDevTrace> devTrace;
 
     @Inject
     MeterRegistry meterRegistry;
@@ -116,7 +121,9 @@ public class PathlandRegistryProducer {
         if (lone != null && list.stream().noneMatch(m -> "/".equals(m.path()))) {
             list.add(0, MountedApp.of("/", lone));
         }
-        return new PathlandHost(list, store, debugHtml, telemetry, serviceWorker);
+        return new PathlandHost(
+                list, store, debugHtml, telemetry, serviceWorker,
+                devTrace.isResolvable() ? devTrace.get() : PathlandDevTrace.NOOP);
     }
 
     /** The default topic hub (root mount, else the first mount) for external UI updates. */

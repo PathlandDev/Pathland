@@ -1,6 +1,9 @@
 package dev.pathland.quarkus.deployment;
 
+import dev.pathland.quarkus.devui.PathlandDevTraceStore;
 import dev.pathland.quarkus.devui.PathlandDevUiRpc;
+import dev.pathland.view.core.protocol.ProtocolCatalog;
+import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.deployment.IsLocalDevelopment;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.devui.spi.JsonRPCProvidersBuildItem;
@@ -8,6 +11,8 @@ import io.quarkus.devui.spi.page.CardAction;
 import io.quarkus.devui.spi.page.CardPageBuildItem;
 import io.quarkus.devui.spi.page.CardText;
 import io.quarkus.devui.spi.page.Page;
+import jakarta.inject.Singleton;
+import org.jboss.jandex.DotName;
 
 /**
  * Registers the Pathland card in the Quarkus Dev UI (local development only):
@@ -35,6 +40,19 @@ public final class PathlandDevUiProcessor {
                 .icon("font-awesome-solid:window-restore")
                 .componentLink(SESSIONS_PAGE)
                 .dynamicLabelJsonRPCMethodName("sessionsLabel"));
+        card.addPage(Page.webComponentPageBuilder()
+                .title("Wire")
+                .icon("font-awesome-solid:code")
+                .componentLink("qwc-pathland-wire.js"));
+        card.addPage(Page.webComponentPageBuilder()
+                .title("SSR")
+                .icon("font-awesome-solid:file-code")
+                .componentLink("qwc-pathland-ssr.js"));
+        card.addPage(Page.webComponentPageBuilder()
+                .title("Protocol")
+                .icon("font-awesome-solid:book")
+                .componentLink("qwc-pathland-protocol.js"));
+        card.addBuildTimeData("protocol", ProtocolCatalog.rows());
         card.addAction(CardAction.actionBuilder()
                 .title("Open app")
                 .icon("font-awesome-solid:up-right-from-square")
@@ -59,5 +77,15 @@ public final class PathlandDevUiProcessor {
     @BuildStep(onlyIf = IsLocalDevelopment.class)
     JsonRPCProvidersBuildItem rpcProvider() {
         return new JsonRPCProvidersBuildItem(PathlandDevUiRpc.class);
+    }
+
+    /** Register the dev-only trace ring (the host wires it when present). */
+    @BuildStep(onlyIf = IsLocalDevelopment.class)
+    AdditionalBeanBuildItem traceStore() {
+        return AdditionalBeanBuildItem.builder()
+                .addBeanClass(PathlandDevTraceStore.class)
+                .setDefaultScope(DotName.createSimple(Singleton.class.getName()))
+                .setUnremovable()
+                .build();
     }
 }

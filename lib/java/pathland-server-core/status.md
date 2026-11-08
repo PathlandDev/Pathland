@@ -21,6 +21,12 @@ dependency — framework glue lives in the starters.
   subscription list, and `PathlandBuildInfo` the DOM bundle name/integrity. No
   mutable session/tree internals leak; a snapshot that cannot reach the actor
   fails fast instead of reading actor-confined state off-thread.
+- **Dev trace seam (Dev UI)**: `PathlandDevTrace` (default `NOOP`) is threaded
+  host → registry → session → `DeltaBatcher`. It observes session open/close,
+  encoded outbound batches (sequence, coalesced frames, bytes), inbound event
+  batches, and SSR renders (route/latency/bytes). Observer callbacks are guarded
+  so a diagnostic implementation can never change or break emission, and a host
+  with no trace pays no cost.
 
 - **Security hardening (issue #63)**: `WindowIds` validates the client-supplied
   `wid` (≤128 chars, `[A-Za-z0-9._-]`; a colon is rejected so it cannot collide

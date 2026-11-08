@@ -28,6 +28,7 @@ public final class PathlandHost {
     private final Map<String, PathlandRegistry> byMount;
     private final PathlandTelemetry telemetry;
     private final boolean serviceWorker;
+    private final PathlandDevTrace trace;
     private volatile boolean running = true;
 
     public PathlandHost(List<MountedApp> mounts, StateStore store, boolean debugHtml) {
@@ -52,8 +53,19 @@ public final class PathlandHost {
             boolean debugHtml,
             PathlandTelemetry telemetry,
             boolean serviceWorker) {
+        this(mounts, store, debugHtml, telemetry, serviceWorker, PathlandDevTrace.NOOP);
+    }
+
+    public PathlandHost(
+            List<MountedApp> mounts,
+            StateStore store,
+            boolean debugHtml,
+            PathlandTelemetry telemetry,
+            boolean serviceWorker,
+            PathlandDevTrace trace) {
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         this.serviceWorker = serviceWorker;
+        this.trace = trace == null ? PathlandDevTrace.NOOP : trace;
         List<MountedApp> normalized = new ArrayList<>(mounts == null ? List.of() : mounts);
         this.registries = new ArrayList<>(normalized.size());
         this.byMount = new LinkedHashMap<>();
@@ -63,7 +75,7 @@ public final class PathlandHost {
                 throw new IllegalArgumentException("duplicate mount path: " + path);
             }
             PathlandRegistry registry = new PathlandRegistry(
-                    path, mount.app(), store, debugHtml, this.telemetry, serviceWorker);
+                    path, mount.app(), store, debugHtml, this.telemetry, serviceWorker, this.trace);
             byMount.put(path, registry);
             registries.add(registry);
         }

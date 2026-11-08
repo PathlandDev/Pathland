@@ -42,6 +42,8 @@ public final class DeltaBatcher {
     private final Consumer<byte[]> sender;
     private final PathlandTelemetry telemetry;
     private final String mount;
+    private final String sessionId;
+    private final PathlandDevTrace trace;
     private final ScheduledExecutorService scheduler;
 
     private final List<Opcode> opcodes = new ArrayList<>();
@@ -93,11 +95,33 @@ public final class DeltaBatcher {
             Consumer<byte[]> sender,
             PathlandTelemetry telemetry,
             String mount) {
+        this(flushIntervalMillis, maxBatchBytes, sender, telemetry, mount, null, PathlandDevTrace.NOOP);
+    }
+
+    public DeltaBatcher(
+            Consumer<byte[]> sender,
+            PathlandTelemetry telemetry,
+            String mount,
+            String sessionId,
+            PathlandDevTrace trace) {
+        this(DEFAULT_FLUSH_INTERVAL_MILLIS, DEFAULT_MAX_BATCH_BYTES, sender, telemetry, mount, sessionId, trace);
+    }
+
+    public DeltaBatcher(
+            long flushIntervalMillis,
+            int maxBatchBytes,
+            Consumer<byte[]> sender,
+            PathlandTelemetry telemetry,
+            String mount,
+            String sessionId,
+            PathlandDevTrace trace) {
         this.flushIntervalMillis = flushIntervalMillis;
         this.maxBatchBytes = maxBatchBytes;
         this.sender = sender;
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         this.mount = mount == null ? "/" : mount;
+        this.sessionId = sessionId;
+        this.trace = trace == null ? PathlandDevTrace.NOOP : trace;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "pathland-delta-batcher");
             t.setDaemon(true);
@@ -132,6 +156,7 @@ public final class DeltaBatcher {
         byte[] encoded;
         int flushedFrames;
         int flushedOpcodes;
+        int flushedSequence;
         long nanos;
         synchronized (this) {
             flushScheduled.set(false);
@@ -157,8 +182,16 @@ public final class DeltaBatcher {
             lastFrames = flushedFrames;
             lastOpcodes = flushedOpcodes;
             lastBytes = encoded.length;
+            flushedSequence = sequence;
         }
         telemetry.batchFlushed(mount, flushedFrames, flushedOpcodes, encoded.length, nanos);
+        if (trace != PathlandDevTrace.NOOP) {
+            try {
+                trace.batchSent(sessionId, mount, flushedSequence, flushedFrames, encoded);
+            } catch (RuntimeException ignored) {
+                // a diagnostic observer must never break emission
+            }
+        }
         sender.accept(encoded);
     }
 
