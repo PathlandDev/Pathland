@@ -1,6 +1,6 @@
 # pathland-quarkus — implementation status
 
-**Last updated:** November 7, 2026
+**Last updated:** November 8, 2026
 
 Quarkus extension for Pathland: SSR at any path, live deltas over each
 app's reserved `/{base}/ws`, per-session state. Adding this extension + a
@@ -12,13 +12,31 @@ capability and pulls in `quarkus-kotlin`.
 
 ## Implemented
 
+- **Dev UI (M1)** — the extension registers a **Pathland** card in the Quarkus Dev
+  UI (local development only). A **Sessions** page lists every live session per
+  mount (route, state scope, connection state, viewport, age,
+  batches/opcodes/bytes/sequence, subscriptions, proxies, retained tree size) and
+  offers resync (single/all) and close actions; the card links to the running app,
+  `/q/health`, and `/q/metrics`, and shows a live app/session summary. Backed by
+  read-only `PathlandHost`/`PathlandRegistry`/`PathlandSession` snapshots and the
+  dev-only `PathlandDevUiRpc` (`overview`, `sessions`, `resync`, `resyncAll`,
+  `closeSession`), registered via `JsonRPCProvidersBuildItem`. Both build steps
+  are gated by `IsLocalDevelopment`, so production/native builds carry no card,
+  component JS, or Dev UI bean. Verified in dev mode (the component is served at
+  `/q/dev-ui/pathland-quarkus/qwc-pathland-sessions.js` and
+  `pathland-quarkus_sessions` returns live sessions) and in a packaged prod app
+  (`/q/dev-ui` is 404; health/metrics unchanged).
+
 - **Security defaults (issue #63)**: the deployment module contributes
   overridable runtime defaults via `RunTimeConfigurationDefaultBuildItem`:
   `quarkus.http.cors.enabled=true` (no origins → same-origin, which covers
   WebSocket upgrades because the CORS filter runs before routes),
   `quarkus.websockets-next.server.max-message-size`/`max-frame-size=65536`, and
   CSP + `X-Content-Type-Options`/`Referrer-Policy`/`X-Frame-Options` headers via
-  `quarkus.http.header.*`. See `docs/HARDENING.md` for overrides, CSP rollout,
+  `quarkus.http.header.*`. The CSP default is contributed in **test and
+  production only**: local dev omits it so the Quarkus Dev UI (inline import
+  map/scripts + Google Fonts) can boot; an app can still set its own dev CSP.
+  See `docs/HARDENING.md` for overrides, CSP rollout,
   reverse-proxy/TLS guidance, and edge rate limiting. The `wid` handshake query
   is validated by server-core (`WindowIds`). **HSTS is deliberately not an
   extension default** — it is a whole-origin, persistent browser policy that
@@ -169,3 +187,8 @@ and is never closed by the peer.
 check UP and `/q/metrics` exposes the `pathland.*` namespace. `BaseCssTest`
 (`@QuarkusTest`) asserts the linked SSR `<link>`, the immutable `text/css`
 response at the global and mounted bases, and a 404 for an unknown hash.
+`PathlandDevUiRpcTest` (unit, over a real `PathlandHost`) asserts the overview,
+the live session list, resync (single + all), and close actions. Dev-mode manual
+verification confirms the Dev UI card/component registration and a live
+`pathland-quarkus_sessions` response; a packaged prod app serves `/q/dev-ui` as
+404 with health/metrics unchanged.

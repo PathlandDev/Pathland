@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** November 7, 2026
+**Last updated:** November 8, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -8,6 +8,19 @@ host** (the BFF), shared by the Spring Boot and Quarkus starters. No web-framewo
 dependency — framework glue lives in the starters.
 
 ## Implemented
+
+- **Read-only introspection snapshots (Dev UI)**: `PathlandHost.snapshot()`,
+  `PathlandRegistry.snapshot()` (runs on the registry actor; `hasSession(id)`),
+  and `PathlandSession.snapshot()` expose immutable
+  `dev.pathland.server.introspection.PathlandIntrospection` records: route, state
+  scope, viewport, connected/closed, color scheme, theme-override presence,
+  retained tree size, proxy count, topic subscriptions (topic/subject/pending),
+  and inbound/resync/batch counters.
+  `DeltaBatcher.stats()` supplies batch/opcode/byte/sequence counters,
+  `Emitter.treeSize()` the node count, `SessionSubscriptions.snapshot()` the
+  subscription list, and `PathlandBuildInfo` the DOM bundle name/integrity. No
+  mutable session/tree internals leak; a snapshot that cannot reach the actor
+  fails fast instead of reading actor-confined state off-thread.
 
 - **Security hardening (issue #63)**: `WindowIds` validates the client-supplied
   `wid` (≤128 chars, `[A-Za-z0-9._-]`; a colon is rejected so it cannot collide

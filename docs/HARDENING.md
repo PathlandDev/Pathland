@@ -58,6 +58,11 @@ quarkus.http.header."Referrer-Policy".value=no-referrer
 quarkus.http.header."X-Frame-Options".value=DENY
 ```
 
+The **CSP** line is contributed in test and production only. Local development
+omits it: the Quarkus Dev UI is served there and its inline import map, inline
+bootstrap scripts, and Google Fonts are incompatible with a strict script CSP.
+An application can still set its own CSP in dev if it needs to test one.
+
 ### WebSocket origin / CSRF
 
 Quarkus's CORS filter runs before every route, including WebSocket upgrades.
@@ -84,6 +89,11 @@ unavoidable because the protocol emits `style` attributes and
 `<style data-pathland-tokens>` / `data-pathland-fit` blocks, so `style-src`
 includes `'unsafe-inline'`; scripts do not.
 
+The default is contributed in **test and production** only. Local dev omits it
+so the Quarkus Dev UI (inline import map/scripts + Google Fonts) can boot; set
+your own `%dev.quarkus.http.header."Content-Security-Policy".value` if you want
+to exercise a policy in dev.
+
 Override the policy (or relax it while rolling out) with application config:
 
 ```properties
@@ -91,7 +101,8 @@ quarkus.http.header."Content-Security-Policy".value=default-src 'self'; script-s
 ```
 
 For an initial rollout you can use `Content-Security-Policy-Report-Only`
-instead. Do not add `'unsafe-eval'` or `'unsafe-inline'` to `script-src`.
+instead. Do not add `'unsafe-eval'` or `'unsafe-inline'` to the production
+`script-src`.
 
 ### HSTS (whole-origin, app-owned)
 

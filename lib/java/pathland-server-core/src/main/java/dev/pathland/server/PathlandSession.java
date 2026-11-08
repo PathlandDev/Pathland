@@ -7,6 +7,7 @@ import dev.pathland.render.html.DocumentMeta;
 import dev.pathland.render.html.HtmlRenderer;
 import dev.pathland.server.proxy.ProxyHost;
 import dev.pathland.server.proxy.ProxySession;
+import dev.pathland.server.introspection.PathlandIntrospection;
 import dev.pathland.view.core.Environment;
 import dev.pathland.view.core.EnvironmentBinding;
 import dev.pathland.view.core.Platform;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * One Pathland application instance per session (1:1 with a client). Owns the session's
@@ -71,6 +73,7 @@ public final class PathlandSession {
     private final WritableSignal<String> activePath;
     private final String stateScope;
 
+    private final String sessionId;
     private final String base;
     private final FrameOpcodeSink sink;
     private final DeltaBatcher batcher;
@@ -80,6 +83,14 @@ public final class PathlandSession {
     private final boolean debugHtml;
     private final PathlandTelemetry telemetry;
     private final String mount;
+
+    /** Diagnostic lifecycle + throughput counters (read-only Dev UI snapshots). */
+    private final long openedAtMillis = System.currentTimeMillis();
+    private volatile long lastActivityMillis = openedAtMillis;
+    private final AtomicLong inboundEvents = new AtomicLong();
+    private final AtomicLong resyncs = new AtomicLong();
+    private volatile ThemeData theme;
+    private volatile ThemeMode colorScheme = ThemeMode.PLATFORM;
 
     /** Where actor work runs (the registry's actor; inline for standalone/SSR sessions). */
     private final Executor scheduler;
@@ -158,6 +169,7 @@ public final class PathlandSession {
             PathlandSignalHub hub) {
         this.debugHtml = debugHtml;
         this.base = base;
+        this.sessionId = sessionId;
         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;
         this.mount = mount == null ? "/" : mount;
         this.scheduler = scheduler == null ? Runnable::run : scheduler;
@@ -187,7 +199,8 @@ public final class PathlandSession {
             }
         };
         this.batcher = new DeltaBatcher(this::sendBatch, this.telemetry, this.mount);
-        this.emitter = new Emitter(sink, app.theme());
+        this.theme = app.theme();
+        this.emitter = new Emitter(sink, this.theme);
         // SSR full-snapshot emission: fit slots carry ALL candidates so the web
         // renderer shows every branch (CSS container queries gate the first paint —
         // issue #141). The live reconcile path still emits one selected child after
@@ -262,11 +275,13 @@ public final class PathlandSession {
      * client. The SSR document keeps the mount theme until a resync/reload.
      */
     public void setTheme(ThemeData theme) {
+        this.theme = theme;
         runWithContext(() -> emitter.replaceTheme(theme));
     }
 
     /** Clear all app token overrides (renderer defaults apply). */
     public void resetTheme() {
+        this.theme = null;
         runWithContext(emitter::resetTheme);
     }
 
@@ -275,6 +290,7 @@ public final class PathlandSession {
      * {@code DARK}); the renderer re-resolves tokens with no node re-emission.
      */
     public void setColorScheme(ThemeMode mode) {
+        this.colorScheme = mode;
         runWithContext(() -> emitter.setColorScheme(mode));
     }
 
@@ -287,6 +303,7 @@ public final class PathlandSession {
             if (env.viewportHeight() > 0) {
                 viewportHeight = env.viewportHeight();
             }
+            lastActivityMillis = System.currentTimeMillis();
         });
     }
 
@@ -330,6 +347,8 @@ public final class PathlandSession {
     /** Re-send the current tree as a full snapshot (META::RESYNC), flushed immediately. */
     public void resync() {
         runWithContext(() -> {
+            resyncs.incrementAndGet();
+            lastActivityMillis = System.currentTimeMillis();
             emitter.renderFull();
             // A's own emitter does not carry the origin subtree (it is forwarded), so a
             // client resync must also refresh the proxy regions from their origins.
@@ -382,15 +401,28 @@ public final class PathlandSession {
     public void dispatch(Iterable<Event> events) {
         runWithContext(() -> {
             try {
+                lastActivityMillis = System.currentTimeMillis();
+                List<Event> all;
+                if (events instanceof List<Event> list) {
+                    all = list;
+                    inboundEvents.addAndGet(list.size());
+                } else {
+                    List<Event> copied = new ArrayList<>();
+                    for (Event event : events) {
+                        copied.add(event);
+                    }
+                    all = copied;
+                    inboundEvents.addAndGet(copied.size());
+                }
                 ProxyHost host = proxyHost;
                 if (host == null) {
-                    inputDispatcher.dispatch(events);
+                    inputDispatcher.dispatch(all);
                     return;
                 }
                 // Events whose target is in a proxy's id range belong to the origin
                 // server; everything else dispatches to the app's own bindings.
                 List<Event> local = new ArrayList<>();
-                for (Event event : events) {
+                for (Event event : all) {
                     if (!host.forward(event)) {
                         local.add(event);
                     }
@@ -557,6 +589,41 @@ public final class PathlandSession {
             }
         }
         return snapshots;
+    }
+
+    /**
+     * A read-only snapshot of this session for diagnostic tooling. Package-private:
+     * only the owning registry may call it, and only on the session's actor (it
+     * reads the active path, the retained tree, and the actor-confined subscription
+     * mirror).
+     */
+    PathlandIntrospection.SessionSnapshot snapshot() {
+        DeltaBatcher.Stats batchStats = batcher.stats();
+        return new PathlandIntrospection.SessionSnapshot(
+                sessionId,
+                mount,
+                stateScope,
+                activePath.get(),
+                viewportWidth,
+                viewportHeight,
+                connection != null && connection.isOpen(),
+                closed,
+                colorScheme.name(),
+                theme != null,
+                openedAtMillis,
+                lastActivityMillis,
+                rootId,
+                emitter.treeSize(),
+                proxyHost == null ? 0 : proxyHost.activeProxies(),
+                subscriptions.snapshot(),
+                new PathlandIntrospection.SessionStats(
+                        inboundEvents.get(),
+                        resyncs.get(),
+                        batchStats.batchesFlushed(),
+                        batchStats.lastFrames(),
+                        batchStats.lastOpcodes(),
+                        batchStats.lastBytes(),
+                        batchStats.sequence()));
     }
 
     /** Tear down: stop topic routing, close state, unsubscribe the emitter, stop the batcher, drop the connection. */

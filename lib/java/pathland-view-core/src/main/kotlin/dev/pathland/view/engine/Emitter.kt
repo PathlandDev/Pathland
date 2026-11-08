@@ -489,6 +489,15 @@ class Emitter {
 
     fun rootId(): Int = rootId
 
+    /** The number of nodes in the retained tree (a read-only diagnostic; call on the actor). */
+    fun treeSize(): Int = tree?.let { countNodes(it) } ?: 0
+
+    private fun countNodes(node: PathlandNode): Int {
+        var total = 1
+        for (child in node.children) total += countNodes(child)
+        return total
+    }
+
     /**
      * Project [controller] as a pinned, non-visual root node. Registration is
      * idempotent; outside a render it is applied immediately, during a render it

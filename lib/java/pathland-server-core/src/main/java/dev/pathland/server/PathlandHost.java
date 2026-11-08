@@ -1,6 +1,7 @@
 package dev.pathland.server;
 
 import dev.pathland.view.core.state.StateStore;
+import dev.pathland.server.introspection.PathlandIntrospection;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -141,6 +142,15 @@ public final class PathlandHost {
             total += registry.activeSessions();
         }
         return total;
+    }
+
+    /** A read-only snapshot of the whole host (diagnostic tooling). */
+    public PathlandIntrospection.HostSnapshot snapshot() {
+        List<PathlandIntrospection.RegistrySnapshot> mounts = new ArrayList<>(registries.size());
+        for (PathlandRegistry registry : registries) {
+            mounts.add(registry.snapshot());
+        }
+        return new PathlandIntrospection.HostSnapshot(running, activeSessions(), List.copyOf(mounts));
     }
 
     /** Whether the host is accepting work (false after {@link #shutdown()}). */

@@ -2,6 +2,7 @@ package dev.pathland.server;
 
 import dev.pathland.view.core.state.PersistentState;
 import dev.pathland.view.core.router.Route;
+import dev.pathland.server.introspection.PathlandIntrospection;
 
 import dev.pathland.view.core.router.Router;
 import dev.pathland.view.core.state.StateStore;
@@ -11,6 +12,7 @@ import dev.pathland.view.core.transport.FrameCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -399,6 +402,55 @@ public final class PathlandRegistry {
     /** The number of live sessions for this mount (a health/metrics gauge). */
     public int activeSessions() {
         return sessions.size();
+    }
+
+    /** Whether this mount currently has a live session with {@code sessionId}. */
+    public boolean hasSession(String sessionId) {
+        return sessionId != null && sessions.containsKey(sessionId);
+    }
+
+    /** A read-only snapshot of this mount and its live sessions (diagnostic tooling). */
+    public PathlandIntrospection.RegistrySnapshot snapshot() {
+        return snapshot(2_000L);
+    }
+
+    /**
+     * A read-only snapshot of this mount and its live sessions. Session state is
+     * actor-confined, so the snapshot runs on the registry's actor (bounded by
+     * {@code timeoutMillis}); a caller already on the actor runs it inline.
+     *
+     * @throws IllegalStateException when the actor does not answer in time
+     */
+    public PathlandIntrospection.RegistrySnapshot snapshot(long timeoutMillis) {
+        if (shuttingDown.get()) {
+            throw new IllegalStateException("registry is shut down: " + mountPath);
+        }
+        if (Boolean.TRUE.equals(onActor.get())) {
+            return snapshotOnActor();
+        }
+        try {
+            return actor.submit(this::snapshotOnActor).get(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while snapshotting " + mountPath, e);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            throw new IllegalStateException("failed to snapshot " + mountPath, cause);
+        } catch (TimeoutException e) {
+            throw new IllegalStateException(
+                    "timed out snapshotting " + mountPath + " after " + timeoutMillis + " ms", e);
+        } catch (RejectedExecutionException e) {
+            throw new IllegalStateException("registry is shut down: " + mountPath, e);
+        }
+    }
+
+    private PathlandIntrospection.RegistrySnapshot snapshotOnActor() {
+        List<PathlandIntrospection.SessionSnapshot> snapshots = new ArrayList<>(sessions.size());
+        for (PathlandSession session : sessions.values()) {
+            snapshots.add(session.snapshot());
+        }
+        return new PathlandIntrospection.RegistrySnapshot(
+                mountPath, base(), debugHtml, serviceWorker, snapshots.size(), List.copyOf(snapshots));
     }
 
     /** Create the session on first contact, wired to its pending connection. */

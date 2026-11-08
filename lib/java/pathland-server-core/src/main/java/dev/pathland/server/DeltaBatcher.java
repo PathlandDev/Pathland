@@ -53,6 +53,27 @@ public final class DeltaBatcher {
     /** Emit-pass frames coalesced into the pending batch (metrics only). */
     private int frames;
 
+    /** Diagnostic counters (read-only snapshots for the Dev UI). */
+    private long batchesFlushed;
+    private int lastSequence;
+    private int lastFrames;
+    private int lastOpcodes;
+    private int lastBytes;
+
+    /** An immutable point-in-time view of the batcher's counters. */
+    public record Stats(
+            long batchesFlushed,
+            int lastFrames,
+            int lastOpcodes,
+            int lastBytes,
+            int sequence) {
+    }
+
+    /** Snapshot the diagnostic counters. Safe to call from any thread. */
+    public synchronized Stats stats() {
+        return new Stats(batchesFlushed, lastFrames, lastOpcodes, lastBytes, lastSequence);
+    }
+
     public DeltaBatcher(Consumer<byte[]> sender) {
         this(DEFAULT_FLUSH_INTERVAL_MILLIS, DEFAULT_MAX_BATCH_BYTES, sender);
     }
@@ -128,8 +149,14 @@ public final class DeltaBatcher {
             // Stamp the batch's per-stream sequence so the client can detect a
             // lost batch (a gap) and recover with META::RESYNC (spec/OPCODE.md
             // §Sequence gap detection). Only non-empty batches consume a number.
-            encoded = FrameCodec.encodeFrame(merged, nextSequence++);
+            int sequence = nextSequence++;
+            encoded = FrameCodec.encodeFrame(merged, sequence);
             nanos = System.nanoTime() - start;
+            batchesFlushed++;
+            lastSequence = sequence;
+            lastFrames = flushedFrames;
+            lastOpcodes = flushedOpcodes;
+            lastBytes = encoded.length;
         }
         telemetry.batchFlushed(mount, flushedFrames, flushedOpcodes, encoded.length, nanos);
         sender.accept(encoded);

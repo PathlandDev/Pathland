@@ -5,6 +5,7 @@ import dev.pathland.view.core.signal.Signals;
 import dev.pathland.view.core.signal.WritableSignal;
 import dev.pathland.view.core.subscription.SessionContext;
 import dev.pathland.view.core.subscription.Topic;
+import dev.pathland.server.introspection.PathlandIntrospection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,5 +173,20 @@ final class SessionSubscriptions implements SessionContext, SubscriptionSubscrib
     /** Whether this session's subscriptions are closed (test hook). */
     boolean isClosed() {
         return closed.get();
+    }
+
+    /**
+     * A read-only snapshot of this session's subscriptions. Must run on the
+     * session actor (the local mirror maps are actor-confined). The pending map is
+     * concurrent, so an in-flight publish is reported as pending.
+     */
+    java.util.List<PathlandIntrospection.SubscriptionSnapshot> snapshot() {
+        java.util.List<PathlandIntrospection.SubscriptionSnapshot> result =
+                new java.util.ArrayList<>(locals.size());
+        for (SubscriptionKey key : locals.keySet()) {
+            result.add(new PathlandIntrospection.SubscriptionSnapshot(
+                    key.topic(), String.valueOf(key.subject()), pending.containsKey(key)));
+        }
+        return java.util.List.copyOf(result);
     }
 }

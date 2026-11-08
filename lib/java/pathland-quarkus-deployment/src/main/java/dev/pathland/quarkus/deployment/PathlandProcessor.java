@@ -1,5 +1,6 @@
 package dev.pathland.quarkus.deployment;
 
+import io.quarkus.deployment.IsDevelopment;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.RunTimeConfigurationDefaultBuildItem;
@@ -18,6 +19,8 @@ import java.util.List;
 public final class PathlandProcessor {
 
     private static final String FEATURE = "pathland";
+
+    private static final String CSP_KEY = "quarkus.http.header.\"Content-Security-Policy\".value";
 
     /**
      * A same-origin baseline CSP. Inline styles are unavoidable (the protocol emits
@@ -86,12 +89,25 @@ public final class PathlandProcessor {
                 new RunTimeConfigurationDefaultBuildItem(
                         "quarkus.websockets-next.server.max-frame-size", "65536"),
                 new RunTimeConfigurationDefaultBuildItem(
-                        "quarkus.http.header.\"Content-Security-Policy\".value", DEFAULT_CSP),
-                new RunTimeConfigurationDefaultBuildItem(
                         "quarkus.http.header.\"X-Content-Type-Options\".value", "nosniff"),
                 new RunTimeConfigurationDefaultBuildItem(
                         "quarkus.http.header.\"Referrer-Policy\".value", "no-referrer"),
                 new RunTimeConfigurationDefaultBuildItem(
                         "quarkus.http.header.\"X-Frame-Options\".value", "DENY"));
+    }
+
+    /**
+     * The strict same-origin CSP for test and production.
+     *
+     * <p>Deliberately <b>not</b> contributed in local development: the Quarkus Dev UI
+     * is part of the served application there, and a strict CSP blocks its inline
+     * import map, inline bootstrap scripts, and Google Fonts — leaving the Dev UI
+     * stuck on its splash screen. Dev mode is not the production security surface, so
+     * it gets Quarkus's normal (no-CSP) dev behavior; an application can still set its
+     * own CSP in dev via {@code quarkus.http.header."Content-Security-Policy".value}.
+     */
+    @BuildStep(onlyIfNot = IsDevelopment.class)
+    RunTimeConfigurationDefaultBuildItem contentSecurityPolicy() {
+        return new RunTimeConfigurationDefaultBuildItem(CSP_KEY, DEFAULT_CSP);
     }
 }
