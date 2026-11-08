@@ -209,14 +209,29 @@ public class IndexResource {
         return css != null ? css : Response.status(Response.Status.NOT_FOUND).build();
     }
 
-    /** Serve a mounted app's framework file (its {@code data-pathland-base} bundle) from the shared classpath mount. */
+    /**
+     * Fallback for the framework files at the global base. Quarkus's static
+     * resource handler normally serves these from the extension jar's
+     * {@code META-INF/resources/_pathland/**} (it takes precedence over JAX-RS);
+     * this route covers deployments where static serving is unavailable. The
+     * more specific CSS/icon routes above win for their suffixes.
+     */
+    @GET
+    @Path("/_pathland/{file}")
+    public Response framework(@PathParam("file") String file) throws IOException {
+        return frameworkFile(file);
+    }
+
+    /** Serve a framework file (the {@code data-pathland-base} bundle) from the shared classpath mount. */
     private Response frameworkFile(String file) throws IOException {
-        // Quarkus web static lives in META-INF/resources (classpath resource root), so the
-        // shared `/_pathland/**` mount resolves as /META-INF/resources/_pathland/<file>.
-        try (InputStream in = getClass().getResourceAsStream("/META-INF/resources/_pathland/" + file)) {
-            if (in != null) {
-                return Response.ok(in.readAllBytes()).type(mediaTypeOf(file)).build();
+        byte[] bytes = readFrameworkResource(file);
+        if (bytes != null) {
+            Response.ResponseBuilder response = Response.ok(bytes).type(mediaTypeOf(file));
+            if (file.startsWith("dom-renderer-")) {
+                // The filename carries the build's content hash, so it can never change.
+                response.header("Cache-Control", IMMUTABLE);
             }
+            return response.build();
         }
         // No static file (a host override would be served above) — the base design
         // is renderer-owned and content-hashed.
@@ -232,6 +247,29 @@ public class IndexResource {
             return iconResponse(file.substring("icons/".length(), file.length() - ".svg".length()));
         }
         return Response.status(Response.Status.NOT_FOUND).build();
+    }
+
+    /**
+     * Read a framework file from {@code META-INF/resources/_pathland/<file>},
+     * preferring the application's classpath (TCCL) so an app-supplied override
+     * wins over the extension jar's shipped default. Quarkus web static lives in
+     * {@code META-INF/resources}, so the shared {@code /_pathland/**} mount
+     * resolves there.
+     */
+    private byte[] readFrameworkResource(String file) throws IOException {
+        String path = "META-INF/resources/_pathland/" + file;
+        for (ClassLoader loader : new ClassLoader[] {
+                Thread.currentThread().getContextClassLoader(), getClass().getClassLoader()}) {
+            if (loader == null) {
+                continue;
+            }
+            try (InputStream in = loader.getResourceAsStream(path)) {
+                if (in != null) {
+                    return in.readAllBytes();
+                }
+            }
+        }
+        return null;
     }
 
     /** The renderer-owned content-hashed base stylesheet, or {@code null}. */

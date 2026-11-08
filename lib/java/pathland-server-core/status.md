@@ -140,9 +140,10 @@ dependency — framework glue lives in the starters.
 - **Reserved framework root**: `PathlandSession.PATHLAND_BASE` (`/_pathland`) — the
   SSR page carries the app's base as `data-pathland-base` and the DOM-client bundle is
   injected at `{base}/dom-renderer-<sha256>.js` (`PathlandAssets` reads the current
-  name from the `_pathland/dom-renderer.current` manifest on the classpath, resolving
-  through the thread context classloader first so a Quarkus extension parent loader
-  can see the application's static resources; it falls back to the literal
+  name from the `_pathland/dom-renderer.current` manifest on the classpath — shipped in
+  the Spring Boot starter (`static/_pathland/`) and the Quarkus extension
+  (`META-INF/resources/_pathland/`) — resolving through the thread context classloader
+  first so an application-supplied override wins; it falls back to the literal
   `dom-renderer.js` only when absent) so the client's WebSocket and
   asset refs resolve from the same reserved prefix (spec DSL.md). The content-hashed
   name busts the immutable asset cache with a fresh URL per build. The built-in

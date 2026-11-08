@@ -11,10 +11,10 @@ import java.util.List;
 /**
  * Resolves the DOM-client bundle name that the SSR HTML must reference.
  *
- * <p>The bundle is copied into each demo's static resource dir under the
- * reserved framework prefix as a <strong>content-hashed</strong> filename
+ * <p>The bundle ships in the framework libraries under the reserved framework
+ * prefix as a <strong>content-hashed</strong> filename
  * ({@code dom-renderer-&lt;sha256-12&gt;.js} — see the TypeScript
- * {@code copy-to-demos} script) because the asset is served with immutable
+ * {@code copy-to-libs} script) because the asset is served with immutable
  * cache headers; a fresh name per build is what busts the cache. A pointer
  * manifest {@code dom-renderer.current} sits next to the copies so the server
  * can emit the current name without re-hashing, plus the Subresource Integrity
@@ -25,13 +25,14 @@ import java.util.List;
  *   sha384-…
  * </pre>
  *
- * <p>The manifest is looked up on the classpath — the Quarkus demo keeps its
- * copy under {@code META-INF/resources/_pathland/}, the Spring Boot demo under
- * {@code static/_pathland/} (both resolve to {@code _pathland/} on the
- * classpath). Resolved once per JVM and cached; when no manifest is present
- * (a library-only consumer without an embedded bundle, or a unit test) the
- * pre-hash literal {@code dom-renderer.js} is returned and no integrity is
- * emitted, so behaviour is unchanged.
+ * <p>The manifest is looked up on the classpath — the Quarkus extension ships
+ * its copy under {@code META-INF/resources/_pathland/}, the Spring Boot starter
+ * under {@code static/_pathland/} (both resolve to {@code _pathland/} on the
+ * classpath); an application may override either location. Resolved once per
+ * JVM and cached; when no manifest is present (a library-only consumer without
+ * an embedded bundle, or a unit test) the pre-hash literal
+ * {@code dom-renderer.js} is returned and no integrity is emitted, so behaviour
+ * is unchanged.
  */
 final class PathlandAssets {
 

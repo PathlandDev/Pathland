@@ -159,8 +159,9 @@ public class PathlandIndexController {
     }
 
     /**
-     * The reserved framework prefix — serves the DOM client bundle and the asset
-     * mount from {@code classpath:/_pathland/**}, both at the global base
+     * The reserved framework prefix — serves the DOM client bundle (shipped in this
+     * starter's {@code static/_pathland/} resources, so applications need no static
+     * files of their own) and the optional asset mount, both at the global base
      * ({@code /_pathland/**}) and at every mounted app's base ({@code /<path>/_pathland/**}),
      * so the per-app {@code data-pathland-base} the SSR page emits resolves the same
      * bundle. WebSocket upgrades ({@code Upgrade} header — {@code <mount>/_pathland/ws}) are
@@ -278,7 +279,8 @@ public class PathlandIndexController {
                 .body(svg.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
-    /** The DOM client bundle (+ any app-local assets) from {@code static/_pathland/**}. */
+    /** The DOM client bundle (shipped in this jar) or an app-local override from
+     *  {@code static/_pathland/**}; the application's copy wins by classpath order. */
     private Resource classpathFrameworkResource(String file) {
         ClassPathResource resource = new ClassPathResource("static/_pathland/" + file);
         return resource.exists() ? resource : null;

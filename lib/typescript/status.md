@@ -17,7 +17,7 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   URL-scheme allowlisted (`javascript:` and non-media `data:` rejected). The
   transport rejects inbound messages over 2 MiB and closes after five
   consecutive malformed batches so the reconnect path requests a clean
-  `META::RESYNC`. **SRI**: `copy-to-demos` writes a `sha384-…` second manifest
+  `META::RESYNC`. **SRI**: `copy-to-libs` writes a `sha384-…` second manifest
   line; the server emits `integrity` on the script tag.
 - **Attributed text**: decodes `SET_ATTRIBUTED_TEXT` payloads and applies them to
   the hydrated text element as styled `<span>`/`<a href>` runs (v1 attributes:
@@ -29,14 +29,15 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 
 - **Single source, unified**: `src/` is the one client; `npm run build` emits
   `dist/pathland-dom-renderer.js` (IIFE, minified via esbuild), and
-  `npm run copy-to-demos` copies it into the Quarkus (Java + Kotlin) and Spring Boot demos'
-  static resource dirs under a **content-hashed name** (`dom-renderer-<sha256>.js`),
-  pruning stale `dom-renderer-*.js` and the pre-hash literal `dom-renderer.js` (the old
-  duplicated `app.js` is long since removed). A pointer manifest
-  `dom-renderer.current` sits next to the copies (content-hashed name + a `sha384-…`
-  SRI digest); the SSR layer reads it (`PathlandAssets`) to emit the right
-  `<script src integrity="sha384-…">` — the fresh URL per build busts the immutable
-  asset cache without any hard refresh.
+  `npm run copy-to-libs` copies it into the Quarkus extension and Spring Boot
+  starter jars' static resource dirs under a **content-hashed name**
+  (`dom-renderer-<sha256>.js`), pruning stale `dom-renderer-*.js` and the pre-hash
+  literal `dom-renderer.js` (the old duplicated `app.js` is long since removed). A
+  pointer manifest `dom-renderer.current` sits next to the copies (content-hashed
+  name + a `sha384-…` SRI digest); the SSR layer reads it (`PathlandAssets`) to
+  emit the right `<script src integrity="sha384-…">` — the fresh URL per build busts
+  the immutable asset cache without any hard refresh. Shipping it in the framework
+  jars means consuming applications add a dependency and nothing else.
 - **Per-window identity (`wid`)**: the client keeps a window id in `sessionStorage`
   (fresh per window/tab, kept across reloads of the same tab) and appends it as
   `?wid=` to the WebSocket URL (the server's per-window persisted-state scope). The
@@ -442,7 +443,7 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 ## Verified by
 
 `npm test` (vitest, 152 tests) + `npm run typecheck` (strict TS). CI runs the
-web-client job (typecheck + test + build + copy-to-demos drift check) and the
+web-client job (typecheck + test + build + copy-to-libs drift check) and the
 rust job verifies the generated TS + SSR golden fixtures are current
 (`cargo run -p pathland-ts-codegen` / `pathland-html-golden -- --emit` then
 `git diff --exit-code`).

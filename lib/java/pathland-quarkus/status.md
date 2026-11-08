@@ -66,6 +66,13 @@ capability and pulls in `quarkus-kotlin`.
   per-app framework files (`/{app}/_pathland/...`, e.g. the mounted app's bundle) are
   served from the shared `/_pathland/**` classpath mount. Quarkus serves the global
   `/_pathland/**` bundle + asset mount from `META-INF/resources` before JAX-RS.
+  **The extension jar ships the DOM client bundle** (`META-INF/resources/_pathland/
+  dom-renderer-<hash>.js` + the `dom-renderer.current` pointer + the service worker), so
+  a consuming application adds the extension and needs no static resources of its own;
+  the mounted-base `frameworkFile` path resolves the app's classpath copy first (TCCL),
+  then the extension jar, and adds `immutable` caching for the content-hashed bundle. A
+  `/_pathland/{file}` JAX-RS route is a fallback for deployments where Quarkus's static
+  handler is unavailable (it normally wins).
   **`/_pathland/{name}.css`** (global JAX-RS route + the mounted-base
   `frameworkFile` path) serves the renderer-owned content-hashed base design
   (`HtmlRenderer.baseCss()` at `baseCssName()`) as `text/css` with
