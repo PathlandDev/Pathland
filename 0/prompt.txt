@@ -1,1 +1,1 @@
-I am thinking about adding a quarkus dev-ui for pathland. What could be intersting to expose there?
+commit and continue
