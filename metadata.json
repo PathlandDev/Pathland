@@ -1,0 +1,47 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6XJNG6723TXC24YJNAA34FB",
+  "strategy": "manual-commit",
+  "branch": "feat/quarkus-dev-ui",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "lib/java/pathland-quarkus-deployment/src/main/java/dev/pathland/quarkus/deployment/PathlandDevUiProcessor.java",
+    "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-proxies.js",
+    "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-state.js",
+    "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-theme.js",
+    "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-topics.js",
+    "lib/java/pathland-quarkus-deployment/src/main/resources/dev-ui/qwc-pathland-tree.js",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/devui/PathlandDevUiRpc.java",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/devui/PathlandDevUiRpcTest.java",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSignalHub.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/introspection/PathlandIntrospection.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/ProxyHost.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/proxy/ProxySession.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/PathlandIntrospectionTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/state/DebugStateStore.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/state/InMemoryStateStore.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/engine/Emitter.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/engine/NodeSnapshot.kt",
+    "lib/java/pathland-view-core/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 18814,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 21697024,
+    "output_tokens": 26707,
+    "api_call_count": 57
+  }
+}
