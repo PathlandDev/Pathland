@@ -1,0 +1,1 @@
+Next up, we want to ensure that the dom-renderer is automatically server in spring boot and quarkus. It should not be up the applikations using pathland to figure out how to server it.

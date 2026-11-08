@@ -1,0 +1,85 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6X0QR512TQ0TZTVK60EAH11",
+  "session_id": "ses_e4613c60fffeFePQGyFHzsOQ0K",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-08T07:25:06.386497Z",
+  "branch": "feat/auto-serve-dom-renderer",
+  "checkpoints_count": 2,
+  "save_step_count": 1,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    "AGENTS.md",
+    "SECURITY.md",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-77eb5c6fc78d.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/sw.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/application.properties",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/IndexResource.java",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-d14b432bd728.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/DomRendererBundleTest.java",
+    "lib/java/pathland-quarkus/src/test/resources/META-INF/resources/_pathland/sw.js",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandAssets.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/application.properties",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-77eb5c6fc78d.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/sw.js",
+    "lib/java/pathland-spring-boot-starter/src/main/java/dev/pathland/spring/PathlandIndexController.java",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-d14b432bd728.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/sw.js",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/DomRendererBundleTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/resources/static/_pathland/sw.js",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/typescript/README.md",
+    "lib/typescript/package.json",
+    "lib/typescript/scripts/copy-to-demos.mjs",
+    "lib/typescript/scripts/copy-to-libs.mjs",
+    "lib/typescript/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "1b02cfeef486",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 672804,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 10188672,
+    "output_tokens": 23496,
+    "api_call_count": 95
+  },
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-08T07:25:06.3034Z",
+    "agent_lines": 462,
+    "agent_removed": 354,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 462,
+    "total_lines_changed": 816,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 462,
+      "agent_lines_removed": 354
+    }
+  ]
+}

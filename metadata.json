@@ -1,0 +1,56 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M6X0QR512TQ0TZTVK60EAH11",
+  "strategy": "manual-commit",
+  "branch": "feat/auto-serve-dom-renderer",
+  "checkpoints_count": 2,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    "AGENTS.md",
+    "SECURITY.md",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-77eb5c6fc78d.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/sw.js",
+    "lib/java/pathland-quarkus-demo/src/main/resources/application.properties",
+    "lib/java/pathland-quarkus/src/main/java/dev/pathland/quarkus/IndexResource.java",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-d14b432bd728.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/DomRendererBundleTest.java",
+    "lib/java/pathland-quarkus/src/test/resources/META-INF/resources/_pathland/sw.js",
+    "lib/java/pathland-quarkus/status.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandAssets.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/application.properties",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-77eb5c6fc78d.js",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/sw.js",
+    "lib/java/pathland-spring-boot-starter/src/main/java/dev/pathland/spring/PathlandIndexController.java",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-d14b432bd728.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/sw.js",
+    "lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/DomRendererBundleTest.java",
+    "lib/java/pathland-spring-boot-starter/src/test/resources/static/_pathland/sw.js",
+    "lib/java/pathland-spring-boot-starter/status.md",
+    "lib/typescript/README.md",
+    "lib/typescript/package.json",
+    "lib/typescript/scripts/copy-to-demos.mjs",
+    "lib/typescript/scripts/copy-to-libs.mjs",
+    "lib/typescript/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 672804,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 10188672,
+    "output_tokens": 23496,
+    "api_call_count": 95
+  }
+}
