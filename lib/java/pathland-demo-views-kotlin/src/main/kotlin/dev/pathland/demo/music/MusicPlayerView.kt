@@ -6,7 +6,7 @@ import dev.pathland.demo.music.sidebar.NowPlayingSidebar
 import dev.pathland.view.core.Color
 import dev.pathland.view.core.Roles
 import dev.pathland.view.core.View
-import dev.pathland.view.core.protocol.Commands
+import dev.pathland.core.protocol.Commands
 import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.Fit
 import dev.pathland.view.dsl.HStack

@@ -4,7 +4,7 @@ import dev.pathland.view.core.Environment
 import dev.pathland.view.core.LabelStyle
 import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
-import dev.pathland.view.core.protocol.Components
+import dev.pathland.core.protocol.Components
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 
@@ -16,10 +16,10 @@ private object FallbackLabelStyle : LabelStyle {
         }
         return coreView(Components.HSTACK, parts) { node, _ ->
             node.property(
-                dev.pathland.view.core.protocol.Properties.ALIGNMENT,
+                dev.pathland.core.protocol.Properties.ALIGNMENT,
                 Signals.constant(VerticalAlignment.CENTER),
             )
-            node.properties[dev.pathland.view.core.protocol.Properties.SPACING] = 2f
+            node.properties[dev.pathland.core.protocol.Properties.SPACING] = 2f
         }
     }
 }

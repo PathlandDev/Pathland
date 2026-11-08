@@ -109,6 +109,7 @@ dev-dependency to resolve from the registry at publish time.
 
 ## Published Java modules
 
+`pathland-core` (pure-Java opcode/wire core, attributed text, Markdown),
 `pathland-view-core` (Kotlin JVM engine/SPI + the sole authoring DSL),
 `pathland-render-html`, `pathland-server-core` (runtime, telemetry adapters,
 Redis state store, and the shared WS test harness), `pathland-spring-boot-starter`,

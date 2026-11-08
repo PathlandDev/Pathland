@@ -1,7 +1,7 @@
 package dev.pathland.view.engine
 
-import dev.pathland.view.core.protocol.ValueTypes
-import dev.pathland.view.core.protocol.WireValue
+import dev.pathland.core.protocol.ValueTypes
+import dev.pathland.core.protocol.WireValue
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 

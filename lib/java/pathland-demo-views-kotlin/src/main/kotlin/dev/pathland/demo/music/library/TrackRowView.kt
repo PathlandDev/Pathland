@@ -9,7 +9,7 @@ import dev.pathland.view.core.FontWeight
 import dev.pathland.view.core.HorizontalAlignment
 import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
-import dev.pathland.view.core.protocol.Commands
+import dev.pathland.core.protocol.Commands
 import dev.pathland.view.dsl.Button
 import dev.pathland.view.dsl.HStack
 import dev.pathland.view.dsl.Image

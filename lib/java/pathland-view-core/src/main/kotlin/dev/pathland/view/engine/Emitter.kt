@@ -1,6 +1,6 @@
 package dev.pathland.view.engine
 
-import dev.pathland.markdown.Markdown
+import dev.pathland.core.markdown.Markdown
 import dev.pathland.view.core.AdaptiveTheme
 import dev.pathland.view.core.Color
 import dev.pathland.view.core.Environment
@@ -13,11 +13,11 @@ import dev.pathland.view.core.ThemeData
 import dev.pathland.view.core.ThemeMode
 import dev.pathland.view.core.View
 import dev.pathland.view.core.WindowMetadata
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.protocol.Components
-import dev.pathland.view.core.protocol.Properties
-import dev.pathland.view.core.protocol.TokenPath
-import dev.pathland.view.core.protocol.ValueTypes
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.protocol.Components
+import dev.pathland.core.protocol.Properties
+import dev.pathland.core.protocol.TokenPath
+import dev.pathland.core.protocol.ValueTypes
 import dev.pathland.view.core.router.NavOp
 import dev.pathland.view.core.router.Router
 import dev.pathland.view.core.signal.ConstantSignal
@@ -26,8 +26,8 @@ import dev.pathland.view.core.signal.EffectRef
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.Tracked
-import dev.pathland.view.core.transport.Event
-import dev.pathland.view.core.transport.OpcodeSink
+import dev.pathland.core.transport.Event
+import dev.pathland.core.transport.OpcodeSink
 import java.util.ArrayDeque
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -996,13 +996,13 @@ class Emitter {
     private fun currentText(node: PathlandNode): String? =
         node.textBinding?.let { Signals.untracked { it.get() } } ?: node.text
 
-    private fun currentAttributed(node: PathlandNode): dev.pathland.view.core.AttributedString? =
+    private fun currentAttributed(node: PathlandNode): dev.pathland.core.text.AttributedString? =
         node.attributedBinding?.let { Signals.untracked { it.get() } } ?: node.attributedText
 
     /** Explicit attributed text, or inline Markdown parsed from the node's text. */
     private fun resolvedAttributed(
         node: PathlandNode,
-    ): dev.pathland.view.core.AttributedString? {
+    ): dev.pathland.core.text.AttributedString? {
         currentAttributed(node)?.let { return it }
         if (!node.markdownText) return null
         return currentText(node)?.let { Markdown.parseOrPlain(it) }

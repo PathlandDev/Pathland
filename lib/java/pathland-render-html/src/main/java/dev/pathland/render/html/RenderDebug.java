@@ -1,8 +1,8 @@
 package dev.pathland.render.html;
 
-import dev.pathland.view.core.protocol.Components;
-import dev.pathland.view.core.protocol.Properties;
-import dev.pathland.view.core.protocol.ValueTypes;
+import dev.pathland.core.protocol.Components;
+import dev.pathland.core.protocol.Properties;
+import dev.pathland.core.protocol.ValueTypes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

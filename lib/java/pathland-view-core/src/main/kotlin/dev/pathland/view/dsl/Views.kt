@@ -1,12 +1,12 @@
 package dev.pathland.view.dsl
 
-import dev.pathland.markdown.Markdown
-import dev.pathland.view.core.AttributedString
+import dev.pathland.core.markdown.Markdown
+import dev.pathland.core.text.AttributedString
 import dev.pathland.view.core.EmptyContent
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.protocol.Components
-import dev.pathland.view.core.protocol.Properties
-import dev.pathland.view.core.protocol.WireValue
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.protocol.Components
+import dev.pathland.core.protocol.Properties
+import dev.pathland.core.protocol.WireValue
 import dev.pathland.view.core.signal.Signals
 import java.util.function.Consumer
 import dev.pathland.view.core.DatePickerMode

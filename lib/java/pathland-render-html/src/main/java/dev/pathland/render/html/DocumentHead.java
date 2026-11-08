@@ -1,7 +1,7 @@
 package dev.pathland.render.html;
 
-import dev.pathland.view.core.protocol.Components;
-import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.core.protocol.Components;
+import dev.pathland.core.protocol.Properties;
 import java.util.TreeMap;
 
 /**

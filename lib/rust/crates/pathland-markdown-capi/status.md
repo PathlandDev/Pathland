@@ -4,7 +4,7 @@
 
 The C ABI (`cdylib` name `libpathland_markdown`) for non-JVM foreign hosts
 (Swift, .NET, …). It wraps the shared `pathland-markdown` parser. The JVM uses a
-pure-Java port in `pathland-view-core` and no longer loads this library.
+pure-Java port in `pathland-core` and no longer loads this library.
 
 ## Implemented
 

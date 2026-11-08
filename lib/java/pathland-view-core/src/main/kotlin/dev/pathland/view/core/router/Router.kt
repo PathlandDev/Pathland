@@ -5,7 +5,7 @@ import dev.pathland.view.core.signal.EffectOptions
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.WritableSignal
-import dev.pathland.view.core.transport.Event
+import dev.pathland.core.transport.Event
 import java.util.ArrayDeque
 import java.util.Deque
 import java.util.Objects

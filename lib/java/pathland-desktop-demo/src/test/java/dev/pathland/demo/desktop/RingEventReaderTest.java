@@ -1,7 +1,7 @@
 package dev.pathland.demo.desktop;
 
-import dev.pathland.view.core.protocol.Commands;
-import dev.pathland.view.core.transport.Event;
+import dev.pathland.core.protocol.Commands;
+import dev.pathland.core.transport.Event;
 import com.sun.jna.Memory;
 
 import org.junit.jupiter.api.Test;

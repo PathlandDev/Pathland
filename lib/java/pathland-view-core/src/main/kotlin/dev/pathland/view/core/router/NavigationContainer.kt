@@ -5,8 +5,8 @@ import dev.pathland.view.core.Environment
 import dev.pathland.view.core.EnvironmentValues
 import dev.pathland.view.core.View
 import dev.pathland.view.core.ViewBuilder
-import dev.pathland.view.core.protocol.Components
-import dev.pathland.view.core.protocol.Properties
+import dev.pathland.core.protocol.Components
+import dev.pathland.core.protocol.Properties
 import dev.pathland.view.engine.PathlandNode
 import java.util.Objects
 import java.util.function.Consumer

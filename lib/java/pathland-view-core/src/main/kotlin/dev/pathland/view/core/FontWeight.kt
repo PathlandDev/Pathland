@@ -1,7 +1,7 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Properties
-import dev.pathland.view.core.protocol.WireValue
+import dev.pathland.core.protocol.Properties
+import dev.pathland.core.protocol.WireValue
 
 /** The FontWeight wire enum; also a view modifier. */
 enum class FontWeight(private val wire: Int) : ViewModifier, WireValue {

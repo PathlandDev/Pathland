@@ -1,7 +1,7 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.ValueTypes
-import dev.pathland.view.core.transport.OpcodeSink
+import dev.pathland.core.protocol.ValueTypes
+import dev.pathland.core.transport.OpcodeSink
 
 /** A batch of global design-token overrides for a single scheme. */
 class Theme : ThemeData {

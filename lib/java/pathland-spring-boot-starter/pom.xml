@@ -23,6 +23,11 @@
     <dependencies>
         <dependency>
             <groupId>dev.pathland</groupId>
+            <artifactId>pathland-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>dev.pathland</groupId>
             <artifactId>pathland-server-core</artifactId>
             <version>${project.version}</version>
         </dependency>

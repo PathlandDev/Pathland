@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.WireValue
+import dev.pathland.core.protocol.WireValue
 
 /** The HorizontalAlignment wire enum. */
 enum class HorizontalAlignment(private val wire: Int) : WireValue {

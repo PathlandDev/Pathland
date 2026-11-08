@@ -17,14 +17,14 @@
     <description>
         JNA interop for native desktop hosts: the lazy `PathlandCore` binding to the
         Rust `libpathland_core` cdylib (SPSC ring + opcode engine) and the zero-copy
-        `RingOpcodeSink`. Kept out of `pathland-view-core` so server runtimes and
-        GraalVM native-image builds never carry JNA. Runs on every LTS from Java 17.
+        `RingOpcodeSink`. Kept separate so server runtimes and GraalVM
+        native-image builds never carry JNA. Runs on every LTS from Java 17.
     </description>
 
     <dependencies>
         <dependency>
             <groupId>dev.pathland</groupId>
-            <artifactId>pathland-view-core</artifactId>
+            <artifactId>pathland-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

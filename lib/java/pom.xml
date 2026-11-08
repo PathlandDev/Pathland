@@ -11,9 +11,10 @@
 
     <name>Pathland Java</name>
     <description>
-        Framework-agnostic JVM libraries for the Pathland UI protocol: a Kotlin
-        authoring DSL with Angular-style signals/computed/effects, a Kotlin opcode
-        engine/SPI, the wire codec, a reusable HTML renderer, and cross-platform
+        Framework-agnostic JVM libraries for the Pathland UI protocol: a pure-Java
+        opcode/wire core (16-byte opcodes, PLPL frame codec, attributed text,
+        Markdown), a Kotlin engine + authoring DSL with Angular-style
+        signals/computed/effects, a reusable HTML renderer, and cross-platform
         state stores (in-memory by default; the opt-in pathland-state-redis module
         adds Lettuce/Redis). Native desktop hosts use the opt-in JNA ring interop in
         pathland-native-core. Java hosts (Spring Boot, Quarkus, desktop) mount
@@ -51,6 +52,7 @@
          `demos` profile below, so activating any other profile — `release`,
          `refresh-ide`, or `jvm-only` — leaves a demo-free reactor. -->
     <modules>
+        <module>pathland-core</module>
         <module>pathland-view-core</module>
         <module>pathland-native-core</module>
         <module>pathland-render-html</module>

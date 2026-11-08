@@ -1,6 +1,6 @@
 package dev.pathland.server.proxy;
 
-import dev.pathland.view.core.transport.Event;
+import dev.pathland.core.transport.Event;
 
 import dev.pathland.server.PathlandTelemetry;
 import dev.pathland.view.core.ProxyConfig;
@@ -73,7 +73,7 @@ class ProxyHostTest {
         host.remove(1);
 
         // A proxy-range target with no live session is dropped (not dispatched locally).
-        assertTrue(host.forward(dev.pathland.view.core.transport.Event.pointerUp(
+        assertTrue(host.forward(dev.pathland.core.transport.Event.pointerUp(
                 ProxyIdMap.toProxyId(block, 2), 0, 0)));
         host.close();
     }

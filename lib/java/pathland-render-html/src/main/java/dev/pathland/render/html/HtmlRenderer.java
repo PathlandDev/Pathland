@@ -1,16 +1,16 @@
 package dev.pathland.render.html;
 
-import dev.pathland.view.core.AttributedString;
-import dev.pathland.view.core.LinkRun;
-import dev.pathland.view.core.StyleRun;
-import dev.pathland.view.core.TextAttribute;
-import dev.pathland.view.core.protocol.Categories;
-import dev.pathland.view.core.protocol.Commands;
-import dev.pathland.view.core.protocol.Components;
-import dev.pathland.view.core.protocol.Opcode;
-import dev.pathland.view.core.protocol.Properties;
-import dev.pathland.view.core.protocol.ValueTypes;
-import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.core.text.AttributedString;
+import dev.pathland.core.text.LinkRun;
+import dev.pathland.core.text.StyleRun;
+import dev.pathland.core.text.TextAttribute;
+import dev.pathland.core.protocol.Categories;
+import dev.pathland.core.protocol.Commands;
+import dev.pathland.core.protocol.Components;
+import dev.pathland.core.protocol.Opcode;
+import dev.pathland.core.protocol.Properties;
+import dev.pathland.core.protocol.ValueTypes;
+import dev.pathland.core.transport.ProtocolFrame;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

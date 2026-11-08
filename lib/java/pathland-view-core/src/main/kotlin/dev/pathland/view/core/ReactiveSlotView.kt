@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Components
+import dev.pathland.core.protocol.Components
 import dev.pathland.view.engine.PathlandNode
 import java.util.function.Supplier
 

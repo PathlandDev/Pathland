@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.WireValue
+import dev.pathland.core.protocol.WireValue
 
 /** The ScrollAxis wire enum. */
 enum class ScrollAxis(private val wire: Int) : WireValue {

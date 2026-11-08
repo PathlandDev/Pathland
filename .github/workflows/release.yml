@@ -173,7 +173,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/jars
-          for m in pathland-view-core pathland-render-html pathland-server-core \
+          for m in pathland-core pathland-view-core pathland-render-html pathland-server-core \
                    pathland-spring-boot-starter pathland-quarkus \
                    pathland-quarkus-deployment; do
             cp lib/java/"$m"/target/"$m"-*.jar dist/jars/ 2>/dev/null || true

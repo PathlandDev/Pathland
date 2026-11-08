@@ -32,7 +32,7 @@ The following are in scope for this policy:
 - `lib/rust/crates/pathland-core-transport` — PLPL batch encode/decode.
 - `lib/rust/crates/pathland-core-capi` — the `unsafe extern "C"` ring ABI
   (`libpathland_core`): pointer-argument handling, zero-copy reads, event drain.
-- `lib/java/pathland-view-core` `transport` — `FrameCodec` (PLPL encode/decode).
+- `lib/java/pathland-core` `transport` — `FrameCodec` (PLPL encode/decode).
 - The `@pathland/dom-renderer` web client (PLPL batch decode + hydration in
   `lib/typescript/src`, built to `dist/pathland-dom-renderer.js` and shipped in
   the Spring Boot starter + Quarkus extension jars).

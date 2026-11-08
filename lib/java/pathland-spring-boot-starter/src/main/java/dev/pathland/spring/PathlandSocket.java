@@ -2,7 +2,7 @@ package dev.pathland.spring;
 
 import dev.pathland.server.PathlandRegistry;
 import dev.pathland.server.WindowIds;
-import dev.pathland.view.core.transport.FrameCodec;
+import dev.pathland.core.transport.FrameCodec;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketMessage;

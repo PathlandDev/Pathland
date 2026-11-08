@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.transport.OpcodeSink
+import dev.pathland.core.transport.OpcodeSink
 
 /** An adaptive theme: a light and a dark Theme pair. */
 class AdaptiveTheme(

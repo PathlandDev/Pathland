@@ -1,7 +1,7 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Properties
-import dev.pathland.view.core.protocol.WireValue
+import dev.pathland.core.protocol.Properties
+import dev.pathland.core.protocol.WireValue
 
 /** The FontStyle wire enum; also a view modifier. */
 enum class FontStyle(private val wire: Int) : ViewModifier, WireValue {

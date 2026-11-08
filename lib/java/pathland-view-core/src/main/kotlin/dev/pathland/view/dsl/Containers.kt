@@ -2,8 +2,8 @@ package dev.pathland.view.dsl
 
 import dev.pathland.view.core.Alignment
 import dev.pathland.view.core.ProxyConfig
-import dev.pathland.view.core.protocol.Components
-import dev.pathland.view.core.protocol.Properties
+import dev.pathland.core.protocol.Components
+import dev.pathland.core.protocol.Properties
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.engine.Emitter
 import dev.pathland.view.engine.PathlandNode

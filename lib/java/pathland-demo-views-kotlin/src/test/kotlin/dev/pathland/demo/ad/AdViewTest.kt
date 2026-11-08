@@ -1,14 +1,14 @@
 package dev.pathland.demo.ad
 
 import dev.pathland.view.core.Environment
-import dev.pathland.view.core.protocol.Categories
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.protocol.Components
-import dev.pathland.view.core.protocol.Opcode
+import dev.pathland.core.protocol.Categories
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.protocol.Components
+import dev.pathland.core.protocol.Opcode
 import dev.pathland.view.core.state.InMemoryStateStore
 import dev.pathland.view.core.state.PersistentState
-import dev.pathland.view.core.transport.FrameOpcodeSink
-import dev.pathland.view.core.transport.ProtocolFrame
+import dev.pathland.core.transport.FrameOpcodeSink
+import dev.pathland.core.transport.ProtocolFrame
 import dev.pathland.view.engine.Emitter
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test

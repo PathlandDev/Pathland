@@ -1,13 +1,13 @@
 package dev.pathland.view.engine
 
-import dev.pathland.view.core.AttributedString
+import dev.pathland.core.text.AttributedString
 import dev.pathland.view.core.MediaController
 import dev.pathland.view.core.ProxyConfig
 import dev.pathland.view.core.router.NavOp
 import dev.pathland.view.core.router.Router
 import dev.pathland.view.core.signal.ConstantSignal
 import dev.pathland.view.core.signal.Signal
-import dev.pathland.view.core.transport.Event
+import dev.pathland.core.transport.Event
 import java.util.LinkedHashMap
 import java.util.function.Consumer
 

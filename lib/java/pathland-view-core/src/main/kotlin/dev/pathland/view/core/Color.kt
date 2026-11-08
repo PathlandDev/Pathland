@@ -1,13 +1,14 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Components
-import dev.pathland.view.core.protocol.Properties
-import dev.pathland.view.core.protocol.TokenPath
+import dev.pathland.core.protocol.ColorValue
+import dev.pathland.core.protocol.Components
+import dev.pathland.core.protocol.Properties
+import dev.pathland.core.protocol.TokenPath
 import dev.pathland.view.engine.PathlandNode
 
 /** An sRGB color (0xAARRGGBB) or a design-token reference. Also a solid-color View. */
-data class Color(val argb: Int, val token: String?) : View, TokenPath {
-    fun argb(): Int = argb
+data class Color(val argb: Int, val token: String?) : View, TokenPath, ColorValue {
+    override fun argb(): Int = argb
     fun token(): String? = token
     fun isToken(): Boolean = token != null
 

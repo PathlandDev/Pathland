@@ -4,9 +4,9 @@ import dev.pathland.view.core.ButtonStyle
 import dev.pathland.view.core.EmptyContent
 import dev.pathland.view.core.Environment
 import dev.pathland.view.core.View
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.protocol.Components
-import dev.pathland.view.core.protocol.Properties
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.protocol.Components
+import dev.pathland.core.protocol.Properties
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.engine.PathlandNode
 

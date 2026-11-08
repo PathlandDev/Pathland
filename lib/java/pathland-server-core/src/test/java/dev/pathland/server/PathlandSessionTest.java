@@ -1,23 +1,23 @@
 package dev.pathland.server;
 
 import dev.pathland.view.core.MediaController;
-import dev.pathland.view.core.protocol.Categories;
-import dev.pathland.view.core.protocol.Commands;
+import dev.pathland.core.protocol.Categories;
+import dev.pathland.core.protocol.Commands;
 import dev.pathland.view.core.Environment;
 import dev.pathland.view.core.Platform;
-import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.core.protocol.Properties;
 import dev.pathland.view.core.View;
-import dev.pathland.view.core.transport.ProtocolFrame;
-import dev.pathland.view.core.protocol.Opcode;
+import dev.pathland.core.transport.ProtocolFrame;
+import dev.pathland.core.protocol.Opcode;
 import dev.pathland.view.engine.PathlandNode;
 import dev.pathland.view.core.signal.Signal;
 import dev.pathland.view.core.signal.Signals;
 import dev.pathland.view.core.signal.WritableSignal;
 import dev.pathland.view.core.state.InMemoryStateStore;
 import dev.pathland.view.core.state.StateStore;
-import dev.pathland.view.core.transport.EnvironmentData;
-import dev.pathland.view.core.transport.Event;
-import dev.pathland.view.core.transport.FrameCodec;
+import dev.pathland.core.transport.EnvironmentData;
+import dev.pathland.core.transport.Event;
+import dev.pathland.core.transport.FrameCodec;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

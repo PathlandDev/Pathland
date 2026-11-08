@@ -1,6 +1,7 @@
 package dev.pathland.render.html
 
-import dev.pathland.view.core.transport.FrameCodec
+import dev.pathland.core.transport.FrameCodec
+import dev.pathland.core.transport.ProtocolFrame
 import java.io.File
 import java.nio.charset.StandardCharsets
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -40,7 +41,7 @@ class GoldenConformanceTest {
         // The delta scenario: base + change opcodes share the base string section.
         val base = FrameCodec.decodeFrame(File(fixtures, "delta_base.plpl").readBytes())
         val change = FrameCodec.decodeFrame(File(fixtures, "delta_change.plpl").readBytes())
-        val combined = base.copy(opcodes = base.opcodes + change.opcodes)
+        val combined = ProtocolFrame(base.opcodes + change.opcodes, base.strings)
         val expectedDelta = File(fixtures, "delta_result.html").readText(StandardCharsets.UTF_8)
         val actualDelta = HtmlRenderer.instance().renderFragment(combined, 1)
         if (actualDelta != expectedDelta) {

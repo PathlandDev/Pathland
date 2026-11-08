@@ -3,9 +3,9 @@ package dev.pathland.view.dsl
 import dev.pathland.view.core.Environment
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.WritableSignal
-import dev.pathland.view.core.transport.FrameCodec
-import dev.pathland.view.core.transport.FrameOpcodeSink
-import dev.pathland.view.core.transport.ProtocolFrame
+import dev.pathland.core.transport.FrameCodec
+import dev.pathland.core.transport.FrameOpcodeSink
+import dev.pathland.core.transport.ProtocolFrame
 import dev.pathland.view.engine.Emitter
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Test

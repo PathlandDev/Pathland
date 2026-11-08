@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Components
+import dev.pathland.core.protocol.Components
 import dev.pathland.view.engine.PathlandNode
 
 /** A sentinel style content meaning "no content". */
