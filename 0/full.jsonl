@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.429107754,
+    "cost": 0.43321834200000003,
     "tokens": {
-      "input": 1845007,
-      "output": 63849,
-      "reasoning": 63643,
+      "input": 1848709,
+      "output": 64204,
+      "reasoning": 63929,
       "cache": {
-        "read": 25287168,
+        "read": 26344064,
         "write": 0
       }
     },
     "time": {
       "created": 1794166462243,
-      "updated": 1794168857247
+      "updated": 1794168875377
     }
   },
   "messages": [
@@ -52882,21 +52882,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001590276,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 352775,
+          "input": 1714,
+          "output": 214,
+          "reasoning": 255,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 350592
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1794168857246
+          "created": 1794168857246,
+          "completed": 1794168872332
         },
+        "finish": "tool-calls",
         "id": "msg_1bccc229e002aJaHLXeRUbZciH",
         "sessionID": "ses_e435868dcffevnYz131MbQknDB"
       },
@@ -52924,22 +52927,214 @@
           "tool": "bash",
           "callID": "call_b571979ddf4f49318c1f8a3c",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git commit -m \"refactor(jvm): extract the opcode/wire core into a pure-Java pathland-core\" -m \"Move the protocol constants, Opcode, PLPL frame codec, Event/EnvironmentData, OpcodeSink/FrameOpcodeSink, AttributedString, and Markdown into a new Java-only pathland-core module (dev.pathland.core.*). pathland-view-core keeps the Kotlin engine/DSL and depends on pathland-core; all consumers, tests, status docs, and release metadata are updated.\" && git log --oneline -1 && git status --short | head",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland",
               "timeout": 120000
             },
+            "output": "[refactor/jvm-core-wire d44f9407] refactor(jvm): extract the opcode/wire core into a pure-Java pathland-core\n 148 files changed, 2795 insertions(+), 1808 deletions(-)\n create mode 100644 lib/java/pathland-core/pom.xml\n rename lib/java/{pathland-view-core/src/main/java/dev/pathland => pathland-core/src/main/java/dev/pathland/core}/markdown/Markdown.java (98%)\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Categories.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/ColorValue.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Commands.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Components.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Opcode.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Properties.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/TokenPath.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/ValueEncoder.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/ValueTypes.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/WireValue.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/text/AttributedString.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/text/LinkRun.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/text/StyleRun.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/text/TextAttribute.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/EnvironmentData.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/Event.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/FrameCodec.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/FrameOpcodeSink.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/OpcodeSink.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/ProtocolFrame.java\n rename lib/java/{pathland-view-core/src/test/java/dev/pathland => pathland-core/src/test/java/dev/pathland/core}/markdown/MarkdownTest.java (96%)\n rename lib/java/{pathland-view-core/src/test/java/dev/pathland/view => pathland-core/src/test/java/dev/pathland}/core/protocol/ProtocolManifestTest.java (98%)\n rename lib/java/{pathland-view-core/src/test/java/dev/pathland/view => pathland-core/src/test/java/dev/pathland}/core/transport/FrameCodecTest.java (93%)\n create mode 100644 lib/java/pathland-core/status.md\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/AttributedString.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Categories.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Commands.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Components.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Opcode.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Properties.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/TokenPath.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/ValueEncoder.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/ValueTypes.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/WireValue.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/EnvironmentData.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/Event.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/FrameCodec.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/FrameOpcodeSink.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/OpcodeSink.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/ProtocolFrame.kt\nd44f9407 refactor(jvm): extract the opcode/wire core into a pure-Java pathland-core\n",
+            "metadata": {
+              "output": "[refactor/jvm-core-wire d44f9407] refactor(jvm): extract the opcode/wire core into a pure-Java pathland-core\n 148 files changed, 2795 insertions(+), 1808 deletions(-)\n create mode 100644 lib/java/pathland-core/pom.xml\n rename lib/java/{pathland-view-core/src/main/java/dev/pathland => pathland-core/src/main/java/dev/pathland/core}/markdown/Markdown.java (98%)\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Categories.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/ColorValue.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Commands.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Components.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Opcode.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Properties.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/TokenPath.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/ValueEncoder.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/ValueTypes.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/WireValue.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/text/AttributedString.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/text/LinkRun.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/text/StyleRun.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/text/TextAttribute.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/EnvironmentData.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/Event.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/FrameCodec.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/FrameOpcodeSink.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/OpcodeSink.java\n create mode 100644 lib/java/pathland-core/src/main/java/dev/pathland/core/transport/ProtocolFrame.java\n rename lib/java/{pathland-view-core/src/test/java/dev/pathland => pathland-core/src/test/java/dev/pathland/core}/markdown/MarkdownTest.java (96%)\n rename lib/java/{pathland-view-core/src/test/java/dev/pathland/view => pathland-core/src/test/java/dev/pathland}/core/protocol/ProtocolManifestTest.java (98%)\n rename lib/java/{pathland-view-core/src/test/java/dev/pathland/view => pathland-core/src/test/java/dev/pathland}/core/transport/FrameCodecTest.java (93%)\n create mode 100644 lib/java/pathland-core/status.md\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/AttributedString.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Categories.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Commands.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Components.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Opcode.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/Properties.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/TokenPath.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/ValueEncoder.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/ValueTypes.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/protocol/WireValue.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/EnvironmentData.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/Event.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/FrameCodec.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/FrameOpcodeSink.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/OpcodeSink.kt\n delete mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/transport/ProtocolFrame.kt\nd44f9407 refactor(jvm): extract the opcode/wire core into a pure-Java pathland-core\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git commit -m \"refactor(jvm): extract the opcode/wire core into a pure-Java pathland-core\" -m \"Move the protocol constants, Opcode, PLPL frame codec, Event/EnvironmentData, OpcodeSink/FrameOpcodeSink, AttributedString, and Markdown into a new Java-only pathland-core module (dev.pathland.core.*). pathland-view-core keeps the Kotlin engine/DSL and depends on pathland-core; all consumers, tests, status docs, and release metadata are updated.\" && git log --oneline -1 && git status --short | head",
             "time": {
-              "start": 1794168863401
+              "start": 1794168863401,
+              "end": 1794168872195
             }
           },
           "id": "prt_1bccc357f001DYFrwXes671jUP",
           "sessionID": "ses_e435868dcffevnYz131MbQknDB",
           "messageID": "msg_1bccc229e002aJaHLXeRUbZciH"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "bc262f8caf48b0b826f3863b72b273ac0c6a5704",
+          "type": "step-finish",
+          "tokens": {
+            "total": 352775,
+            "input": 1714,
+            "output": 214,
+            "reasoning": 255,
+            "cache": {
+              "write": 0,
+              "read": 350592
+            }
+          },
+          "cost": 0.001590276,
+          "id": "prt_1bccc5d47001rKSuDZv2AsdA50",
+          "sessionID": "ses_e435868dcffevnYz131MbQknDB",
+          "messageID": "msg_1bccc229e002aJaHLXeRUbZciH"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1bccbec59001lpoKLLHXMw9EG4",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001395018,
+        "tokens": {
+          "total": 354190,
+          "input": 1827,
+          "output": 76,
+          "reasoning": 31,
+          "cache": {
+            "write": 0,
+            "read": 352256
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794168872369,
+          "completed": 1794168875362
+        },
+        "finish": "tool-calls",
+        "id": "msg_1bccc5db1002ve2fRtUl4EXEe3",
+        "sessionID": "ses_e435868dcffevnYz131MbQknDB"
+      },
+      "parts": [
+        {
+          "snapshot": "bc262f8caf48b0b826f3863b72b273ac0c6a5704",
+          "type": "step-start",
+          "id": "prt_1bccc65a7001EunOVEGbV7qPyZ",
+          "sessionID": "ses_e435868dcffevnYz131MbQknDB",
+          "messageID": "msg_1bccc5db1002ve2fRtUl4EXEe3"
+        },
+        {
+          "type": "reasoning",
+          "text": "Committed. git status after? The command included `git status --short | head` but output only commit; probably clean. Let's verify quickly.",
+          "time": {
+            "start": 1794168874408,
+            "end": 1794168874792
+          },
+          "id": "prt_1bccc65a8001LIsMuRWwM0Bzg0",
+          "sessionID": "ses_e435868dcffevnYz131MbQknDB",
+          "messageID": "msg_1bccc5db1002ve2fRtUl4EXEe3"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_48471b48f33a40d397d2606e",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short; git branch --show-current",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "refactor/jvm-core-wire\n",
+            "metadata": {
+              "output": "refactor/jvm-core-wire\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short; git branch --show-current",
+            "time": {
+              "start": 1794168875198,
+              "end": 1794168875242
+            }
+          },
+          "id": "prt_1bccc672a0016H9XcjQxJa5QjI",
+          "sessionID": "ses_e435868dcffevnYz131MbQknDB",
+          "messageID": "msg_1bccc5db1002ve2fRtUl4EXEe3"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "bc262f8caf48b0b826f3863b72b273ac0c6a5704",
+          "type": "step-finish",
+          "tokens": {
+            "total": 354190,
+            "input": 1827,
+            "output": 76,
+            "reasoning": 31,
+            "cache": {
+              "write": 0,
+              "read": 352256
+            }
+          },
+          "cost": 0.001395018,
+          "id": "prt_1bccc692a001F8AI96My6AkzIK",
+          "sessionID": "ses_e435868dcffevnYz131MbQknDB",
+          "messageID": "msg_1bccc5db1002ve2fRtUl4EXEe3"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1bccbec59001lpoKLLHXMw9EG4",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001125294,
+        "tokens": {
+          "total": 354274,
+          "input": 161,
+          "output": 65,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 354048
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794168875376,
+          "completed": 1794168878089
+        },
+        "finish": "stop",
+        "id": "msg_1bccc6970002Sj6UyPfxnMdf5O",
+        "sessionID": "ses_e435868dcffevnYz131MbQknDB"
+      },
+      "parts": [
+        {
+          "snapshot": "bc262f8caf48b0b826f3863b72b273ac0c6a5704",
+          "type": "step-start",
+          "id": "prt_1bccc71cf001s6LWX4Lh3Qczi2",
+          "sessionID": "ses_e435868dcffevnYz131MbQknDB",
+          "messageID": "msg_1bccc6970002Sj6UyPfxnMdf5O"
+        },
+        {
+          "type": "text",
+          "text": "Committed on `refactor/jvm-core-wire`:\n\n```\nd44f9407 refactor(jvm): extract the opcode/wire core into a pure-Java pathland-core\n148 files changed, 2795 insertions(+), 1808 deletions(-)\n```\n\nWorking tree is clean.",
+          "time": {
+            "start": 1794168877552,
+            "end": 1794168877954
+          },
+          "id": "prt_1bccc71f0001OXeHbolJrZaRYy",
+          "sessionID": "ses_e435868dcffevnYz131MbQknDB",
+          "messageID": "msg_1bccc6970002Sj6UyPfxnMdf5O"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "bc262f8caf48b0b826f3863b72b273ac0c6a5704",
+          "type": "step-finish",
+          "tokens": {
+            "total": 354274,
+            "input": 161,
+            "output": 65,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 354048
+            }
+          },
+          "cost": 0.001125294,
+          "id": "prt_1bccc73c9001dipfLWHA5fPW1v",
+          "sessionID": "ses_e435868dcffevnYz131MbQknDB",
+          "messageID": "msg_1bccc6970002Sj6UyPfxnMdf5O"
         }
       ]
     }
