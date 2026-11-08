@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.168753816,
+    "cost": 0.170254722,
     "tokens": {
-      "input": 672804,
-      "output": 23496,
-      "reasoning": 38616,
+      "input": 675035,
+      "output": 23788,
+      "reasoning": 38662,
       "cache": {
-        "read": 10188672,
+        "read": 10509824,
         "write": 0
       }
     },
     "time": {
       "created": 1794120628720,
-      "updated": 1794122693710
+      "updated": 1794122709215
     }
   },
   "messages": [
@@ -20935,21 +20935,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.000831684,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 161558,
+          "input": 1126,
+          "output": 258,
+          "reasoning": 46,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 160128
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1794122693709
+          "created": 1794122693709,
+          "completed": 1794122709205
         },
+        "finish": "tool-calls",
         "id": "msg_1ba0bbc4d002vZBKLH2eK20PT1",
         "sessionID": "ses_e4613c60fffeFePQGyFHzsOQ0K"
       },
@@ -20977,20 +20980,115 @@
           "tool": "bash",
           "callID": "call_221b4ec2dfcf4704baafde30",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "cd /Users/michael/Development/michaelkrog/Pathland && git commit -m \"feat(starters): ship the DOM renderer bundle in the framework jars\" -m \"Applications no longer need to add static resources for the DOM client. The\nTypeScript build now copies the content-hashed bundle, its dom-renderer.current\npointer/SRI manifest, and the service worker into the Spring Boot starter and\nQuarkus extension jars instead of the demo modules.\n\n- Retarget copy-to-demos.mjs to copy-to-libs.mjs (starter + extension)\n- Remove the demo-owned copies; demos consume the library-shipped assets\n- Quarkus IndexResource resolves mounted framework files TCCL-first (app\n  override wins), caches the hashed bundle immutably, and has a global\n  /_pathland/{file} fallback route\n- Add bundle-serving tests in both starters (global + mounted, SRI)\n- Update CI drift check, docs, and status files\" && git log --oneline -1"
             },
+            "output": "[feat/auto-serve-dom-renderer d2e7992b] feat(starters): ship the DOM renderer bundle in the framework jars\n 29 files changed, 304 insertions(+), 196 deletions(-)\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-77eb5c6fc78d.js\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-d14b432bd728.js\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current\n create mode 100644 lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/DomRendererBundleTest.java\n delete mode 100644 lib/java/pathland-quarkus/src/test/resources/META-INF/resources/_pathland/sw.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-77eb5c6fc78d.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/sw.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-d14b432bd728.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current\n rename lib/java/{pathland-quarkus-demo/src/main/resources/META-INF/resources => pathland-spring-boot-starter/src/main/resources/static}/_pathland/sw.js (100%)\n create mode 100644 lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/DomRendererBundleTest.java\n delete mode 100644 lib/java/pathland-spring-boot-starter/src/test/resources/static/_pathland/sw.js\n rename lib/typescript/scripts/{copy-to-demos.mjs => copy-to-libs.mjs} (67%)\nd2e7992b feat(starters): ship the DOM renderer bundle in the framework jars\n",
+            "metadata": {
+              "output": "[feat/auto-serve-dom-renderer d2e7992b] feat(starters): ship the DOM renderer bundle in the framework jars\n 29 files changed, 304 insertions(+), 196 deletions(-)\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer-77eb5c6fc78d.js\n delete mode 100644 lib/java/pathland-quarkus-demo/src/main/resources/META-INF/resources/_pathland/dom-renderer.current\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-d14b432bd728.js\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current\n create mode 100644 lib/java/pathland-quarkus/src/test/java/dev/pathland/quarkus/DomRendererBundleTest.java\n delete mode 100644 lib/java/pathland-quarkus/src/test/resources/META-INF/resources/_pathland/sw.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer-77eb5c6fc78d.js\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/dom-renderer.current\n delete mode 100644 lib/java/pathland-spring-boot-demo/src/main/resources/static/_pathland/sw.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-d14b432bd728.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current\n rename lib/java/{pathland-quarkus-demo/src/main/resources/META-INF/resources => pathland-spring-boot-starter/src/main/resources/static}/_pathland/sw.js (100%)\n create mode 100644 lib/java/pathland-spring-boot-starter/src/test/java/dev/pathland/spring/DomRendererBundleTest.java\n delete mode 100644 lib/java/pathland-spring-boot-starter/src/test/resources/static/_pathland/sw.js\n rename lib/typescript/scripts/{copy-to-demos.mjs => copy-to-libs.mjs} (67%)\nd2e7992b feat(starters): ship the DOM renderer bundle in the framework jars\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "cd /Users/michael/Development/michaelkrog/Pathland && git commit -m \"feat(starters): ship the DOM renderer bundle in the framework jars\" -m \"Applications no longer need to add static resources for the DOM client. The\nTypeScript build now copies the content-hashed bundle, its dom-renderer.current\npointer/SRI manifest, and the service worker into the Spring Boot starter and\nQuarkus extension jars instead of the demo modules.\n\n- Retarget copy-to-demos.mjs to copy-to-libs.mjs (starter + extension)\n- Remove the demo-owned copies; demos consume the library-shipped assets\n- Quarkus IndexResource resolves mounted framework files TCCL-first (app\n  override wins), caches the hashed bundle immutably, and has a global\n  /_pathland/{file} fallback route\n- Add bundle-serving tests in both starters (global + mounted, SRI)\n- Update CI drift check, docs, and status files\" && git log --oneline -1",
             "time": {
-              "start": 1794122702785
+              "start": 1794122702785,
+              "end": 1794122709063
             }
           },
           "id": "prt_1ba0bd54500154CZhfj5iRZX4s",
           "sessionID": "ses_e4613c60fffeFePQGyFHzsOQ0K",
           "messageID": "msg_1ba0bbc4d002vZBKLH2eK20PT1"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "82d5aba1b22929212ed70fa764d7d7f8bedbdae3",
+          "type": "step-finish",
+          "tokens": {
+            "total": 161558,
+            "input": 1126,
+            "output": 258,
+            "reasoning": 46,
+            "cache": {
+              "write": 0,
+              "read": 160128
+            }
+          },
+          "cost": 0.000831684,
+          "id": "prt_1ba0bf88c001SpJAG618716I4g",
+          "sessionID": "ses_e4613c60fffeFePQGyFHzsOQ0K",
+          "messageID": "msg_1ba0bbc4d002vZBKLH2eK20PT1"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1ba0b5d88001uPuAaOjYeL0rTP",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000669222,
+        "tokens": {
+          "total": 162163,
+          "input": 1105,
+          "output": 34,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 161024
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794122709214,
+          "completed": 1794122713610
+        },
+        "finish": "stop",
+        "id": "msg_1ba0bf8de0023fMYXFuVstevwh",
+        "sessionID": "ses_e4613c60fffeFePQGyFHzsOQ0K"
+      },
+      "parts": [
+        {
+          "snapshot": "82d5aba1b22929212ed70fa764d7d7f8bedbdae3",
+          "type": "step-start",
+          "id": "prt_1ba0c0654001REx1vX1rjoxeUM",
+          "sessionID": "ses_e4613c60fffeFePQGyFHzsOQ0K",
+          "messageID": "msg_1ba0bf8de0023fMYXFuVstevwh"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `d2e7992b` on `feat/auto-serve-dom-renderer` (29 files, working tree clean).",
+          "time": {
+            "start": 1794122712884,
+            "end": 1794122713463
+          },
+          "id": "prt_1ba0c0733001TP9Wuiliqr1vXF",
+          "sessionID": "ses_e4613c60fffeFePQGyFHzsOQ0K",
+          "messageID": "msg_1ba0bf8de0023fMYXFuVstevwh"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "82d5aba1b22929212ed70fa764d7d7f8bedbdae3",
+          "type": "step-finish",
+          "tokens": {
+            "total": 162163,
+            "input": 1105,
+            "output": 34,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 161024
+            }
+          },
+          "cost": 0.000669222,
+          "id": "prt_1ba0c09bb001MNRzUi0XVlXRlM",
+          "sessionID": "ses_e4613c60fffeFePQGyFHzsOQ0K",
+          "messageID": "msg_1ba0bf8de0023fMYXFuVstevwh"
         }
       ]
     }
