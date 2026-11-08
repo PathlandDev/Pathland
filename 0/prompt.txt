@@ -1,1 +1,1 @@
-The README.md does not have a lot of details about the proxyview and microfrontends. We should have a teaser of it.
+commit and push
