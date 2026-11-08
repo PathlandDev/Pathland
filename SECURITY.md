@@ -34,8 +34,8 @@ The following are in scope for this policy:
   (`libpathland_core`): pointer-argument handling, zero-copy reads, event drain.
 - `lib/java/pathland-view-core` `transport` — `FrameCodec` (PLPL encode/decode).
 - The `@pathland/dom-renderer` web client (PLPL batch decode + hydration in
-  `lib/typescript/src`, built to `dist/pathland-dom-renderer.js` and copied into
-  both demos).
+  `lib/typescript/src`, built to `dist/pathland-dom-renderer.js` and shipped in
+  the Spring Boot starter + Quarkus extension jars).
 
 Out of scope: dependencies (report those to their respective projects),
 development-only tooling, and the demo application code.

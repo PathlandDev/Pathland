@@ -52,6 +52,10 @@ subpaths (the BFF layout).
     the prefix stripped + a framework static controller serving the bundle + asset mount
     from `classpath:/static/_pathland/**` at both `/_pathland/**` and `/{app}/_pathland/**`;
     the more-specific mapping beats `/{*path}`, and the `!Upgrade` header excludes WS).
+    **The starter jar ships the DOM client bundle** (`static/_pathland/dom-renderer-<hash>.js`
+    + the `dom-renderer.current` pointer + the service worker), so a consuming application
+    adds the dependency and needs no static resources of its own; an app-supplied
+    `static/_pathland` copy still wins by classpath order.
     When no static file matches, the controller serves renderer-owned assets from the
     shared Rust renderer: the content-hashed base stylesheet
     (`HtmlRenderer.baseCss()` at `baseCssName()`) as `text/css` with

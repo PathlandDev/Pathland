@@ -118,7 +118,8 @@ lib/typescript/                        # DOM RENDERER — @pathland/dom-renderer
                            #   or a same-tab reload — the per-window id lives only in
                            #   sessionStorage + the WS URL, never in the page URL, so SSR
                            #   renders defaults and the client re-syncs its saved state).
-                           #   Built to dist/pathland-dom-renderer.js and copied into both demos.
+                           #   Built to dist/pathland-dom-renderer.js and shipped inside the
+                           #   Spring Boot starter + Quarkus extension jars (auto-served).
 # ── Retained-UI projection (host/driver surface) ──────────────────────────
 crates/pathland-view-native/ # NATIVE C-ABI shim + NativeHost: flat world over a zero-copy
                           #   shared-memory ring, for Swift/Java/other native hosts
@@ -210,9 +211,10 @@ lib/java/
   jars with fresh `target/classes`, which has been observed to make the Rust SSR
   decode an empty tree (a valid but blank page). If running from IntelliJ:
   **Reload All Maven Projects → Build**, and only one instance at a time. The
-  DOM bundle is content-hashed (`dom-renderer-<sha256>.js`, pointer in
-  `_pathland/dom-renderer.current`) so a rebuilt bundle always busts the
-  immutable asset cache by URL — restart the app (fresh HTML references the new
+  DOM bundle ships in the starter/extension jars and is content-hashed
+  (`dom-renderer-<sha256>.js`, pointer in `_pathland/dom-renderer.current`) so a
+  rebuilt bundle always busts the immutable asset cache by URL — restart the app
+  (fresh HTML references the new
   name) and reload normally; no hard refresh is needed. After any Rust/TS or
   design change, refresh the layers the IDE cannot rebuild itself with
   `mvn -P refresh-ide validate` (root `pom.xml`: the design build/sync and
