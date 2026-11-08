@@ -48,6 +48,15 @@ capability and pulls in `quarkus-kotlin`.
   `PathlandSignalHub.subscriptions()`/`publishRaw`, `ProxyHost.snapshots()`,
   `PathlandRegistry.setColorScheme`/`resetTheme`/`treeSnapshot`, and
   `Emitter.snapshotTree()` (`NodeSnapshot`).
+- **Dev UI (M4)** — the read-only surface is exposed over **Quarkus Dev MCP**:
+  `overview`, `sessions`, `trace`, `ssr`, `topics`, `state`, `tree`, and
+  `protocol` carry `@JsonRpcUsage({DEV_UI, DEV_MCP})` + `@DevMCPEnableByDefault`,
+  so an MCP client can inspect the running app out of the box. Mutating actions
+  (`resync`, `resyncAll`, `closeSession`, `clearTrace`, `publishTopic`,
+  `deleteState`, `setColorScheme`, `resetTheme`) are declared for MCP but are
+  **disabled by default** — enable them per method in the Dev MCP page. Verified
+  in dev mode via `tools_list` (the eight read-only tools enabled) and
+  `tools_listDisabled` (the actions and UI-only label helpers).
 
 
 - **Security defaults (issue #63)**: the deployment module contributes
@@ -217,6 +226,9 @@ returns a document. `PathlandDevTraceStoreTest` covers bounded retention
 (oldest dropped), cursor paging, batch decoding (including the `SET_TEXT` string),
 and clear. The Dev UI test also covers topics listing + a raw publish reaching a
 bound text node, state enumeration/deletion, theme color-scheme actions, and the
-retained-tree snapshot. Dev-mode manual verification confirms the Dev UI
-card/component registration and a live `pathland-quarkus_sessions` response; a
-packaged prod app serves `/q/dev-ui` as 404 with health/metrics unchanged.
+retained-tree snapshot. `PathlandDevUiRpcTest` additionally asserts the MCP
+usage annotations (read-only tools default-enabled, actions opt-in) and protocol
+search. Dev-mode manual verification confirms the Dev UI card/component
+registration and a live `pathland-quarkus_sessions` response; the Dev MCP
+`tools_list`/`tools_listDisabled` output matches the intended split. A packaged
+prod app serves `/q/dev-ui` as 404 with health/metrics unchanged.

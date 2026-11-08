@@ -8,9 +8,11 @@ import dev.pathland.server.introspection.PathlandIntrospection.HostSnapshot;
 import dev.pathland.server.introspection.PathlandIntrospection.RegistrySnapshot;
 import dev.pathland.server.introspection.PathlandIntrospection.SessionSnapshot;
 import dev.pathland.view.core.ThemeMode;
+import dev.pathland.view.core.protocol.ProtocolCatalog;
 import dev.pathland.view.core.state.DebugStateStore;
 import dev.pathland.view.core.state.StateStore;
 import dev.pathland.view.engine.NodeSnapshot;
+import io.quarkus.runtime.annotations.DevMCPEnableByDefault;
 import io.quarkus.runtime.annotations.JsonRpcDescription;
 import io.quarkus.runtime.annotations.JsonRpcUsage;
 import io.quarkus.runtime.annotations.Usage;
@@ -61,7 +63,8 @@ public class PathlandDevUiRpc {
 
     /** The host overview: mounts, live session count, and the assets the SSR references. */
     @JsonRpcDescription("Pathland host overview: mounted apps, live sessions, and build assets")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
+    @DevMCPEnableByDefault
     public Overview overview() {
         HostSnapshot snapshot = host.snapshot();
         List<MountSummary> mounts = new ArrayList<>(snapshot.mounts().size());
@@ -86,7 +89,8 @@ public class PathlandDevUiRpc {
 
     /** Every live session across every mount. */
     @JsonRpcDescription("List every live Pathland session across all mounted apps")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
+    @DevMCPEnableByDefault
     public List<SessionSnapshot> sessions() {
         List<SessionSnapshot> sessions = new ArrayList<>();
         for (RegistrySnapshot mount : host.snapshot().mounts()) {
@@ -115,7 +119,7 @@ public class PathlandDevUiRpc {
 
     /** Re-send one session's current tree as a full snapshot ({@code META::RESYNC}). */
     @JsonRpcDescription("Re-send one session's current tree as a full snapshot")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
     public ActionResult resync(String sessionId) {
         PathlandRegistry registry = registryFor(sessionId);
         if (registry == null) {
@@ -127,7 +131,7 @@ public class PathlandDevUiRpc {
 
     /** Re-sync every live session. */
     @JsonRpcDescription("Re-send every live session's current tree as a full snapshot")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
     public ActionResult resyncAll() {
         for (RegistrySnapshot mount : host.snapshot().mounts()) {
             PathlandRegistry registry = host.registry(mount.mount());
@@ -143,7 +147,7 @@ public class PathlandDevUiRpc {
 
     /** Close (and remove) one live session. */
     @JsonRpcDescription("Close and remove one live session")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
     public ActionResult closeSession(String sessionId) {
         PathlandRegistry registry = registryFor(sessionId);
         if (registry == null) {
@@ -155,14 +159,15 @@ public class PathlandDevUiRpc {
 
     /** Trace entries newer than {@code sinceId} (polled by the wire page). */
     @JsonRpcDescription("Read runtime trace entries (batches, events, SSR renders, lifecycle)")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
+    @DevMCPEnableByDefault
     public PathlandDevTraceStore.Snapshot trace(long sinceId, int limit) {
         return trace.snapshot(sinceId, limit);
     }
 
     /** Drop retained trace entries; returns the current high-water id. */
     @JsonRpcDescription("Clear the retained runtime trace")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
     public long clearTrace() {
         trace.clear();
         return trace.lastId();
@@ -170,7 +175,8 @@ public class PathlandDevUiRpc {
 
     /** Render the SSR document for a route (no window scope — the defaults view). */
     @JsonRpcDescription("Render the SSR document for a route")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
+    @DevMCPEnableByDefault
     public SsrPreview ssr(String mount, String route) {
         String mountPath = mount == null || mount.isBlank() ? "/" : mount;
         PathlandRegistry registry = host.registry(mountPath);
@@ -188,7 +194,8 @@ public class PathlandDevUiRpc {
 
     /** Live topic subscriptions for a mount (or the default hub when blank). */
     @JsonRpcDescription("List live topic subscriptions per (topic, subject)")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
+    @DevMCPEnableByDefault
     public List<PathlandSignalHub.SubscriptionCount> topics(String mount) {
         PathlandSignalHub hub = hubFor(mount);
         return hub == null ? List.of() : hub.subscriptions();
@@ -199,7 +206,7 @@ public class PathlandDevUiRpc {
      * are {@code string}, {@code number}, {@code boolean}, or {@code null}.
      */
     @JsonRpcDescription("Publish a value to a (topic, subject) subscription")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
     public ActionResult publishTopic(
             String mount,
             String topic,
@@ -226,7 +233,8 @@ public class PathlandDevUiRpc {
 
     /** Enumerate persisted state keys (InMemory state store; other stores may be unsupported). */
     @JsonRpcDescription("List persisted session state (keys, types, values)")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
+    @DevMCPEnableByDefault
     public StateSnapshot state(String query) {
         if (!(store instanceof DebugStateStore debug)) {
             return new StateSnapshot(false, List.of(), "this StateStore does not support enumeration");
@@ -249,7 +257,7 @@ public class PathlandDevUiRpc {
 
     /** Delete one persisted state key. */
     @JsonRpcDescription("Delete one persisted state key")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
     public ActionResult deleteState(String key) {
         if (key == null || key.isBlank()) {
             return ActionResult.failure("key is required");
@@ -263,7 +271,7 @@ public class PathlandDevUiRpc {
 
     /** Force/release a session's color scheme (platform/light/dark). */
     @JsonRpcDescription("Force a session's color scheme (platform, light, dark)")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
     public ActionResult setColorScheme(String sessionId, String mode) {
         PathlandRegistry registry = registryFor(sessionId);
         if (registry == null) {
@@ -281,7 +289,7 @@ public class PathlandDevUiRpc {
 
     /** Clear a session's app token overrides (renderer defaults apply). */
     @JsonRpcDescription("Clear a session's app token overrides")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
     public ActionResult resetTheme(String sessionId) {
         PathlandRegistry registry = registryFor(sessionId);
         if (registry == null) {
@@ -294,7 +302,8 @@ public class PathlandDevUiRpc {
 
     /** The retained tree of one session (component ids, text, properties, children). */
     @JsonRpcDescription("Inspect one session's retained tree")
-    @JsonRpcUsage(Usage.DEV_UI)
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
+    @DevMCPEnableByDefault
     public TreeSnapshot tree(String sessionId) {
         PathlandRegistry registry = registryFor(sessionId);
         if (registry == null) {
@@ -305,6 +314,23 @@ public class PathlandDevUiRpc {
         } catch (RuntimeException e) {
             return new TreeSnapshot(sessionId, null, e.getMessage());
         }
+    }
+
+    @JsonRpcDescription("Search the Pathland protocol catalog (kind, group, name, value)")
+    @JsonRpcUsage({Usage.DEV_UI, Usage.DEV_MCP})
+    @DevMCPEnableByDefault
+    public List<ProtocolCatalog.Row> protocol(String query) {
+        List<ProtocolCatalog.Row> rows = ProtocolCatalog.rows();
+        if (query == null || query.isBlank()) {
+            return rows;
+        }
+        String filter = query.toLowerCase();
+        return rows.stream()
+                .filter(row -> row.getKind().toLowerCase().contains(filter)
+                        || row.getGroup().toLowerCase().contains(filter)
+                        || row.getName().toLowerCase().contains(filter)
+                        || row.getValue().toLowerCase().contains(filter))
+                .toList();
     }
 
     private PathlandSignalHub hubFor(String mount) {

@@ -14,10 +14,16 @@ import dev.pathland.view.core.transport.EnvironmentData;
 import dev.pathland.view.core.transport.Event;
 import dev.pathland.view.core.transport.FrameCodec;
 import dev.pathland.view.engine.NodeSnapshot;
+import io.quarkus.runtime.annotations.DevMCPEnableByDefault;
+import io.quarkus.runtime.annotations.JsonRpcUsage;
+import io.quarkus.runtime.annotations.Usage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -228,6 +234,40 @@ class PathlandDevUiRpcTest {
         } finally {
             topicHost.shutdown();
         }
+    }
+
+    @Test
+    void protocolSearchFindsCommands() {
+        List<dev.pathland.view.core.protocol.ProtocolCatalog.Row> rows = rpc.protocol("SET_TEXT");
+        assertTrue(rows.stream().anyMatch(row -> row.getName().equals("SET_TEXT")), "SET_TEXT is searchable");
+        assertFalse(rpc.protocol("").isEmpty(), "an empty query returns the whole catalog");
+    }
+
+    @Test
+    void mcpExposesReadOnlyToolsByDefaultAndActionsOptIn() throws Exception {
+        Method sessions = PathlandDevUiRpc.class.getMethod("sessions");
+        assertTrue(sessions.isAnnotationPresent(DevMCPEnableByDefault.class));
+        assertTrue(usage(sessions).contains(Usage.DEV_MCP));
+
+        Method protocol = PathlandDevUiRpc.class.getMethod("protocol", String.class);
+        assertTrue(protocol.isAnnotationPresent(DevMCPEnableByDefault.class));
+        assertTrue(usage(protocol).contains(Usage.DEV_MCP));
+
+        Method resync = PathlandDevUiRpc.class.getMethod("resync", String.class);
+        assertFalse(resync.isAnnotationPresent(DevMCPEnableByDefault.class),
+                "actions are not enabled by default over MCP");
+        assertTrue(usage(resync).contains(Usage.DEV_MCP), "actions can be enabled explicitly");
+
+        Method overviewSummary = PathlandDevUiRpc.class.getMethod("overviewSummary");
+        assertFalse(usage(overviewSummary).contains(Usage.DEV_MCP),
+                "Dev UI helper labels are not MCP tools");
+    }
+
+    private static EnumSet<Usage> usage(Method method) {
+        JsonRpcUsage annotation = method.getAnnotation(JsonRpcUsage.class);
+        return annotation == null
+                ? EnumSet.noneOf(Usage.class)
+                : EnumSet.copyOf(Arrays.asList(annotation.value()));
     }
 
     private static boolean containsText(NodeSnapshot node, String text) {
