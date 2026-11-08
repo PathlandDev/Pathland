@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.pathland</groupId>
+        <artifactId>pathland-parent</artifactId>
+        <version>0.2.2</version>
+    </parent>
+
+    <artifactId>pathland-core</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Pathland Core</name>
+    <description>
+        The Pathland JVM opcode/wire core, written in pure Java 17: the 16-byte
+        opcode protocol, the self-contained PLPL frame codec, the opcode sink
+        surface, raw input events, environment data, the attributed-text model, and
+        the pure-Java inline-Markdown parser. No Kotlin source and no native
+        dependency, so it runs on every platform and under GraalVM native-image.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

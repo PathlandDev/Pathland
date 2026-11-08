@@ -33,4 +33,4 @@ internal fun coreView(
 
 /** A Group is a bare VStack container with no spacing/alignment. */
 internal fun groupView(children: List<View>): View =
-    coreView(dev.pathland.view.core.protocol.Components.VSTACK, children)
+    coreView(dev.pathland.core.protocol.Components.VSTACK, children)

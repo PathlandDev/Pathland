@@ -3,7 +3,7 @@ package dev.pathland.quarkus;
 import dev.pathland.server.PathlandHost;
 import dev.pathland.server.PathlandRegistry;
 import dev.pathland.server.WindowIds;
-import dev.pathland.view.core.transport.FrameCodec;
+import dev.pathland.core.transport.FrameCodec;
 import io.quarkus.arc.Arc;
 import io.quarkus.arc.ClientProxy;
 import io.quarkus.websockets.next.OnBinaryMessage;

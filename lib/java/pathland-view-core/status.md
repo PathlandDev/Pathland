@@ -1,35 +1,24 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 7, 2026
+**Last updated:** November 8, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
-Pathland protocol, written entirely in Kotlin. It owns the `View` SPI and shared
+Pathland protocol, written in Kotlin. It owns the `View` SPI and shared
 authoring vocabulary, the retained-tree diff emitter,
-signals/computed/effects, the wire codec, router, cross-platform state, and the
-`dev.pathland.view.dsl` SwiftUI-shaped builders/modifiers. Server and renderer
-modules depend on this one module; Java hosts consume the Kotlin-authored views
-through JVM interop. JNA ring interop lives in the opt-in
+signals/computed/effects, router, cross-platform state, and the
+`dev.pathland.view.dsl` SwiftUI-shaped builders/modifiers. The opcode/wire layer
+(`dev.pathland.core.protocol`, `.transport`, `.text`, `.markdown`) lives in the
+pure-Java `pathland-core` module, which this module depends on. Server and
+renderer modules depend on this module; Java hosts consume the Kotlin-authored
+views through JVM interop. JNA ring interop lives in the opt-in
 `pathland-native-core` module, so this module (and every server/native-image
 build) carries no JNA.
 
 ## Implemented
 
-- **Protocol** (`dev.pathland.view.core.protocol`): `Components`, `Properties`,
-  `Commands` (incl. `SET_ATTRIBUTED_TEXT`), `Categories`, `ValueTypes`, `Opcode`,
-  `ValueEncoder`, `WireValue`, `TokenPath`.
-- **Attributed text** (`dev.pathland.view.core.AttributedString`): pure-Kotlin
-  model + range-tracking builder (Kotlin char indices → UTF-8 byte offsets) and
-  payload encode/decode; `Text(AttributedString)` / `Text(Signal<AttributedString>)`
-  emit `SET_ATTRIBUTED_TEXT` through the emitter and both sinks.
-- **Built-in inline Markdown**: `Text("...")` parses the v1 subset by default
-  (`**bold**`/`__bold__`, `*italic*`/`_italic_`, `` `code` ``,
-  `~~strikethrough~~`, `[label](url)`); `markdown = false` renders literal text.
-  `dev.pathland.markdown.Markdown` is now a **pure-Java parser** (no native
-  library, so it runs on every platform and under GraalVM native-image); it is a
-  behavioural port of the Rust `pathland-markdown` crate (pre-scan + bounded
-  cache). The Rust crate remains the parser for the Rust DSL and non-JVM hosts.
-  Plain results use the compact `SET_TEXT` path; rich results emit
-  `SET_ATTRIBUTED_TEXT`. Reactive `Text(Signal<String>)` parses on change.
+- **Opcode/wire layer**: moved to the `pathland-core` module
+  (`dev.pathland.core.protocol`, `.transport`, `.text`, `.markdown`). The DSL
+  still re-exports the same behaviour through `Text(...)` and the emitter.
 - **Signals** (`dev.pathland.view.core.signal`): `signal`/`state`/`computed`/
   `effect`/`untracked`, synchronous glitch-free flush, equality suppression, error
   caching/retry, circular-dependency detection, and a thread-safe global
@@ -49,13 +38,6 @@ build) carries no JNA.
   `StateStore`, in-memory store and provider. Kotlin `Component` state delegates
   bind directly before `body()`; the Java `State` field/binder machinery and
   annotation processor are removed.
-- **Transport** (`dev.pathland.view.core.transport`): `ProtocolFrame`,
-  `FrameCodec`, `Event`, `EnvironmentData`, `OpcodeSink`, `FrameOpcodeSink`.
-  **Hardened (issue #63)**: `FrameCodec.parse` reads the attacker-controlled
-  `opcodeCount`/`stringsLen` as unsigned `Long` values and validates them
-  against the actual message length before allocating; string offsets are
-  bounds-checked (`Parsed.stringAt`). A declared `opcodeCount` that overflows
-  `Int` arithmetic now throws instead of triggering an OOM allocation.
 - **Router** (`dev.pathland.view.core.router`): `Route`, `RouteTable`, `Router`,
   `Navigation`, `NavigationContainer`, `NavigationIntent`, `Params`, `Chrome`,
   `NavOp`. `NavigationLink` and the navigation helpers live in the Kotlin DSL.
@@ -75,17 +57,12 @@ build) carries no JNA.
   `Environment*`, `Platform`, `Theme*`, `MediaController`, `WindowMetadata`,
   `ProxyConfig`, `Color`, `Length`, shared enums, style protocols, and modifier
   wrappers.
-- **Protocol manifest validation** (`ProtocolManifestTest`): the hand-written
-  protocol constants (`Components`, `Properties`, `Commands`, `Categories`,
-  `ValueTypes`) are checked against `spec/protocol.tsv` — including no extra
-  public numeric constants and the full `ValueTypes.forProperty` mapping. No
-  Java source is generated.
 - **Shared engine traces**: the Kotlin DSL tests run the mount/text/property
   scenarios against the Rust-emitted PLPL fixtures under `spec/engine-traces/`,
   byte-for-byte. The canonical order lives in `spec/ENGINE.md`.
-- **Tests**: `pathland-view-core` owns the signal, state, frame-codec, and
-  protocol-manifest tests; Kotlin DSL tests exercise the emitter end-to-end, and
-  the server/HTML/desktop consumers cover their integration paths.
+- **Tests**: `pathland-view-core` owns the signal/state and Kotlin DSL tests
+  (which exercise the emitter end-to-end); `pathland-core` owns the
+  protocol-manifest, frame-codec, and Markdown tests.
 
 ## Authoring DSL (`dev.pathland.view.dsl`)
 
@@ -135,11 +112,16 @@ build) carries no JNA.
 
 ## Package boundary
 
-- `pathland-view-core` is one Maven module: `core`/`engine`/`dsl` are logical
-  subpackages inside it, with a few deliberate intra-module references
-  (`Color`/`MediaController`/`Modified` materialize `PathlandNode`). Splitting
-  them into separate artifacts would require a node SPI first.
+- `pathland-core` is the pure-Java opcode/wire leaf: protocol, frame codec,
+  events, opcode sink, attributed text, and Markdown.
+- `pathland-view-core` is the Kotlin engine + DSL module: signal/state/router,
+  the `View` SPI and value types, the retained-tree emitter, and
+  `dev.pathland.view.dsl`. It depends on `pathland-core`.
+- `core`/`engine`/`dsl` remain logical subpackages inside `pathland-view-core`,
+  with a few deliberate intra-module references (`Color`/`MediaController`/
+  `Modified` materialize `PathlandNode`). Splitting the engine out would still
+  require a node SPI first.
 - Production runtimes/renderers (`pathland-server-core`,
-  `pathland-render-html`) depend on this module. Framework starters remain
+  `pathland-render-html`) depend on both modules. Framework starters remain
   DSL-neutral at compile time; they mount Kotlin-authored fixture views in test
   scope.

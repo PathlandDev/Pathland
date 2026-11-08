@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Properties
+import dev.pathland.core.protocol.Properties
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import java.util.function.Consumer

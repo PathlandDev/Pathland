@@ -4,7 +4,7 @@ import com.sun.jna.Library
 import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.Pointer
-import dev.pathland.view.core.protocol.Opcode
+import dev.pathland.core.protocol.Opcode
 import java.io.File
 import java.util.Locale
 

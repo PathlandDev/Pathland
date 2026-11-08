@@ -2,9 +2,8 @@
 
 **Last updated:** November 8, 2026
 
-Opt-in JNA interop for native desktop hosts. Kept in its own module so
-`pathland-view-core` (and therefore every server runtime and GraalVM
-native-image build) never carries JNA.
+Opt-in JNA interop for native desktop hosts. Kept in its own module so every
+server runtime and GraalVM native-image build never carries JNA.
 
 ## Implemented
 

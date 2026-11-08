@@ -25,8 +25,8 @@ import dev.pathland.view.core.VideoStyle
 import dev.pathland.view.core.View
 import dev.pathland.view.core.ViewModifier
 import dev.pathland.view.core.WindowMetadata
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.protocol.Properties
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.protocol.Properties
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import java.util.function.Consumer

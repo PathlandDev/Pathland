@@ -6,8 +6,8 @@ import dev.pathland.view.core.MediaController
 import dev.pathland.view.core.Roles
 import dev.pathland.view.core.ToggleStyle
 import dev.pathland.view.core.View
-import dev.pathland.view.core.transport.FrameOpcodeSink
-import dev.pathland.view.core.transport.ProtocolFrame
+import dev.pathland.core.transport.FrameOpcodeSink
+import dev.pathland.core.transport.ProtocolFrame
 import dev.pathland.view.dsl.Button
 import dev.pathland.view.dsl.DatePicker
 import dev.pathland.view.dsl.Divider

@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.pathland.view.core.state.InMemoryStateStore;
-import dev.pathland.view.core.transport.EnvironmentData;
+import dev.pathland.core.transport.EnvironmentData;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;

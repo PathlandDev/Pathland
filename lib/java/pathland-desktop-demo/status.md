@@ -38,7 +38,7 @@ shared-renderer story. Protocol contract: `spec/`.
   (`pathland_qt_run_ring` + `pathland_qt_set_asset_root`); library resolved
   from `pathland.qt.lib` or `java.library.path`.
 - **`RingEventReader`** (shared, `dev.pathland.demo.desktop`) — decodes raw ring
-  `EVENT` opcodes into `dev.pathland.view.core.transport.Event`, resolving
+  `EVENT` opcodes into `dev.pathland.core.transport.Event`, resolving
   `TEXT_CHANGED`/`NAVIGATE` strings from the shared host → guest event arena
   (header `0x40`), plus `MEDIA_*` and `FIT_CHANGED` (routed to the emitter's fit
   sink, so the `SizeThatFits` slot swaps to its wide candidate).

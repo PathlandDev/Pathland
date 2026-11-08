@@ -1,7 +1,7 @@
 package dev.pathland.view.engine
 
 import dev.pathland.view.core.ProxyConfig
-import dev.pathland.view.core.transport.Event
+import dev.pathland.core.transport.Event
 import java.util.function.Consumer
 
 /** The result of mounting a view tree: root id plus live event-routing maps. */

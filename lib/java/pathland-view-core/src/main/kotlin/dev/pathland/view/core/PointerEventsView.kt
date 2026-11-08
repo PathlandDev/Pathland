@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Properties
+import dev.pathland.core.protocol.Properties
 import dev.pathland.view.engine.PathlandNode
 
 /** A view wrapped by `pointerEvents(mask)`: ORs the listener bits into EVENT_LISTENERS. */

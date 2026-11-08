@@ -1,18 +1,18 @@
 package dev.pathland.demo.music
 
 import dev.pathland.view.core.Environment
-import dev.pathland.view.core.protocol.Categories
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.protocol.Components
-import dev.pathland.view.core.protocol.Opcode
-import dev.pathland.view.core.protocol.Properties
+import dev.pathland.core.protocol.Categories
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.protocol.Components
+import dev.pathland.core.protocol.Opcode
+import dev.pathland.core.protocol.Properties
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.state.InMemoryStateStore
 import dev.pathland.view.core.state.PersistentState
 import dev.pathland.view.core.state.StateStore
-import dev.pathland.view.core.transport.Event
-import dev.pathland.view.core.transport.FrameOpcodeSink
-import dev.pathland.view.core.transport.ProtocolFrame
+import dev.pathland.core.transport.Event
+import dev.pathland.core.transport.FrameOpcodeSink
+import dev.pathland.core.transport.ProtocolFrame
 import dev.pathland.view.engine.Emitter
 import dev.pathland.demo.music.service.MediaPlayerService
 import dev.pathland.view.engine.InputDispatcher

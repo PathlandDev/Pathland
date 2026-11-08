@@ -1,8 +1,8 @@
 package dev.pathland.render.html;
 
 import dev.pathland.view.core.Roles;
-import dev.pathland.view.core.protocol.Components;
-import dev.pathland.view.core.protocol.Properties;
+import dev.pathland.core.protocol.Components;
+import dev.pathland.core.protocol.Properties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;

@@ -1,6 +1,6 @@
 package dev.pathland.render.html;
 
-import dev.pathland.view.core.protocol.ValueTypes;
+import dev.pathland.core.protocol.ValueTypes;
 import java.util.Map;
 import java.util.TreeMap;
 

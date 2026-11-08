@@ -1,7 +1,7 @@
 package dev.pathland.view.engine
 
 import dev.pathland.view.core.signal.WritableSignal
-import dev.pathland.view.core.transport.Event
+import dev.pathland.core.transport.Event
 import java.util.function.Consumer
 
 /** Routes raw input events into the app's bindings via a RenderResult's maps. */

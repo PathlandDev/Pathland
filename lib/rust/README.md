@@ -31,8 +31,10 @@ crates/
 
 The reusable Java libraries live in `../java/` (Maven reactor, `dev.pathland`):
 
-- `pathland-view-core` — Kotlin engine, signals, wire codec, router, state, JNA
-  ring interop, and the SwiftUI-like `dev.pathland.view.dsl` authoring DSL
+- `pathland-core` — pure-Java opcode/wire core, attributed text, and Markdown
+- `pathland-view-core` — Kotlin engine, signals, router, state, and the
+  SwiftUI-like `dev.pathland.view.dsl` authoring DSL
+- `pathland-native-core` — opt-in JNA ring interop for native desktop hosts
 - `pathland-render-html` — pure-function HTML renderer (SSR) over the opcode stream
 - `pathland-server-core` — server runtime, telemetry adapters, Redis `StateStore`
 - `pathland-quarkus-demo` — Quarkus SSR + WebSocket demo consuming the libraries

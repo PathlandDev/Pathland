@@ -20,9 +20,11 @@ Found a vulnerability? **Do not open a public issue** — report it privately pe
   (emitter/signals), `pathland-core-transport`, `pathland-core-capi` (C ABI),
   `pathland-render-gtk`, `pathland-render-html`, `pathland-view-native`,
   `pathland-render-gtk-demo`.
-- `lib/java/` — the Maven reactor: `pathland-view-core`
-  (Kotlin `dev.pathland.view.core*`, `dev.pathland.view.engine`, and the sole
-  JVM authoring DSL `dev.pathland.view.dsl`), `pathland-demo-views-kotlin` (the
+- `lib/java/` — the Maven reactor: `pathland-core` (the pure-Java opcode/wire
+  core: `dev.pathland.core.protocol`, `.transport`, `.text`, `.markdown`),
+  `pathland-view-core` (Kotlin `dev.pathland.view.core*`,
+  `dev.pathland.view.engine`, and the sole JVM authoring DSL
+  `dev.pathland.view.dsl`), `pathland-demo-views-kotlin` (the
   Kotlin music player, ad app, shared theme and assets), `pathland-render-html`,
   `pathland-server-core` (runtime + telemetry + Redis + shared WS test harness),
   the `pathland-quarkus` extension, the desktop (GTK/Qt) and Quarkus/Spring

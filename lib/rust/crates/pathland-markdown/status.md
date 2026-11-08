@@ -19,7 +19,7 @@ directly and by foreign hosts through `pathland-markdown-capi`. It produces a
   markers, and UTF-8 offsets.
 - Used by the Rust DSL: `pathland-engine` auto-parses `Node::markdown_text`.
   The Kotlin `Text(...)` path uses a **pure-Java behavioural port** in
-  `pathland-view-core` (no native library); `pathland-markdown-capi` remains for
+  `pathland-core` (no native library); `pathland-markdown-capi` remains for
   non-JVM hosts.
 
 ## Not implemented / gaps

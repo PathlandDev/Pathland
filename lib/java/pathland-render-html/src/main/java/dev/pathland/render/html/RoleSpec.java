@@ -1,6 +1,6 @@
 package dev.pathland.render.html;
 
-import dev.pathland.view.core.protocol.Components;
+import dev.pathland.core.protocol.Components;
 
 /**
  * Canonical {@code ROLE} → semantic HTML element mapping and

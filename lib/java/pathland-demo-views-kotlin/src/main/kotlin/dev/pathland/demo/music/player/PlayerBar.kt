@@ -2,7 +2,7 @@ package dev.pathland.demo.music.player
 
 import dev.pathland.demo.music.MusicPlayerView
 import dev.pathland.view.core.View
-import dev.pathland.view.core.protocol.Commands
+import dev.pathland.core.protocol.Commands
 import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.background
 import dev.pathland.view.dsl.frame

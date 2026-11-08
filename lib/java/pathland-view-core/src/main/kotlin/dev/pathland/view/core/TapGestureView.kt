@@ -1,7 +1,7 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.protocol.Properties
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.protocol.Properties
 import dev.pathland.view.engine.PathlandNode
 
 /** A view wrapped by `onTapGesture`: declares pointer listeners and records the action. */

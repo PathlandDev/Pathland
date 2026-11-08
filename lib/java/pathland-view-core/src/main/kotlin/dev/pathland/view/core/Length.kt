@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.protocol.TokenPath
+import dev.pathland.core.protocol.TokenPath
 
 /** A length value: a literal dp value or a design-token reference. */
 data class Length(val value: Float, val token: String?) : TokenPath {

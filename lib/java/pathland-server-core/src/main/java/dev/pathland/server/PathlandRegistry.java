@@ -5,9 +5,9 @@ import dev.pathland.view.core.router.Route;
 
 import dev.pathland.view.core.router.Router;
 import dev.pathland.view.core.state.StateStore;
-import dev.pathland.view.core.transport.EnvironmentData;
-import dev.pathland.view.core.transport.Event;
-import dev.pathland.view.core.transport.FrameCodec;
+import dev.pathland.core.transport.EnvironmentData;
+import dev.pathland.core.transport.Event;
+import dev.pathland.core.transport.FrameCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

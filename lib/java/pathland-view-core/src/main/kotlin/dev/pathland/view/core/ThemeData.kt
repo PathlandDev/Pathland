@@ -1,6 +1,6 @@
 package dev.pathland.view.core
 
-import dev.pathland.view.core.transport.OpcodeSink
+import dev.pathland.core.transport.OpcodeSink
 
 /** A set of global, renderer-wide design-token overrides. */
 interface ThemeData {

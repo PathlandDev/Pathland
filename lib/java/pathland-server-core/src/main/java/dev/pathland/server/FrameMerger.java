@@ -1,7 +1,7 @@
 package dev.pathland.server;
 
-import dev.pathland.view.core.protocol.Opcode;
-import dev.pathland.view.core.transport.ProtocolFrame;
+import dev.pathland.core.protocol.Opcode;
+import dev.pathland.core.transport.ProtocolFrame;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;

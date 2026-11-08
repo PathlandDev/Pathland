@@ -1,13 +1,13 @@
 package dev.pathland.nativecore
 
 import com.sun.jna.Pointer
-import dev.pathland.view.core.protocol.Categories
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.protocol.Opcode
-import dev.pathland.view.core.protocol.TokenPath
-import dev.pathland.view.core.protocol.ValueEncoder
-import dev.pathland.view.core.protocol.ValueTypes
-import dev.pathland.view.core.transport.OpcodeSink
+import dev.pathland.core.protocol.Categories
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.protocol.Opcode
+import dev.pathland.core.protocol.TokenPath
+import dev.pathland.core.protocol.ValueEncoder
+import dev.pathland.core.protocol.ValueTypes
+import dev.pathland.core.transport.OpcodeSink
 import java.nio.charset.StandardCharsets
 
 /** An [OpcodeSink] that writes opcodes zero-copy into the Rust SPSC ring via JNA. */
@@ -53,7 +53,7 @@ class RingOpcodeSink : OpcodeSink, AutoCloseable {
         push(Categories.PARAMETER, Commands.Parameter.SET_TEXT, 0, nodeId, ref, 0)
     }
 
-    override fun setAttributedText(nodeId: Int, value: dev.pathland.view.core.AttributedString) {
+    override fun setAttributedText(nodeId: Int, value: dev.pathland.core.text.AttributedString) {
         val ref = core.arenaAlloc(handle, value.encode())
         push(Categories.PARAMETER, Commands.Parameter.SET_ATTRIBUTED_TEXT, 0, nodeId, ref, 0)
     }

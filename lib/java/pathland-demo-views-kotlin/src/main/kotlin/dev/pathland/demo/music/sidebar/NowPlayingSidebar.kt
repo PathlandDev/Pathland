@@ -7,7 +7,7 @@ import dev.pathland.view.core.FontWeight
 import dev.pathland.view.core.HorizontalAlignment
 import dev.pathland.view.core.Roles
 import dev.pathland.view.core.View
-import dev.pathland.view.core.protocol.Commands
+import dev.pathland.core.protocol.Commands
 import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.Divider
 import dev.pathland.view.dsl.Image

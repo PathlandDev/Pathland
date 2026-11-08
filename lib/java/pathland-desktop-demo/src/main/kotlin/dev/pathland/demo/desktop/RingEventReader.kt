@@ -1,8 +1,8 @@
 package dev.pathland.demo.desktop
 
 import com.sun.jna.Pointer
-import dev.pathland.view.core.protocol.Commands
-import dev.pathland.view.core.transport.Event
+import dev.pathland.core.protocol.Commands
+import dev.pathland.core.transport.Event
 import java.nio.charset.StandardCharsets
 
 /**

@@ -1,10 +1,10 @@
 package dev.pathland.server.test;
 
-import dev.pathland.view.core.transport.ProtocolFrame;
-import dev.pathland.view.core.protocol.Opcode;
-import dev.pathland.view.core.transport.EnvironmentData;
-import dev.pathland.view.core.transport.Event;
-import dev.pathland.view.core.transport.FrameCodec;
+import dev.pathland.core.transport.ProtocolFrame;
+import dev.pathland.core.protocol.Opcode;
+import dev.pathland.core.transport.EnvironmentData;
+import dev.pathland.core.transport.Event;
+import dev.pathland.core.transport.FrameCodec;
 
 import java.net.URI;
 import java.net.http.HttpClient;
