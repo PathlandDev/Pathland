@@ -11,5 +11,6 @@ data class Track(
     val album: String,
     val duration: Float,
     val cover: String,
+    val thumbnail: String,
     val audio: String,
 )

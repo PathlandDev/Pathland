@@ -25,7 +25,10 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 - **`DemoAssets`** — the single embedded copy of the 8 audio tracks, 8 album
   covers, and 8 lyric SRT files under
   `META-INF/resources/_pathland/assets/`, plus temp-dir extraction for hosts.
-- **`DemoAssetsTest`** — guards all 24 embedded assets and extraction.
+- **`DemoAssetsTest`** — guards all 32 embedded assets and extraction.
+- **Responsive-size cover assets** — full 440×440 JPEGs remain for the 220×220
+  sidebar; separate 176×176 JPEG thumbnails are used by the smaller track-row
+  and player-bar images. Both sets are embedded and extracted for web and GTK.
 
 ## Implemented
 
