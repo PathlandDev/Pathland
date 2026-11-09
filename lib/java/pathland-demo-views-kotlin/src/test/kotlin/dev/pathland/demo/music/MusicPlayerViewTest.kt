@@ -544,6 +544,6 @@ class MusicPlayerViewTest {
             ((bytes[offset + 3].toInt() and 0xFF) shl 24)
 
     private companion object {
-        const val COVER = "/_pathland/assets/albumart/cover1.jpg"
+        const val COVER = "/_pathland/assets/albumart/thumbs/cover1.jpg"
     }
 }

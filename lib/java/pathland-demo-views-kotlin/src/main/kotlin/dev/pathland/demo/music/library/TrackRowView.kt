@@ -44,7 +44,7 @@ internal class TrackRowView(
 
         return Button(action = { service.selectTrack(index) }) {
             HStack(alignment = VerticalAlignment.CENTER, spacing = 12f) {
-                Image(track.cover)
+                Image(track.thumbnail)
                     .frame(width = 44f, height = 44f)
                     .scaledToFit()
 

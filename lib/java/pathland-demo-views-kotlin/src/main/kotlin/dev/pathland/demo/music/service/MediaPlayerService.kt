@@ -84,41 +84,49 @@ internal class MediaPlayerService {
             Track(
                 "Building on Solid Ground", "The Foundation", "The Open Horizon", 178f,
                 "/_pathland/assets/albumart/cover1.jpg",
+                "/_pathland/assets/albumart/thumbs/cover1.jpg",
                 "/_pathland/assets/audio/track1.mp3",
             ),
             Track(
                 "Pathland Crossing", "The Crossings", "Native Operations", 166f,
                 "/_pathland/assets/albumart/cover2.jpg",
+                "/_pathland/assets/albumart/thumbs/cover2.jpg",
                 "/_pathland/assets/audio/track2.mp3",
             ),
             Track(
                 "Rendered Free", "Rena Render", "Grace From The Source", 182f,
                 "/_pathland/assets/albumart/cover3.jpg",
+                "/_pathland/assets/albumart/thumbs/cover3.jpg",
                 "/_pathland/assets/audio/track3.mp3",
             ),
             Track(
                 "Rendered In Your Arms", "Ember Frame", "Architectures of Grace", 160f,
                 "/_pathland/assets/albumart/cover4.jpg",
+                "/_pathland/assets/albumart/thumbs/cover4.jpg",
                 "/_pathland/assets/audio/track4.mp3",
             ),
             Track(
                 "Sixty Frames Per Second", "Rowan Frame", "The Protocol Sessions", 164f,
                 "/_pathland/assets/albumart/cover5.jpg",
+                "/_pathland/assets/albumart/thumbs/cover5.jpg",
                 "/_pathland/assets/audio/track5.mp3",
             ),
             Track(
                 "The Pathland Dream", "Neon Protocol", "Velvet Horizons", 170f,
                 "/_pathland/assets/albumart/cover6.jpg",
+                "/_pathland/assets/albumart/thumbs/cover6.jpg",
                 "/_pathland/assets/audio/track6.mp3",
             ),
             Track(
                 "Across the Open Land", "Open Land", "The Weight of Open Air", 156f,
                 "/_pathland/assets/albumart/cover7.jpg",
+                "/_pathland/assets/albumart/thumbs/cover7.jpg",
                 "/_pathland/assets/audio/track7.mp3",
             ),
             Track(
                 "Sixteen Bytes", "The Byte Ensemble", "The Ring Buffer Sessions", 182f,
                 "/_pathland/assets/albumart/cover8.jpg",
+                "/_pathland/assets/albumart/thumbs/cover8.jpg",
                 "/_pathland/assets/audio/track8.mp3",
             ),
         )

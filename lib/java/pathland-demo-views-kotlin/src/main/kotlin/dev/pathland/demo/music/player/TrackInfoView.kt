@@ -27,7 +27,7 @@ internal class TrackInfoView : Component() {
         val current = computed { service.currentTrack.get() }
 
         return HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
-            Image(computed { current.get().cover })
+            Image(computed { current.get().thumbnail })
                 .frame(width = 36f, height = 36f)
                 .scaledToFit()
 
