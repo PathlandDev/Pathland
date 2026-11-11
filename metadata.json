@@ -1,0 +1,31 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M75S4PMRY8G9R2QFNDNNNDHJ",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
+    "lib/java/pathland-native-core/pom.xml",
+    "lib/java/pathland-view-core/pom.xml",
+    "lib/java/pom.xml",
+    "scripts/check-release-jars.sh"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 214048,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 3948288,
+    "output_tokens": 10621,
+    "api_call_count": 47
+  }
+}
