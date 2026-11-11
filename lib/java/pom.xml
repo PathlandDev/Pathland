@@ -76,6 +76,11 @@
         <!-- Kotlin modules use Dokka to build the Central-required -javadoc.jar;
              JDK javadoc cannot resolve Kotlin declarations from Java sources. -->
         <dokka.version>2.3.0</dokka.version>
+        <!-- Registers `src/main/kotlin` as a compile source root so the Central
+             sources jar (maven-source-plugin jar-no-fork archives the compile
+             source roots) includes Kotlin sources, not just `src/main/java`.
+             Kotlin 2.4 removed the kotlin-maven-plugin add-source goal. -->
+        <build-helper.version>3.6.1</build-helper.version>
         <junit.version>5.10.2</junit.version>
         <lettuce.version>6.4.1.RELEASE</lettuce.version>
     </properties>
@@ -161,6 +166,11 @@
                              on repeat builds. -->
                         <overwrite>true</overwrite>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${build-helper.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>io.quarkus</groupId>

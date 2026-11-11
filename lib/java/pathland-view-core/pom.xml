@@ -83,6 +83,26 @@
                     </args>
                 </configuration>
             </plugin>
+            <!-- Register src/main/kotlin as a compile source root so the
+                 Central-required -sources.jar (maven-source-plugin's jar-no-fork
+                 archives the compile source roots) contains the Kotlin sources.
+                 Kotlin 2.4 removed the kotlin-maven-plugin add-source goal. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>add-kotlin-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals><goal>add-source</goal></goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.basedir}/src/main/kotlin</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 

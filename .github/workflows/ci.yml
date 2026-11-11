@@ -186,6 +186,12 @@ jobs:
         working-directory: lib/java
         run: mvn -q -B -P release -Dgpg.skip=true -DskipTests package
 
+      # Central validation is the only thing that catches a missing sources jar
+      # (the plugin skips an empty source set silently), so assert the jars here.
+      - name: Verify every module produced sources + javadoc jars
+        if: matrix.java == '17'
+        run: scripts/check-release-jars.sh
+
       # Mirror the Dockerfile's Maven selection so the deploy image path is
       # exercised in CI. The deployment module must be selected explicitly: it is
       # not a Maven dependency of the demo, and the runtime extension descriptor

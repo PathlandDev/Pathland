@@ -173,9 +173,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/jars
-          for m in pathland-core pathland-view-core pathland-render-html pathland-server-core \
-                   pathland-spring-boot-starter pathland-quarkus \
-                   pathland-quarkus-deployment; do
+          for m in pathland-core pathland-view-core pathland-native-core \
+                   pathland-render-html pathland-server-core \
+                   pathland-state-redis pathland-spring-boot-starter \
+                   pathland-quarkus pathland-quarkus-deployment; do
             cp lib/java/"$m"/target/"$m"-*.jar dist/jars/ 2>/dev/null || true
           done
           rm -f dist/jars/*-sources.jar dist/jars/*-javadoc.jar
