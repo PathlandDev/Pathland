@@ -10,6 +10,7 @@ import dev.pathland.view.core.HorizontalAlignment
 import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
 import dev.pathland.core.protocol.Commands
+import dev.pathland.view.core.TextAlignment
 import dev.pathland.view.dsl.Button
 import dev.pathland.view.dsl.HStack
 import dev.pathland.view.dsl.Image
@@ -23,6 +24,8 @@ import dev.pathland.view.dsl.fontSize
 import dev.pathland.view.dsl.fontWeight
 import dev.pathland.view.dsl.foregroundStyle
 import dev.pathland.view.dsl.frame
+import dev.pathland.view.dsl.lineLimit
+import dev.pathland.view.dsl.multilineTextAlignment
 import dev.pathland.view.dsl.padding
 import dev.pathland.view.dsl.scaledToFit
 
@@ -49,9 +52,15 @@ internal class TrackRowView(
                     .scaledToFit()
 
                 VStack(alignment = HorizontalAlignment.LEADING, spacing = 2f) {
-                    Text(track.title).fontWeight(FontWeight.SEMIBOLD)
+                    Text(track.title)
+                        .fontWeight(FontWeight.SEMIBOLD)
+                        .multilineTextAlignment(TextAlignment.LEADING)
+                        .lineLimit(1)
+
                     Text("${track.artist} · ${track.album}")
                         .fontSize(13f)
+                        .multilineTextAlignment(TextAlignment.LEADING)
+                        .lineLimit(1)
                         .foregroundStyle(MusicPlayerView.SECONDARY_FG)
                 }
 

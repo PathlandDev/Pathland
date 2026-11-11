@@ -1,9 +1,12 @@
 # Pathland base design
 
 The built-in look of the HTML renderer, generated from a **three-layer Style
-Dictionary pipeline** plus hand-authored reset/component CSS.
+Dictionary pipeline** plus hand-authored reset/component CSS. The canonical
+design and token source is **`design_system.fig`**, authored and maintained in
+OpenPencil; `tokens/` is the current downstream Style Dictionary mirror.
 
 ```
+design_system.fig                canonical design + token source    (OpenPencil)
 tokens/base/*.tokens.json        internal palette + scales          (not emitted)
 tokens/semantic/*.tokens.json    protocol catalog semantics        (emitted)
 tokens/component/*.tokens.json   per-component surface             (emitted)
@@ -18,9 +21,78 @@ The generated bundle is `build/base.css` (reset + `tokens.css` + components);
 the bytes with `include_str!` and exposes the name for cache-busting links. There
 is one built-in base design and no app-facing design selection.
 
+## Canonical source: OpenPencil
+
+`design_system.fig` is the source of truth for the design system and its
+tokens. It contains three variable collections:
+
+| Collection | Modes | Purpose |
+|---|---|---|
+| `Base` | `Value` | internal palette, type/space/radius scales |
+| `Semantic` | `Light` / `Dark` | protocol catalog semantics |
+| `Component` | `Light` / `Dark` | per-component token surface |
+
+It currently holds **277 variables**: the 241 variables that mirror
+`design/tokens` plus 36 extended tokens needed for full typography and
+component coverage (caption/meta/heading sizes, weights, line-heights,
+tracking, an Inter family token, extra radius steps, and
+`toggle.checkbox.radius` / `color.swatch.radius`). Those 36 are not yet in
+`design/tokens` — the next export/transform brings them across.
+
+The three pages are **Foundations** (color/type/spacing/radius specimens),
+**Components** (Light/Dark variant sets), and **Showcase** (the preview
+reproduced in both themes).
+
+Binding coverage and known limits:
+
+- All 254 text nodes bind `fontSize`, `lineHeight`, `letterSpacing`, and
+  `fontFamily`; spacing, radii, border widths, control/component sizes, and
+  disabled opacity are bound too.
+- `fontWeight` cannot be bound: OpenPencil's `bind_variable` API rejects
+  `fontWeight`. The weight variables exist and export.
+- Dark components/panels/boards use the **Dark variable mode**. Translucent
+  dark surface/border tokens keep explicit opaque composites where the
+  renderer would otherwise composite alpha over white instead of the parent
+  surface; the Dark variable values remain the true alpha tokens for export.
+- Swatch hairline strokes and the showcase page backdrop are intentionally
+  unbound document decoration, not design tokens.
+
+### Exporting to Style Dictionary
+
+```sh
+openpencil tokens design/design_system.fig --format dtcg --out <dir>
+```
+
+This writes a DTCG bundle:
+
+```
+Base/Value.tokens.json
+Semantic/{Light,Dark}.tokens.json
+Component/{Light,Dark}.tokens.json
+tokens.resolver.json
+```
+
+- The original dotted token path is preserved on every token under
+  `$extensions.dev.openpencil.name`.
+- Light/Dark values are separate mode files. A transform is still required to
+  reproduce this repository's flat `tokens/` format: restore the dotted key from
+  `$extensions.dev.openpencil.name` and emit it flat, merge the Dark file into
+  `$extensions.pathland.dark`, and map FLOAT types using the
+  `dtcg type number|duration|fontFamily` hints in the descriptions.
+- References are emitted as literal values (OpenPencil does not resolve variable
+  aliases for paints). Each description records the source `value ref` /
+  `dark ref`, which the transform uses to restore SD references.
+
+The transform is not wired into CI yet; until it lands, edit the `.fig` in
+OpenPencil and update `design/tokens` from the export manually.
+
 ## Commands
 
 ```sh
+# canonical design source
+openpencil tokens design/design_system.fig --format dtcg --out <dir>
+
+# downstream Style Dictionary / HTML base design
 npm --prefix design ci          # install (CI / clean checkout)
 npm --prefix design run build   # Style Dictionary + build/base.css
 npm --prefix design run check   # catalog/layer/dark/dimension validation
@@ -30,12 +102,16 @@ scripts/sync-design-css.sh      # copy base.css + base.css.name into the Rust cr
 scripts/sync-design-css.sh --check
 ```
 
-After changing tokens or CSS: `npm --prefix design run build`, then
+After exporting tokens or changing CSS: `npm --prefix design run build`, then
 `scripts/sync-design-css.sh`, then run `cargo test -p pathland-render-html`.
 
 `build/` and `node_modules/` are gitignored. `package-lock.json` is committed.
 
 ## Tokens
+
+`tokens/` is the downstream Style Dictionary input. Going forward, edit the
+corresponding variable in `design_system.fig` and export rather than
+hand-editing `tokens/**` (until the export transform is automated).
 
 Each token is a flat DTCG entry: `$value`, `$type`, optional `$description` and
 `$extensions.pathland`. Keys carry their full dotted path because the catalog
@@ -133,7 +209,26 @@ media) with a light/dark/system switcher. Run `npm run dev -- --serve` and open
 <http://127.0.0.1:4173/>. This is a development tool, not an app-selectable base
 design.
 
-## Generated files — do not edit
+## Source and generated files
+
+**Source of truth** — edit in OpenPencil, not by hand:
+
+- `design_system.fig` (Base/Semantic/Component variables + Foundations,
+  Components, and Showcase pages)
+
+**Downstream token mirror** — currently committed; will be regenerated from the
+OpenPencil export once the transform lands:
+
+- `tokens/base/*.tokens.json`
+- `tokens/semantic/*.tokens.json`
+- `tokens/component/*.tokens.json`
+
+**Hand-authored CSS**:
+
+- `html/reset.css`
+- `html/components.css`
+
+**Generated — do not edit**:
 
 - `build/tokens.css`
 - `build/manifest.json`
@@ -142,4 +237,5 @@ design.
 - `lib/rust/crates/pathland-render-html/assets/base.css` (synced copy)
 - `lib/rust/crates/pathland-render-html/assets/base.css.name` (synced copy)
 
-Edit the token files or `html/{reset,components}.css`, then rebuild and sync.
+Edit tokens/components in `design_system.fig` and export; edit
+`html/{reset,components}.css` by hand, then rebuild and sync.
