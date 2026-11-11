@@ -11,8 +11,8 @@ categories = ["gui", "graphics", "wasm"]
 keywords = ["ui", "protocol", "opcode", "rendering", "design-tokens"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core", version = "0.2.2" }
+pathland-core = { path = "../pathland-core", version = "0.2.4" }
 
 [dev-dependencies]
-pathland-engine = { path = "../pathland-engine", version = "0.2.2" }
-pathland-view = { path = "../pathland-view", version = "0.2.2" }
+pathland-engine = { path = "../pathland-engine", version = "0.2.4" }
+pathland-view = { path = "../pathland-view", version = "0.2.4" }

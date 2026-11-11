@@ -13,4 +13,4 @@ keywords = ["markdown", "attributed-string", "pathland", "no_std"]
 crate-type = ["rlib"]
 
 [dependencies]
-pathland-core = { path = "../pathland-core", version = "0.2.2" }
+pathland-core = { path = "../pathland-core", version = "0.2.4" }
