@@ -27,6 +27,8 @@ the raw pointer events (see [Deferred: gestures](#deferred-gestures)).
 
 ## Event model
 
+**Decision rationale:** [binary input events rather than payload callbacks](../docs/decisions/0004-binary-input-events.md).
+
 Events flow **host → guest**. The renderer is the producer; the app/engine is
 the consumer. Both directions of the protocol are binary and share the same
 16-byte opcode format; events are `EVENT`-category (0x03) opcodes.
@@ -81,7 +83,8 @@ for the duration of the session:
    in-flight state clears and inbound updates apply again; the final position
    was already reported by the interaction's own events.
 
-This is **renderer state, not application state** (AGENTS.md Principle 1): the
+This is **renderer state, not application state** (see
+[ADR-0003](../docs/decisions/0003-application-state-and-delta-emission.md)): the
 in-edit value is transient input/rendered-output state, like the scroll offset
 and the text caret.
 

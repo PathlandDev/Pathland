@@ -38,9 +38,9 @@ After changing tokens or CSS: `npm --prefix design run build`, then
 ## Tokens
 
 Each token is a flat DTCG entry: `$value`, `$type`, optional `$description` and
-`$extensions.pathland`. Keys carry their full dotted path because the catalog
-contains paths that are both a leaf and a group (`control.border` is a color,
-`control.border.width` is a dimension), which nested DTCG trees cannot represent.
+`$extensions.pathland`. Keys carry their full dotted path. The representation
+choice and shared-asset pipeline are explained in
+[ADR-0012](../docs/decisions/0012-generated-html-base-design.md).
 
 - **base** tokens are literals. They are internal: the generator resolves them
   to literals and **never emits them** as CSS variables. Override the semantic

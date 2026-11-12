@@ -322,6 +322,8 @@ pub fn component_type_id(component: &Component) -> u16 {
 /// was first given (spec/MEDIA.md), so a structural swap that shifts other ids
 /// never changes the playback key — and its `VIDEO` surface's
 /// `MEDIA_CONTROLLER_ID` is linked in the same pass.
+// @ref spec/MEDIA.md#5-structural-swaps-the-motivating-contract [implements] — Preserve playback identity across rebuilt trees
+// @ref docs/decisions/0006-media-controller-identity.md [constrained-by]
 pub fn assign_ids(root: &mut Node, next: &mut u32) {
     // Reserve every already-pinned controller id up front, so no other node can
     // be handed one even when it is lower than the current cursor.
@@ -360,6 +362,7 @@ fn take_id(next: &mut u32, reserved: &BTreeSet<u32>) -> u32 {
     id
 }
 
+// @ref spec/MEDIA.md#1-the-model [implements] — Bind video surfaces to controller node IDs
 fn assign_ids_pass(node: &mut Node, next: &mut u32, reserved: &mut BTreeSet<u32>) {
     match (&node.component, node.media_controller.clone()) {
         (Component::MediaController, Some(controller)) => {

@@ -62,6 +62,7 @@ class MediaProjectionTest {
                 it.c() == value
         }
 
+    // @ref spec/MEDIA.md#22-layout-must [tests]
     @Test
     fun registeredAudioControllerGetsAPinnedRootNode() {
         val controller = MediaController("/track.mp3")
@@ -92,6 +93,7 @@ class MediaProjectionTest {
         )
     }
 
+    // @ref spec/MEDIA.md#1-the-model [tests] — Surface may precede its root-projected controller
     @Test
     fun videoStaysInPlaceAndBindsTheRootController() {
         val controller = MediaController("https://example.com/clip.mp4")
@@ -118,6 +120,7 @@ class MediaProjectionTest {
         )
     }
 
+    // @ref spec/MEDIA.md#5-structural-swaps-the-motivating-contract [tests] — Root rerender and transport target, not native playback
     @Test
     fun controllerIdSurvivesRootReRendersAndPropertyDeltasTargetIt() {
         val controller = MediaController("/track.mp3")

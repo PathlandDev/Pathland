@@ -34,6 +34,8 @@ lives in [OPCODE.md](./OPCODE.md). Modifier mapping lives in
 
 ## Core Principle
 
+**Decision rationale:** [application intent and renderer-owned appearance](../docs/decisions/0005-semantic-appearance.md).
+
 > **The application owns the theme. The renderer owns the defaults, the scheme
 > detection, and the interaction states.**
 
@@ -44,9 +46,6 @@ lives in [OPCODE.md](./OPCODE.md). Modifier mapping lives in
   catalog (both light and dark), derives the **effective color scheme** from the
   platform (OS / browser / native theme), resolves token references, and owns
   hover/pressed/focus/disabled styling.
-
-This preserves native look-and-feel by default and gives the application
-cross-renderer consistency when it overrides tokens.
 
 ### Ownership
 

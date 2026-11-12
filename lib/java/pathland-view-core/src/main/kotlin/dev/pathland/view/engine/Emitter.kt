@@ -494,6 +494,7 @@ class Emitter {
      * idempotent; outside a render it is applied immediately, during a render it
      * is folded into the current reconcile.
      */
+    // @ref spec/MEDIA.md#22-layout-must [implements] — Project registered controllers outside replacing branches
     fun registerMediaController(controller: MediaController) {
         if (!registeredMediaControllers.add(controller)) return
         if (mounted && renderStack.isEmpty()) tree?.let { syncRootControllers(it) }
@@ -647,6 +648,8 @@ class Emitter {
      * are reused by identity, so the root reconcile preserves their ids and does
      * not restart playback.
      */
+    // @ref spec/MEDIA.md#5-structural-swaps-the-motivating-contract [implements]
+    // @ref docs/decisions/0006-media-controller-identity.md [constrained-by]
     private fun appendRootControllers(root: PathlandNode) {
         for (controller in registeredMediaControllers) {
             val existing = mediaControllers[controller]
@@ -660,6 +663,7 @@ class Emitter {
         }
     }
 
+    // @ref spec/MEDIA.md#5-structural-swaps-the-motivating-contract [implements] — Reuse the controller's playback key
     private fun newControllerNode(controller: MediaController): PathlandNode {
         val node = PathlandNode(Components.MEDIA_CONTROLLER)
         node.mediaControllerRef = controller
@@ -669,6 +673,7 @@ class Emitter {
         return node
     }
 
+    // @ref spec/MEDIA.md#1-the-model [implements]
     private fun bindVideoControllers(scanRoot: PathlandNode) {
         for (node in flatten(scanRoot)) {
             val controller = node.mediaControllerRef

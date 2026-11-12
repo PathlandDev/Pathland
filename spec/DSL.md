@@ -47,6 +47,8 @@ A DSL in a new language is **conformant** when it:
 
 ### Two guiding rules
 
+**Decision rationale:** [SwiftUI-shaped authoring with signal-based reactivity](../docs/decisions/0013-swiftui-shaped-signal-dsl.md).
+
 1. **Stay as close to SwiftUI as possible.** View names, modifier names, and
    signature shapes mirror SwiftUI. Adapt only where the host language forces
    it (Rust snake_case + macros; Java camelCase + builders; Python kwargs), and

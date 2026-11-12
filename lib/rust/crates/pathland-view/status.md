@@ -1,6 +1,6 @@
 # pathland-view (Rust DSL) — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** November 12, 2026
 
 The SwiftUI-style **view DSL** (`no_std`) building `pathland_engine::Node`
 trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
@@ -130,6 +130,11 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 
 ## Not implemented / gaps
 
+- **Media traceability pilot:** initial VIDEO-before-`attach()` order loses its
+  controller binding in `assign_ids` (MEDIA-001). Existing media tests cover
+  controller-first binding and rebuilt-tree identity, not the full emitted-frame
+  swap contract (MEDIA-COVERAGE-001). See the
+  [audit and reproduction](../../../../docs/audits/media-controller-identity.md).
 - **Reactive body + ForEach parity (Phase 2)**: the Java DSL now uses
   per-component tracked bodies (plain `if`/`switch`/`for` in `body()`, `View.of`
   inline, `ForEach.of` for lists) and has removed `Conditional`/`Case`. The Rust

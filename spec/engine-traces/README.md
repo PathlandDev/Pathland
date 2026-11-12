@@ -7,6 +7,7 @@ Each file is one self-contained PLPL batch (opcodes + frame string table) in
 lowercase hex. `#` lines are metadata/comments.
 
 - Scenario semantics: [`../ENGINE.md`](../ENGINE.md)
+- Decision rationale: [ADR-0009](../../docs/decisions/0009-cross-language-conformance.md)
 - Regenerate: `cd lib/rust && cargo run -p pathland-engine-golden -- --emit`
 - Verify: `cd lib/rust && cargo run -p pathland-engine-golden -- --check`
 - JVM comparison: `EngineTraceTest` in `lib/java/pathland-view-core`
