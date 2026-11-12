@@ -1,5 +1,7 @@
 # Icons — the `ICON` primitive and canonical vocabulary
 
+**Decision rationale:** [application intent and renderer-owned appearance](../docs/decisions/0005-semantic-appearance.md).
+
 The `ICON` primitive (0x0B) renders a **renderer-native symbol** for a canonical,
 semantic name written once in the UI model. Unlike `IMAGE` (an asset loaded from
 a URL), an icon is a *word* the renderer maps onto its platform's native icon

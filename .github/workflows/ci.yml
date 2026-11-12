@@ -6,6 +6,19 @@ on:
   pull_request:
 
 jobs:
+  references:
+    name: Architecture references
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test architecture skills and reference validation
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - name: Validate source references (coverage is informational)
+        run: python3 scripts/check-references.py
+
   design:
     name: Design (Style Dictionary)
     runs-on: ubuntu-latest

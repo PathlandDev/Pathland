@@ -1,6 +1,6 @@
 # pathland-engine — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** November 12, 2026
 
 The retained-tree **emitter**: the application's canonical UI tree and the
 diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
@@ -96,6 +96,10 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
 
 ## Not implemented / gaps
 
+- **Media surface-first binding (MEDIA-001):** initial `assign_ids` leaves a
+  `VIDEO` unbound when its new controller marker comes later in tree order.
+  Controller-first layouts work; order independence is not yet satisfied. See
+  the [reproduction and proposed fix](../../../../docs/audits/media-controller-identity.md#media-001--rust-surface-first-binding-is-absent-on-initial-assignment).
 - Only the `Tap` gesture plus value/text/date input sinks; no other gesture.
 - Signal-bound properties cannot carry token refs (a token ref is a static path).
 - `get_signal` returns an owned value (the store is shared via `Rc<RefCell>`).

@@ -23,6 +23,12 @@ semantics, the manifest for exact wire numbers.
 
 ### Goals
 
+**Decision rationale:** [fixed-width binary instructions and transport-independent
+frames](../docs/decisions/0001-fixed-width-binary-protocol.md),
+[native declarative layout](../docs/decisions/0002-native-declarative-layout.md),
+and [application-owned state and deltas](../docs/decisions/0003-application-state-and-delta-emission.md).
+The requirements and wire definitions remain in this specification and its companions.
+
 - **Sub-millisecond execution**: every opcode is a fixed 16 bytes; emission is a diff over the retained tree with **zero dynamic heap allocations** in the steady state.
 - **L1 CPU cache alignment**: a 64-byte cache line holds exactly **4 opcodes**. Ring slots are 16-byte aligned and densely packed.
 - **Reactive emission**: only the nodes that changed emit opcodes. An unchanged tree emits **zero** opcodes (see [Reactive Emission](#reactive-emission)).
@@ -691,6 +697,8 @@ This ensures a native look-and-feel by default and cross-platform consistency
 when the application rolls a theme.
 
 ### Tokens & color schemes
+
+**Decision rationale:** [semantic appearance and renderer ownership](../docs/decisions/0005-semantic-appearance.md).
 
 - Tokens are identified by **dot-separated string paths** (`color.primary`,
   `font.body.size`, `space.2`), case-sensitive, lowercase recommended. The

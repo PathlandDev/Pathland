@@ -8,6 +8,8 @@
 
 ## Introduction
 
+**Decision rationale:** [server-side composition through ordinary protocol sessions](../docs/decisions/0010-server-side-proxy-composition.md).
+
 A **proxy view** ([`PROXY_VIEW`](./PRIMITIVES.md#proxyview--proxy_view-0x1e) `0x1E`)
 lets one Pathland application compose views served by **several** Pathland
 servers into a **single unified document**. The application that owns the proxy

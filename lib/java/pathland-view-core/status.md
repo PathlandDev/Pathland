@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 8, 2026
+**Last updated:** November 12, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written in Kotlin. It owns the `View` SPI and shared
@@ -109,6 +109,14 @@ build) carries no JNA.
   the Java-friendly `PathlandApp` functional interface
   (`return () -> MusicPlayerView.make();`). Kotlin roots expose public
   constructors and/or `@JvmStatic make(...)` factories.
+
+## Verification gaps
+
+- **Media swap coverage (MEDIA-COVERAGE-001):** `MediaProjectionTest` covers
+  root projection, surface-first binding, root-rerender identity, and transport
+  targeting. It does not establish every structural-swap frame invariant or
+  native playback continuity. See the
+  [traceability pilot audit](../../../docs/audits/media-controller-identity.md).
 
 ## Package boundary
 

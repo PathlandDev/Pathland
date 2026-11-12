@@ -41,10 +41,13 @@ The reusable Java libraries live in `../java/` (Maven reactor, `dev.pathland`):
 
 ## Specification
 
+- [Architecture decisions](../../docs/decisions/README.md) — rationale and trade-offs
 - [`spec/OPCODE.md`](../../spec/OPCODE.md) — the 16-byte opcode protocol
 - [`spec/CONFORMANCE.md`](../../spec/CONFORMANCE.md) — golden byte vectors
 
 ## Protocol manifest
+
+**Decision rationale:** [cross-language conformance through shared data](../../docs/decisions/0009-cross-language-conformance.md).
 
 `pathland-protocol-manifest` emits `spec/protocol.tsv`, the target-neutral
 machine-readable ID manifest consumed by non-Rust bindings. It emits data only;
@@ -72,6 +75,8 @@ PATH="$HOME/.cargo/bin:$PATH" cargo test
 ```
 
 ## Verify the no_std / wasm32 direction guard
+
+**Decision rationale:** [portable, emitter-free protocol core](../../docs/decisions/0007-portable-protocol-core.md).
 
 `pathland-core` and `pathland-view` must stay `no_std` + `alloc` and compile for
 `wasm32-unknown-unknown`, so the core can still target a browser/embedded/remote

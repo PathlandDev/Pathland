@@ -183,14 +183,9 @@ when the container is a `SCROLLVIEW`.
 
 ### Rationale
 
-These rules are the bugs-fixed-and-avoided model of the reference renderers:
-
-- A **Fixed image** in a row stays its box (never scaled to content or stretched
-  by a tall row).
-- A **Fixed/Hug child in a `Fill` container** keeps its size; leftover space
-  goes to `Fill` children (or stays empty).
-- A **composite button** (e.g. a library row) sizes to its content on the main
-  axis unless the node is explicitly `Fill`.
+The choice of explicit allocation and the renderer bugs it addresses are
+recorded in [ADR-0011](../docs/decisions/0011-explicit-layout-allocation.md).
+The complete allocation requirements remain above.
 
 ---
 

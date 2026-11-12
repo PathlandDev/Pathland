@@ -2,7 +2,35 @@
 
 This document provides essential context for AI agents (or human contributors) working on the **Pathland** protocol. It captures the project's direction, architectural decisions, and implementation details to ensure consistency.
 
-**Last Updated**: November 3, 2026
+**Last Updated**: November 12, 2026
+
+## Architecture decisions and document responsibilities
+
+- **Current contracts:** `spec/` defines protocol and authoring requirements.
+- **Rationale and history:** [docs/decisions/README.md](./docs/decisions/README.md)
+  indexes the architectural decision records (ADRs).
+- **Implementation coverage:** each project's `status.md` remains authoritative.
+- **Agent workflow:** this guide retains essential guardrails and build/change
+  instructions; consult the relevant spec and ADR before changing architecture.
+
+For a new significant decision, propose an ADR using
+`docs/decisions/template.md`; do not accept it on the maintainer's behalf.
+When a decision changes, supersede its ADR and update the current spec and links
+in the same change. ADRs explain requirements; they must not hide additional
+mandatory behavior outside the specs. Do not infer historical rationale from code.
+
+Follow [architecture traceability and drift](./docs/decisions/traceability.md):
+add or update precise spec references when touching non-obvious governed code,
+link tests to the same requirement, and do not rewrite a contract merely to
+match drifted code. Record unresolved findings with evidence and update affected
+`status.md` gaps. Run `python3 scripts/check-references.py` after reference changes.
+
+For substantial architecture-sensitive tasks, use the repository-local skills
+in `.agents/skills/`: `pathland-orient` before coding, `pathland-decision` for
+ADR proposals, `pathland-review` for architectural review, and `pathland-maintain`
+for drift/reference audits. See [skill usage and boundaries](./docs/decisions/skills.md).
+Orientation, review, and maintenance are read/propose-only; they do not authorize
+repairs or decision acceptance. New ADRs remain Proposed until maintainer approval.
 
 ---
 
@@ -40,6 +68,8 @@ This document provides essential context for AI agents (or human contributors) w
 - **Zero dynamic heap allocations** during steady-state emission (proven by test).
 
 ### no_std / wasm32 direction guard (NON-NEGOTIABLE)
+
+Rationale: [ADR-0007](./docs/decisions/0007-portable-protocol-core.md).
 
 `pathland-core` and `pathland-view` must remain `#![no_std]` + `alloc` and
 compile for `wasm32-unknown-unknown`. This is the guarantee that the protocol
@@ -136,6 +166,8 @@ crates/pathland-render-qt-demo/ # Rust Qt Quick demo: authors the DSL, emits int
 ```
 
 ### JVM libraries (`lib/java/`, Kotlin-first)
+
+Module-boundary rationale: [ADR-0008](./docs/decisions/0008-pure-jvm-server-libraries.md).
 
 The reusable JVM library set (`dev.pathland`, Maven reactor, Java 17+) pairs a
 pure-Java opcode/wire core with a Kotlin engine and DSL; the Kotlin DSL serves
@@ -453,6 +485,8 @@ Every opcode is exactly 16 bytes:
 See `spec/OPCODE.md` for the full format, ring buffer, arena, and frame lifecycle.
 
 ### Machine-readable protocol manifest
+
+Rationale: [ADR-0009](./docs/decisions/0009-cross-language-conformance.md).
 
 `spec/protocol.tsv` is the target-neutral ID manifest emitted from
 `pathland_core::constants` by `pathland-protocol-manifest` (`cargo run -p

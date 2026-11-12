@@ -17,6 +17,9 @@ Rust engine and compared byte-for-byte by the JVM engine test.
 
 ## 1. Scope
 
+**Decision rationale:** [application-owned state and diff-based emission](../docs/decisions/0003-application-state-and-delta-emission.md)
+and [native renderer-owned layout](../docs/decisions/0002-native-declarative-layout.md).
+
 The engine:
 
 - owns the application's retained tree and signal bindings;
@@ -150,6 +153,8 @@ Detailed wire contracts remain in `PRIMITIVES.md`, `MEDIA.md`, and `DSL.md`.
 ---
 
 ## 8. Shared engine traces
+
+**Decision rationale:** [cross-language conformance through shared data](../docs/decisions/0009-cross-language-conformance.md).
 
 Fixtures live under `spec/engine-traces/<scenario>/<step>.plpl.hex`.
 

@@ -22,17 +22,10 @@ to the controller's transport signals. There are **no renderer-native audio
 controls** — the application defines the entire control surface in code. The
 former `AUDIO` component is therefore **removed**.
 
-Before this document, playback identity *was* the media node id: the source and
-the transport properties lived on the `AUDIO`/`VIDEO` node itself, and the media
-events reported against it. That makes a **structural swap** of the media node —
-the normal case under `SIZE_THAT_FITS`, conditional rendering, or any subtree
-replacement — destroy the playback, and it makes "control the same playback from
-two places" inexpressible.
-
-The controller/surface split fixes both: playback identity is the **controller**
-node id, which the emitter pins **outside** the swapping branch (typically as a
-root child), so a swap re-attaches a view to a playback that never stopped — and
-for audio the swapping thing is just the application's own control views.
+**Decision rationale and previous model:**
+[ADR-0006: Playback identity separate from media surfaces](../docs/decisions/0006-media-controller-identity.md).
+Playback identity is the **controller** node id; the lifetime and structural-swap
+requirements are defined below.
 
 There is **one** controller component for both audio and video — the transport is
 the same thing in both cases, exactly as SwiftUI has one `AVPlayer` for both and

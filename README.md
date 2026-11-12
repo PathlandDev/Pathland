@@ -9,6 +9,10 @@ wire format and APIs may change before 1.0.
 
 ## Pathland is a protocol
 
+Architecture rationale and trade-offs are recorded in the
+[architecture decision records](docs/decisions/README.md); the
+[specifications](spec/OPCODE.md) define the current contract.
+
 Pathland is first and foremost a **binary UI protocol** — not just a framework,
 and not a single rendering
 target. Your view declaration compiles to fixed 16-byte opcodes that any renderer

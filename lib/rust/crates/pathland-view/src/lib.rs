@@ -1822,6 +1822,7 @@ impl Configurable for Video {
     }
 }
 
+// @ref spec/MEDIA.md#3-the-video-surface--video-0x0a [implements]
 impl View for Video {
     fn build_env(&self, env: &mut Environment) -> Node {
         let mut node = plain_node(Component::Video, Vec::new(), BTreeMap::new());
@@ -1856,6 +1857,7 @@ pub fn video(controller: Rc<MediaController>) -> Video {
 /// Unlike the core views a controller is a **state object**, so it has no
 /// `modifiers`/`children`; the DSL entry point is [`MediaControllerExt::attach`],
 /// which materializes the controller's non-visual `MEDIA_CONTROLLER` node.
+// @ref spec/MEDIA.md#22-layout-must [implements] — Explicit attachment keeps lifetime outside swapping branches
 pub trait MediaControllerExt {
     /// A **non-visual marker** that materializes this controller's
     /// `MEDIA_CONTROLLER` node in the tree. A [`Video`] surface references the
@@ -4615,6 +4617,7 @@ mod media_tests {
     use super::*;
     use pathland_core::{init_memory, value_type, Guest, Host, MemoryLayout};
 
+    // @ref spec/MEDIA.md#1-the-model [tests]
     #[test]
     fn video_surface_links_its_controller() {
         let engine = Engine::new();
@@ -4647,6 +4650,7 @@ mod media_tests {
         );
     }
 
+    // @ref spec/MEDIA.md#5-structural-swaps-the-motivating-contract [tests] — ID stability, not renderer playback continuity
     #[test]
     fn controller_id_is_pinned_across_a_structural_swap() {
         let engine = Engine::new();
