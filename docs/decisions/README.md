@@ -27,6 +27,8 @@ additional mandatory behavior or replace either source of truth.
 
 Source-reference syntax, review obligations, drift resolution, and validation
 commands are defined in [Architecture traceability and drift](traceability.md).
+The [Pathland architecture skills](skills.md) provide reusable orientation,
+decision-authoring, review, and maintenance workflows for these conventions.
 
 - Use `NNNN-short-decision-name.md`, allocated sequentially. Never reuse a
   published number. Resolve provisional number collisions before merging.
@@ -65,7 +67,6 @@ alternatives are explicitly not reconstructed. Future extraction can capture
 additional decisions when their rationale is established.
 
 Pathland uses conventional ADRs and existing specs, not a parallel `llp/`
-corpus. Pathland-specific orientation, decision, review, and maintenance skills
-are a separate, second phase; no upstream skills are installed. The subsequent
-media pilot adds Pathland-specific reference validation without adopting LLP's
-document hierarchy.
+corpus. The media pilot adds Pathland-specific reference validation; the
+subsequent [skills](skills.md) operationalize those conventions without adopting
+LLP's document hierarchy or installing upstream skills.

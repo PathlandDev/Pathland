@@ -25,6 +25,13 @@ link tests to the same requirement, and do not rewrite a contract merely to
 match drifted code. Record unresolved findings with evidence and update affected
 `status.md` gaps. Run `python3 scripts/check-references.py` after reference changes.
 
+For substantial architecture-sensitive tasks, use the repository-local skills
+in `.agents/skills/`: `pathland-orient` before coding, `pathland-decision` for
+ADR proposals, `pathland-review` for architectural review, and `pathland-maintain`
+for drift/reference audits. See [skill usage and boundaries](./docs/decisions/skills.md).
+Orientation, review, and maintenance are read/propose-only; they do not authorize
+repairs or decision acceptance. New ADRs remain Proposed until maintainer approval.
+
 ---
 
 ## Architecture: Rust Opcode Engine
