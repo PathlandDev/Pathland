@@ -1,0 +1,49 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7B7EKYDZD1TXV17MY5BJY8S",
+  "session_id": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-13T19:51:56.998079Z",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "c7d7a4243d52",
+  "checkpoint_transcript_start": 611,
+  "transcript_lines_at_start": 611,
+  "compact_transcript_start": 611,
+  "token_usage": {
+    "input_tokens": 828335,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 27907712,
+    "output_tokens": 9994,
+    "api_call_count": 38
+  },
+  "session_metrics": {
+    "turn_count": 14
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-13T19:51:56.335957Z",
+    "agent_lines": 11,
+    "agent_removed": 7,
+    "human_added": 60,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 71,
+    "total_lines_changed": 109,
+    "agent_percentage": 16.51376146788991,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
