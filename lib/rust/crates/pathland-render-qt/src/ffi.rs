@@ -3043,6 +3043,38 @@ mod tests {
         });
     }
 
+    /// A windowed lazy grid reserves its virtual extent on the wrapper and
+    /// positions the inner Grid (ADR-0014).
+    #[test]
+    fn lazy_grid_reserves_virtual_extent() {
+        with_qt(|| {
+            let mut root = Node::from_component(&Component::LazyVGrid);
+            root.properties.insert(property_id::ITEM_COUNT, 34);
+            root.properties.insert(property_id::ITEM_EXTENT, 44.0f32.to_bits());
+            root.properties.insert(property_id::FIRST_ITEM_INDEX, 10);
+            root.properties.insert(property_id::SPACING, 8.0f32.to_bits());
+            root.properties.insert(property_id::GRID_COLUMNS, 3.0f32.to_bits());
+            for _ in 0..6 {
+                root.children.push(Node::from_component(&Component::Text {
+                    text: String::new(),
+                }));
+            }
+            assign_ids(&mut root, &mut 1);
+
+            let mut h = Harness::new();
+            let mut r = QtRenderer::new();
+            {
+                let (slots, arena) = h.emit(&root);
+                let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+                r.apply_frame(&frame);
+            }
+
+            // 10*(44+8) = 520 leading; (34-10-2)*52 = 1144 trailing.
+            assert_eq!(int_prop(1, "plLeading"), 520);
+            assert_eq!(int_prop(1, "plTrailing"), 1144);
+        });
+    }
+
     /// The Phase-B controls construct into their QML counterparts and apply
     /// their value/progress properties.
     #[test]
