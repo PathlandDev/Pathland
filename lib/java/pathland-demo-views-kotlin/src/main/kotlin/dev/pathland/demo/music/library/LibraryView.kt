@@ -7,10 +7,11 @@ import dev.pathland.view.core.Roles
 import dev.pathland.view.core.View
 import dev.pathland.core.protocol.Commands
 import dev.pathland.view.dsl.Divider
+import dev.pathland.view.dsl.ForEach
 import dev.pathland.view.dsl.Font
 import dev.pathland.view.dsl.Component
+import dev.pathland.view.dsl.LazyVStack
 import dev.pathland.view.dsl.ScrollView
-import dev.pathland.view.dsl.Spacer
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.VStack
 import dev.pathland.view.dsl.accessibilityRole
@@ -21,10 +22,13 @@ import dev.pathland.view.dsl.foregroundStyle
 import dev.pathland.view.dsl.frame
 import dev.pathland.view.dsl.padding
 
+/** The fixed main-axis height of a library row (the lazy window's extent). */
+internal const val LIBRARY_ROW_HEIGHT = 64f
+
 /**
  * The library pane: the "Library" header and the full track list. Each row is a
  * [TrackRowView]; selecting one starts that track through the shared player
- * service.
+ * service. The list is a windowed `LazyVStack` over the repeated library.
  */
 internal class LibraryView : Component() {
 
@@ -44,11 +48,10 @@ internal class LibraryView : Component() {
             Divider().padding(top = 0f, right = 0f, bottom = 10f, left = 0f)
 
             ScrollView {
-                VStack {
-                    service.tracks.forEachIndexed { index, track ->
-                        TrackRowView(track, index)
+                LazyVStack(spacing = 0f) {
+                    ForEach(service.tracks) { track, index ->
+                        TrackRowView(track, index).frame(height = LIBRARY_ROW_HEIGHT)
                     }
-                    Spacer()
                 }
             }
         }.padding(24f)

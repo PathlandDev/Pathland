@@ -23,12 +23,20 @@ class MediaPlayerServiceTest {
     }
 
     @Test
+    fun libraryRepeatsTheBaseTracks() {
+        val service = MediaPlayerService()
+        assertEquals(MediaPlayerService.LIBRARY_SIZE, service.tracks.size)
+        assertTrue(service.tracks[8] === MediaPlayerService.TRACKS[0])
+        assertTrue(service.tracks[999] === MediaPlayerService.TRACKS[7])
+    }
+
+    @Test
     fun previousAndNextWrapAround() {
         val service = MediaPlayerService()
 
         service.trackIndex.set(0)
         service.previous()
-        assertEquals(MediaPlayerService.TRACKS.lastIndex, service.trackIndex.get())
+        assertEquals(service.tracks.lastIndex, service.trackIndex.get())
 
         service.next()
         assertEquals(0, service.trackIndex.get())
