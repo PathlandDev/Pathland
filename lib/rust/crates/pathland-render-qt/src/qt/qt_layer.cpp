@@ -115,6 +115,9 @@ enum {
     PL_PROP_ITEM_COUNT = 0x0022,
     PL_PROP_ITEM_EXTENT = 0x0023,
     PL_PROP_FIRST_ITEM_INDEX = 0x0024,
+    PL_PROP_ITEM_EXTENTS = 0x0025,
+    PL_PROP_FIRST_ITEM_OFFSET = 0x0026,
+    PL_PROP_TOTAL_EXTENT = 0x0027,
     PL_PROP_BACKGROUND = 0x1001,
     PL_PROP_IMAGE_SOURCE = 0x1002,
     PL_PROP_BORDER_WIDTH = 0x1003,
@@ -346,6 +349,9 @@ struct LayerState {
     std::unordered_map<uint32_t, double> lazy_extent;
     std::unordered_map<uint32_t, uint32_t> lazy_first;
     std::unordered_map<uint32_t, double> lazy_spacing;
+    std::unordered_map<uint32_t, std::vector<double>> lazy_extents;
+    std::unordered_map<uint32_t, double> lazy_first_offset;
+    std::unordered_map<uint32_t, double> lazy_total_extent;
     std::unordered_map<uint32_t, std::vector<QQuickItem *>> lazy_spacers;
     std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> lazy_last;
     // Windowed lazy grids: the inner QML Grid inside the virtual-extent wrapper.
@@ -1079,11 +1085,47 @@ void reportLazyRange(uint32_t id) {
     const double viewport = vertical ? sw->height() : sw->width();
     const double start = viewStart - offset;
     const double end = start + viewport;
-    const uint32_t first = std::min(
-        count, static_cast<uint32_t>(std::max(0.0, std::floor(start / stride))));
-    const uint32_t last = std::min(
-        count, static_cast<uint32_t>(std::max(0.0, std::ceil(end / stride))));
-    const uint32_t visible = last > first ? last - first : 0;
+    uint32_t first;
+    uint32_t visible;
+    auto xi = g.lazy_extents.find(id);
+    if (xi != g.lazy_extents.end() && !xi->second.empty()) {
+        const auto &extents = xi->second;
+        const double firstOffset =
+            g.lazy_first_offset.count(id) ? g.lazy_first_offset[id] : 0.0;
+        const uint32_t windowFirst = g.lazy_first.count(id) ? g.lazy_first[id] : 0;
+        double cursor = firstOffset;
+        bool found = false;
+        uint32_t firstVisible = 0;
+        uint32_t lastVisible = 0;
+        for (size_t i = 0; i < extents.size(); ++i) {
+            const double itemStart = cursor;
+            const double itemEnd = cursor + extents[i];
+            if (itemEnd > start && itemStart < end) {
+                if (!found) {
+                    firstVisible = windowFirst + static_cast<uint32_t>(i);
+                    found = true;
+                }
+                lastVisible = windowFirst + static_cast<uint32_t>(i);
+            }
+            cursor = itemEnd + spacing;
+        }
+        if (found) {
+            first = firstVisible;
+            visible = lastVisible - firstVisible + 1;
+        } else {
+            const uint32_t estimate = static_cast<uint32_t>(
+                std::max(0.0, std::floor((start - firstOffset) / stride)));
+            first = std::min(count - 1, windowFirst + estimate);
+            visible = 1;
+        }
+    } else {
+        const uint32_t f = std::min(
+            count, static_cast<uint32_t>(std::max(0.0, std::floor(start / stride))));
+        const uint32_t l = std::min(
+            count, static_cast<uint32_t>(std::max(0.0, std::ceil(end / stride))));
+        first = f;
+        visible = l > f ? l - f : 0;
+    }
     auto &previous = g.lazy_last[id];
     if (previous.first == first && previous.second == visible) {
         return;
@@ -1139,9 +1181,25 @@ void refreshLazyStack(uint32_t id) {
     if (!lay) {
         return;
     }
-    const double leading = std::max(0.0, first * stride - spacing);
-    const uint32_t after = count > first + childCount ? count - first - childCount : 0;
-    const double trailing = std::max(0.0, after * stride - spacing);
+    const double firstOffset =
+        g.lazy_first_offset.count(id) ? g.lazy_first_offset[id] : first * stride;
+    const double totalExtent = g.lazy_total_extent.count(id)
+        ? g.lazy_total_extent[id]
+        : count * extent + (count > 0 ? count - 1 : 0) * spacing;
+    auto xi = g.lazy_extents.find(id);
+    double windowExtent;
+    if (xi != g.lazy_extents.end() && !xi->second.empty()) {
+        double sum = 0.0;
+        for (double value : xi->second) {
+            sum += value;
+        }
+        windowExtent = sum + (xi->second.size() > 0 ? xi->second.size() - 1 : 0) * spacing;
+    } else {
+        windowExtent = childCount * extent + (childCount > 0 ? childCount - 1 : 0) * spacing;
+    }
+    const double leading = std::max(0.0, firstOffset - spacing);
+    const double trailing =
+        std::max(0.0, totalExtent - firstOffset - windowExtent - spacing);
 
     auto sit = g.lazy_spacers.find(id);
     if (sit != g.lazy_spacers.end()) {
@@ -2232,6 +2290,12 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
     case PL_PROP_FIRST_ITEM_INDEX:
         g.lazy_first[id] = value;
         break;
+    case PL_PROP_FIRST_ITEM_OFFSET:
+        g.lazy_first_offset[id] = f32(value);
+        break;
+    case PL_PROP_TOTAL_EXTENT:
+        g.lazy_total_extent[id] = f32(value);
+        break;
     case PL_PROP_ALIGNMENT:
         // Stored here; `recomputeLayout` positions the children after the
         // frame's props have all landed (Fill(3)/absent = start, never stretch).
@@ -2593,6 +2657,18 @@ void applyStringProperty(uint32_t id, uint16_t prop, const char *str, uint32_t l
         reportFit(id, item->width());
         break;
     }
+    case PL_PROP_ITEM_EXTENTS: {
+        std::vector<double> extents;
+        for (const QString &part : value.split(',', Qt::SkipEmptyParts)) {
+            bool ok = false;
+            const double v = part.trimmed().toDouble(&ok);
+            if (ok) {
+                extents.push_back(v);
+            }
+        }
+        g.lazy_extents[id] = extents;
+        break;
+    }
     case PL_PROP_ICON_NAME:
         item->setProperty("text", iconGlyph(value));
         break;
@@ -2679,6 +2755,9 @@ void resetNode(uint32_t id) {
     g.scroll_axis.erase(id);
     g.lazy_spacers.erase(id);
     g.lazy_grids.erase(id);
+    g.lazy_extents.erase(id);
+    g.lazy_first_offset.erase(id);
+    g.lazy_total_extent.erase(id);
     g.lazy_count.erase(id);
     g.lazy_extent.erase(id);
     g.lazy_first.erase(id);
@@ -3325,6 +3404,9 @@ void pathland_qt_layer_reset(void) {
     g.lazy_spacing.clear();
     g.lazy_spacers.clear();
     g.lazy_grids.clear();
+    g.lazy_extents.clear();
+    g.lazy_first_offset.clear();
+    g.lazy_total_extent.clear();
     g.lazy_last.clear();
     g.hit_testing.clear();
     g.offset_x.clear();

@@ -164,7 +164,7 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   `LazyVStack`/`LazyHStack` consume it, infer/declare the item extent, emit
   `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX`, and build only the shared
   host-managed window. Gaps: keyed window reconcile in the build-time engine,
-  variable-height rows, and lazy grids.
+  variable item extents in the Rust `ForEach`, and lazy grids.
 
 ## Verified by
 

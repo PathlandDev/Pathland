@@ -2430,6 +2430,18 @@ function lazyChildCount(el: HTMLElement): number {
   return count;
 }
 
+function lazyExtents(el: HTMLElement): number[] | null {
+  const raw = el.dataset.pathlandItemExtents;
+  if (!raw) {
+    return null;
+  }
+  const values = raw
+    .split(",")
+    .map((part) => Number.parseFloat(part))
+    .filter((value) => Number.isFinite(value));
+  return values.length > 0 ? values : null;
+}
+
 function nearestScroller(el: HTMLElement): HTMLElement | null {
   let node = el.parentElement;
   while (node && node !== document.body && node !== document.documentElement) {
@@ -2488,8 +2500,25 @@ function refreshLazyPadding(el: HTMLElement): void {
   const tracks = Math.max(1, lazyNumber(el, "pathlandLazyTracks", 1));
   const childCount = lazyChildCount(el);
   const units = Math.ceil(childCount / tracks);
-  const leading = first * stride;
-  const trailing = Math.max(0, count - first - units) * stride;
+  const extents = lazyExtents(el);
+  let leading: number;
+  let trailing: number;
+  if (extents) {
+    const firstOffset = lazyNumber(el, "pathlandFirstItemOffset", first * stride);
+    const totalExtent = lazyNumber(
+      el,
+      "pathlandTotalExtent",
+      count * extent + Math.max(0, count - 1) * spacing,
+    );
+    const windowExtent =
+      extents.reduce((sum, value) => sum + value, 0) +
+      Math.max(0, extents.length - 1) * spacing;
+    leading = firstOffset;
+    trailing = Math.max(0, totalExtent - firstOffset - windowExtent);
+  } else {
+    leading = first * stride;
+    trailing = Math.max(0, count - first - units) * stride;
+  }
   const cells = Array.from(el.children).filter(
     (c): c is HTMLElement => c instanceof HTMLElement,
   );
@@ -2573,6 +2602,35 @@ function lazyVisibleRange(el: HTMLElement): { first: number; count: number } | n
   }
   const clampedStart = Math.max(0, Math.min(virtualExtent, start));
   const clampedEnd = Math.max(clampedStart, Math.min(virtualExtent, end));
+
+  const extents = lazyExtents(el);
+  if (extents) {
+    const first = lazyNumber(el, "pathlandFirstItemIndex");
+    const firstOffset = lazyNumber(el, "pathlandFirstItemOffset", first * stride);
+    let cursor = firstOffset;
+    let firstVisible = -1;
+    let lastVisible = -1;
+    for (let i = 0; i < extents.length; i++) {
+      const itemStart = cursor;
+      const itemEnd = cursor + extents[i]!;
+      if (itemEnd > clampedStart && itemStart < clampedEnd) {
+        if (firstVisible < 0) {
+          firstVisible = first + i;
+        }
+        lastVisible = first + i;
+      }
+      cursor = itemEnd + spacing;
+    }
+    if (firstVisible < 0) {
+      // The viewport is outside the emitted window; estimate from the default
+      // extent so the app can emit a covering window.
+      const estimate = Math.max(0, Math.floor((clampedStart - firstOffset) / stride));
+      const index = Math.min(count - 1, Math.max(0, first + estimate));
+      return { first: index, count: 1 };
+    }
+    return { first: firstVisible, count: lastVisible - firstVisible + 1 };
+  }
+
   const first = Math.max(0, Math.min(count, Math.floor(clampedStart / stride)));
   const last = Math.max(first, Math.min(count, Math.ceil(clampedEnd / stride)));
   return { first, count: Math.max(0, last - first) };

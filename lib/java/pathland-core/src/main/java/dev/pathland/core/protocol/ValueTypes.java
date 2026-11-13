@@ -64,6 +64,7 @@ public final class ValueTypes {
             case Properties.FIRST_ITEM_INDEX:
                 return U32;
             case Properties.FIT_QUERY:
+            case Properties.ITEM_EXTENTS:
                 return LIST;
             case Properties.ALIGNMENT:
             case Properties.TEXT_ALIGNMENT:

@@ -24,6 +24,7 @@ final class RenderNode {
     DateValue date;
     final List<Integer> children = new ArrayList<>();
     final List<Float> fitThresholds = new ArrayList<>();
+    final List<Float> itemExtents = new ArrayList<>();
 
     RenderNode(int component) {
         this.component = component;

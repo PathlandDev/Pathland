@@ -473,6 +473,16 @@ pub mod property_id {
     /// **Draft.** The absolute index of a lazy stack's first emitted child (U32,
     /// constructor property; default 0).
     pub const FIRST_ITEM_INDEX: u16 = 0x0024;
+    /// **Draft.** The main-axis extents of the emitted window's items (LIST of
+    /// F32, in window order). Absent means every item uses `ITEM_EXTENT`.
+    pub const ITEM_EXTENTS: u16 = 0x0025;
+    /// **Draft.** The main-axis offset of the first emitted item (F32, prefix
+    /// sum before `FIRST_ITEM_INDEX`). Absent means
+    /// `FIRST_ITEM_INDEX * (ITEM_EXTENT + SPACING)`.
+    pub const FIRST_ITEM_OFFSET: u16 = 0x0026;
+    /// **Draft.** The exact total main-axis content extent (F32). Absent means
+    /// `ITEM_COUNT*ITEM_EXTENT + max(0, ITEM_COUNT-1)*SPACING`.
+    pub const TOTAL_EXTENT: u16 = 0x0027;
     // Style (0x1000 range)
     pub const BACKGROUND_COLOR: u16 = 0x1001;
     /// **Draft.** Image source (STRING: a resource name, file path, or URL —
@@ -718,7 +728,7 @@ pub fn value_type_for(prop: u16) -> u8 {
         | property_id::ITEM_COUNT
         | property_id::FIRST_ITEM_INDEX
         | property_id::NAV_DEPTH => value_type::U32,
-        property_id::FIT_QUERY => value_type::LIST,
+        property_id::FIT_QUERY | property_id::ITEM_EXTENTS => value_type::LIST,
         _ => value_type::F32,
     }
 }

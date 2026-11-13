@@ -233,8 +233,28 @@ container.
   listener bit 10, at most once per frame and only when `(first, endExclusive)`
   changes. The application owns overscan and may emit a larger window.
 
+**Variable item extents.** A lazy **stack** (not a grid) MAY carry
+`ITEM_EXTENTS` (`0x0025`, LIST of F32), `FIRST_ITEM_OFFSET` (`0x0026`, F32), and
+`TOTAL_EXTENT` (`0x0027`, F32) alongside the fixed properties. When present:
+
+- `ITEM_EXTENTS` holds one main-axis extent per **emitted window item**, in
+  window order. `FIRST_ITEM_OFFSET` is the offset of the first emitted item in
+  the full content, and `TOTAL_EXTENT` is the full content extent.
+- The window starts at `FIRST_ITEM_OFFSET`; each emitted item uses its extent;
+  the window extent is `sum(ITEM_EXTENTS) + max(0, k-1)*S`.
+- The container's virtual extent is `TOTAL_EXTENT`; the fixed formula is not
+  used. `ITEM_EXTENT` remains the **default/estimated** extent for items outside
+  the emitted window.
+- The renderer computes the visible range by walking the window extents from
+  `FIRST_ITEM_OFFSET`; if the viewport lies outside the emitted window, it
+  estimates with `ITEM_EXTENT` and reports that estimate so the application can
+  emit a covering window.
+- A `LAZY_VGRID`/`LAZY_HGRID` uses the uniform `ITEM_EXTENT` model; variable
+  per-row/per-column extents are not defined for grids yet.
+
 Without `ITEM_COUNT` + `ITEM_EXTENT`, a lazy stack is an ordinary eager stack
-and this section does not apply.
+and this section does not apply. `ITEM_EXTENTS` does not replace
+`ITEM_EXTENT` — the default/estimate is still required.
 
 ---
 

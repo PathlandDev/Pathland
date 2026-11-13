@@ -740,6 +740,9 @@ propagation). With a data-source window it carries:
 | `ITEM_COUNT` | `0x0022` | U32 | Total items in the virtual list |
 | `ITEM_EXTENT` | `0x0023` | F32 | Uniform main-axis size of one item (logical points) |
 | `FIRST_ITEM_INDEX` | `0x0024` | U32 | Absolute index of the first emitted child (default 0) |
+| `ITEM_EXTENTS` | `0x0025` | LIST (F32) | Per-item main-axis extents of the emitted window (variable-height stacks) |
+| `FIRST_ITEM_OFFSET` | `0x0026` | F32 | Main-axis offset of the first emitted item (prefix sum) |
+| `TOTAL_EXTENT` | `0x0027` | F32 | Exact total main-axis content extent |
 
 The data source is **app-owned**: the application emits only the visible items
 and declares the total count. The renderer reports the visible index range with

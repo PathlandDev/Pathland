@@ -534,6 +534,10 @@ Rules:
   If the row has no fixed main-axis frame, the author MUST pass an explicit
   `itemExtent` (e.g. `ForEach(items, itemExtent = 44f)`); otherwise the DSL
   reports an authoring error. Every row MUST use the same extent.
+- Variable heights: `ForEach(items, itemExtents = listOf(44f, 60f, …))` supplies
+  one main-axis extent per item. The engine emits `ITEM_EXTENTS` for the window,
+  `FIRST_ITEM_OFFSET`, and `TOTAL_EXTENT`; `ITEM_EXTENT` remains the default
+  estimate for items outside the window. Lazy grids use a uniform extent.
 - `FIRST_ITEM_INDEX` = the window start. The engine sets it; the author does not.
 - The DSL sets `EVENT_LISTENERS` bit 10 (`VISIBLE_RANGE`) and routes the event
   to the engine's internal window; the author does not manage a window signal.

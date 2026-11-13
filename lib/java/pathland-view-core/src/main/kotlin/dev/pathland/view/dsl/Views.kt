@@ -248,17 +248,19 @@ fun <T> ForEach(
     items: List<T>,
     key: ((T) -> Any)? = null,
     itemExtent: Float? = null,
+    itemExtents: List<Float>? = null,
     content: PathlandScope.(T, Int) -> Unit,
 ): dev.pathland.view.core.View =
-    ForEachView(Signals.constant(items), key, itemExtent, content).registerChild()
+    ForEachView(Signals.constant(items), key, itemExtent, itemExtents, content).registerChild()
 
 fun <T> ForEach(
     items: Signal<List<T>>,
     key: ((T) -> Any)? = null,
     itemExtent: Float? = null,
+    itemExtents: List<Float>? = null,
     content: PathlandScope.(T, Int) -> Unit,
 ): dev.pathland.view.core.View =
-    ForEachView(items, key, itemExtent, content).registerChild()
+    ForEachView(items, key, itemExtent, itemExtents, content).registerChild()
 
 /* ------------------------------------------------------------------------- */
 /* Media                                                                      */

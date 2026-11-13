@@ -155,6 +155,9 @@ property		SCROLL_AXIS	0x0021
 property		ITEM_COUNT	0x0022
 property		ITEM_EXTENT	0x0023
 property		FIRST_ITEM_INDEX	0x0024
+property		ITEM_EXTENTS	0x0025
+property		FIRST_ITEM_OFFSET	0x0026
+property		TOTAL_EXTENT	0x0027
 property		BACKGROUND_COLOR	0x1001
 property		IMAGE_SOURCE	0x1002
 property		PLAYBACK_STATE	0x1035
@@ -270,6 +273,9 @@ property_value_type		SCROLL_AXIS	F32
 property_value_type		ITEM_COUNT	U32
 property_value_type		ITEM_EXTENT	F32
 property_value_type		FIRST_ITEM_INDEX	U32
+property_value_type		ITEM_EXTENTS	LIST
+property_value_type		FIRST_ITEM_OFFSET	F32
+property_value_type		TOTAL_EXTENT	F32
 property_value_type		BACKGROUND_COLOR	COLOR
 property_value_type		IMAGE_SOURCE	STRING
 property_value_type		PLAYBACK_STATE	U32

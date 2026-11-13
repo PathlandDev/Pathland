@@ -70,13 +70,19 @@ impl Pump for RingTransport {
 
 /// Runtime metadata for a windowed lazy stack (ADR-0014), shared with the
 /// scroll adjustment handlers.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct LazyInfo {
     count: u32,
     extent: f32,
     first: u32,
     spacing: f32,
     vertical: bool,
+    /// Per-item main-axis extents for the emitted window (`ITEM_EXTENTS`).
+    extents: Vec<f32>,
+    /// The main-axis offset of the first emitted item.
+    first_offset: f32,
+    /// The exact total main-axis content extent.
+    total_extent: f32,
     last_first: u32,
     last_count: u32,
 }
@@ -91,6 +97,26 @@ impl LazyInfo {
             vertical: matches!(
                 node.component_type,
                 component_type::LAZY_VSTACK | component_type::LAZY_VGRID
+            ),
+            extents: node
+                .lists
+                .get(&property_id::ITEM_EXTENTS)
+                .cloned()
+                .unwrap_or_default(),
+            first_offset: node.f32_property(
+                property_id::FIRST_ITEM_OFFSET,
+                node.u32_property(property_id::FIRST_ITEM_INDEX, 0) as f32
+                    * (node.f32_property(property_id::ITEM_EXTENT, 0.0)
+                        + node.f32_property(property_id::SPACING, 0.0).max(0.0)),
+            ),
+            total_extent: node.f32_property(
+                property_id::TOTAL_EXTENT,
+                node.u32_property(property_id::ITEM_COUNT, 0) as f32
+                    * node.f32_property(property_id::ITEM_EXTENT, 0.0)
+                    + (node
+                        .u32_property(property_id::ITEM_COUNT, 0)
+                        .saturating_sub(1) as f32)
+                        * node.f32_property(property_id::SPACING, 0.0).max(0.0),
             ),
             last_first: u32::MAX,
             last_count: u32::MAX,
@@ -120,20 +146,52 @@ fn report_lazy_range(
     sw: &gtk::ScrolledWindow,
     target: u32,
 ) {
-    let (vertical, count, extent, spacing, previous) = {
-        let info = info.borrow();
-        (info.vertical, info.count, info.extent, info.spacing, (info.last_first, info.last_count))
-    };
-    if count == 0 || extent <= 0.0 {
-        return;
-    }
-    let stride = extent + spacing;
+    let vertical = info.borrow().vertical;
     let adj = if vertical { sw.vadjustment() } else { sw.hadjustment() };
     let start = adj.value().max(0.0) as f32;
     let end = start + adj.page_size() as f32;
-    let first = ((start / stride).floor() as u32).min(count);
-    let last = ((end / stride).ceil() as u32).min(count).max(first);
-    let visible = last - first;
+
+    let (first, visible) = {
+        let info = info.borrow();
+        if info.count == 0 || info.extent <= 0.0 {
+            return;
+        }
+        let stride = info.extent + info.spacing;
+        if !info.extents.is_empty() {
+            let mut cursor = info.first_offset;
+            let mut first_visible = None;
+            let mut last_visible = 0u32;
+            for (index, value) in info.extents.iter().enumerate() {
+                let item_start = cursor;
+                let item_end = cursor + *value;
+                if item_end > start && item_start < end {
+                    if first_visible.is_none() {
+                        first_visible = Some(info.first + index as u32);
+                    }
+                    last_visible = info.first + index as u32;
+                }
+                cursor = item_end + info.spacing;
+            }
+            match first_visible {
+                Some(f) => (f, last_visible - f + 1),
+                None => {
+                    let estimate =
+                        ((start - info.first_offset) / stride).floor().max(0.0) as u32;
+                    let index = (info.first + estimate).min(info.count.saturating_sub(1));
+                    (index, 1)
+                }
+            }
+        } else {
+            let first = ((start / stride).floor() as u32).min(info.count);
+            let last = ((end / stride).ceil() as u32).min(info.count).max(first);
+            (first, last - first)
+        }
+    };
+
+    let previous = {
+        let info = info.borrow();
+        (info.last_first, info.last_count)
+    };
     if previous == (first, visible) {
         return;
     }
@@ -1142,10 +1200,21 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         let spacing = node.f32_property(property_id::SPACING, 0.0).max(0.0);
         let stride = extent + spacing;
         let units = (child_count as u32 + tracks.max(1) - 1) / tracks.max(1);
-        let leading = (first as f32 * stride - spacing).max(0.0);
-        let trailing = ((count.saturating_sub(first.saturating_add(units)) as f32) * stride
-            - spacing)
-            .max(0.0);
+        let extents = node.lists.get(&property_id::ITEM_EXTENTS);
+        let first_offset = node.f32_property(property_id::FIRST_ITEM_OFFSET, first as f32 * stride);
+        let total_extent = node.f32_property(
+            property_id::TOTAL_EXTENT,
+            count as f32 * extent + (count.saturating_sub(1) as f32) * spacing,
+        );
+        let window_extent = match extents {
+            Some(values) => {
+                values.iter().sum::<f32>()
+                    + (values.len().saturating_sub(1) as f32) * spacing
+            }
+            None => units as f32 * extent + (units.saturating_sub(1) as f32) * spacing,
+        };
+        let leading = (first_offset - spacing).max(0.0);
+        let trailing = (total_extent - first_offset - window_extent - spacing).max(0.0);
 
         let Ok(bx) = parent.clone().downcast::<GtkBox>() else {
             return;
@@ -1188,6 +1257,9 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             info.extent = extent;
             info.first = first;
             info.spacing = spacing;
+            info.extents = extents.cloned().unwrap_or_default();
+            info.first_offset = first_offset;
+            info.total_extent = total_extent;
         }
 
         if self.lazy_attached.contains(&parent_id) {

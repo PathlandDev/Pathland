@@ -439,9 +439,11 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 - **Virtualized lazy stacks (ADR-0014)**: the DOM client applies the window
   properties, refreshes the virtual padding, observes scroll/resize, sends
   `VISIBLE_RANGE`, and exposes `aria-setsize`/`aria-posinset` for the full list.
-  App padding is preserved as an inset around the virtual extent. Lazy grids
-  use the same window with `data-pathland-lazy-tracks` and grid a11y
-  (`role=grid`/`gridcell`, row/column indices).
+  App padding is preserved as an inset around the virtual extent. Lazy stacks
+  support variable item extents (`data-pathland-item-extents` /
+  `-first-item-offset` / `-total-extent`) for padding and visible-range
+  mapping. Lazy grids use the same window with `data-pathland-lazy-tracks` and
+  grid a11y (`role=grid`/`gridcell`, row/column indices).
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

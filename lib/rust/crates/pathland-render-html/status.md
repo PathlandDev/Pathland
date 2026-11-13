@@ -408,9 +408,11 @@ contract both renderers must satisfy.
   and carry `data-pathland-lazy*` attributes for the DOM client's
   `VISIBLE_RANGE` reporting. Covered by a unit test. App `PADDING` is added as
   an inset around the virtual extent (the base values ride on data attributes
-  for the DOM client). `LAZY_VGRID`/`LAZY_HGRID` use the same row/column window
-  (virtual padding + `data-pathland-lazy-grid`/`-tracks`); C22/C24 are not
-  covered yet.
+  for the DOM client). Lazy stacks also support app-declared variable item
+  extents (`ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`, emitted as
+  `data-pathland-item-extents`/`-first-item-offset`/`-total-extent`).
+  `LAZY_VGRID`/`LAZY_HGRID` use the same row/column window (virtual padding +
+  `data-pathland-lazy-grid`/`-tracks`); C22/C24 are not covered yet.
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
 - **Parent-path token fallback is not implemented in CSS**: overriding a

@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class DslTest {
 
@@ -321,6 +323,45 @@ class DslTest {
                 it.command() == Commands.Parameter.SET_PROPERTY &&
                 (it.b() and 0xffff) == Properties.FIRST_ITEM_INDEX
         }.c())
+    }
+
+    @Test
+    fun lazyStackSupportsVariableItemExtents() {
+        val items = (0 until 10).map { "item-$it" }
+        val extents = List(10) { 40f + it }
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        emitter.mount(
+            LazyVStack(spacing = 2f) {
+                ForEach(items, itemExtents = extents) { item, _ -> Text(item) }
+            },
+            Environment.DEFAULT,
+        )
+        val frame = sink.frame()
+        val props = frame.opcodes().filter {
+            it.category() == Categories.PARAMETER && it.command() == Commands.Parameter.SET_PROPERTY
+        }
+        fun property(id: Int): Int? = props.firstOrNull { (it.b() and 0xffff) == id }?.c()
+
+        assertEquals(10, property(Properties.ITEM_COUNT))
+        assertEquals(44.5f, Float.fromBits(property(Properties.ITEM_EXTENT)!!))
+        assertEquals(0f, Float.fromBits(property(Properties.FIRST_ITEM_OFFSET)!!))
+        // sum(40..49) + 9*2 = 463.
+        assertEquals(463f, Float.fromBits(property(Properties.TOTAL_EXTENT)!!))
+
+        val offset = props.first { (it.b() and 0xffff) == Properties.ITEM_EXTENTS }.c()
+        val strings = frame.strings()
+        val view = ByteBuffer.wrap(strings, offset, 4).order(ByteOrder.LITTLE_ENDIAN)
+        val count = view.int
+        assertEquals(10, count)
+        val values = FloatArray(count) { i ->
+            java.lang.Float.intBitsToFloat(
+                ByteBuffer.wrap(strings, offset + 4 + 4 * i, 4)
+                    .order(ByteOrder.LITTLE_ENDIAN)
+                    .int,
+            )
+        }
+        assertArrayEquals(extents.toFloatArray(), values, 0.001f)
     }
 
     @Test

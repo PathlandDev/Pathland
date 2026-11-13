@@ -106,6 +106,19 @@ class HtmlRendererTest {
     }
 
     @Test
+    fun rendersAVariableExtentLazyStack() {
+        val items = (0 until 10).map { "item-$it" }
+        val extents = List(10) { 40f + it }
+        val root = LazyVStack(spacing = 2f) {
+            ForEach(items, itemExtents = extents) { item, _ -> Text(item) }
+        }
+        val html = renderer().render(frameOf(root), 1)
+        assertTrue(html.contains("data-pathland-item-extents=\"40,41,42,43,44,45,46,47,48,49\""), html)
+        assertTrue(html.contains("data-pathland-first-item-offset=\"0px\""), html)
+        assertTrue(html.contains("data-pathland-total-extent=\"463px\""), html)
+    }
+
+    @Test
     fun renderLinkedEmitsTheContentHashedStylesheet() {
         val frame = frameOf(Text("Hi"))
         val renderer = renderer()

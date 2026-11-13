@@ -305,8 +305,13 @@ public final class HtmlRenderer {
                         }
                         List<Float> values = listF32(strings, op.c());
                         if (values != null) {
-                            node.fitThresholds.clear();
-                            node.fitThresholds.addAll(values);
+                            if (property == Properties.ITEM_EXTENTS) {
+                                node.itemExtents.clear();
+                                node.itemExtents.addAll(values);
+                            } else {
+                                node.fitThresholds.clear();
+                                node.fitThresholds.addAll(values);
+                            }
                         }
                     } else {
                         node.properties.put(property, op.c());
@@ -1117,8 +1122,22 @@ public final class HtmlRenderer {
         int first = node.u32Property(Properties.FIRST_ITEM_INDEX, 0);
         float spacing = Math.max(0.0f, node.f32Property(Properties.SPACING, 0.0f));
         float stride = extent + spacing;
-        float leading = first * stride;
-        float trailing = Math.max(0, count - (first + childCount)) * stride;
+        List<Float> extents = node.itemExtents;
+        float firstOffset = node.f32Property(Properties.FIRST_ITEM_OFFSET, first * stride);
+        float totalExtent = node.f32Property(Properties.TOTAL_EXTENT,
+                count * extent + Math.max(0, count - 1) * spacing);
+        float windowExtent;
+        if (!extents.isEmpty()) {
+            float sum = 0.0f;
+            for (float value : extents) {
+                sum += value;
+            }
+            windowExtent = sum + Math.max(0, extents.size() - 1) * spacing;
+        } else {
+            windowExtent = childCount * extent + Math.max(0, childCount - 1) * spacing;
+        }
+        float leading = firstOffset;
+        float trailing = Math.max(0.0f, totalExtent - firstOffset - windowExtent);
         float extraTop = vertical ? leading : 0.0f;
         float extraBottom = vertical ? trailing : 0.0f;
         float extraLeft = vertical ? 0.0f : leading;
@@ -1137,6 +1156,13 @@ public final class HtmlRenderer {
         String stackStyle = Format.styleAttr("display:flex;flex-direction:" + direction
                 + ";align-items:" + align + ";" + padding + css);
         String axis = vertical ? "vertical" : "horizontal";
+        String extentsAttrs = "";
+        String csv = node.strings.get(Properties.ITEM_EXTENTS);
+        if (csv != null && !extents.isEmpty()) {
+            extentsAttrs = " data-pathland-item-extents=\"" + csv + "\""
+                    + " data-pathland-first-item-offset=\"" + Format.f32(firstOffset) + "px\""
+                    + " data-pathland-total-extent=\"" + Format.f32(totalExtent) + "px\"";
+        }
         return "<" + tag + " data-pathland-id=\"" + id + "\"" + slotAttrs(node) + event + aria
                 + stackStyle + " data-pathland-lazy=\"" + axis + "\""
                 + " data-pathland-item-count=\"" + count + "\""
@@ -1146,7 +1172,8 @@ public final class HtmlRenderer {
                 + " data-pathland-base-padding-top=\"" + Format.f32(baseTop) + "px\""
                 + " data-pathland-base-padding-right=\"" + Format.f32(baseRight) + "px\""
                 + " data-pathland-base-padding-bottom=\"" + Format.f32(baseBottom) + "px\""
-                + " data-pathland-base-padding-left=\"" + Format.f32(baseLeft) + "px\">"
+                + " data-pathland-base-padding-left=\"" + Format.f32(baseLeft) + "px\""
+                + extentsAttrs + ">"
                 + children + "</" + tag + ">";
     }
 

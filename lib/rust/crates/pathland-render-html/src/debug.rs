@@ -388,6 +388,7 @@ mod tests {
             date: None,
             children: Vec::new(),
             fit_thresholds: Vec::new(),
+            item_extents: Vec::new(),
         }
     }
 

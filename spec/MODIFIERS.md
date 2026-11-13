@@ -138,6 +138,12 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   enable the app-owned window; see
   [PRIMITIVES.md §LazyVStack](./PRIMITIVES.md#lazyvstack--lazy_vstack-0x1b) and
   [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers).
+- **`ITEM_EXTENTS` / `FIRST_ITEM_OFFSET` / `TOTAL_EXTENT`** (`0x0025`–`0x0027`)
+  are optional variable-height stack properties: a LIST of the emitted window's
+  main-axis extents, the first item's offset, and the exact total extent. They
+  take precedence over the fixed `ITEM_EXTENT` formula for the window and
+  virtual extent; `ITEM_EXTENT` remains the default/estimate for items outside
+  the window.
 - **`PADDING` vs per-edge**: `PADDING` is uniform and shorthand; a per-edge
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.
@@ -424,7 +430,8 @@ are never chainable modifiers.
 | `0x000E`–`0x0020` | Layout properties (allocated: OFFSET, POSITION, frame bounds, FIXED_SIZE, LAYOUT_PRIORITY, ASPECT_RATIO/CONTENT_MODE, MINIMUM_SCALE_FACTOR, GRID_COLUMNS, GRID_ROWS, GRID_TRACKS) |
 | `0x0021` | `SCROLL_AXIS` (ENUM; a `SCROLLVIEW`'s scroll axis — see PRIMITIVES.md) |
 | `0x0022`–`0x0024` | Lazy-stack window (allocated: `ITEM_COUNT` U32, `ITEM_EXTENT` F32, `FIRST_ITEM_INDEX` U32 — see PRIMITIVES.md §LazyVStack) |
-| `0x0025`–`0x00FF` | Future layout/format properties (unallocated) |
+| `0x0025`–`0x0027` | Lazy-stack variable extents (allocated: `ITEM_EXTENTS` LIST, `FIRST_ITEM_OFFSET` F32, `TOTAL_EXTENT` F32 — see LAYOUT.md §Virtual extent) |
+| `0x0028`–`0x00FF` | Future layout/format properties (unallocated) |
 | `0x1001`–`0x1016` | Styling (BACKGROUND_COLOR, BORDER_*, FONT_SIZE/WEIGHT/FAMILY, COLOR, WIDTH, HEIGHT, OPACITY, VISIBLE, Z_INDEX, CLIPS_TO_BOUNDS, PADDING_*, BORDER_EDGES) |
 | `0x1002` | `IMAGE_SOURCE` (STRING; view-specific, see PRIMITIVES.md) |
 | `0x1017`–`0x102F` | Text-format properties (allocated: FONT_STYLE/DESIGN/WIDTH, KERNING, TRACKING, BASELINE_OFFSET, LINE_SPACING, TEXT_CASE, UNDERLINE, STRIKETHROUGH), effect properties (SHADOW_*, BLUR, SATURATION, CONTRAST, BRIGHTNESS, GRAYSCALE, HUE_ROTATION, COLOR_MULTIPLY, COLOR_INVERT), ROTATION_DEGREES, SCALE, ALLOWS_HIT_TESTING |

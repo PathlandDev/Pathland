@@ -27,6 +27,7 @@ internal class ForEachView<T>(
     private val itemsSignal: Signal<List<T>>,
     private val keyOf: ((T) -> Any)?,
     internal val itemExtent: Float?,
+    internal val itemExtents: List<Float>?,
     private val content: PathlandScope.(T, Int) -> Unit,
 ) : View {
 
@@ -77,12 +78,21 @@ internal class LazyStackView(
         alignment?.let { node.property(Properties.ALIGNMENT, it) }
 
         val count = data.count()
+        val extents = data.itemExtents
+        check(extents == null || extents.size == count) {
+            "ForEach itemExtents size ${extents?.size} does not match the item count $count"
+        }
+        val spacing = spacingValue
+            ?: spacingSignal?.let { Signals.untracked { it.get() } }
+            ?: 0f
+
         val emitter = Emitter.current()
         val inheritedWindow = emitter?.currentSlotOldLazyWindow()
         val windowSignal = window ?: inheritedWindow ?: Signals.signal(IntRange.EMPTY)
         window = windowSignal
 
         val extent = when {
+            extents != null && extents.isNotEmpty() -> extents.sum() / extents.size
             count == 0 -> data.itemExtent ?: emitter?.currentSlotOldLazyExtent() ?: 0f
             data.itemExtent != null -> data.itemExtent
             emitter?.currentSlotOldLazyExtent() != null -> emitter.currentSlotOldLazyExtent()!!
@@ -108,11 +118,34 @@ internal class LazyStackView(
             }
         }
 
+        val firstOffset = if (extents != null) {
+            var sum = 0f
+            for (index in 0 until first) sum += extents[index]
+            sum + spacing * first
+        } else {
+            first * (extent + spacing)
+        }
+        val totalExtent = if (count == 0) {
+            0f
+        } else if (extents != null) {
+            var sum = 0f
+            for (value in extents) sum += value
+            sum + spacing * (count - 1)
+        } else {
+            count * extent + (count - 1) * spacing
+        }
+
         // Property insertion order follows the protocol id order so the
         // cross-language engine traces match the canonical Rust emitter.
         node.properties[Properties.ITEM_COUNT] = count
         node.properties[Properties.ITEM_EXTENT] = extent
         node.properties[Properties.FIRST_ITEM_INDEX] = first
+        if (extents != null && count > 0) {
+            node.properties[Properties.ITEM_EXTENTS] =
+                FloatArray(end - first + 1) { extents[first + it] }
+            node.properties[Properties.FIRST_ITEM_OFFSET] = firstOffset
+            node.properties[Properties.TOTAL_EXTENT] = totalExtent
+        }
         node.properties[Properties.EVENT_LISTENERS] =
             (node.properties[Properties.EVENT_LISTENERS] as? Int ?: 0) or
                 Commands.Listeners.VISIBLE_RANGE
@@ -135,12 +168,16 @@ internal class LazyStackView(
             return node
         }
 
+        val mainProperty = if (vertical) Properties.HEIGHT else Properties.WIDTH
         val keys = ArrayList<Any>(end - first + 1)
         val nodes = LinkedHashMap<Any, PathlandNode>()
         for (index in first..end) {
             val key = data.key(index)
             keys.add(key)
             val child = data.row(index).render(env)
+            val rowExtent = extents?.get(index) ?: extent
+            child.properties[mainProperty] = rowExtent
+            child.propertyBindings.remove(mainProperty)
             node.children.add(child)
             nodes[key] = child
         }
@@ -158,7 +195,7 @@ internal class LazyStackView(
         throw IllegalStateException(
             "A virtualized Lazy${if (vertical) "V" else "H"}Stack requires each ForEach row " +
                 "to declare a fixed $axis frame (e.g. .frame($axis = 44f)) " +
-                "or ForEach(itemExtent = …) (spec/DSL.md §Virtualized lists)",
+                "or ForEach(itemExtent = … / itemExtents = …) (spec/DSL.md §Virtualized lists)",
         )
     }
 
@@ -209,6 +246,9 @@ internal class LazyGridWindowView(
         }
         gridTracks?.let { node.properties[Properties.GRID_TRACKS] = it }
 
+        check(data.itemExtents == null) {
+            "variable item extents are not supported for lazy grids yet; use a uniform itemExtent"
+        }
         val itemCount = data.count()
         val unitCount = if (itemCount == 0) 0 else (itemCount + tracks - 1) / tracks
         val emitter = Emitter.current()
