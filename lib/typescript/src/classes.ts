@@ -315,7 +315,22 @@ function applyRangeBounds(el: HTMLElement, property: number, value: number): voi
 
 const HANDLERS: Record<number, Handler> = {
   // Layout
-  [P.PROP_SPACING]: (el, vt, c) => (el.style.gap = fmtFloat(f32(vt, c)) + "px"),
+  [P.PROP_SPACING]: (el, vt, c) => {
+    const value = f32(vt, c);
+    el.style.gap = fmtFloat(value) + "px";
+    if (el.hasAttribute("data-pathland-lazy")) {
+      el.dataset.pathlandItemSpacing = fmtFloat(value) + "px";
+    }
+  },
+  [P.PROP_ITEM_COUNT]: (el, _vt, c) => {
+    el.dataset.pathlandItemCount = String(u32(c));
+  },
+  [P.PROP_ITEM_EXTENT]: (el, vt, c) => {
+    el.dataset.pathlandItemExtent = fmtFloat(f32(vt, c)) + "px";
+  },
+  [P.PROP_FIRST_ITEM_INDEX]: (el, _vt, c) => {
+    el.dataset.pathlandFirstItemIndex = String(u32(c));
+  },
   [P.PROP_ALIGNMENT]: (el, vt, c) => (el.style.alignItems = alignmentCss(enumCode(vt, c))),
   [P.PROP_CONTENT_MARGINS]: (el, vt, c) => (el.style.padding = fmtFloat(f32(vt, c)) + "px"),
   [P.PROP_SHAPE_KIND]: (el, vt, c) => {

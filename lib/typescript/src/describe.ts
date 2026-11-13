@@ -36,6 +36,7 @@ import {
   CMD_SUBMIT,
   CMD_TEXT_CHANGED,
   CMD_VALUE_CHANGED,
+  CMD_VISIBLE_RANGE,
   CMD_WHEEL,
   COMPONENT_BUTTON,
   COMPONENT_COMMENT,
@@ -134,6 +135,7 @@ const EVENT_NAME: Record<number, string> = {
   [CMD_SUBMIT]: "SUBMIT",
   [CMD_SCROLL]: "SCROLL",
   [CMD_WHEEL]: "WHEEL",
+  [CMD_VISIBLE_RANGE]: "VISIBLE_RANGE",
   [CMD_DATE_CHANGED]: "DATE_CHANGED",
   [CMD_NAVIGATE]: "NAVIGATE",
 };
@@ -257,6 +259,8 @@ function describeEvent(batch: Batch, op: Opcode): string {
     case CMD_SCROLL:
     case CMD_WHEEL:
       return `EVENT ${en}(${t}, x=${f32(op.b)}, y=${f32(op.c)})`;
+    case CMD_VISIBLE_RANGE:
+      return `EVENT ${en}(${t}, first=${op.b >>> 0}, count=${op.c >>> 0})`;
     default:
       return `EVENT ${en}(${t})`;
   }

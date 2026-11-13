@@ -497,6 +497,13 @@ public final class HtmlRenderer {
             childrenBuilder.append(renderNode(nodes, child, node.component, debug));
         }
         String children = childrenBuilder.toString();
+        int childCount = 0;
+        for (int child : node.children) {
+            RenderNode childNode = nodes.get(child);
+            if (childNode != null && childNode.component != Components.COMMENT) {
+                childCount++;
+            }
+        }
 
         StringBuilder dataId = new StringBuilder(" data-pathland-id=\"").append(id).append('"');
         dataId.append(slotAttrs(node));
@@ -530,10 +537,20 @@ public final class HtmlRenderer {
                     css + RenderNode.fillPropagation(nodes, id, node, false) + derived, event, aria);
             case Components.HSTACK -> element = wrapStack(id, "row", semantic, node, children,
                     css + RenderNode.fillPropagation(nodes, id, node, true) + derived, event, aria);
-            case Components.LAZY_VSTACK -> element = wrapStack(id, "column", semantic, node, children,
-                    css + RenderNode.fillPropagation(nodes, id, node, false) + derived, event, aria);
-            case Components.LAZY_HSTACK -> element = wrapStack(id, "row", semantic, node, children,
-                    css + RenderNode.fillPropagation(nodes, id, node, true) + derived, event, aria);
+            case Components.LAZY_VSTACK -> {
+                String stackCss = css + RenderNode.fillPropagation(nodes, id, node, false) + derived;
+                element = lazyWindowed(node)
+                        ? wrapLazyStack(id, "column", true, semantic, node, children, childCount,
+                                stackCss, event, aria)
+                        : wrapStack(id, "column", semantic, node, children, stackCss, event, aria);
+            }
+            case Components.LAZY_HSTACK -> {
+                String stackCss = css + RenderNode.fillPropagation(nodes, id, node, true) + derived;
+                element = lazyWindowed(node)
+                        ? wrapLazyStack(id, "row", false, semantic, node, children, childCount,
+                                stackCss, event, aria)
+                        : wrapStack(id, "row", semantic, node, children, stackCss, event, aria);
+            }
             case Components.PROXY_VIEW -> element = wrapStack(id, "column", semantic, node, children,
                     css + RenderNode.fillPropagation(nodes, id, node, false) + derived, event, aria);
             case Components.SIZE_THAT_FITS -> element = renderSizeThatFits(nodes, id, node, children,
@@ -1018,6 +1035,52 @@ public final class HtmlRenderer {
         }
         String zstyle = Format.styleAttr(zcss + css + derived);
         return "<" + tag + dataId + event + aria + zstyle + ">" + inner + "</" + tag + ">";
+    }
+
+    private static boolean lazyWindowed(RenderNode node) {
+        return node.u32Property(Properties.ITEM_COUNT, 0) > 0
+                && node.f32Property(Properties.ITEM_EXTENT, 0.0f) > 0.0f;
+    }
+
+    private static String wrapLazyStack(int id, String direction, boolean vertical,
+            String semantic, RenderNode node, String children, int childCount,
+            String css, String event, String aria) {
+        String tag = semantic == null ? "div" : semantic;
+        Integer bits = node.properties.get(Properties.ALIGNMENT);
+        int alignment = bits == null ? 3 : ((int) Float.intBitsToFloat(bits)) & 0xFF;
+        String align = switch (alignment) {
+            case 0 -> "flex-start";
+            case 1 -> "center";
+            case 2 -> "flex-end";
+            default -> "flex-start";
+        };
+        int count = node.u32Property(Properties.ITEM_COUNT, 0);
+        float extent = node.f32Property(Properties.ITEM_EXTENT, 0.0f);
+        int first = node.u32Property(Properties.FIRST_ITEM_INDEX, 0);
+        float spacing = Math.max(0.0f, node.f32Property(Properties.SPACING, 0.0f));
+        float stride = extent + spacing;
+        float leading = first * stride;
+        float trailing = Math.max(0, count - (first + childCount)) * stride;
+        float extraTop = vertical ? leading : 0.0f;
+        float extraBottom = vertical ? trailing : 0.0f;
+        float extraLeft = vertical ? 0.0f : leading;
+        float extraRight = vertical ? 0.0f : trailing;
+        // The virtual extent owns the main-axis padding (app padding on a lazy
+        // stack is overridden for v1; a documented limitation).
+        String padding = "padding-top:" + Format.f32(extraTop)
+                + "px;padding-bottom:" + Format.f32(extraBottom)
+                + "px;padding-left:" + Format.f32(extraLeft)
+                + "px;padding-right:" + Format.f32(extraRight) + "px;";
+        String stackStyle = Format.styleAttr("display:flex;flex-direction:" + direction
+                + ";align-items:" + align + ";" + padding + css);
+        String axis = vertical ? "vertical" : "horizontal";
+        return "<" + tag + " data-pathland-id=\"" + id + "\"" + slotAttrs(node) + event + aria
+                + stackStyle + " data-pathland-lazy=\"" + axis + "\""
+                + " data-pathland-item-count=\"" + count + "\""
+                + " data-pathland-item-extent=\"" + Format.f32(extent) + "px\""
+                + " data-pathland-first-item-index=\"" + first + "\""
+                + " data-pathland-item-spacing=\"" + Format.f32(spacing) + "px\">"
+                + children + "</" + tag + ">";
     }
 
     private static String wrapStack(int id, String direction, String semantic, RenderNode node,

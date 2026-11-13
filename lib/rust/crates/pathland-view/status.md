@@ -160,6 +160,10 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   reacts to `FIT_CHANGED`.
 - No `ACTION_ID`/`BINDING_ID` helpers; `Toggle`/`Picker`/`Menu` lack typed
   value APIs (raw tokens only).
+- **Virtualized lazy stacks (ADR-0014)**: `LazyVStack`/`LazyHStack` still build
+  all children. There is no `ForEach` data source, fixed-extent inference,
+  engine-owned window, or `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX`
+  emission.
 
 ## Verified by
 

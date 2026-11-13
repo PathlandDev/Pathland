@@ -42,11 +42,19 @@ import {
 export function createElement(component: number): Node {
   switch (component) {
     case COMPONENT_VSTACK:
-    case COMPONENT_LAZY_VSTACK:
       return flexBox("column");
+    case COMPONENT_LAZY_VSTACK: {
+      const el = flexBox("column");
+      el.dataset.pathlandLazy = "vertical";
+      return el;
+    }
     case COMPONENT_HSTACK:
-    case COMPONENT_LAZY_HSTACK:
       return flexBox("row");
+    case COMPONENT_LAZY_HSTACK: {
+      const el = flexBox("row");
+      el.dataset.pathlandLazy = "horizontal";
+      return el;
+    }
     case COMPONENT_ZSTACK: {
       // ZStack (SwiftUI ZStack / Compose Box): an overlapping grid — children
       // share one cell (`grid-area:1/1`) and are positioned per ALIGNMENT

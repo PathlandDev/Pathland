@@ -4,7 +4,7 @@
 // SSR HTML carries a `data-event-listeners` mask). Bundle: dist/pathland-dom-renderer.js
 
 import type { DomRenderer } from "./apply";
-import { hydrateFitElement, refreshFitSlots, retryPendingPlay, setupMediaElement, unlockMedia, updateNavBackButtons } from "./apply";
+import { hydrateFitElement, refreshFitSlots, refreshLazyWindows, retryPendingPlay, setupMediaElement, unlockMedia, updateNavBackButtons } from "./apply";
 import { Transport, shouldInitialResync } from "./transport";
 import { log } from "./log";
 import { clearInFlightRange, markRangeInFlight } from "./inFlight";
@@ -138,6 +138,7 @@ function boot(): void {
       // fit report emitted at boot (before the WS handshake) is dropped, so
       // without this a wide first load would never switch to the wide candidate.
       refreshFitSlots(renderer);
+      refreshLazyWindows(renderer);
       // Request a full snapshot only when the SSR could not render this window's
       // persisted state — a reload whose SSR was unscoped (no wid reached the server,
       // e.g. no service worker), or a stale ?wid= the SSR used but this window did not
@@ -161,6 +162,12 @@ function boot(): void {
   // Fit changes from SIZE_THAT_FITS slots (spec/PRIMITIVES.md §SizeThatFits):
   // the slotted candidate index reported only on transitions.
   renderer.onFitEvent = (batch) => {
+    if (transport.open) {
+      transport.send(batch);
+    }
+  };
+  // Visible ranges from windowed lazy stacks (spec/EVENTS.md §Visible range).
+  renderer.onVisibleRangeEvent = (batch) => {
     if (transport.open) {
       transport.send(batch);
     }
@@ -200,6 +207,9 @@ function boot(): void {
   for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-fit]")) {
     hydrateFitElement(el, renderer);
   }
+  // Seed windowed lazy stacks from the SSR first window (the server has no
+  // viewport at first paint; the client reports the real visible range).
+  refreshLazyWindows(renderer);
 
   // URL mirroring (spec DSL.md §4.5): the server emits the app-relative route as ROUTE;
   // we push the app's real URL (mount prefix prepended) so the browser URL follows the
@@ -399,7 +409,18 @@ function boot(): void {
   });
 
   // --- scroll / wheel (scroll containers) ---
+  let lazyRefreshRaf = 0;
+  const scheduleLazyRefresh = () => {
+    if (!transport.open || lazyRefreshRaf) {
+      return;
+    }
+    lazyRefreshRaf = requestAnimationFrame(() => {
+      lazyRefreshRaf = 0;
+      refreshLazyWindows(renderer);
+    });
+  };
   document.addEventListener("scroll", (event) => {
+    scheduleLazyRefresh();
     const scroller = event.target as Element | null;
     const node = nodeOf(scroller);
     if (!transport.open || !listens(node, LISTEN_SCROLL)) {
@@ -410,6 +431,7 @@ function boot(): void {
       encodeScroll(Number(node!.getAttribute("data-pathland-id")), el.scrollLeft, el.scrollTop),
     );
   }, true);
+  window.addEventListener("resize", scheduleLazyRefresh);
   document.addEventListener(
     "wheel",
     (event) => {

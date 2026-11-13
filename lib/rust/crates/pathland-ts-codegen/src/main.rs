@@ -216,6 +216,7 @@ pub fn emit_constants_ts() -> String {
         ("MEDIA_VOLUME_CHANGED", fmt_u8(event::MEDIA_VOLUME_CHANGED)),
         ("MEDIA_DURATION_CHANGED", fmt_u8(event::MEDIA_DURATION_CHANGED)),
         ("FIT_CHANGED", fmt_u8(event::FIT_CHANGED)),
+        ("VISIBLE_RANGE", fmt_u8(event::VISIBLE_RANGE)),
     ]);
     out.push_str("\n// EVENT flags\n");
     write_consts(&mut out, "FLAG_", &[
@@ -237,6 +238,7 @@ pub fn emit_constants_ts() -> String {
         ("SUBMIT", fmt_u32(listener::SUBMIT)),
         ("SCROLL", fmt_u32(listener::SCROLL)),
         ("WHEEL", fmt_u32(listener::WHEEL)),
+        ("VISIBLE_RANGE", fmt_u32(listener::VISIBLE_RANGE)),
     ]);
     out.push_str("\n// Value types (spec/OPCODE.md)\n");
     write_consts(&mut out, "VAL_", &[
@@ -280,6 +282,9 @@ pub fn emit_constants_ts() -> String {
             ("GRID_ROWS", fmt_u16(property_id::GRID_ROWS)),
             ("GRID_TRACKS", fmt_u16(property_id::GRID_TRACKS)),
             ("SCROLL_AXIS", fmt_u16(property_id::SCROLL_AXIS)),
+            ("ITEM_COUNT", fmt_u16(property_id::ITEM_COUNT)),
+            ("ITEM_EXTENT", fmt_u16(property_id::ITEM_EXTENT)),
+            ("FIRST_ITEM_INDEX", fmt_u16(property_id::FIRST_ITEM_INDEX)),
             ("BACKGROUND_COLOR", fmt_u16(property_id::BACKGROUND_COLOR)),
             ("IMAGE_SOURCE", fmt_u16(property_id::IMAGE_SOURCE)),
             ("ICON_NAME", fmt_u16(property_id::ICON_NAME)),

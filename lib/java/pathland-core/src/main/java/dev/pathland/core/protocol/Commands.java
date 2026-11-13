@@ -50,6 +50,7 @@ public final class Commands {
         public static final int MEDIA_VOLUME_CHANGED = 0x12;
         public static final int FIT_CHANGED = 0x13;
         public static final int MEDIA_DURATION_CHANGED = 0x14;
+        public static final int VISIBLE_RANGE = 0x15;
 
         private Event() {
         }
@@ -124,6 +125,7 @@ public final class Commands {
         public static final int SUBMIT = 1 << 7;
         public static final int SCROLL = 1 << 8;
         public static final int WHEEL = 1 << 9;
+        public static final int VISIBLE_RANGE = 1 << 10;
         public static final int POINTER = POINTER_DOWN | POINTER_MOVE | POINTER_UP;
 
         private Listeners() {

@@ -10,10 +10,11 @@
 
 This document is the **catalog of core events** the Pathland protocol supports.
 Events are the **raw inputs** a renderer reports about the user's interaction —
-pointer motion, keys, value changes, text edits, scroll. Only the **core
-events** are specified here; **gestures** (tap, long-press, drag, magnify,
-rotate) are explicitly **out of scope** and are composed application-side from
-the raw pointer events (see [Deferred: gestures](#deferred-gestures)).
+pointer motion, keys, value changes, text edits, scroll, and the visible range of
+a windowed lazy container. Only the **core events** are specified here;
+**gestures** (tap, long-press, drag, magnify, rotate) are explicitly **out of
+scope** and are composed application-side from the raw pointer events (see
+[Deferred: gestures](#deferred-gestures)).
 
 - View catalog: [PRIMITIVES.md](./PRIMITIVES.md)
 - Modifiers (properties): [MODIFIERS.md](./MODIFIERS.md)
@@ -259,6 +260,27 @@ its own native control geometry.
   that declared the `WHEEL` listener bit (bit 9). Renderers map native scroll
   deltas onto x/y deltas.
 
+### Visible range
+
+| Command | Value | A | B | C | Flags | SwiftUI counterpart |
+| --------- | ------- | --- | --- | --- | ------- | --------------------- |
+| `VISIBLE_RANGE` | 0x15 | targetId | firstIndex (u32) | count (u32) | — | a `LazyVStack`/`LazyHStack` window |
+
+- **`VISIBLE_RANGE`**: the absolute index range of a windowed lazy container's
+  items that intersect the nearest scrolling ancestor's viewport (or the root
+  surface when there is none). `B` is the first visible absolute index; `C` is
+  the number of visible items.
+- Reported only for nodes that declared the `VISIBLE_RANGE` listener bit
+  (bit 10) and carry `ITEM_COUNT` (`0x0022`) + `ITEM_EXTENT` (`0x0023`).
+- The renderer reports the **current** range after layout, scroll, resize, or a
+  count change. It coalesces to at most one event per frame and emits only when
+  the derived `(firstIndex, count)` changes. It never streams per-item events.
+- The application owns overscan: it may emit a larger window than the reported
+  range. The renderer reports the visible range, not the app's window.
+- `count = 0` is valid (the container is empty or entirely off-screen).
+- The range math is specified in
+  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-stacks).
+
 ### Navigation
 
 | Command | Value | A | B | C | Flags | SwiftUI counterpart |
@@ -369,7 +391,8 @@ bit requests one raw-input event kind for the node:
 | 7 | `0x00000080` | `SUBMIT` |
 | 8 | `0x00000100` | `SCROLL` |
 | 9 | `0x00000200` | `WHEEL` |
-| 10–31 | — | reserved |
+| 10 | `0x00000400` | `VISIBLE_RANGE` |
+| 11–31 | — | reserved |
 
 Convenience aliases (DSL-side): `POINTER = bits 0|1|2`.
 
@@ -379,6 +402,10 @@ DSL surfaces:
   `on_tap_gesture` sets `POINTER_DOWN | POINTER_UP`.
 - Java: `TapGestureView` / `EVENT_LISTENERS` via the emitter; host forwards raw
   `EVENT` batches into bound `State` signals.
+- `VISIBLE_RANGE`: the DSL sets bit 10 on a `LazyVStack`/`LazyHStack` whose
+  content is a `ForEach`; the engine owns the window and re-renders it. The
+  author does not wire the event or a window signal (spec/DSL.md
+  §Virtualized lists).
 
 ---
 

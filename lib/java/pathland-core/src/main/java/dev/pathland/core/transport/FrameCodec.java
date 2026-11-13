@@ -282,6 +282,9 @@ public final class FrameCodec {
                 case Commands.Event.FIT_CHANGED:
                     events.add(Event.fitChanged(op.a(), Float.intBitsToFloat(op.b())));
                     break;
+                case Commands.Event.VISIBLE_RANGE:
+                    events.add(Event.visibleRange(op.a(), op.b(), op.c()));
+                    break;
                 case Commands.Event.POINTER_DOWN:
                 case Commands.Event.POINTER_MOVE:
                 case Commands.Event.POINTER_UP:

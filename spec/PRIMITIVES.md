@@ -708,31 +708,54 @@ reports wheel/trackpad deltas via `EVENT::WHEEL` (both draft — see
 Virtualized vertical grid. **Allocation is identical to `GRID`** — row-major
 cells, `GRID_COLUMNS` = column count (Fixed pins it, `FILL`/absent = auto-fit),
 equal `1fr` columns, uniform `SPACING` gap, per-cell alignment, hug-to-content
-own size. The only difference is **realization**: a renderer MAY defer realizing
-off-screen cells until scrolled into view and MAY discard realized cells that
-leave the viewport. Realization never changes layout — a cell's position is
-always its row-major index in the full cell list. Typically nested inside a
-`SCROLLVIEW`.
+own size. Typically nested inside a `SCROLLVIEW`. This version defines no grid
+window; a `LAZY_VGRID` without one allocates and realizes like `GRID`.
 
 ### LazyHGrid — `LAZY_HGRID` 0x16
 
 Virtualized horizontal grid; the flipped-axis form of `LAZY_VGRID`. **Allocation
 is identical to `GRID` mirrored**: cells are **column-major** in insertion
 order, `GRID_ROWS` = row count (Fixed pins it, `FILL`/absent = auto-fit), equal
-`1fr` rows, columns auto-flow, uniform `SPACING` gap, per-cell alignment,
-windowed realization.
+`1fr` rows, columns auto-flow, uniform `SPACING` gap, per-cell alignment. Like
+`LAZY_VGRID`, this version has no grid window contract and realizes like
+`GRID`.
 
 ### LazyVStack — `LAZY_VSTACK` 0x1B
 
-Virtualized vertical stack. **Allocation is identical to `VStack`** (the stack
-layout model above — same properties, sizing, spacing, alignment, and fill
-propagation); only **realization** differs: a renderer MAY defer realizing
-children outside the visible region.
+A **virtualized vertical stack**. With no window properties it allocates and
+realizes exactly like `VStack` (same sizing, spacing, alignment, and fill
+propagation). With a data-source window it carries:
+
+| Property | Value | Type | Meaning |
+|----------|-------|------|---------|
+| `ITEM_COUNT` | `0x0022` | U32 | Total items in the virtual list |
+| `ITEM_EXTENT` | `0x0023` | F32 | Uniform main-axis size of one item (logical points) |
+| `FIRST_ITEM_INDEX` | `0x0024` | U32 | Absolute index of the first emitted child (default 0) |
+
+The data source is **app-owned**: the application emits only the visible items
+and declares the total count. The renderer reports the visible index range with
+`EVENT::VISIBLE_RANGE` (listener bit 10), and the application re-emits the
+window. `ITEM_COUNT` and a positive `ITEM_EXTENT` together enable windowing; if
+either is absent (or `ITEM_EXTENT` is not positive), the node is an eager
+`VStack`.
+
+**Layout.** The container occupies the full virtual main-axis extent
+`ITEM_COUNT*ITEM_EXTENT + max(0, ITEM_COUNT-1)*SPACING`. Emitted child `j` is
+absolute item `FIRST_ITEM_INDEX+j` and is placed at
+`(FIRST_ITEM_INDEX+j)*(ITEM_EXTENT+SPACING)`; the child is constrained to
+`ITEM_EXTENT` on the main axis. Cross-axis behavior, alignment, fill
+propagation, and clipping are the `VStack` contract. The full contract is in
+[LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-stacks).
+
+**Events.** A node with listener bit 10 (`VISIBLE_RANGE`) receives
+`EVENT::VISIBLE_RANGE` with the first visible absolute index and the visible
+count. See [EVENTS.md §Visible range](./EVENTS.md#visible-range).
 
 ### LazyHStack — `LAZY_HSTACK` 0x1C
 
-Virtualized horizontal stack. **Allocation is identical to `HStack`**; only
-realization is windowed.
+The horizontal form of `LAZY_VSTACK`: same window properties, virtual extent,
+and `VISIBLE_RANGE` reporting with the main axis horizontal (`ITEM_EXTENT` is a
+width). Without window properties it is an eager `HStack`.
 
 ### SizeThatFits — `SIZE_THAT_FITS` 0x17
 

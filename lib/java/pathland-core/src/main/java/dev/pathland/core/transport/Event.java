@@ -189,6 +189,10 @@ public final class Event {
         return command == Commands.Event.FIT_CHANGED;
     }
 
+    public boolean isVisibleRange() {
+        return command == Commands.Event.VISIBLE_RANGE;
+    }
+
     public boolean mediaPlaying() {
         return b != 0;
     }
@@ -199,6 +203,16 @@ public final class Event {
 
     public int fitIndex() {
         return Math.round(value);
+    }
+
+    /** The first visible absolute index of a {@code VISIBLE_RANGE} event. */
+    public int visibleFirstIndex() {
+        return b;
+    }
+
+    /** The visible item count of a {@code VISIBLE_RANGE} event. */
+    public int visibleCount() {
+        return c;
     }
 
     public String url() {
@@ -311,6 +325,12 @@ public final class Event {
 
     public static Event fitChanged(int target, float index) {
         return new Event(Commands.Event.FIT_CHANGED, target, 0, 0f, 0f, index, null, 0, 0);
+    }
+
+    /** A windowed lazy stack's visible range: first absolute index + count. */
+    public static Event visibleRange(int target, int firstIndex, int count) {
+        return new Event(
+                Commands.Event.VISIBLE_RANGE, target, 0, 0f, 0f, 0f, null, firstIndex, count);
     }
 
     @Override

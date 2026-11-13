@@ -17,6 +17,7 @@ class InputDispatcher(
     private val dateInputs = result.dateInputs
     private val mediaInputs = result.mediaInputs
     private val fitInputs = result.fitInputs
+    private val visibleRanges = result.visibleRanges
     private val navigateHandler = result.navigateHandler
 
     /** Dispatch every event in a decoded batch. */
@@ -42,6 +43,10 @@ class InputDispatcher(
             event.isMediaVolumeChanged -> mediaInputs[event.target()]?.onVolumeChanged(event.mediaValue())
             event.isMediaDurationChanged -> mediaInputs[event.target()]?.onDurationChanged(event.mediaValue())
             event.isFitChanged -> fitInputs[event.target()]?.accept(event.fitIndex())
+            event.isVisibleRange -> visibleRanges[event.target()]?.onVisibleRange(
+                event.visibleFirstIndex(),
+                event.visibleCount(),
+            )
             event.isNavigate -> {
                 if (event.url() != null) {
                     activePath.set(event.url()!!)

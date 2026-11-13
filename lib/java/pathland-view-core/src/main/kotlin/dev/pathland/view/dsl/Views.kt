@@ -244,19 +244,21 @@ fun SecureField(text: WritableSignal<String>, placeholder: String? = null): dev.
 fun Group(content: PathlandScope.() -> Unit): dev.pathland.view.core.View =
     groupView(collectChildren(content)).registerChild()
 
-fun <T> ForEach(items: List<T>, content: PathlandScope.(T, Int) -> Unit): dev.pathland.view.core.View =
-    coreView(Components.VSTACK) { node, env ->
-        items.forEachIndexed { index, item ->
-            node.children.add(rowView { content(item, index) }.render(env))
-        }
-    }.registerChild()
+fun <T> ForEach(
+    items: List<T>,
+    key: ((T) -> Any)? = null,
+    itemExtent: Float? = null,
+    content: PathlandScope.(T, Int) -> Unit,
+): dev.pathland.view.core.View =
+    ForEachView(Signals.constant(items), key, itemExtent, content).registerChild()
 
-fun <T> ForEach(items: Signal<List<T>>, content: PathlandScope.(T, Int) -> Unit): dev.pathland.view.core.View =
-    coreView(Components.VSTACK) { node, env ->
-        items.get().forEachIndexed { index, item ->
-            node.children.add(rowView { content(item, index) }.render(env))
-        }
-    }.registerChild()
+fun <T> ForEach(
+    items: Signal<List<T>>,
+    key: ((T) -> Any)? = null,
+    itemExtent: Float? = null,
+    content: PathlandScope.(T, Int) -> Unit,
+): dev.pathland.view.core.View =
+    ForEachView(items, key, itemExtent, content).registerChild()
 
 /* ------------------------------------------------------------------------- */
 /* Media                                                                      */

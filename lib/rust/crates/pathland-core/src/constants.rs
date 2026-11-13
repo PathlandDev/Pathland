@@ -111,6 +111,10 @@ pub mod event {
     /// (host → guest); `B` = seconds (f32). Reported when the resource loads and
     /// only when the value changes — never a stream.
     pub const MEDIA_DURATION_CHANGED: u8 = 0x14;
+    /// **Draft.** A windowed lazy stack's visible absolute index range
+    /// (host → guest); `B` = first index (u32), `C` = count (u32). Reported only
+    /// for nodes with the `VISIBLE_RANGE` listener bit.
+    pub const VISIBLE_RANGE: u8 = 0x15;
 }
 
 /// Commands within the `META` category.
@@ -241,6 +245,8 @@ pub mod listener {
     pub const SCROLL: u32 = 1 << 8;
     /// **Draft.** `WHEEL` events (bit 9).
     pub const WHEEL: u32 = 1 << 9;
+    /// **Draft.** `VISIBLE_RANGE` events (bit 10).
+    pub const VISIBLE_RANGE: u32 = 1 << 10;
 
     /// All pointer events (down + move + up).
     pub const POINTER: u32 = POINTER_DOWN | POINTER_MOVE | POINTER_UP;
@@ -457,6 +463,16 @@ pub mod property_id {
     /// when absent), `Horizontal`=1. The view is layout-greedy on this axis; the
     /// cross axis hugs its content (fill propagation applies).
     pub const SCROLL_AXIS: u16 = 0x0021;
+    /// **Draft.** A `LAZY_VSTACK`/`LAZY_HSTACK` window's total item count (U32,
+    /// constructor property). With `ITEM_EXTENT` it enables app-owned windowing
+    /// (spec/LAYOUT.md §Virtual extent).
+    pub const ITEM_COUNT: u16 = 0x0022;
+    /// **Draft.** A lazy stack's uniform main-axis item extent in logical points
+    /// (F32, constructor property). Must be positive to enable windowing.
+    pub const ITEM_EXTENT: u16 = 0x0023;
+    /// **Draft.** The absolute index of a lazy stack's first emitted child (U32,
+    /// constructor property; default 0).
+    pub const FIRST_ITEM_INDEX: u16 = 0x0024;
     // Style (0x1000 range)
     pub const BACKGROUND_COLOR: u16 = 0x1001;
     /// **Draft.** Image source (STRING: a resource name, file path, or URL —
@@ -699,6 +715,8 @@ pub fn value_type_for(prop: u16) -> u8 {
         | property_id::BINDING_ID
         | property_id::PLAYBACK_STATE
         | property_id::MEDIA_CONTROLLER_ID
+        | property_id::ITEM_COUNT
+        | property_id::FIRST_ITEM_INDEX
         | property_id::NAV_DEPTH => value_type::U32,
         property_id::FIT_QUERY => value_type::LIST,
         _ => value_type::F32,

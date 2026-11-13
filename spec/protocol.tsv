@@ -74,6 +74,7 @@ command	Event	MEDIA_ENDED	0x11
 command	Event	MEDIA_VOLUME_CHANGED	0x12
 command	Event	FIT_CHANGED	0x13
 command	Event	MEDIA_DURATION_CHANGED	0x14
+command	Event	VISIBLE_RANGE	0x15
 command	Meta	RESET	0x01
 command	Meta	ENVIRONMENT	0x02
 command	Meta	RESYNC	0x03
@@ -109,6 +110,7 @@ listener	Listeners	EDITING	0x00000040
 listener	Listeners	SUBMIT	0x00000080
 listener	Listeners	SCROLL	0x00000100
 listener	Listeners	WHEEL	0x00000200
+listener	Listeners	VISIBLE_RANGE	0x00000400
 listener	Listeners	POINTER	0x00000007
 
 size	Size	FILL	-1
@@ -150,6 +152,9 @@ property		GRID_COLUMNS	0x001E
 property		GRID_ROWS	0x001F
 property		GRID_TRACKS	0x0020
 property		SCROLL_AXIS	0x0021
+property		ITEM_COUNT	0x0022
+property		ITEM_EXTENT	0x0023
+property		FIRST_ITEM_INDEX	0x0024
 property		BACKGROUND_COLOR	0x1001
 property		IMAGE_SOURCE	0x1002
 property		PLAYBACK_STATE	0x1035
@@ -262,6 +267,9 @@ property_value_type		GRID_COLUMNS	F32
 property_value_type		GRID_ROWS	F32
 property_value_type		GRID_TRACKS	STRING
 property_value_type		SCROLL_AXIS	F32
+property_value_type		ITEM_COUNT	U32
+property_value_type		ITEM_EXTENT	F32
+property_value_type		FIRST_ITEM_INDEX	U32
 property_value_type		BACKGROUND_COLOR	COLOR
 property_value_type		IMAGE_SOURCE	STRING
 property_value_type		PLAYBACK_STATE	U32

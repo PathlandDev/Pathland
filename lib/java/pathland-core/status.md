@@ -41,6 +41,13 @@ module depend on this module.
 - **Tests**: `pathland-core` owns the protocol-manifest, frame-codec, and
   Markdown tests.
 
+## Not implemented / gaps
+
+- **Virtualized lazy stacks (ADR-0014)**: the window properties, the
+  `VISIBLE_RANGE` event, and listener bit 10 are in the protocol constants,
+  `ValueTypes.forProperty`, and `FrameCodec`. No conformance vector covers the
+  new event yet.
+
 ## Boundaries
 
 - Everything here is pure JVM Java: no Kotlin, no JNA, no native library.

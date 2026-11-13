@@ -75,6 +75,7 @@ export const CMD_MEDIA_ENDED = 0x11;
 export const CMD_MEDIA_VOLUME_CHANGED = 0x12;
 export const CMD_MEDIA_DURATION_CHANGED = 0x14;
 export const CMD_FIT_CHANGED = 0x13;
+export const CMD_VISIBLE_RANGE = 0x15;
 
 // EVENT flags
 export const FLAG_POINTER_SECONDARY = 0x0001;
@@ -94,6 +95,7 @@ export const LISTEN_EDITING = 0x00000040;
 export const LISTEN_SUBMIT = 0x00000080;
 export const LISTEN_SCROLL = 0x00000100;
 export const LISTEN_WHEEL = 0x00000200;
+export const LISTEN_VISIBLE_RANGE = 0x00000400;
 
 // Value types (spec/OPCODE.md)
 export const VAL_U8 = 0x01;
@@ -133,6 +135,9 @@ export const PROP_GRID_COLUMNS = 0x001e;
 export const PROP_GRID_ROWS = 0x001f;
 export const PROP_GRID_TRACKS = 0x0020;
 export const PROP_SCROLL_AXIS = 0x0021;
+export const PROP_ITEM_COUNT = 0x0022;
+export const PROP_ITEM_EXTENT = 0x0023;
+export const PROP_FIRST_ITEM_INDEX = 0x0024;
 export const PROP_BACKGROUND_COLOR = 0x1001;
 export const PROP_IMAGE_SOURCE = 0x1002;
 export const PROP_ICON_NAME = 0x1038;

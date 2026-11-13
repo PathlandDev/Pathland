@@ -12,6 +12,9 @@ import dev.pathland.view.dsl.Button
 import dev.pathland.view.dsl.DatePicker
 import dev.pathland.view.dsl.Divider
 import dev.pathland.view.dsl.Font
+import dev.pathland.view.dsl.ForEach
+import dev.pathland.view.dsl.LazyVStack
+import dev.pathland.view.dsl.frame
 import dev.pathland.view.dsl.Image
 import dev.pathland.view.dsl.Picker
 import dev.pathland.view.dsl.PickerStyle
@@ -67,6 +70,22 @@ class HtmlRendererTest {
         assertTrue(html.contains("<span data-pathland-id=\"4\">Increment</span>"),
             "the styled label renders as the button's child")
         assertTrue(html.contains("</button>"))
+    }
+
+    @Test
+    fun rendersAWindowedLazyStackWithVirtualExtent() {
+        val items = (0 until 100).map { "item-$it" }
+        val root = LazyVStack(spacing = 8f) {
+            ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+        }
+        val html = renderer().render(frameOf(root), 1)
+        assertTrue(html.contains("data-pathland-lazy=\"vertical\""), html)
+        assertTrue(html.contains("data-pathland-item-count=\"100\""), html)
+        assertTrue(html.contains("data-pathland-item-extent=\"44px\""), html)
+        assertTrue(html.contains("data-pathland-first-item-index=\"0\""), html)
+        assertTrue(html.contains("data-pathland-item-spacing=\"8px\""), html)
+        // Default first window (20) + overscan (2), so trailing = (100-22)*52.
+        assertTrue(html.contains("padding-bottom:4056px"), html)
     }
 
     @Test

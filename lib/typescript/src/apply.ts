@@ -46,6 +46,7 @@ import {
   WINDOW_TITLE,
   COMPONENT_VIDEO,
   COMPONENT_ZSTACK,
+  LISTEN_VISIBLE_RANGE,
   PROP_ALIGNMENT,
   PROP_BINDING_ID,
   PROP_MEDIA_CONTROLLER_ID,
@@ -107,6 +108,7 @@ import { childrenContainer, createElement } from "./elements";
 import { alignHCss, alignVCss, applyEnabled, applyProperty, applyTokenRefProperty, updateRangeFill } from "./classes";
 import { createTokenSink, applyDesignToken, type DesignTokenSink } from "./tokens";import {
   encodeFittedChanged,
+  encodeVisibleRange,
   encodeMediaDurationChanged,
   encodeMediaEnded,
   encodeMediaPlayStateChanged,
@@ -428,6 +430,12 @@ export interface DomRenderer {
    * `SIZE_THAT_FITS` slot can report its derived fit index (`FIT_CHANGED`).
    */
   onFitEvent?: (batch: Uint8Array) => void;
+  /**
+   * Optional visible-range sink: the host wires it to `transport.send` so a
+   * windowed lazy stack can report its visible absolute index range
+   * (`VISIBLE_RANGE`).
+   */
+  onVisibleRangeEvent?: (batch: Uint8Array) => void;
 }
 
 /** Hard cap on live hydrated nodes (a hostile stream cannot grow the DOM unbounded). */
@@ -560,6 +568,7 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   // Derived layout (fill propagation, ZStack sizing/positioning, cross-axis
   // align-self) — mirrors the Rust SSR renderer's whole-tree decisions.
   applyLayout(renderer);
+  refreshLazyWindows(renderer);
 }
 
 function applyMeta(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
@@ -2391,4 +2400,147 @@ function mediaToWrapper(el: HTMLElement, r: DomRenderer): HTMLElement {
     componentByNode.set(wrapper, c);
   }
   return wrapper;
+}
+// --- virtualized lazy stacks (spec/LAYOUT.md §Virtual extent) ---
+
+const lazyRanges = new WeakMap<HTMLElement, { first: number; count: number }>();
+
+function lazyNumber(el: HTMLElement, key: string, fallback = 0): number {
+  const raw = (el.dataset as Record<string, string | undefined>)[key];
+  if (raw == null) {
+    return fallback;
+  }
+  const value = Number.parseFloat(raw);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function listensVisibleRange(el: HTMLElement): boolean {
+  const raw = el.getAttribute("data-event-listeners");
+  const mask = raw == null ? 0 : Number(raw);
+  return Number.isFinite(mask) && (mask & LISTEN_VISIBLE_RANGE) !== 0;
+}
+
+function lazyChildCount(el: HTMLElement): number {
+  let count = 0;
+  for (const child of Array.from(el.children)) {
+    if (child instanceof HTMLElement && child.hasAttribute("data-pathland-id")) {
+      count++;
+    }
+  }
+  return count;
+}
+
+function nearestScroller(el: HTMLElement): HTMLElement | null {
+  let node = el.parentElement;
+  while (node && node !== document.body && node !== document.documentElement) {
+    const style = getComputedStyle(node);
+    if (/(auto|scroll|overlay)/.test(style.overflowY) || /(auto|scroll|overlay)/.test(style.overflowX)) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
+// v1: the virtual extent owns the lazy stack's padding, so the base is 0
+// (app padding on a lazy stack is a documented limitation).
+function lazyBase(_el: HTMLElement, _side: "top" | "right" | "bottom" | "left"): number {
+  return 0;
+}
+
+/** Recompute a windowed lazy stack's virtual padding from its current window. */
+function refreshLazyPadding(el: HTMLElement): void {
+  const axis = el.getAttribute("data-pathland-lazy");
+  if (axis == null) {
+    return;
+  }
+  const count = lazyNumber(el, "pathlandItemCount");
+  const extent = lazyNumber(el, "pathlandItemExtent");
+  const first = lazyNumber(el, "pathlandFirstItemIndex");
+  const spacing = Math.max(0, lazyNumber(el, "pathlandItemSpacing"));
+  if (!(extent > 0)) {
+    return;
+  }
+  const stride = extent + spacing;
+  const childCount = lazyChildCount(el);
+  const leading = first * stride;
+  const trailing = Math.max(0, count - first - childCount) * stride;
+  if (axis === "horizontal") {
+    el.style.paddingLeft = `${lazyBase(el, "left") + leading}px`;
+    el.style.paddingRight = `${lazyBase(el, "right") + trailing}px`;
+    el.style.paddingTop = `${lazyBase(el, "top")}px`;
+    el.style.paddingBottom = `${lazyBase(el, "bottom")}px`;
+  } else {
+    el.style.paddingTop = `${lazyBase(el, "top") + leading}px`;
+    el.style.paddingBottom = `${lazyBase(el, "bottom") + trailing}px`;
+    el.style.paddingLeft = `${lazyBase(el, "left")}px`;
+    el.style.paddingRight = `${lazyBase(el, "right")}px`;
+  }
+}
+
+/** The absolute item range that intersects the nearest scroll viewport. */
+function lazyVisibleRange(el: HTMLElement): { first: number; count: number } | null {
+  const axis = el.getAttribute("data-pathland-lazy");
+  const count = lazyNumber(el, "pathlandItemCount");
+  const extent = lazyNumber(el, "pathlandItemExtent");
+  const spacing = Math.max(0, lazyNumber(el, "pathlandItemSpacing"));
+  if (axis == null || !(count > 0) || !(extent > 0)) {
+    return null;
+  }
+  const stride = extent + spacing;
+  const virtualExtent = count * extent + Math.max(0, count - 1) * spacing;
+  const rect = el.getBoundingClientRect();
+  const scroller = nearestScroller(el);
+  let start: number;
+  let end: number;
+  if (scroller) {
+    const scrollRect = scroller.getBoundingClientRect();
+    if (axis === "horizontal") {
+      const elementLeft = rect.left - scrollRect.left + scroller.scrollLeft;
+      start = scroller.scrollLeft - elementLeft;
+      end = start + scroller.clientWidth;
+    } else {
+      const elementTop = rect.top - scrollRect.top + scroller.scrollTop;
+      start = scroller.scrollTop - elementTop;
+      end = start + scroller.clientHeight;
+    }
+  } else if (axis === "horizontal") {
+    start = -rect.left;
+    end = start + window.innerWidth;
+  } else {
+    start = -rect.top;
+    end = start + window.innerHeight;
+  }
+  const clampedStart = Math.max(0, Math.min(virtualExtent, start));
+  const clampedEnd = Math.max(clampedStart, Math.min(virtualExtent, end));
+  const first = Math.max(0, Math.min(count, Math.floor(clampedStart / stride)));
+  const last = Math.max(first, Math.min(count, Math.ceil(clampedEnd / stride)));
+  return { first, count: Math.max(0, last - first) };
+}
+
+/**
+ * Refresh every windowed lazy stack's virtual padding and report its visible
+ * range when it changed (spec/EVENTS.md §Visible range). Called after each
+ * applied batch, after hydration, and on scroll/resize.
+ */
+export function refreshLazyWindows(r: DomRenderer): void {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-lazy]")) {
+    refreshLazyPadding(el);
+    const range = lazyVisibleRange(el);
+    if (!range) {
+      continue;
+    }
+    const previous = lazyRanges.get(el);
+    if (previous && previous.first === range.first && previous.count === range.count) {
+      continue;
+    }
+    lazyRanges.set(el, range);
+    if (!listensVisibleRange(el)) {
+      continue;
+    }
+    const id = Number(el.getAttribute("data-pathland-id"));
+    if (Number.isInteger(id) && id > 0 && r.onVisibleRangeEvent) {
+      r.onVisibleRangeEvent(encodeVisibleRange(id, range.first, range.count));
+    }
+  }
 }

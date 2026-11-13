@@ -131,6 +131,13 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   over the counts (the count is `N`×`flex` sugar). CSS-grid-native: renderers
   without a native equivalent size tracks naturally. See PRIMITIVES.md §grid
   model.
+- **`ITEM_COUNT` / `ITEM_EXTENT` / `FIRST_ITEM_INDEX`** (`0x0022`–`0x0024`) are
+  **constructor properties** on `LAZY_VSTACK`/`LAZY_HSTACK` (never chainable
+  modifiers): the total item count (U32), the uniform main-axis item extent
+  (F32 points), and the absolute index of the first emitted child (U32). They
+  enable the app-owned window; see
+  [PRIMITIVES.md §LazyVStack](./PRIMITIVES.md#lazyvstack--lazy_vstack-0x1b) and
+  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-stacks).
 - **`PADDING` vs per-edge**: `PADDING` is uniform and shorthand; a per-edge
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.
@@ -416,7 +423,8 @@ are never chainable modifiers.
 | `0x000A`–`0x000D` | Text (TEXT, LINE_LIMIT, TEXT_ALIGNMENT, TRUNCATION_MODE) |
 | `0x000E`–`0x0020` | Layout properties (allocated: OFFSET, POSITION, frame bounds, FIXED_SIZE, LAYOUT_PRIORITY, ASPECT_RATIO/CONTENT_MODE, MINIMUM_SCALE_FACTOR, GRID_COLUMNS, GRID_ROWS, GRID_TRACKS) |
 | `0x0021` | `SCROLL_AXIS` (ENUM; a `SCROLLVIEW`'s scroll axis — see PRIMITIVES.md) |
-| `0x0022`–`0x00FF` | Future layout/format properties (unallocated) |
+| `0x0022`–`0x0024` | Lazy-stack window (allocated: `ITEM_COUNT` U32, `ITEM_EXTENT` F32, `FIRST_ITEM_INDEX` U32 — see PRIMITIVES.md §LazyVStack) |
+| `0x0025`–`0x00FF` | Future layout/format properties (unallocated) |
 | `0x1001`–`0x1016` | Styling (BACKGROUND_COLOR, BORDER_*, FONT_SIZE/WEIGHT/FAMILY, COLOR, WIDTH, HEIGHT, OPACITY, VISIBLE, Z_INDEX, CLIPS_TO_BOUNDS, PADDING_*, BORDER_EDGES) |
 | `0x1002` | `IMAGE_SOURCE` (STRING; view-specific, see PRIMITIVES.md) |
 | `0x1017`–`0x102F` | Text-format properties (allocated: FONT_STYLE/DESIGN/WIDTH, KERNING, TRACKING, BASELINE_OFFSET, LINE_SPACING, TEXT_CASE, UNDERLINE, STRIKETHROUGH), effect properties (SHADOW_*, BLUR, SATURATION, CONTRAST, BRIGHTNESS, GRAYSCALE, HUE_ROTATION, COLOR_MULTIPLY, COLOR_INVERT), ROTATION_DEGREES, SCALE, ALLOWS_HIT_TESTING |

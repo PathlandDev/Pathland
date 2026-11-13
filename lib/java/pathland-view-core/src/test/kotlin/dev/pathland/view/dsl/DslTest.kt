@@ -253,6 +253,40 @@ class DslTest {
     }
 
     @Test
+    fun lazyStackEmitsAWindowedDataSource() {
+        val items = signal((0 until 100).map { "item-$it" })
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+            },
+            Environment.DEFAULT,
+        )
+        val frame = sink.frame()
+        val props = frame.opcodes().filter {
+            it.category() == Categories.PARAMETER && it.command() == Commands.Parameter.SET_PROPERTY
+        }
+        fun property(id: Int): Int? = props.firstOrNull { (it.b() and 0xffff) == id }?.c()
+        assertEquals(100, property(Properties.ITEM_COUNT))
+        assertEquals(44f, Float.fromBits(property(Properties.ITEM_EXTENT)!!))
+        assertEquals(0, property(Properties.FIRST_ITEM_INDEX))
+        // Default first window (20) + overscan (2).
+        assertEquals(22, texts(frame).size)
+
+        result.visibleRanges()[result.rootId()]!!.onVisibleRange(50, 5)
+        val delta = sink.frame()
+        assertEquals(9, delta.opcodes().count {
+            it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE
+        })
+        assertEquals(48, delta.opcodes().first {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_PROPERTY &&
+                (it.b() and 0xffff) == Properties.FIRST_ITEM_INDEX
+        }.c())
+    }
+
+    @Test
     fun twoWayTextFieldWritesBackIntoTheBoundSignal() {
         val name = signal("")
         val (result, _) = mount(TextField("Name", name))

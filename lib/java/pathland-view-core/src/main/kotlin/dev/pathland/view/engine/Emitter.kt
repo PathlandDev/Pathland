@@ -26,6 +26,7 @@ import dev.pathland.view.core.signal.EffectRef
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.Tracked
+import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.core.transport.Event
 import dev.pathland.core.transport.OpcodeSink
 import java.util.ArrayDeque
@@ -50,6 +51,7 @@ class Emitter {
     private val dateInputs = LinkedHashMap<Int, DateInput>()
     private val mediaInputs = LinkedHashMap<Int, MediaInput>()
     private val fitInputs = LinkedHashMap<Int, Consumer<Int>>()
+    private val visibleRanges = LinkedHashMap<Int, VisibleRangeInput>()
     private val navigateActions = LinkedHashMap<Int, Runnable>()
     private val proxyViews = LinkedHashMap<Int, ProxyConfig>()
     private val registeredMediaControllers = LinkedHashSet<MediaController>()
@@ -141,6 +143,16 @@ class Emitter {
         val hint = slot.oldNodeHint ?: return null
         if (hint.component != Components.SIZE_THAT_FITS) return null
         return hint.fitSelection
+    }
+
+    /** The lazy window signal the current slot should inherit across a re-render. */
+    fun currentSlotOldLazyWindow(): WritableSignal<IntRange>? =
+        renderStack.peek()?.oldNodeHint?.lazyWindow
+
+    /** The lazy extent the current slot should inherit across a re-render. */
+    fun currentSlotOldLazyExtent(): Float? {
+        val hint = renderStack.peek()?.oldNodeHint ?: return null
+        return hint.lazyExtent.takeIf { it > 0f }
     }
 
     fun snapshotEmission(on: Boolean) {
@@ -359,6 +371,12 @@ class Emitter {
                 inner.accept(index)
             }
         }
+        node.visibleRangeInput?.let { inner ->
+            visibleRanges[node.id] = VisibleRangeInput { first, count ->
+                snapshotActive = false
+                inner.onVisibleRange(first, count)
+            }
+        }
         node.proxyConfig?.let { proxyViews[node.id] = it }
         node.navigateHandler?.let { navigateHandler = it }
         val to = node.navigateTo
@@ -415,6 +433,7 @@ class Emitter {
         dateInputs.remove(node.id)
         mediaInputs.remove(node.id)
         fitInputs.remove(node.id)
+        visibleRanges.remove(node.id)
         navigateActions.remove(node.id)
         proxyViews.remove(node.id)
     }
@@ -458,6 +477,7 @@ class Emitter {
         dateInputs.clear()
         mediaInputs.clear()
         fitInputs.clear()
+        visibleRanges.clear()
         navigateActions.clear()
         proxyViews.clear()
         navigateHandler = null
@@ -481,6 +501,7 @@ class Emitter {
             Collections.unmodifiableMap(dateInputs),
             Collections.unmodifiableMap(mediaInputs),
             Collections.unmodifiableMap(fitInputs),
+            Collections.unmodifiableMap(visibleRanges),
             Collections.unmodifiableMap(navigateActions),
             navigateHandler,
             Collections.unmodifiableMap(proxyViews),
@@ -964,7 +985,55 @@ class Emitter {
             val millis = fresh.millisOfDay
             ops.add(Runnable { sink.setDate(id, days, millis) })
         }
-        reconcileChildren(fresh, old.children, fresh.children, ops)
+        if (old.lazyWindow != null && fresh.lazyWindow != null) {
+            reconcileLazyChildren(old, fresh, ops)
+        } else {
+            reconcileChildren(fresh, old.children, fresh.children, ops)
+        }
+    }
+
+    /**
+     * Reconcile a windowed lazy stack's children by key (absolute index or an
+     * app-provided item key) rather than by position, so node ids stay stable
+     * while the window slides (spec/LAYOUT.md §Virtual extent).
+     */
+    private fun reconcileLazyChildren(
+        old: PathlandNode,
+        fresh: PathlandNode,
+        ops: MutableList<Runnable>,
+    ) {
+        val oldNodes = old.lazyNodes
+        val freshNodes = fresh.lazyNodes
+        val oldKeys = old.lazyKeys
+
+        for (key in oldKeys) {
+            if (freshNodes.containsKey(key)) continue
+            val leaving = oldNodes[key] ?: continue
+            val parentId = fresh.id
+            val oldId = leaving.id
+            ops.add(Runnable {
+                sink.removeChild(parentId, oldId)
+                sink.deleteNode(oldId)
+            })
+        }
+
+        fresh.lazyKeys.forEachIndexed { index, key ->
+            val child = freshNodes[key] ?: return@forEachIndexed
+            val previous = oldNodes[key]
+            if (previous != null && previous.component == child.component) {
+                child.id = previous.id
+                reconcileNode(previous, child, ops)
+                val oldIndex = oldKeys.indexOf(key)
+                if (oldIndex != index) {
+                    val parentId = fresh.id
+                    val id = child.id
+                    ops.add(Runnable { sink.moveChild(parentId, id, index) })
+                }
+            } else {
+                if (child.id == 0) child.id = freshIdFor(child)
+                emitSubtreeInto(ops, child, fresh.id, index)
+            }
+        }
     }
 
     private fun emitSubtreeInto(ops: MutableList<Runnable>, node: PathlandNode, parentId: Int, index: Int) {

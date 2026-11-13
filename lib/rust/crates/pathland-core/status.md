@@ -175,6 +175,9 @@ tracks what this crate implements.
   stores numeric properties + design-token refs only). `ROUTE` (STRING) will
   need a small string-property capability when the Rust router lands (Phase 3);
   `TRANSITION` (F32) is handled by the generic property diff today.
+- **Virtualized lazy stacks (ADR-0014)**: the window properties, the
+  `VISIBLE_RANGE` event, and listener bit 10 are in `constants` and the typed
+  `Event` codec; no conformance vector covers the event yet.
 
 ## Verified by
 
