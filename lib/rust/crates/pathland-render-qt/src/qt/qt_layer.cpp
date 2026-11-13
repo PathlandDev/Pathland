@@ -40,6 +40,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
@@ -111,6 +112,9 @@ enum {
     PL_PROP_GRID_COLUMNS = 0x001E,
     PL_PROP_GRID_ROWS = 0x001F,
     PL_PROP_SCROLL_AXIS = 0x0021,
+    PL_PROP_ITEM_COUNT = 0x0022,
+    PL_PROP_ITEM_EXTENT = 0x0023,
+    PL_PROP_FIRST_ITEM_INDEX = 0x0024,
     PL_PROP_BACKGROUND = 0x1001,
     PL_PROP_IMAGE_SOURCE = 0x1002,
     PL_PROP_BORDER_WIDTH = 0x1003,
@@ -336,6 +340,14 @@ struct LayerState {
     std::unordered_map<uint32_t, uint8_t> shape_kind;
     // SCROLL_AXIS per SCROLLVIEW (0 = vertical default, 1 = horizontal).
     std::unordered_map<uint32_t, uint8_t> scroll_axis;
+    // Windowed lazy stacks (ADR-0014): window metadata, renderer-owned spacer
+    // items, the attached scroll observer, and the last reported range.
+    std::unordered_map<uint32_t, uint32_t> lazy_count;
+    std::unordered_map<uint32_t, double> lazy_extent;
+    std::unordered_map<uint32_t, uint32_t> lazy_first;
+    std::unordered_map<uint32_t, double> lazy_spacing;
+    std::unordered_map<uint32_t, std::vector<QQuickItem *>> lazy_spacers;
+    std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> lazy_last;
     // EVENT_LISTENERS mask per node (raw pointer stream gating).
     std::unordered_map<uint32_t, uint32_t> listener_masks;
     // MEDIA_CONTROLLER: the last app-declared playback state (0 pause, 1 play),
@@ -963,6 +975,153 @@ QQuickLayoutAttached *layoutAttached(QQuickItem *item) {
     }
     return qobject_cast<QQuickLayoutAttached *>(
         qmlAttachedPropertiesObject<QQuickLayout>(item, /*create=*/true));
+}
+
+// --- windowed lazy stacks (ADR-0014) ---------------------------------------
+
+QQuickItem *scrollAncestor(QQuickItem *item) {
+    for (QQuickItem *p = item ? item->parentItem() : nullptr; p; p = p->parentItem()) {
+        if (p->inherits("QQuickScrollView")) {
+            return p;
+        }
+    }
+    return nullptr;
+}
+
+QQuickItem *scrollContent(QQuickItem *sw) {
+    if (!sw) {
+        return nullptr;
+    }
+    return sw->property("contentItem").value<QQuickItem *>();
+}
+
+void reportLazyRange(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    auto ci = g.lazy_count.find(id);
+    auto ei = g.lazy_extent.find(id);
+    if (!item || ci == g.lazy_count.end() || ei == g.lazy_extent.end()) {
+        return;
+    }
+    const uint32_t count = ci->second;
+    const double extent = ei->second;
+    if (count == 0 || extent <= 0.0) {
+        return;
+    }
+    const double spacing = std::max(0.0, g.lazy_spacing.count(id) ? g.lazy_spacing[id] : 0.0);
+    const double stride = extent + spacing;
+    QQuickItem *sw = scrollAncestor(item);
+    QQuickItem *content = scrollContent(sw);
+    if (!sw || !content) {
+        return;
+    }
+    const bool vertical = g.components[id] == PL_COMP_LAZY_VSTACK;
+    const QPointF origin = item->mapToItem(content, QPointF(0, 0));
+    const double offset = vertical ? origin.y() : origin.x();
+    const double viewStart = vertical ? content->property("contentY").toDouble()
+                                      : content->property("contentX").toDouble();
+    const double viewport = vertical ? sw->height() : sw->width();
+    const double start = viewStart - offset;
+    const double end = start + viewport;
+    const uint32_t first = std::min(
+        count, static_cast<uint32_t>(std::max(0.0, std::floor(start / stride))));
+    const uint32_t last = std::min(
+        count, static_cast<uint32_t>(std::max(0.0, std::ceil(end / stride))));
+    const uint32_t visible = last > first ? last - first : 0;
+    auto &previous = g.lazy_last[id];
+    if (previous.first == first && previous.second == visible) {
+        return;
+    }
+    previous = {first, visible};
+    if (g.bridge) {
+        g.bridge->visibleRange(id, first, visible);
+    }
+}
+
+void refreshLazyStack(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    auto ci = g.lazy_count.find(id);
+    auto ei = g.lazy_extent.find(id);
+    if (!item || ci == g.lazy_count.end() || ei == g.lazy_extent.end()) {
+        return;
+    }
+    const uint32_t count = ci->second;
+    const double extent = ei->second;
+    if (count == 0 || extent <= 0.0) {
+        return;
+    }
+    QQuickItem *lay = layoutOf(item);
+    if (!lay) {
+        return;
+    }
+    const bool vertical = g.components[id] == PL_COMP_LAZY_VSTACK;
+    const double spacing = std::max(0.0, g.lazy_spacing.count(id) ? g.lazy_spacing[id] : 0.0);
+    const uint32_t first = g.lazy_first.count(id) ? g.lazy_first[id] : 0;
+    const size_t childCount = g.children_of.count(id) ? g.children_of[id].size() : 0;
+    const double stride = extent + spacing;
+    const double leading = std::max(0.0, first * stride - spacing);
+    const uint32_t after = count > first + childCount ? count - first - childCount : 0;
+    const double trailing = std::max(0.0, after * stride - spacing);
+
+    auto sit = g.lazy_spacers.find(id);
+    if (sit != g.lazy_spacers.end()) {
+        for (QQuickItem *w : sit->second) {
+            w->setParentItem(nullptr);
+            w->deleteLater();
+        }
+        sit->second.clear();
+    }
+    auto addSpacer = [&](double size, bool leadingSpacer) {
+        if (size <= 0.0) {
+            return;
+        }
+        auto *spacer = new QQuickItem();
+        spacer->setParentItem(lay);
+        if (QQuickLayoutAttached *a = layoutAttached(spacer)) {
+            if (vertical) {
+                a->setPreferredHeight(size);
+                a->setFillWidth(true);
+            } else {
+                a->setPreferredWidth(size);
+                a->setFillHeight(true);
+            }
+        }
+        if (leadingSpacer) {
+            const auto kids = lay->childItems();
+            if (kids.size() > 1) {
+                spacer->stackBefore(kids.first());
+            }
+        }
+        g.lazy_spacers[id].push_back(spacer);
+    };
+    addSpacer(leading, true);
+    addSpacer(trailing, false);
+
+    // The visible range is polled from the shell's idle tick (the scroll
+    // offsets have no stable cross-version signal in the Qt Quick Controls
+    // ScrollView); report once here so the first window is not delayed.
+    reportLazyRange(id);
+}
+
+void refreshLazyRanges() {
+    std::vector<uint32_t> ids;
+    ids.reserve(g.lazy_count.size());
+    for (const auto &kv : g.lazy_count) {
+        ids.push_back(kv.first);
+    }
+    for (uint32_t id : ids) {
+        reportLazyRange(id);
+    }
+}
+
+void refreshLazyStacks() {
+    std::vector<uint32_t> ids;
+    ids.reserve(g.lazy_count.size());
+    for (const auto &kv : g.lazy_count) {
+        ids.push_back(kv.first);
+    }
+    for (uint32_t id : ids) {
+        refreshLazyStack(id);
+    }
 }
 
 // The spec's stack model (spec/LAYOUT.md, spec/PRIMITIVES.md):
@@ -1967,12 +2126,25 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
     }
     switch (prop) {
     case PL_PROP_SPACING: {
+        const double spacing = f32(value);
+        if (g.components[id] == PL_COMP_LAZY_VSTACK || g.components[id] == PL_COMP_LAZY_HSTACK) {
+            g.lazy_spacing[id] = spacing;
+        }
         QQuickItem *lay = layoutOf(item);
         if (lay) {
-            lay->setProperty("spacing", static_cast<double>(f32(value)));
+            lay->setProperty("spacing", spacing);
         }
         break;
     }
+    case PL_PROP_ITEM_COUNT:
+        g.lazy_count[id] = value;
+        break;
+    case PL_PROP_ITEM_EXTENT:
+        g.lazy_extent[id] = f32(value);
+        break;
+    case PL_PROP_FIRST_ITEM_INDEX:
+        g.lazy_first[id] = value;
+        break;
     case PL_PROP_ALIGNMENT:
         // Stored here; `recomputeLayout` positions the children after the
         // frame's props have all landed (Fill(3)/absent = start, never stretch).
@@ -2409,6 +2581,12 @@ void resetNode(uint32_t id) {
     g.height_hint.erase(id);
     g.shape_kind.erase(id);
     g.scroll_axis.erase(id);
+    g.lazy_spacers.erase(id);
+    g.lazy_count.erase(id);
+    g.lazy_extent.erase(id);
+    g.lazy_first.erase(id);
+    g.lazy_spacing.erase(id);
+    g.lazy_last.erase(id);
     g.hit_testing.erase(id);
     g.offset_x.erase(id);
     g.offset_y.erase(id);
@@ -2802,6 +2980,7 @@ int pathland_qt_layer_init(PathlandQtWake wake, PathlandQtTick tick,
     g.tick_timer->setInterval(0);
     g.tick_timer->setSingleShot(false);
     QObject::connect(g.tick_timer, &QTimer::timeout, g.app, [tick, user]() {
+        refreshLazyRanges();
         if (tick) {
             tick(user);
         }
@@ -2994,6 +3173,7 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
     // size props and RESETs have been applied (spec effective-fill + fill
     // propagation). This keeps the layout a pure function of the emitted tree.
     recomputeLayout();
+    refreshLazyStacks();
     g.apply_count += count;
 }
 
@@ -3019,6 +3199,12 @@ void pathland_qt_layer_reset(void) {
     g.height_hint.clear();
     g.shape_kind.clear();
     g.scroll_axis.clear();
+    g.lazy_count.clear();
+    g.lazy_extent.clear();
+    g.lazy_first.clear();
+    g.lazy_spacing.clear();
+    g.lazy_spacers.clear();
+    g.lazy_last.clear();
     g.hit_testing.clear();
     g.offset_x.clear();
     g.offset_y.clear();

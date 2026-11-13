@@ -130,6 +130,9 @@ pub struct QtEvent {
     pub key_code: u16,
     pub modifiers: u8,
     pub repeat: u8,
+    /// VISIBLE_RANGE payload: first absolute index + visible item count.
+    pub first_index: u32,
+    pub count: u32,
 }
 
 pub mod ev {
@@ -153,6 +156,7 @@ pub mod ev {
     pub const FOCUS: u8 = 18;
     pub const EDITING: u8 = 19;
     pub const SUBMIT: u8 = 20;
+    pub const VISIBLE_RANGE: u8 = 21;
 }
 
 extern "C" {
@@ -3008,6 +3012,34 @@ mod tests {
             assert_eq!(unsafe { pathland_qt_layer_root_child_count() }, 1);
             assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 1);
             assert_eq!(unsafe { pathland_qt_layer_widget_child_count(2) }, 1);
+        });
+    }
+
+    /// A windowed lazy stack reserves its virtual extent with leading/trailing
+    /// spacer Items (ADR-0014); the window rows are the only real children.
+    #[test]
+    fn lazy_stack_reserves_virtual_extent_with_spacers() {
+        with_qt(|| {
+            let mut root = Node::from_component(&Component::LazyVStack);
+            root.properties.insert(property_id::ITEM_COUNT, 100);
+            root.properties.insert(property_id::ITEM_EXTENT, 44.0f32.to_bits());
+            root.properties.insert(property_id::FIRST_ITEM_INDEX, 10);
+            root.properties.insert(property_id::SPACING, 8.0f32.to_bits());
+            for _ in 0..3 {
+                root.children.push(Node::from_component(&Component::Text { text: String::new() }));
+            }
+            assign_ids(&mut root, &mut 1);
+
+            let mut h = Harness::new();
+            let mut r = QtRenderer::new();
+            {
+                let (slots, arena) = h.emit(&root);
+                let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+                r.apply_frame(&frame);
+            }
+
+            // 3 window rows + leading/trailing spacer Items.
+            assert_eq!(unsafe { pathland_qt_layer_widget_child_count(1) }, 5);
         });
     }
 

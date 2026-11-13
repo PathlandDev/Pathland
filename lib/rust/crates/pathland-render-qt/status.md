@@ -290,9 +290,10 @@ Design-token contract: `spec/TOKENS.md`.
   intermediate pages (same gaps as the GTK renderer).
 - **Java/Kotlin JNA demo** (`lib/java/pathland-desktop-demo`) runs the shared
   `MusicPlayerView` (app-driven media) via `pathland_qt_run_ring`.
-- **Virtualized lazy stacks (ADR-0014)**: `LAZY_VSTACK`/`LAZY_HSTACK` still
-  render eagerly — no virtual extent, windowed realization, or `VISIBLE_RANGE`
-  reporting. Lazy grids also render eagerly (no grid window contract yet).
+- **Virtualized lazy stacks (ADR-0014)**: `LAZY_VSTACK`/`LAZY_HSTACK` reserve
+  the virtual extent with leading/trailing spacer `Item`s and poll the scroll
+  offsets from the shell's idle tick to report `VISIBLE_RANGE`. Lazy grids still
+  render eagerly (no grid window contract yet).
 
 ## Verified by
 
