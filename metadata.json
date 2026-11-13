@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7B2S9G1PAA9JZHNRHMNEG23",
+  "strategy": "manual-commit",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "lib/java/pathland-core/src/test/java/dev/pathland/core/transport/FrameCodecTest.java",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-43379d504906.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-4719611b17ba.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-43379d504906.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-4719611b17ba.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/rust/crates/pathland-core/src/events.rs",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/status.md",
+    "spec/CONFORMANCE.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 6767,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 7925888,
+    "output_tokens": 3294,
+    "api_call_count": 16
+  }
+}
