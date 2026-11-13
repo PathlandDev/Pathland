@@ -5017,4 +5017,61 @@ mod media_tests {
             Some(44.0)
         );
     }
+
+    #[test]
+    fn lazy_window_slide_reemits_the_window() {
+        use pathland_core::{init_memory, Guest, Host, MemoryLayout};
+
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("item-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((0, 3));
+        let view = LazyVStack::children(vec![Box::new(foreach)]);
+        let mut tree = view.build();
+        assign_ids(&mut tree, &mut 1);
+
+        let mut engine = Engine::new();
+        let layout = MemoryLayout::default();
+        let mut mem = std::vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let _ = host.frames();
+        }
+
+        window.set((10, 3));
+        let mut tree = view.build();
+        assign_ids(&mut tree, &mut 1);
+        let delta: std::vec::Vec<_> = {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let frames = host.frames();
+            frames[0].opcodes().collect()
+        };
+
+        assert!(delta.iter().any(|op| {
+            op.category() == pathland_core::category::PARAMETER
+                && op.command() == pathland_core::parameter::SET_PROPERTY
+                && op.a() == 1
+                && (op.b() & 0xFFFF) == property_id::FIRST_ITEM_INDEX as u32
+        }), "the window start is re-emitted");
+        let text_updates = delta
+            .iter()
+            .filter(|op| {
+                op.category() == pathland_core::category::PARAMETER
+                    && op.command() == pathland_core::parameter::SET_TEXT
+            })
+            .count();
+        assert_eq!(text_updates, 3, "each window row's text is updated");
+    }
 }
