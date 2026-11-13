@@ -329,7 +329,8 @@ compatibility.
   **Residuals**: `LAZY_VSTACK`/`LAZY_HSTACK` windowing (ADR-0014) reserves the
   virtual extent with leading/trailing spacer boxes and reports
   `VISIBLE_RANGE` from the scroll adjustment (assuming the lazy box is the
-  scroll view's direct content); lazy grids still realize eagerly; auto-fit grids
+  scroll view's direct content). Lazy grids use a wrapper `GtkBox` with an inner
+  `GtkGrid` and the same spacer/range machinery; auto-fit grids
   collapse to a single track (spec-permitted; measurement is a follow-up), and
   runtime scroll emission needs a visual check (headless tests cover the
   wiring only). **`GRID_TRACKS` is not implemented** (web-only for now):

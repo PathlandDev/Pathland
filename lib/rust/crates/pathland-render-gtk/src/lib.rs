@@ -90,7 +90,7 @@ impl LazyInfo {
             spacing: node.f32_property(property_id::SPACING, 0.0).max(0.0),
             vertical: matches!(
                 node.component_type,
-                component_type::LAZY_VSTACK
+                component_type::LAZY_VSTACK | component_type::LAZY_VGRID
             ),
             last_first: u32::MAX,
             last_count: u32::MAX,
@@ -101,6 +101,14 @@ impl LazyInfo {
 fn is_lazy(node: &HostNode) -> bool {
     node.u32_property(property_id::ITEM_COUNT, 0) > 0
         && node.f32_property(property_id::ITEM_EXTENT, 0.0) > 0.0
+}
+
+fn is_lazy_grid(node: &HostNode) -> bool {
+    is_lazy(node)
+        && matches!(
+            node.component_type,
+            component_type::LAZY_VGRID | component_type::LAZY_HGRID
+        )
 }
 
 /// Report a windowed lazy stack's visible range when it changes (spec/EVENTS.md
@@ -190,6 +198,8 @@ pub struct GtkRenderer {
     lazy_spacers: HashMap<u32, Vec<gtk::Widget>>,
     /// Windowed lazy stacks: shared visible-range metadata.
     lazy_info: HashMap<u32, Rc<RefCell<LazyInfo>>>,
+    /// Windowed lazy grids: the inner GtkGrid inside the virtual-extent wrapper.
+    lazy_grids: HashMap<u32, gtk::Grid>,
     /// Windowed lazy stacks whose range handler is attached.
     lazy_attached: HashSet<u32>,
 }
@@ -219,6 +229,7 @@ impl GtkRenderer {
             attached_sessions: HashSet::new(),
             lazy_spacers: HashMap::new(),
             lazy_info: HashMap::new(),
+            lazy_grids: HashMap::new(),
             lazy_attached: HashSet::new(),
         }
     }
@@ -303,6 +314,7 @@ impl GtkRenderer {
             self.image_cache.remove(&id);
             self.lazy_spacers.remove(&id);
             self.lazy_info.remove(&id);
+            self.lazy_grids.remove(&id);
             self.lazy_attached.remove(&id);
         }
 
@@ -459,6 +471,15 @@ impl GtkRenderer {
             return w.clone();
         }
         let widget = build_widget(node);
+        if is_lazy_grid(node) {
+            if let Some(grid) = widget
+                .downcast_ref::<GtkBox>()
+                .and_then(|bx| bx.first_child())
+                .and_then(|w| w.downcast::<gtk::Grid>().ok())
+            {
+                self.lazy_grids.insert(id, grid);
+            }
+        }
         // Register a navigation slot's `AdwNavigationView` so page reconcile
         // (`sync_navigation_children`) can push/pop on it.
         if is_nav_slot(node) {
@@ -1098,7 +1119,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
             }
         }
         self.reconcile_box_children(&parent, children);
-        self.sync_lazy_stack(parent_id, &parent, children.len(), node, l.orientation);
+        self.sync_lazy_stack(parent_id, &parent, children.len(), node, l.orientation, 1);
     }
 
     /// Reserve a windowed lazy stack's virtual extent with leading/trailing
@@ -1110,6 +1131,7 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         child_count: usize,
         node: &HostNode,
         orientation: gtk::Orientation,
+        tracks: u32,
     ) {
         if !is_lazy(node) {
             return;
@@ -1119,9 +1141,9 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
         let first = node.u32_property(property_id::FIRST_ITEM_INDEX, 0);
         let spacing = node.f32_property(property_id::SPACING, 0.0).max(0.0);
         let stride = extent + spacing;
+        let units = (child_count as u32 + tracks.max(1) - 1) / tracks.max(1);
         let leading = (first as f32 * stride - spacing).max(0.0);
-        let trailing = ((count.saturating_sub(first.saturating_add(child_count as u32)) as f32)
-            * stride
+        let trailing = ((count.saturating_sub(first.saturating_add(units)) as f32) * stride
             - spacing)
             .max(0.0);
 
@@ -1201,6 +1223,10 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
     /// §GridRow): a `GRID_ROW`'s children are one row's cells; bare cells
     /// auto-flow row-major (column-major for a horizontal `LAZY_HGRID`).
     fn sync_grid_children(&mut self, parent_id: u32, _children: &[u32], node: &HostNode) {
+        if is_lazy_grid(node) {
+            self.sync_lazy_grid_children(parent_id, node);
+            return;
+        }
         let Some(parent) = self.widgets.get(&parent_id).cloned() else {
             return;
         };
@@ -1233,6 +1259,46 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
                 grid.attach(w, *col as i32, *row as i32, 1, 1);
             }
         }
+    }
+
+    /// Reconcile a windowed lazy grid: cells attach to the inner `GtkGrid`;
+    /// the wrapper `GtkBox` reserves the virtual extent with spacers.
+    fn sync_lazy_grid_children(&mut self, parent_id: u32, node: &HostNode) {
+        let Some(wrapper) = self.widgets.get(&parent_id).cloned() else {
+            return;
+        };
+        let Some(grid) = self.lazy_grids.get(&parent_id).cloned() else {
+            return;
+        };
+        let cells = layout::grid_cells(node, &self.tree);
+        let gap = layout::spacing(node);
+        grid.set_row_spacing(gap as u32);
+        grid.set_column_spacing(gap as u32);
+        let grid_align = node.properties.get(&property_id::ALIGNMENT).copied().unwrap_or(0);
+        for (cell, _, _) in &cells {
+            if let (Some(w), Some(cn)) = (self.widgets.get(cell), self.tree.node(*cell)) {
+                w.set_halign(layout::grid_cell_align(cn, layout::Axis::Horizontal, grid_align));
+                w.set_valign(layout::grid_cell_align(cn, layout::Axis::Vertical, grid_align));
+            }
+        }
+        if !grid_matches(&grid, &cells, &self.widgets) {
+            let grid_widget: gtk::Widget = grid.clone().upcast();
+            for w in child_widgets(&grid_widget) {
+                grid.remove(&w);
+            }
+            for (cell, row, col) in &cells {
+                if let Some(w) = self.widgets.get(cell) {
+                    grid.attach(w, *col as i32, *row as i32, 1, 1);
+                }
+            }
+        }
+        let tracks = layout::grid_track(node).unwrap_or(1).max(1);
+        let orientation = if node.component_type == component_type::LAZY_HGRID {
+            gtk::Orientation::Horizontal
+        } else {
+            gtk::Orientation::Vertical
+        };
+        self.sync_lazy_stack(parent_id, &wrapper, cells.len(), node, orientation, tracks);
     }
 
     /// Reconcile a `GtkScrolledWindow`: exactly one child (the first).
@@ -2067,6 +2133,29 @@ fn build_widget(node: &HostNode) -> gtk::Widget {
         WidgetKind::Text => Label::new(Some(node.text.as_deref().unwrap_or(""))).upcast(),
         WidgetKind::Button => Button::with_label(node.text.as_deref().unwrap_or("")).upcast(),
         WidgetKind::Grid => {
+            if is_lazy_grid(node) {
+                let horizontal = node.component_type == component_type::LAZY_HGRID;
+                let wrapper = GtkBox::new(
+                    if horizontal {
+                        gtk::Orientation::Horizontal
+                    } else {
+                        gtk::Orientation::Vertical
+                    },
+                    0,
+                );
+                let grid = gtk::Grid::new();
+                if horizontal {
+                    grid.set_halign(Align::Start);
+                    grid.set_valign(Align::Fill);
+                    grid.set_vexpand(true);
+                } else {
+                    grid.set_halign(Align::Fill);
+                    grid.set_valign(Align::Start);
+                    grid.set_hexpand(true);
+                }
+                wrapper.append(&grid);
+                return wrapper.upcast();
+            }
             let grid = gtk::Grid::new();
             grid.set_halign(Align::Fill);
             grid.set_valign(Align::Fill);
