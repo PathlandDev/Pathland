@@ -213,6 +213,34 @@ fn structural_add_remove() -> Scenario {
     }
 }
 
+fn lazy_window_mount() -> Scenario {
+    let mut engine = Engine::new();
+    let mut root = Node::from_component(&Component::LazyVStack);
+    root.properties
+        .insert(pathland_core::property_id::SPACING, 0.0f32.to_bits());
+    root.properties
+        .insert(pathland_core::property_id::ITEM_COUNT, 100);
+    root.properties
+        .insert(pathland_core::property_id::ITEM_EXTENT, 44.0f32.to_bits());
+    root.properties
+        .insert(pathland_core::property_id::FIRST_ITEM_INDEX, 0);
+    root.properties.insert(
+        pathland_core::property_id::EVENT_LISTENERS,
+        1 << 10,
+    );
+    for i in 0..22 {
+        let mut row = text_node(&format!("item-{i}"));
+        row.properties
+            .insert(pathland_core::property_id::HEIGHT, 44.0f32.to_bits());
+        root.children.push(row);
+    }
+    assign_ids(&mut root, &mut 1);
+    Scenario {
+        name: "lazy_window_mount",
+        steps: vec![("000-mount", emit_frame(&mut engine, &root))],
+    }
+}
+
 fn scenarios() -> Vec<Scenario> {
     vec![
         mount_text_stack(),
@@ -221,6 +249,7 @@ fn scenarios() -> Vec<Scenario> {
         styled_text_mount(),
         attributed_text_mount(),
         structural_add_remove(),
+        lazy_window_mount(),
     ]
 }
 

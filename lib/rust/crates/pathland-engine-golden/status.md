@@ -30,5 +30,5 @@ Java DSL and compares its encoded frames byte-for-byte.
   JVM test; a neutral scenario DSL is future work.
 - Only mount + simple signal deltas are covered. Structural deltas, zero-op
   recompute, tokens/lists, fit, media, navigation, and window metadata are next.
-- No virtualized-lazy-stack trace (window mount, slide, count change) yet
-  (ADR-0014).
+- `lazy_window_mount` covers the window properties and initial window; a slide
+  trace needs the Rust engine's keyed window reconcile (not implemented).

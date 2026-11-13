@@ -70,11 +70,11 @@ internal class LazyStackView(
 
     override fun renderNode(env: Environment): PathlandNode {
         val node = PathlandNode(component)
-        alignment?.let { node.property(Properties.ALIGNMENT, it) }
         when {
             spacingSignal != null -> node.property(Properties.SPACING, spacingSignal)
             spacingValue != null -> node.properties[Properties.SPACING] = spacingValue
         }
+        alignment?.let { node.property(Properties.ALIGNMENT, it) }
 
         val count = data.count()
         val emitter = Emitter.current()
@@ -89,8 +89,30 @@ internal class LazyStackView(
             else -> inferExtent(data, env, vertical)
         }
 
+        var first = 0
+        var end = -1
+        if (count > 0) {
+            val initial = if (windowSignal.get().isEmpty()) {
+                Signals.untracked {
+                    windowSignal.set(initialWindow(count, extent, vertical))
+                    true
+                }
+                windowSignal.get()
+            } else {
+                windowSignal.get()
+            }
+            first = initial.first.coerceIn(0, count - 1)
+            end = initial.last.coerceIn(first, count - 1)
+            if (first != initial.first || end != initial.last) {
+                Signals.untracked { windowSignal.set(first..end); true }
+            }
+        }
+
+        // Property insertion order follows the protocol id order so the
+        // cross-language engine traces match the canonical Rust emitter.
         node.properties[Properties.ITEM_COUNT] = count
         node.properties[Properties.ITEM_EXTENT] = extent
+        node.properties[Properties.FIRST_ITEM_INDEX] = first
         node.properties[Properties.EVENT_LISTENERS] =
             (node.properties[Properties.EVENT_LISTENERS] as? Int ?: 0) or
                 Commands.Listeners.VISIBLE_RANGE
@@ -102,34 +124,17 @@ internal class LazyStackView(
                 windowSignal.set(IntRange.EMPTY)
             } else {
                 val start = (firstVisible - OVERSCAN).coerceAtLeast(0)
-                val end = (firstVisible + visibleCount + OVERSCAN).coerceAtMost(total) - 1
-                windowSignal.set(if (end >= start) start..end else IntRange.EMPTY)
+                val last = (firstVisible + visibleCount + OVERSCAN).coerceAtMost(total) - 1
+                windowSignal.set(if (last >= start) start..last else IntRange.EMPTY)
             }
         }
 
         if (count == 0) {
-            node.properties[Properties.FIRST_ITEM_INDEX] = 0
             node.lazyKeys = emptyList()
             node.lazyNodes = LinkedHashMap()
             return node
         }
 
-        val initial = if (windowSignal.get().isEmpty()) {
-            Signals.untracked {
-                windowSignal.set(initialWindow(count, extent, vertical))
-                true
-            }
-            windowSignal.get()
-        } else {
-            windowSignal.get()
-        }
-        val first = initial.first.coerceIn(0, count - 1)
-        val end = initial.last.coerceIn(first, count - 1)
-        if (first != initial.first || end != initial.last) {
-            Signals.untracked { windowSignal.set(first..end); true }
-        }
-
-        node.properties[Properties.FIRST_ITEM_INDEX] = first
         val keys = ArrayList<Any>(end - first + 1)
         val nodes = LinkedHashMap<Any, PathlandNode>()
         for (index in first..end) {

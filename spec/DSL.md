@@ -351,7 +351,7 @@ flow instead of a wrapper type:
 |----------------------------|----------|----------|-------|
 | `if cond { then } else { else }` in a result builder | plain `if` in `body()`; `View.of(() -> …)` for an inline expression | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
 | `switch value { case a -> v; default -> d }` | plain `switch` in `body()`; `View.of(() -> switch …)` inline | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
-| `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach(items) { item, i -> … }` for a row-scoped component. Inside a `LazyVStack`/`LazyHStack` a `ForEach` is a windowed **data source** (§Virtualized lists) | plain `for` in `build()` today; `ForEach::of(items, \|item, i\| …)` is the parity target (`ForEach` parity: Phase 2) | `TREE` deltas (reconcile) |
+| `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach(items) { item, i -> … }` for a row-scoped component. Inside a `LazyVStack`/`LazyHStack` a `ForEach` is a windowed **data source** (§Virtualized lists) | plain `for` for static lists; `ForEach::new(items, \|item, i\| …)` for a lazy-stack data source (`ForEach` parity: reactive bodies Phase 2) | `TREE` deltas (reconcile) |
 
 **Kotlin realization** — bare control flow in a component body:
 
@@ -1535,7 +1535,7 @@ expression and collection forms; Rust parity is Phase 2.
 | Branch | `if`/`switch` in `@ViewBuilder` | `if`/`switch` in `body()`; `View.of(() -> …)` inline | `if`/`when` expressions | `if`/`match` expressions | ternary / `switch` expressions |
 | Inline subtree | `Group { … }` / `@ViewBuilder` | `View.of(() -> …)` | `View.of { … }` (rarely needed) | `View::of(\|\| …)` | `View.of(() => …)` |
 | Static list | `ForEach(items) { … }` / `for` in a builder | stream/`for` + `.children(…)` | `items.map { … }` + `.children(…)` | iterator + `.children(vec![…])` | `items.map(…)` |
-| Reactive list | `ForEach(items) { … }` | `ForEach.of(items, (item, i) -> …)` | `ForEach(items) { item, i -> … }` | `ForEach::of(items, \|item, i\| …)` | `ForEach(items, (item, i) => …)` |
+| Reactive list | `ForEach(items) { … }` | `ForEach.of(items, (item, i) -> …)` | `ForEach(items) { item, i -> … }` | `ForEach::new(items, \|item, i\| …)` | `ForEach(items, (item, i) => …)` |
 | Children | trailing closure | `.children(a, b)` | `.children(a, b)` / trailing lambda | `.children(vec![a, b])` | `children: [a, b]` |
 | Values | `VStack(spacing: 8)` | `VStack.make(v -> v.spacing(8))` | `VStack(spacing = 8)` | `VStack::new(\|v\| v.spacing(8.0))` | `VStack({ spacing: 8 })` |
 | Modifiers | `.padding(16)` / `.modifiers(…)` | `.modifiers(padding(16))` | `.modifiers(padding(16))` | `.modifiers(padding(16.0))` | `.modifiers(padding(16))` |
@@ -1581,7 +1581,7 @@ VStack(spacing = 8) {
 ```rust
 VStack::new(|v| v.spacing(8.0)).children(vec![
     Text::new("Library").into(),
-    ForEach::of(tracks.clone(), |track, index| {
+    ForEach::new(tracks.clone(), |track, index| {
         TrackRow::new(track, index, track_index.clone()).into()
     }),
 ])
@@ -1609,9 +1609,10 @@ Rules:
   `BiFunction`; Kotlin/Rust authors may name the lambda parameters.
 - **No keys yet.** The emitter reconciles by position + type; a keyed `ForEach`
   is a future protocol/emitter feature, not a syntax difference.
-- **Gaps**: Rust reactive-body/`ForEach` parity is Phase 2; the TypeScript plan
-  currently defers structural reactivity; Swift is not implemented yet. Kotlin is
-  implemented by `lib/java/pathland-view-core` (Kotlin-owned views over the engine;
+- **Gaps**: Rust reactive-body parity is Phase 2 (the Rust `ForEach<T>` lazy
+  data source is implemented); the TypeScript plan currently defers structural
+  reactivity; Swift is not implemented yet. Kotlin is implemented by
+  `lib/java/pathland-view-core` (Kotlin-owned views over the engine;
   `Text("…")`, `VStack(spacing = 8) { … }`, `.padding(16)`), with its surface and
   gaps tracked in that module's `status.md`.
 

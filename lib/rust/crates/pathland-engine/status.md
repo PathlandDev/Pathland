@@ -103,9 +103,9 @@ diff-based reactive emission into `TREE`/`PARAMETER` opcodes. Protocol contract:
 - Only the `Tap` gesture plus value/text/date input sinks; no other gesture.
 - Signal-bound properties cannot carry token refs (a token ref is a static path).
 - `get_signal` returns an owned value (the store is shared via `Rc<RefCell>`).
-- **Virtualized lazy stacks (ADR-0014)**: no `ForEach` data source, window
-  signal, keyed window reconcile, or `ITEM_COUNT`/`ITEM_EXTENT`/
-  `FIRST_ITEM_INDEX` emission yet.
+- **Virtualized lazy stacks (ADR-0014)**: the DSL builds only the window and
+  the engine emits the window properties; the window is host-managed (the
+  build-time engine has no keyed window reconcile yet).
 
 ## Verified by
 

@@ -55,6 +55,19 @@ class EngineTraceTest {
     }
 
     @Test
+    fun lazyWindowMountMatchesTheRustEngine() {
+        val sink = FrameOpcodeSink()
+        val items = (0 until 100).map { "item-$it" }
+        Emitter(sink).mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+            },
+            Environment.DEFAULT,
+        )
+        assertFrame("lazy_window_mount", "000-mount", sink.frame())
+    }
+
+    @Test
     fun styledTextMountMatchesTheRustEngine() {
         val sink = FrameOpcodeSink()
         Emitter(sink).mount(Text("Hello").fontSize(17f), Environment.DEFAULT)

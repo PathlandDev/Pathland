@@ -173,6 +173,7 @@ Fixtures live under `spec/engine-traces/<scenario>/<step>.plpl.hex`.
 | `property_signal_delta` | `000-mount`, `001-set-spacing` | Mount + property-signal delta only |
 | `styled_text_mount` | `000-mount` | Property-before-text emission order |
 | `structural_add_remove` | `000-mount`, `001-add-child`, `002-remove-child` | Create/insert append, remove+delete |
+| `lazy_window_mount` | `000-mount` | Lazy-stack window properties + the emitted window's rows |
 
 ### Generate
 

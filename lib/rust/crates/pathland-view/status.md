@@ -160,10 +160,11 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   reacts to `FIT_CHANGED`.
 - No `ACTION_ID`/`BINDING_ID` helpers; `Toggle`/`Picker`/`Menu` lack typed
   value APIs (raw tokens only).
-- **Virtualized lazy stacks (ADR-0014)**: `LazyVStack`/`LazyHStack` still build
-  all children. There is no `ForEach` data source, fixed-extent inference,
-  engine-owned window, or `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX`
-  emission.
+- **Virtualized lazy stacks (ADR-0014)**: `ForEach<T>` is a lazy data source;
+  `LazyVStack`/`LazyHStack` consume it, infer/declare the item extent, emit
+  `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX`, and build only the shared
+  host-managed window. Gaps: keyed window reconcile in the build-time engine,
+  variable-height rows, and lazy grids.
 
 ## Verified by
 
