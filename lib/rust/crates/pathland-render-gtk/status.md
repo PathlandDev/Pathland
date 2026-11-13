@@ -326,9 +326,11 @@ compatibility.
   axis-aware (scroll-axis greedy, cross-axis hug + fill propagation). **SCROLL** (the v/h Adjustments'
   `value_changed` → `Event::Scroll`) and **WHEEL** (`GtkEventControllerScroll`
   → `Event::Wheel`) are emitted for nodes with the listener bits (8/9).
-  **Residuals**: `LAZY_VSTACK`/`LAZY_HSTACK` windowing (ADR-0014) is not
-  implemented — they realize eagerly and emit no `VISIBLE_RANGE`; lazy grids
-  also realize eagerly (no grid window contract yet); auto-fit grids
+  **Residuals**: `LAZY_VSTACK`/`LAZY_HSTACK` windowing (ADR-0014) reserves the
+  virtual extent with leading/trailing spacer boxes and reports
+  `VISIBLE_RANGE` from the scroll adjustment (assuming the lazy box is the
+  scroll view's direct content); lazy grids still realize eagerly (no grid
+  window contract yet); auto-fit grids
   collapse to a single track (spec-permitted; measurement is a follow-up), and
   runtime scroll emission needs a visual check (headless tests cover the
   wiring only). **`GRID_TRACKS` is not implemented** (web-only for now):

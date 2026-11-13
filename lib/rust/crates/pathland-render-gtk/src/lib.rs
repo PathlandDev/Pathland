@@ -68,6 +68,79 @@ impl Pump for RingTransport {
     }
 }
 
+/// Runtime metadata for a windowed lazy stack (ADR-0014), shared with the
+/// scroll adjustment handlers.
+#[derive(Clone, Copy)]
+struct LazyInfo {
+    count: u32,
+    extent: f32,
+    first: u32,
+    spacing: f32,
+    vertical: bool,
+    last_first: u32,
+    last_count: u32,
+}
+
+impl LazyInfo {
+    fn from_node(node: &HostNode) -> Self {
+        Self {
+            count: node.u32_property(property_id::ITEM_COUNT, 0),
+            extent: node.f32_property(property_id::ITEM_EXTENT, 0.0),
+            first: node.u32_property(property_id::FIRST_ITEM_INDEX, 0),
+            spacing: node.f32_property(property_id::SPACING, 0.0).max(0.0),
+            vertical: matches!(
+                node.component_type,
+                component_type::LAZY_VSTACK
+            ),
+            last_first: u32::MAX,
+            last_count: u32::MAX,
+        }
+    }
+}
+
+fn is_lazy(node: &HostNode) -> bool {
+    node.u32_property(property_id::ITEM_COUNT, 0) > 0
+        && node.f32_property(property_id::ITEM_EXTENT, 0.0) > 0.0
+}
+
+/// Report a windowed lazy stack's visible range when it changes (spec/EVENTS.md
+/// §Visible range). The lazy box is assumed to be the scroll view's direct
+/// content (the common `ScrollView { LazyVStack { … } }` shape).
+fn report_lazy_range(
+    info: &Rc<RefCell<LazyInfo>>,
+    sink: &Rc<RefCell<dyn FnMut(Event)>>,
+    sw: &gtk::ScrolledWindow,
+    target: u32,
+) {
+    let (vertical, count, extent, spacing, previous) = {
+        let info = info.borrow();
+        (info.vertical, info.count, info.extent, info.spacing, (info.last_first, info.last_count))
+    };
+    if count == 0 || extent <= 0.0 {
+        return;
+    }
+    let stride = extent + spacing;
+    let adj = if vertical { sw.vadjustment() } else { sw.hadjustment() };
+    let start = adj.value().max(0.0) as f32;
+    let end = start + adj.page_size() as f32;
+    let first = ((start / stride).floor() as u32).min(count);
+    let last = ((end / stride).ceil() as u32).min(count).max(first);
+    let visible = last - first;
+    if previous == (first, visible) {
+        return;
+    }
+    {
+        let mut info = info.borrow_mut();
+        info.last_first = first;
+        info.last_count = visible;
+    }
+    sink.borrow_mut()(Event::VisibleRange {
+        target,
+        first_index: first,
+        count: visible,
+    });
+}
+
 /// The GTK4 renderer: a retained `id → gtk::Widget` map kept in sync with the
 /// opcode stream, applying deltas incrementally.
 pub struct GtkRenderer {
@@ -113,6 +186,12 @@ pub struct GtkRenderer {
     /// Node ids whose in-flight session controllers (drag gesture / focus) are
     /// already attached (idempotency guard).
     attached_sessions: HashSet<u32>,
+    /// Windowed lazy stacks: synthetic leading/trailing spacer widgets.
+    lazy_spacers: HashMap<u32, Vec<gtk::Widget>>,
+    /// Windowed lazy stacks: shared visible-range metadata.
+    lazy_info: HashMap<u32, Rc<RefCell<LazyInfo>>>,
+    /// Windowed lazy stacks whose range handler is attached.
+    lazy_attached: HashSet<u32>,
 }
 
 impl Default for GtkRenderer {
@@ -138,6 +217,9 @@ impl GtkRenderer {
             image_cache: HashMap::new(),
             drag_state: Rc::new(RefCell::new(HashSet::new())),
             attached_sessions: HashSet::new(),
+            lazy_spacers: HashMap::new(),
+            lazy_info: HashMap::new(),
+            lazy_attached: HashSet::new(),
         }
     }
 
@@ -219,6 +301,9 @@ impl GtkRenderer {
                 player.teardown();
             }
             self.image_cache.remove(&id);
+            self.lazy_spacers.remove(&id);
+            self.lazy_info.remove(&id);
+            self.lazy_attached.remove(&id);
         }
 
         // Media players are keyed by **controller** id, and a controller has no
@@ -1003,7 +1088,113 @@ fn create_media_player(&mut self, id: u32, resolved: String) -> Option<MediaPlay
                 w.set_vexpand(cross == Align::Fill);
             }
         }
+        if is_lazy(node) {
+            if let Some(spacers) = self.lazy_spacers.remove(&parent_id) {
+                if let Some(bx) = parent.downcast_ref::<GtkBox>() {
+                    for w in spacers {
+                        bx.remove(&w);
+                    }
+                }
+            }
+        }
         self.reconcile_box_children(&parent, children);
+        self.sync_lazy_stack(parent_id, &parent, children.len(), node, l.orientation);
+    }
+
+    /// Reserve a windowed lazy stack's virtual extent with leading/trailing
+    /// spacer children and attach its `VISIBLE_RANGE` reporter (ADR-0014).
+    fn sync_lazy_stack(
+        &mut self,
+        parent_id: u32,
+        parent: &gtk::Widget,
+        child_count: usize,
+        node: &HostNode,
+        orientation: gtk::Orientation,
+    ) {
+        if !is_lazy(node) {
+            return;
+        }
+        let count = node.u32_property(property_id::ITEM_COUNT, 0);
+        let extent = node.f32_property(property_id::ITEM_EXTENT, 0.0);
+        let first = node.u32_property(property_id::FIRST_ITEM_INDEX, 0);
+        let spacing = node.f32_property(property_id::SPACING, 0.0).max(0.0);
+        let stride = extent + spacing;
+        let leading = (first as f32 * stride - spacing).max(0.0);
+        let trailing = ((count.saturating_sub(first.saturating_add(child_count as u32)) as f32)
+            * stride
+            - spacing)
+            .max(0.0);
+
+        let Ok(bx) = parent.clone().downcast::<GtkBox>() else {
+            return;
+        };
+        let mut spacers = Vec::new();
+        if leading > 0.0 {
+            let spacer = gtk::Box::new(orientation, 0);
+            if orientation == gtk::Orientation::Vertical {
+                spacer.set_size_request(-1, leading.round() as i32);
+            } else {
+                spacer.set_size_request(leading.round() as i32, -1);
+            }
+            spacer.set_hexpand(false);
+            spacer.set_vexpand(false);
+            bx.prepend(&spacer);
+            spacers.push(spacer.upcast());
+        }
+        if trailing > 0.0 {
+            let spacer = gtk::Box::new(orientation, 0);
+            if orientation == gtk::Orientation::Vertical {
+                spacer.set_size_request(-1, trailing.round() as i32);
+            } else {
+                spacer.set_size_request(trailing.round() as i32, -1);
+            }
+            spacer.set_hexpand(false);
+            spacer.set_vexpand(false);
+            bx.append(&spacer);
+            spacers.push(spacer.upcast());
+        }
+        self.lazy_spacers.insert(parent_id, spacers);
+
+        let info = self
+            .lazy_info
+            .entry(parent_id)
+            .or_insert_with(|| Rc::new(RefCell::new(LazyInfo::from_node(node))))
+            .clone();
+        {
+            let mut info = info.borrow_mut();
+            info.count = count;
+            info.extent = extent;
+            info.first = first;
+            info.spacing = spacing;
+        }
+
+        if self.lazy_attached.contains(&parent_id) {
+            return;
+        }
+        let Some(sink) = self.event_sink.clone() else {
+            return;
+        };
+        let Some(sw_widget) = parent.ancestor(gtk::ScrolledWindow::static_type()) else {
+            return;
+        };
+        let Ok(sw) = sw_widget.downcast::<gtk::ScrolledWindow>() else {
+            return;
+        };
+        let vertical = info.borrow().vertical;
+        let adj = if vertical { sw.vadjustment() } else { sw.hadjustment() };
+        let info_v = info.clone();
+        let sink_v = sink.clone();
+        let sw_v = sw.clone();
+        adj.connect_value_changed(move |_| {
+            report_lazy_range(&info_v, &sink_v, &sw_v, parent_id);
+        });
+        let info_c = info.clone();
+        let sink_c = sink.clone();
+        let sw_c = sw.clone();
+        adj.connect_changed(move |_| {
+            report_lazy_range(&info_c, &sink_c, &sw_c, parent_id);
+        });
+        self.lazy_attached.insert(parent_id);
     }
 
     /// Reconcile a `GtkGrid`'s children at their flattened cell positions (spec

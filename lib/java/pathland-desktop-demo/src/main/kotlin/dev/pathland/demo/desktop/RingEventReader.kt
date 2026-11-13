@@ -63,6 +63,7 @@ class RingEventReader(
             Commands.Event.MEDIA_VOLUME_CHANGED -> Event.mediaVolumeChanged(a, f32(b))
             Commands.Event.MEDIA_DURATION_CHANGED -> Event.mediaDurationChanged(a, f32(b))
             Commands.Event.FIT_CHANGED -> Event.fitChanged(a, f32(b))
+            Commands.Event.VISIBLE_RANGE -> Event.visibleRange(a, b, c)
             Commands.Event.NAVIGATE ->
                 if ((flags and Commands.Flags.NAVIGATE_URL) != 0) {
                     Event.navigate(arenaString(b))
