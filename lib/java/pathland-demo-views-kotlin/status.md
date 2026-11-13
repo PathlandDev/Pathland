@@ -1,6 +1,6 @@
 # pathland-demo-views-kotlin — implementation status
 
-**Last updated:** November 3, 2026
+**Last updated:** November 13, 2026
 
 Kotlin-owned demo views over `pathland-view-core`, with no Java-DSL dependency.
 It owns the app-driven music player and the small sponsored-proxy ad app.
@@ -51,12 +51,18 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 - **`AdView`** — the small sponsored-proxy origin app: a title, a button, and a
   persisted click counter (`ad.clicks`), fully Kotlin-owned and Java-mountable.
 - **Accessibility** — transport labels, slider labels, `MAIN`/`HEADER` roles.
+- **Windowed library** — `LibraryView` is a `ScrollView` over a `LazyVStack` +
+  `ForEach` with a fixed 64 pt row extent; `MediaPlayerService` repeats the eight
+  base tracks into a 1000-entry playlist. `TrackRowView` is a tappable `HStack`
+  (not a button) highlighted by absolute index, so repeated tracks do not
+  all highlight together.
 
 ## Verified by
 
 `mvn test -pl pathland-demo-views-kotlin` — `LyricsTest`, `SeekControlTest`,
-`MediaPlayerServiceTest` (persisted keys, select/next/previous), `MusicPlayerViewTest`
-(tree/render, fit swaps, media state, seek echo guard, snapshot emission, sponsored
-proxy), `MusicPlayerFitMediaTest` (the pinned media controller survives SSR
+`MediaPlayerServiceTest` (persisted keys, select/next/previous, the 1000-entry
+repeated library), `MusicPlayerViewTest` (tree/render, fit swaps, media state,
+seek echo guard, snapshot emission, sponsored proxy, and the bounded lazy
+library window), `MusicPlayerFitMediaTest` (the pinned media controller survives SSR
 snapshot→live and repeated fit crossings; media routing and play stay bound),
 and `AdViewTest` (button click / persisted counter delta).
