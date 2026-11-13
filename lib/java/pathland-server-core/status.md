@@ -172,9 +172,9 @@ dependency — framework glue lives in the starters.
   (the `/{app}` path param); Spring supports any depth.
 - **Virtualized lazy stacks (ADR-0014)**: SSR emits the engine's first window
   (default 20 rows) and the full virtual extent; `VISIBLE_RANGE` input routes
-  through `InputDispatcher`. Gap: the session records the viewport but does not
-  bind it to `Platform.VIEWPORT`, so the initial window uses the default until
-  the client reports its real range.
+  through `InputDispatcher`, and the session binds `Platform.VIEWPORT` (updated
+  by `META::ENVIRONMENT`) for hosts that know the surface size at mount. The
+  live client's `VISIBLE_RANGE` remains authoritative after connect.
 
 ## Proxy views (spec/PROXY.md) — M1 (live)
 
