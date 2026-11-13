@@ -94,7 +94,7 @@ Exact requirements live in `spec/PRIMITIVES.md`, `spec/LAYOUT.md`,
 ## Sources and current contract
 
 - Lazy container allocation: [PRIMITIVES.md §LazyVStack](../../spec/PRIMITIVES.md#lazyvstack--lazy_vstack-0x1b).
-- Virtual extent and placement: [LAYOUT.md §Virtual extent](../../spec/LAYOUT.md#virtual-extent-lazy-stacks).
+- Virtual extent and placement: [LAYOUT.md §Virtual extent](../../spec/LAYOUT.md#virtual-extent-lazy-containers).
 - Event and listener: [EVENTS.md §Visible range](../../spec/EVENTS.md#visible-range), [§Event listeners](../../spec/EVENTS.md#event-listeners-event_listeners).
 - Properties: [MODIFIERS.md §Layout](../../spec/MODIFIERS.md#1-layout).
 - Authoring surface: [DSL.md §Virtualized lists](../../spec/DSL.md#virtualized-lists-lazyvstack--lazyhstack).

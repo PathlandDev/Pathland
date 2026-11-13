@@ -465,8 +465,8 @@ Containers are **content-bearing**: they expose `children(...)`.
 | `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.make(g -> g.columns(int).rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
 | `GridRow` | `GridRow { … }` | `GridRow.make().children(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
 | `ScrollView` | `ScrollView { … }` | `ScrollView.make().children(View...)` | `SCROLLVIEW` 0x14 |
-| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.make(g -> g.columns(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS` |
-| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.make(g -> g.rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
+| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { ForEach(items) { … } }` | `LazyVGrid(columns = 3, spacing = 8f) { ForEach(items) { item, _ -> Cell(item).frame(height = 44f) } }` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS`; row window (`ITEM_COUNT` = rows, `ITEM_EXTENT` = row height, `FIRST_ITEM_INDEX` = first row) |
+| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { ForEach(items) { … } }` | `LazyHGrid(rows = 3, spacing = 8f) { ForEach(items) { item, _ -> Cell(item).frame(width = 44f) } }` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS`; column window (`ITEM_COUNT` = columns, `ITEM_EXTENT` = column width, `FIRST_ITEM_INDEX` = first column) |
 | `LazyVStack` | `LazyVStack(spacing:) { ForEach(items) { … } }` | `LazyVStack(spacing = 0) { ForEach(items) { item, _ -> Row(item).frame(height = 44f) } }` | `LAZY_VSTACK` 0x1B; `ITEM_COUNT` 0x0022, `ITEM_EXTENT` 0x0023, `FIRST_ITEM_INDEX` 0x0024; `ForEach` is the data source (§Virtualized lists) |
 | `LazyHStack` | `LazyHStack(spacing:) { ForEach(items) { … } }` | `LazyHStack(spacing = 0) { ForEach(items) { item, _ -> Cell(item).frame(width = 120f) } }` | `LAZY_HSTACK` 0x1C; same window properties; `ForEach` is the data source |
 | `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.make().children(Fit.of(view, minWidth))...` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit in the live form; a full-snapshot/SSR emission carries every candidate for a no-JS first paint gated by CSS container queries — the DSL is unchanged) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
@@ -544,11 +544,15 @@ Rules:
   row state in the data model (keyed state is a follow-up).
 - A full-snapshot/SSR emission carries the first window plus the full virtual
   extent; the client corrects the window after `META::ENVIRONMENT`.
-- The lazy grids (`LazyVGrid`/`LazyHGrid`) keep the eager grid contract in this
-  version; their window contract follows the same model later.
+- `LazyVGrid`/`LazyHGrid` use the same data-source window with a **row** or
+  **column** unit: `ITEM_COUNT` is the row/column count, `ITEM_EXTENT` the row
+  height/column width, and `FIRST_ITEM_INDEX` the first visible row/column. The
+  emitted children are the cells of the visible units (row-major for VGrid,
+  column-major for HGrid). The grid's `columns`/`rows` (or `GRID_TRACKS`)
+  define the cells per unit.
 
 The window math, child placement, and visible-range derivation are specified in
-[LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-stacks). The
+[LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers). The
 decision and rationale are in
 [ADR-0014](../docs/decisions/0014-virtualized-lazy-stacks.md).
 
@@ -1442,7 +1446,7 @@ are the companion specs.
   `ForEach` data source, with a fixed main-axis row extent and an engine-owned
   window driven by `VISIBLE_RANGE`; the author does not manage a window signal
   ([§4.2](#virtualized-lists-lazyvstack--lazyhstack),
-  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-stacks)).
+  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers)).
 - [ ] **Navigation** — `Router` / `RouteTable` / `NavigationContainer` /
   `NavigationLink` over a plain `Signal<Route>`, the initial route host-seeded
   before mount, emitting `ROUTE` and `TRANSITION` and consuming the `NAVIGATE`

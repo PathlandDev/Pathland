@@ -279,7 +279,7 @@ its own native control geometry.
   range. The renderer reports the visible range, not the app's window.
 - `count = 0` is valid (the container is empty or entirely off-screen).
 - The range math is specified in
-  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-stacks).
+  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers).
 
 ### Navigation
 

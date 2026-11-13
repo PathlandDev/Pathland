@@ -2034,7 +2034,51 @@ if indeterminate {
                     base_columns
                 };
                 let grid_css = grid_style(node, effective_columns);
-                let combined = format!("{grid_css}{css}");
+                let mut combined = format!("{grid_css}{css}");
+                let mut lazy_attrs = String::new();
+                if lazy_windowed(node)
+                    && matches!(
+                        node.component,
+                        component_type::LAZY_VGRID | component_type::LAZY_HGRID
+                    )
+                {
+                    let vertical = node.component == component_type::LAZY_VGRID;
+                    let tracks = if vertical {
+                        effective_columns.unwrap_or(1)
+                    } else {
+                        grid_rows(node).unwrap_or(1)
+                    }
+                    .max(1);
+                    let count = node.u32_property(property_id::ITEM_COUNT, 0);
+                    let extent = node.f32_property(property_id::ITEM_EXTENT, 0.0);
+                    let first = node.u32_property(property_id::FIRST_ITEM_INDEX, 0);
+                    let spacing = node.f32_property(property_id::SPACING, 0.0).max(0.0);
+                    let units = (child_count + tracks - 1) / tracks;
+                    let stride = extent + spacing;
+                    let leading = first as f32 * stride;
+                    let trailing =
+                        count.saturating_sub(first.saturating_add(units)) as f32 * stride;
+                    let base_top = lazy_base_padding(node, property_id::PADDING_TOP);
+                    let base_bottom = lazy_base_padding(node, property_id::PADDING_BOTTOM);
+                    let base_left = lazy_base_padding(node, property_id::PADDING_LEFT);
+                    let base_right = lazy_base_padding(node, property_id::PADDING_RIGHT);
+                    let (extra_top, extra_bottom, extra_left, extra_right) = if vertical {
+                        (leading, trailing, 0.0, 0.0)
+                    } else {
+                        (0.0, 0.0, leading, trailing)
+                    };
+                    combined.push_str(&format!(
+                        "padding-top:{}px;padding-bottom:{}px;padding-left:{}px;padding-right:{}px;",
+                        base_top + extra_top,
+                        base_bottom + extra_bottom,
+                        base_left + extra_left,
+                        base_right + extra_right,
+                    ));
+                    let axis = if vertical { "vertical" } else { "horizontal" };
+                    lazy_attrs = format!(
+                        " data-pathland-lazy=\"{axis}\" data-pathland-lazy-grid=\"1\" data-pathland-lazy-tracks=\"{tracks}\" data-pathland-item-count=\"{count}\" data-pathland-item-extent=\"{extent}px\" data-pathland-first-item-index=\"{first}\" data-pathland-item-spacing=\"{spacing}px\" data-pathland-base-padding-top=\"{base_top}px\" data-pathland-base-padding-right=\"{base_right}px\" data-pathland-base-padding-bottom=\"{base_bottom}px\" data-pathland-base-padding-left=\"{base_left}px\""
+                    );
+                }
                 let grid_style = style_attr(&combined);
                 // Per-cell alignment (spec/PRIMITIVES.md §grid model): each cell
                 // keeps its own size (Fixed/Hug) and is positioned by the grid's
@@ -2120,7 +2164,7 @@ if indeterminate {
                         })
                         .collect()
                 };
-                format!("<{tag}{data_id}{event}{aria}{grid_style}>{inner}</{tag}>")
+                format!("<{tag}{data_id}{event}{aria}{grid_style}{lazy_attrs}>{inner}</{tag}>")
             }
             component_type::SCROLLVIEW => {
                 let tag = semantic.unwrap_or("div");
@@ -3495,6 +3539,42 @@ mod tests {
         assert!(html.contains("padding-top:520px"), "{html}");
         assert!(html.contains("padding-bottom:4524px"), "{html}");
         assert_eq!(html.matches("data-pathland-id=\"2\"").count(), 1);
+    }
+
+    #[test]
+    fn lazy_vgrid_reserves_a_row_window() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VGRID as u32, 0));
+        for (prop, vt, bits) in [
+            (property_id::ITEM_COUNT, value_type::U32, 34u32),
+            (property_id::ITEM_EXTENT, value_type::F32, 44.0f32.to_bits()),
+            (property_id::FIRST_ITEM_INDEX, value_type::U32, 10u32),
+            (property_id::SPACING, value_type::F32, 8.0f32.to_bits()),
+            (property_id::GRID_COLUMNS, value_type::F32, 3.0f32.to_bits()),
+        ] {
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((vt as u32) << 16) | prop as u32,
+                bits,
+            ));
+        }
+        for child in 2u32..8 {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::TEXT as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, u32::MAX));
+        }
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("data-pathland-lazy-grid=\"1\""), "{html}");
+        assert!(html.contains("data-pathland-lazy-tracks=\"3\""), "{html}");
+        assert!(html.contains("data-pathland-item-count=\"34\""), "{html}");
+        assert!(html.contains("data-pathland-first-item-index=\"10\""), "{html}");
+        assert!(html.contains("grid-template-columns:repeat(3,minmax(0,1fr))"), "{html}");
+        // 10*(44+8) = 520px leading; (34-10-2)*52 = 1144px trailing.
+        assert!(html.contains("padding-top:520px"), "{html}");
+        assert!(html.contains("padding-bottom:1144px"), "{html}");
     }
 
     #[test]

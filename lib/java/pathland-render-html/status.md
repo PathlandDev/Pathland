@@ -61,7 +61,7 @@ library). Protocol contract: `spec/`.
 - **Virtualized lazy stacks (ADR-0014)**: the Java port renders the virtual
   extent and window placement and emits the `data-pathland-lazy*` attributes,
   matching the Rust renderer. App `PADDING` is added as an inset around the
-  virtual extent.
+  virtual extent. Lazy grids use the same row/column window.
 
 ## Verified by
 

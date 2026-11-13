@@ -705,20 +705,29 @@ reports wheel/trackpad deltas via `EVENT::WHEEL` (both draft — see
 
 ### LazyVGrid — `LAZY_VGRID` 0x15
 
-Virtualized vertical grid. **Allocation is identical to `GRID`** — row-major
-cells, `GRID_COLUMNS` = column count (Fixed pins it, `FILL`/absent = auto-fit),
-equal `1fr` columns, uniform `SPACING` gap, per-cell alignment, hug-to-content
-own size. Typically nested inside a `SCROLLVIEW`. This version defines no grid
-window; a `LAZY_VGRID` without one allocates and realizes like `GRID`.
+A **virtualized vertical grid**. With no window properties it allocates and
+realizes exactly like `GRID` (row-major cells, `GRID_COLUMNS`/`GRID_TRACKS`
+tracks, uniform `SPACING` gap, per-cell alignment, hug-to-content own size).
+With a window it is a **row window**: `ITEM_COUNT` is the total row count,
+`ITEM_EXTENT` the row height, and `FIRST_ITEM_INDEX` the first visible row. The
+application emits the cells of the visible rows in row-major order; the grid
+occupies the full virtual main-axis extent
+`ITEM_COUNT*ITEM_EXTENT + max(0, ITEM_COUNT-1)*SPACING`, and the renderer reports
+`VISIBLE_RANGE` in rows. The window contract is the same as
+[`LAZY_VSTACK`](#lazyvstack--lazy_vstack-0x1b), with a grid unit of one row.
+Typically nested inside a `SCROLLVIEW`.
 
 ### LazyHGrid — `LAZY_HGRID` 0x16
 
-Virtualized horizontal grid; the flipped-axis form of `LAZY_VGRID`. **Allocation
-is identical to `GRID` mirrored**: cells are **column-major** in insertion
-order, `GRID_ROWS` = row count (Fixed pins it, `FILL`/absent = auto-fit), equal
-`1fr` rows, columns auto-flow, uniform `SPACING` gap, per-cell alignment. Like
-`LAZY_VGRID`, this version has no grid window contract and realizes like
-`GRID`.
+A **virtualized horizontal grid**; the flipped-axis form of `LAZY_VGRID`.
+With no window properties it allocates and realizes like `GRID` mirrored
+(column-major cells, `GRID_ROWS`/`GRID_TRACKS`, uniform `SPACING` gap, per-cell
+alignment). With a window it is a **column window**: `ITEM_COUNT` is the total
+column count, `ITEM_EXTENT` the column width, and `FIRST_ITEM_INDEX` the first
+visible column. The application emits the cells of the visible columns in
+column-major order; the grid occupies the full virtual horizontal extent
+`ITEM_COUNT*ITEM_EXTENT + max(0, ITEM_COUNT-1)*SPACING`, and the renderer
+reports `VISIBLE_RANGE` in columns.
 
 ### LazyVStack — `LAZY_VSTACK` 0x1B
 
@@ -745,7 +754,7 @@ absolute item `FIRST_ITEM_INDEX+j` and is placed at
 `(FIRST_ITEM_INDEX+j)*(ITEM_EXTENT+SPACING)`; the child is constrained to
 `ITEM_EXTENT` on the main axis. Cross-axis behavior, alignment, fill
 propagation, and clipping are the `VStack` contract. The full contract is in
-[LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-stacks).
+[LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers).
 
 **Events.** A node with listener bit 10 (`VISIBLE_RANGE`) receives
 `EVENT::VISIBLE_RANGE` with the first visible absolute index and the visible

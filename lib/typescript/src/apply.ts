@@ -2423,7 +2423,7 @@ function listensVisibleRange(el: HTMLElement): boolean {
 function lazyChildCount(el: HTMLElement): number {
   let count = 0;
   for (const child of Array.from(el.children)) {
-    if (child instanceof HTMLElement && child.hasAttribute("data-pathland-id")) {
+    if (child instanceof HTMLElement) {
       count++;
     }
   }
@@ -2485,24 +2485,45 @@ function refreshLazyPadding(el: HTMLElement): void {
     return;
   }
   const stride = extent + spacing;
+  const tracks = Math.max(1, lazyNumber(el, "pathlandLazyTracks", 1));
   const childCount = lazyChildCount(el);
+  const units = Math.ceil(childCount / tracks);
   const leading = first * stride;
-  const trailing = Math.max(0, count - first - childCount) * stride;
-  // Accessibility: expose the full list size/position even though only the
-  // window is in the DOM.
-  if (!el.hasAttribute("role")) {
-    el.setAttribute("role", "list");
-  }
-  const rows = Array.from(el.children).filter(
-    (c): c is HTMLElement => c instanceof HTMLElement && c.hasAttribute("data-pathland-id"),
+  const trailing = Math.max(0, count - first - units) * stride;
+  const cells = Array.from(el.children).filter(
+    (c): c is HTMLElement => c instanceof HTMLElement,
   );
-  rows.forEach((row, i) => {
-    if (!row.hasAttribute("role")) {
-      row.setAttribute("role", "listitem");
+  if (el.hasAttribute("data-pathland-lazy-grid")) {
+    // Grid window: expose the full row/column count and each cell's position.
+    if (!el.hasAttribute("role")) {
+      el.setAttribute("role", "grid");
     }
-    row.setAttribute("aria-setsize", String(count));
-    row.setAttribute("aria-posinset", String(first + i + 1));
-  });
+    const vertical = axis !== "horizontal";
+    el.setAttribute("aria-rowcount", String(vertical ? count : tracks));
+    el.setAttribute("aria-colcount", String(vertical ? tracks : count));
+    cells.forEach((cell, i) => {
+      if (!cell.hasAttribute("role")) {
+        cell.setAttribute("role", "gridcell");
+      }
+      const unit = first + Math.floor(i / tracks);
+      const offset = i % tracks;
+      cell.setAttribute("aria-rowindex", String(vertical ? unit + 1 : offset + 1));
+      cell.setAttribute("aria-colindex", String(vertical ? offset + 1 : unit + 1));
+    });
+  } else {
+    // List window: expose the full list size/position even though only the
+    // window is in the DOM.
+    if (!el.hasAttribute("role")) {
+      el.setAttribute("role", "list");
+    }
+    cells.forEach((row, i) => {
+      if (!row.hasAttribute("role")) {
+        row.setAttribute("role", "listitem");
+      }
+      row.setAttribute("aria-setsize", String(count));
+      row.setAttribute("aria-posinset", String(first + i + 1));
+    });
+  }
   if (axis === "horizontal") {
     el.style.paddingLeft = `${lazyBase(el, "left", leading) + leading}px`;
     el.style.paddingRight = `${lazyBase(el, "right", trailing) + trailing}px`;

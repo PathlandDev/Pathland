@@ -13,6 +13,7 @@ import dev.pathland.view.dsl.DatePicker
 import dev.pathland.view.dsl.Divider
 import dev.pathland.view.dsl.Font
 import dev.pathland.view.dsl.ForEach
+import dev.pathland.view.dsl.LazyVGrid
 import dev.pathland.view.dsl.LazyVStack
 import dev.pathland.view.dsl.frame
 import dev.pathland.view.dsl.Image
@@ -86,6 +87,22 @@ class HtmlRendererTest {
         assertTrue(html.contains("data-pathland-item-spacing=\"8px\""), html)
         // Default first window (20) + overscan (2), so trailing = (100-22)*52.
         assertTrue(html.contains("padding-bottom:4056px"), html)
+    }
+
+    @Test
+    fun rendersAWindowedLazyGridWithVirtualExtent() {
+        val items = (0 until 100).map { "cell-$it" }
+        val root = LazyVGrid(columns = 3, spacing = 8f) {
+            ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+        }
+        val html = renderer().render(frameOf(root), 1)
+        assertTrue(html.contains("data-pathland-lazy-grid=\"1\""), html)
+        assertTrue(html.contains("data-pathland-lazy-tracks=\"3\""), html)
+        assertTrue(html.contains("data-pathland-item-count=\"34\""), html)
+        assertTrue(html.contains("data-pathland-item-extent=\"44px\""), html)
+        assertTrue(html.contains("data-pathland-first-item-index=\"0\""), html)
+        // Default first window (20) + overscan (2) rows, so trailing = (34-22)*52.
+        assertTrue(html.contains("padding-bottom:624px"), html)
     }
 
     @Test

@@ -189,34 +189,40 @@ The complete allocation requirements remain above.
 
 ---
 
-## Virtual extent (lazy stacks)
+## Virtual extent (lazy containers)
 
-A `LAZY_VSTACK`/`LAZY_HSTACK` that carries `ITEM_COUNT` (`0x0022`) and
-`ITEM_EXTENT` (`0x0023`) is a **windowed data container**. It lays out only the
-items the application emitted, but occupies the full list extent so a scroll
-viewport reports the correct scrollbar and offsets.
+A `LAZY_VSTACK`/`LAZY_HSTACK`/`LAZY_VGRID`/`LAZY_HGRID` that carries
+`ITEM_COUNT` (`0x0022`) and `ITEM_EXTENT` (`0x0023`) is a **windowed data
+container**. It lays out only the units the application emitted, but occupies
+the full list extent so a scroll viewport reports the correct scrollbar and
+offsets.
 
-Let `N = ITEM_COUNT`, `E = ITEM_EXTENT`, `S = max(0, SPACING)` (absent
-`SPACING` is `0`), and `F = FIRST_ITEM_INDEX` (default `0`). Windowing requires
-`E > 0`; an absent or non-positive `ITEM_EXTENT` means the lazy stack is an
-ordinary eager stack.
+The **window unit** is one item for a stack, one **row** for a `LAZY_VGRID`,
+and one **column** for a `LAZY_HGRID`. Let `N = ITEM_COUNT` (unit count),
+`E = ITEM_EXTENT` (the unit's main-axis size: item extent, row height, or
+column width), `S = max(0, SPACING)` (absent `SPACING` is `0`), and
+`F = FIRST_ITEM_INDEX` (default `0`). Windowing requires `E > 0`; an absent or
+non-positive `ITEM_EXTENT` means the lazy container is an ordinary eager
+container.
 
 - **Virtual extent** — the container's main-axis size is
   `N*E + max(0, N-1)*S`. `N = 0` gives `0`.
 - **Item offset** — absolute item `i` starts at `i*(E+S)`.
-- **Window placement** — emitted child `j` is absolute item `F+j` and starts at
-  `(F+j)*(E+S)`. Children are emitted in ascending absolute-index order.
+- **Window placement** — emitted unit `j` is absolute unit `F+j` and starts at
+  `(F+j)*(E+S)`. Children are emitted in ascending absolute-unit order. A grid
+  unit emits all of its cells (row-major for `LAZY_VGRID`, column-major for
+  `LAZY_HGRID`); a stack unit emits one item.
 - **Child size** — the container constrains each child to exactly `E` on the
   main axis (a Fixed box; overflow is visible unless `CLIPS_TO_BOUNDS`). The
   cross axis is the ordinary stack contract: the child keeps its size and is
   positioned by `ALIGNMENT`; a `Fill`-sized child stretches on the cross axis.
-- **Missing children** — the window need not cover every item. Items with no
-  emitted child are empty virtual space; the renderer never invents rows.
-  Emitted children beyond `N` are ignored.
+- **Missing children** — the window need not cover every unit. Units with no
+  emitted children are empty virtual space; the renderer never invents rows.
+  Emitted children beyond `N` units are ignored.
 - **Fill propagation** — the virtual extent is the container's main-axis size;
   it does not propagate `Fill` from a window child on the main axis. Cross-axis
   fill propagation is unchanged.
-- **Visible range** — the renderer computes which absolute items intersect the
+- **Visible range** — the renderer computes which absolute units intersect the
   nearest scrolling ancestor's viewport (or the root surface when there is
   none). In the lazy container's main-axis content coordinates, with the
   viewport spanning `[viewportStart, viewportEnd)`:

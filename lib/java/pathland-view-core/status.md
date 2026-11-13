@@ -123,8 +123,9 @@ build) carries no JNA.
 - **Virtualized lazy stacks (ADR-0014)**: `LazyVStack`/`LazyHStack` containing
   a `ForEach` are windowed — extent inference, engine-owned window, keyed
   window reconcile, the window properties, and `VISIBLE_RANGE` routing are
-  implemented. Gaps: variable-height rows, lazy grids, keyed row-local state
-  across eviction, and focused-row pinning.
+  implemented; lazy grids use a row/column window over the same data source.
+  Gaps: variable-height rows, keyed row-local state across eviction, and
+  focused-row pinning.
 
 ## Package boundary
 

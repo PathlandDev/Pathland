@@ -175,6 +175,142 @@ internal class LazyStackView(
     }
 }
 
+/**
+ * A windowed `LAZY_VGRID`/`LAZY_HGRID`. The window unit is a **row** (VGrid) or
+ * **column** (HGrid); `ITEM_COUNT` is the unit count, `ITEM_EXTENT` the row
+ * height / column width, and `FIRST_ITEM_INDEX` the first visible unit. The
+ * emitted children are the cells of those units (row-major for VGrid,
+ * column-major for HGrid).
+ */
+internal class LazyGridWindowView(
+    private val component: Int,
+    private val vertical: Boolean,
+    private val data: ForEachView<*>,
+    private val tracks: Int,
+    private val alignment: Signal<*>?,
+    private val spacingSignal: Signal<Float>?,
+    private val spacingValue: Float?,
+    private val gridTracks: String?,
+) : View {
+
+    private var window: WritableSignal<IntRange>? = null
+
+    override fun renderNode(env: Environment): PathlandNode {
+        val node = PathlandNode(component)
+        when {
+            spacingSignal != null -> node.property(Properties.SPACING, spacingSignal)
+            spacingValue != null -> node.properties[Properties.SPACING] = spacingValue
+        }
+        alignment?.let { node.property(Properties.ALIGNMENT, it) }
+        if (vertical) {
+            node.properties[Properties.GRID_COLUMNS] = tracks.toFloat()
+        } else {
+            node.properties[Properties.GRID_ROWS] = tracks.toFloat()
+        }
+        gridTracks?.let { node.properties[Properties.GRID_TRACKS] = it }
+
+        val itemCount = data.count()
+        val unitCount = if (itemCount == 0) 0 else (itemCount + tracks - 1) / tracks
+        val emitter = Emitter.current()
+        val inheritedWindow = emitter?.currentSlotOldLazyWindow()
+        val windowSignal = window ?: inheritedWindow ?: Signals.signal(IntRange.EMPTY)
+        window = windowSignal
+
+        val extent = when {
+            unitCount == 0 -> data.itemExtent ?: emitter?.currentSlotOldLazyExtent() ?: 0f
+            data.itemExtent != null -> data.itemExtent
+            emitter?.currentSlotOldLazyExtent() != null -> emitter.currentSlotOldLazyExtent()!!
+            else -> inferExtent(data, env, vertical)
+        }
+
+        var first = 0
+        var end = -1
+        if (unitCount > 0) {
+            val initial = if (windowSignal.get().isEmpty()) {
+                Signals.untracked {
+                    windowSignal.set(initialWindow(unitCount, extent, vertical))
+                    true
+                }
+                windowSignal.get()
+            } else {
+                windowSignal.get()
+            }
+            first = initial.first.coerceIn(0, unitCount - 1)
+            end = initial.last.coerceIn(first, unitCount - 1)
+            if (first != initial.first || end != initial.last) {
+                Signals.untracked { windowSignal.set(first..end); true }
+            }
+        }
+
+        node.properties[Properties.ITEM_COUNT] = unitCount
+        node.properties[Properties.ITEM_EXTENT] = extent
+        node.properties[Properties.FIRST_ITEM_INDEX] = first
+        node.properties[Properties.EVENT_LISTENERS] =
+            (node.properties[Properties.EVENT_LISTENERS] as? Int ?: 0) or
+                Commands.Listeners.VISIBLE_RANGE
+        node.lazyWindow = windowSignal
+        node.lazyExtent = extent
+        node.visibleRangeInput = VisibleRangeInput { firstVisible, visibleCount ->
+            if (unitCount == 0) {
+                windowSignal.set(IntRange.EMPTY)
+            } else {
+                val start = (firstVisible - OVERSCAN).coerceAtLeast(0)
+                val last = (firstVisible + visibleCount + OVERSCAN).coerceAtMost(unitCount) - 1
+                windowSignal.set(if (last >= start) start..last else IntRange.EMPTY)
+            }
+        }
+
+        if (unitCount == 0) {
+            node.lazyKeys = emptyList()
+            node.lazyNodes = LinkedHashMap()
+            return node
+        }
+
+        val keys = ArrayList<Any>()
+        val nodes = LinkedHashMap<Any, PathlandNode>()
+        for (unit in first..end) {
+            val start = unit * tracks
+            for (offset in 0 until tracks) {
+                val index = start + offset
+                if (index >= itemCount) break
+                val key = data.key(index)
+                keys.add(key)
+                val child = data.row(index).render(env)
+                node.children.add(child)
+                nodes[key] = child
+            }
+        }
+        node.lazyKeys = keys
+        node.lazyNodes = nodes
+        return node
+    }
+
+    private fun inferExtent(data: ForEachView<*>, env: Environment, vertical: Boolean): Float {
+        val probe = Signals.untracked { data.row(0).renderNode(env) }
+        val property = if (vertical) Properties.HEIGHT else Properties.WIDTH
+        val value = probe.properties[property]
+        if (value is Float && value.isFinite() && value > 0f) return value
+        val axis = if (vertical) "height" else "width"
+        throw IllegalStateException(
+            "A virtualized Lazy${if (vertical) "V" else "H"}Grid requires each ForEach cell " +
+                "to declare a fixed $axis frame (e.g. .frame($axis = 44f)) " +
+                "or ForEach(itemExtent = …) (spec/DSL.md §Virtualized lists)",
+        )
+    }
+
+    private fun initialWindow(count: Int, extent: Float, vertical: Boolean): IntRange {
+        val viewport: Viewport? = Environment.value(Platform.VIEWPORT).get()
+        val size = if (vertical) viewport?.height ?: 0f else viewport?.width ?: 0f
+        val visible = if (size > 0f && extent > 0f) {
+            ceil(size / extent).toInt()
+        } else {
+            DEFAULT_WINDOW
+        }
+        val units = (visible + OVERSCAN).coerceIn(1, count)
+        return 0 until units
+    }
+}
+
 internal fun lazyVStack(
     alignment: Signal<*>?,
     spacingSignal: Signal<Float>?,

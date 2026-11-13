@@ -287,6 +287,43 @@ class DslTest {
     }
 
     @Test
+    fun lazyVGridEmitsARowWindow() {
+        val items = signal((0 until 100).map { "cell-$it" })
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            LazyVGrid(columns = 3, spacing = 0f) {
+                ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+            },
+            Environment.DEFAULT,
+        )
+        val frame = sink.frame()
+        val props = frame.opcodes().filter {
+            it.category() == Categories.PARAMETER && it.command() == Commands.Parameter.SET_PROPERTY
+        }
+        fun property(id: Int): Int? = props.firstOrNull { (it.b() and 0xffff) == id }?.c()
+        // ceil(100 cells / 3 columns) = 34 rows.
+        assertEquals(34, property(Properties.ITEM_COUNT))
+        assertEquals(44f, Float.fromBits(property(Properties.ITEM_EXTENT)!!))
+        assertEquals(0, property(Properties.FIRST_ITEM_INDEX))
+        // Default first window (20) + overscan (2) rows = 66 cells.
+        assertEquals(66, texts(frame).size)
+
+        result.visibleRanges()[result.rootId()]!!.onVisibleRange(10, 2)
+        val delta = sink.frame()
+        // Window 8..13 (overscan on both sides) = 6 rows = 18 cells; keys
+        // 24..41 are retained, the other 48 cells are deleted.
+        assertEquals(48, delta.opcodes().count {
+            it.category() == Categories.TREE && it.command() == Commands.Tree.DELETE_NODE
+        })
+        assertEquals(8, delta.opcodes().first {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_PROPERTY &&
+                (it.b() and 0xffff) == Properties.FIRST_ITEM_INDEX
+        }.c())
+    }
+
+    @Test
     fun twoWayTextFieldWritesBackIntoTheBoundSignal() {
         val name = signal("")
         val (result, _) = mount(TextField("Name", name))

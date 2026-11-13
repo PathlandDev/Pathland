@@ -293,7 +293,7 @@ Design-token contract: `spec/TOKENS.md`.
 - **Virtualized lazy stacks (ADR-0014)**: `LAZY_VSTACK`/`LAZY_HSTACK` reserve
   the virtual extent with leading/trailing spacer `Item`s and poll the scroll
   offsets from the shell's idle tick to report `VISIBLE_RANGE`. Lazy grids still
-  render eagerly (no grid window contract yet).
+  render eagerly.
 
 ## Verified by
 

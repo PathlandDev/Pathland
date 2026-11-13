@@ -137,7 +137,7 @@ Arrangement and sizing. These map to the native renderer's layout knobs.
   (F32 points), and the absolute index of the first emitted child (U32). They
   enable the app-owned window; see
   [PRIMITIVES.md §LazyVStack](./PRIMITIVES.md#lazyvstack--lazy_vstack-0x1b) and
-  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-stacks).
+  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers).
 - **`PADDING` vs per-edge**: `PADDING` is uniform and shorthand; a per-edge
   modifier overwrites the edge only. Per-edge wins over uniform when both are
   present.

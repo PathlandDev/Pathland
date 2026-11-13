@@ -925,7 +925,58 @@ public final class HtmlRenderer {
             effectiveColumns = baseColumns;
         }
         String gridCss = gridStyle(node, effectiveColumns);
-        String gridStyle = Format.styleAttr(gridCss + css);
+        String lazyPadding = "";
+        String lazyAttrs = "";
+        if (lazyWindowed(node)
+                && (node.component == Components.LAZY_VGRID
+                    || node.component == Components.LAZY_HGRID)) {
+            boolean vertical = node.component == Components.LAZY_VGRID;
+            int lazyTracks = Math.max(1, vertical
+                    ? (effectiveColumns == null ? 1 : effectiveColumns)
+                    : (RenderNode.gridCount(node, Properties.GRID_ROWS) == null
+                        ? 1
+                        : RenderNode.gridCount(node, Properties.GRID_ROWS)));
+            int childCount = 0;
+            for (int child : node.children) {
+                RenderNode childNode = nodes.get(child);
+                if (childNode != null && childNode.component != Components.COMMENT) {
+                    childCount++;
+                }
+            }
+            int count = node.u32Property(Properties.ITEM_COUNT, 0);
+            float extent = node.f32Property(Properties.ITEM_EXTENT, 0.0f);
+            int first = node.u32Property(Properties.FIRST_ITEM_INDEX, 0);
+            float spacing = Math.max(0.0f, node.f32Property(Properties.SPACING, 0.0f));
+            int units = (childCount + lazyTracks - 1) / lazyTracks;
+            float stride = extent + spacing;
+            float leading = first * stride;
+            float trailing = Math.max(0, count - first - units) * stride;
+            float baseTop = lazyBasePadding(node, Properties.PADDING_TOP);
+            float baseBottom = lazyBasePadding(node, Properties.PADDING_BOTTOM);
+            float baseLeft = lazyBasePadding(node, Properties.PADDING_LEFT);
+            float baseRight = lazyBasePadding(node, Properties.PADDING_RIGHT);
+            float extraTop = vertical ? leading : 0.0f;
+            float extraBottom = vertical ? trailing : 0.0f;
+            float extraLeft = vertical ? 0.0f : leading;
+            float extraRight = vertical ? 0.0f : trailing;
+            lazyPadding = "padding-top:" + Format.f32(baseTop + extraTop)
+                    + "px;padding-bottom:" + Format.f32(baseBottom + extraBottom)
+                    + "px;padding-left:" + Format.f32(baseLeft + extraLeft)
+                    + "px;padding-right:" + Format.f32(baseRight + extraRight) + "px;";
+            String axis = vertical ? "vertical" : "horizontal";
+            lazyAttrs = " data-pathland-lazy=\"" + axis + "\""
+                    + " data-pathland-lazy-grid=\"1\""
+                    + " data-pathland-lazy-tracks=\"" + lazyTracks + "\""
+                    + " data-pathland-item-count=\"" + count + "\""
+                    + " data-pathland-item-extent=\"" + Format.f32(extent) + "px\""
+                    + " data-pathland-first-item-index=\"" + first + "\""
+                    + " data-pathland-item-spacing=\"" + Format.f32(spacing) + "px\""
+                    + " data-pathland-base-padding-top=\"" + Format.f32(baseTop) + "px\""
+                    + " data-pathland-base-padding-right=\"" + Format.f32(baseRight) + "px\""
+                    + " data-pathland-base-padding-bottom=\"" + Format.f32(baseBottom) + "px\""
+                    + " data-pathland-base-padding-left=\"" + Format.f32(baseLeft) + "px\"";
+        }
+        String gridStyle = Format.styleAttr(gridCss + css + lazyPadding);
         int align = (int) node.f32Property(Properties.ALIGNMENT, 0.0f);
 
         StringBuilder inner = new StringBuilder();
@@ -975,7 +1026,8 @@ public final class HtmlRenderer {
                 }
             }
         }
-        return "<" + tag + dataId + event + aria + gridStyle + ">" + inner + "</" + tag + ">";
+        return "<" + tag + dataId + event + aria + gridStyle + lazyAttrs + ">" + inner
+                + "</" + tag + ">";
     }
 
     private static String cellShell(TreeMap<Integer, RenderNode> nodes, String cellHtml, int row,
