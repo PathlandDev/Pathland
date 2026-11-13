@@ -99,6 +99,22 @@ class FrameCodecTest {
     }
 
     @Test
+    void decodesAVisibleRangeEvent() {
+        ProtocolFrame frame = new ProtocolFrame(
+                java.util.List.of(new Opcode(
+                        Categories.EVENT, Commands.Event.VISIBLE_RANGE, 0, 42, 10, 20)),
+                new byte[0]);
+        byte[] bytes = FrameCodec.encodeFrame(frame);
+        java.util.List<Event> events = FrameCodec.decodeEvents(bytes);
+        assertEquals(1, events.size());
+        Event event = events.get(0);
+        assertTrue(event.isVisibleRange());
+        assertEquals(42, event.target());
+        assertEquals(10, event.visibleFirstIndex());
+        assertEquals(20, event.visibleCount());
+    }
+
+    @Test
     void isPingDetectsAMetaPingBatch() {
         // A META::PING heartbeat probe (guest → host), the exact vector-16a bytes.
         byte[] ping = new byte[16 + 16 + 4];

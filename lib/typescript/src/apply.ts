@@ -2465,6 +2465,21 @@ function refreshLazyPadding(el: HTMLElement): void {
   const childCount = lazyChildCount(el);
   const leading = first * stride;
   const trailing = Math.max(0, count - first - childCount) * stride;
+  // Accessibility: expose the full list size/position even though only the
+  // window is in the DOM.
+  if (!el.hasAttribute("role")) {
+    el.setAttribute("role", "list");
+  }
+  const rows = Array.from(el.children).filter(
+    (c): c is HTMLElement => c instanceof HTMLElement && c.hasAttribute("data-pathland-id"),
+  );
+  rows.forEach((row, i) => {
+    if (!row.hasAttribute("role")) {
+      row.setAttribute("role", "listitem");
+    }
+    row.setAttribute("aria-setsize", String(count));
+    row.setAttribute("aria-posinset", String(first + i + 1));
+  });
   if (axis === "horizontal") {
     el.style.paddingLeft = `${lazyBase(el, "left") + leading}px`;
     el.style.paddingRight = `${lazyBase(el, "right") + trailing}px`;

@@ -624,6 +624,7 @@ mod tests {
             Event::MediaVolumeChanged { target: 7, volume: 0.5 },
             Event::MediaDurationChanged { target: 7, seconds: 210.0 },
             Event::FitChanged { target: 42, index: 2.0 },
+            Event::VisibleRange { target: 42, first_index: 10, count: 20 },
         ] {
             assert_eq!(round_trip(e.clone()), e);
         }
@@ -647,6 +648,10 @@ mod tests {
         assert_eq!(
             Event::MediaDurationChanged { target: 7, seconds: 210.0 }.encode().to_bytes(),
             [0x03, 0x14, 0, 0, 7, 0, 0, 0, 0, 0, 0x52, 0x43, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::VisibleRange { target: 42, first_index: 10, count: 20 }.encode().to_bytes(),
+            [0x03, 0x15, 0, 0, 42, 0, 0, 0, 10, 0, 0, 0, 20, 0, 0, 0]
         );
         assert_eq!(
             Event::FitChanged { target: 42, index: 2.0 }.encode().to_bytes(),
