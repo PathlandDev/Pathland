@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7AZY92YA2A5X88GEH5DGKKA",
+  "strategy": "manual-commit",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "lib/java/pathland-desktop-demo/src/main/kotlin/dev/pathland/demo/desktop/RingEventReader.kt",
+    "lib/java/pathland-desktop-demo/status.md",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 7609,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 6354176,
+    "output_tokens": 5578,
+    "api_call_count": 15
+  }
+}
