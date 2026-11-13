@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.9485910659999994,
+    "cost": 1.0518859559999993,
     "tokens": {
-      "input": 2754359,
-      "output": 98285,
-      "reasoning": 141263,
+      "input": 3294206,
+      "output": 101140,
+      "reasoning": 143326,
       "cache": {
-        "read": 130569472,
+        "read": 137025152,
         "write": 0
       }
     },
     "time": {
       "created": 1794497947146,
-      "updated": 1794594608594
+      "updated": 1794594888762
     }
   },
   "messages": [
@@ -70601,6 +70601,20 @@
               "status": "modified"
             },
             {
+              "file": "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+              "patch": "Index: lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java\n===================================================================\n--- lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java\t\n+++ lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java\t\n@@ -1,576 +1,583 @@\n package dev.pathland.server;\n \n import dev.pathland.view.core.router.Route;\n import dev.pathland.view.core.router.Router;\n \n import dev.pathland.render.html.DocumentMeta;\n import dev.pathland.render.html.HtmlRenderer;\n import dev.pathland.server.proxy.ProxyHost;\n import dev.pathland.server.proxy.ProxySession;\n import dev.pathland.view.core.Environment;\n import dev.pathland.view.core.EnvironmentBinding;\n import dev.pathland.view.core.Platform;\n+import dev.pathland.view.core.Viewport;\n import dev.pathland.view.core.ProxyConfig;\n import dev.pathland.view.core.ThemeData;\n import dev.pathland.view.core.ThemeMode;\n import dev.pathland.view.engine.Emitter;\n import dev.pathland.core.transport.ProtocolFrame;\n import dev.pathland.core.transport.FrameOpcodeSink;\n import dev.pathland.view.engine.InputDispatcher;\n import dev.pathland.view.engine.RenderResult;\n import dev.pathland.view.core.signal.Signals;\n import dev.pathland.view.core.signal.WritableSignal;\n import dev.pathland.view.core.subscription.SessionContext;\n import dev.pathland.view.core.state.PersistentState;\n import dev.pathland.view.core.state.StateStore;\n import dev.pathland.core.transport.EnvironmentData;\n import dev.pathland.core.transport.Event;\n import dev.pathland.core.transport.FrameCodec;\n import org.slf4j.Logger;\n import org.slf4j.LoggerFactory;\n \n import java.util.ArrayList;\n import java.util.List;\n import java.util.Map;\n import java.util.concurrent.Executor;\n import java.util.concurrent.RejectedExecutionException;\n \n /**\n  * One Pathland application instance per session (1:1 with a client). Owns the session's\n  * {@link PersistentState}, the retained tree, the fine-grained emitter, and the single\n  * connection it sends deltas to — all transport-agnostic ({@link PathlandConnection}).\n  *\n  * <p>The platform environment (spec/OPCODE.md §Environment fields) seeds the app: the\n  * initial route comes from its {@code ROUTE} field (a request URL on SSR; the DOM\n  * client's first message over the WebSocket), delivered to the tree as the\n  * {@code Platform.ACTIVE_PATH} signal. Later environment messages **enrich** the session\n  * (viewport resizes, future fields) via {@link #applyEnvironment}.\n  *\n  * <p>State wiring is automatic: {@code State} fields in the app's views connect to the\n  * store at mount. The connection is wired only <em>after</em> mount, so the mount frame\n  * (already SSR'd) is never re-sent.\n  */\n public final class PathlandSession {\n \n     private static final Logger LOG = LoggerFactory.getLogger(PathlandSession.class);\n \n     /** The reserved framework path prefix (spec): host system endpoints (the\n      *  WebSocket, the DOM client bundle, the asset mount) live under\n      *  {@code /_pathland/**}, never colliding with app routes. */\n     public static final String PATHLAND_BASE = \"/_pathland\";\n \n     /** Default how long the SSR path waits for a proxy's origin snapshot before rendering a placeholder. */\n     private static final long DEFAULT_PROXY_SNAPSHOT_TIMEOUT_MILLIS = 2_000;\n \n     /** The effective SSR proxy-snapshot timeout ({@code pathland.proxy.snapshot-timeout-ms}). */\n     private static long proxySnapshotTimeoutMillis() {\n         return Long.getLong(\"pathland.proxy.snapshot-timeout-ms\", DEFAULT_PROXY_SNAPSHOT_TIMEOUT_MILLIS);\n     }\n \n     private final PersistentState state;\n     private final WritableSignal<String> activePath;\n+    private final WritableSignal<Viewport> viewport;\n     private final String stateScope;\n \n     private final String base;\n     private final FrameOpcodeSink sink;\n     private final DeltaBatcher batcher;\n     private final Emitter emitter;\n     private final InputDispatcher inputDispatcher;\n     private final int rootId;\n     private final boolean debugHtml;\n     private final PathlandTelemetry telemetry;\n     private final String mount;\n \n     /** Where actor work runs (the registry's actor; inline for standalone/SSR sessions). */\n     private final Executor scheduler;\n \n     /** This session's topic subscriptions (registered with the app's hub when live). */\n     private final SessionSubscriptions subscriptions;\n \n     private volatile boolean closed;\n \n     /** node id → proxy config for every {@code PROXY_VIEW} in the mounted tree (spec/PROXY.md). */\n     private final Map<Integer, ProxyConfig> proxyViews;\n \n     private float viewportWidth = -1f;\n     private float viewportHeight = -1f;\n \n     private volatile PathlandConnection connection;\n     private volatile ProxyHost proxyHost;\n \n     /** The outbound transport for proxy origin connections (default: the JDK WebSocket client). */\n     private dev.pathland.server.proxy.ProxyTransport.Factory proxyTransportFactory =\n             dev.pathland.server.proxy.JdkWebSocketTransport.factory();\n \n     public PathlandSession(String sessionId, StateStore store, PathlandApp app, EnvironmentData env) {\n         this(sessionId, store, app, env, false);\n     }\n \n     public PathlandSession(\n             String sessionId,\n             StateStore store,\n             PathlandApp app,\n             EnvironmentData env,\n             boolean debugHtml) {\n         this(sessionId, store, app, env, debugHtml, PATHLAND_BASE, sessionId);\n     }\n \n     public PathlandSession(\n             String sessionId,\n             StateStore store,\n             PathlandApp app,\n             EnvironmentData env,\n             boolean debugHtml,\n             String base,\n             String stateScope) {\n         this(sessionId, store, app, env, debugHtml, base, stateScope, PathlandTelemetry.NOOP, \"/\");\n     }\n \n     public PathlandSession(\n             String sessionId,\n             StateStore store,\n             PathlandApp app,\n             EnvironmentData env,\n             boolean debugHtml,\n             String base,\n             String stateScope,\n             PathlandTelemetry telemetry,\n             String mount) {\n         this(sessionId, store, app, env, debugHtml, base, stateScope, telemetry, mount, null, null);\n     }\n \n     /**\n      * The full constructor: [scheduler] is where actor work runs (the registry's\n      * actor for a live session; inline for a standalone/SSR session), and [hub] is\n      * the app's topic hub (null for SSR, which renders once and is discarded).\n      */\n     public PathlandSession(\n             String sessionId,\n             StateStore store,\n             PathlandApp app,\n             EnvironmentData env,\n             boolean debugHtml,\n             String base,\n             String stateScope,\n             PathlandTelemetry telemetry,\n             String mount,\n             Executor scheduler,\n             PathlandSignalHub hub) {\n         this.debugHtml = debugHtml;\n         this.base = base;\n         this.telemetry = telemetry == null ? PathlandTelemetry.NOOP : telemetry;\n         this.mount = mount == null ? \"/\" : mount;\n         this.scheduler = scheduler == null ? Runnable::run : scheduler;\n         this.subscriptions = new SessionSubscriptions(hub, this::submit, this.telemetry, this.mount);\n         this.state = new PersistentState(store, stateScope);\n         this.stateScope = stateScope;\n         // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the\n         // app reads it, and a bound Router re-routes guard-aware on external changes.\n         this.activePath = Signals.signal(env.route());\n+        this.viewport = Signals.signal(new Viewport(-1f, -1f));\n \n         this.sink = new FrameOpcodeSink() {\n             @Override\n             public void endFrame() {\n                 super.endFrame();\n                 // Only live deltas go out: the mount frame (emitted in the\n                 // constructor, before the session attaches) is NOT sent — the\n                 // client already has the whole UI from the HTML. A dead\n                 // connection's frames are dropped (a reconnect re-syncs).\n                 PathlandConnection conn = connection;\n                 if (conn == null || !conn.isOpen()) {\n                     return;\n                 }\n                 ProtocolFrame frame = frame();\n                 if (!frame.opcodes().isEmpty()) {\n                     batcher.append(frame);\n                 }\n             }\n         };\n         this.batcher = new DeltaBatcher(this::sendBatch, this.telemetry, this.mount);\n         this.emitter = new Emitter(sink, app.theme());\n         // SSR full-snapshot emission: fit slots carry ALL candidates so the web\n         // renderer shows every branch (CSS container queries gate the first paint —\n         // issue #141). The live reconcile path still emits one selected child after\n         // the first FIT_CHANGED; this stays invisible to DSL authors.\n         this.emitter.snapshotEmission(true);\n \n         // Mount wires State fields, then renders and emits the structural frame. The\n         // active path is injected as a scoped environment value; any root works (with or\n         // without navigation). The session context is installed first so a view can\n         // declare topic subscriptions as field initializers.\n         SessionContext previous = SessionContext.push(subscriptions);\n         try {\n             RenderResult result = emitter.mount(\n                     app.newRoot().modifiers(\n-                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),\n+                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),\n+                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n                     new Environment(state));\n             this.inputDispatcher = new InputDispatcher(result, activePath);\n             this.rootId = result.rootId();\n             this.proxyViews = result.proxyViews();\n             // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a SizeThatFits\n             // slot dropping the candidate that held it) — reconcile the proxy sessions\n             // against the live proxyViews map so a proxy lives exactly while its node is\n             // in the retained tree (spec/PROXY.md §7).\n             this.emitter.onStructureReconciled(this::reconcileProxies);\n             applyEnvironment(env); // records viewport; the router already seeded from env.route()\n         } finally {\n             SessionContext.restore(previous);\n         }\n     }\n \n     /**\n      * Run [task] on this session's actor. Safe from any thread; non-blocking. Work\n      * submitted after close is dropped, and a failing task is logged without\n      * stopping the session.\n      */\n     public void submit(Runnable task) {\n         if (task == null) {\n             return;\n         }\n         try {\n             scheduler.execute(() -> {\n                 if (closed) {\n                     return;\n                 }\n                 runWithContext(() -> {\n                     try {\n                         task.run();\n                     } catch (RuntimeException e) {\n                         LOG.warn(\"session task failed: {}\", e.getMessage(), e);\n                     }\n                 });\n             });\n         } catch (RejectedExecutionException ignored) {\n             // the actor is already shut down\n         }\n     }\n \n     /** Install this session's context for the duration of [task]. */\n     private void runWithContext(Runnable task) {\n         SessionContext previous = SessionContext.push(subscriptions);\n         try {\n             task.run();\n         } finally {\n             SessionContext.restore(previous);\n         }\n     }\n \n     /** Apply (or enrich) the platform environment after mount (viewport resizes, …). */\n     /**\n      * Replace the session's global theme at runtime (spec/TOKENS.md §Runtime\n      * theming): emits {@code RESET_THEME} + the new overrides to the connected\n      * client. The SSR document keeps the mount theme until a resync/reload.\n      */\n     public void setTheme(ThemeData theme) {\n         runWithContext(() -> emitter.replaceTheme(theme));\n     }\n \n     /** Clear all app token overrides (renderer defaults apply). */\n     public void resetTheme() {\n         runWithContext(emitter::resetTheme);\n     }\n \n     /**\n      * Force/release the effective color scheme ({@code PLATFORM}/{@code LIGHT}/\n      * {@code DARK}); the renderer re-resolves tokens with no node re-emission.\n      */\n     public void setColorScheme(ThemeMode mode) {\n         runWithContext(() -> emitter.setColorScheme(mode));\n     }\n \n     public void applyEnvironment(EnvironmentData env) {\n         runWithContext(() -> {\n             activePath.set(env.route()); // re-route if the platform moved (guards run in the bound router)\n             if (env.viewportWidth() > 0) {\n                 viewportWidth = env.viewportWidth();\n             }\n             if (env.viewportHeight() > 0) {\n                 viewportHeight = env.viewportHeight();\n             }\n+            if (viewportWidth > 0 && viewportHeight > 0) {\n+                viewport.set(new Viewport(viewportWidth, viewportHeight));\n+            }\n         });\n     }\n \n     /** Wire the live connection AFTER mount (the initial frame was already SSR'd). */\n     public void connect(PathlandConnection connection) {\n         this.connection = connection;\n         reconcileProxies();\n     }\n \n     /**\n      * Reconcile the proxy sessions against the live {@code proxyViews} map: open an\n      * origin connection for every {@code PROXY_VIEW} node in the retained tree, and\n      * close the connection of every node that left it (spec/PROXY.md §7). Driven by\n      * the emitter's structural-reconcile callback, so a proxy lives exactly while its\n      * node is in the tree — e.g. a {@code SizeThatFits} slot dropping the candidate\n      * that held it closes the origin connection, and re-adding it opens a fresh one.\n      * The origin is given this session's window scope as its {@code wid}, so the\n      * origin's persisted state is per-window.\n      */\n     private void reconcileProxies() {\n         if (proxyHost == null) {\n             if (proxyViews.isEmpty()) {\n                 return;\n             }\n             proxyHost = new ProxyHost(\n                     batcher::append, stateScope, viewportWidth, viewportHeight, telemetry, mount,\n                     proxyTransportFactory);\n         }\n         proxyHost.reconcile(proxyViews);\n     }\n \n     /**\n      * Set the outbound transport for proxy origin connections (spec/PROXY.md §1).\n      * Defaults to the JDK WebSocket client; a framework starter may supply a native\n      * client (Quarkus websockets-client, Spring {@code StandardWebSocketClient}).\n      */\n     public void proxyTransportFactory(dev.pathland.server.proxy.ProxyTransport.Factory factory) {\n         this.proxyTransportFactory = factory;\n     }\n \n     /** Re-send the current tree as a full snapshot (META::RESYNC), flushed immediately. */\n     public void resync() {\n         runWithContext(() -> {\n             emitter.renderFull();\n             // A's own emitter does not carry the origin subtree (it is forwarded), so a\n             // client resync must also refresh the proxy regions from their origins.\n             ProxyHost host = proxyHost;\n             if (host != null) {\n                 host.resyncAll();\n             }\n             batcher.flush();\n         });\n     }\n \n     /**\n      * Send an encoded batch to the connection. On any send failure (or a closed\n      * connection) the connection is dropped and best-effort closed, so the DOM\n      * client reconnects and requests a {@code META::RESYNC} instead of silently\n      * stalling on an \"open\" WebSocket that never delivers.\n      */\n     private void sendBatch(byte[] bytes) {\n         PathlandConnection conn = connection;\n         if (conn == null || !conn.isOpen()) {\n             connection = null;\n             return;\n         }\n         try {\n             conn.send(bytes);\n         } catch (Exception e) {\n             connection = null;\n             telemetry.connectionFailed(mount, e.getMessage());\n             closeConnection(conn);\n         }\n     }\n \n     /** Best-effort close of a failed connection (the adapters may expose a close). */\n     private static void closeConnection(PathlandConnection conn) {\n         if (conn instanceof AutoCloseable closeable) {\n             try {\n                 closeable.close();\n             } catch (Exception ignored) {\n                 // best-effort: the session already dropped the connection\n             }\n         }\n     }\n \n     /** Route an inbound event batch (raw host → guest opcodes) into the app's bindings. */\n     public void dispatch(byte[] message) {\n         dispatch(FrameCodec.decodeEvents(message));\n     }\n \n     /** Route decoded events into the app's bindings (a host may pre-transform them, e.g. mount-strip NAVIGATE urls). */\n     public void dispatch(Iterable<Event> events) {\n         runWithContext(() -> {\n             try {\n                 ProxyHost host = proxyHost;\n                 if (host == null) {\n                     inputDispatcher.dispatch(events);\n                     return;\n                 }\n                 // Events whose target is in a proxy's id range belong to the origin\n                 // server; everything else dispatches to the app's own bindings.\n                 List<Event> local = new ArrayList<>();\n                 for (Event event : events) {\n                     if (!host.forward(event)) {\n                         local.add(event);\n                     }\n                 }\n                 if (!local.isEmpty()) {\n                     inputDispatcher.dispatch(local);\n                 }\n             } catch (RuntimeException e) {\n                 LOG.warn(\"dropping event batch: {}\", e.getMessage());\n             }\n         });\n     }\n \n     /** Render the SSR HTML for this session's current tree (request thread). */\n     public String renderHtml() {\n         return renderHtml(false);\n     }\n \n     /**\n      * Render the SSR HTML. {@code serviceWorker} opts the DOM client into the\n      * per-window-id service worker (issue #155) by emitting\n      * {@code data-pathland-service-worker} on {@code <html>}; the client registers\n      * from it (and unregisters when it is absent — the kill switch).\n      */\n     public String renderHtml(boolean serviceWorker) {\n         return renderHtml(serviceWorker, false);\n     }\n \n     /**\n      * Render the SSR HTML. {@code serviceWorker} opts the DOM client into the\n      * per-window-id service worker (issue #155) by emitting\n      * {@code data-pathland-service-worker} on {@code <html>}; the client registers\n      * from it (and unregisters when it is absent — the kill switch).\n      *\n      * <p>{@code ssrScoped} records that the request carried a real per-window id, so\n      * this document was rendered with that window's persisted state — emitted as\n      * {@code data-pathland-ssr-scoped} so the client can skip its initial\n      * {@code META::RESYNC} (the live session shares the same scope).\n      */\n     public String renderHtml(boolean serviceWorker, boolean ssrScoped) {\n         return renderHtml(serviceWorker, ssrScoped, null);\n     }\n \n     /**\n      * Render the SSR HTML with per-route document metadata (canonical URL,\n      * Open Graph/Twitter cards, JSON-LD). {@code pageMetadata} is the merged\n      * host-default + app-override value (see\n      * {@link PathlandApp#pageMetadata(PageMetadataRequest)}); {@code null}\n      * keeps the legacy head.\n      */\n     public String renderHtml(\n             boolean serviceWorker, boolean ssrScoped, PageMetadata pageMetadata) {\n         HtmlRenderer renderer = HtmlRenderer.tryInstance();\n         if (renderer == null) {\n             return \"<!DOCTYPE html><html><body><h1>Pathland renderer unavailable</h1>\"\n                     + \"<p>The pathland-render-html artifact is missing from the classpath.</p>\"\n                     + \"</body></html>\";\n         }\n         ProtocolFrame frame = ssrFrame();\n         DocumentMeta meta = documentMeta(pageMetadata);\n         // The base design is a content-hashed, immutable stylesheet under the\n         // session's framework base (the same base the DOM bundle/WS use). The\n         // renderer falls back to the inline document when the linked stylesheet\n         // name is unavailable. Token overrides and fit-band rules remain inline.\n         String html = debugHtml\n                 ? renderer.renderLinkedDebug(frame, rootId, base, meta)\n                 : renderer.renderLinked(frame, rootId, base, meta);\n         // The reserved framework path prefix (spec): host system endpoints live\n         // under `/{base}/**`. Carried as `data-pathland-base` so the DOM client\n         // resolves its WebSocket and the bundle from the same base. Multi-app\n         // hosts give each mounted app its own base (e.g. `/app2/_pathland`).\n         // The bundle name is content-hashed (see PathlandAssets) so a new build\n         // busts the immutable asset cache via a fresh URL.\n         String htmlAttrs = \" data-pathland-base=\\\"\" + base + \"\\\"\"\n                 + (serviceWorker ? \" data-pathland-service-worker=\\\"true\\\"\" : \"\")\n                 + (ssrScoped ? \" data-pathland-ssr-scoped=\\\"true\\\"\" : \"\");\n         String integrity = PathlandAssets.bundleIntegrity();\n         String integrityAttr = integrity.isEmpty() ? \"\" : \" integrity=\\\"\" + integrity + \"\\\"\";\n         return injectHtmlAttributes(html, htmlAttrs)\n                 .replace(\"</body>\", \"<script src=\\\"\" + base + \"/\" + PathlandAssets.bundleName()\n                         + \"\\\"\" + integrityAttr + \" defer></script></body>\");\n     }\n \n     /** Map the transport-agnostic page metadata onto the renderer option. */\n     private static DocumentMeta documentMeta(PageMetadata page) {\n         if (page == null) {\n             return DocumentMeta.none();\n         }\n         DocumentMeta meta = DocumentMeta.create()\n                 .title(page.title())\n                 .description(page.description())\n                 .canonicalUrl(page.canonicalUrl())\n                 .siteName(page.siteName())\n                 .imageUrl(page.imageUrl())\n                 .ogType(page.ogType())\n                 .twitterCard(page.twitterCard())\n                 .twitterSite(page.twitterSite());\n         if (page.openGraph() != null) {\n             meta.openGraph(page.openGraph());\n         }\n         if (page.twitter() != null) {\n             meta.twitter(page.twitter());\n         }\n         if (page.structuredData() != null) {\n             meta.structuredData(page.structuredData());\n         }\n         return meta;\n     }\n \n     /**\n      * Add host attributes to the renderer's opening {@code <html …>} tag. The\n      * renderer may already carry {@code lang} (window metadata), so this must not\n      * depend on an exact {@code <html>} string.\n      */\n     private static String injectHtmlAttributes(String html, String attrs) {\n         int start = html.indexOf(\"<html\");\n         if (start < 0) {\n             return html;\n         }\n         int end = html.indexOf('>', start);\n         if (end < 0) {\n             return html;\n         }\n         return html.substring(0, end) + attrs + html.substring(end);\n     }\n \n     /**\n      * The frame the SSR document is rendered from: the session's mount frame plus,\n      * for every {@code PROXY_VIEW}, the origin's remapped snapshot spliced in\n      * (spec/PROXY.md §5) — one document, one render, so the renderer emits the\n      * origin's fit band rules and token overrides into the same head. A proxy whose\n      * origin does not answer within the timeout renders empty (a placeholder) and\n      * hydrates over the live connection.\n      */\n     private ProtocolFrame ssrFrame() {\n         ProtocolFrame frame = sink.frame();\n         if (proxyViews.isEmpty()) {\n             return frame;\n         }\n         return FrameMerger.merge(frame, proxySnapshots(proxySnapshotTimeoutMillis()));\n     }\n \n     /** Start the proxies (SSR) and block for each origin's snapshot (bounded per proxy). */\n     private List<ProtocolFrame> proxySnapshots(long timeoutMillis) {\n         reconcileProxies();\n         ProxyHost host = proxyHost;\n         if (host == null) {\n             return List.of();\n         }\n         List<ProtocolFrame> snapshots = new ArrayList<>();\n         for (ProxySession session : host.sessions()) {\n             try {\n                 ProtocolFrame snapshot = session.awaitSnapshot(timeoutMillis);\n                 if (snapshot != null) {\n                     snapshots.add(snapshot);\n                 } else {\n                     LOG.warn(\"proxy origin {} did not send a snapshot within {} ms during SSR; \"\n                                     + \"rendering a placeholder\",\n                             session.config().endpoint(), timeoutMillis);\n                 }\n             } catch (InterruptedException e) {\n                 Thread.currentThread().interrupt();\n                 break;\n             }\n         }\n         return snapshots;\n     }\n \n     /** Tear down: stop topic routing, close state, unsubscribe the emitter, stop the batcher, drop the connection. */\n     public void close() {\n         closed = true;\n         subscriptions.close();\n         ProxyHost host = proxyHost;\n         if (host != null) {\n             host.close();\n             proxyHost = null;\n         }\n         state.close();\n         emitter.destroy();\n         batcher.close();\n         connection = null;\n     }\n }\n\\ No newline at end of file\n",
+              "additions": 8,
+              "deletions": 1,
+              "status": "modified"
+            },
+            {
+              "file": "lib/java/pathland-server-core/status.md",
+              "patch": "Index: lib/java/pathland-server-core/status.md\n===================================================================\n--- lib/java/pathland-server-core/status.md\t\n+++ lib/java/pathland-server-core/status.md\t\n@@ -1,285 +1,285 @@\n # pathland-server-core — implementation status\n \n **Last updated:** November 7, 2026\n \n The transport-agnostic Pathland server runtime: one app instance per session (SSR +\n live 16-byte opcode deltas + environment), the session registry, and the **multi-app\n host** (the BFF), shared by the Spring Boot and Quarkus starters. No web-framework\n dependency — framework glue lives in the starters.\n \n ## Implemented\n \n - **Security hardening (issue #63)**: `WindowIds` validates the client-supplied\n   `wid` (≤128 chars, `[A-Za-z0-9._-]`; a colon is rejected so it cannot collide\n   with the mount-qualified state scope). Invalid ids are treated as absent (SSR\n   defaults) or replaced with a fresh UUID on the WebSocket. `InboundRateLimiter`\n   bounds inbound batches/bytes per connection before actor work is queued\n   (`pathland.max-inbound-batches-per-second`, default 500;\n   `pathland.max-inbound-bytes-per-second`, default 2 MiB) and reports drops via\n   `PathlandTelemetry.inboundDropped` (`pathland.inbound.dropped`). The SSR script\n   tag now carries `integrity=\"sha384-…\"` from the manifest's second\n   line (`PathlandAssets.bundleIntegrity()`); an older one-line manifest simply\n   omits it.\n - **Attributed text transport**: `FrameRebase` rebases `SET_ATTRIBUTED_TEXT`'s\n   string-section offset (like `SET_TEXT`) for delta batching/frame merging, and\n   `ProxyIdMap` remaps its node id.\n - **Window metadata + SSR head attrs**: `PathlandSession.renderHtml` injects host attrs into the renderer's opening `<html …>` (which now carries `lang`), and `FrameRebase` rebases `SET_WINDOW_METADATA` string offsets. Proxy origin metadata is dropped with the other META opcodes.\n - **Per-route SEO metadata (issue #45)**: `PageMetadata`/`PageMetadataRequest`\n   carry canonical URL, Open Graph/Twitter cards, and JSON-LD. `PathlandApp`\n   gains a default `pageMetadata(request)` hook (active mount-stripped route +\n   host canonical URL); `PathlandRegistry.renderHtml(route, wid, hostDefaults)`\n   merges host defaults with the app's per-route overrides before SSR. Existing\n   overloads keep the legacy head.\n \n - **`PathlandApp`** — the app's root-view factory (`View newRoot()` + optional\n   `theme()`); the single app-specific piece a starter needs.\n - **`MountedApp`** — `record MountedApp(String path, PathlandApp app)`: one app mounted\n   at a subpath prefix (normalized; `/` = root). Hosts any number of them.\n - **`PathlandHost`** — the multi-app dispatcher: one `PathlandRegistry` per mounted app\n   (own actor thread, own sessions). `match(requestUri)` resolves the owning registry by\n   **longest mount-prefix match** and reports the **mount-stripped route** (a root mount\n   claims every unclaimed path). Duplicate mount paths are rejected at construction.\n - **`PathlandRegistry`** — session lifecycle per app: single actor thread, 1:1 sessions\n   keyed by a **per-connection `uiId`** (a fresh id per WebSocket connection, so two\n   windows of the same browser never share a UI model), lazy creation on first\n   environment message, pending connections (each carrying the mount-prefixed state\n   scope from the client's per-window `wid`),\n   `open(uiId, wid, conn)`/`environment`/`dispatch`/`resync`/`close`/`renderHtml`/`shutdown`. New:\n   - `mountPath()`/`base()` — each app's framework base is `/<mount>/_pathland`\n     (`/_pathland` for the root), emitted as `data-pathland-base` in SSR;\n   - `stateScope(windowId)` — app-qualified state-store scope (`mount:wid`) so apps and\n     windows sharing a store never collide;\n   - `stripRoute(route)` — strips the mount prefix from SSR routes, WS environment\n     ROUTE fields, **and inbound `NAVIGATE` URLs** (browser back/forward sends the real\n     address, e.g. `http://host/app2/home`), so a mounted app always sees its own route\n     space (`/app2/home` → `/home`). `Router.pathOf` is reused for URL→path extraction.\n   - `shutdown()` — serialized on the actor and idempotent: work enqueued after shutdown\n     starts is dropped, sessions are closed on the actor thread, then the executor is\n     stopped and awaited. Teardown can no longer race a queued mount/resync mutating the\n     same emitter (regression-tested by `shutdownSerializesWithQueuedActorWork`).\n - **Topic subscriptions / external UI updates**: `PathlandSignalHub` (one per mount)\n   routes `publish(topic, subject, value)` only to sessions subscribed to that exact\n   `(topic, subject)` pair (global topics use the reserved `GlobalSubject` singleton\n   and the two-argument `publish(topic, value)` overload; still only subscribed\n   sessions update); `SessionSubscriptions` holds each session's local mirror,\n   coalesces publishes latest-wins, schedules one actor drain, and unregisters on\n   close/unsubscribe. `PathlandSession.submit(Runnable)` hands arbitrary work to the\n   session actor from any thread; a session context is installed around every actor\n   task (mount, dispatch, drain, theming) so `topic(...)` resolves during render.\n   `PathlandHost.signalHub()`/`signalHub(mount)` expose the hub. Telemetry:\n   `topics.published`/`coalesced`/`dropped`. See `docs/external-updates.md` and\n   `TopicsTest`.\n - **Per-window isolation (no session cookie)**: session <b>identity</b> (the `uiId`\n   map key) is deliberately separate from the <b>persisted-state scope</b> (the client's\n   `wid`, carried only on the WebSocket URL — never in the page URL, so the address bar\n   stays clean). The SSR request therefore has no `wid`: `renderHtml(route, wid)` with\n   a null `wid` renders <b>defaults</b>; the client's live session is scoped by the WS\n   `wid`, and a same-tab reload re-syncs that window's persisted state over the\n   WebSocket. The old `session` cookie is removed.\n - **`PathlandSession`** — per-session: builds the `Platform.ACTIVE_PATH` signal, mounts\n   `app.newRoot().modifiers(environmentBinding(e -> e.key(ACTIVE_PATH).value(activePath)))`, **delta-batched send-on-`endFrame`**\n   (`DeltaBatcher` coalesces per-signal frames into one batch — flush ~20 ms or 16 KB,\n   string offsets rebased — so a continuous input burst can't overflow a remote WebSocket\n   send queue), `applyEnvironment` (re-route guard-aware via the bound router),\n   `dispatch` (tap/nav-intent/text/value/date/NAVIGATE), `resync`, `renderHtml`, `close`.\n   Runtime theming: `setTheme(ThemeData)`, `resetTheme()`, and\n   `setColorScheme(ThemeMode)` emit one `META::RESET_THEME` +\n   `SET_DESIGN_TOKEN` frame or `META::SET_COLOR_SCHEME` to the live client\n   (renderer state; no tree re-emission). The SSR document keeps the mount\n   theme until a resync/reload.\n   `sendBatch` drops the connection on any send failure (a client reconnect then\n   re-syncs via `META::RESYNC` instead of silently stalling on an \"open\" socket);\n   `closeConnection` best-effort closes an `AutoCloseable` adapter (the starters now\n   close their underlying WebSocket on failure).\n   Now takes the app's `base` and `stateScope` explicitly (the registry supplies them).\n - **`DeltaBatcher`** — merges session delta frames (opcodes + a single rebased string\n   section) and flushes as one network batch on a timer/byte threshold; the Java analogue\n   of the Rust transport's `Batcher`. It owns the per-session **message sequence**\n   (stamped on each flushed batch via `FrameCodec.encodeFrame(frame, sequence)`) so the\n   DOM client can detect a lost batch and recover with `META::RESYNC`\n   (spec/OPCODE.md §Sequence gap detection); an empty flush consumes no sequence. The\n   **sender runs OUTSIDE the monitor** — a blocking/queueing send can never stall the\n   actor thread's `append` or the flush scheduler. Coalescing tests cover merging +\n   rebasing, a 100-frame burst collapsing to one send, incrementing sequences, and a\n   blocking sender not holding the lock.\n - **`PathlandConnection`** — the transport seam (`send(byte[])`/`isOpen()`); each starter\n   adapts its WebSocket type to it.\n - **Observability seam** — `PathlandTelemetry` (default `NOOP`): the runtime emits\n   session open/close, inbound event batches, inbound drops (oversize/rate), flushed\n   batches (frames/opcodes/bytes + merge-encode time), SSR render latency, resync\n   requests, and send failures; the host\n   binds a pull-based active-sessions gauge. `PathlandHost`/`PathlandRegistry`/\n   `PathlandSession`/`DeltaBatcher` thread it through (a host with no telemetry pays\n   nothing). This module also ships the `dev.pathland.observability` Micrometer +\n   OpenTelemetry adapters; the starters auto-wire them. Logging is **SLF4J** (both\n   frameworks bind it) — the old\n   ad-hoc `System.out` is gone. See issue #62.\n - **Concurrency stress** — `RegistryConcurrencyTest`: 100 sessions driven through the\n   registry concurrently (clicks on each session's button) while SSR-style requests\n   construct throwaway sessions on request threads — the shared-actor / global-`Scheduler`\n   cross-session corruption guard. Each session must reach exactly its own click count\n   (no lost effects, no cross-session values).\n - **Shared WS test harness** — `dev.pathland.server.test.{WsSession,MultiSessionProbe}`\n   (a JDK-WebSocket client speaking the PLPL protocol: env/resync/click/ping) lives in\n   this module in main scope, so package builds resolve it as a normal jar; the starters'\n   100-session stress tests reuse it.\n - **State stores** — the starters default to `InMemoryStateStore` (or an\n   app-provided `StateStore` bean). Redis is opt-in via the separate\n   `pathland-state-redis` module (`RedisStateStores.redisOrFallback`), so server\n   runtimes and native-image builds that use in-memory state never carry Lettuce.\n - **Observability adapters** — `dev.pathland.observability.MicrometerTelemetry` turns\n   the seam into `pathland.*` meters (counters, timers, a distribution summary, a\n   pull-based sessions gauge, every meter tagged by `mount`); the optional\n   `TracingTelemetry` decorator emits an OpenTelemetry span per frame send / inbound\n   event batch / SSR render. Micrometer is a compile dependency; the OTel API is\n   `optional`, so a host that does not enable tracing pays nothing.\n - **SSR debug comments (property-gated)**: `PathlandSession`/`PathlandRegistry` take a\n   `debugHtml` flag (constructor + `isDebugHtml()`); when set, `renderHtml` uses the\n   renderer's debug mode so every rendered node is prefixed with an HTML comment naming\n   its component and the modifiers applied. The Spring/Quarkus starters bind it to the\n   `pathland.debug-html` property (default `false`).\n - **Reserved framework root**: `PathlandSession.PATHLAND_BASE` (`/_pathland`) — the\n   SSR page carries the app's base as `data-pathland-base` and the DOM-client bundle is\n   injected at `{base}/dom-renderer-<sha256>.js` (`PathlandAssets` reads the current\n   name from the `_pathland/dom-renderer.current` manifest on the classpath — shipped in\n   the Spring Boot starter (`static/_pathland/`) and the Quarkus extension\n   (`META-INF/resources/_pathland/`) — resolving through the thread context classloader\n   first so an application-supplied override wins; it falls back to the literal\n   `dom-renderer.js` only when absent) so the client's WebSocket and\n   asset refs resolve from the same reserved prefix (spec DSL.md). The content-hashed\n   name busts the immutable asset cache with a fresh URL per build. The built-in\n   base design is linked the same way: `renderHtml` renders through\n   `HtmlRenderer.renderLinked(frame, root, base)`, so the CSS href is\n   `{base}/base-<sha256>.css` (token overrides/fit rules stay inline).\n   Multi-app hosts give each mount its own base.\n - **Per-window-id service worker (opt-in, issue #155)**: `PathlandHost` carries a\n   host-level `serviceWorker` flag (default `false`; one registration covers the\n   whole origin) threaded to every `PathlandRegistry`; `PathlandSession.renderHtml`\n   emits `data-pathland-service-worker=\"true\"` on `<html>` when set, and the DOM\n   client registers `{base}/sw.js` (root scope) / unregisters when absent (the kill\n   switch). `PathlandRegistry.serviceWorkerUrl()` names the served script.\n   `renderHtml` also emits `data-pathland-ssr-scoped=\"true\"` when the request carried\n   a real per-window id, so the client can skip its initial `META::RESYNC` (the SSR\n   was already rendered with that window's state and the live session shares it).\n \n ## Not implemented / gaps\n \n - No multi-node/shared sessions (each server owns its sessions in-memory).\n - Topic fan-out is node-local: `PathlandSignalHub` routes to this process's\n   sessions only. A Redis/pub-sub-backed hub (each node fanning out to its local\n   sessions) is a follow-up; the topic name + subject are the stable wire keys.\n - Quarkus mounted-app WebSocket endpoints require a **single-segment** mount path\n   (the `/{app}` path param); Spring supports any depth.\n - **Virtualized lazy stacks (ADR-0014)**: SSR emits the engine's first window\n   (default 20 rows) and the full virtual extent; `VISIBLE_RANGE` input routes\n-  through `InputDispatcher`. Gap: the session records the viewport but does not\n-  bind it to `Platform.VIEWPORT`, so the initial window uses the default until\n-  the client reports its real range.\n+  through `InputDispatcher`, and the session binds `Platform.VIEWPORT` (updated\n+  by `META::ENVIRONMENT`) for hosts that know the surface size at mount. The\n+  live client's `VISIBLE_RANGE` remains authoritative after connect.\n \n ## Proxy views (spec/PROXY.md) — M1 (live)\n \n - **`proxy.ProxyIdMap`** — node-id namespacing: the reserved high range\n   `[0x4000_0000, 0x8000_0000)`, 1024 blocks of `2^20`, the block math, and the\n   opcode remap in both directions (`TREE` node ids + the node-id-bearing\n   `PARAMETER` ops `SET_TEXT`/`SET_PROPERTY`/`SET_DATE` on ingress; `EVENT` targets\n   on egress; `META` untouched). `SET_DESIGN_TOKEN` is **not** remapped — its `A`\n   is a token-path arena offset, not a node id (remapping it produced a huge\n   out-of-bounds string offset → the client's RESYNC loop; regression-tested).\n   Pure + unit-tested.\n - **`proxy.ProxyTransport`** + **`proxy.JdkWebSocketTransport`** — the outbound\n   connection seam (default: the JDK `HttpClient` WebSocket client, no new\n   dependency) with a `Factory` so a starter can swap a native client.\n - **`proxy.ProxySession`** — one origin connection: starts with a\n   `META::PING` readiness probe, waits for the origin's transport-level\n   `META::PONG`, then sends `META::ENVIRONMENT` + `META::RESYNC` (the probe\n   avoids racing the origin's `@OnOpen`/session wiring), **remaps** the origin\n   snapshot into the proxy's block and attaches the origin root under the proxy\n   node, forwards live deltas remapped, routes client events back (target\n   unmapped), replies `PONG` to origin `PING`, translates origin `META::RESET`\n   into a **scoped** subtree teardown (never a global reset), tears the subtree\n   down on disconnect (the origin session is per-connection), and reconnects with\n   exponential backoff. A lost probe/`RESYNC` is retried from the proxy scheduler\n   starting at 50 ms and backing off to 500 ms until the snapshot arrives, so a\n   lost first handshake cannot consume the whole SSR budget. The service\n   credential + a cycle-guard instance id ride the handshake headers.\n   **Backpressure** (spec/PROXY.md §8): a \"chatty origin\" breaker (a per-second\n   batch cap → drop + `RESYNC`) and event coalescing (pointer-moves coalesce by\n   target; discrete events flush immediately).\n - **`proxy.ProxyHost`** — one `ProxySession` per `PROXY_VIEW` node, each with its\n   own block; routes inbound events whose target is in a proxy range to the owning\n   origin connection; owns the proxy scheduler. `reconcile(wanted)` starts a\n   session for every `PROXY_VIEW` node and closes the session of every node that\n   left the tree; released id blocks go to a **free-block pool** and are reused, so\n   repeated removal/re-add cycles never exhaust the 1024-block range.\n - **`PathlandSession`** integration — captures `RenderResult.proxyViews()` and\n   registers the emitter's structural-reconcile callback\n   (`Emitter.onStructureReconciled`) to `reconcileProxies()`, so a proxy lives\n   **exactly while its node is in the retained tree** (spec/PROXY.md §7): a\n   `SizeThatFits` slot dropping the candidate that held it closes the origin\n   connection, and re-adding it opens a fresh one (re-seeded by `META::RESYNC`).\n   The host's frames feed the session's `DeltaBatcher` (a single unified sequence);\n   `dispatch` splits proxy-range events to the origin and everything else to the\n   app's own bindings; `close` tears the proxies down. `proxyTransportFactory(...)`\n   lets a host supply a framework transport.\n - **`PathlandTelemetry`** — `proxyConnected`/`proxyDisconnected`/`proxyBatchDropped`/\n   `proxyResyncRequested` (all default no-ops).\n \n **SSR embed (M2).** `renderHtml` starts the proxies and **blocks** for each\n origin's snapshot (`ProxySession.awaitSnapshot`, bounded by a 2s timeout), then\n splices the remapped origin frames into the session's mount frame\n (`FrameMerger`, reusing the batcher's string rebasing via `FrameRebase`) so the\n renderer emits **one** document — the origin subtree plus its fit band rules in\n the same head. The origin's **global** token overrides (`SET_DESIGN_TOKEN`) are\n **dropped** (live + SSR): a proxied app renders under the **host's** theme, while\n its token *references* resolve against that theme (spec/PROXY.md §9). A proxy\n whose origin does not answer in time\n renders empty (a placeholder) and hydrates over the live connection. A client\n `META::RESYNC` also replays A's tree **and** asks every origin for a fresh\n snapshot (`ProxyHost.resyncAll`).\n \n **Gaps (M3):** nested proxies and per-proxy theme scoping are deferred (the\n origin's global overrides are dropped, not scoped, spec/PROXY.md §9). A tiny\n orphan window remains on removal: an origin batch\n already queued in the `DeltaBatcher` (≤20 ms) when the proxy node is removed can\n still create an unattached element in the client's `byId` (not in the DOM);\n eliminating it needs the `ProxySession` to track the ids it emitted and `DELETE`\n them on close.\n \n ## Verified by\n \n `mvn test` — `PathlandSessionTest`: mounts + routes taps through the binding maps,\n `applyEnvironment`/`resync`/`close` idempotent, registry SSR + lifecycle/teardown,\n **two windows with the same `wid` still get separate sessions** (a tap to one never\n reaches the other), and **message-before-open ordering** (environment/resync that\n race `open` still attach the connection and emit the snapshot).\n `TopicsTest`: strongly typed `(topic, subject)` routing (customer 43 never sees\n customer 42's update), every session for a subject updates, global topics reach\n only subscribed sessions and stay isolated from a same-named scoped topic, rapid\n publishes coalesce latest-wins, updates run on the session actor, close removes\n subscriptions, unsubscribe keeps the last value, and a topic outside a session\n fails on read.\n `PathlandHostTest`: longest-prefix dispatch + route stripping, mount-boundary\n respect, no-root-mount 404, per-app base + state scope, duplicate-mount rejection,\n normalization, SSR emits the mounted app's base.\n `PathlandTelemetryTest`: a recording telemetry double asserts the registry emits\n session/event/resync/flush/SSR/close events, the host binds the active-sessions\n gauge, a failed send reports `connectionFailed`, and `DeltaBatcher` reports the\n flushed batch.\n `proxy.ProxyIdMapTest`: the reserved range, block round-trips, overflow rejection,\n and the opcode remap (TREE/PARAMETER node ids remapped, APPEND/META untouched,\n EVENT targets unmapped).\n `proxy.ProxySessionTest` (a fake origin transport): the PING/PONG readiness\n probe followed by ENVIRONMENT+RESYNC and the handshake headers, PING retry while\n the origin is not ready, snapshot retry when the first RESYNC is lost,\n snapshot remap + root attachment, delta remap with the string section passed\n through verbatim, event egress unmapped, pointer-move\n coalescing, `META::RESET` → scoped teardown, disconnect teardown, and the\n chatty-origin drop+resync breaker.\n `proxy.ProxyIntegrationTest`: a `ProxyView` in the app tree opens an origin\n connection on `connect`, the remapped origin snapshot reaches the client (with the\n root attached), a client event in the proxy range routes back to the origin\n unmapped, and the SSR document embeds the origin subtree (remapped ids) in one\n render.\n `FrameMergerTest`: splicing a proxy's origin frame into an SSR frame rebases its\n string offsets (SET_TEXT / LIST / STRING operands) and returns the base unchanged\n when there is nothing to append.\n\\ No newline at end of file\n",
+              "additions": 3,
+              "deletions": 3,
+              "status": "modified"
+            },
+            {
               "file": "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-43379d504906.js",
               "patch": "Index: lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-43379d504906.js\n===================================================================\n--- lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-43379d504906.js\t\n+++ lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-43379d504906.js\t\n@@ -0,0 +1,3 @@\n+\"use strict\";(()=>{var O=class extends Error{},pn=65536,lt=1<<20,bs=65536,Ls=16384,Is=16384,Ms=256;function Ee(t){return new DataView(t.buffer,t.byteOffset,t.byteLength)}function Dr(t,e){if(!Number.isInteger(e)||e<0||e+4>t.length)throw new O(\"entry offset out of bounds\");let n=Ee(t).getUint32(e,!0);if(n>lt)throw new O(\"entry length exceeds the decoder limit\");let r=e+4;if(r+n>t.length)throw new O(\"entry length out of bounds\");return{start:r,len:n}}function mn(t){if(t.length<16)throw new O(\"batch truncated\");let e=Ee(t);if(e.getUint32(0,!0)!==1347178572)throw new O(\"bad batch magic\");let n=e.getUint16(4,!0);if(n!==1)throw new O(`unsupported batch version ${n}`);let r=e.getUint16(6,!0),o=e.getUint32(8,!0),s=e.getUint32(12,!0);if(s>pn)throw new O(\"opcode count exceeds the decoder limit\");let a=16+s*16;if(a+4>t.length)throw new O(\"batch truncated (opcodes)\");let i=[];for(let c=0;c<s;c++){let p=16+c*16;i.push({category:e.getUint8(p),command:e.getUint8(p+1),flags:e.getUint16(p+2,!0),a:e.getUint32(p+4,!0),b:e.getUint32(p+8,!0),c:e.getUint32(p+12,!0)})}let d=e.getUint32(a,!0);if(d>lt)throw new O(\"string section exceeds the decoder limit\");let l=a+4;if(l+d>t.length)throw new O(\"batch truncated (strings)\");return{version:n,flags:r,sequence:o,opcodes:i,strings:t.subarray(l,l+d)}}function h(t,e){let{start:n,len:r}=Dr(t,e);return new TextDecoder().decode(t.subarray(n,n+r))}function Tn(t,e){if(!Number.isInteger(e)||e<0||e+4>t.length)throw new O(\"list offset out of bounds\");let n=Ee(t),r=n.getUint32(e,!0);if(r>bs)throw new O(\"list count exceeds the decoder limit\");let o=e+4;if(o+r*4>t.length)throw new O(\"list length out of bounds\");let s=new Array(r);for(let a=0;a<r;a++)s[a]=n.getFloat32(o+a*4,!0);return s}function Ss(t,e){let{start:n,len:r}=Dr(t,e);return t.subarray(n,n+r)}function fn(t,e){let n=Ss(t,e),r=Ee(n),o=0,s=N=>{if(o+N>n.length)throw new O(\"attributed text payload truncated\")};s(4);let a=r.getUint32(o,!0);if(a>lt)throw new O(\"attributed text exceeds the decoder limit\");o+=4,s(a);let i=n.subarray(o,o+a);o+=a,s(4);let d=r.getUint32(o,!0);if(d>Ls)throw new O(\"attributed run count exceeds the decoder limit\");o+=4;let l=[];for(let N=0;N<d;N++){s(12);let A=r.getUint32(o,!0),I=r.getUint32(o+4,!0),g=r.getUint32(o+8,!0);if(A>I||I>a)throw new O(\"attributed run range out of bounds\");if(g>Ms)throw new O(\"attributed attribute count exceeds the decoder limit\");o+=12;let M=[];for(let tt=0;tt<g;tt++){s(8);let u=r.getUint16(o,!0),E=r.getUint8(o+2),T=r.getUint32(o+4,!0);o+=8,M.push({property:u,valueType:E,value:T})}l.push({start:A,end:I,attributes:M})}s(4);let c=r.getUint32(o,!0);if(c>Is)throw new O(\"attributed link count exceeds the decoder limit\");o+=4;let p=[];for(let N=0;N<c;N++){s(12);let A=r.getUint32(o,!0),I=r.getUint32(o+4,!0),g=r.getUint32(o+8,!0);if(A>I||I>a)throw new O(\"attributed link range out of bounds\");if(g>lt)throw new O(\"attributed link exceeds the decoder limit\");o+=12,s(g);let M=new TextDecoder().decode(n.subarray(o,o+g));o+=g,p.push({start:A,end:I,url:M})}return{textBytes:i,runs:l,links:p}}function Hr(t){let e=new Set([0,t.textBytes.length]);for(let o of t.runs)e.add(o.start),e.add(o.end);for(let o of t.links)e.add(o.start),e.add(o.end);let n=[...e].sort((o,s)=>o-s),r=[];for(let o=0;o+1<n.length;o++){let s=n[o],a=n[o+1];if(s===a)continue;let i=[];for(let l of t.runs)if(l.start<=s&&l.end>=a)for(let c of l.attributes){let p=i.findIndex(N=>N.property===c.property);p>=0?i[p]=c:i.push(c)}let d=null;for(let l of t.links)l.start<=s&&l.end>=a&&(d=l.url);r.push({start:s,end:a,attributes:i,link:d})}return r}function vr(t){switch(t){case 16:return pe(\"column\");case 27:{let e=pe(\"column\");return e.dataset.pathlandLazy=\"vertical\",e}case 17:return pe(\"row\");case 28:{let e=pe(\"row\");return e.dataset.pathlandLazy=\"horizontal\",e}case 18:{let e=document.createElement(\"div\");return e.style.display=\"grid\",e.style.isolation=\"isolate\",e.style.gridTemplateColumns=\"minmax(0,1fr)\",e.style.gridTemplateRows=\"minmax(0,1fr)\",e.style.justifyItems=\"start\",e.style.alignItems=\"start\",e}case 19:case 21:case 22:{let e=document.createElement(\"div\");return e.style.display=\"grid\",e.style.justifyItems=\"start\",e.style.alignItems=\"start\",t===22&&(e.style.gridAutoFlow=\"column\",e.style.gridAutoColumns=\"minmax(0,1fr)\"),e}case 29:{let e=document.createElement(\"div\");return e.style.display=\"contents\",e}case 20:{let e=document.createElement(\"div\");return e.style.overflow=\"auto\",e.dataset.pathlandScrollAxis=\"vertical\",e}case 23:{let e=document.createElement(\"div\");return e.className=\"pathland-ftf\",e.style.display=\"flex\",e.style.flexDirection=\"inherit\",e.style.alignItems=\"inherit\",e.style.justifyContent=\"inherit\",e.style.flex=\"1 1 auto\",e.style.alignSelf=\"stretch\",e.style.minWidth=\"0\",e.style.minHeight=\"0\",e}case 1:return document.createElement(\"span\");case 32:{let e=document.createElement(\"button\");return e.className=\"pathland-button\",e}case 2:{let e=document.createElement(\"img\");return e.alt=\"\",e}case 11:{let e=document.createElementNS(\"http://www.w3.org/2000/svg\",\"svg\");return e.setAttribute(\"xmlns\",\"http://www.w3.org/2000/svg\"),e.setAttribute(\"class\",\"pathland-icon\"),e.setAttribute(\"viewBox\",\"0 0 24 24\"),e.setAttribute(\"fill\",\"currentColor\"),e.setAttribute(\"aria-hidden\",\"true\"),e.setAttribute(\"focusable\",\"false\"),e}case 48:{let e=document.createElement(\"div\");return e.setAttribute(\"aria-hidden\",\"true\"),e.style.position=\"absolute\",e.style.width=\"1px\",e.style.height=\"1px\",e.style.opacity=\"0\",e.style.overflow=\"hidden\",e.style.pointerEvents=\"none\",e}case 10:{let e=document.createElement(\"video\");return e.className=\"pathland-video\",e.controls=!0,e}case 3:{let e=document.createElement(\"div\");return e.style.flex=\"1 1 auto\",e.style.alignSelf=\"stretch\",e}case 4:return document.createElement(\"div\");case 8:{let e=document.createElement(\"div\");return e.className=\"pathland-gauge\",e.append(document.createElement(\"div\")),e}case 5:{let e=document.createElement(\"div\");return e.style.height=\"0\",e.style.width=\"100%\",e.style.borderTop=\"1px solid rgba(0,0,0,0.2)\",e}case 6:{let e=document.createElement(\"div\");return e.style.flex=\"1\",e}case 7:{let e=document.createElement(\"progress\");return e.className=\"pathland-progress\",e.max=1,e}case 34:{let e=document.createElement(\"textarea\");return e.className=\"pathland-input pathland-control\",e.setAttribute(\"rows\",\"4\"),e}case 33:return Ds();case 36:return Hs();case 37:return vs();case 38:return ws();case 40:{let e=document.createElement(\"select\");return e.className=\"pathland-select pathland-control\",e}case 41:return Us();case 42:{let e=document.createElement(\"input\");return e.type=\"color\",e.className=\"pathland-color pathland-control\",e}case 39:{let e=document.createElement(\"input\");return e.type=\"date\",e.className=\"pathland-date pathland-control\",e}case 127:return document.createComment(\"\");default:return document.createElement(\"div\")}}function pe(t){let e=document.createElement(\"div\");return e.style.display=\"flex\",e.style.flexDirection=t,e.style.alignItems=\"flex-start\",e}function Ds(){let t=document.createElement(\"label\");t.className=\"pathland-textfield\";let e=document.createElement(\"span\");e.className=\"pathland-label\";let n=document.createElement(\"input\");return n.type=\"text\",n.className=\"pathland-input pathland-control\",t.append(e,n),t}function Hs(){let t=document.createElement(\"label\");t.className=\"pathland-toggle\";let e=document.createElement(\"input\");e.type=\"checkbox\";let n=document.createElement(\"span\");return n.className=\"pathland-text\",t.append(e,n),t}function vs(){let t=document.createElement(\"label\");t.className=\"pathland-slider\";let e=document.createElement(\"input\");e.type=\"range\",e.step=\"any\",e.style.setProperty(\"--pl-slider-fill\",\"0%\");let n=document.createElement(\"span\");return n.className=\"pathland-text\",t.append(e,n),t}function ws(){let t=document.createElement(\"div\");t.className=\"pathland-stepper\";let e=document.createElement(\"button\");e.type=\"button\",e.dataset.step=\"-1\",e.textContent=\"\\u2212\";let n=document.createElement(\"span\"),r=document.createElement(\"button\");r.type=\"button\",r.dataset.step=\"1\",r.textContent=\"+\";let o=document.createElement(\"span\");return o.className=\"pathland-stepper-range\",o.hidden=!0,t.append(e,n,r,o),t}function Us(){let t=document.createElement(\"div\");t.className=\"pathland-menu\",t.setAttribute(\"role\",\"menu\");let e=document.createElement(\"div\");e.className=\"pathland-menu-trigger\";let n=document.createElement(\"div\");return n.className=\"pathland-menu-items\",t.append(e,n),t}function Cn(t){if(t instanceof HTMLElement){if(t.classList.contains(\"pathland-menu\"))return t.querySelector(\".pathland-menu-items\");if(t.classList.contains(\"pathland-toggle\")||t.classList.contains(\"pathland-slider\"))return t.querySelector(\".pathland-text\");if(t.classList.contains(\"pathland-textfield\"))return t.querySelector(\".pathland-label\")}return t}function x(t){return new Float32Array(new Uint32Array([t>>>0]).buffer)[0]}function S(t){return new Uint32Array(new Float32Array([t]).buffer)[0]}function G(t){let e=t>>>24&255,n=t>>>16&255,r=t>>>8&255,o=t&255;return`rgba(${n},${r},${o},${(e/255).toFixed(3)})`}function yn(t){return\"#\"+(t&16777215|16777216).toString(16).slice(1)}function Dn(t){return t===0?\"\":new Date(Date.UTC(1970,0,t)).toISOString().slice(0,10)}function Hn(t){return t===0?\"\":new Date(t).toISOString().slice(11,16)}function f(t){return Number.isInteger(t)&&Math.abs(t)<2**31?String(Math.round(t)):String(t)}var rt=\"dark.\",Gs=\"--pl-\",ks=\"--pl-dark-\",wr=\"space.\",Vs=[\"space.\",\"radius.\",\"border.width.\",\"size.control.\",\"control.padding.\",\"control.height\",\"control.border.\",\"control.radius\",\"control.line-height\",\"control.focus.ring.\",\"control.icon.\",\"control.swatch.inset\",\"button.padding.\",\"button.border.\",\"button.radius\",\"button.height\",\"button.line-height\",\"button.focus.ring.\",\"input.padding.\",\"input.focus.ring.\",\"input.swatch.inset\",\"input.radius\",\"icon.\",\"toggle.gap\",\"toggle.checkbox.size\",\"toggle.switch.\",\"toggle.thumb.\",\"toggle.focus.ring.\",\"slider.gap\",\"slider.height\",\"slider.track.\",\"slider.thumb.\",\"slider.focus.ring.\",\"progress.height\",\"progress.radius\",\"gauge.height\",\"gauge.radius\",\"stepper.gap\",\"stepper.button.size\",\"stepper.border.width\",\"stepper.radius\",\"spinner.size\",\"spinner.border.width\",\"menu.min-width\",\"menu.border.width\",\"menu.radius\",\"picker.radius\",\"color.swatch.inset\"],Fs=[[\"control.font.\",\".size\"],[\"button.font.\",\".size\"],[\"input.font.\",\".size\"],[\"label.font.\",\".size\"],[\"font.heading.\",\".size\"]],$s=[\"font.body.size\",\"font.caption.size\"],Bs=[\".radius\",\".x\",\".y\",\".blur\"];function me(t){let e=t.startsWith(rt)?t.slice(rt.length):t;return Gs+e.replace(/[^A-Za-z0-9_-]/g,\"-\")}function vn(t){return t.startsWith(rt)}function Te(t){let e=t.startsWith(rt)?t.slice(rt.length):t;return ks+e.replace(/[^A-Za-z0-9_-]/g,\"-\")}function Ur(t){for(let e of Vs)if(t.startsWith(e))return!0;for(let[e,n]of Fs)if(t.startsWith(e)&&t.endsWith(n))return!0;return $s.includes(t)?!0:t.startsWith(\"elevation.\")&&Bs.some(e=>t.endsWith(e))}function wn(t){let e=t.startsWith(rt),n=e?t.slice(rt.length):t;if(n.startsWith(wr)){let r=n.slice(wr.length);if(r.length>0&&!Number.isNaN(Number(r)))return`calc(var(${e?\"--pl-dark-space-base\":\"--pl-space-base\"}) * ${r})`}return e?`var(${Te(n)}, unset)`:`var(${me(n)}, unset)`}function Ws(t,e){switch(t){case 7:return G(e);case 4:return String(x(e));case 3:return String(e|0);case 2:return String(e>>>0);case 1:return String(e&255);default:return String(e>>>0)}}function Ys(t,e,n){if(typeof n==\"string\")return`'${n.replace(/\\\\/g,\"\\\\\\\\\").replace(/'/g,\"\\\\'\")}'`;let r=Ws(e,n);return Ur(t)&&e===4?r+\"px\":r}function kn(){let t=new Map,e=new Map,n=new Map,r=new Map,o=null;function s(){return o||(o=document.createElement(\"style\"),o.setAttribute(\"data-pathland-tokens\",\"\"),document.head.appendChild(o)),o}function a(){let i=[];for(let[l,c]of t)i.push(`:root{${l}:${c};}`);if(t.size>0||e.size>0){let l=[];for(let[N,A]of t)l.push(`${N}:${A};`);let c=[];for(let[N,A]of e)c.push(`${N}:${A};`);let p=l.join(\"\")+c.join(\"\");i.push(`@media (prefers-color-scheme: dark){:root:not([data-pathland-scheme]){${p}}}`),i.push(`:root[data-pathland-scheme=\"dark\"]{${p}}`)}let d=[];for(let[l,c]of n)d.push(`${l}:${c};`);for(let[l,c]of r)d.push(`${l}:${c};`);d.length>0&&i.push(`:root{${d.join(\"\")}}`),s().textContent=i.join(\"\")}return{setToken(i,d,l){let c=me(i),p=Ys(i,d,l);vn(i)?(e.set(c,p),r.set(Te(i),p)):(t.set(c,p),n.set(Te(i),p)),a()},reset(){t.clear(),e.clear(),n.clear(),r.clear(),document.querySelectorAll(\"style[data-pathland-tokens]\").forEach(i=>i.remove()),o=null,a()}}}function Gr(t,e,n){let r=h(e,t.a),o=t.b&255,s=o===5?h(e,t.c):t.c;n.setToken(r,o,s)}var Ut=new WeakMap,fe=new WeakSet,_e=new WeakSet,Xs=[[34,700],[28,700],[22,700],[20,600],[17,600],[15,400],[15,400],[14,400],[13,400],[12,400],[11,400]];function kr(t,e){Ut.set(t,e);let n=Xs[e];n&&(fe.has(t)||(t.style.fontSize=n[0]+\"px\"),_e.has(t)||(t.style.fontWeight=String(n[1])))}function Vr(t){fe.add(t)}function Fr(t){_e.add(t)}function $r(t,e){let n=Ut.get(t);n!==void 0&&Ut.set(e,n),fe.has(t)&&fe.add(e),_e.has(t)&&_e.add(e)}function m(t,e){return t===4?x(e):t===3?e|0:e>>>0}function v(t,e){return t===6?e&255:Math.round(x(e))}function V(t,e){return(t===1?e&255:e)!==0}function ot(t){return t>>>0}function Pe(t){return typeof t==\"number\"?f(t)+\"px\":t}var Br=new WeakMap,Wr=new WeakMap,ao=new WeakMap,Vt=new WeakMap,Yr=new WeakMap,Xr=new WeakMap;function W(t){let e=Br.get(t);return e||(e={x:0,y:0,radius:0,color:\"rgba(0,0,0,0.3)\"},Br.set(t,e)),e}function Ft(t){let e=Wr.get(t);return e||(e={width:0,color:\"rgb(0,0,0)\"},Wr.set(t,e)),e}function Gt(t){let e=Yr.get(t);return e||(e={translateX:0,translateY:0,rotate:0,scale:1},Yr.set(t,e)),e}function $n(t){let e=Xr.get(t);return e||(e={underline:!1,strikethrough:!1},Xr.set(t,e)),e}function z(t){let e=W(t),n=e.radius!==0||e.x!==0||e.y!==0;t.style.boxShadow=n?`${e.color} ${Pe(e.x)} ${Pe(e.y)} ${Pe(e.radius)}`:\"\"}function io(t){let e=Vt.get(t)??[];t.style.filter=e.join(\" \")}function Oe(t){let e=Gt(t),n=[];(e.translateX!==0||e.translateY!==0)&&n.push(`translate(${f(e.translateX)}px, ${f(e.translateY)}px)`),e.rotate!==0&&n.push(`rotate(${f(e.rotate)}deg)`),e.scale!==1&&n.push(`scale(${f(e.scale)})`),t.style.transform=n.join(\" \")}function Kr(t){let e=$n(t),n=[];e.underline&&n.push(\"underline\"),e.strikethrough&&n.push(\"line-through\"),t.style.textDecoration=n.join(\" \")}function kt(t){let e=Ft(t),n=ao.get(t)??15,r=o=>n&o?`${Pe(e.width)} solid ${e.color}`:\"none\";t.style.borderTop=r(1),t.style.borderLeft=r(2),t.style.borderBottom=r(4),t.style.borderRight=r(8)}function pi(t){switch(t){case 0:return\"flex-start\";case 1:return\"center\";case 2:return\"flex-end\";default:return\"flex-start\"}}function co(t){switch(t){case 1:case 3:case 4:return\"center\";case 2:case 6:case 7:return\"end\";default:return\"start\"}}function lo(t){switch(t){case 1:case 5:case 6:return\"center\";case 2:case 4:case 8:return\"end\";default:return\"start\"}}function mi(t){switch(t){case 0:return\"left\";case 2:return\"right\";default:return\"center\"}}function Ti(t){return t===1?\"italic\":\"normal\"}function fi(t){switch(t){case 1:return\"uppercase\";case 2:return\"lowercase\";default:return\"none\"}}function _i(t,e){let n=t.querySelector(\"input[type=checkbox]\");n&&(e===0?n.setAttribute(\"role\",\"switch\"):e===1?n.removeAttribute(\"role\"):(n.setAttribute(\"role\",\"checkbox\"),n.setAttribute(\"aria-pressed\",n.checked?\"true\":\"false\")))}function Oi(t,e){let n=t.querySelector(\"input[type=text],input[type=password]\");n&&(n.type=e?\"password\":\"text\")}function Pi(t,e){let n=t.matches(\"input[type=date],input[type=time],input[type=datetime-local]\")?t:t.querySelector(\"input[type=date],input[type=time],input[type=datetime-local]\");n&&(n.type=e===1?\"time\":e===2?\"datetime-local\":\"date\")}function Ni(t,e){let n=t.matches(\"progress\")?t:t.querySelector(\"progress\");n&&(n.value=e)}function xi(t,e){let n=t.matches(\"progress\")?t:t.querySelector(\"progress\");n&&(e?n.removeAttribute(\"value\"):n.setAttribute(\"value\",n.value.toFixed(3)))}function Wt(t){let e=t.min===\"\"?0:Number(t.min),n=t.max===\"\"?100:Number(t.max),r=t.value===\"\"?e:Number(t.value),o=n>e?(r-e)/(n-e)*100:0;t.style.setProperty(\"--pl-slider-fill\",Math.round(Math.min(100,Math.max(0,o)))+\"%\")}function Ri(t,e){let n=t.querySelector(\"input[type=range]\");n&&(n.step=String(e));let r=t.querySelector(\".pathland-stepper-range\");r&&(r.dataset.step=String(e))}function qr(t,e,n){let r=t.matches(\"input[type=range]\")?t:t.querySelector(\"input[type=range]\");r&&(e===8199?r.min=String(n):e===8200&&(r.max=String(n)),Wt(r));let o=e===8199?\"data-min\":\"data-max\",s=[t];for(let a of t.querySelectorAll(\".pathland-stepper-range, .pathland-gauge\"))s.push(a);for(let a of s)(a.classList.contains(\"pathland-stepper-range\")||a.classList.contains(\"pathland-gauge\"))&&a.setAttribute(o,String(n))}var Ai={[1]:(t,e,n)=>{let r=m(e,n);t.style.gap=f(r)+\"px\",t.hasAttribute(\"data-pathland-lazy\")&&(t.dataset.pathlandItemSpacing=f(r)+\"px\")},[34]:(t,e,n)=>{t.dataset.pathlandItemCount=String(ot(n))},[35]:(t,e,n)=>{t.dataset.pathlandItemExtent=f(m(e,n))+\"px\"},[36]:(t,e,n)=>{t.dataset.pathlandFirstItemIndex=String(ot(n))},[2]:(t,e,n)=>t.style.alignItems=pi(v(e,n)),[5]:(t,e,n)=>t.style.padding=f(m(e,n))+\"px\",[6]:(t,e,n)=>{let r=v(e,n);r===0?t.style.borderRadius=\"50%\":r===3?t.style.borderRadius=\"9999px\":r===4&&(t.style.borderRadius=\"50%\")},[12]:(t,e,n)=>t.style.textAlign=mi(v(e,n)),[11]:(t,e,n)=>{let r=ot(n);r>0?(t.style.display=\"-webkit-box\",t.style.webkitLineClamp=String(r),t.style.boxOrient=\"vertical\",t.style.overflow=\"hidden\"):(t.style.webkitLineClamp=\"\",t.style.boxOrient=\"\",t.style.overflow=\"\",t.style.display===\"-webkit-box\"&&(t.style.display=\"\"))},[13]:()=>{},[14]:(t,e,n)=>{Gt(t).translateX=m(e,n),Oe(t)},[15]:(t,e,n)=>{Gt(t).translateY=m(e,n),Oe(t)},[16]:(t,e,n)=>{t.style.position=\"absolute\",t.style.left=f(m(e,n))+\"px\"},[17]:(t,e,n)=>{t.style.position=\"absolute\",t.style.top=f(m(e,n))+\"px\"},[18]:(t,e,n)=>t.style.minWidth=f(m(e,n))+\"px\",[20]:(t,e,n)=>t.style.maxWidth=f(m(e,n))+\"px\",[21]:(t,e,n)=>t.style.minHeight=f(m(e,n))+\"px\",[23]:(t,e,n)=>t.style.maxHeight=f(m(e,n))+\"px\",[24]:(t,e,n)=>{t.style.width=V(e,n)?\"fit-content\":\"\"},[25]:(t,e,n)=>{t.style.height=V(e,n)?\"fit-content\":\"\"},[26]:(t,e,n)=>t.style.flexGrow=f(m(e,n)),[27]:(t,e,n)=>t.style.aspectRatio=f(m(e,n)),[28]:(t,e,n)=>{t.style.objectFit=v(e,n)===1?\"cover\":\"contain\"},[4103]:(t,e,n)=>{t.style.fontSize=f(m(e,n))+\"px\",Vr(t)},[4104]:(t,e,n)=>{t.style.fontWeight=f(m(e,n)),Fr(t)},[4119]:(t,e,n)=>t.style.fontStyle=Ti(v(e,n)),[4120]:(t,e,n)=>{let r=v(e,n)===1?\"Georgia, 'Times New Roman', serif\":v(e,n)===3?\"ui-monospace, monospace\":v(e,n)===2?\"ui-rounded, system-ui, sans-serif\":\"inherit\";t.style.fontFamily=r},[4121]:(t,e,n)=>t.style.fontStretch=f(m(e,n))+\"%\",[4122]:(t,e,n)=>t.style.letterSpacing=f(m(e,n))+\"px\",[4123]:(t,e,n)=>t.style.letterSpacing=f(m(e,n))+\"px\",[4124]:(t,e,n)=>t.style.verticalAlign=f(m(e,n))+\"px\",[4125]:(t,e,n)=>t.style.lineHeight=f(m(e,n))+\"px\",[4126]:(t,e,n)=>t.style.textTransform=fi(v(e,n)),[4127]:(t,e,n)=>{$n(t).underline=V(e,n),Kr(t)},[4128]:(t,e,n)=>{$n(t).strikethrough=V(e,n),Kr(t)},[4111]:(t,e,n)=>t.style.zIndex=String(Math.round(m(e,n))),[4112]:(t,e,n)=>t.style.overflow=V(e,n)?\"hidden\":\"visible\",[4144]:(t,e,n)=>t.style.accentColor=G(n),[4099]:(t,e,n)=>{Ft(t).width=m(e,n),kt(t)},[4100]:(t,e,n)=>{Ft(t).color=G(n),kt(t)},[4118]:(t,e,n)=>{ao.set(t,ot(n)),kt(t)},[4101]:(t,e,n)=>t.style.borderRadius=f(m(e,n))+\"px\",[4129]:(t,e,n)=>{W(t).color=G(n),z(t)},[4130]:(t,e,n)=>{W(t).radius=m(e,n),z(t)},[4131]:(t,e,n)=>{W(t).x=m(e,n),z(t)},[4132]:(t,e,n)=>{W(t).y=m(e,n),z(t)},[4133]:(t,e,n)=>{let r=Vt.get(t)??[],o=r.findIndex(a=>a.startsWith(\"blur(\")),s=`blur(${f(m(e,n))}px)`;o>=0?r[o]=s:r.push(s),Vt.set(t,r),io(t)},[4134]:(t,e,n)=>{Nt(t,\"saturate(\",m(e,n))},[4135]:(t,e,n)=>{Nt(t,\"contrast(\",m(e,n))},[4136]:(t,e,n)=>{Nt(t,\"brightness(\",m(e,n))},[4137]:(t,e,n)=>{Nt(t,\"grayscale(\",m(e,n))},[4138]:(t,e,n)=>{Nt(t,\"hue-rotate(\",m(e,n)+\"deg\")},[4140]:(t,e,n)=>{Nt(t,\"invert(\",V(e,n)?1:0)},[4141]:(t,e,n)=>{Gt(t).rotate=m(e,n),Oe(t)},[4142]:(t,e,n)=>{Gt(t).scale=m(e,n),Oe(t)},[4143]:(t,e,n)=>t.style.pointerEvents=V(e,n)?\"auto\":\"none\",[8194]:(t,e,n)=>{let r=v(e,n);t.setAttribute(\"aria-disabled\",String(r===1)),t.setAttribute(\"aria-pressed\",String(r===3)),t.setAttribute(\"aria-selected\",String(r===4)),t.setAttribute(\"aria-expanded\",String(r===5)),t.setAttribute(\"aria-busy\",String(r===6))},[8197]:(t,e,n)=>{let r=ot(n);r===0?t.removeAttribute(\"data-event-listeners\"):t.setAttribute(\"data-event-listeners\",String(r))},[8199]:(t,e,n)=>qr(t,8199,m(e,n)),[8200]:(t,e,n)=>qr(t,8200,m(e,n)),[8201]:(t,e,n)=>Ri(t,m(e,n)),[8204]:(t,e,n)=>t.dataset.controlSize=String(v(e,n)),[8205]:(t,e,n)=>Oi(t,V(e,n)),[8206]:(t,e,n)=>Ni(t,m(e,n)),[8207]:(t,e,n)=>xi(t,V(e,n)),[8211]:(t,e,n)=>Pi(t,v(e,n)),[8212]:(t,e,n)=>t.dataset.pickerStyle=String(v(e,n)),[8216]:(t,e,n)=>_i(t,v(e,n)),[8214]:(t,e,n)=>t.dataset.actionId=String(ot(n)),[8215]:(t,e,n)=>t.dataset.bindingId=String(ot(n)),[4106]:(t,e,n)=>t.style.color=G(n),[4097]:(t,e,n)=>t.style.backgroundColor=G(n),[4109]:(t,e,n)=>t.style.opacity=f(m(e,n)),[4110]:(t,e,n)=>t.style.display=V(e,n)?\"\":\"none\",[4107]:(t,e,n)=>{let r=m(e,n);r!==-2&&(t.style.width=Zr(r))},[4108]:(t,e,n)=>{let r=m(e,n);r!==-2&&(t.style.height=Zr(r))},[4113]:(t,e,n)=>t.style.padding=f(m(e,n))+\"px\",[4114]:(t,e,n)=>t.style.paddingTop=f(m(e,n))+\"px\",[4115]:(t,e,n)=>t.style.paddingRight=f(m(e,n))+\"px\",[4116]:(t,e,n)=>t.style.paddingBottom=f(m(e,n))+\"px\",[4117]:(t,e,n)=>t.style.paddingLeft=f(m(e,n))+\"px\"};function Nt(t,e,n){let r=Vt.get(t)??[],o=r.findIndex(a=>a.startsWith(e)),s=`${e}${n})`;o>=0?r[o]=s:r.push(s),Vt.set(t,r),io(t)}var gi={[4106]:\"color\",[4097]:\"background-color\",[4144]:\"accent-color\",[4103]:\"font-size\",[4105]:\"font-family\",[4104]:\"font-weight\",[5]:\"padding\",[1]:\"gap\",[4113]:\"padding\",[4114]:\"padding-top\",[4115]:\"padding-right\",[4116]:\"padding-bottom\",[4117]:\"padding-left\",[4101]:\"border-radius\",[4109]:\"opacity\",[4107]:\"width\",[4108]:\"height\"};function hi(t,e,n){let r=(t.getAttribute(\"style\")??\"\").split(\";\").map(o=>o.trim()).filter(o=>o.length>0&&!o.toLowerCase().startsWith(`${e}:`));r.push(`${e}:${n}`),t.setAttribute(\"style\",r.join(\";\"))}function uo(t,e,n){let r=wn(n);if(e===4100){Ft(t).color=r,kt(t);return}if(e===4099){Ft(t).width=r,kt(t);return}if(e===4129){W(t).color=r,z(t);return}if(e===4131){W(t).x=r,z(t);return}if(e===4132){W(t).y=r,z(t);return}if(e===4130){W(t).radius=r,z(t);return}let o=gi[e];o&&hi(t,o,r)}function ve(t,e,n,r){Ai[e]?.(t,n,r)}function Eo(t,e){let n=e===0;t instanceof HTMLInputElement||t instanceof HTMLButtonElement||t instanceof HTMLSelectElement||t instanceof HTMLTextAreaElement?t.disabled=n:n?t.setAttribute(\"aria-disabled\",\"true\"):t.removeAttribute(\"aria-disabled\")}function Zr(t){return t===-1?\"100%\":t===-2?\"fit-content\":f(t)+\"px\"}function L(t,e,n,r,o=0){let s=new Uint8Array(36),a=new DataView(s.buffer);a.setUint32(0,1347178572,!0),a.setUint16(4,1,!0),a.setUint16(6,0,!0),a.setUint32(8,0,!0),a.setUint32(12,1,!0);let i=16;return a.setUint8(i,3),a.setUint8(i+1,t),a.setUint16(i+2,o,!0),a.setUint32(i+4,e,!0),a.setUint32(i+8,n,!0),a.setUint32(i+12,r,!0),s}function qt(){let t=new Uint8Array(36),e=new DataView(t.buffer);e.setUint32(0,1347178572,!0),e.setUint16(4,1,!0),e.setUint16(6,1,!0),e.setUint32(8,0,!0),e.setUint32(12,1,!0);let n=16;return e.setUint8(n,4),e.setUint8(n+1,3),e.setUint32(n+4,0,!0),e.setUint32(n+8,0,!0),e.setUint32(n+12,0,!0),t}function mo(){let t=new Uint8Array(36),e=new DataView(t.buffer);e.setUint32(0,1347178572,!0),e.setUint16(4,1,!0),e.setUint16(6,0,!0),e.setUint32(8,0,!0),e.setUint32(12,1,!0);let n=16;return e.setUint8(n,4),e.setUint8(n+1,4),e.setUint16(n+2,0,!0),e.setUint32(n+4,0,!0),e.setUint32(n+8,0,!0),e.setUint32(n+12,0,!0),t}function To(t,e,n,r=0){return L(1,t,S(e),S(n),r)}function or(t,e,n,r){return L(2,t,S(e),S(n),r)}function fo(t,e,n,r=0){return L(3,t,S(e),S(n),r)}function _o(t,e,n,r=!1){return L(4,t,e&65535,n&255,r?2:0)}function Oo(t,e,n){return L(5,t,e&65535,n&255)}function Zt(t,e){return L(6,t,S(e),0)}function Po(t,e){return L(6,t,e>>>0,0)}function sr(t,e){return L(15,t,e?1:0,0)}function No(t,e){return L(16,t,S(e),0)}function xo(t){return L(17,t,0,0)}function Ro(t,e){return L(18,t,S(e),0)}function Ao(t,e){return L(20,t,S(e),0)}function go(t,e){return L(19,t,S(e),0)}function ho(t,e,n){return L(21,t,e>>>0,n>>>0)}function qe(t,e,n){return L(13,t,e>>>0,n>>>0)}function ar(t,e){let n=new TextEncoder().encode(e),r=new Uint8Array(40+n.length),o=new DataView(r.buffer);o.setUint32(0,1347178572,!0),o.setUint16(4,1,!0),o.setUint16(6,0,!0),o.setUint32(8,0,!0),o.setUint32(12,1,!0);let s=16;o.setUint8(s,3),o.setUint8(s+1,7),o.setUint32(s+4,t,!0),o.setUint32(s+8,0,!0),o.setUint32(s+12,0,!0);let a=32;return o.setUint32(a,4+n.length,!0),o.setUint32(a+4,n.length,!0),r.set(n,a+8),r}function ir(t,e){return L(8,t,e?1:0,0)}function zt(t,e){return L(9,t,e?1:0,0)}function bo(t,e,n){return L(11,t,S(e),S(n))}function Lo(t,e,n){return L(12,t,S(e),S(n))}function Io(t){let e=new TextEncoder().encode(t),n=new Uint8Array(40+e.length),r=new DataView(n.buffer);r.setUint32(0,1347178572,!0),r.setUint16(4,1,!0),r.setUint16(6,0,!0),r.setUint32(8,0,!0),r.setUint32(12,1,!0);let o=16;r.setUint8(o,3),r.setUint8(o+1,14),r.setUint16(o+2,1,!0),r.setUint32(o+4,0,!0),r.setUint32(o+8,0,!0),r.setUint32(o+12,0,!0);let s=32;return r.setUint32(s,4+e.length,!0),r.setUint32(s+4,e.length,!0),n.set(e,s+8),n}function Mo(){return L(14,0,0,0)}function So(t,e,n){let r=new TextEncoder().encode(n),o=new Uint8Array(16+3*16+4+4+r.length),s=new DataView(o.buffer);s.setUint32(0,1347178572,!0),s.setUint16(4,1,!0),s.setUint16(6,1,!0),s.setUint32(8,0,!0),s.setUint32(12,3,!0);let a=16,i=(l,c)=>{s.setUint8(a,4),s.setUint8(a+1,2),s.setUint16(a+2,0,!0),s.setUint32(a+4,l,!0),s.setUint32(a+8,c,!0),s.setUint32(a+12,0,!0),a+=16};i(1,S(t)),i(2,S(e)),i(3,0);let d=a;return s.setUint32(d,4+r.length,!0),s.setUint32(d+4,r.length,!0),o.set(r,d+8),o}var Co=[1,16,17,27,28,18,19,21,22,20,3,4,6],yo=[32,33,34,37,36,2,10,7,8,39,42,40],Do=[{role:1,tag:\"h2\",aria:\"heading\"},{role:2,tag:\"p\",aria:\"paragraph\"},{role:3,tag:\"ul\",aria:\"list\"},{role:4,tag:\"li\",aria:\"listitem\"},{role:5,tag:\"section\",aria:\"region\"},{role:6,tag:\"header\",aria:\"banner\"},{role:7,tag:\"nav\",aria:\"navigation\"},{role:8,tag:\"main\",aria:\"main\"},{role:9,tag:\"footer\",aria:\"contentinfo\"},{role:10,tag:\"aside\",aria:\"complementary\"},{role:11,tag:\"article\",aria:\"article\"},{role:12,tag:\"section\",aria:\"region\"},{role:13,tag:\"search\",aria:\"search\"}],Di=[[0,1],[1,2],[2,3],[3,4],[4,5]];function Hi(t){let e=Di.find(([n])=>n===t);return e?e[1]:null}function vi(t){return\"h\"+String(t)}function wi(t,e){if(t!==\"generic\")return null;let n=Do.find(r=>r.role===e);return n?n.tag:null}function Ho(t,e,n){if(t===\"generic\"&&n!==null){let r=Hi(n);if(r!==null)return vi(r)}return wi(t,e)}function vo(t,e){if(t===\"native\")return null;let n=Do.find(r=>r.role===e);return n?t===\"generic\"?null:n.aria:null}var cr=null;function wo(t){cr=t}function Ze(){cr=null}function Uo(t){return cr===t}var gt={debug:0,info:1,warn:2,error:3};function Ui(){let t=globalThis,e=typeof location<\"u\"?new URLSearchParams(location.search).get(\"pathland-log\"):null,n=t.__PATHLAND_LOG_LEVEL??e;return n in gt?n:\"info\"}var ze=gt[Ui()];function je(t){return`[pathland${t?\":\"+t:\"\"}]`}var _={debug:(t,...e)=>{ze<=gt.debug&&console.debug(je(t),...e)},info:(t,...e)=>{ze<=gt.info&&console.info(je(t),...e)},warn:(t,...e)=>{ze<=gt.warn&&console.warn(je(t),...e)},error:(t,...e)=>{ze<=gt.error&&console.error(je(t),...e)}};var ht=new Map,lr=new Map,Go=new WeakMap;function Gi(){return document.documentElement.dataset.pathlandBase??\"/_pathland\"}var jt='<circle cx=\"12\" cy=\"12\" r=\"8\"/>';function ki(t){for(let e of document.querySelectorAll(\"svg.pathland-icon[data-pathland-icon]\"))if(e.getAttribute(\"data-pathland-icon\")===t)return e.innerHTML}function Vi(){for(let t of document.querySelectorAll(\"svg.pathland-icon[data-pathland-icon]\")){let e=t.getAttribute(\"data-pathland-icon\");if(!e||ht.has(e))continue;let n=t.innerHTML.trim();n&&ht.set(e,n)}}async function Fi(t){try{let e=new URL(`${Gi()}/icons/${encodeURIComponent(t)}.svg`,document.baseURI),n=await fetch(e.href);if(!n.ok)return jt;let r=(await n.text()).trim();return r.slice(r.indexOf(\">\")+1,r.lastIndexOf(\"</svg>\"))||jt}catch{return jt}}function $i(t){let e=lr.get(t);if(e)return e;let n=Fi(t).then(r=>(ht.set(t,r),lr.delete(t),r));return lr.set(t,n),n}function ko(t,e){if(!t)return;if(Go.set(t,e),!e){t.removeAttribute(\"data-pathland-icon\"),t.innerHTML=jt;return}let n=ht.get(e);if(n!==void 0){t.setAttribute(\"data-pathland-icon\",e),t.innerHTML=n;return}let r=ki(e);if(r!==void 0){ht.set(e,r),t.setAttribute(\"data-pathland-icon\",e),t.innerHTML=r;return}Vi();let o=ht.get(e);if(o!==void 0){t.setAttribute(\"data-pathland-icon\",e),t.innerHTML=o;return}t.setAttribute(\"data-pathland-icon\",e),t.innerHTML=jt,$i(e).then(s=>{Go.get(t)===e&&(t.innerHTML=s)})}var P=new WeakMap,bt=new Set([17,28]),Qe=new Set([16,27]),ns=new Set([16,17,18,27,28]);function oc(t,e){let n=e?t.style.maxWidth:t.style.maxHeight;if(!n)return!1;let r=Number.parseFloat(n);return Number.isFinite(r)&&r>=0}function rs(t){return t.getAttribute(\"data-pathland-scroll-axis\")===\"horizontal\"}function w(t,e,n){let r=t;if(oc(r,e))return!1;let o=P.get(t)??0;if(o===20||t.hasAttribute(\"data-pathland-scroll-axis\")){if(rs(r)===e)return!0;let c=r.firstElementChild;return c instanceof HTMLElement&&w(c,e,!1)}if(o===0)return Array.from(t.children).some(l=>l instanceof HTMLElement&&w(l,e,n));let s=r.style,a=e?s.width:s.height;if(a===\"100%\")return!0;if(a!==\"\")return!1;if(o===3||o===6&&n||o===5&&!n)return!0;if(!ns.has(o))return!1;let d=bt.has(o)?e:Qe.has(o)?!e:!1;return Array.from(t.children).some(l=>l instanceof HTMLElement&&w(l,e,d))}function sc(t){let e=Array.from(t.byId.values()).filter(n=>n instanceof HTMLElement);for(let n of e){if((P.get(n)??0)!==20&&!n.hasAttribute(\"data-pathland-scroll-axis\"))continue;let o=rs(n),s=n.parentElement,a=s?P.get(s)??0:0,i=bt.has(a)?!0:Qe.has(a)?!1:null;i===null?(n.style.flex=\"1 1 auto\",n.style.alignSelf=\"stretch\"):i===o?n.style.flex=\"1 1 auto\":n.style.flex=\"\"}for(let n of e){let r=P.get(n)??0;if(!(!ns.has(r)&&!Lt(r))){if(bt.has(r)||Qe.has(r)){let o=bt.has(r);n.style.width===\"\"&&w(n,!0,o)&&(n.style.width=\"100%\"),n.style.height===\"\"&&w(n,!1,!o)&&(n.style.height=\"100%\")}else if(r===18){n.style.width===\"\"&&(n.style.width=w(n,!0,!1)?\"100%\":\"max-content\"),n.style.height===\"\"&&(n.style.height=w(n,!1,!1)?\"100%\":\"max-content\");let o=n.style.justifyItems||\"start\",s=n.style.alignItems||\"start\";for(let a of Array.from(n.children)){if(!(a instanceof HTMLElement))continue;a.style.justifySelf=w(a,!0,!1)?\"stretch\":o,a.style.alignSelf=w(a,!1,!1)?\"stretch\":s;let i=a.firstElementChild,d=i instanceof HTMLElement?i.style.zIndex:\"\";a.style.zIndex=d||\"0\"}}else if(Lt(r)){let o=n.style.justifyItems||\"start\",s=n.style.alignItems||\"start\",a=Array.from(n.children).filter(c=>c instanceof HTMLElement),i=a.some(c=>P.get(c)===29),d=c=>{let p=/repeat\\(\\s*(\\d+)/.exec(c);return p?Number(p[1]):null},l=(c,p,N)=>{i&&(c.style.gridRow=String(p+1),c.style.gridColumn=String(N+1)),c.style.justifySelf=w(c,!0,!1)?\"stretch\":o,c.style.alignSelf=w(c,!1,!1)?\"stretch\":s;let A=c.firstElementChild;c.style.zIndex=A instanceof HTMLElement?A.style.zIndex:\"\"};if(i){let c=d(n.style.gridTemplateColumns),p=c??0,N=0;for(let M of a)P.get(M)===29?(p=Math.max(p,M.children.length),N=0):(N+=1,p=Math.max(p,N));p=Math.max(p,1),c===null&&(n.style.gridTemplateColumns=`repeat(${p},minmax(0,1fr))`,c=p);let A=c??p,I=0,g=0;for(let M of a)if(P.get(M)===29){g>0&&(I+=1),g=0;for(let tt of Array.from(M.children).filter(u=>u instanceof HTMLElement))l(tt,I,g),g+=1;I+=1,g=0}else g>=A&&(I+=1,g=0),l(M,I,g),g+=1}else for(let c of a)l(c,0,0)}}}for(let n of e){let r=n.parentElement;if(!r)continue;let o=P.get(r)??0,s=bt.has(o);if(!bt.has(o)&&!Qe.has(o))continue;(P.get(n)??0)===23||w(n,!s,!1)?n.style.alignSelf=\"stretch\":n.style.alignSelf===\"stretch\"&&(n.style.alignSelf=\"\")}}var tn=new WeakMap,ac=1e5,ic=new Set([0,1,2,3,4,5,6,7,8,9]);function cc(t,e){let n=0;for(let r of t.opcodes)switch(r.category){case 1:if(r.command===1){if(r.b>65535)throw new O(`invalid component id ${r.b}`);n++}break;case 2:lc(r,t.strings);break;case 4:r.command===8&&h(t.strings,r.b);break;default:break}if(e.byId.size+n>ac)throw new O(\"node limit exceeded\")}function lc(t,e){switch(t.command){case 3:h(e,t.b);break;case 2:{h(e,t.a),(t.b&255)===5&&h(e,t.c);break}case 5:fn(e,t.b);break;case 1:{let n=t.b>>>16&255;if(!ic.has(n))throw new O(`unknown value type ${n}`);n===5||n===8?h(e,t.c):n===9&&Tn(e,t.c);break}default:break}}function os(t,e){cc(t,e);let n=new Set;for(let r=0;r<t.opcodes.length;r++){let o=t.opcodes[r];try{switch(o.category){case 1:Ec(o,e,n);break;case 2:Pc(o,t.strings,e);break;case 4:uc(o,t.strings,e);break;default:break}}catch(s){let a=e.byId.get(o.a),i=a instanceof Element?`${a.tagName.toLowerCase()}#${a.getAttribute(\"data-pathland-id\")}.${a.className}`:String(a);throw console.error(`[pathland] applyBatch failed at op ${r}/${t.opcodes.length} cat=${o.category} cmd=${o.command} a=${o.a} b=${o.b} c=${o.c} target=${i}`,s),s}}for(let r of n)Hc(r);sc(e),ue(e)}function uc(t,e,n){switch(t.command){case 1:{for(let r of Array.from(n.byId.values()))r.parentNode&&r.parentNode.removeChild(r);n.byId.clear();break}case 6:{let r=document.documentElement;t.a===1?r.dataset.pathlandScheme=\"light\":t.a===2?r.dataset.pathlandScheme=\"dark\":delete r.dataset.pathlandScheme;break}case 7:(n.tokenSink??=kn()).reset();break;case 8:{let r=h(e,t.b);switch(t.a){case 1:document.title=r||(n.defaultTitle??\"Pathland\");break;case 2:dc(r);break;case 3:r?document.documentElement.lang=r:document.documentElement.removeAttribute(\"lang\");break;default:break}break}case 2:default:break}}function dc(t){let e=document.head.querySelector('meta[name=\"description\"]');if(!t){e?.remove();return}let n=e??document.createElement(\"meta\");e||(n.setAttribute(\"name\",\"description\"),document.head.appendChild(n)),n.setAttribute(\"content\",t)}function Vo(t,e){if(e instanceof HTMLElement){let n=P.get(t);if(n===18){let r=document.createElement(\"div\");return r.style.gridArea=\"1/1\",r.appendChild(e),r}if(Lt(n)||n===29){if(P.get(e)===29)return e;let r=document.createElement(\"div\");return r.appendChild(e),r}}return e}function Fo(t){let e=document.createElement(\"option\");e.textContent=t.textContent??\"\";let n=t.getAttribute(\"data-pathland-id\");return n&&e.setAttribute(\"data-pathland-id\",n),e}function $o(t){t instanceof HTMLSelectElement&&Array.from(t.options).forEach((e,n)=>{e.value=String(n)})}function Ec(t,e,n){if(t.command===4||t.command===2){let r=Dc(t,e);r&&n.add(r)}switch(t.command){case 1:{let r=e.byId.get(t.a);r||(r=vr(t.b),r.nodeType===Node.ELEMENT_NODE&&r.setAttribute(\"data-pathland-id\",String(t.a)),e.byId.set(t.a,r)),r.nodeType===Node.ELEMENT_NODE&&P.set(r,t.b);break}case 2:{let r=e.byId.get(t.a);if(r){let o=r;wc(o,e),o.parentNode&&o.parentNode.removeChild(o)}e.byId.delete(t.a);break}case 3:{let r=e.byId.get(t.b),o=e.byId.get(t.a);if(!r||!o)break;let s=o,a=P.get(o);a===10&&o instanceof HTMLElement&&o.matches(\"video\")&&(s=Bc(o,e));let i=Cn(s);if(i&&!i.contains(r)&&!(r instanceof Element&&i instanceof Element&&i.querySelector(`[data-pathland-id=\"${t.b}\"]`))){let d=Vo(s,r);a===40&&r instanceof HTMLElement&&(d=Fo(r),e.byId.set(t.b,d),P.set(d,1)),Bo(i,d,t.c),a===40&&$o(i),fc(s,d)}break}case 4:{let r=e.byId.get(t.b);r&&r.parentNode&&r.parentNode.removeChild(r);break}case 5:{let r=e.byId.get(t.b);if(!r)break;let o=e.byId.get(t.a);if(o){let s=Cn(o);if(s){let a=r.parentNode;r.parentNode?.removeChild(r),a instanceof HTMLElement&&a!==s&&a.childElementCount===0&&a.style.position===\"absolute\"&&a.remove();let i=Vo(o,r);P.get(o)===40&&r instanceof HTMLElement&&(i=Fo(r),e.byId.set(t.b,i),P.set(i,1)),Bo(s,i,t.c),P.get(o)===40&&$o(s)}}break}default:break}}function Bo(t,e,n){if(e===t||t.contains(e))return;let o=Array.from(t.childNodes).filter(s=>s.nodeType===Node.ELEMENT_NODE&&!(s instanceof HTMLElement&&s.classList.contains(br)))[n];if(Uc(t,e),o){if(o===e||o.contains(e))return;t.insertBefore(e,o)}else t.appendChild(e)}var br=\"pathland-nav-back\";function ss(t){return t.hasAttribute(\"data-pathland-route\")}function pc(t){return t.getAttribute(\"data-pathland-nav-chrome\")===\"custom\"}function mc(t){return Math.max(1,Number(t.getAttribute(\"data-pathland-depth\")??\"1\")||1)}function Wo(t){return t.querySelector(`.${br}`)}function ur(t,e){if(!ss(t)||pc(t)||mc(t)<=1){Wo(t)?.remove();return}let n=Wo(t);n||(n=document.createElement(\"button\"),n.type=\"button\",n.className=br,n.setAttribute(\"aria-label\",\"Back\"),n.textContent=\"\\u2039 Back\",n.addEventListener(\"click\",()=>e.onNavigateBack?.()),t.insertBefore(n,t.firstChild))}function as(t){for(let e of t.byId.values())e instanceof HTMLElement&&ss(e)&&ur(e,t)}var is={platform:\"@keyframes pl-platform { from { opacity: 0; } to { opacity: 1; } }\",fade:\"@keyframes pl-fade { from { opacity: 0; } to { opacity: 1; } }\",slide:\"@keyframes pl-slide { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }\",scale:\"@keyframes pl-scale { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }\"},Yo=!1;function Tc(){if(Yo||typeof document>\"u\")return;Yo=!0;let t=document.createElement(\"style\");t.setAttribute(\"data-pathland-transitions\",\"\"),t.textContent=Object.values(is).join(`\n+`),document.head.appendChild(t)}function fc(t,e){if(!(t instanceof HTMLElement)||!(e instanceof HTMLElement))return;let n=t.getAttribute(\"data-pathland-transition\");if(!n)return;Tc();let r=is[n]?n:\"platform\";e.style.animation=`pl-${r} 180ms ease-out`,e.addEventListener(\"animationend\",()=>{e.style.animation=\"\"},{once:!0})}function _c(t){let e=P.get(t);if(e!==void 0)return Co.includes(e)?\"generic\":yo.includes(e)?\"native\":\"other\";let n=t.tagName.toLowerCase();return n===\"div\"||n===\"span\"?t.classList.contains(\"pathland-menu\")||t.classList.contains(\"pathland-stepper\")?\"other\":\"generic\":n===\"button\"||n===\"input\"||n===\"label\"||n===\"select\"||n===\"textarea\"||n===\"progress\"||n===\"img\"?\"native\":\"other\"}function Oc(t,e,n){let r=document.createElement(e);for(let i of Array.from(t.attributes))r.setAttribute(i.name,i.value);for(;t.firstChild;)r.appendChild(t.firstChild);t.parentNode&&t.parentNode.replaceChild(r,t);let o=Number(t.getAttribute(\"data-pathland-id\"));o&&n.byId.set(o,r);let s=P.get(t);s!==void 0&&P.set(r,s);let a=tn.get(t);return a!==void 0&&tn.set(r,a),$r(t,r),r}function Xo(t,e){let n=_c(t),r=tn.get(t)??0,o=Ut.get(t),s=Ho(n,r,o??null),a=t;s&&a.tagName.toLowerCase()!==s&&(a=Oc(a,s,e));let i=vo(n,r);i?a.setAttribute(\"role\",i):a.removeAttribute(\"role\")}function Pc(t,e,n){if(t.command===2){Gr(t,e,n.tokenSink??=kn());return}let r=n.byId.get(t.a);if(!r||r.nodeType!==Node.ELEMENT_NODE)return;let o=r;switch(t.command){case 3:o.classList.contains(\"pathland-rich-text\")&&o.classList.remove(\"pathland-rich-text\"),cs(o,h(e,t.b));break;case 5:xc(o,fn(e,t.b));break;case 4:{let s=o.matches(\"input[type=date],input[type=time],input[type=datetime-local]\")?o:o.querySelector(\"input[type=date],input[type=time],input[type=datetime-local]\");if(s)if(s.type===\"time\")s.value=Hn(t.c);else if(s.type===\"datetime-local\"){let a=Dn(t.b),i=Hn(t.c);s.value=a?`${a}T${i}`:i}else s.value=Dn(t.b);break}case 1:{let s=t.b&65535,a=t.b>>>16&255;if(a===5){let i=h(e,t.c);if(s===8217)o.setAttribute(\"data-pathland-route\",i),n.onRoute?.(i);else if(qo(o,s,i),s===4155){Ir(o,s),qo(o,s,i),le(o,n),Fc(o);let d=ce(o);d&&en(Number(o.getAttribute(\"data-pathland-id\")),d)}}else if(a===8)uo(o,s,h(e,t.c));else if(a===9)ds(o,n,Tn(e,t.c));else if(P.get(o)===7&&(s===8207||s===8206))hc(o,n,s,a,t.c);else if(s===8193)tn.set(o,Math.round(x(t.c))&255),Xo(o,n);else if(s===4146)kr(o,Math.round(x(t.c))&255),Xo(o,n);else if(s===8218)o.setAttribute(\"data-pathland-depth\",String(t.c)),ur(o,n);else if(s===8219)Math.round(x(t.c))===1?o.setAttribute(\"data-pathland-nav-chrome\",\"custom\"):o.removeAttribute(\"data-pathland-nav-chrome\"),ur(o,n);else if(s===33){let i=Math.round(x(t.c))===1;o.setAttribute(\"data-pathland-scroll-axis\",i?\"horizontal\":\"vertical\")}else s===4149||s===4150||s===4151||s===4156||s===4157||s===4158?Vc(o,n,s,a,t.c):s===4154?kc(o,n,t.c):gc(o,s,a,t.c);break}default:break}}function Nc(t){let e=t.trim();if(!e)return null;try{switch(new URL(e,document.baseURI).protocol){case\"http:\":case\"https:\":case\"mailto:\":case\"tel:\":return e;default:return null}}catch{return null}}function Ko(t){let e=t.trim();if(!e)return\"\";try{switch(new URL(e,document.baseURI).protocol){case\"http:\":case\"https:\":case\"blob:\":return e;case\"data:\":return/^data:(?:image|audio|video)\\//i.test(e)?e:null;default:return null}}catch{return null}}function xc(t,e){let n=t.ownerDocument,r=t.querySelector(\".pathland-text\")??t;t.classList.add(\"pathland-rich-text\");let o=[];for(let s of Hr(e)){let a=new TextDecoder().decode(e.textBytes.subarray(s.start,s.end)),i=Rc(s.attributes),d=s.link?Nc(s.link):null;if(!i&&!d){o.push(n.createTextNode(a));continue}let l=n.createElement(d?\"a\":\"span\");d&&l.setAttribute(\"href\",d),i&&l.setAttribute(\"style\",i),l.textContent=a,o.push(l)}r.replaceChildren(...o)}function Rc(t){let e=\"\",n=!1,r=!1;for(let o of t)switch(o.property){case 4103:{let s=x(o.value);s>0&&(e+=`font-size:${s}px;`);break}case 4104:{let s=x(o.value);s>0&&(e+=`font-weight:${s};`);break}case 4106:e+=`color:${G(o.value)};`;break;case 4119:x(o.value)===1&&(e+=\"font-style:italic;\");break;case 4120:{let s=Math.round(x(o.value));e+=`font-family:${s===1?\"Georgia, 'Times New Roman', serif\":s===2?\"ui-rounded, system-ui, sans-serif\":s===3?\"ui-monospace, monospace\":\"inherit\"};`;break}case 4127:n||=o.valueType===1?o.value!==0:x(o.value)!==0;break;case 4128:r||=o.valueType===1?o.value!==0:x(o.value)!==0;break;default:break}return(n||r)&&(e+=`text-decoration:${[n?\"underline\":\"\",r?\"line-through\":\"\"].filter(Boolean).join(\" \")};`),e}function cs(t,e){if(t.classList.contains(\"pathland-rich-text\"))return;let n=t.querySelector(\"input[type=text],input[type=password]\");if(n instanceof HTMLInputElement){n.value=e;return}let r=t.querySelector(\"textarea\");if(r instanceof HTMLTextAreaElement){r.value=e;return}let o=t.querySelector(\".pathland-menu-trigger\");if(o){o.textContent=e;return}let s=t.querySelector(\".pathland-text\");if(s){s.textContent=e;return}t.childElementCount===0&&(t.textContent=e)}function Ac(t,e){e?(t.setAttribute(\"role\",\"img\"),t.setAttribute(\"aria-label\",e),t.removeAttribute(\"aria-hidden\"),t.removeAttribute(\"focusable\")):(t.removeAttribute(\"role\"),t.removeAttribute(\"aria-label\"),t.setAttribute(\"aria-hidden\",\"true\"),t.setAttribute(\"focusable\",\"false\"))}function qo(t,e,n){switch(e){case 10:case 8202:{let r=t.matches(\"svg.pathland-icon\")?t:null,o=t.matches(\"img,audio,video\")?t:null;if(o)o.setAttribute(\"alt\",n);else if(r)Ac(r,n);else if(e===8202)if(t.classList.contains(\"pathland-slider\")){let s=t.querySelector(\"input\");s&&(n?s.setAttribute(\"aria-label\",n):s.removeAttribute(\"aria-label\"))}else{let s=t.querySelector(\".pathland-label\");s?s.textContent=n:n?t.setAttribute(\"aria-label\",n):t.removeAttribute(\"aria-label\")}else{let s=t.querySelector(\".pathland-label\");s?s.textContent=n:t.querySelector(\"button,input,select,textarea,[role=button]\")||cs(t,n)}break}case 4152:{let r=t.matches(\"svg.pathland-icon\")?t:t.querySelector(\"svg.pathland-icon\");r&&ko(r,n);break}case 8203:{let r=t.querySelector(\"input[type=text]\");r instanceof HTMLInputElement&&(r.placeholder=n);break}case 4098:{let r=t.matches(\"img\")?t:t.querySelector(\"img\"),o=Ko(n);r instanceof HTMLImageElement&&o!==null&&(r.src=o);break}case 4155:{let r=ce(t),o=Ko(n);r&&o!==null&&(r.src=o);break}case 4105:{t.style.fontFamily=n;break}case 32:{let o=P.get(t)===22,a=n.split(\",\").map(i=>i.trim()).map(i=>i.startsWith(\"fixed:\")?`${i.slice(6)}px`:i.startsWith(\"adaptive:\")?`minmax(${i.slice(9)}px,1fr)`:\"1fr\").join(\" \");o?t.style.gridTemplateRows=a:t.style.gridTemplateColumns=a;break}default:break}}function gc(t,e,n,r){switch(e){case 8196:{let o=t.querySelector(\"input[type=checkbox]\");if(o){let s=(n===1?r&255:r)!==0;o.checked=s,o.getAttribute(\"role\")===\"checkbox\"&&o.setAttribute(\"aria-pressed\",s?\"true\":\"false\")}break}case 8198:{let o=t.querySelector(\"input[type=range]\");o&&!Uo(o)&&(o.value=String(x(r))),o&&Wt(o);let s=t.querySelector(\".pathland-stepper span\");s&&(s.textContent=String(Math.round(x(r)*100)/100));let a=t.matches(\".pathland-gauge\")?t:t.querySelector(\".pathland-gauge\");if(a){let i=Number(a.dataset.max??1),d=Number(a.dataset.min??0),l=i-d,c=l<=0?0:(x(r)-d)/l*100,p=a.firstElementChild;p instanceof HTMLElement&&(p.style.width=c+\"%\")}break}case 8208:{let o=t.matches(\"select\")?t:t.querySelector(\"select\");o&&(o.selectedIndex=r);break}case 8210:{let o=t.matches(\"input[type=color]\")?t:t.querySelector(\"input[type=color]\");o instanceof HTMLInputElement&&(o.value=yn(r));break}case 8215:{t.dataset.bindingId=String(r>>>0);break}case 4106:{let o=P.get(t);(o===3||o===4)&&(t.style.backgroundColor=G(r)),ve(t,e,n,r);break}case 8195:Eo(t,r);break;case 2:{let o=P.get(t);if(Lt(o)||o===18){let s=n===6?r&255:Math.round(x(r));t.style.justifyItems=co(s),t.style.alignItems=lo(s)}else ve(t,e,n,r);break}case 30:{let o=P.get(t),s=x(r);o!==22&&Lt(o)&&(t.style.gridTemplateColumns=s>0?`repeat(${Math.round(s)},minmax(0,1fr))`:\"\");break}case 31:{let o=P.get(t),s=x(r);(o===19||o===22)&&Lt(o)&&(t.style.gridTemplateRows=s>0?`repeat(${Math.round(s)},minmax(0,1fr))`:\"\");break}default:ve(t,e,n,r);break}}function Lt(t){return t===19||t===21||t===22}function hc(t,e,n,r,o){let s=r===1?o&255:o,a=n===8207?s!==0:x(o)<0,i=bc(t,e,a);if(n===8206&&i instanceof HTMLProgressElement){let d=Math.min(1,Math.max(0,x(o)));i.value=d,i.max=1}}function bc(t,e,n){let r=t.classList.contains(\"pathland-spinner\");if(n===r)return t;let o=n?(()=>{let a=document.createElement(\"div\");return a.className=\"pathland-spinner\",a})():(()=>{let a=document.createElement(\"progress\");return a.max=1,a})();for(let a of Array.from(t.attributes))a.name!==\"class\"&&(n&&(a.name===\"max\"||a.name===\"value\")||o.setAttribute(a.name,a.value));o.className=n?\"pathland-spinner\":\"pathland-progress\",t.parentNode&&t.parentNode.replaceChild(o,t);let s=Number(t.getAttribute(\"data-pathland-id\"));return s&&e.byId.set(s,o),P.set(o,7),o}var Q=new WeakMap,Qt=null;function Lr(t){let e=t.play();!e||typeof e.then!=\"function\"||e.then(()=>{Qt===t&&(Qt=null)},n=>{let r=n instanceof Error?n.name:String(n);r===\"NotAllowedError\"?(Qt=t,_.debug(\"media\",\"play() blocked by the autoplay policy \\u2014 retrying on the next gesture\")):_.warn(\"media\",\"play() rejected\",r)})}function ls(){let t=Qt;t&&(Qt=null,Lr(t))}function Lc(){let t=[];for(let e of document.querySelectorAll(\"[data-pathland-media]\")){let n=e instanceof HTMLMediaElement?e:e.querySelector(\"audio,video\");n&&t.push(n)}return t}function us(){let t=new Set;for(let e of Lc()){if(t.has(e))continue;t.add(e);let n=Q.get(e);if(!n||n.unlocked||n.playing||!e.paused||!e.currentSrc&&!e.getAttribute(\"src\"))continue;let r=e.muted;e.muted=!0;let o=e.play(),s=()=>{e.muted=r};o&&typeof o.then==\"function\"?o.then(()=>{n.unlocked=!0,Q.get(e)?.playing||e.pause(),s()},a=>{s();let i=a instanceof Error?a.name:String(a);_.debug(\"media\",\"unlock play() deferred\",i)}):(n.unlocked=!0,s())}}function ce(t){return t.matches(\"audio,video\")?t:t.querySelector(\"audio,video\")}function Ir(t,e){if(t.matches(\"audio,video\"))return t;let n=t.querySelector(\"audio,video\");return n||(n=document.createElement(\"video\"),n.setAttribute(\"data-pathland-media\",\"\"),t.prepend(n)),n}var Ic=1/30,Mc=33;function le(t,e,n){let r=ce(t);if(!r||Q.has(r))return;let o={suppressUntil:0,suppressTimeUntil:0,playing:!1,lastReported:0,lastReportedVolume:-1,reportTimer:0,unlocked:!1};Q.set(r,o);let s=n??Number(t.getAttribute(\"data-pathland-id\")??t.closest(\"[data-pathland-id]\")?.getAttribute(\"data-pathland-id\")??0),a=e.onMediaEvent;a&&(r.controls&&(r.addEventListener(\"play\",()=>{performance.now()>=o.suppressUntil&&a(sr(s,!0))}),r.addEventListener(\"pause\",()=>{performance.now()>=o.suppressUntil&&a(sr(s,!1))}),r.addEventListener(\"volumechange\",()=>{performance.now()>=o.suppressUntil&&(o.lastReportedVolume=r.volume,a(Ro(s,r.volume)))})),o.reportTimer=window.setInterval(()=>{!r.paused&&performance.now()>=o.suppressTimeUntil&&Math.abs(r.currentTime-o.lastReported)>=Ic&&(o.lastReported=r.currentTime,a(No(s,r.currentTime)))},Mc),r.addEventListener(\"ended\",()=>{a(xo(s))}),r.addEventListener(\"durationchange\",()=>{Number.isFinite(r.duration)&&r.duration>0&&a(Ao(s,r.duration))}))}var te=new WeakMap;function Sc(t,e){let n=0;for(let[r,o]of t.entries()){if(o>e)break;(r===0||t[r-1]!==o)&&(n=r)}return n}function ds(t,e,n){t.setAttribute(\"data-pathland-fit\",n.join(\",\"));let r=Cc(t,e);r.thresholds=n,Mr(t,e,r)}function Es(t,e){let n=t.getAttribute(\"data-pathland-fit\");if(n==null)return;let r=n.split(\",\").map(Number).filter(Number.isFinite);ds(t,e,r)}function ps(t){for(let e of document.querySelectorAll(\"[data-pathland-fit]\")){let n=te.get(e);n&&(n.lastIndex=-1,Mr(e,t,n))}}function Cc(t,e){let n=te.get(t);return n||(n={thresholds:[],lastIndex:-1,observer:null},te.set(t,n),typeof ResizeObserver<\"u\"&&(n.observer=new ResizeObserver(()=>Mr(t,e,n)),n.observer.observe(t))),n}function Mr(t,e,n){let r=e.onFitEvent;if(!r)return;let o=t.getBoundingClientRect().width,s=Sc(n.thresholds,o);if(s===n.lastIndex)return;n.lastIndex=s;let a=Number(t.getAttribute(\"data-pathland-id\"));Number.isInteger(a)&&a>0&&r(go(a,s))}function yc(t,e){let n=t.command===2?null:t.a;return n!=null&&n>0?e.byId.get(n)??null:t.command===2?e.byId.get(t.a)?.parentElement??null:null}function Dc(t,e){return yc(t,e)?.closest(\"[data-pathland-fit-cands]\")??null}function Hc(t){if(!t.hasAttribute(\"data-pathland-fit-cands\"))return;let e=Array.from(t.children).filter(s=>s instanceof HTMLElement&&s.hasAttribute(\"data-pathland-fit-cand\")),n=e.filter(s=>s.firstElementChild!==null);if(n.length>1)return;let r=n[0]?.firstElementChild;r&&n[0].replaceWith(r);for(let s of e)s.parentNode===t&&s.remove();t.removeAttribute(\"data-pathland-fit-cands\"),t.style.removeProperty(\"container-type\"),t.style.removeProperty(\"container-name\");let o=t.getAttribute(\"data-pathland-id\");o&&vc(Number(o))}function vc(t){let e=document.querySelector(\"style[data-pathland-fit]\");if(!e)return;let n=e.textContent?.split(/\\n/)??[],r=new RegExp(`@container pf-${t}\\\\b`),o=[],s=!1;for(let i of n){if(!s&&r.test(i)&&(s=!0),s){i.includes(\"}\")&&(s=!1);continue}o.push(i)}let a=o.join(`\n+`);e.textContent=a;try{e.sheet?.replaceSync?.(a)}catch{}}function wc(t,e){let n=[t,...Array.from(t.querySelectorAll(\"[data-pathland-id]\"))];for(let r of n){if(!(r instanceof Element))continue;let o=Number(r.getAttribute(\"data-pathland-id\"));Number.isInteger(o)&&o>0&&e.byId.delete(o);let s=ce(r);if(s){let i=Q.get(s);i?.reportTimer&&window.clearInterval(i.reportTimer),Q.delete(s)}let a=te.get(r);a?.observer&&a.observer.disconnect(),te.delete(r)}}function Uc(t,e){let n=e.parentNode;n&&n!==t&&n.removeChild(e)}var dr=new Map;function Gc(t){let e=dr.get(t);return e||(e={controllerMedia:null,surfaces:new Set},dr.set(t,e)),e}function en(t,e){let n=dr.get(t);if(!n)return;e instanceof HTMLVideoElement&&(n.controllerMedia=e,n.surfaces.size>0&&(e.muted=!0));let r=n.surfaces;for(let o of r){if(!o.isConnected){r.delete(o);continue}if(e.src&&o.src!==e.src&&(o.src=e.src),o.volume=e.volume,o.muted=e.muted,o.loop=e.loop,Number.isFinite(e.currentTime)&&Math.abs(o.currentTime-e.currentTime)>.25&&(o.currentTime=e.currentTime),!e.paused&&o.paused){let s=o.play();s&&typeof s.catch==\"function\"&&s.catch(()=>{})}else e.paused&&!o.paused&&o.pause()}}function kc(t,e,n){let r=t.matches(\"video\")?t:t.querySelector(\"video\");if(!r)return;let o=e.byId.get(n),s=o instanceof HTMLElement?Ir(o,4155):null;s&&(s.muted=!0);let a=Gc(n);a.surfaces.add(r),s?en(n,s):a.controllerMedia&&en(n,a.controllerMedia),le(t,e,n),$c(t)}function Vc(t,e,n,r,o){let s=Ir(t,4155);if(!s)return;le(t,e);let a=Number(t.getAttribute(\"data-pathland-id\")),i=Q.get(s);if(n===4149){let d=(r===1?o&255:o)!==0;i&&(i.playing=d),d?Lr(s):s.pause(),i&&(i.suppressUntil=performance.now()+100)}else if(n===4150){let d=x(o),l=i?i.lastReported:s.currentTime;Math.abs(l-d)>.25&&(s.currentTime=d,i&&(i.suppressTimeUntil=performance.now()+250))}else if(n===4151){let d=Math.min(1,Math.max(0,x(o))),l=i?i.lastReportedVolume:-1;(l<0||Math.abs(l-d)>.01)&&(s.volume=d,i&&(i.suppressUntil=performance.now()+100))}else if(n===4156)s.muted=(r===1?o&255:o)!==0,i&&(i.suppressUntil=performance.now()+100);else if(n===4157)s.loop=(r===1?o&255:o)!==0;else if(n===4158){let d=x(o);d>0&&(s.playbackRate=d)}en(a,s)}function Fc(t){let e=ce(t),n=e?Q.get(e):void 0;e&&n&&n.playing&&Lr(e)}function $c(t){let e=t.matches(\"audio,video\")?t:t.querySelector(\"audio,video\");if(!e)return;(t.matches(\"audio,video\")?t.childElementCount>0:t.childElementCount>1)||(e.controls=!0)}function Bc(t,e){let n=t.parentElement;if(n?.classList.contains(\"pathland-media\"))return n;let r=document.createElement(\"div\");r.className=\"pathland-media\",r.setAttribute(\"data-pathland-media\",\"\");for(let i of Array.from(t.attributes))i.name===\"style\"?r.style.cssText=t.style.cssText:r.setAttribute(i.name,i.value);t.controls=!1;let o=t.parentNode;t.removeAttribute(\"data-pathland-id\"),t.style.cssText=\"\",r.append(t),o&&o.replaceChild(r,t);let s=Number(r.getAttribute(\"data-pathland-id\")??0);s&&e.byId.set(s,r);let a=P.get(t);return a!==void 0&&P.set(r,a),r}var Zo=new WeakMap;function at(t,e,n=0){let r=t.dataset[e];if(r==null)return n;let o=Number.parseFloat(r);return Number.isFinite(o)?o:n}function Wc(t){let e=t.getAttribute(\"data-event-listeners\"),n=e==null?0:Number(e);return Number.isFinite(n)&&(n&1024)!==0}function Yc(t){let e=0;for(let n of Array.from(t.children))n instanceof HTMLElement&&n.hasAttribute(\"data-pathland-id\")&&e++;return e}function Xc(t){let e=t.parentElement;for(;e&&e!==document.body&&e!==document.documentElement;){let n=getComputedStyle(e);if(/(auto|scroll|overlay)/.test(n.overflowY)||/(auto|scroll|overlay)/.test(n.overflowX))return e;e=e.parentElement}return null}function j(t,e){return 0}function Kc(t){let e=t.getAttribute(\"data-pathland-lazy\");if(e==null)return;let n=at(t,\"pathlandItemCount\"),r=at(t,\"pathlandItemExtent\"),o=at(t,\"pathlandFirstItemIndex\"),s=Math.max(0,at(t,\"pathlandItemSpacing\"));if(!(r>0))return;let a=r+s,i=Yc(t),d=o*a,l=Math.max(0,n-o-i)*a;t.hasAttribute(\"role\")||t.setAttribute(\"role\",\"list\"),Array.from(t.children).filter(p=>p instanceof HTMLElement&&p.hasAttribute(\"data-pathland-id\")).forEach((p,N)=>{p.hasAttribute(\"role\")||p.setAttribute(\"role\",\"listitem\"),p.setAttribute(\"aria-setsize\",String(n)),p.setAttribute(\"aria-posinset\",String(o+N+1))}),e===\"horizontal\"?(t.style.paddingLeft=`${j(t,\"left\")+d}px`,t.style.paddingRight=`${j(t,\"right\")+l}px`,t.style.paddingTop=`${j(t,\"top\")}px`,t.style.paddingBottom=`${j(t,\"bottom\")}px`):(t.style.paddingTop=`${j(t,\"top\")+d}px`,t.style.paddingBottom=`${j(t,\"bottom\")+l}px`,t.style.paddingLeft=`${j(t,\"left\")}px`,t.style.paddingRight=`${j(t,\"right\")}px`)}function qc(t){let e=t.getAttribute(\"data-pathland-lazy\"),n=at(t,\"pathlandItemCount\"),r=at(t,\"pathlandItemExtent\"),o=Math.max(0,at(t,\"pathlandItemSpacing\"));if(e==null||!(n>0)||!(r>0))return null;let s=r+o,a=n*r+Math.max(0,n-1)*o,i=t.getBoundingClientRect(),d=Xc(t),l,c;if(d){let g=d.getBoundingClientRect();if(e===\"horizontal\"){let M=i.left-g.left+d.scrollLeft;l=d.scrollLeft-M,c=l+d.clientWidth}else{let M=i.top-g.top+d.scrollTop;l=d.scrollTop-M,c=l+d.clientHeight}}else e===\"horizontal\"?(l=-i.left,c=l+window.innerWidth):(l=-i.top,c=l+window.innerHeight);let p=Math.max(0,Math.min(a,l)),N=Math.max(p,Math.min(a,c)),A=Math.max(0,Math.min(n,Math.floor(p/s))),I=Math.max(A,Math.min(n,Math.ceil(N/s)));return{first:A,count:Math.max(0,I-A)}}function ue(t){for(let e of document.querySelectorAll(\"[data-pathland-lazy]\")){Kc(e);let n=qc(e);if(!n)continue;let r=Zo.get(e);if(r&&r.first===n.first&&r.count===n.count||(Zo.set(e,n),!Wc(e)))continue;let o=Number(e.getAttribute(\"data-pathland-id\"));Number.isInteger(o)&&o>0&&t.onVisibleRangeEvent&&t.onVisibleRangeEvent(ho(o,n.first,n.count))}}var zc={[1]:\"CREATE_NODE\",[2]:\"DELETE_NODE\",[3]:\"INSERT_CHILD\",[4]:\"REMOVE_CHILD\",[5]:\"MOVE_CHILD\"},jc={[1]:\"SET_PROPERTY\",[2]:\"SET_DESIGN_TOKEN\",[3]:\"SET_TEXT\",[4]:\"SET_DATE\",[5]:\"SET_ATTRIBUTED_TEXT\"},Qc={[1]:\"POINTER_DOWN\",[2]:\"POINTER_MOVE\",[3]:\"POINTER_UP\",[4]:\"KEY_DOWN\",[5]:\"KEY_UP\",[6]:\"VALUE_CHANGED\",[7]:\"TEXT_CHANGED\",[8]:\"FOCUS_CHANGED\",[9]:\"EDITING_CHANGED\",[10]:\"SUBMIT\",[11]:\"SCROLL\",[12]:\"WHEEL\",[21]:\"VISIBLE_RANGE\",[13]:\"DATE_CHANGED\",[14]:\"NAVIGATE\"},Jc={[1]:\"RESET\",[2]:\"ENVIRONMENT\",[3]:\"RESYNC\",[8]:\"SET_WINDOW_METADATA\"},tl={[1]:\"TITLE\",[2]:\"DESCRIPTION\",[3]:\"LOCALE\"},el={[1]:\"TEXT\",[2]:\"IMAGE\",[3]:\"COLOR\",[4]:\"SHAPE\",[5]:\"DIVIDER\",[6]:\"SPACER\",[7]:\"PROGRESS_VIEW\",[8]:\"GAUGE\",[16]:\"VSTACK\",[17]:\"HSTACK\",[18]:\"ZSTACK\",[19]:\"GRID\",[20]:\"SCROLLVIEW\",[21]:\"LAZY_VGRID\",[22]:\"LAZY_HGRID\",[27]:\"LAZY_VSTACK\",[28]:\"LAZY_HSTACK\",[32]:\"BUTTON\",[33]:\"TEXT_FIELD\",[34]:\"TEXT_EDITOR\",[36]:\"TOGGLE\",[37]:\"SLIDER\",[38]:\"STEPPER\",[39]:\"DATE_PICKER\",[40]:\"PICKER\",[41]:\"MENU\",[42]:\"COLOR_PICKER\",[127]:\"COMMENT\"},nl={[1]:\"SPACING\",[10]:\"TEXT\",[4113]:\"PADDING\",[4114]:\"PADDING_TOP\",[4115]:\"PADDING_RIGHT\",[4116]:\"PADDING_BOTTOM\",[4117]:\"PADDING_LEFT\",[4097]:\"BACKGROUND_COLOR\",[4103]:\"FONT_SIZE\",[4104]:\"FONT_WEIGHT\",[4105]:\"FONT_FAMILY\",[4106]:\"COLOR\",[4109]:\"OPACITY\",[4110]:\"VISIBLE\",[4099]:\"BORDER_WIDTH\",[4100]:\"BORDER_COLOR\",[4144]:\"TINT\",[4145]:\"TRANSITION\",[8195]:\"ENABLED\",[8196]:\"SELECTED\",[8197]:\"EVENT_LISTENERS\",[8198]:\"VALUE\",[8202]:\"LABEL\",[8203]:\"PROMPT\",[4098]:\"IMAGE_SOURCE\",[8208]:\"SELECTION\",[8210]:\"COLOR_VALUE\",[8215]:\"BINDING_ID\",[8217]:\"ROUTE\"},rl={[1]:\"VIEWPORT_WIDTH\",[2]:\"VIEWPORT_HEIGHT\",[3]:\"ROUTE\"},ct=t=>`0x${(t>>>0).toString(16)}`,It=t=>new Float32Array(new Uint32Array([t]).buffer)[0]??0,J=(t,e)=>t[e]??ct(e);function ol(t,e){let n=e.b&65535,r=e.b>>>16&255,o=J(nl,n);return r===5?`${o}=\"${h(t.strings,e.c)}\"`:r===8?`${o}=token(\"${h(t.strings,e.c)}\")`:`${o}=${ct(e.c)}`}function sl(t,e){let n=J(Qc,e.command),r=`target=${e.a}`;switch(e.command){case 1:case 2:case 3:return`EVENT ${n}(${r}, x=${It(e.b)}, y=${It(e.c)})`;case 4:case 5:return`EVENT ${n}(${r}, key=${ct(e.b)}, mods=${ct(e.c)})`;case 6:return`EVENT ${n}(${r}, value=${It(e.b)})`;case 7:return`EVENT ${n}(${r}, \"${h(t.strings,e.b)}\")`;case 14:return e.flags&1?`EVENT ${n}(${r}, url=\"${h(t.strings,e.b)}\")`:`EVENT ${n}(back)`;case 13:return`EVENT ${n}(${r}, days=${e.b>>>0}, millis=${e.c})`;case 11:case 12:return`EVENT ${n}(${r}, x=${It(e.b)}, y=${It(e.c)})`;case 21:return`EVENT ${n}(${r}, first=${e.b>>>0}, count=${e.c>>>0})`;default:return`EVENT ${n}(${r})`}}function ms(t,e){switch(e.category){case 1:{let n=J(zc,e.command);switch(e.command){case 1:return`TREE ${n}(id=${e.a}, ${J(el,e.b&65535)})`;case 2:return`TREE ${n}(id=${e.a})`;case 3:case 5:return`TREE ${n}(parent=${e.a}, child=${e.b}, index=${e.c})`;case 4:return`TREE ${n}(parent=${e.a}, child=${e.b})`;default:return`TREE ${n}(a=${e.a}, b=${e.b}, c=${e.c})`}}case 2:{let n=J(jc,e.command);switch(e.command){case 1:return`STYLE ${n}(${ol(t,e)}, node=${e.a})`;case 3:return`STYLE ${n}(\"${h(t.strings,e.b)}\", node=${e.a})`;case 5:return`STYLE ${n}(node=${e.a}, arenaRef=${e.b})`;case 4:return`STYLE ${n}(node=${e.a}, days=${e.b>>>0}, millis=${e.c})`;case 2:return`STYLE ${n}(\"${h(t.strings,e.a)}\", vt=${ct(e.b)})`;default:return`STYLE ${n}(node=${e.a}, b=${e.b}, c=${e.c})`}}case 3:return sl(t,e);case 4:{let n=J(Jc,e.command);if(e.command===2){let r=J(rl,e.a&65535);return`META ${n}(${r}=${(e.a&65535)===3?`\"${h(t.strings,e.b)}\"`:It(e.b)})`}return e.command===8?`META ${n}(${J(tl,e.a)}=\"${h(t.strings,e.b)}\")`:`META ${n}(a=${e.a}, b=${e.b}, c=${e.c})`}default:return`${ct(e.category)} ${ct(e.command)}(a=${e.a}, b=${e.b}, c=${e.c})`}}function Sr(t){let e=t.opcodes[0],n=e?ms(t,e):\"(no opcodes)\";return`seq=${t.sequence} (${t.opcodes.length} op${t.opcodes.length===1?\"\":\"s\"}): ${n}`}function Cr(t){return`seq=${t.sequence} [${t.opcodes.map(e=>ms(t,e)).join(\"; \")}]`}function il(t){return t.opcodes.length>0&&t.opcodes.every(e=>e.category===4&&e.command===5)}var cl=500,ll=3e4,ul=30,dl=16+pn*16+4+lt+64,El=5,pl=5e3,Ts=15e3,ml=1e3,Tl=1,ln=class{constructor(e){this.ws=null;this.attempt=0;this.stopped=!1;this.pingTimer=null;this.watchdogTimer=null;this.lastActivityAt=0;this.protocolErrors=0;this.expectedSequence=null;this.options=e}start(){this.stopped=!1,this.lastActivityAt=Date.now(),this.startHeartbeat(),this.connect()}stop(){this.stopped=!0,this.stopHeartbeat(),this.ws&&(this.ws.onclose=null,this.ws.close(),this.ws=null)}get open(){return this.ws!==null&&this.ws.readyState===Tl}send(e){if(this.open){try{let n=mn(e);_.info(\"ws\",\"\\u2192 send\",Sr(n)),_.debug(\"ws\",\"\\u2192 send detail\",Cr(n))}catch{_.info(\"ws\",\"\\u2192 send\",e.length,\"bytes\")}this.ws.send(e)}}startHeartbeat(){this.pingTimer||this.watchdogTimer||(this.pingTimer=setInterval(()=>{this.open&&this.send(mo())},pl),this.watchdogTimer=setInterval(()=>{this.open&&Date.now()-this.lastActivityAt>Ts&&(_.warn(\"ws\",`no server frame for ${Ts} ms \\u2014 reconnecting`),this.ws?.close())},ml))}stopHeartbeat(){this.pingTimer&&(clearInterval(this.pingTimer),this.pingTimer=null),this.watchdogTimer&&(clearInterval(this.watchdogTimer),this.watchdogTimer=null)}connect(){_.debug(\"ws\",\"connecting\",this.options.url);let e=this.options.createSocket?this.options.createSocket(this.options.url):new WebSocket(this.options.url);this.ws=e,e.binaryType=\"arraybuffer\",e.onopen=()=>{this.lastActivityAt=Date.now(),this.expectedSequence=null;let n=this.attempt>0;this.attempt=0,_.info(\"ws\",n?\"connected (reconnect)\":\"connected\"),this.options.onStatus?.(\"open\"),this.options.onOpen?.(this),n&&(_.debug(\"ws\",\"requesting RESYNC (missed deltas while disconnected)\"),this.send(qt()))},e.onmessage=n=>this.handleMessage(n.data),e.onerror=()=>{_.error(\"ws\",\"socket error\")},e.onclose=()=>{if(this.ws=null,this.stopped){_.debug(\"ws\",\"closed (stopped)\");return}_.info(\"ws\",\"closed \\u2014 reconnecting (attempt\",this.attempt+1+\")\"),this.options.onStatus?.(\"reconnecting\"),this.scheduleReconnect()}}scheduleReconnect(){if(this.attempt>=ul)return;let e=Math.min(cl*2**this.attempt,ll);this.attempt++,setTimeout(()=>this.connect(),e)}handleMessage(e){this.lastActivityAt=Date.now();let n;if(e instanceof ArrayBuffer)n=new Uint8Array(e);else if(e instanceof Blob){e.arrayBuffer().then(o=>this.handleMessage(o)).catch(()=>{});return}else n=new Uint8Array(0);if(n.length>dl){_.error(\"ws\",`rejected oversized batch (${n.length} bytes)`),this.protocolFailure();return}let r;try{r=mn(n)}catch(o){if(o instanceof O){_.error(\"ws\",\"rejected batch:\",o.message),this.protocolFailure();return}throw o}if(_.info(\"ws\",\"\\u2190 recv\",Sr(r)),_.debug(\"ws\",\"\\u2190 recv detail\",Cr(r)),r.version!==1){_.warn(\"ws\",`protocol version ${r.version} != ${1}; reloading`),location.reload();return}if(this.isSequenceGap(r)){_.warn(\"ws\",`sequence gap: expected ${this.expectedSequence}, got ${r.sequence} \\u2014 requesting RESYNC`),this.expectedSequence=null,this.send(qt());return}if(this.trackSequence(r),!il(r)){try{os(r,this.options.renderer)}catch(o){if(o instanceof O){_.error(\"ws\",\"rejected delta:\",o.message),this.protocolFailure();return}throw o}this.protocolErrors=0,this.options.onBatch?.(r)}}protocolFailure(){this.protocolErrors++,!(this.protocolErrors<El)&&(this.protocolErrors=0,_.warn(\"ws\",\"too many consecutive rejected batches \\u2014 reconnecting\"),this.ws?.close())}isSequenceGap(e){return e.flags&1?!1:this.expectedSequence!==null&&e.sequence!==this.expectedSequence}trackSequence(e){e.flags&1||(this.expectedSequence=e.sequence+1)}};function fs(t,e,n){return t&&!n||e}function Mt(t){return t instanceof Element?t.closest(\"[data-pathland-id]\"):null}function de(t,e){let n=t instanceof Element?t:null;for(;n&&n!==document.body;){if(n.hasAttribute(\"data-pathland-id\")){let r=n.getAttribute(\"data-event-listeners\");if(r!==null&&Number(r)&e)return n}n=n.parentElement}return null}function _s(t,e){if(\"serviceWorker\"in navigator){if(document.documentElement.dataset.pathlandServiceWorker==null){navigator.serviceWorker.getRegistrations().then(n=>Promise.all(n.map(r=>r.unregister()))).catch(n=>_.debug(\"sw\",`unregister failed: ${n}`));return}navigator.serviceWorker.register(`${e}/sw.js`,{scope:\"/\"}).then(n=>{let r=()=>{(n.active??navigator.serviceWorker.controller)?.postMessage({type:\"pathland-wid\",wid:t})};r(),n.addEventListener?.(\"updatefound\",r),navigator.serviceWorker.ready.then(r),navigator.serviceWorker.addEventListener?.(\"controllerchange\",r)}).catch(n=>_.warn(\"sw\",`service worker registration failed: ${n}`))}}function Y(t,e){if(!t)return!1;let n=t.getAttribute(\"data-event-listeners\");return n===null?!0:(Number(n)&e)!==0}function xs(t){let e=0;return t.shiftKey&&(e|=1),t.ctrlKey&&(e|=2),t.altKey&&(e|=4),t.metaKey&&(e|=8),e}function Rs(t){return typeof t.keyCode==\"number\"&&t.keyCode!==0?t.keyCode:t.key.charCodeAt(0)}function As(){let t=new Map;for(let u of document.querySelectorAll(\"[data-pathland-id]\"))t.set(Number(u.getAttribute(\"data-pathland-id\")),u);_.info(void 0,`dom-renderer boot \\u2014 hydrated ${t.size} nodes`);let e=document.documentElement.dataset.pathlandBase??\"/_pathland\",n=e===\"/_pathland\"?\"\":e.slice(0,-10),r=\"pathland.wid\",o=sessionStorage.getItem(r),s=o!=null;o==null&&(o=crypto.randomUUID(),sessionStorage.setItem(r,o)),_s(o,e);let a=new URLSearchParams(location.search),i=a.has(\"wid\");if(i){a.delete(\"wid\");let u=a.toString();history.replaceState(null,\"\",location.pathname+(u?`?${u}`:\"\"))}let d=document.documentElement.dataset.pathlandSsrScoped!=null,l={byId:t,defaultTitle:document.title},c=new ln({url:`${location.protocol===\"https:\"?\"wss\":\"ws\"}://${location.host}${e}/ws?wid=${o}`,renderer:l,onOpen:u=>{let{innerWidth:E,innerHeight:T}=window;_.info(\"route\",`environment: viewport ${E}x${T}, route \"${location.pathname}\"`),u.send(So(E,T,location.pathname)),ps(l),ue(l),fs(s,i,d)&&(_.debug(\"route\",\"unscoped SSR \\u2014 requesting RESYNC for this window's persisted state\"),u.send(qt()))}});c.start(),l.onMediaEvent=u=>{c.open&&c.send(u)},l.onFitEvent=u=>{c.open&&c.send(u)},l.onVisibleRangeEvent=u=>{c.open&&c.send(u)};for(let u of document.querySelectorAll(\"[data-pathland-media]\"))le(u,l);let p=u=>{u.isTrusted&&(us(),ls())};for(let u of[\"pointerdown\",\"keydown\",\"touchend\"])document.addEventListener(u,p,{capture:!0,passive:!0});for(let u of document.querySelectorAll(\"[data-pathland-fit]\"))Es(u,l);ue(l),l.onRoute=u=>{_.info(\"route\",`server navigated -> pushState(\"${n}${u}\")`),history.pushState(null,\"\",`${n}${u}?${a.toString()}`)},l.onNavigateBack=()=>{_.info(\"route\",\"default back button -> NAVIGATE(back)\"),c.open&&c.send(Mo())},as(l),window.addEventListener(\"popstate\",()=>{_.info(\"route\",`popstate -> NAVIGATE(\"${location.href}\")`),c.open&&c.send(Io(location.href))});let N=new WeakSet;document.addEventListener(\"pointerdown\",u=>{let E=de(u.target,1);if(!c.open||!E)return;let T=Number(E.getAttribute(\"data-pathland-id\")),R=u.button!==0?1:0;c.send(To(T,u.clientX,u.clientY,R))});let A=null,I=()=>{A&&(c.send(zt(Number(A.getAttribute(\"data-pathland-id\")),!1)),A=null)};document.addEventListener(\"pointerdown\",u=>{let T=u.target?.closest(\"input[type=range]\");if(T){wo(T);let R=T.closest(\"[data-pathland-id]\");R&&Y(R,64)&&(A=R,c.send(zt(Number(R.getAttribute(\"data-pathland-id\")),!0)))}},!0),document.addEventListener(\"pointerup\",()=>{I(),Ze()}),document.addEventListener(\"pointercancel\",()=>{I(),Ze()}),document.addEventListener(\"blur\",()=>{I(),Ze()},!0),document.addEventListener(\"pointermove\",u=>{let E=u.target,T=de(E,2);if(!c.open||!T)return;let R=Number(T.getAttribute(\"data-pathland-id\"));N.has(E)||(N.add(E),c.send(or(R,u.clientX,u.clientY,1)))}),document.addEventListener(\"pointerout\",u=>{let E=u.target,T=de(E,2);if(N.has(E)&&(N.delete(E),c.open&&T)){let R=Number(T.getAttribute(\"data-pathland-id\"));c.send(or(R,u.clientX,u.clientY,2))}}),document.addEventListener(\"click\",u=>{let E=u.target;if(!E)return;let T=de(E,4);if(T&&c.open){let y=Number(T.getAttribute(\"data-pathland-id\")),C=u.button!==0?1:0;c.send(fo(y,u.clientX,u.clientY,C));return}let R=E.closest(\".pathland-stepper button[data-step]\");if(R&&c.open){let y=R.closest(\".pathland-stepper[data-pathland-id]\");if(y){let C=Number(y.getAttribute(\"data-pathland-id\")),D=y.querySelector(\"span\"),$=y.querySelector(\".pathland-stepper-range\"),et=Number(D?D.textContent:0),St=Number(R.getAttribute(\"data-step\")),Ct=Number($?.getAttribute(\"data-min\")),un=Number($?.getAttribute(\"data-max\")),dn=Number($?.getAttribute(\"data-step\")),En=Math.min(un,Math.max(Ct,et+St*dn));c.send(Zt(C,En))}}}),document.addEventListener(\"keydown\",u=>{let E=Mt(document.activeElement);!c.open||!Y(E,8)||c.send(_o(Number(E.getAttribute(\"data-pathland-id\")),Rs(u),xs(u),u.repeat))}),document.addEventListener(\"keyup\",u=>{let E=Mt(document.activeElement);!c.open||!Y(E,16)||c.send(Oo(Number(E.getAttribute(\"data-pathland-id\")),Rs(u),xs(u)))});function g(u){let E=u.target;return!E||!E.matches(\"input[type=text],input[type=password],textarea\")?null:Mt(E)}document.addEventListener(\"focusin\",u=>{let E=g(u);if(!c.open||!E)return;let T=Number(E.getAttribute(\"data-pathland-id\"));Y(E,32)&&c.send(ir(T,!0)),Y(E,64)&&c.send(zt(T,!0))}),document.addEventListener(\"focusout\",u=>{let E=g(u);if(!c.open||!E)return;let T=Number(E.getAttribute(\"data-pathland-id\"));Y(E,32)&&c.send(ir(T,!1)),Y(E,64)&&c.send(zt(T,!1))});let M=0,tt=()=>{!c.open||M||(M=requestAnimationFrame(()=>{M=0,ue(l)}))};document.addEventListener(\"scroll\",u=>{tt();let E=u.target,T=Mt(E);if(!c.open||!Y(T,256))return;let R=E instanceof Element?E:document.documentElement;c.send(bo(Number(T.getAttribute(\"data-pathland-id\")),R.scrollLeft,R.scrollTop))},!0),window.addEventListener(\"resize\",tt),document.addEventListener(\"wheel\",u=>{let E=Mt(u.target);!c.open||!Y(E,512)||c.send(Lo(Number(E.getAttribute(\"data-pathland-id\")),u.deltaX,u.deltaY))},{passive:!0}),document.addEventListener(\"change\",u=>{if(!c.open)return;let E=u.target;if(!E)return;let T=E.closest(\"label.pathland-toggle[data-pathland-id]\");if(T){let D=T.querySelector(\"input[type=checkbox]\");c.send(Zt(Number(T.getAttribute(\"data-pathland-id\")),D&&D.checked?1:0));return}let R=E.closest(\"select[data-pathland-id]\");if(R){c.send(Zt(Number(R.getAttribute(\"data-pathland-id\")),Number(R.value)));return}let y=E.closest(\"input[type=color][data-pathland-id]\");if(y){let D=parseInt(y.value.slice(1),16);c.send(Po(Number(y.getAttribute(\"data-pathland-id\")),4278190080|D));return}let C=E.closest(\"input[type=date][data-pathland-id],input[type=time][data-pathland-id],input[type=datetime-local][data-pathland-id]\");if(C){let D=Number(C.getAttribute(\"data-pathland-id\"));if(C.value)if(C.type===\"time\"){let[$,et]=C.value.split(\":\").map(Number);c.send(qe(D,0,(($??0)*3600+(et??0)*60)*1e3))}else if(C.type===\"datetime-local\"){let[$,et]=C.value.split(\"T\"),[St,Ct,un]=($??\"\").split(\"-\").map(Number),[dn,En]=(et??\"\").split(\":\").map(Number),gs=Math.round(Date.UTC(St??0,(Ct??1)-1,un??1)/864e5);c.send(qe(D,gs,((dn??0)*3600+(En??0)*60)*1e3))}else{let[$,et,St]=C.value.split(\"-\").map(Number),Ct=Math.round(Date.UTC($??0,(et??1)-1,St??1)/864e5);c.send(qe(D,Ct,0))}}}),document.addEventListener(\"input\",u=>{let E=u.target;if(!E)return;let T=E.closest(\"input[type=range]\");if(T){if(Wt(T),!c.open)return;let D=T.closest(\"label.pathland-slider[data-pathland-id]\");D&&c.send(Zt(Number(D.getAttribute(\"data-pathland-id\")),Number(T.value)));return}if(!c.open)return;let R=E.closest(\"textarea[data-pathland-id]\");if(R){c.send(ar(Number(R.getAttribute(\"data-pathland-id\")),R.value));return}let y=E.closest(\"input[type=text],input[type=password]\");if(!y)return;let C=y.closest(\"label.pathland-textfield[data-pathland-id]\");C&&c.send(ar(Number(C.getAttribute(\"data-pathland-id\")),y.value))})}document.readyState===\"loading\"?document.addEventListener(\"DOMContentLoaded\",As):As();})();\n",
               "additions": 3,
@@ -80005,21 +80019,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001738266,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 534788,
+          "input": 387,
+          "output": 129,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 534272
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1794594608592
+          "created": 1794594608592,
+          "completed": 1794594622298
         },
+        "finish": "tool-calls",
         "id": "msg_1d62c95d00025i1vbP3vAPiXyc",
         "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
       },
@@ -80036,21 +80053,1216 @@
           "tool": "bash",
           "callID": "chatcmpl-tool-8b6e7835cd736b00",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -m \"test: cover VISIBLE_RANGE and add lazy-row a11y\" -m \"Add the conformance vector and Rust/Java codec tests, expose aria-setsize/aria-posinset on windowed rows, and refresh the DOM bundle.\"",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland"
             },
+            "output": "[feat/lazy-stack-virtualization 2cca03e0] test: cover VISIBLE_RANGE and add lazy-row a11y\n 9 files changed, 63 insertions(+), 13 deletions(-)\n rename lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/{dom-renderer-4719611b17ba.js => dom-renderer-43379d504906.js} (67%)\n rename lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/{dom-renderer-4719611b17ba.js => dom-renderer-43379d504906.js} (67%)\n",
+            "metadata": {
+              "output": "[feat/lazy-stack-virtualization 2cca03e0] test: cover VISIBLE_RANGE and add lazy-row a11y\n 9 files changed, 63 insertions(+), 13 deletions(-)\n rename lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/{dom-renderer-4719611b17ba.js => dom-renderer-43379d504906.js} (67%)\n rename lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/{dom-renderer-4719611b17ba.js => dom-renderer-43379d504906.js} (67%)\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -m \"test: cover VISIBLE_RANGE and add lazy-row a11y\" -m \"Add the conformance vector and Rust/Java codec tests, expose aria-setsize/aria-posinset on windowed rows, and refresh the DOM bundle.\"",
             "time": {
-              "start": 1794594612475
+              "start": 1794594612475,
+              "end": 1794594622131
             }
           },
           "id": "prt_1d62ca443001ZDfHAwTJWhW5aA",
           "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
           "messageID": "msg_1d62c95d00025i1vbP3vAPiXyc"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "type": "step-finish",
+          "tokens": {
+            "total": 534788,
+            "input": 387,
+            "output": 129,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 534272
+            }
+          },
+          "cost": 0.001738266,
+          "id": "prt_1d62ccb0d0018GbZBOSRI4ukCB",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62c95d00025i1vbP3vAPiXyc"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.002376402,
+        "tokens": {
+          "total": 536190,
+          "input": 159,
+          "output": 190,
+          "reasoning": 1057,
+          "cache": {
+            "write": 0,
+            "read": 534784
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594622389,
+          "completed": 1794594639254
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62ccbb50029H9mAHSWgFVw0B",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "type": "step-start",
+          "id": "prt_1d62cd6eb0010XE8UxRdwYE3JW",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62ccbb50029H9mAHSWgFVw0B"
+        },
+        {
+          "type": "reasoning",
+          "text": "Now the remaining major item is Rust DSL/engine parity. Let me assess if I can implement a reasonable version.\n\n**Rust DSL/engine windowing design:**\n\nThe Rust `pathland-view` DSL builds a `Node` tree at `build_env`. The `Node` struct has children. The engine `Engine::emit` diffs the tree. To window, we need:\n- A `ForEach` view that holds items and a builder.\n- A `LazyVStack`/`LazyHStack` that recognizes a `ForEach` child and sets `ITEM_COUNT`, `ITEM_EXTENT`, `FIRST_ITEM_INDEX`, and only builds the window's children.\n- The window state must persist across rebuilds. The Rust DSL rebuilds the entire `Node` tree on each emit; the `ForEach`/`LazyVStack` view object can hold a `Cell<Range<usize>>` window, and the host updates it on `VISIBLE_RANGE`. But the host doesn't have access to the view's window. The engine could expose a `visible_range` input handler keyed by node id, similar to `Node.gestures`. The `Node` could carry a `lazy` config with a callback. The engine's `Engine` could maintain the window per node id and call a builder? This is a substantial redesign of the build-time DSL.\n\nGiven the time, I'll leave the Rust DSL parity as a documented follow-up. The Rust engine/HTML renderer supports the wire contract; a Rust host can use the lower-level `Node` properties (as the Qt test does). The Kotlin DSL is the SwiftUI-shaped surface the user asked for. The AGENTS explicitly says \"Rust reactive-body/ForEach parity is Phase 2.\" So it's acceptable.\n\nLet me update the final status:\n- `AGENTS.md` \"In progress: Rust DSL/engine parity for lazy stacks\" — correct.\n- `lib/rust/crates/pathland-view/status.md` gap — correct.\n- `lib/rust/crates/pathland-engine/status.md` gap — correct.\n- `lib/rust/crates/pathland-engine-golden/status.md` gap — correct.\n\nThe user said \"commit and continue\" — I've continued through GTK, Qt, conformance, a11y. The only remaining is Rust DSL parity and server viewport. I should report the current state and remaining. But maybe I should do the server viewport binding (small) to close that gap.\n\n### Server viewport binding\n\nLet me implement it. It's a small Java change:\n- Add `private final WritableSignal<Viewport> viewport = Signals.signal(new Viewport(-1f, -1f));` field in `PathlandSession`.\n- In `mount`, bind it:\n```java\napp.newRoot().modifiers(\n    EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),\n    EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport)))\n```\n- In `applyEnvironment`, update `viewport.set(new Viewport(env.viewportWidth(), env.viewportHeight()))` when positive.\n- The `LazyStackView.initialWindow` reads `Environment.value(Platform.VIEWPORT).get()`; at mount the signal is (-1,-1) → default. After `applyEnvironment`, the signal updates, but the lazy view doesn't re-render (it doesn't read the viewport after the initial window). To make it effective for the initial window on native hosts that set the viewport before mount, the host can set the signal before mount; the server sets it after. For the server, the client sends `VISIBLE_RANGE` anyway. The binding closes the \"not exposed\" gap.\n- But adding a `WritableSignal<Viewport>` field and binding it means the lazy view can read it during render. The `LazyStackView` reads the viewport only when `windowSignal` is empty. On a viewport update after mount, the window is already non-empty, so no effect. To make the viewport update re-seed the initial window, we'd need a flag. Not necessary.\n- The `PathlandSession` is Java; `WritableSignal` import, `Viewport` import, `Platform` already imported? Let me check imports. `Platform` is imported (used for ACTIVE_PATH). `WritableSignal` is imported? `activePath` is a `WritableSignal<String>`, so yes. `Signals` is imported. Add `Viewport`.\n- The `applyEnvironment` runs on the session actor; `viewport.set` triggers a signal flush. The lazy view isn't subscribed, so no re-render. Fine.\n- The `Environment` used in `mount` is `new Environment(state)`; the `EnvironmentBinding` scopes the keys to the root. Good.\n\nLet me implement and run the server-core tests. Then commit. This closes the server viewport gap.",
+          "time": {
+            "start": 1794594625260,
+            "end": 1794594637098
+          },
+          "id": "prt_1d62cd6ec001t97lLJnTXt0e6c",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62ccbb50029H9mAHSWgFVw0B"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-8225a1924f5180aa",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "grep -n \"import dev.pathland.view.core.Platform\\|import dev.pathland.view.core.signal.WritableSignal\\|private final WritableSignal<String> activePath\\|app.newRoot().modifiers\" lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java; sed -n '200,215p' lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java; sed -n '278,295p' lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "12:import dev.pathland.view.core.Platform;\n22:import dev.pathland.view.core.signal.WritableSignal;\n71:    private final WritableSignal<String> activePath;\n204:                    app.newRoot().modifiers(\n        // declare topic subscriptions as field initializers.\n        SessionContext previous = SessionContext.push(subscriptions);\n        try {\n            RenderResult result = emitter.mount(\n                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),\n                    new Environment(state));\n            this.inputDispatcher = new InputDispatcher(result, activePath);\n            this.rootId = result.rootId();\n            this.proxyViews = result.proxyViews();\n            // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a SizeThatFits\n            // slot dropping the candidate that held it) — reconcile the proxy sessions\n            // against the live proxyViews map so a proxy lives exactly while its node is\n            // in the retained tree (spec/PROXY.md §7).\n            this.emitter.onStructureReconciled(this::reconcileProxies);\n            applyEnvironment(env); // records viewport; the router already seeded from env.route()\n        runWithContext(() -> emitter.setColorScheme(mode));\n    }\n\n    public void applyEnvironment(EnvironmentData env) {\n        runWithContext(() -> {\n            activePath.set(env.route()); // re-route if the platform moved (guards run in the bound router)\n            if (env.viewportWidth() > 0) {\n                viewportWidth = env.viewportWidth();\n            }\n            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n        });\n    }\n\n    /** Wire the live connection AFTER mount (the initial frame was already SSR'd). */\n    public void connect(PathlandConnection connection) {\n        this.connection = connection;\n",
+            "metadata": {
+              "output": "12:import dev.pathland.view.core.Platform;\n22:import dev.pathland.view.core.signal.WritableSignal;\n71:    private final WritableSignal<String> activePath;\n204:                    app.newRoot().modifiers(\n        // declare topic subscriptions as field initializers.\n        SessionContext previous = SessionContext.push(subscriptions);\n        try {\n            RenderResult result = emitter.mount(\n                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),\n                    new Environment(state));\n            this.inputDispatcher = new InputDispatcher(result, activePath);\n            this.rootId = result.rootId();\n            this.proxyViews = result.proxyViews();\n            // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a SizeThatFits\n            // slot dropping the candidate that held it) — reconcile the proxy sessions\n            // against the live proxyViews map so a proxy lives exactly while its node is\n            // in the retained tree (spec/PROXY.md §7).\n            this.emitter.onStructureReconciled(this::reconcileProxies);\n            applyEnvironment(env); // records viewport; the router already seeded from env.route()\n        runWithContext(() -> emitter.setColorScheme(mode));\n    }\n\n    public void applyEnvironment(EnvironmentData env) {\n        runWithContext(() -> {\n            activePath.set(env.route()); // re-route if the platform moved (guards run in the bound router)\n            if (env.viewportWidth() > 0) {\n                viewportWidth = env.viewportWidth();\n            }\n            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n        });\n    }\n\n    /** Wire the live connection AFTER mount (the initial frame was already SSR'd). */\n    public void connect(PathlandConnection connection) {\n        this.connection = connection;\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "grep -n \"import dev.pathland.view.core.Platform\\|import dev.pathland.view.core.signal.WritableSignal\\|private final WritableSignal<String> activePath\\|app.newRoot().modifiers\" lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java; sed -n '200,215p' lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java; sed -n '278,295p' lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+            "time": {
+              "start": 1794594639035,
+              "end": 1794594639069
+            }
+          },
+          "id": "prt_1d62d052c001WBzmcNps8rpzyl",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62ccbb50029H9mAHSWgFVw0B"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "type": "step-finish",
+          "tokens": {
+            "total": 536190,
+            "input": 159,
+            "output": 190,
+            "reasoning": 1057,
+            "cache": {
+              "write": 0,
+              "read": 534784
+            }
+          },
+          "cost": 0.002376402,
+          "id": "prt_1d62d0d54001J3bUbFitQUq6f3",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62ccbb50029H9mAHSWgFVw0B"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001787892,
+        "tokens": {
+          "total": 536773,
+          "input": 546,
+          "output": 107,
+          "reasoning": 56,
+          "cache": {
+            "write": 0,
+            "read": 536064
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594639309,
+          "completed": 1794594645523
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62d0dcd002C7RVJEvoCEOhdJ",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "type": "step-start",
+          "id": "prt_1d62d166c001lcaQ8mV48s0hgi",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d0dcd002C7RVJEvoCEOhdJ"
+        },
+        {
+          "type": "reasoning",
+          "text": "Let me add the viewport signal. `Viewport` import. `activePath` field at line 71. Add `private final WritableSignal<Viewport> viewport;` and initialize in the constructor. Let me find where `activePath` is initialized.",
+          "time": {
+            "start": 1794594641518,
+            "end": 1794594641871
+          },
+          "id": "prt_1d62d166e001x0fYCAW8GmlmjF",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d0dcd002C7RVJEvoCEOhdJ"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-935f4699d31165c3",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "grep -n \"this.activePath = Signals.signal\" -B 5 -A 5 lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "164-        this.subscriptions = new SessionSubscriptions(hub, this::submit, this.telemetry, this.mount);\n165-        this.state = new PersistentState(store, stateScope);\n166-        this.stateScope = stateScope;\n167-        // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the\n168-        // app reads it, and a bound Router re-routes guard-aware on external changes.\n169:        this.activePath = Signals.signal(env.route());\n170-\n171-        this.sink = new FrameOpcodeSink() {\n172-            @Override\n173-            public void endFrame() {\n174-                super.endFrame();\n",
+            "metadata": {
+              "output": "164-        this.subscriptions = new SessionSubscriptions(hub, this::submit, this.telemetry, this.mount);\n165-        this.state = new PersistentState(store, stateScope);\n166-        this.stateScope = stateScope;\n167-        // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the\n168-        // app reads it, and a bound Router re-routes guard-aware on external changes.\n169:        this.activePath = Signals.signal(env.route());\n170-\n171-        this.sink = new FrameOpcodeSink() {\n172-            @Override\n173-            public void endFrame() {\n174-                super.endFrame();\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "grep -n \"this.activePath = Signals.signal\" -B 5 -A 5 lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+            "time": {
+              "start": 1794594645331,
+              "end": 1794594645349
+            }
+          },
+          "id": "prt_1d62d17d1001itzGyT9Dx4E7vw",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d0dcd002C7RVJEvoCEOhdJ"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "type": "step-finish",
+          "tokens": {
+            "total": 536773,
+            "input": 546,
+            "output": 107,
+            "reasoning": 56,
+            "cache": {
+              "write": 0,
+              "read": 536064
+            }
+          },
+          "cost": 0.001787892,
+          "id": "prt_1d62d25d1001pBYpuVOYL5qMiR",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d0dcd002C7RVJEvoCEOhdJ"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001951062,
+        "tokens": {
+          "total": 537444,
+          "input": 229,
+          "output": 492,
+          "reasoning": 19,
+          "cache": {
+            "write": 0,
+            "read": 536704
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594645547,
+          "completed": 1794594657347
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62d262b002wbRVguYC8F5EAn",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "type": "step-start",
+          "id": "prt_1d62d2fb6001cJ7P4MybFrkSDt",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d262b002wbRVguYC8F5EAn"
+        },
+        {
+          "type": "reasoning",
+          "text": "Add the field and initialization. Then modify the mount modifiers and applyEnvironment. Let me edit.",
+          "time": {
+            "start": 1794594647994,
+            "end": 1794594648012
+          },
+          "id": "prt_1d62d2fba001VqoqSfxqpB4CSf",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d262b002wbRVguYC8F5EAn"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-8649a8c95fc80725",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "python3 - <<'PY'\nimport pathlib\np=pathlib.Path('lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java')\nt=p.read_text()\nt=t.replace('import dev.pathland.view.core.Platform;\\n', 'import dev.pathland.view.core.Platform;\\nimport dev.pathland.view.core.Viewport;\\n',1)\nt=t.replace('    private final WritableSignal<String> activePath;\\n', '    private final WritableSignal<String> activePath;\\n    private final WritableSignal<Viewport> viewport;\\n',1)\nt=t.replace('''        this.activePath = Signals.signal(env.route());\n''','''        this.activePath = Signals.signal(env.route());\n        this.viewport = Signals.signal(new Viewport(-1f, -1f));\n''',1)\nt=t.replace('''                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),\n''','''                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),\n                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n''',1)\nt=t.replace('''            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n''','''            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n            if (viewportWidth > 0 && viewportHeight > 0) {\n                viewport.set(new Viewport(viewportWidth, viewportHeight));\n            }\n''',1)\np.write_text(t)\nprint('ok')\nPY\nmvn -q -pl pathland-server-core -am -DskipTests compile 2>&1 | tail -20",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland/lib/java",
+              "timeout": 300000
+            },
+            "output": "Traceback (most recent call last):\n  File \"<stdin>\", line 3, in <module>\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 787, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 771, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: 'lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java'\n",
+            "metadata": {
+              "output": "Traceback (most recent call last):\n  File \"<stdin>\", line 3, in <module>\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 787, in read_text\n    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:\n         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py\", line 771, in open\n    return io.open(self, mode, buffering, encoding, errors, newline)\n           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: 'lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java'\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "python3 - <<'PY'\nimport pathlib\np=pathlib.Path('lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java')\nt=p.read_text()\nt=t.replace('import dev.pathland.view.core.Platform;\\n', 'import dev.pathland.view.core.Platform;\\nimport dev.pathland.view.core.Viewport;\\n',1)\nt=t.replace('    private final WritableSignal<String> activePath;\\n', '    private final WritableSignal<String> activePath;\\n    private final WritableSignal<Viewport> viewport;\\n',1)\nt=t.replace('''        this.activePath = Signals.signal(env.route());\n''','''        this.activePath = Signals.signal(env.route());\n        this.viewport = Signals.signal(new Viewport(-1f, -1f));\n''',1)\nt=t.replace('''                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),\n''','''                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),\n                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n''',1)\nt=t.replace('''            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n''','''            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n            if (viewportWidth > 0 && viewportHeight > 0) {\n                viewport.set(new Viewport(viewportWidth, viewportHeight));\n            }\n''',1)\np.write_text(t)\nprint('ok')\nPY\nmvn -q -pl pathland-server-core -am -DskipTests compile 2>&1 | tail -20",
+            "time": {
+              "start": 1794594650888,
+              "end": 1794594657176
+            }
+          },
+          "id": "prt_1d62d2fcd001upwxSZRZ09Vqch",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d262b002wbRVguYC8F5EAn"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "type": "step-finish",
+          "tokens": {
+            "total": 537444,
+            "input": 229,
+            "output": 492,
+            "reasoning": 19,
+            "cache": {
+              "write": 0,
+              "read": 536704
+            }
+          },
+          "cost": 0.001951062,
+          "id": "prt_1d62d54050012C8mWp0RpvFRC0",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d262b002wbRVguYC8F5EAn"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001920132,
+        "tokens": {
+          "total": 538120,
+          "input": 350,
+          "output": 417,
+          "reasoning": 9,
+          "cache": {
+            "write": 0,
+            "read": 537344
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594657400,
+          "completed": 1794594665451
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62d5478002U6DzYFyt108hjq",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "type": "step-start",
+          "id": "prt_1d62d638a001q3zA8GUyCT7Rpf",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d5478002U6DzYFyt108hjq"
+        },
+        {
+          "type": "reasoning",
+          "text": "Workdir issue. Run python from root.",
+          "time": {
+            "start": 1794594661267,
+            "end": 1794594661882
+          },
+          "id": "prt_1d62d6393001q0ZNkakfGwccDe",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d5478002U6DzYFyt108hjq"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-91579d3b4f8cf7b4",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "python3 - <<'PY'\nimport pathlib\np=pathlib.Path('lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java')\nt=p.read_text()\nt=t.replace('import dev.pathland.view.core.Platform;\\n', 'import dev.pathland.view.core.Platform;\\nimport dev.pathland.view.core.Viewport;\\n',1)\nt=t.replace('    private final WritableSignal<String> activePath;\\n', '    private final WritableSignal<String> activePath;\\n    private final WritableSignal<Viewport> viewport;\\n',1)\nt=t.replace('''        this.activePath = Signals.signal(env.route());\n''','''        this.activePath = Signals.signal(env.route());\n        this.viewport = Signals.signal(new Viewport(-1f, -1f));\n''',1)\nt=t.replace('''                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),\n''','''                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),\n                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n''',1)\nt=t.replace('''            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n''','''            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n            if (viewportWidth > 0 && viewportHeight > 0) {\n                viewport.set(new Viewport(viewportWidth, viewportHeight));\n            }\n''',1)\np.write_text(t)\nprint('ok')\nPY"
+            },
+            "output": "ok\n",
+            "metadata": {
+              "output": "ok\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "python3 - <<'PY'\nimport pathlib\np=pathlib.Path('lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java')\nt=p.read_text()\nt=t.replace('import dev.pathland.view.core.Platform;\\n', 'import dev.pathland.view.core.Platform;\\nimport dev.pathland.view.core.Viewport;\\n',1)\nt=t.replace('    private final WritableSignal<String> activePath;\\n', '    private final WritableSignal<String> activePath;\\n    private final WritableSignal<Viewport> viewport;\\n',1)\nt=t.replace('''        this.activePath = Signals.signal(env.route());\n''','''        this.activePath = Signals.signal(env.route());\n        this.viewport = Signals.signal(new Viewport(-1f, -1f));\n''',1)\nt=t.replace('''                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),\n''','''                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),\n                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n''',1)\nt=t.replace('''            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n''','''            if (env.viewportHeight() > 0) {\n                viewportHeight = env.viewportHeight();\n            }\n            if (viewportWidth > 0 && viewportHeight > 0) {\n                viewport.set(new Viewport(viewportWidth, viewportHeight));\n            }\n''',1)\np.write_text(t)\nprint('ok')\nPY",
+            "time": {
+              "start": 1794594665200,
+              "end": 1794594665259
+            }
+          },
+          "id": "prt_1d62d65fb001ZTGdbRAmdrdrkm",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d5478002U6DzYFyt108hjq"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-finish",
+          "tokens": {
+            "total": 538120,
+            "input": 350,
+            "output": 417,
+            "reasoning": 9,
+            "cache": {
+              "write": 0,
+              "read": 537344
+            }
+          },
+          "cost": 0.001920132,
+          "id": "prt_1d62d739e00104z6aF3AXf1f44",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d5478002U6DzYFyt108hjq"
+        },
+        {
+          "type": "patch",
+          "hash": "40692f78ad81b2105465a0792326fc18e0d9409b",
+          "files": [
+            "/Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java"
+          ],
+          "id": "prt_1d62d73e9001SQIMmL1PvVywTh",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d5478002U6DzYFyt108hjq"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001730886,
+        "tokens": {
+          "total": 538322,
+          "input": 21,
+          "output": 130,
+          "reasoning": 59,
+          "cache": {
+            "write": 0,
+            "read": 538112
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594665503,
+          "completed": 1794594670037
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62d741f002omLaWSRyW0HT2V",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-start",
+          "id": "prt_1d62d7ee5001utEwRBoRDRyLd3",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d741f002omLaWSRyW0HT2V"
+        },
+        {
+          "type": "reasoning",
+          "text": "Oops, I made a typo in the replacement for the mount modifiers: `e.key(Platform.VIEWPORT).value(viewport)` — correct. But the old string in the file may not match because of the line break. Let me check the file to see if the replacements applied.",
+          "time": {
+            "start": 1794594668271,
+            "end": 1794594668574
+          },
+          "id": "prt_1d62d7eef001CbeFXu2z8lPR7u",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d741f002omLaWSRyW0HT2V"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-bde207a713f10d75",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "grep -n \"viewport\\|VIEWPORT\" lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java | head -20; sed -n '202,210p' lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "48: * (viewport resizes, future fields) via {@link #applyEnvironment}.\n73:    private final WritableSignal<Viewport> viewport;\n97:    private float viewportWidth = -1f;\n98:    private float viewportHeight = -1f;\n172:        this.viewport = Signals.signal(new Viewport(-1f, -1f));\n209:                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n219:            applyEnvironment(env); // records viewport; the router already seeded from env.route()\n262:    /** Apply (or enrich) the platform environment after mount (viewport resizes, …). */\n288:            if (env.viewportWidth() > 0) {\n289:                viewportWidth = env.viewportWidth();\n291:            if (env.viewportHeight() > 0) {\n292:                viewportHeight = env.viewportHeight();\n294:            if (viewportWidth > 0 && viewportHeight > 0) {\n295:                viewport.set(new Viewport(viewportWidth, viewportHeight));\n322:                    batcher::append, stateScope, viewportWidth, viewportHeight, telemetry, mount,\n        // without navigation). The session context is installed first so a view can\n        // declare topic subscriptions as field initializers.\n        SessionContext previous = SessionContext.push(subscriptions);\n        try {\n            RenderResult result = emitter.mount(\n                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),\n                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n                    new Environment(state));\n",
+            "metadata": {
+              "output": "48: * (viewport resizes, future fields) via {@link #applyEnvironment}.\n73:    private final WritableSignal<Viewport> viewport;\n97:    private float viewportWidth = -1f;\n98:    private float viewportHeight = -1f;\n172:        this.viewport = Signals.signal(new Viewport(-1f, -1f));\n209:                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n219:            applyEnvironment(env); // records viewport; the router already seeded from env.route()\n262:    /** Apply (or enrich) the platform environment after mount (viewport resizes, …). */\n288:            if (env.viewportWidth() > 0) {\n289:                viewportWidth = env.viewportWidth();\n291:            if (env.viewportHeight() > 0) {\n292:                viewportHeight = env.viewportHeight();\n294:            if (viewportWidth > 0 && viewportHeight > 0) {\n295:                viewport.set(new Viewport(viewportWidth, viewportHeight));\n322:                    batcher::append, stateScope, viewportWidth, viewportHeight, telemetry, mount,\n        // without navigation). The session context is installed first so a view can\n        // declare topic subscriptions as field initializers.\n        SessionContext previous = SessionContext.push(subscriptions);\n        try {\n            RenderResult result = emitter.mount(\n                    app.newRoot().modifiers(\n                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),\n                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),\n                    new Environment(state));\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "grep -n \"viewport\\|VIEWPORT\" lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java | head -20; sed -n '202,210p' lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+            "time": {
+              "start": 1794594669890,
+              "end": 1794594669912
+            }
+          },
+          "id": "prt_1d62d801f001gxxqMIrTKkX76c",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d741f002omLaWSRyW0HT2V"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-finish",
+          "tokens": {
+            "total": 538322,
+            "input": 21,
+            "output": 130,
+            "reasoning": 59,
+            "cache": {
+              "write": 0,
+              "read": 538112
+            }
+          },
+          "cost": 0.001730886,
+          "id": "prt_1d62d8596001cta0p8QTq50g3g",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d741f002omLaWSRyW0HT2V"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00181152,
+        "tokens": {
+          "total": 538907,
+          "input": 452,
+          "output": 146,
+          "reasoning": 69,
+          "cache": {
+            "write": 0,
+            "read": 538240
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594670062,
+          "completed": 1794594681205
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62d85ee002SueEHjjqyL7KOo",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-start",
+          "id": "prt_1d62d9350001zMz7tQsAwbz8tp",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d85ee002SueEHjjqyL7KOo"
+        },
+        {
+          "type": "reasoning",
+          "text": "The import of `Viewport` didn't show in grep because I grepped \"viewport\" lowercase; let me check line 13. Also `Platform.VIEWPORT` is a Kotlin `@JvmField`; Java access `Platform.VIEWPORT` works. `Viewport` import should be there. Let me compile.",
+          "time": {
+            "start": 1794594673491,
+            "end": 1794594673963
+          },
+          "id": "prt_1d62d9353001MkXIZnTwioKAnb",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d85ee002SueEHjjqyL7KOo"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-83b4067e9d003ee9",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "grep -n \"import dev.pathland.view.core.Viewport\" lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java; mvn -q -pl pathland-server-core -am -DskipTests compile 2>&1 | tail -20",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland/lib/java",
+              "timeout": 300000
+            },
+            "output": "grep: lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java: No such file or directory\n",
+            "metadata": {
+              "output": "grep: lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java: No such file or directory\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "grep -n \"import dev.pathland.view.core.Viewport\" lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java; mvn -q -pl pathland-server-core -am -DskipTests compile 2>&1 | tail -20",
+            "time": {
+              "start": 1794594674806,
+              "end": 1794594681024
+            }
+          },
+          "id": "prt_1d62d952d001sAlbCbTBHD2wD1",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d85ee002SueEHjjqyL7KOo"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-finish",
+          "tokens": {
+            "total": 538907,
+            "input": 452,
+            "output": 146,
+            "reasoning": 69,
+            "cache": {
+              "write": 0,
+              "read": 538240
+            }
+          },
+          "cost": 0.00181152,
+          "id": "prt_1d62db12f001YtwGZBqnj9LKGh",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62d85ee002SueEHjjqyL7KOo"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.080699376,
+        "tokens": {
+          "total": 539149,
+          "input": 537156,
+          "output": 100,
+          "reasoning": 101,
+          "cache": {
+            "write": 0,
+            "read": 1792
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594681267,
+          "completed": 1794594710876
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62db1b30020OlRAHpKtsbr6d",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-start",
+          "id": "prt_1d62dfc1d001apS3UB4boeRr57",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62db1b30020OlRAHpKtsbr6d"
+        },
+        {
+          "type": "reasoning",
+          "text": "The workdir is lib/java, so the path should be `pathland-server-core/...`. The grep failed, but the mvn command may not have run because `grep` failed and `;` continues. It says no output from mvn? Actually the shell ran `grep` (failed) then `;` then `mvn`; the output only shows the grep error, maybe mvn output empty (success). Let me run mvn separately and check the import.",
+          "time": {
+            "start": 1794594700320,
+            "end": 1794594705841
+          },
+          "id": "prt_1d62dfc20001iebL8D5ZATIkGS",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62db1b30020OlRAHpKtsbr6d"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-96afa145538d1b4e",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "grep -n \"import dev.pathland.view.core.Viewport\" lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "13:import dev.pathland.view.core.Viewport;\n",
+            "metadata": {
+              "output": "13:import dev.pathland.view.core.Viewport;\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "grep -n \"import dev.pathland.view.core.Viewport\" lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java",
+            "time": {
+              "start": 1794594710681,
+              "end": 1794594710702
+            }
+          },
+          "id": "prt_1d62e11b40015BcDHF30Qju4ha",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62db1b30020OlRAHpKtsbr6d"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-finish",
+          "tokens": {
+            "total": 539149,
+            "input": 537156,
+            "output": 100,
+            "reasoning": 101,
+            "cache": {
+              "write": 0,
+              "read": 1792
+            }
+          },
+          "cost": 0.080699376,
+          "id": "prt_1d62e251f001CJvpRlwYThKAHA",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62db1b30020OlRAHpKtsbr6d"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001727058,
+        "tokens": {
+          "total": 539345,
+          "input": 35,
+          "output": 133,
+          "reasoning": 41,
+          "cache": {
+            "write": 0,
+            "read": 539136
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594710931,
+          "completed": 1794594738607
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62e2593002hEnXU7GxQR3sgZ",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-start",
+          "id": "prt_1d62e67580019HoMFOBZZKdK7L",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e2593002hEnXU7GxQR3sgZ"
+        },
+        {
+          "type": "reasoning",
+          "text": "Good. Run the server-core tests (or compile) to ensure it compiles. We already ran mvn compile; it may have succeeded (no output). Let me run the server-core test quickly.",
+          "time": {
+            "start": 1794594727781,
+            "end": 1794594728170
+          },
+          "id": "prt_1d62e67650014wI3MNxruzsjnJ",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e2593002hEnXU7GxQR3sgZ"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-b5e876042fffc56c",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "mvn -q -pl pathland-server-core -am test -DskipTests=false 2>&1 | grep -E \"ERROR|BUILD FAILURE|Tests run\" | tail -20; echo \"exit:$?\"",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland/lib/java",
+              "timeout": 600000
+            },
+            "output": "exit:0\n",
+            "metadata": {
+              "output": "exit:0\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "mvn -q -pl pathland-server-core -am test -DskipTests=false 2>&1 | grep -E \"ERROR|BUILD FAILURE|Tests run\" | tail -20; echo \"exit:$?\"",
+            "time": {
+              "start": 1794594728175,
+              "end": 1794594738486
+            }
+          },
+          "id": "prt_1d62e68ec001RIKs4qn2Gok4Uf",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e2593002hEnXU7GxQR3sgZ"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-finish",
+          "tokens": {
+            "total": 539345,
+            "input": 35,
+            "output": 133,
+            "reasoning": 41,
+            "cache": {
+              "write": 0,
+              "read": 539136
+            }
+          },
+          "cost": 0.001727058,
+          "id": "prt_1d62e917a001digaSDYJqUbzQj",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e2593002hEnXU7GxQR3sgZ"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001934592,
+        "tokens": {
+          "total": 539864,
+          "input": 96,
+          "output": 313,
+          "reasoning": 191,
+          "cache": {
+            "write": 0,
+            "read": 539264
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594738659,
+          "completed": 1794594746419
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62e91e3002couY0c40UCKFN4",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "type": "step-start",
+          "id": "prt_1d62ea2dc001MrFmA4WFLy29Mg",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e91e3002couY0c40UCKFN4"
+        },
+        {
+          "type": "reasoning",
+          "text": "Server-core tests pass. Update the status gap: viewport binding now implemented. Let me update `lib/java/pathland-server-core/status.md`:\nCurrent:\n```\n- **Virtualized lazy stacks (ADR-0014)**: SSR emits the engine's first window\n  (default 20 rows) and the full virtual extent; `VISIBLE_RANGE` input routes\n  through `InputDispatcher`. Gap: the session records the viewport but does not\n  bind it to `Platform.VIEWPORT`, so the initial window uses the default until\n  the client reports its real range.\n```\nChange to: viewport bound; the initial window uses it when known before mount; after mount the client's `VISIBLE_RANGE` is authoritative.\n\nAlso update `AGENTS.md`? The \"In progress\" now only Rust DSL/engine parity. Good.\n\nLet me update the server status and commit. Then final summary.",
+          "time": {
+            "start": 1794594743012,
+            "end": 1794594744376
+          },
+          "id": "prt_1d62ea2e4001oTNRSJZ8gO5tNf",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e91e3002couY0c40UCKFN4"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-8385c9ba11993842",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "python3 - <<'PY'\nimport pathlib\np=pathlib.Path('lib/java/pathland-server-core/status.md')\nt=p.read_text()\nt=t.replace('''- **Virtualized lazy stacks (ADR-0014)**: SSR emits the engine's first window\n  (default 20 rows) and the full virtual extent; `VISIBLE_RANGE` input routes\n  through `InputDispatcher`. Gap: the session records the viewport but does not\n  bind it to `Platform.VIEWPORT`, so the initial window uses the default until\n  the client reports its real range.''',\n'''- **Virtualized lazy stacks (ADR-0014)**: SSR emits the engine's first window\n  (default 20 rows) and the full virtual extent; `VISIBLE_RANGE` input routes\n  through `InputDispatcher`, and the session binds `Platform.VIEWPORT` (updated\n  by `META::ENVIRONMENT`) for hosts that know the surface size at mount. The\n  live client's `VISIBLE_RANGE` remains authoritative after connect.''')\np.write_text(t)\nprint('ok')\nPY\ngit diff --check; git status --short",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "ok\n M lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java\n M lib/java/pathland-server-core/status.md\n",
+            "metadata": {
+              "output": "ok\n M lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandSession.java\n M lib/java/pathland-server-core/status.md\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "python3 - <<'PY'\nimport pathlib\np=pathlib.Path('lib/java/pathland-server-core/status.md')\nt=p.read_text()\nt=t.replace('''- **Virtualized lazy stacks (ADR-0014)**: SSR emits the engine's first window\n  (default 20 rows) and the full virtual extent; `VISIBLE_RANGE` input routes\n  through `InputDispatcher`. Gap: the session records the viewport but does not\n  bind it to `Platform.VIEWPORT`, so the initial window uses the default until\n  the client reports its real range.''',\n'''- **Virtualized lazy stacks (ADR-0014)**: SSR emits the engine's first window\n  (default 20 rows) and the full virtual extent; `VISIBLE_RANGE` input routes\n  through `InputDispatcher`, and the session binds `Platform.VIEWPORT` (updated\n  by `META::ENVIRONMENT`) for hosts that know the surface size at mount. The\n  live client's `VISIBLE_RANGE` remains authoritative after connect.''')\np.write_text(t)\nprint('ok')\nPY\ngit diff --check; git status --short",
+            "time": {
+              "start": 1794594746178,
+              "end": 1794594746276
+            }
+          },
+          "id": "prt_1d62ea83a001q3wfaHT54iI0Fd",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e91e3002couY0c40UCKFN4"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "63b9d8548c07f909399edbd1ab3636b48305d5da",
+          "type": "step-finish",
+          "tokens": {
+            "total": 539864,
+            "input": 96,
+            "output": 313,
+            "reasoning": 191,
+            "cache": {
+              "write": 0,
+              "read": 539264
+            }
+          },
+          "cost": 0.001934592,
+          "id": "prt_1d62eafea001V8soYbudNge89i",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e91e3002couY0c40UCKFN4"
+        },
+        {
+          "type": "patch",
+          "hash": "baa204d1fd11ef02cc595b848927505693c634ed",
+          "files": [
+            "/Users/michael/Development/michaelkrog/Pathland/lib/java/pathland-server-core/status.md"
+          ],
+          "id": "prt_1d62eb0320015yPVwIqAypEag0",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62e91e3002couY0c40UCKFN4"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001727778,
+        "tokens": {
+          "total": 540058,
+          "input": 135,
+          "output": 132,
+          "reasoning": 15,
+          "cache": {
+            "write": 0,
+            "read": 539776
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594746442,
+          "completed": 1794594880896
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d62eb04a002s0MTgzM7S2RI3Y",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "63b9d8548c07f909399edbd1ab3636b48305d5da",
+          "type": "step-start",
+          "id": "prt_1d62ec0c2001aCPfGegSBGMvZe",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62eb04a002s0MTgzM7S2RI3Y"
+        },
+        {
+          "type": "reasoning",
+          "text": "Commit the server viewport binding. Then final report. Let me commit.",
+          "time": {
+            "start": 1794594750903,
+            "end": 1794594750905
+          },
+          "id": "prt_1d62ec1b70019H0Ha0QcD5zAmC",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62eb04a002s0MTgzM7S2RI3Y"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-b04a07a707829162",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git add -A && git commit -m \"feat(server): bind the platform viewport for lazy windows\" -m \"Seed Platform.VIEWPORT from META::ENVIRONMENT so a host that knows the surface size at mount can choose the initial lazy window; the live client's VISIBLE_RANGE remains authoritative.\"",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "(no output)\n\n<shell_metadata>\nshell tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.\n</shell_metadata>",
+            "metadata": {
+              "output": "(no output)\n\n<shell_metadata>\nshell tool terminated command after exceeding timeout 120000 ms. If this command is expected to take longer and is not waiting for interactive input, retry with a larger timeout value in milliseconds.\n</shell_metadata>",
+              "exit": null,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -m \"feat(server): bind the platform viewport for lazy windows\" -m \"Seed Platform.VIEWPORT from META::ENVIRONMENT so a host that knows the surface size at mount can choose the initial lazy window; the live client's VISIBLE_RANGE remains authoritative.\"",
+            "time": {
+              "start": 1794594750911,
+              "end": 1794594880528
+            }
+          },
+          "id": "prt_1d62ec1ba001YPc62w152vNri4",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62eb04a002s0MTgzM7S2RI3Y"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "63b9d8548c07f909399edbd1ab3636b48305d5da",
+          "type": "step-finish",
+          "tokens": {
+            "total": 540058,
+            "input": 135,
+            "output": 132,
+            "reasoning": 15,
+            "cache": {
+              "write": 0,
+              "read": 539776
+            }
+          },
+          "cost": 0.001727778,
+          "id": "prt_1d630bd1d001BpHGhurC48Hkej",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d62eb04a002s0MTgzM7S2RI3Y"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001705746,
+        "tokens": {
+          "total": 540240,
+          "input": 87,
+          "output": 78,
+          "reasoning": 43,
+          "cache": {
+            "write": 0,
+            "read": 540032
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594881016,
+          "completed": 1794594888704
+        },
+        "finish": "tool-calls",
+        "id": "msg_1d630bdf8002Z6eJaX1v1JMVbI",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "63b9d8548c07f909399edbd1ab3636b48305d5da",
+          "type": "step-start",
+          "id": "prt_1d630d6bd00180pIDxssY6Rfoz",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d630bdf8002Z6eJaX1v1JMVbI"
+        },
+        {
+          "type": "reasoning",
+          "text": "The commit command timed out? Maybe a git hook is running (pre-commit tests) and taking >120s. Let me check `git status` and `git log` to see if the commit succeeded.",
+          "time": {
+            "start": 1794594887361,
+            "end": 1794594888503
+          },
+          "id": "prt_1d630d6c1001E4NB9NmZSo5s5G",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d630bdf8002Z6eJaX1v1JMVbI"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "chatcmpl-tool-8c14d9c72cbf5e90",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short; git log --oneline -6",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "de998385 feat(server): bind the platform viewport for lazy windows\n2cca03e0 test: cover VISIBLE_RANGE and add lazy-row a11y\ne9a83ea1 feat(qt): window lazy stacks and report visible ranges\naee3c343 docs: update lazy-stack implementation status\n43f04a25 feat(gtk): window lazy stacks and report visible ranges\ne135e62c feat: virtualize lazy stacks with ForEach data sources\n",
+            "metadata": {
+              "output": "de998385 feat(server): bind the platform viewport for lazy windows\n2cca03e0 test: cover VISIBLE_RANGE and add lazy-row a11y\ne9a83ea1 feat(qt): window lazy stacks and report visible ranges\naee3c343 docs: update lazy-stack implementation status\n43f04a25 feat(gtk): window lazy stacks and report visible ranges\ne135e62c feat: virtualize lazy stacks with ForEach data sources\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short; git log --oneline -6",
+            "time": {
+              "start": 1794594888509,
+              "end": 1794594888562
+            }
+          },
+          "id": "prt_1d630db39001wrR1qTWS2WVUyz",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d630bdf8002Z6eJaX1v1JMVbI"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "63b9d8548c07f909399edbd1ab3636b48305d5da",
+          "type": "step-finish",
+          "tokens": {
+            "total": 540240,
+            "input": 87,
+            "output": 78,
+            "reasoning": 43,
+            "cache": {
+              "write": 0,
+              "read": 540032
+            }
+          },
+          "cost": 0.001705746,
+          "id": "prt_1d630dbb6001zEUNNQDRgI1nCJ",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d630bdf8002Z6eJaX1v1JMVbI"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1d5f6fe1b001bAP8aI26lM19Jt",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00218418,
+        "tokens": {
+          "total": 541245,
+          "input": 194,
+          "output": 488,
+          "reasoning": 403,
+          "cache": {
+            "write": 0,
+            "read": 540160
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794594888761,
+          "completed": 1794594905305
+        },
+        "finish": "stop",
+        "id": "msg_1d630dc39002y0YRNxP1mUeH40",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "63b9d8548c07f909399edbd1ab3636b48305d5da",
+          "type": "step-start",
+          "id": "prt_1d630f102001S7WRHY8EYFSAUV",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d630dc39002y0YRNxP1mUeH40"
+        },
+        {
+          "type": "reasoning",
+          "text": "The commit succeeded (the timeout was the shell waiting, but the commit landed). `git status --short` shows nothing (clean). Good.\n\nNow final summary. Let me recap what's implemented and what remains:\n- Protocol: done.\n- Kotlin engine/DSL: done.\n- HTML (Rust+Java) + DOM: done (a11y too).\n- GTK: done.\n- Qt: done.\n- Server viewport: done.\n- Desktop RingEventReader: done.\n- Conformance vector: done.\n- Remaining: Rust DSL/engine parity (no `ForEach`/windowed emission), engine traces/golden fixtures for lazy, variable-height, lazy grids, app padding limitation, row state/focus pinning.\n\nI should report the branch and commits, test status, and remaining. The user said \"commit and continue\"; I continued through Qt, conformance, a11y, server viewport. The only major remaining is Rust DSL parity, which the AGENTS marks Phase 2.\n\nLet me provide a concise summary with the branch name and commits. Also mention tests run:\n- `cargo test` (full) green (including Qt 90 tests, GTK).\n- `mvn -P jvm-only test` green.\n- `npm test` 297 green + typecheck.\n- `git diff --check` clean.\n- Reference checker clean.\n\nLet me verify the branch and status one more time. `git status` clean. Good.\n\nI should also note that the Rust DSL/engine parity remains; if they want, I can tackle it next. Since the user said \"continue\", maybe they want me to keep going. But the Rust DSL parity is a substantial design task (build-time DSL + window state). I'll report and ask if they want that next, or move to variable-height/grids. The instructions say be concise; I'll give a short summary.\n\nLet me write the final response.",
+          "time": {
+            "start": 1794594894089,
+            "end": 1794594899366
+          },
+          "id": "prt_1d630f109001aNNSWt2gP3iwyy",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d630dc39002y0YRNxP1mUeH40"
+        },
+        {
+          "type": "text",
+          "text": "Committed on `feat/lazy-stack-virtualization` and continued through the remaining renderer and protocol work.\n\n**Commits**\n- `e135e62c` — protocol + Kotlin engine/DSL + HTML/DOM virtualization\n- `43f04a25` — GTK windowing + desktop `VISIBLE_RANGE` decode\n- `e9a83ea1` — Qt windowing + bridge event\n- `2cca03e0` — `VISIBLE_RANGE` conformance vector, Rust/Java codec tests, lazy-row a11y\n- `de998385` — server `Platform.VIEWPORT` binding\n\n**Now implemented**\n- Protocol: `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX`, `VISIBLE_RANGE`, listener bit 10, manifest, Rust/Java/TS codecs.\n- Kotlin: `LazyVStack { ForEach(...) }` data source, extent inference, engine-owned window, keyed reconcile, viewport.\n- Web: Rust/Java HTML virtual extent + window attributes; DOM padding/range reporting + `aria-setsize`/`aria-posinset`; bundle rebuilt.\n- GTK: virtual-extent spacers + `VISIBLE_RANGE`.\n- Qt: virtual-extent spacer Items + polled `VISIBLE_RANGE` through the bridge.\n- Server/desktop: viewport binding; `RingEventReader` decodes the event.\n\n**Verified**\n- `cargo test` green (including Qt 90 tests and GTK).\n- `mvn -P jvm-only test` green.\n- `npm test` 297 green, typecheck clean.\n- `git diff --check` and reference checker clean.\n\n**Still remaining**\n- Rust DSL/engine parity: the Rust DSL has no `ForEach`/windowed emission (the wire contract and renderers support it; the Kotlin DSL is the implemented SwiftUI surface).\n- Engine golden traces for a lazy window mount/slide.\n- Variable-height rows, lazy grids, keyed row state across eviction, focused-row pinning, and app `PADDING` on a lazy stack.\n\nThe branch is clean. Say the word if you want me to take on the Rust DSL/engine parity next.",
+          "time": {
+            "start": 1794594899367,
+            "end": 1794594905163
+          },
+          "id": "prt_1d63105a7001iR8eWSR8vISjHu",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d630dc39002y0YRNxP1mUeH40"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "63b9d8548c07f909399edbd1ab3636b48305d5da",
+          "type": "step-finish",
+          "tokens": {
+            "total": 541245,
+            "input": 194,
+            "output": 488,
+            "reasoning": 403,
+            "cache": {
+              "write": 0,
+              "read": 540160
+            }
+          },
+          "cost": 0.00218418,
+          "id": "prt_1d6311c98001SKSMVvMh4QZyk4",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1d630dc39002y0YRNxP1mUeH40"
         }
       ]
     }
