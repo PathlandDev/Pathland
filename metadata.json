@@ -1,0 +1,61 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7B9406V3809ZG9VV1MEGNSG",
+  "strategy": "manual-commit",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/Properties.java",
+    "lib/java/pathland-core/src/main/java/dev/pathland/core/protocol/ValueTypes.java",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-0d0f9506db3d.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-16fee3eb7b02.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/HtmlRenderer.java",
+    "lib/java/pathland-render-html/src/main/java/dev/pathland/render/html/RenderNode.java",
+    "lib/java/pathland-render-html/src/test/kotlin/dev/pathland/render/html/HtmlRendererTest.kt",
+    "lib/java/pathland-render-html/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-0d0f9506db3d.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-16fee3eb7b02.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/LazyList.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/Views.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/DslTest.kt",
+    "lib/java/pathland-view-core/status.md",
+    "lib/rust/crates/pathland-core/src/constants.rs",
+    "lib/rust/crates/pathland-protocol-manifest/src/main.rs",
+    "lib/rust/crates/pathland-render-gtk/src/lib.rs",
+    "lib/rust/crates/pathland-render-gtk/status.md",
+    "lib/rust/crates/pathland-render-html/src/debug.rs",
+    "lib/rust/crates/pathland-render-html/src/lib.rs",
+    "lib/rust/crates/pathland-render-html/status.md",
+    "lib/rust/crates/pathland-render-qt/src/qt/qt_layer.cpp",
+    "lib/rust/crates/pathland-render-qt/status.md",
+    "lib/rust/crates/pathland-ts-codegen/src/main.rs",
+    "lib/rust/crates/pathland-view/status.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/constants.ts",
+    "lib/typescript/status.md",
+    "spec/DSL.md",
+    "spec/LAYOUT.md",
+    "spec/MODIFIERS.md",
+    "spec/PRIMITIVES.md",
+    "spec/protocol.tsv"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 983826,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 64085632,
+    "output_tokens": 33988,
+    "api_call_count": 77
+  }
+}
