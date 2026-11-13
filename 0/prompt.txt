@@ -1,0 +1,1 @@
+Lets plan lazy stacks. What do we have so far. What decisions do we need to make? We want something that can handle many thousands of rows without a sweat, ensuring that only the elements visible in the viewport is actaully rendered.
