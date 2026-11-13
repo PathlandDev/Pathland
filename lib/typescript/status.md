@@ -439,7 +439,7 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 - **Virtualized lazy stacks (ADR-0014)**: the DOM client applies the window
   properties, refreshes the virtual padding, observes scroll/resize, sends
   `VISIBLE_RANGE`, and exposes `aria-setsize`/`aria-posinset` for the full list.
-  Gap: app padding on a lazy stack (the virtual extent owns it in v1).
+  App padding is preserved as an inset around the virtual extent.
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

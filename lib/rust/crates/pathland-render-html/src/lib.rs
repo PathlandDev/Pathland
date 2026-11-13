@@ -2356,6 +2356,14 @@ fn lazy_windowed(node: &Node) -> bool {
 /// padding, and only the emitted window's children flow inside it
 /// (spec/LAYOUT.md §Virtual extent). The `data-pathland-lazy*` attributes let
 /// the DOM client derive the visible range and report `VISIBLE_RANGE`.
+/// The app's base padding for one edge (per-edge > uniform > content margins).
+fn lazy_base_padding(node: &Node, side: u16) -> f32 {
+    node.f32_property(
+        side,
+        node.f32_property(property_id::PADDING, node.content_margins().unwrap_or(0.0)),
+    )
+}
+
 fn wrap_lazy_stack(
     id: u32,
     direction: &str,
@@ -2392,11 +2400,19 @@ fn wrap_lazy_stack(
     } else {
         (0.0, 0.0, leading, trailing)
     };
-    // The virtual extent owns the main-axis padding. App padding on a lazy
-    // stack is overridden for v1 (a documented limitation); the cross-axis
-    // padding is 0 so the window fills the stack's cross size normally.
+    // The virtual extent adds to the app's padding (an inset around the
+    // window). The base values ride on data attributes so the DOM client can
+    // recompute the virtual padding without double-counting on a delta.
+    let base_top = lazy_base_padding(node, property_id::PADDING_TOP);
+    let base_bottom = lazy_base_padding(node, property_id::PADDING_BOTTOM);
+    let base_left = lazy_base_padding(node, property_id::PADDING_LEFT);
+    let base_right = lazy_base_padding(node, property_id::PADDING_RIGHT);
     let padding = format!(
-        "padding-top:{extra_top}px;padding-bottom:{extra_bottom}px;padding-left:{extra_left}px;padding-right:{extra_right}px;",
+        "padding-top:{}px;padding-bottom:{}px;padding-left:{}px;padding-right:{}px;",
+        base_top + extra_top,
+        base_bottom + extra_bottom,
+        base_left + extra_left,
+        base_right + extra_right,
     );
     let combined = format!(
         "display:flex;flex-direction:{direction};align-items:{align};{padding}{css}"
@@ -2404,7 +2420,7 @@ fn wrap_lazy_stack(
     let stack_style = style_attr(&combined);
     let axis = if vertical { "vertical" } else { "horizontal" };
     format!(
-        "<{tag} data-pathland-id=\"{id}\"{}{event}{aria}{stack_style} data-pathland-lazy=\"{axis}\" data-pathland-item-count=\"{count}\" data-pathland-item-extent=\"{extent}px\" data-pathland-first-item-index=\"{first}\" data-pathland-item-spacing=\"{spacing}px\">{children}</{tag}>",
+        "<{tag} data-pathland-id=\"{id}\"{}{event}{aria}{stack_style} data-pathland-lazy=\"{axis}\" data-pathland-item-count=\"{count}\" data-pathland-item-extent=\"{extent}px\" data-pathland-first-item-index=\"{first}\" data-pathland-item-spacing=\"{spacing}px\" data-pathland-base-padding-top=\"{base_top}px\" data-pathland-base-padding-right=\"{base_right}px\" data-pathland-base-padding-bottom=\"{base_bottom}px\" data-pathland-base-padding-left=\"{base_left}px\">{children}</{tag}>",
         slot_attrs(node),
     )
 }

@@ -2442,10 +2442,33 @@ function nearestScroller(el: HTMLElement): HTMLElement | null {
   return null;
 }
 
-// v1: the virtual extent owns the lazy stack's padding, so the base is 0
-// (app padding on a lazy stack is a documented limitation).
-function lazyBase(_el: HTMLElement, _side: "top" | "right" | "bottom" | "left"): number {
-  return 0;
+const LAZY_PADDING_PROP = {
+  top: "paddingTop",
+  right: "paddingRight",
+  bottom: "paddingBottom",
+  left: "paddingLeft",
+} as const;
+
+/**
+ * The app's base padding for one edge. SSR emits it on
+ * `data-pathland-base-padding-*`; a live-created element starts with only the
+ * app padding and caches it on the first refresh.
+ */
+function lazyBase(
+  el: HTMLElement,
+  side: "top" | "right" | "bottom" | "left",
+  extra: number,
+): number {
+  const attr = el.getAttribute(`data-pathland-base-padding-${side}`);
+  if (attr != null) {
+    const value = Number.parseFloat(attr);
+    return Number.isFinite(value) ? value : 0;
+  }
+  const computed = Number.parseFloat(getComputedStyle(el)[LAZY_PADDING_PROP[side]]) || 0;
+  if (!el.hasAttribute("data-pathland-lazy-padded")) {
+    return computed;
+  }
+  return Math.max(0, computed - extra);
 }
 
 /** Recompute a windowed lazy stack's virtual padding from its current window. */
@@ -2481,16 +2504,17 @@ function refreshLazyPadding(el: HTMLElement): void {
     row.setAttribute("aria-posinset", String(first + i + 1));
   });
   if (axis === "horizontal") {
-    el.style.paddingLeft = `${lazyBase(el, "left") + leading}px`;
-    el.style.paddingRight = `${lazyBase(el, "right") + trailing}px`;
-    el.style.paddingTop = `${lazyBase(el, "top")}px`;
-    el.style.paddingBottom = `${lazyBase(el, "bottom")}px`;
+    el.style.paddingLeft = `${lazyBase(el, "left", leading) + leading}px`;
+    el.style.paddingRight = `${lazyBase(el, "right", trailing) + trailing}px`;
+    el.style.paddingTop = `${lazyBase(el, "top", 0)}px`;
+    el.style.paddingBottom = `${lazyBase(el, "bottom", 0)}px`;
   } else {
-    el.style.paddingTop = `${lazyBase(el, "top") + leading}px`;
-    el.style.paddingBottom = `${lazyBase(el, "bottom") + trailing}px`;
-    el.style.paddingLeft = `${lazyBase(el, "left")}px`;
-    el.style.paddingRight = `${lazyBase(el, "right")}px`;
+    el.style.paddingTop = `${lazyBase(el, "top", leading) + leading}px`;
+    el.style.paddingBottom = `${lazyBase(el, "bottom", trailing) + trailing}px`;
+    el.style.paddingLeft = `${lazyBase(el, "left", 0)}px`;
+    el.style.paddingRight = `${lazyBase(el, "right", 0)}px`;
   }
+  el.setAttribute("data-pathland-lazy-padded", "");
 }
 
 /** The absolute item range that intersects the nearest scroll viewport. */

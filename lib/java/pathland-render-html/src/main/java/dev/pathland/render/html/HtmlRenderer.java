@@ -1042,6 +1042,12 @@ public final class HtmlRenderer {
                 && node.f32Property(Properties.ITEM_EXTENT, 0.0f) > 0.0f;
     }
 
+    private static float lazyBasePadding(RenderNode node, int side) {
+        Float margins = node.contentMargins();
+        return node.f32Property(side, node.f32Property(Properties.PADDING,
+                margins == null ? 0.0f : margins));
+    }
+
     private static String wrapLazyStack(int id, String direction, boolean vertical,
             String semantic, RenderNode node, String children, int childCount,
             String css, String event, String aria) {
@@ -1065,12 +1071,17 @@ public final class HtmlRenderer {
         float extraBottom = vertical ? trailing : 0.0f;
         float extraLeft = vertical ? 0.0f : leading;
         float extraRight = vertical ? 0.0f : trailing;
-        // The virtual extent owns the main-axis padding (app padding on a lazy
-        // stack is overridden for v1; a documented limitation).
-        String padding = "padding-top:" + Format.f32(extraTop)
-                + "px;padding-bottom:" + Format.f32(extraBottom)
-                + "px;padding-left:" + Format.f32(extraLeft)
-                + "px;padding-right:" + Format.f32(extraRight) + "px;";
+        // The virtual extent adds to the app's padding (an inset around the
+        // window). The base values ride on data attributes so the DOM client can
+        // recompute the virtual padding without double-counting on a delta.
+        float baseTop = lazyBasePadding(node, Properties.PADDING_TOP);
+        float baseBottom = lazyBasePadding(node, Properties.PADDING_BOTTOM);
+        float baseLeft = lazyBasePadding(node, Properties.PADDING_LEFT);
+        float baseRight = lazyBasePadding(node, Properties.PADDING_RIGHT);
+        String padding = "padding-top:" + Format.f32(baseTop + extraTop)
+                + "px;padding-bottom:" + Format.f32(baseBottom + extraBottom)
+                + "px;padding-left:" + Format.f32(baseLeft + extraLeft)
+                + "px;padding-right:" + Format.f32(baseRight + extraRight) + "px;";
         String stackStyle = Format.styleAttr("display:flex;flex-direction:" + direction
                 + ";align-items:" + align + ";" + padding + css);
         String axis = vertical ? "vertical" : "horizontal";
@@ -1079,7 +1090,11 @@ public final class HtmlRenderer {
                 + " data-pathland-item-count=\"" + count + "\""
                 + " data-pathland-item-extent=\"" + Format.f32(extent) + "px\""
                 + " data-pathland-first-item-index=\"" + first + "\""
-                + " data-pathland-item-spacing=\"" + Format.f32(spacing) + "px\">"
+                + " data-pathland-item-spacing=\"" + Format.f32(spacing) + "px\""
+                + " data-pathland-base-padding-top=\"" + Format.f32(baseTop) + "px\""
+                + " data-pathland-base-padding-right=\"" + Format.f32(baseRight) + "px\""
+                + " data-pathland-base-padding-bottom=\"" + Format.f32(baseBottom) + "px\""
+                + " data-pathland-base-padding-left=\"" + Format.f32(baseLeft) + "px\">"
                 + children + "</" + tag + ">";
     }
 

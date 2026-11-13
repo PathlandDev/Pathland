@@ -406,9 +406,9 @@ contract both renderers must satisfy.
 - **Virtualized lazy stacks (ADR-0014)**: windowed `LAZY_VSTACK`/`LAZY_HSTACK`
   render the full virtual extent as main-axis padding, place the emitted window,
   and carry `data-pathland-lazy*` attributes for the DOM client's
-  `VISIBLE_RANGE` reporting. Covered by a unit test. App `PADDING` on a lazy
-  stack is overridden by the virtual extent (v1 limitation); C22/C24 are not
-  covered yet.
+  `VISIBLE_RANGE` reporting. Covered by a unit test. App `PADDING` is added as
+  an inset around the virtual extent (the base values ride on data attributes
+  for the DOM client); C22/C24 are not covered yet.
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
 - **Parent-path token fallback is not implemented in CSS**: overriding a
