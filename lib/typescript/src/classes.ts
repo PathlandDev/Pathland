@@ -349,14 +349,17 @@ const HANDLERS: Record<number, Handler> = {
     if (n > 0) {
       el.style.display = "-webkit-box";
       el.style.webkitLineClamp = String(n);
-      (el.style as unknown as Record<string, string>).boxOrient = "vertical";
+      // Browsers require the PREFIXED property for legacy -webkit-line-clamp;
+      // the unprefixed `box-orient` assignment is a no-op and leaves the box
+      // horizontal, which makes the clamp ineffective.
+      el.style.setProperty("-webkit-box-orient", "vertical");
       // overflow:hidden is REQUIRED: -webkit-line-clamp draws the ellipsis but
       // does not clip the overflow on its own (Safari paints it below the box).
       el.style.overflow = "hidden";
     } else {
       // A removed/zeroed limit restores normal, unbounded text.
       el.style.webkitLineClamp = "";
-      (el.style as unknown as Record<string, string>).boxOrient = "";
+      el.style.removeProperty("-webkit-box-orient");
       el.style.overflow = "";
       if (el.style.display === "-webkit-box") {
         el.style.display = "";
