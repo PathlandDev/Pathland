@@ -166,8 +166,10 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   host-managed window. Variable item extents are supported via
   `ForEach::item_extents(vec![…])` (emitted as
   `ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`). `LazyVGrid`/`LazyHGrid`
-  consume the same source with a row/column unit window. Gaps: keyed window
-  reconcile in the build-time engine.
+  consume the same source with a row/column unit window. Window children are
+  reconciled by item key: `ForEach` keeps a persistent `key → id block` map, so
+  retained rows and their subtrees keep their ids across a slide (`assign_ids`
+  keeps new blocks above the map's high-water mark).
 
 ## Verified by
 

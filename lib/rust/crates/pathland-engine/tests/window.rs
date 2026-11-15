@@ -34,6 +34,8 @@ fn text_node(text: &str) -> Node {
         string_bindings: BTreeMap::new(),
         media_controller: None,
         gestures: Vec::new(),
+        lazy_keys: Vec::new(),
+        lazy_ids: None,
     }
 }
 

@@ -136,6 +136,10 @@ pub trait LazySource {
     fn extents(&self) -> Option<&[f32]> {
         None
     }
+    /// The persistent key -> id-block map for keyed window reconcile.
+    fn id_map(&self) -> Option<Rc<RefCell<BTreeMap<u64, (u32, u32)>>>> {
+        None
+    }
     /// Build one row view.
     fn build(&self, index: usize) -> Box<dyn View>;
     /// A stable key for the item at `index` (defaults to the index).
@@ -1492,6 +1496,8 @@ fn plain_node(component: Component, children: Vec<Node>, properties: BTreeMap<u1
         string_bindings: BTreeMap::new(),
         media_controller: None,
         gestures: Vec::new(),
+        lazy_keys: Vec::new(),
+        lazy_ids: None,
     }
 }
 
@@ -2667,6 +2673,7 @@ fn build_lazy_grid(
         property_id::EVENT_LISTENERS,
         pathland_core::listener::VISIBLE_RANGE,
     );
+    let mut keys = Vec::new();
     for unit in first..first + len {
         let start = unit * tracks;
         for offset in 0..tracks {
@@ -2674,9 +2681,12 @@ fn build_lazy_grid(
             if index >= count {
                 break;
             }
+            keys.push(source.key(index));
             node.children.push(source.build(index).build_env(env));
         }
     }
+    node.lazy_keys = keys;
+    node.lazy_ids = source.id_map();
     node
 }
 
@@ -2801,6 +2811,7 @@ pub struct ForEach<T> {
     extent: Option<f32>,
     extents: Option<Vec<f32>>,
     window: Rc<Cell<(usize, usize)>>,
+    ids: Rc<RefCell<BTreeMap<u64, (u32, u32)>>>,
 }
 
 impl<T: 'static> ForEach<T> {
@@ -2813,6 +2824,7 @@ impl<T: 'static> ForEach<T> {
             extent: None,
             extents: None,
             window: Rc::new(Cell::new((0, 22))),
+            ids: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
 
@@ -2870,6 +2882,9 @@ impl<T: 'static> LazySource for ForEach<T> {
     }
     fn extents(&self) -> Option<&[f32]> {
         self.extents.as_deref()
+    }
+    fn id_map(&self) -> Option<Rc<RefCell<BTreeMap<u64, (u32, u32)>>>> {
+        Some(self.ids.clone())
     }
     fn build(&self, index: usize) -> Box<dyn View> {
         (self.content)(&self.items[index], index)
@@ -2979,14 +2994,18 @@ fn build_lazy_stack(
     } else {
         property_id::WIDTH
     };
+    let mut keys = Vec::with_capacity(len);
     for index in first..first + len {
         let mut child = source.build(index).build_env(env);
         if let Some(values) = extents {
             child.properties.insert(main_property, values[index].to_bits());
             child.property_bindings.remove(&main_property);
         }
+        keys.push(source.key(index));
         node.children.push(child);
     }
+    node.lazy_keys = keys;
+    node.lazy_ids = source.id_map();
     node
 }
 
@@ -5338,5 +5357,85 @@ mod media_tests {
             })
             .count();
         assert_eq!(text_updates, 3, "each window row's text is updated");
+    }
+
+    #[test]
+    fn lazy_window_slide_reconciles_by_item_key() {
+        use pathland_core::{category, init_memory, parameter, Guest, Host, MemoryLayout};
+
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("item-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((0, 4));
+        let view = LazyVStack::children(vec![Box::new(foreach)]);
+        let mut tree = view.build();
+        assign_ids(&mut tree, &mut 1);
+
+        let mut engine = Engine::new();
+        let layout = MemoryLayout::default();
+        let mut mem = std::vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let _ = host.frames();
+        }
+
+        // Slide by one: keys 1..3 stay in the window and keep their ids; only
+        // item-4 is created and item-0 deleted.
+        window.set((1, 4));
+        let mut tree = view.build();
+        assign_ids(&mut tree, &mut 1);
+        let (delta, texts) = {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let frames = host.frames();
+            let frame = &frames[0];
+            let ops: std::vec::Vec<_> = frame.opcodes().collect();
+            let texts: std::vec::Vec<String> = ops
+                .iter()
+                .filter(|op| {
+                    op.category() == category::PARAMETER
+                        && op.command() == parameter::SET_TEXT
+                })
+                .map(|op| {
+                    std::string::String::from_utf8(frame.arena_get(op.b()).unwrap().to_vec())
+                        .unwrap()
+                })
+                .collect();
+            (ops, texts)
+        };
+
+        assert_eq!(
+            delta
+                .iter()
+                .filter(|op| {
+                    op.category() == category::TREE
+                        && op.command() == pathland_core::tree::CREATE_NODE
+                })
+                .count(),
+            1,
+            "only the newly entered row is created"
+        );
+        assert_eq!(
+            delta
+                .iter()
+                .filter(|op| {
+                    op.category() == category::TREE
+                        && op.command() == pathland_core::tree::DELETE_NODE
+                })
+                .count(),
+            1,
+            "only the evicted row is deleted"
+        );
+        assert_eq!(texts, std::vec![std::string::String::from("item-4")]);
     }
 }
