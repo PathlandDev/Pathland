@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7GGH55NRW9447ABHENPMT7P",
+  "strategy": "manual-commit",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/rust/crates/pathland-engine/src/node.rs",
+    "lib/rust/crates/pathland-engine/tests/engine.rs",
+    "lib/rust/crates/pathland-engine/tests/signal.rs",
+    "lib/rust/crates/pathland-engine/tests/window.rs",
+    "lib/rust/crates/pathland-view/src/lib.rs",
+    "lib/rust/crates/pathland-view/status.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": ""
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 249391,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 8074496,
+    "output_tokens": 8732,
+    "api_call_count": 36
+  }
+}

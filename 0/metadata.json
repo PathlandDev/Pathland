@@ -1,0 +1,46 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7GGH55NRW9447ABHENPMT7P",
+  "session_id": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-15T21:06:54.284772Z",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "AGENTS.md",
+    "lib/rust/crates/pathland-engine/src/node.rs",
+    "lib/rust/crates/pathland-engine/tests/engine.rs",
+    "lib/rust/crates/pathland-engine/tests/signal.rs",
+    "lib/rust/crates/pathland-engine/tests/window.rs",
+    "lib/rust/crates/pathland-view/src/lib.rs",
+    "lib/rust/crates/pathland-view/status.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "0e5388566989",
+  "checkpoint_transcript_start": 855,
+  "transcript_lines_at_start": 855,
+  "compact_transcript_start": 855,
+  "token_usage": {
+    "input_tokens": 249391,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 8074496,
+    "output_tokens": 8732,
+    "api_call_count": 36
+  },
+  "session_metrics": {
+    "turn_count": 22
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-15T21:06:53.312131Z",
+    "agent_lines": 229,
+    "agent_removed": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 229,
+    "total_lines_changed": 232,
+    "agent_percentage": 100,
+    "metric_version": 2
+  }
+}
