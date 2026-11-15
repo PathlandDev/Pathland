@@ -533,14 +533,19 @@ QString qmlFor(uint16_t component, uint32_t id) {
                    "  objectName: \"pl%1\"\n"
                    "  property real plLeading: 0\n"
                    "  property real plTrailing: 0\n"
-                   "  implicitWidth: grid.implicitWidth\n"
-                   "  implicitHeight: grid.implicitHeight + plLeading + plTrailing\n"
+                   "  property real plPad: 0\n"
+                   "  property real plPadTop: 0\n"
+                   "  property real plPadRight: 0\n"
+                   "  property real plPadBottom: 0\n"
+                   "  property real plPadLeft: 0\n"
+                   "  implicitWidth: grid.implicitWidth + plPadLeft + plPadRight\n"
+                   "  implicitHeight: grid.implicitHeight + plLeading + plTrailing + plPadTop + plPadBottom\n"
                    "  Grid {\n"
                    "    id: grid\n"
                    "    objectName: \"pl%1grid\"\n"
-                   "    width: parent.width\n"
-                   "    x: 0\n"
-                   "    y: plLeading\n"
+                   "    width: Math.max(0, parent.width - plPadLeft - plPadRight)\n"
+                   "    x: plPadLeft\n"
+                   "    y: plLeading + plPadTop\n"
                    "    flow: Grid.LeftToRight\n"
                    "  }\n"
                    "}")
@@ -552,14 +557,19 @@ QString qmlFor(uint16_t component, uint32_t id) {
                    "  objectName: \"pl%1\"\n"
                    "  property real plLeading: 0\n"
                    "  property real plTrailing: 0\n"
-                   "  implicitWidth: grid.implicitWidth + plLeading + plTrailing\n"
-                   "  implicitHeight: grid.implicitHeight\n"
+                   "  property real plPad: 0\n"
+                   "  property real plPadTop: 0\n"
+                   "  property real plPadRight: 0\n"
+                   "  property real plPadBottom: 0\n"
+                   "  property real plPadLeft: 0\n"
+                   "  implicitWidth: grid.implicitWidth + plLeading + plTrailing + plPadLeft + plPadRight\n"
+                   "  implicitHeight: grid.implicitHeight + plPadTop + plPadBottom\n"
                    "  Grid {\n"
                    "    id: grid\n"
                    "    objectName: \"pl%1grid\"\n"
-                   "    height: parent.height\n"
-                   "    x: plLeading\n"
-                   "    y: 0\n"
+                   "    height: Math.max(0, parent.height - plPadTop - plPadBottom)\n"
+                   "    x: plLeading + plPadLeft\n"
+                   "    y: plPadTop\n"
                    "    flow: Grid.TopToBottom\n"
                    "  }\n"
                    "}")
@@ -1009,6 +1019,12 @@ QQuickItem *layoutOf(QQuickItem *item) {
         }
     }
     return nullptr;
+}
+
+bool isLazyGrid(uint32_t id) {
+    auto it = g.components.find(id);
+    return it != g.components.end() &&
+           (it->second == PL_COMP_LAZY_VGRID || it->second == PL_COMP_LAZY_HGRID);
 }
 
 // The inner QML `Grid` of a windowed lazy grid (the node widget is a wrapper
@@ -2208,6 +2224,18 @@ void applyPaddingEdges(uint32_t id) {
     const double right = p.has_right ? p.right : base;
     const double bottom = p.has_bottom ? p.bottom : base;
     const double left = p.has_left ? p.left : base;
+
+    if (isLazyGrid(id)) {
+        // The lazy-grid wrapper owns the virtual extent, so padding is an
+        // inset applied inside the wrapper (the QML grid is offset by it),
+        // not outer margins.
+        item->setProperty("plPad", base);
+        item->setProperty("plPadTop", top);
+        item->setProperty("plPadRight", right);
+        item->setProperty("plPadBottom", bottom);
+        item->setProperty("plPadLeft", left);
+        return;
+    }
 
     if (layoutOf(item)) {
         // Stack / composite: inner padding (layout margins + hugged implicit size).

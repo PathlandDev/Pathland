@@ -132,6 +132,10 @@ pub trait LazySource {
     fn count(&self) -> usize;
     /// The uniform main-axis item extent, if declared explicitly.
     fn extent(&self) -> Option<f32>;
+    /// Per-item main-axis extents, if declared explicitly (variable-height stacks).
+    fn extents(&self) -> Option<&[f32]> {
+        None
+    }
     /// Build one row view.
     fn build(&self, index: usize) -> Box<dyn View>;
     /// A stable key for the item at `index` (defaults to the index).
@@ -2625,6 +2629,57 @@ impl View for ScrollView {
 
 children_static!(ScrollView);
 
+fn build_lazy_grid(
+    component: Component,
+    vertical: bool,
+    config: &GridConfig,
+    source: &dyn LazySource,
+    env: &mut Environment,
+) -> Node {
+    let tracks = match if vertical { config.columns } else { config.rows } {
+        Some(Reactive::Static(value)) => (value as usize).max(1),
+        _ => panic!("a windowed lazy grid requires a static columns/rows count"),
+    };
+    let count = source.count();
+    let unit_count = if count == 0 {
+        0
+    } else {
+        (count + tracks - 1) / tracks
+    };
+    let extent = source
+        .extent()
+        .unwrap_or_else(|| infer_lazy_extent(source, vertical, env));
+    let (mut first, mut len) = source.window().get();
+    if unit_count == 0 {
+        first = 0;
+        len = 0;
+    } else {
+        first = first.min(unit_count - 1);
+        len = len.min(unit_count - first);
+    }
+    let mut node = plain_node(component, Vec::new(), BTreeMap::new());
+    grid_apply(config, &mut node);
+    node.properties.insert(property_id::ITEM_COUNT, unit_count as u32);
+    node.properties.insert(property_id::ITEM_EXTENT, extent.to_bits());
+    node.properties
+        .insert(property_id::FIRST_ITEM_INDEX, first as u32);
+    node.properties.insert(
+        property_id::EVENT_LISTENERS,
+        pathland_core::listener::VISIBLE_RANGE,
+    );
+    for unit in first..first + len {
+        let start = unit * tracks;
+        for offset in 0..tracks {
+            let index = start + offset;
+            if index >= count {
+                break;
+            }
+            node.children.push(source.build(index).build_env(env));
+        }
+    }
+    node
+}
+
 container_debug!(LazyVGrid);
 /// A virtualized vertical grid.
 #[derive(Default)]
@@ -2658,6 +2713,9 @@ impl Children for LazyVGrid {
 
 impl View for LazyVGrid {
     fn build_env(&self, _env: &mut Environment) -> Node {
+        if let Some(source) = self.children.iter().find_map(|c| c.lazy_source()) {
+            return build_lazy_grid(Component::LazyVGrid, true, &self.config, source, _env);
+        }
         let mut node = plain_node(
             Component::LazyVGrid,
             build_children(&self.children, _env),
@@ -2704,6 +2762,9 @@ impl Children for LazyHGrid {
 
 impl View for LazyHGrid {
     fn build_env(&self, _env: &mut Environment) -> Node {
+        if let Some(source) = self.children.iter().find_map(|c| c.lazy_source()) {
+            return build_lazy_grid(Component::LazyHGrid, false, &self.config, source, _env);
+        }
         let mut node = plain_node(
             Component::LazyHGrid,
             build_children(&self.children, _env),
@@ -2738,6 +2799,7 @@ pub struct ForEach<T> {
     content: Rc<dyn Fn(&T, usize) -> Box<dyn View>>,
     key: Option<fn(&T) -> u64>,
     extent: Option<f32>,
+    extents: Option<Vec<f32>>,
     window: Rc<Cell<(usize, usize)>>,
 }
 
@@ -2749,6 +2811,7 @@ impl<T: 'static> ForEach<T> {
             content: Rc::new(content),
             key: None,
             extent: None,
+            extents: None,
             window: Rc::new(Cell::new((0, 22))),
         }
     }
@@ -2757,6 +2820,17 @@ impl<T: 'static> ForEach<T> {
     /// row's fixed `.frame(height/width)`.
     pub fn item_extent(mut self, extent: f32) -> Self {
         self.extent = Some(extent);
+        self.extents = None;
+        self
+    }
+
+    /// Declare one main-axis extent per item (variable-height stacks). The
+    /// engine emits `ITEM_EXTENTS` for the window plus the exact
+    /// `FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`; `ITEM_EXTENT` becomes the average.
+    /// A numeric `.spacing(…)` is required for exact offsets.
+    pub fn item_extents(mut self, extents: Vec<f32>) -> Self {
+        self.extents = Some(extents);
+        self.extent = None;
         self
     }
 
@@ -2793,6 +2867,9 @@ impl<T: 'static> LazySource for ForEach<T> {
     }
     fn extent(&self) -> Option<f32> {
         self.extent
+    }
+    fn extents(&self) -> Option<&[f32]> {
+        self.extents.as_deref()
     }
     fn build(&self, index: usize) -> Box<dyn View> {
         (self.content)(&self.items[index], index)
@@ -2834,9 +2911,22 @@ fn build_lazy_stack(
     env: &mut Environment,
 ) -> Node {
     let count = source.count();
-    let extent = source
-        .extent()
-        .unwrap_or_else(|| infer_lazy_extent(source, vertical, env));
+    let extents = source.extents();
+    if let Some(values) = extents {
+        assert_eq!(
+            values.len(),
+            count,
+            "ForEach::item_extents length must match the item count"
+        );
+    }
+    let extent = match extents {
+        Some(values) if !values.is_empty() => {
+            values.iter().sum::<f32>() / values.len() as f32
+        }
+        _ => source
+            .extent()
+            .unwrap_or_else(|| infer_lazy_extent(source, vertical, env)),
+    };
     let (mut first, mut len) = source.window().get();
     if count == 0 {
         first = 0;
@@ -2860,8 +2950,42 @@ fn build_lazy_stack(
     if let Some(s) = &config.spacing {
         apply_length(&mut node, property_id::SPACING, s);
     }
+    let spacing = node
+        .properties
+        .get(&property_id::SPACING)
+        .copied()
+        .map(f32::from_bits)
+        .unwrap_or(0.0)
+        .max(0.0);
+    let mut list_extents: Option<Vec<f32>> = None;
+    if let Some(values) = extents {
+        if count > 0 {
+            let first_offset = values[..first].iter().sum::<f32>() + spacing * first as f32;
+            let total_extent =
+                values.iter().sum::<f32>() + spacing * (count.saturating_sub(1)) as f32;
+            node.properties
+                .insert(property_id::FIRST_ITEM_OFFSET, first_offset.to_bits());
+            node.properties
+                .insert(property_id::TOTAL_EXTENT, total_extent.to_bits());
+            list_extents = Some(values[first..first + len].to_vec());
+        }
+    }
+    if let Some(values) = &list_extents {
+        node.list_properties
+            .insert(property_id::ITEM_EXTENTS, values.clone());
+    }
+    let main_property = if vertical {
+        property_id::HEIGHT
+    } else {
+        property_id::WIDTH
+    };
     for index in first..first + len {
-        node.children.push(source.build(index).build_env(env));
+        let mut child = source.build(index).build_env(env);
+        if let Some(values) = extents {
+            child.properties.insert(main_property, values[index].to_bits());
+            child.property_bindings.remove(&main_property);
+        }
+        node.children.push(child);
     }
     node
 }
@@ -5015,6 +5139,147 @@ mod media_tests {
                 .copied()
                 .map(f32::from_bits),
             Some(44.0)
+        );
+    }
+
+    #[test]
+    fn lazy_vstack_for_each_uses_variable_extents() {
+        let extents = std::vec![40.0, 50.0, 60.0];
+        let foreach = ForEach::new((0..3).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("item-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        })
+        .item_extents(extents.clone());
+        let window = foreach.window_handle();
+        window.set((0, 3));
+
+        let node = LazyVStack::children(vec![Box::new(foreach)])
+            .with(|c| {
+                c.spacing(2.0);
+            })
+            .build();
+        assert_eq!(
+            node.properties.get(&property_id::ITEM_COUNT).copied(),
+            Some(3)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::ITEM_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(50.0),
+            "the default extent is the average"
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::FIRST_ITEM_OFFSET)
+                .copied()
+                .map(f32::from_bits),
+            Some(0.0)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::TOTAL_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(40.0 + 50.0 + 60.0 + 2.0 * 2.0)
+        );
+        assert_eq!(
+            node.list_properties.get(&property_id::ITEM_EXTENTS),
+            Some(&extents)
+        );
+        for (child, expected) in node.children.iter().zip(extents.iter()) {
+            assert_eq!(
+                child
+                    .properties
+                    .get(&property_id::HEIGHT)
+                    .copied()
+                    .map(f32::from_bits),
+                Some(*expected)
+            );
+        }
+    }
+
+    #[test]
+    fn lazy_vgrid_for_each_builds_a_row_window() {
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("cell-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((10, 3));
+
+        let node = LazyVGrid::children(vec![Box::new(foreach)])
+            .with(|c| {
+                c.columns(3.0);
+            })
+            .build();
+        assert_eq!(node.component, Component::LazyVGrid);
+        assert_eq!(
+            node.properties.get(&property_id::ITEM_COUNT).copied(),
+            Some(34),
+            "ceil(100 cells / 3 columns)"
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::ITEM_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(44.0)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::FIRST_ITEM_INDEX)
+                .copied(),
+            Some(10)
+        );
+        assert_eq!(node.children.len(), 9, "3 rows * 3 cells");
+        assert_eq!(
+            node.children[0].component,
+            Component::Text {
+                text: "cell-30".into()
+            }
+        );
+    }
+
+    #[test]
+    fn lazy_hgrid_for_each_builds_a_column_window() {
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("cell-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::width(80.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((2, 2));
+
+        let node = LazyHGrid::children(vec![Box::new(foreach)])
+            .with(|c| {
+                c.rows(3.0);
+            })
+            .build();
+        assert_eq!(node.component, Component::LazyHGrid);
+        assert_eq!(
+            node.properties.get(&property_id::ITEM_COUNT).copied(),
+            Some(34)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::ITEM_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(80.0)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::FIRST_ITEM_INDEX)
+                .copied(),
+            Some(2)
+        );
+        assert_eq!(node.children.len(), 6, "2 columns * 3 cells");
+        assert_eq!(
+            node.children[0].component,
+            Component::Text {
+                text: "cell-6".into()
+            }
         );
     }
 

@@ -534,18 +534,20 @@ Rules:
   If the row has no fixed main-axis frame, the author MUST pass an explicit
   `itemExtent` (e.g. `ForEach(items, itemExtent = 44f)`); otherwise the DSL
   reports an authoring error. Every row MUST use the same extent.
-- Variable heights: `ForEach(items, itemExtents = listOf(44f, 60f, …))` supplies
-  one main-axis extent per item. The engine emits `ITEM_EXTENTS` for the window,
-  `FIRST_ITEM_OFFSET`, and `TOTAL_EXTENT`; `ITEM_EXTENT` remains the default
-  estimate for items outside the window. Lazy grids use a uniform extent.
+- Variable heights: `ForEach(items, itemExtents = listOf(44f, 60f, …))`
+  (Rust: `ForEach::item_extents(vec![…])`) supplies one main-axis extent per
+  item. The engine emits `ITEM_EXTENTS` for the window, `FIRST_ITEM_OFFSET`, and
+  `TOTAL_EXTENT`; `ITEM_EXTENT` remains the default estimate for items outside
+  the window. Lazy grids use a uniform extent.
 - `FIRST_ITEM_INDEX` = the window start. The engine sets it; the author does not.
 - The DSL sets `EVENT_LISTENERS` bit 10 (`VISIBLE_RANGE`) and routes the event
   to the engine's internal window; the author does not manage a window signal.
 - The engine reconciles window children by absolute index, or by an optional
   `key` extractor (`ForEach(items, key = { it.id })`); without a key, identity
   is the absolute index.
-- Row-local component state is not preserved after a row leaves the window; keep
-  row state in the data model (keyed state is a follow-up).
+- Row-local component state (`by state(...)`) is scoped by the `ForEach` item key
+  (or absolute index without a key) and survives window eviction: a re-created
+  row rebinds to the same persisted state, and rows are independent.
 - A full-snapshot/SSR emission carries the first window plus the full virtual
   extent; the client corrects the window after `META::ENVIRONMENT`.
 - `LazyVGrid`/`LazyHGrid` use the same data-source window with a **row** or
@@ -553,7 +555,8 @@ Rules:
   height/column width, and `FIRST_ITEM_INDEX` the first visible row/column. The
   emitted children are the cells of the visible units (row-major for VGrid,
   column-major for HGrid). The grid's `columns`/`rows` (or `GRID_TRACKS`)
-  define the cells per unit.
+  define the cells per unit. Rust: `LazyVGrid::children(vec![ForEach…])
+  .with(|c| c.columns(n))` (and `LazyHGrid`/`rows`) consume the same window.
 
 The window math, child placement, and visible-range derivation are specified in
 [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers). The

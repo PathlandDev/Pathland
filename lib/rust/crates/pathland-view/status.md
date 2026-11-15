@@ -163,8 +163,11 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 - **Virtualized lazy stacks (ADR-0014)**: `ForEach<T>` is a lazy data source;
   `LazyVStack`/`LazyHStack` consume it, infer/declare the item extent, emit
   `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX`, and build only the shared
-  host-managed window. Gaps: keyed window reconcile in the build-time engine,
-  variable item extents in the Rust `ForEach`, and lazy grids.
+  host-managed window. Variable item extents are supported via
+  `ForEach::item_extents(vec![…])` (emitted as
+  `ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`). `LazyVGrid`/`LazyHGrid`
+  consume the same source with a row/column unit window. Gaps: keyed window
+  reconcile in the build-time engine.
 
 ## Verified by
 

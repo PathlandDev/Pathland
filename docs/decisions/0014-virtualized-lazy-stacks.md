@@ -84,10 +84,10 @@ Exact requirements live in `spec/PRIMITIVES.md`, `spec/LAYOUT.md`,
   manifest, codec, and conformance updates.
 - The engine gains lazy-node window state and a keyed window reconcile;
   renderers gain virtual-extent placement and range reporting.
-- Row-local component state is not preserved when a row leaves the window; apps
-  should keep row state in the data model (keyed state is a follow-up).
-- Lazy grids, variable-height rows, native recycling, scroll anchoring, and
-  focused-row pinning remain follow-ups.
+- Row-local component state is scoped by the `ForEach` item key and survives
+  window eviction (follow-up implemented; spec/DSL.md §Virtualized lists).
+- Lazy grids and variable-height rows are implemented; native recycling, scroll
+  anchoring, and focused-row pinning remain follow-ups.
 - The app must keep a focused row inside its window; the renderer does not
   auto-pin it.
 

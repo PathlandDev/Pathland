@@ -295,8 +295,8 @@ Design-token contract: `spec/TOKENS.md`.
   wrap an inner QML `Grid` in an `Item` whose `plLeading`/`plTrailing` reserve
   the row/column extent. Both poll the scroll offsets from the shell's idle tick
   to report `VISIBLE_RANGE`. Lazy stacks also use app-declared variable item
-  extents for spacers/range math. App padding on a lazy grid is not applied
-  (the wrapper owns the extent).
+  extents for spacers/range math. App padding on a lazy grid is applied inside
+  the virtual-extent wrapper (`plPad*`, offsetting the inner grid).
 
 ## Verified by
 

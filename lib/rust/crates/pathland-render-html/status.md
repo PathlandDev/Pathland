@@ -180,7 +180,7 @@ Statelessness). Protocol contract: `spec/`.
   `SCROLLVIEW` is greedy on its `SCROLL_AXIS` only; fixed frames emit exact px
   boxes. Finite `MAX_*` bounds cap the resolved size, stop unbounded fill
   propagation, and let the parent's `ALIGNMENT` position the capped box.
-  Conformance cases C1–C6 and C13–C20 asserted in `lib.rs` tests.
+  Conformance cases C1–C6, C13–C20, and C22/C24 asserted in `lib.rs` tests.
 - **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: implemented —
   `fills_axis` resolves a Hug stack/ZStack containing a `FILL` child / greedy
   primitive on an axis as `FILL`, emitting `width/height:100%` on that axis, and
@@ -412,7 +412,7 @@ contract both renderers must satisfy.
   extents (`ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`, emitted as
   `data-pathland-item-extents`/`-first-item-offset`/`-total-extent`).
   `LAZY_VGRID`/`LAZY_HGRID` use the same row/column window (virtual padding +
-  `data-pathland-lazy-grid`/`-tracks`); C22/C24 are not covered yet.
+  `data-pathland-lazy-grid`/`-tracks`); C22/C24 are covered by the lazy tests.
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
 - **Parent-path token fallback is not implemented in CSS**: overriding a

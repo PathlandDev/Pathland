@@ -126,7 +126,8 @@ build) carries no JNA.
   implemented; lazy grids use a row/column window over the same data source.
   Variable-height stacks are supported with app-declared `itemExtents`
   (`ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`); grids use a uniform
-  extent. Gaps: keyed row-local state across eviction and focused-row pinning.
+  extent. Row-local `state(...)` is keyed by the `ForEach` item key and survives
+  window eviction. Gaps: focused-row pinning.
 
 ## Package boundary
 

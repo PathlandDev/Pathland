@@ -3572,6 +3572,64 @@ mod tests {
     }
 
     #[test]
+    fn lazy_stack_matches_c22_virtual_extent() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VSTACK as u32, 0));
+        for (prop, vt, bits) in [
+            (property_id::ITEM_COUNT, value_type::U32, 10u32),
+            (property_id::ITEM_EXTENT, value_type::F32, 44.0f32.to_bits()),
+            (property_id::SPACING, value_type::F32, 8.0f32.to_bits()),
+            (property_id::FIRST_ITEM_INDEX, value_type::U32, 3u32),
+        ] {
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((vt as u32) << 16) | prop as u32,
+                bits,
+            ));
+        }
+        for child in [2u32, 3] {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::TEXT as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, u32::MAX));
+        }
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        // C22: main-axis 10*44 + 9*8 = 512; child 0 at 3*(44+8) = 156;
+        // the two-child window occupies 2*44 + 8 = 96, leaving 260 trailing.
+        assert!(html.contains("padding-top:156px"), "{html}");
+        assert!(html.contains("padding-bottom:260px"), "{html}");
+        assert!(html.contains("data-pathland-first-item-index=\"3\""), "{html}");
+    }
+
+    #[test]
+    fn lazy_stack_without_extent_is_eager_c24() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VSTACK as u32, 0));
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::U32 as u32) << 16) | property_id::ITEM_COUNT as u32,
+            10,
+        ));
+        for child in [2u32, 3] {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::TEXT as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, u32::MAX));
+        }
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        // C24: no ITEM_EXTENT means an ordinary eager stack — no virtual
+        // extent, no lazy window attributes.
+        assert!(!html.contains("data-pathland-lazy="), "{html}");
+        assert!(html.contains("display:flex"), "{html}");
+        assert_eq!(html.matches("data-pathland-id=\"2\"").count(), 1);
+        assert_eq!(html.matches("data-pathland-id=\"3\"").count(), 1);
+    }
+
+    #[test]
     fn lazy_vgrid_reserves_a_row_window() {
         let mut opcodes = Vec::new();
         opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VGRID as u32, 0));

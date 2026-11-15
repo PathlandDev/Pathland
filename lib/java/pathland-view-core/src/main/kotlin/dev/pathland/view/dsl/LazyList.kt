@@ -43,11 +43,23 @@ internal class ForEachView<T>(
         return keyOf?.invoke(list[index]) ?: index
     }
 
+    /**
+     * The environment a row renders in: its own persisted-state scope, keyed by
+     * the `ForEach` item key (or absolute index), so row-local `state(...)` is
+     * independent per row and survives window eviction.
+     */
+    fun rowEnvironment(env: Environment, index: Int): Environment {
+        val session = env.state() ?: return env
+        return Environment(session.scopedTo("row:" + key(index)))
+    }
+
     override fun renderNode(env: Environment): PathlandNode {
         val node = PathlandNode(Components.VSTACK)
         val list = itemsSignal.get()
         list.forEachIndexed { index, item ->
-            node.children.add(rowView { content(item, index) }.render(env))
+            node.children.add(
+                rowView { content(item, index) }.render(rowEnvironment(env, index)),
+            )
         }
         return node
     }
@@ -174,7 +186,7 @@ internal class LazyStackView(
         for (index in first..end) {
             val key = data.key(index)
             keys.add(key)
-            val child = data.row(index).render(env)
+            val child = data.row(index).render(data.rowEnvironment(env, index))
             val rowExtent = extents?.get(index) ?: extent
             child.properties[mainProperty] = rowExtent
             child.propertyBindings.remove(mainProperty)
@@ -315,7 +327,7 @@ internal class LazyGridWindowView(
                 if (index >= itemCount) break
                 val key = data.key(index)
                 keys.add(key)
-                val child = data.row(index).render(env)
+                val child = data.row(index).render(data.rowEnvironment(env, index))
                 node.children.add(child)
                 nodes[key] = child
             }

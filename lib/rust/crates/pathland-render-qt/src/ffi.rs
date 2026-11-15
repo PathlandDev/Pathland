@@ -3075,6 +3075,46 @@ mod tests {
         });
     }
 
+    /// App padding on a lazy grid is an inset inside the virtual-extent
+    /// wrapper, not outer margins (ADR-0014 / spec/LAYOUT.md).
+    #[test]
+    fn lazy_grid_applies_app_padding_inside_the_wrapper() {
+        with_qt(|| {
+            let mut root = Node::from_component(&Component::LazyVGrid);
+            root.properties.insert(property_id::ITEM_COUNT, 34);
+            root.properties
+                .insert(property_id::ITEM_EXTENT, 44.0f32.to_bits());
+            root.properties.insert(property_id::FIRST_ITEM_INDEX, 10);
+            root.properties
+                .insert(property_id::SPACING, 8.0f32.to_bits());
+            root.properties
+                .insert(property_id::GRID_COLUMNS, 3.0f32.to_bits());
+            root.properties
+                .insert(property_id::PADDING_TOP, 6.0f32.to_bits());
+            root.properties
+                .insert(property_id::PADDING_LEFT, 12.0f32.to_bits());
+            for _ in 0..6 {
+                root.children.push(Node::from_component(&Component::Text {
+                    text: String::new(),
+                }));
+            }
+            assign_ids(&mut root, &mut 1);
+
+            let mut h = Harness::new();
+            let mut r = QtRenderer::new();
+            {
+                let (slots, arena) = h.emit(&root);
+                let frame = Frame::from_parts(&slots, &arena, 0, slots.len());
+                r.apply_frame(&frame);
+            }
+
+            assert_eq!(int_prop(1, "plPadTop"), 6);
+            assert_eq!(int_prop(1, "plPadLeft"), 12);
+            assert_eq!(int_prop(1, "plLeading"), 520);
+            assert_eq!(int_prop(1, "plTrailing"), 1144);
+        });
+    }
+
     /// The Phase-B controls construct into their QML counterparts and apply
     /// their value/progress properties.
     #[test]

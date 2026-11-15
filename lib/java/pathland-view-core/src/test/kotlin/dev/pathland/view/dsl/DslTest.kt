@@ -365,6 +365,51 @@ class DslTest {
     }
 
     @Test
+    fun lazyRowStateIsScopedByItemKeyAndSurvivesEviction() {
+        class Row : Component() {
+            var taps by state(0)
+
+            override fun body(): View = Button("tap $taps") { taps++ }
+        }
+
+        val items = (0 until 100).map { "item-$it" }
+        val store = InMemoryStateStore()
+        val session = PersistentState(store, "s")
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items, key = { it }) { _, _ -> Row().frame(height = 44f) }
+            },
+            Environment(session),
+        )
+        assertEquals("tap 0", texts(sink.frame()).first())
+
+        result.tapActions().values.first().run()
+        assertEquals("tap 1", texts(sink.frame()).first())
+
+        // Evict row 0, then scroll back: the recreated row restores its own
+        // keyed state, and row 1 remains independent.
+        result.visibleRanges()[result.rootId()]!!.onVisibleRange(50, 5)
+        sink.frame()
+        result.visibleRanges()[result.rootId()]!!.onVisibleRange(0, 5)
+        val back = sink.frame()
+        assertEquals(listOf("tap 1", "tap 0"), texts(back).take(2))
+        session.close()
+
+        // A new session over the same store reloads the keyed row state.
+        val restored = PersistentState(store, "s")
+        val (_, restoredFrame) = mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items, key = { it }) { _, _ -> Row().frame(height = 44f) }
+            },
+            Environment(restored),
+        )
+        assertEquals("tap 1", texts(restoredFrame).first())
+        restored.close()
+    }
+
+    @Test
     fun twoWayTextFieldWritesBackIntoTheBoundSignal() {
         val name = signal("")
         val (result, _) = mount(TextField("Name", name))
