@@ -1,0 +1,35 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7GFWGM9M8TA66XYA7J7RKNM",
+  "strategy": "manual-commit",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-16fee3eb7b02.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-ce954bf5f56c.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-16fee3eb7b02.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-ce954bf5f56c.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/typescript/src/classes.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/classes.test.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1508291,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 15573248,
+    "output_tokens": 31895,
+    "api_call_count": 107
+  }
+}
