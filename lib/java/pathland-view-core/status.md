@@ -32,8 +32,15 @@ build) carries no JNA.
   session-local mirror; the server runtime registers it with the app's hub and
   applies published values on the session actor. `SessionContext` (thread-local,
   installed by `PathlandSession` around every actor task) also exposes
-  `unsubscribe` and `submit`. Resolution is lazy when a root view's field
-  initializer runs before the context is installed.
+  `unsubscribe`, `submit`, `isLive` (SSR vs live), and `onClose` (session
+  cleanup). Resolution is lazy when a root view's field initializer runs before
+  the context is installed.
+- **Data sources** (`dev.pathland.view.data`): `AsyncDataSource` loads a small
+  list from a blocking or `CompletionStage` loader, applies results on the
+  session actor, exposes `items`/`loading`/`error`, refreshes with a stale-result
+  guard, and closes with the session. SSR starts in the loading state and does
+  not run async work. The optional `pathland-view-data-coroutines` module adds
+  `AsyncDataSource.fromSuspend`. Paged sources are planned (ADR-0016 Phase 2).
 - **State** (`dev.pathland.view.core.state`): `PersistentState`, untyped
   `StateStore`, in-memory store and provider. Kotlin `Component` state delegates
   bind directly before `body()`; the Java `State` field/binder machinery and

@@ -66,6 +66,9 @@ dependency — framework glue lives in the starters.
   close/unsubscribe. `PathlandSession.submit(Runnable)` hands arbitrary work to the
   session actor from any thread; a session context is installed around every actor
   task (mount, dispatch, drain, theming) so `topic(...)` resolves during render.
+  `SessionContext.isLive()` distinguishes a live session from a one-shot SSR
+  render, and `SessionContext.onClose(...)` registers cleanup (data sources, …)
+  that `PathlandSession.close()` runs after unsubscribing.
   `PathlandHost.signalHub()`/`signalHub(mount)` expose the hub. Telemetry:
   `topics.published`/`coalesced`/`dropped`. See `docs/external-updates.md` and
   `TopicsTest`.

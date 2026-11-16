@@ -24,6 +24,7 @@ additional mandatory behavior or replace either source of truth.
 | [0013](0013-swiftui-shaped-signal-dsl.md) | SwiftUI-shaped authoring with signal-based reactivity | Accepted |
 | [0014](0014-virtualized-lazy-stacks.md) | Virtualized lazy stacks through app-owned data sources | Accepted |
 | [0015](0015-reactive-lazy-prefetch.md) | Engine-derived reactive prefetch for lazy windows | Accepted |
+| [0016](0016-async-paged-data-sources.md) | Framework-neutral async and paged data sources for lists | Proposed |
 
 ## Conventions
 
