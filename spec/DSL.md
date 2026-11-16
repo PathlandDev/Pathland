@@ -351,7 +351,7 @@ flow instead of a wrapper type:
 |----------------------------|----------|----------|-------|
 | `if cond { then } else { else }` in a result builder | plain `if` in `body()`; `View.of(() -> …)` for an inline expression | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
 | `switch value { case a -> v; default -> d }` | plain `switch` in `body()`; `View.of(() -> switch …)` inline | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
-| `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach.of(signal, (item, i) -> …)` for a row-scoped component | plain `for` in `build()` (`ForEach` parity: Phase 2) | `TREE` deltas (reconcile) |
+| `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach(items) { item, i -> … }` for a row-scoped component. Inside a `LazyVStack`/`LazyHStack` a `ForEach` is a windowed **data source** (§Virtualized lists) | plain `for` for static lists; `ForEach::new(items, \|item, i\| …)` for a lazy-stack data source (`ForEach` parity: reactive bodies Phase 2) | `TREE` deltas (reconcile) |
 
 **Kotlin realization** — bare control flow in a component body:
 
@@ -465,10 +465,10 @@ Containers are **content-bearing**: they expose `children(...)`.
 | `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.make(g -> g.columns(int).rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
 | `GridRow` | `GridRow { … }` | `GridRow.make().children(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
 | `ScrollView` | `ScrollView { … }` | `ScrollView.make().children(View...)` | `SCROLLVIEW` 0x14 |
-| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { … }` | `LazyVGrid.make(g -> g.columns(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS` |
-| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { … }` | `LazyHGrid.make(g -> g.rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS` |
-| `LazyVStack` | `LazyVStack(alignment:spacing:) { … }` | `LazyVStack.make(v -> v.alignment(HorizontalAlignment).spacing(float)).children(View...)` | `LAZY_VSTACK` 0x1B |
-| `LazyHStack` | `LazyHStack(alignment:spacing:) { … }` | `LazyHStack.make(h -> h.alignment(VerticalAlignment).spacing(float)).children(View...)` | `LAZY_HSTACK` 0x1C |
+| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { ForEach(items) { … } }` | `LazyVGrid(columns = 3, spacing = 8f) { ForEach(items) { item, _ -> Cell(item).frame(height = 44f) } }` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS`; row window (`ITEM_COUNT` = rows, `ITEM_EXTENT` = row height, `FIRST_ITEM_INDEX` = first row) |
+| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { ForEach(items) { … } }` | `LazyHGrid(rows = 3, spacing = 8f) { ForEach(items) { item, _ -> Cell(item).frame(width = 44f) } }` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS`; column window (`ITEM_COUNT` = columns, `ITEM_EXTENT` = column width, `FIRST_ITEM_INDEX` = first column) |
+| `LazyVStack` | `LazyVStack(spacing:) { ForEach(items) { … } }` | `LazyVStack(spacing = 0) { ForEach(items) { item, _ -> Row(item).frame(height = 44f) } }` | `LAZY_VSTACK` 0x1B; `ITEM_COUNT` 0x0022, `ITEM_EXTENT` 0x0023, `FIRST_ITEM_INDEX` 0x0024; `ForEach` is the data source (§Virtualized lists) |
+| `LazyHStack` | `LazyHStack(spacing:) { ForEach(items) { … } }` | `LazyHStack(spacing = 0) { ForEach(items) { item, _ -> Cell(item).frame(width = 120f) } }` | `LAZY_HSTACK` 0x1C; same window properties; `ForEach` is the data source |
 | `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.make().children(Fit.of(view, minWidth))...` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit in the live form; a full-snapshot/SSR emission carries every candidate for a no-JS first paint gated by CSS container queries — the DSL is unchanged) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
 | `ProxyView` | `RemoteView(endpoint:route:)` (no SwiftUI equivalent) | `ProxyView.make(p -> p.endpoint(String).route(String).credential(String))` | `PROXY_VIEW` 0x1E; child = the **origin subtree root** (served by another Pathland server, id-remapped); see [PROXY.md](./PROXY.md) |
 
@@ -507,6 +507,61 @@ per-track sizes (SwiftUI `GridItem` / Compose `GridCells` parity) —
 the counts; a count is the `N`×`flexible` sugar. CSS-grid-native — renderers
 without a native per-track equivalent size tracks naturally (renderer status,
 spec/PRIMITIVES.md §grid model).
+
+#### Virtualized lists (`LazyVStack` / `LazyHStack`)
+
+A `LazyVStack`/`LazyHStack` containing a `ForEach` is a **windowed data
+container**. The app supplies the collection and the row builder; the engine
+owns the window and evaluates the builder only for visible rows:
+
+```kotlin
+LazyVStack(spacing = 0) {
+    ForEach(items) { item, _ ->
+        RowView(item)
+            .frame(height = 44f)   // fixed main-axis extent
+    }
+}
+```
+
+Rules:
+
+- `ForEach` inside a lazy stack is a **data source**, not an eager child list.
+  Outside a lazy stack it keeps its eager behavior.
+- The lazy stack's content MUST be exactly one `ForEach` for virtualization;
+  other children keep the eager stack behavior.
+- `ITEM_COUNT` = the collection size. `ITEM_EXTENT` = the row's fixed main-axis
+  size, read from the first realized row's `HEIGHT` (VStack) / `WIDTH` (HStack).
+  If the row has no fixed main-axis frame, the author MUST pass an explicit
+  `itemExtent` (e.g. `ForEach(items, itemExtent = 44f)`); otherwise the DSL
+  reports an authoring error. Every row MUST use the same extent.
+- Variable heights: `ForEach(items, itemExtents = listOf(44f, 60f, …))`
+  (Rust: `ForEach::item_extents(vec![…])`) supplies one main-axis extent per
+  item. The engine emits `ITEM_EXTENTS` for the window, `FIRST_ITEM_OFFSET`, and
+  `TOTAL_EXTENT`; `ITEM_EXTENT` remains the default estimate for items outside
+  the window. Lazy grids use a uniform extent.
+- `FIRST_ITEM_INDEX` = the window start. The engine sets it; the author does not.
+- The DSL sets `EVENT_LISTENERS` bit 10 (`VISIBLE_RANGE`) and routes the event
+  to the engine's internal window; the author does not manage a window signal.
+- The engine reconciles window children by absolute index, or by an optional
+  `key` extractor (`ForEach(items, key = { it.id })`); without a key, identity
+  is the absolute index.
+- Row-local component state (`by state(...)`) is scoped by the `ForEach` item key
+  (or absolute index without a key) and survives window eviction: a re-created
+  row rebinds to the same persisted state, and rows are independent.
+- A full-snapshot/SSR emission carries the first window plus the full virtual
+  extent; the client corrects the window after `META::ENVIRONMENT`.
+- `LazyVGrid`/`LazyHGrid` use the same data-source window with a **row** or
+  **column** unit: `ITEM_COUNT` is the row/column count, `ITEM_EXTENT` the row
+  height/column width, and `FIRST_ITEM_INDEX` the first visible row/column. The
+  emitted children are the cells of the visible units (row-major for VGrid,
+  column-major for HGrid). The grid's `columns`/`rows` (or `GRID_TRACKS`)
+  define the cells per unit. Rust: `LazyVGrid::children(vec![ForEach…])
+  .with(|c| c.columns(n))` (and `LazyHGrid`/`rows`) consume the same window.
+
+The window math, child placement, and visible-range derivation are specified in
+[LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers). The
+decision and rationale are in
+[ADR-0014](../docs/decisions/0014-virtualized-lazy-stacks.md).
 
 ### 4.3 Semantic controls
 
@@ -714,6 +769,16 @@ activePath.set(env.route());   // or from a NAVIGATE event URL
 - `NAVIGATE` events: a URL updates `activePath` (→ bound router re-routes guard-aware,
   `PathChange` listeners fire); a back (no URL) goes to `RenderResult.navigateHandler`
   → `router.pop()` — meaningful only when a router exists.
+
+**The viewport is universal too** — `Platform.VIEWPORT` is an
+`EnvironmentKey<Viewport>`; the host provides it when it knows the surface
+size. `Viewport` carries `width`/`height` in logical points (the same units as
+`META::ENVIRONMENT` `VIEWPORT_WIDTH`/`VIEWPORT_HEIGHT`). It seeds a lazy list's
+initial window and updates on resize. SSR has no viewport at first paint, so an
+app falls back to its declared first window and corrects after
+`META::ENVIRONMENT` (spec/OPCODE.md §Environment fields). The window itself is
+engine-owned; the author never wires `VISIBLE_RANGE` (spec/DSL.md §Virtualized
+lists).
 
 **Any component can change the route** — declarative navigation intents. A
 component anywhere *inside* a `NavigationContainer` can change the route without
@@ -1384,6 +1449,11 @@ are the companion specs.
   `Signal<List<T>>`, each item a child component slot; static lists MAY use
   native iteration instead ([§3.4](#34-structural-reactivity-reactive-bodies--slots),
   [§9.3.1](#931-cross-language-reactive-vocabulary)).
+- [ ] **Virtualized lists** — a `LazyVStack`/`LazyHStack` containing a
+  `ForEach` data source, with a fixed main-axis row extent and an engine-owned
+  window driven by `VISIBLE_RANGE`; the author does not manage a window signal
+  ([§4.2](#virtualized-lists-lazyvstack--lazyhstack),
+  [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers)).
 - [ ] **Navigation** — `Router` / `RouteTable` / `NavigationContainer` /
   `NavigationLink` over a plain `Signal<Route>`, the initial route host-seeded
   before mount, emitting `ROUTE` and `TRANSITION` and consuming the `NAVIGATE`
@@ -1476,7 +1546,7 @@ expression and collection forms; Rust parity is Phase 2.
 | Branch | `if`/`switch` in `@ViewBuilder` | `if`/`switch` in `body()`; `View.of(() -> …)` inline | `if`/`when` expressions | `if`/`match` expressions | ternary / `switch` expressions |
 | Inline subtree | `Group { … }` / `@ViewBuilder` | `View.of(() -> …)` | `View.of { … }` (rarely needed) | `View::of(\|\| …)` | `View.of(() => …)` |
 | Static list | `ForEach(items) { … }` / `for` in a builder | stream/`for` + `.children(…)` | `items.map { … }` + `.children(…)` | iterator + `.children(vec![…])` | `items.map(…)` |
-| Reactive list | `ForEach(items) { … }` | `ForEach.of(items, (item, i) -> …)` | `ForEach(items) { item, i -> … }` | `ForEach::of(items, \|item, i\| …)` | `ForEach(items, (item, i) => …)` |
+| Reactive list | `ForEach(items) { … }` | `ForEach.of(items, (item, i) -> …)` | `ForEach(items) { item, i -> … }` | `ForEach::new(items, \|item, i\| …)` | `ForEach(items, (item, i) => …)` |
 | Children | trailing closure | `.children(a, b)` | `.children(a, b)` / trailing lambda | `.children(vec![a, b])` | `children: [a, b]` |
 | Values | `VStack(spacing: 8)` | `VStack.make(v -> v.spacing(8))` | `VStack(spacing = 8)` | `VStack::new(\|v\| v.spacing(8.0))` | `VStack({ spacing: 8 })` |
 | Modifiers | `.padding(16)` / `.modifiers(…)` | `.modifiers(padding(16))` | `.modifiers(padding(16))` | `.modifiers(padding(16.0))` | `.modifiers(padding(16))` |
@@ -1522,7 +1592,7 @@ VStack(spacing = 8) {
 ```rust
 VStack::new(|v| v.spacing(8.0)).children(vec![
     Text::new("Library").into(),
-    ForEach::of(tracks.clone(), |track, index| {
+    ForEach::new(tracks.clone(), |track, index| {
         TrackRow::new(track, index, track_index.clone()).into()
     }),
 ])
@@ -1550,9 +1620,10 @@ Rules:
   `BiFunction`; Kotlin/Rust authors may name the lambda parameters.
 - **No keys yet.** The emitter reconciles by position + type; a keyed `ForEach`
   is a future protocol/emitter feature, not a syntax difference.
-- **Gaps**: Rust reactive-body/`ForEach` parity is Phase 2; the TypeScript plan
-  currently defers structural reactivity; Swift is not implemented yet. Kotlin is
-  implemented by `lib/java/pathland-view-core` (Kotlin-owned views over the engine;
+- **Gaps**: Rust reactive-body parity is Phase 2 (the Rust `ForEach<T>` lazy
+  data source is implemented); the TypeScript plan currently defers structural
+  reactivity; Swift is not implemented yet. Kotlin is implemented by
+  `lib/java/pathland-view-core` (Kotlin-owned views over the engine;
   `Text("…")`, `VStack(spacing = 8) { … }`, `.padding(16)`), with its surface and
   gaps tracked in that module's `status.md`.
 

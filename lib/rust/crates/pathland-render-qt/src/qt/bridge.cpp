@@ -126,6 +126,19 @@ void Bridge::mediaDuration(quint32 nodeId, qreal seconds) {
     fireMedia(this, ev);
 }
 
+void Bridge::visibleRange(quint32 nodeId, quint32 firstIndex, quint32 count) {
+    // A layout-derived report (like FIT_CHANGED): not gated by BINDING_ID and
+    // not suppressed during a frame's property application.
+    PathlandQtEvent ev{};
+    ev.kind = PLQT_EV_VISIBLE_RANGE;
+    ev.node_id = nodeId;
+    ev.first_index = firstIndex;
+    ev.count = count;
+    if (event_fn) {
+        event_fn(&ev, user);
+    }
+}
+
 void Bridge::fitChanged(quint32 nodeId, int index) {
     // A fit report targets the slot (by component type), not gated by BINDING_ID.
     // It is a layout result, not a programmatic value echo, so it is reported

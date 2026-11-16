@@ -118,6 +118,17 @@ build) carries no JNA.
   native playback continuity. See the
   [traceability pilot audit](../../../docs/audits/media-controller-identity.md).
 
+## Not implemented / gaps
+
+- **Virtualized lazy stacks (ADR-0014)**: `LazyVStack`/`LazyHStack` containing
+  a `ForEach` are windowed — extent inference, engine-owned window, keyed
+  window reconcile, the window properties, and `VISIBLE_RANGE` routing are
+  implemented; lazy grids use a row/column window over the same data source.
+  Variable-height stacks are supported with app-declared `itemExtents`
+  (`ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`); grids use a uniform
+  extent. Row-local `state(...)` is keyed by the `ForEach` item key and survives
+  window eviction. Gaps: focused-row pinning.
+
 ## Package boundary
 
 - `pathland-core` is the pure-Java opcode/wire leaf: protocol, frame codec,

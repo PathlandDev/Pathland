@@ -189,6 +189,75 @@ The complete allocation requirements remain above.
 
 ---
 
+## Virtual extent (lazy containers)
+
+A `LAZY_VSTACK`/`LAZY_HSTACK`/`LAZY_VGRID`/`LAZY_HGRID` that carries
+`ITEM_COUNT` (`0x0022`) and `ITEM_EXTENT` (`0x0023`) is a **windowed data
+container**. It lays out only the units the application emitted, but occupies
+the full list extent so a scroll viewport reports the correct scrollbar and
+offsets.
+
+The **window unit** is one item for a stack, one **row** for a `LAZY_VGRID`,
+and one **column** for a `LAZY_HGRID`. Let `N = ITEM_COUNT` (unit count),
+`E = ITEM_EXTENT` (the unit's main-axis size: item extent, row height, or
+column width), `S = max(0, SPACING)` (absent `SPACING` is `0`), and
+`F = FIRST_ITEM_INDEX` (default `0`). Windowing requires `E > 0`; an absent or
+non-positive `ITEM_EXTENT` means the lazy container is an ordinary eager
+container.
+
+- **Virtual extent** — the container's main-axis size is
+  `N*E + max(0, N-1)*S`. `N = 0` gives `0`.
+- **Item offset** — absolute item `i` starts at `i*(E+S)`.
+- **Window placement** — emitted unit `j` is absolute unit `F+j` and starts at
+  `(F+j)*(E+S)`. Children are emitted in ascending absolute-unit order. A grid
+  unit emits all of its cells (row-major for `LAZY_VGRID`, column-major for
+  `LAZY_HGRID`); a stack unit emits one item.
+- **Child size** — the container constrains each child to exactly `E` on the
+  main axis (a Fixed box; overflow is visible unless `CLIPS_TO_BOUNDS`). The
+  cross axis is the ordinary stack contract: the child keeps its size and is
+  positioned by `ALIGNMENT`; a `Fill`-sized child stretches on the cross axis.
+- **Missing children** — the window need not cover every unit. Units with no
+  emitted children are empty virtual space; the renderer never invents rows.
+  Emitted children beyond `N` units are ignored.
+- **Fill propagation** — the virtual extent is the container's main-axis size;
+  it does not propagate `Fill` from a window child on the main axis. Cross-axis
+  fill propagation is unchanged.
+- **Visible range** — the renderer computes which absolute units intersect the
+  nearest scrolling ancestor's viewport (or the root surface when there is
+  none). In the lazy container's main-axis content coordinates, with the
+  viewport spanning `[viewportStart, viewportEnd)`:
+  `first = clamp(floor(viewportStart/(E+S)), 0, N)` and
+  `endExclusive = clamp(ceil(viewportEnd/(E+S)), 0, N)`. The range is
+  conservative: it may include a partially scrolled item, but never excludes a
+  visible one. The renderer reports `EVENT::VISIBLE_RANGE` for nodes with
+  listener bit 10, at most once per frame and only when `(first, endExclusive)`
+  changes. The application owns overscan and may emit a larger window.
+
+**Variable item extents.** A lazy **stack** (not a grid) MAY carry
+`ITEM_EXTENTS` (`0x0025`, LIST of F32), `FIRST_ITEM_OFFSET` (`0x0026`, F32), and
+`TOTAL_EXTENT` (`0x0027`, F32) alongside the fixed properties. When present:
+
+- `ITEM_EXTENTS` holds one main-axis extent per **emitted window item**, in
+  window order. `FIRST_ITEM_OFFSET` is the offset of the first emitted item in
+  the full content, and `TOTAL_EXTENT` is the full content extent.
+- The window starts at `FIRST_ITEM_OFFSET`; each emitted item uses its extent;
+  the window extent is `sum(ITEM_EXTENTS) + max(0, k-1)*S`.
+- The container's virtual extent is `TOTAL_EXTENT`; the fixed formula is not
+  used. `ITEM_EXTENT` remains the **default/estimated** extent for items outside
+  the emitted window.
+- The renderer computes the visible range by walking the window extents from
+  `FIRST_ITEM_OFFSET`; if the viewport lies outside the emitted window, it
+  estimates with `ITEM_EXTENT` and reports that estimate so the application can
+  emit a covering window.
+- A `LAZY_VGRID`/`LAZY_HGRID` uses the uniform `ITEM_EXTENT` model; variable
+  per-row/per-column extents are not defined for grids yet.
+
+Without `ITEM_COUNT` + `ITEM_EXTENT`, a lazy stack is an ordinary eager stack
+and this section does not apply. `ITEM_EXTENTS` does not replace
+`ITEM_EXTENT` — the default/estimate is still required.
+
+---
+
 ## Content fitting, truncation & clipping
 
 Content-bearing views fit their content **inside** their allocated box:
@@ -281,8 +350,12 @@ renderer** (HTML + GTK4 today; SwiftUI/Compose as they land).
 | C18 | `WIDTH=Fill` child with `MAX_WIDTH=620` | a 1000-wide centered column | fills up to `620` and is centered; the max bounds the fill, and ancestors do not become unbounded Fill |
 | C19 | `MIN_WIDTH=700, MAX_WIDTH=620` | any parent | resolved width is at least `700` (min wins over max) |
 | C20 | `MAX_HEIGHT=200` on a ScrollView's cross-axis content | a bounded viewport | the content is capped at `200` and positioned by the parent's alignment; the viewport does not stretch past the cap |
+| C21 | `LazyVStack` `ITEM_COUNT=1000`, `ITEM_EXTENT=44`, `SPACING=0`, `FIRST_ITEM_INDEX=100`, 10 children | a bounded scroll viewport | main-axis size `44000`; child 0 starts at `4400`, child 9 at `4796`; only the emitted window exists |
+| C22 | `LazyVStack` `ITEM_COUNT=10`, `ITEM_EXTENT=44`, `SPACING=8`, `FIRST_ITEM_INDEX=3`, 2 children | any parent | main-axis size `512`; child 0 starts at `156`, child 1 at `208` |
+| C23 | `LazyVStack` `ITEM_COUNT=100`, `ITEM_EXTENT=44`, `FIRST_ITEM_INDEX=98`, 5 children | any parent | only indices `98`–`99` render; children `100`–`102` are ignored; the container still occupies `4400` |
+| C24 | `LazyVStack` with `ITEM_COUNT` but no `ITEM_EXTENT` | any parent | eager `VStack` behavior; no virtual extent, no `VISIBLE_RANGE` reporting |
 
-Grid/scroll/lazy allocation is specified in [PRIMITIVES.md §Grid / §ScrollView](./PRIMITIVES.md#grid--grid-0x13); the lazy containers are identical to their eager base with windowed realization only.
+Grid/scroll allocation is specified in [PRIMITIVES.md §Grid / §ScrollView](./PRIMITIVES.md#grid--grid-0x13). Lazy stacks use the virtual-extent contract above; lazy grids are identical to their eager base until a grid window contract lands.
 
 Conformance tests (golden vectors) are wired in the renderer alignment passes
 that follow this document; see each project's `status.md`.

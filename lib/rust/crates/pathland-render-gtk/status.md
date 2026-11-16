@@ -326,7 +326,12 @@ compatibility.
   axis-aware (scroll-axis greedy, cross-axis hug + fill propagation). **SCROLL** (the v/h Adjustments'
   `value_changed` → `Event::Scroll`) and **WHEEL** (`GtkEventControllerScroll`
   → `Event::Wheel`) are emitted for nodes with the listener bits (8/9).
-  **Residuals**: `LAZY_*` realizes eagerly (spec-permitted), auto-fit grids
+  **Residuals**: `LAZY_VSTACK`/`LAZY_HSTACK` windowing (ADR-0014) reserves the
+  virtual extent with leading/trailing spacer boxes and reports
+  `VISIBLE_RANGE` from the scroll adjustment (assuming the lazy box is the
+  scroll view's direct content). Lazy stacks also use app-declared variable item
+  extents for spacers/range math. Lazy grids use a wrapper `GtkBox` with an
+  inner `GtkGrid` and the same spacer/range machinery; auto-fit grids
   collapse to a single track (spec-permitted; measurement is a follow-up), and
   runtime scroll emission needs a visual check (headless tests cover the
   wiring only). **`GRID_TRACKS` is not implemented** (web-only for now):
@@ -338,7 +343,6 @@ compatibility.
 - No `ACTION_ID`-only gating (events require `BINDING_ID`).
 - Composite bodies attach to button-like controls only; other controls ignore
   children.
-- `LAZY_*` renders eagerly (no GTK windowing).
 - **Media**: a `VIDEO` node plays its audio through the shared GStreamer
   `playbin` machinery, but has no native video surface yet (a native `GtkVideo`
   widget additionally needs a GTK4 build with `media-gstreamer` enabled) — video

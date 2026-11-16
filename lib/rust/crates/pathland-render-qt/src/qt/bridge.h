@@ -51,6 +51,8 @@ public slots:
     void mediaDuration(quint32 nodeId, qreal seconds);
     // SIZE_THAT_FITS: the derived fit index (spec/PRIMITIVES.md).
     void fitChanged(quint32 nodeId, int index);
+    // Windowed lazy stack: the visible absolute index range (ADR-0014).
+    void visibleRange(quint32 nodeId, quint32 firstIndex, quint32 count);
     // Hover enter/leave from a listener MouseArea (spec/EVENTS.md).
     void hover(quint32 nodeId, bool entering);
     // Key down/up on the focused node.

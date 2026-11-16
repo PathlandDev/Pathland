@@ -96,6 +96,8 @@ pub struct Node {
     /// candidate `minWidth`s the web renderer turns into `@container` band rules
     /// for the SSR first paint (issue #141).
     pub fit_thresholds: Vec<f32>,
+    /// A lazy stack's per-item main-axis extents (`ITEM_EXTENTS`, decoded f32s).
+    pub item_extents: Vec<f32>,
 }
 
 /// Whether a `SIZE_THAT_FITS` node satisfies the **candidate-identity contract**
@@ -175,6 +177,7 @@ impl Node {
             date: None,
             children: Vec::new(),
             fit_thresholds: Vec::new(),
+            item_extents: Vec::new(),
         }
     }
 
@@ -1320,7 +1323,11 @@ fn apply_style(nodes: &mut BTreeMap<u32, Node>, command: u8, op: Opcode, strings
                         node.strings.insert(property, csv);
                     }
                     if let Some(values) = list_f32(strings, op.c()) {
-                        node.fit_thresholds = values;
+                        if property == property_id::ITEM_EXTENTS {
+                            node.item_extents = values;
+                        } else {
+                            node.fit_thresholds = values;
+                        }
                     }
                 } else {
                     node.properties.insert(property, op.c());
@@ -1557,6 +1564,16 @@ impl HtmlRenderer {
             .iter()
             .map(|&child| self.render_node(nodes, child, Some(node.component)))
             .collect();
+        let child_count = node
+            .children
+            .iter()
+            .filter(|&&c| {
+                nodes
+                    .get(&c)
+                    .map(|n| n.component != component_type::COMMENT)
+                    .unwrap_or(false)
+            })
+            .count() as u32;
         let mut data_id = format!(" data-pathland-id=\"{id}\"");
         data_id.push_str(&slot_attrs(node));
         let mut css = format!("{}{}", node.style_css(), node.border_style());
@@ -1602,10 +1619,20 @@ impl HtmlRenderer {
                 wrap_stack(id, "row", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
             }
             component_type::LAZY_VSTACK => {
-                wrap_stack(id, "column", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
+                let stack_css = format!("{css}{}{derived}", fill_propagation(nodes, id, node, false));
+                if lazy_windowed(node) {
+                    wrap_lazy_stack(id, "column", true, semantic, node, &children, child_count, &stack_css, &event, &aria)
+                } else {
+                    wrap_stack(id, "column", semantic, node, &children, &stack_css, &event, &aria)
+                }
             }
             component_type::LAZY_HSTACK => {
-                wrap_stack(id, "row", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, true)), &event, &aria)
+                let stack_css = format!("{css}{}{derived}", fill_propagation(nodes, id, node, true));
+                if lazy_windowed(node) {
+                    wrap_lazy_stack(id, "row", false, semantic, node, &children, child_count, &stack_css, &event, &aria)
+                } else {
+                    wrap_stack(id, "row", semantic, node, &children, &stack_css, &event, &aria)
+                }
             }
             component_type::PROXY_VIEW => {
                 // A proxy view (spec/PROXY.md §5): a transparent single-child
@@ -2014,7 +2041,51 @@ if indeterminate {
                     base_columns
                 };
                 let grid_css = grid_style(node, effective_columns);
-                let combined = format!("{grid_css}{css}");
+                let mut combined = format!("{grid_css}{css}");
+                let mut lazy_attrs = String::new();
+                if lazy_windowed(node)
+                    && matches!(
+                        node.component,
+                        component_type::LAZY_VGRID | component_type::LAZY_HGRID
+                    )
+                {
+                    let vertical = node.component == component_type::LAZY_VGRID;
+                    let tracks = if vertical {
+                        effective_columns.unwrap_or(1)
+                    } else {
+                        grid_rows(node).unwrap_or(1)
+                    }
+                    .max(1);
+                    let count = node.u32_property(property_id::ITEM_COUNT, 0);
+                    let extent = node.f32_property(property_id::ITEM_EXTENT, 0.0);
+                    let first = node.u32_property(property_id::FIRST_ITEM_INDEX, 0);
+                    let spacing = node.f32_property(property_id::SPACING, 0.0).max(0.0);
+                    let units = (child_count + tracks - 1) / tracks;
+                    let stride = extent + spacing;
+                    let leading = first as f32 * stride;
+                    let trailing =
+                        count.saturating_sub(first.saturating_add(units)) as f32 * stride;
+                    let base_top = lazy_base_padding(node, property_id::PADDING_TOP);
+                    let base_bottom = lazy_base_padding(node, property_id::PADDING_BOTTOM);
+                    let base_left = lazy_base_padding(node, property_id::PADDING_LEFT);
+                    let base_right = lazy_base_padding(node, property_id::PADDING_RIGHT);
+                    let (extra_top, extra_bottom, extra_left, extra_right) = if vertical {
+                        (leading, trailing, 0.0, 0.0)
+                    } else {
+                        (0.0, 0.0, leading, trailing)
+                    };
+                    combined.push_str(&format!(
+                        "padding-top:{}px;padding-bottom:{}px;padding-left:{}px;padding-right:{}px;",
+                        base_top + extra_top,
+                        base_bottom + extra_bottom,
+                        base_left + extra_left,
+                        base_right + extra_right,
+                    ));
+                    let axis = if vertical { "vertical" } else { "horizontal" };
+                    lazy_attrs = format!(
+                        " data-pathland-lazy=\"{axis}\" data-pathland-lazy-grid=\"1\" data-pathland-lazy-tracks=\"{tracks}\" data-pathland-item-count=\"{count}\" data-pathland-item-extent=\"{extent}px\" data-pathland-first-item-index=\"{first}\" data-pathland-item-spacing=\"{spacing}px\" data-pathland-base-padding-top=\"{base_top}px\" data-pathland-base-padding-right=\"{base_right}px\" data-pathland-base-padding-bottom=\"{base_bottom}px\" data-pathland-base-padding-left=\"{base_left}px\""
+                    );
+                }
                 let grid_style = style_attr(&combined);
                 // Per-cell alignment (spec/PRIMITIVES.md §grid model): each cell
                 // keeps its own size (Fixed/Hug) and is positioned by the grid's
@@ -2100,7 +2171,7 @@ if indeterminate {
                         })
                         .collect()
                 };
-                format!("<{tag}{data_id}{event}{aria}{grid_style}>{inner}</{tag}>")
+                format!("<{tag}{data_id}{event}{aria}{grid_style}{lazy_attrs}>{inner}</{tag}>")
             }
             component_type::SCROLLVIEW => {
                 let tag = semantic.unwrap_or("div");
@@ -2324,6 +2395,109 @@ if indeterminate {
             slot_attrs(node),
         )
     }
+
+/// True when a lazy stack carries the window properties that enable
+/// virtualization (spec/LAYOUT.md §Virtual extent).
+fn lazy_windowed(node: &Node) -> bool {
+    node.u32_property(property_id::ITEM_COUNT, 0) > 0
+        && node.f32_property(property_id::ITEM_EXTENT, 0.0) > 0.0
+}
+
+/// A windowed lazy stack: the full virtual main-axis extent is reserved as
+/// padding, and only the emitted window's children flow inside it
+/// (spec/LAYOUT.md §Virtual extent). The `data-pathland-lazy*` attributes let
+/// the DOM client derive the visible range and report `VISIBLE_RANGE`.
+/// The app's base padding for one edge (per-edge > uniform > content margins).
+fn lazy_base_padding(node: &Node, side: u16) -> f32 {
+    node.f32_property(
+        side,
+        node.f32_property(property_id::PADDING, node.content_margins().unwrap_or(0.0)),
+    )
+}
+
+fn wrap_lazy_stack(
+    id: u32,
+    direction: &str,
+    vertical: bool,
+    semantic: Option<&'static str>,
+    node: &Node,
+    children: &str,
+    child_count: u32,
+    css: &str,
+    event: &str,
+    aria: &str,
+) -> String {
+    let tag = semantic.unwrap_or("div");
+    let alignment = node
+        .properties
+        .get(&property_id::ALIGNMENT)
+        .map(|bits| f32::from_bits(*bits) as u8)
+        .unwrap_or(3);
+    let align = match alignment {
+        0 => "flex-start",
+        1 => "center",
+        2 => "flex-end",
+        _ => "flex-start",
+    };
+    let count = node.u32_property(property_id::ITEM_COUNT, 0);
+    let extent = node.f32_property(property_id::ITEM_EXTENT, 0.0);
+    let first = node.u32_property(property_id::FIRST_ITEM_INDEX, 0);
+    let spacing = node.f32_property(property_id::SPACING, 0.0).max(0.0);
+    let stride = extent + spacing;
+    let extents = if node.item_extents.is_empty() {
+        None
+    } else {
+        Some(&node.item_extents)
+    };
+    let first_offset = node.f32_property(property_id::FIRST_ITEM_OFFSET, first as f32 * stride);
+    let total_extent = node.f32_property(
+        property_id::TOTAL_EXTENT,
+        count as f32 * extent + (count.saturating_sub(1) as f32) * spacing,
+    );
+    let window_extent = match extents {
+        Some(values) => {
+            let sum: f32 = values.iter().sum();
+            sum + (values.len().saturating_sub(1) as f32) * spacing
+        }
+        None => child_count as f32 * extent + (child_count.saturating_sub(1) as f32) * spacing,
+    };
+    let leading = first_offset;
+    let trailing = (total_extent - first_offset - window_extent).max(0.0);
+    let (extra_top, extra_bottom, extra_left, extra_right) = if vertical {
+        (leading, trailing, 0.0, 0.0)
+    } else {
+        (0.0, 0.0, leading, trailing)
+    };
+    // The virtual extent adds to the app's padding (an inset around the
+    // window). The base values ride on data attributes so the DOM client can
+    // recompute the virtual padding without double-counting on a delta.
+    let base_top = lazy_base_padding(node, property_id::PADDING_TOP);
+    let base_bottom = lazy_base_padding(node, property_id::PADDING_BOTTOM);
+    let base_left = lazy_base_padding(node, property_id::PADDING_LEFT);
+    let base_right = lazy_base_padding(node, property_id::PADDING_RIGHT);
+    let padding = format!(
+        "padding-top:{}px;padding-bottom:{}px;padding-left:{}px;padding-right:{}px;",
+        base_top + extra_top,
+        base_bottom + extra_bottom,
+        base_left + extra_left,
+        base_right + extra_right,
+    );
+    let combined = format!(
+        "display:flex;flex-direction:{direction};align-items:{align};{padding}{css}"
+    );
+    let stack_style = style_attr(&combined);
+    let axis = if vertical { "vertical" } else { "horizontal" };
+    let extents_attr = match (node.strings.get(&property_id::ITEM_EXTENTS), extents) {
+        (Some(csv), Some(_)) => format!(
+            " data-pathland-item-extents=\"{csv}\" data-pathland-first-item-offset=\"{first_offset}px\" data-pathland-total-extent=\"{total_extent}px\""
+        ),
+        _ => String::new(),
+    };
+    format!(
+        "<{tag} data-pathland-id=\"{id}\"{}{event}{aria}{stack_style} data-pathland-lazy=\"{axis}\" data-pathland-item-count=\"{count}\" data-pathland-item-extent=\"{extent}px\" data-pathland-first-item-index=\"{first}\" data-pathland-item-spacing=\"{spacing}px\" data-pathland-base-padding-top=\"{base_top}px\" data-pathland-base-padding-right=\"{base_right}px\" data-pathland-base-padding-bottom=\"{base_bottom}px\" data-pathland-base-padding-left=\"{base_left}px\"{extents_attr}>{children}</{tag}>",
+        slot_attrs(node),
+    )
+}
 
 /// Inline grid CSS: `display:grid` + `justify-items`/`align-items` from the
 /// grid `ALIGNMENT` (cells position within their tracks; default Leading/start),
@@ -3359,6 +3533,191 @@ mod tests {
         let html = renderer.render_document(&opcodes, &[], 1);
         assert!(html.contains("data-pathland-id=\"2\""), "first child is the content: {html}");
         assert!(!html.contains("data-pathland-id=\"3\""), "extra children not rendered: {html}");
+    }
+
+    #[test]
+    fn lazy_stack_reserves_the_virtual_extent_and_window() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VSTACK as u32, 0));
+        for (prop, vt, bits) in [
+            (property_id::ITEM_COUNT, value_type::U32, 100u32),
+            (property_id::ITEM_EXTENT, value_type::F32, 44.0f32.to_bits()),
+            (property_id::FIRST_ITEM_INDEX, value_type::U32, 10u32),
+            (property_id::SPACING, value_type::F32, 8.0f32.to_bits()),
+        ] {
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((vt as u32) << 16) | prop as u32,
+                bits,
+            ));
+        }
+        for child in [2u32, 3, 4] {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::TEXT as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, u32::MAX));
+        }
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("data-pathland-lazy=\"vertical\""), "{html}");
+        assert!(html.contains("data-pathland-item-count=\"100\""), "{html}");
+        assert!(html.contains("data-pathland-item-extent=\"44px\""), "{html}");
+        assert!(html.contains("data-pathland-first-item-index=\"10\""), "{html}");
+        assert!(html.contains("data-pathland-item-spacing=\"8px\""), "{html}");
+        // 10*(44+8) = 520px leading; (100-10-3)*52 = 4524px trailing.
+        assert!(html.contains("padding-top:520px"), "{html}");
+        assert!(html.contains("padding-bottom:4524px"), "{html}");
+        assert_eq!(html.matches("data-pathland-id=\"2\"").count(), 1);
+    }
+
+    #[test]
+    fn lazy_stack_matches_c22_virtual_extent() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VSTACK as u32, 0));
+        for (prop, vt, bits) in [
+            (property_id::ITEM_COUNT, value_type::U32, 10u32),
+            (property_id::ITEM_EXTENT, value_type::F32, 44.0f32.to_bits()),
+            (property_id::SPACING, value_type::F32, 8.0f32.to_bits()),
+            (property_id::FIRST_ITEM_INDEX, value_type::U32, 3u32),
+        ] {
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((vt as u32) << 16) | prop as u32,
+                bits,
+            ));
+        }
+        for child in [2u32, 3] {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::TEXT as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, u32::MAX));
+        }
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        // C22: main-axis 10*44 + 9*8 = 512; child 0 at 3*(44+8) = 156;
+        // the two-child window occupies 2*44 + 8 = 96, leaving 260 trailing.
+        assert!(html.contains("padding-top:156px"), "{html}");
+        assert!(html.contains("padding-bottom:260px"), "{html}");
+        assert!(html.contains("data-pathland-first-item-index=\"3\""), "{html}");
+    }
+
+    #[test]
+    fn lazy_stack_without_extent_is_eager_c24() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VSTACK as u32, 0));
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::U32 as u32) << 16) | property_id::ITEM_COUNT as u32,
+            10,
+        ));
+        for child in [2u32, 3] {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::TEXT as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, u32::MAX));
+        }
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        // C24: no ITEM_EXTENT means an ordinary eager stack — no virtual
+        // extent, no lazy window attributes.
+        assert!(!html.contains("data-pathland-lazy="), "{html}");
+        assert!(html.contains("display:flex"), "{html}");
+        assert_eq!(html.matches("data-pathland-id=\"2\"").count(), 1);
+        assert_eq!(html.matches("data-pathland-id=\"3\"").count(), 1);
+    }
+
+    #[test]
+    fn lazy_vgrid_reserves_a_row_window() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VGRID as u32, 0));
+        for (prop, vt, bits) in [
+            (property_id::ITEM_COUNT, value_type::U32, 34u32),
+            (property_id::ITEM_EXTENT, value_type::F32, 44.0f32.to_bits()),
+            (property_id::FIRST_ITEM_INDEX, value_type::U32, 10u32),
+            (property_id::SPACING, value_type::F32, 8.0f32.to_bits()),
+            (property_id::GRID_COLUMNS, value_type::F32, 3.0f32.to_bits()),
+        ] {
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((vt as u32) << 16) | prop as u32,
+                bits,
+            ));
+        }
+        for child in 2u32..8 {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::TEXT as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, u32::MAX));
+        }
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &[], 1);
+        assert!(html.contains("data-pathland-lazy-grid=\"1\""), "{html}");
+        assert!(html.contains("data-pathland-lazy-tracks=\"3\""), "{html}");
+        assert!(html.contains("data-pathland-item-count=\"34\""), "{html}");
+        assert!(html.contains("data-pathland-first-item-index=\"10\""), "{html}");
+        assert!(html.contains("grid-template-columns:repeat(3,minmax(0,1fr))"), "{html}");
+        // 10*(44+8) = 520px leading; (34-10-2)*52 = 1144px trailing.
+        assert!(html.contains("padding-top:520px"), "{html}");
+        assert!(html.contains("padding-bottom:1144px"), "{html}");
+    }
+
+    #[test]
+    fn lazy_stack_uses_variable_item_extents() {
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::LAZY_VSTACK as u32, 0));
+        for (prop, vt, bits) in [
+            (property_id::ITEM_COUNT, value_type::U32, 10u32),
+            (property_id::ITEM_EXTENT, value_type::F32, 44.5f32.to_bits()),
+            (property_id::FIRST_ITEM_INDEX, value_type::U32, 2u32),
+            (property_id::FIRST_ITEM_OFFSET, value_type::F32, 85.0f32.to_bits()),
+            (property_id::TOTAL_EXTENT, value_type::F32, 463.0f32.to_bits()),
+            (property_id::SPACING, value_type::F32, 2.0f32.to_bits()),
+        ] {
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                1,
+                ((vt as u32) << 16) | prop as u32,
+                bits,
+            ));
+        }
+        let mut strings = Vec::new();
+        strings.extend_from_slice(&8u32.to_le_bytes());
+        for value in 42..50 {
+            strings.extend_from_slice(&(value as f32).to_le_bytes());
+        }
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::LIST as u32) << 16) | property_id::ITEM_EXTENTS as u32,
+            0,
+        ));
+        for (offset, child) in (2u32..10).enumerate() {
+            opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, child, component_type::TEXT as u32, 0));
+            opcodes.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, child, u32::MAX));
+            opcodes.push(Opcode::new(
+                category::PARAMETER,
+                parameter::SET_PROPERTY,
+                0,
+                child,
+                ((value_type::F32 as u32) << 16) | property_id::HEIGHT as u32,
+                (42.0 + offset as f32).to_bits(),
+            ));
+        }
+        let renderer = HtmlRenderer::new();
+        let html = renderer.render_document(&opcodes, &strings, 1);
+        assert!(html.contains("data-pathland-item-extents=\"42,43,44,45,46,47,48,49\""), "{html}");
+        assert!(html.contains("data-pathland-first-item-offset=\"85px\""), "{html}");
+        assert!(html.contains("data-pathland-total-extent=\"463px\""), "{html}");
+        assert!(html.contains("padding-top:85px"), "{html}");
+        assert!(html.contains("padding-bottom:0px"), "{html}");
     }
 
     #[test]

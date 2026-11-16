@@ -50,10 +50,12 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 - **Property application parity**: `setNodeText` only writes `textContent` on leaf nodes
   — re-applying a composite's `LABEL`/`TEXT` property never wipes its children (SSR
   renders no label on composites). `LINE_LIMIT` (positive) clamps via the webkit box
-  model (`display:-webkit-box` + `-webkit-line-clamp` **+ `overflow:hidden`** — the
-  clamp draws the ellipsis but does not clip on its own, so Safari would paint the
-  overflowed text below the box; a removed limit restores unbounded text), matching
-  the Rust SSR.
+  model (`display:-webkit-box` + `-webkit-line-clamp` +
+  **`-webkit-box-orient: vertical`** + `overflow:hidden` — the prefixed
+  orientation is required for the clamp to take effect; the clamp draws the
+  ellipsis but does not clip on its own, so Safari would paint the overflowed
+  text below the box; a removed limit restores unbounded text), matching the
+  Rust SSR.
 - **Mounted-app URL mirroring**: the server emits app-relative `ROUTE`s; the client
   derives the app's mount prefix from `data-pathland-base` (`/<mount>/_pathland`) and
   pushes the app's <b>real</b> address (`/app2` app navigating to `/home` →
@@ -436,6 +438,14 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   trailing columns empty). `SCROLL` and `WHEEL` events are wired to
   document-level listeners gated by the listener bits. A runtime-inserted extra
   `SCROLLVIEW` child is a minor residual (SSR renders only the first child).
+- **Virtualized lazy stacks (ADR-0014)**: the DOM client applies the window
+  properties, refreshes the virtual padding, observes scroll/resize, sends
+  `VISIBLE_RANGE`, and exposes `aria-setsize`/`aria-posinset` for the full list.
+  App padding is preserved as an inset around the virtual extent. Lazy stacks
+  support variable item extents (`data-pathland-item-extents` /
+  `-first-item-offset` / `-total-extent`) for padding and visible-range
+  mapping. Lazy grids use the same window with `data-pathland-lazy-tracks` and
+  grid a11y (`role=grid`/`gridcell`, row/column indices).
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

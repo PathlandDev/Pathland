@@ -446,10 +446,10 @@ Each bit requests a raw-input event kind (see [`listener`] flags):
 | 3 | `0x00000008` | `KEY_DOWN` | Report key-down |
 | 4 | `0x00000010` | `KEY_UP` | Report key-up |
 
-> Bits 5–9 (draft) are allocated in [EVENTS.md](./EVENTS.md#event-listeners-event_listeners)
-> for `FOCUS_CHANGED`, `EDITING_CHANGED`, `SUBMIT`, `SCROLL`, and `WHEEL`.
-> Value-bearing controls (`SLIDER`, `TOGGLE`, `DATE_PICKER`, …) report their
-> value changes by component type and do not need a listener bit.
+> Bits 5–10 (draft) are allocated in [EVENTS.md](./EVENTS.md#event-listeners-event_listeners)
+> for `FOCUS_CHANGED`, `EDITING_CHANGED`, `SUBMIT`, `SCROLL`, `WHEEL`, and
+> `VISIBLE_RANGE`. Value-bearing controls (`SLIDER`, `TOGGLE`, `DATE_PICKER`, …)
+> report their value changes by component type and do not need a listener bit.
 
 This is what makes **any element** (a `Text`, a `VStack`, …) able to emit
 events — the renderer attaches native input recognition to the matching native
@@ -468,6 +468,7 @@ element.
 | `VALUE_CHANGED` | `0x06` | targetId | value (f32) | 0 | — | A value-bearing control changed (e.g. slider); the renderer resolves the semantic value from its track geometry |
 | `TEXT_CHANGED` | `0x07` | targetId | string offset | 0 | — | A text field's value changed; the new text is a length-prefixed entry in the **event arena** (shared memory, absolute `B` offset) or the batch's string section (network, *relative* `B` offset) — the same dual convention as `PARAMETER::SET_TEXT` |
 | `NAVIGATE` | `0x0E` | 0 | URL string offset | 0 | `NAVIGATE_URL` | Global navigation request: with the flag, `B` is the destination URL (browser `popstate`/back/forward/deep-link, same dual string convention as `TEXT_CHANGED`); without the flag, "back one step" (native back affordance). Never node-keyed, never `EVENT_LISTENERS`-gated — see [EVENTS.md](./EVENTS.md#navigation) |
+| `VISIBLE_RANGE` | `0x15` | targetId | firstIndex (u32) | count (u32) | — | A windowed `LAZY_VSTACK`/`LAZY_HSTACK`'s visible absolute index range; reported only for nodes with listener bit 10 — see [EVENTS.md](./EVENTS.md#visible-range) |
 
 ### META (0x04)
 

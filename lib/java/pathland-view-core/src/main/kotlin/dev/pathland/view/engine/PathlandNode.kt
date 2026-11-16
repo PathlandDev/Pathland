@@ -7,9 +7,15 @@ import dev.pathland.view.core.router.NavOp
 import dev.pathland.view.core.router.Router
 import dev.pathland.view.core.signal.ConstantSignal
 import dev.pathland.view.core.signal.Signal
+import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.core.transport.Event
 import java.util.LinkedHashMap
 import java.util.function.Consumer
+
+/** Receives a windowed lazy container's visible absolute index range. */
+fun interface VisibleRangeInput {
+    fun onVisibleRange(firstIndex: Int, count: Int)
+}
 
 /** A node in the retained view tree. */
 class PathlandNode(
@@ -49,6 +55,17 @@ class PathlandNode(
     @JvmField var router: Router? = null
     @JvmField val pathChangeListeners: MutableList<Consumer<String>> = ArrayList()
     @JvmField var activePath: Signal<String>? = null
+
+    /** Non-null for a windowed lazy stack (spec/LAYOUT.md §Virtual extent). */
+    @JvmField var lazyWindow: WritableSignal<IntRange>? = null
+    /** The uniform main-axis item extent inferred/declared at render time. */
+    @JvmField var lazyExtent: Float = 0f
+    /** Window children keyed by absolute index or an app-provided item key. */
+    @JvmField var lazyNodes: LinkedHashMap<Any, PathlandNode> = LinkedHashMap()
+    /** The keys of [lazyNodes] in emitted child order. */
+    @JvmField var lazyKeys: List<Any> = emptyList()
+    /** Receives the renderer's `VISIBLE_RANGE` report for this node. */
+    @JvmField var visibleRangeInput: VisibleRangeInput? = null
 
     /** Whether this node carries reactive (signal-backed) text. */
     fun hasReactiveText(): Boolean = textBinding != null

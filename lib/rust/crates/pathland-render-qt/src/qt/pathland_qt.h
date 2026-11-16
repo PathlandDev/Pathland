@@ -55,6 +55,7 @@ enum PathlandQtListenerBits {
     PL_LISTENER_SUBMIT = 1u << 7,
     PL_LISTENER_SCROLL = 1u << 8,
     PL_LISTENER_WHEEL = 1u << 9,
+    PL_LISTENER_VISIBLE_RANGE = 1u << 10,
 };
 
 typedef enum PathlandQtEventKind {
@@ -79,6 +80,7 @@ typedef enum PathlandQtEventKind {
     PLQT_EV_FOCUS = 18,           /* focus changed (value 0/1)                    */
     PLQT_EV_EDITING = 19,         /* editing changed (value 0/1)                  */
     PLQT_EV_SUBMIT = 20,          /* text input submitted                         */
+    PLQT_EV_VISIBLE_RANGE = 21,   /* lazy stack visible absolute index range      */
 } PathlandQtEventKind;
 
 typedef struct PathlandQtEvent {
@@ -94,6 +96,9 @@ typedef struct PathlandQtEvent {
     uint16_t key_code;
     uint8_t modifiers;
     uint8_t repeat;
+    /* VISIBLE_RANGE payload: first absolute index + visible item count. */
+    uint32_t first_index;
+    uint32_t count;
 } PathlandQtEvent;
 
 /* Wake callback into the Rust host: an event was written to the ring; the host

@@ -26,7 +26,8 @@ internal class MediaPlayerService {
     val volumeRequest: WritableSignal<Float> = Signals.state("player.volumeRequest", 0.7f)
 
     val controller = MediaController()
-    val tracks: List<Track> = TRACKS
+    /** The demo library: the base tracks repeated to [LIBRARY_SIZE] entries. */
+    val tracks: List<Track> = List(LIBRARY_SIZE) { TRACKS[it % TRACKS.size] }
     val currentTrack: Signal<Track> = Signals.computed { at(trackIndex.get()) }
 
     init {
@@ -51,13 +52,13 @@ internal class MediaPlayerService {
 
     /** Previous track (wraps around), restarting from the top. */
     fun previous() {
-        trackIndex.set((trackIndex.get() - 1 + TRACKS.size) % TRACKS.size)
+        trackIndex.set((trackIndex.get() - 1 + tracks.size) % tracks.size)
         controller.seek(0f)
     }
 
     /** Next track (wraps around), restarting from the top. */
     fun next() {
-        trackIndex.set((trackIndex.get() + 1) % TRACKS.size)
+        trackIndex.set((trackIndex.get() + 1) % tracks.size)
         controller.seek(0f)
     }
 
@@ -65,16 +66,22 @@ internal class MediaPlayerService {
         controller.toggle()
     }
 
+    /** The track at an index (wraps around; safe for any signed index). */
+    private fun at(index: Int): Track = tracks[Math.floorMod(index, tracks.size)]
+
     /** The track [offset] places after the current one (wraps around). */
     fun trackAt(offset: Int): Track = at(trackIndex.get() + offset)
 
     private fun ended() {
-        trackIndex.set((trackIndex.get() + 1) % TRACKS.size)
+        trackIndex.set((trackIndex.get() + 1) % tracks.size)
         seekRequest.set(0f)
         position.set(0f)
     }
 
     companion object {
+        /** The number of repeated library entries (the demo's long list). */
+        const val LIBRARY_SIZE = 1000
+
         /** The environment key for the active [MediaPlayerService]. */
         val KEY: EnvironmentKey<MediaPlayerService> =
             EnvironmentKey.of("mediaPlayerService")
@@ -130,9 +137,6 @@ internal class MediaPlayerService {
                 "/_pathland/assets/audio/track8.mp3",
             ),
         )
-
-        /** The track at an index (wraps around; safe for any signed index). */
-        internal fun at(index: Int): Track = TRACKS[Math.floorMod(index, TRACKS.size)]
 
         /** Format seconds as `m:ss`. */
         internal fun fmt(seconds: Float): String {

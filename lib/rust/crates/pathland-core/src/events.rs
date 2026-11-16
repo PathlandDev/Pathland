@@ -123,6 +123,13 @@ pub enum Event {
     /// Draft command 0x13; `index` is the derived fit index (f32), reported once
     /// after the first measure and then only when it changes.
     FitChanged { target: u32, index: f32 },
+    /// A windowed lazy stack's visible absolute index range (host → guest).
+    /// Draft command 0x15; `first_index` and `count` are the visible range.
+    VisibleRange {
+        target: u32,
+        first_index: u32,
+        count: u32,
+    },
 }
 
 impl Event {
@@ -332,6 +339,18 @@ impl Event {
                 index.to_bits(),
                 0,
             ),
+            Event::VisibleRange {
+                target,
+                first_index,
+                count,
+            } => Opcode::new(
+                category::EVENT,
+                crate::event::VISIBLE_RANGE,
+                0,
+                *target,
+                *first_index,
+                *count,
+            ),
         }
     }
 }
@@ -460,6 +479,11 @@ impl TryFrom<Opcode> for Event {
             crate::event::FIT_CHANGED => Ok(Event::FitChanged {
                 target: op.a(),
                 index: op.b_f32(),
+            }),
+            crate::event::VISIBLE_RANGE => Ok(Event::VisibleRange {
+                target: op.a(),
+                first_index: op.b(),
+                count: op.c(),
             }),
             _ => Err(EventError::UnknownCommand),
         }
@@ -600,6 +624,7 @@ mod tests {
             Event::MediaVolumeChanged { target: 7, volume: 0.5 },
             Event::MediaDurationChanged { target: 7, seconds: 210.0 },
             Event::FitChanged { target: 42, index: 2.0 },
+            Event::VisibleRange { target: 42, first_index: 10, count: 20 },
         ] {
             assert_eq!(round_trip(e.clone()), e);
         }
@@ -623,6 +648,10 @@ mod tests {
         assert_eq!(
             Event::MediaDurationChanged { target: 7, seconds: 210.0 }.encode().to_bytes(),
             [0x03, 0x14, 0, 0, 7, 0, 0, 0, 0, 0, 0x52, 0x43, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            Event::VisibleRange { target: 42, first_index: 10, count: 20 }.encode().to_bytes(),
+            [0x03, 0x15, 0, 0, 42, 0, 0, 0, 10, 0, 0, 0, 20, 0, 0, 0]
         );
         assert_eq!(
             Event::FitChanged { target: 42, index: 2.0 }.encode().to_bytes(),

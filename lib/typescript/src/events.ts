@@ -16,6 +16,7 @@ import {
   CMD_MEDIA_TIME_UPDATED,
   CMD_MEDIA_VOLUME_CHANGED,
   CMD_FIT_CHANGED,
+  CMD_VISIBLE_RANGE,
   CMD_NAVIGATE,
   CMD_PING,
   CMD_POINTER_DOWN,
@@ -166,6 +167,11 @@ export function encodeMediaDurationChanged(target: number, seconds: number): Uin
 /** A `SIZE_THAT_FITS` slot's selected candidate changed (B = index, f32). */
 export function encodeFittedChanged(target: number, index: number): Uint8Array {
   return eventBatch(CMD_FIT_CHANGED, target, bitsFromF32(index), 0);
+}
+
+/** A windowed lazy stack's visible range (B = first index, C = count). */
+export function encodeVisibleRange(target: number, firstIndex: number, count: number): Uint8Array {
+  return eventBatch(CMD_VISIBLE_RANGE, target, firstIndex >>> 0, count >>> 0);
 }
 
 /** A DATE_CHANGED EVENT (A=target, B=days, C=millis of day). */

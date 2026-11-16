@@ -117,6 +117,11 @@ fn decode_event(raw: &QtEvent) -> QtAction {
             target: raw.node_id,
             index: raw.value,
         }),
+        ev::VISIBLE_RANGE => QtAction::Send(Event::VisibleRange {
+            target: raw.node_id,
+            first_index: raw.first_index,
+            count: raw.count,
+        }),
         ev::POINTER_ENTER => QtAction::Send(Event::PointerMove {
             target: raw.node_id,
             x: 0.0,
@@ -422,6 +427,8 @@ mod tests {
             key_code: 0,
             modifiers: 0,
             repeat: 0,
+            first_index: 0,
+            count: 0,
         }
     }
 
@@ -658,6 +665,8 @@ mod tests {
             key_code: 0,
             modifiers: 0,
             repeat: 0,
+            first_index: 0,
+            count: 0,
         };
         ring_event(&raw, user);
         let events = ring.borrow_mut().drain_events();

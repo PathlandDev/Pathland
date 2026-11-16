@@ -160,6 +160,16 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   reacts to `FIT_CHANGED`.
 - No `ACTION_ID`/`BINDING_ID` helpers; `Toggle`/`Picker`/`Menu` lack typed
   value APIs (raw tokens only).
+- **Virtualized lazy stacks (ADR-0014)**: `ForEach<T>` is a lazy data source;
+  `LazyVStack`/`LazyHStack` consume it, infer/declare the item extent, emit
+  `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX`, and build only the shared
+  host-managed window. Variable item extents are supported via
+  `ForEach::item_extents(vec![…])` (emitted as
+  `ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`). `LazyVGrid`/`LazyHGrid`
+  consume the same source with a row/column unit window. Window children are
+  reconciled by item key: `ForEach` keeps a persistent `key → id block` map, so
+  retained rows and their subtrees keep their ids across a slide (`assign_ids`
+  keeps new blocks above the map's high-water mark).
 
 ## Verified by
 

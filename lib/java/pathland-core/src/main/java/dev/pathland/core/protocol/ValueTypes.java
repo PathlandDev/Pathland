@@ -60,8 +60,11 @@ public final class ValueTypes {
             case Properties.NAV_DEPTH:
             case Properties.PLAYBACK_STATE:
             case Properties.MEDIA_CONTROLLER_ID:
+            case Properties.ITEM_COUNT:
+            case Properties.FIRST_ITEM_INDEX:
                 return U32;
             case Properties.FIT_QUERY:
+            case Properties.ITEM_EXTENTS:
                 return LIST;
             case Properties.ALIGNMENT:
             case Properties.TEXT_ALIGNMENT:

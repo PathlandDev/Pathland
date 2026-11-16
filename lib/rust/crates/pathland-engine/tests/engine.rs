@@ -53,6 +53,8 @@ fn text_node(text: &str) -> Node {
         string_bindings: BTreeMap::new(),
         media_controller: None,
         gestures: Vec::new(),
+        lazy_keys: Vec::new(),
+        lazy_ids: None,
     }
 }
 
@@ -73,6 +75,8 @@ fn vstack(children: Vec<Node>) -> Node {
         string_bindings: BTreeMap::new(),
         media_controller: None,
         gestures: Vec::new(),
+        lazy_keys: Vec::new(),
+        lazy_ids: None,
     }
 }
 
@@ -93,6 +97,8 @@ fn hstack(children: Vec<Node>) -> Node {
         string_bindings: BTreeMap::new(),
         media_controller: None,
         gestures: Vec::new(),
+        lazy_keys: Vec::new(),
+        lazy_ids: None,
     }
 }
 
@@ -584,6 +590,8 @@ fn list_property_emits_fit_query_with_the_list_value_type() {
         string_bindings: BTreeMap::new(),
         media_controller: None,
         gestures: Vec::new(),
+        lazy_keys: Vec::new(),
+        lazy_ids: None,
     });
 
     let (ops, _) = emit_and_collect_with_arena(&mut engine, &root);

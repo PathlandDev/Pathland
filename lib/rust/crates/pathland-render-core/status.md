@@ -65,6 +65,9 @@ The **toolkit-free renderer core shared by every Pathland renderer** (GTK4, Qt,
   `ENVIRONMENT` / `RESYNC` remain renderer-owned concerns.
 - Web renderers do not yet implement the parent-path fallback (`font.body` →
   `font.body.size`) in CSS; native renderers do via the shared resolver.
+- **Virtualized lazy stacks (ADR-0014)**: `ITEM_COUNT`/`ITEM_EXTENT`/
+  `FIRST_ITEM_INDEX` decode generically into `HostNode.properties`; no
+  dedicated layout handling lives here.
 
 ## Verified by
 

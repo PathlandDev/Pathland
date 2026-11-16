@@ -25,3 +25,6 @@ server runtime and GraalVM native-image build never carries JNA.
 
 - No automated test loads the native library (it is built by `scripts/lib.sh`
   for the desktop demos); the module is compile/test-compile clean without it.
+- `RingOpcodeSink.push` ignores the full-ring return value, so a large window or
+  resync can silently drop opcodes; backpressure is a prerequisite for
+  virtualized lists (ADR-0014).

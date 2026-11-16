@@ -170,6 +170,11 @@ dependency — framework glue lives in the starters.
   sessions) is a follow-up; the topic name + subject are the stable wire keys.
 - Quarkus mounted-app WebSocket endpoints require a **single-segment** mount path
   (the `/{app}` path param); Spring supports any depth.
+- **Virtualized lazy stacks (ADR-0014)**: SSR emits the engine's first window
+  (default 20 rows) and the full virtual extent; `VISIBLE_RANGE` input routes
+  through `InputDispatcher`, and the session binds `Platform.VIEWPORT` (updated
+  by `META::ENVIRONMENT`) for hosts that know the surface size at mount. The
+  live client's `VISIBLE_RANGE` remains authoritative after connect.
 
 ## Proxy views (spec/PROXY.md) — M1 (live)
 

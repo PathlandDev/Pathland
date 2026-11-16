@@ -59,6 +59,8 @@ shared-renderer story. Protocol contract: `spec/`.
 - Qt6 dev libraries are required to build/run the Qt renderer.
 - macOS requires `-XstartOnFirstThread` for both hosts.
 - No automated GUI test (headless renderer tests live in the Rust crates).
+- `RingEventReader` decodes `VISIBLE_RANGE` (0x15); both GTK and Qt lazy-stack
+  windowing are wired.
 
 ## Verified by
 

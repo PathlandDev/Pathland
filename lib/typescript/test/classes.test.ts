@@ -83,10 +83,17 @@ describe("Option A style appliers", () => {
     const el = document.createElement("div");
     applyProperty(el, PROP_LINE_LIMIT, VAL_U32, 2);
     expect(el.style.webkitLineClamp).toBe("2");
+    expect(el.style.getPropertyValue("-webkit-box-orient")).toBe("vertical");
+    // The serialized inline style also carries the prefixed property.
+    expect(el.getAttribute("style") ?? "").toContain("-webkit-box-orient: vertical");
+    // Guard: the unprefixed property is a browser no-op and must not be used.
+    expect(el.style.getPropertyValue("box-orient")).toBe("");
     expect(el.style.overflow).toBe("hidden");
     // A removed limit restores normal, unbounded text.
     applyProperty(el, PROP_LINE_LIMIT, VAL_U32, 0);
     expect(el.style.webkitLineClamp).toBe("");
+    expect(el.style.getPropertyValue("-webkit-box-orient")).toBe("");
+    expect(el.style.getPropertyValue("box-orient")).toBe("");
     expect(el.style.overflow).toBe("");
   });
 

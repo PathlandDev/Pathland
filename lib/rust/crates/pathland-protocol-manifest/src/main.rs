@@ -87,6 +87,12 @@ fn properties() -> Vec<(&'static str, u16)> {
         ("GRID_ROWS", property_id::GRID_ROWS),
         ("GRID_TRACKS", property_id::GRID_TRACKS),
         ("SCROLL_AXIS", property_id::SCROLL_AXIS),
+        ("ITEM_COUNT", property_id::ITEM_COUNT),
+        ("ITEM_EXTENT", property_id::ITEM_EXTENT),
+        ("FIRST_ITEM_INDEX", property_id::FIRST_ITEM_INDEX),
+        ("ITEM_EXTENTS", property_id::ITEM_EXTENTS),
+        ("FIRST_ITEM_OFFSET", property_id::FIRST_ITEM_OFFSET),
+        ("TOTAL_EXTENT", property_id::TOTAL_EXTENT),
         ("BACKGROUND_COLOR", property_id::BACKGROUND_COLOR),
         ("IMAGE_SOURCE", property_id::IMAGE_SOURCE),
         ("PLAYBACK_STATE", property_id::PLAYBACK_STATE),
@@ -274,6 +280,7 @@ fn emit_manifest() -> String {
         ("MEDIA_VOLUME_CHANGED", event::MEDIA_VOLUME_CHANGED),
         ("FIT_CHANGED", event::FIT_CHANGED),
         ("MEDIA_DURATION_CHANGED", event::MEDIA_DURATION_CHANGED),
+        ("VISIBLE_RANGE", event::VISIBLE_RANGE),
     ] {
         row(&mut out, "command", "Event", name, &hex_u8(value));
     }
@@ -336,6 +343,7 @@ fn emit_manifest() -> String {
         ("SUBMIT", listener::SUBMIT),
         ("SCROLL", listener::SCROLL),
         ("WHEEL", listener::WHEEL),
+        ("VISIBLE_RANGE", listener::VISIBLE_RANGE),
         ("POINTER", listener::POINTER),
     ] {
         row(&mut out, "listener", "Listeners", name, &hex_u32(value));

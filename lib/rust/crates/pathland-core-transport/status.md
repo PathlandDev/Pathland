@@ -34,6 +34,8 @@ codec (both directions). Protocol contract: `spec/OPCODE.md` (Transport).
 - No out-of-the-box duplex *server transport* (WebSocket/session plumbing) in
   this crate — the codecs exist; the Java demos (Quarkus/Spring) wire the
   browser↔server duplex.
+- **Virtualized lazy stacks (ADR-0014)**: `VISIBLE_RANGE` rides the existing
+  `Event` encode/decode path; no conformance vector covers it yet.
 
 ## Verified by
 

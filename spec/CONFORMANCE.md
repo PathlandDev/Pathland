@@ -524,6 +524,20 @@ A `SIZE_THAT_FITS` slot reports its selected candidate index (f32).
 - `00 00 00 40` B = 2.0f (0x40000000 LE)
 - `00 00 00 00` C = 0
 
+### 26b. EVENT:VISIBLE_RANGE (target=42, firstIndex=10, count=20)
+
+A windowed lazy stack reports its visible absolute index range.
+
+```
+03 15 00 00 2A 00 00 00 0A 00 00 00 14 00 00 00
+```
+
+- `03` category = EVENT
+- `15` command = VISIBLE_RANGE
+- `2A 00 00 00` A = targetId = 42
+- `0A 00 00 00` B = first absolute index = 10
+- `14 00 00 00` C = visible item count = 20
+
 ### 27. PARAMETER:SET_PROPERTY (id=1, propertyId=ROUTE=0x2019, valueType=STRING=0x05, arenaRef=0)
 
 The `NavigationContainer` emits the current path as a STRING property; the DOM

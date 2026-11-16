@@ -60,3 +60,5 @@ them.
   hand-written — their alignment is enforced behaviorally by the
   `pathland-html-golden` conformance harness rather than generated. Extending
   the generator to those tables is the planned next step.
+- **Virtualized lazy stacks (ADR-0014)**: the generated TS constants include
+  `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX` and `VISIBLE_RANGE`.

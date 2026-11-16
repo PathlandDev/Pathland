@@ -16,6 +16,7 @@ class PersistentState(
 
     private val signals = HashMap<String, WritableSignal<*>>()
     private val persistEffects = ArrayList<EffectRef>()
+    private val scopedChildren = HashMap<String, PersistentState>()
 
     /** Create (or return) the signal named [name], auto-loading and auto-saving it. */
     @Suppress("UNCHECKED_CAST")
@@ -36,10 +37,25 @@ class PersistentState(
         return signal
     }
 
+    /**
+     * A memoized child state scope — one lazy/`ForEach` row, for example. Its
+     * keys are `name:<scope>:<parent scope>`, so row-local state is independent
+     * per item and survives window eviction. Closed with the parent.
+     */
+    fun scopedTo(scope: String): PersistentState =
+        scopedChildren.getOrPut(scope) {
+            PersistentState(
+                store,
+                if (this.scope.isNullOrEmpty()) scope else "${this.scope}:$scope",
+            )
+        }
+
     private fun scoped(name: String): String =
         if (scope.isNullOrEmpty()) name else "$name:$scope"
 
     override fun close() {
+        for (child in scopedChildren.values) child.close()
+        scopedChildren.clear()
         for (effect in persistEffects) {
             effect.destroy()
         }

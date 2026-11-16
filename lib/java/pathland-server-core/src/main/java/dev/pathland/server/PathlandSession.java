@@ -10,6 +10,7 @@ import dev.pathland.server.proxy.ProxySession;
 import dev.pathland.view.core.Environment;
 import dev.pathland.view.core.EnvironmentBinding;
 import dev.pathland.view.core.Platform;
+import dev.pathland.view.core.Viewport;
 import dev.pathland.view.core.ProxyConfig;
 import dev.pathland.view.core.ThemeData;
 import dev.pathland.view.core.ThemeMode;
@@ -69,6 +70,7 @@ public final class PathlandSession {
 
     private final PersistentState state;
     private final WritableSignal<String> activePath;
+    private final WritableSignal<Viewport> viewport;
     private final String stateScope;
 
     private final String base;
@@ -167,6 +169,7 @@ public final class PathlandSession {
         // The active platform path is a host-provided signal (Platform.ACTIVE_PATH); the
         // app reads it, and a bound Router re-routes guard-aware on external changes.
         this.activePath = Signals.signal(env.route());
+        this.viewport = Signals.signal(new Viewport(-1f, -1f));
 
         this.sink = new FrameOpcodeSink() {
             @Override
@@ -202,7 +205,8 @@ public final class PathlandSession {
         try {
             RenderResult result = emitter.mount(
                     app.newRoot().modifiers(
-                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath))),
+                            EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),
+                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),
                     new Environment(state));
             this.inputDispatcher = new InputDispatcher(result, activePath);
             this.rootId = result.rootId();
@@ -286,6 +290,9 @@ public final class PathlandSession {
             }
             if (env.viewportHeight() > 0) {
                 viewportHeight = env.viewportHeight();
+            }
+            if (viewportWidth > 0 && viewportHeight > 0) {
+                viewport.set(new Viewport(viewportWidth, viewportHeight));
             }
         });
     }

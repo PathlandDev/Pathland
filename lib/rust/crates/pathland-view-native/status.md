@@ -39,6 +39,9 @@ ring for foreign hosts (Swift/Java via FFI). Protocol contract: `spec/`.
   `node_bind_string_property` binds a reactive `MEDIA_SOURCE`. Materialization
   links each surface's `MEDIA_CONTROLLER_ID` to the controller's host-supplied
   node id. (Hosts that supply ids themselves need no pinning.)
+- **Virtualized lazy stacks (ADR-0014)**: no flat API for a `ForEach` data
+  source, window signal, or `ITEM_COUNT`/`ITEM_EXTENT`/`FIRST_ITEM_INDEX`
+  emission.
 
 ## Verified by
 

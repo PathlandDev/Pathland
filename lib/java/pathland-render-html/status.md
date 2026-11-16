@@ -58,6 +58,11 @@ library). Protocol contract: `spec/`.
 - The renderer is a port of the Rust implementation, not a second source of
   truth: when the HTML output changes, update the Rust crate + golden fixtures
   and this port together (`GoldenConformanceTest` fails on drift).
+- **Virtualized lazy stacks (ADR-0014)**: the Java port renders the virtual
+  extent and window placement and emits the `data-pathland-lazy*` attributes,
+  matching the Rust renderer. App `PADDING` is added as an inset around the
+  virtual extent. Lazy stacks support variable item extents; lazy grids use the
+  same row/column window with a uniform extent.
 
 ## Verified by
 

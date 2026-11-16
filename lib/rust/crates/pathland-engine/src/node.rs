@@ -75,6 +75,12 @@ pub struct Node {
     /// App-side gesture handlers (callbacks). These live only in the
     /// application's retained tree and are **never** emitted as protocol.
     pub gestures: Vec<Gesture>,
+    /// Lazy-window item keys aligned with `children` (ADR-0014 keyed window
+    /// reconcile). Empty for ordinary containers.
+    pub lazy_keys: Vec<u64>,
+    /// Persistent `key -> (id block start, subtree size)` map for a lazy data
+    /// source, shared across rebuilds so retained rows keep their ids.
+    pub lazy_ids: Option<Rc<RefCell<BTreeMap<u64, (u32, u32)>>>>,
 }
 
 impl core::fmt::Debug for Node {
@@ -95,6 +101,8 @@ impl core::fmt::Debug for Node {
             .field("string_bindings", &self.string_bindings)
             .field("media_controller", &self.media_controller)
             .field("gestures", &self.gestures.len())
+            .field("lazy_keys", &self.lazy_keys)
+            .field("lazy_ids", &self.lazy_ids.is_some())
             .finish()
     }
 }
@@ -118,6 +126,8 @@ impl Node {
             string_bindings: BTreeMap::new(),
             media_controller: None,
             gestures: Vec::new(),
+            lazy_keys: Vec::new(),
+            lazy_ids: None,
         }
     }
 }
@@ -332,6 +342,92 @@ pub fn assign_ids(root: &mut Node, next: &mut u32) {
     assign_ids_pass(root, next, &mut reserved);
 }
 
+fn max_lazy_block_end(node: &Node) -> u32 {
+    let mut max = 0;
+    if let Some(blocks) = &node.lazy_ids {
+        for (start, size) in blocks.borrow().values() {
+            max = max.max(start.saturating_add(*size));
+        }
+    }
+    for child in &node.children {
+        max = max.max(max_lazy_block_end(child));
+    }
+    max
+}
+
+fn subtree_size(node: &Node) -> u32 {
+    1 + node.children.iter().map(subtree_size).sum::<u32>()
+}
+
+fn has_media_node(node: &Node) -> bool {
+    matches!(
+        node.component,
+        Component::MediaController | Component::Video
+    ) || node.children.iter().any(has_media_node)
+}
+
+fn block_intersects_reserved(start: u32, size: u32, reserved: &BTreeSet<u32>) -> bool {
+    reserved
+        .range(start..start.saturating_add(size))
+        .next()
+        .is_some()
+}
+
+fn allocate_block(next: &mut u32, size: u32, reserved: &BTreeSet<u32>) -> u32 {
+    if *next == 0 {
+        *next = 1;
+    }
+    loop {
+        let start = *next;
+        let end = start.saturating_add(size);
+        if block_intersects_reserved(start, size, reserved) {
+            *next = end;
+            continue;
+        }
+        *next = end;
+        return start;
+    }
+}
+
+fn assign_block(node: &mut Node, start: u32, offset: &mut u32) {
+    node.id = start + *offset;
+    *offset += 1;
+    for child in &mut node.children {
+        assign_block(child, start, offset);
+    }
+}
+
+fn assign_keyed_child(
+    child: &mut Node,
+    key: u64,
+    blocks: &Rc<RefCell<BTreeMap<u64, (u32, u32)>>>,
+    next: &mut u32,
+    reserved: &mut BTreeSet<u32>,
+) {
+    // Media controllers pin their own id; keep their subtree on the ordinary
+    // path rather than mixing a pinned id into a block.
+    if has_media_node(child) {
+        assign_ids_pass(child, next, reserved);
+        return;
+    }
+    let size = subtree_size(child);
+    let existing = blocks.borrow().get(&key).copied();
+    let start = match existing {
+        Some((start, stored))
+            if stored == size && !block_intersects_reserved(start, size, reserved) =>
+        {
+            start
+        }
+        _ => {
+            let start = allocate_block(next, size, reserved);
+            blocks.borrow_mut().insert(key, (start, size));
+            start
+        }
+    };
+    let mut offset = 0;
+    assign_block(child, start, &mut offset);
+}
+
 /// Collect the ids already pinned by the controllers present in this tree.
 fn collect_pinned_controller_ids(node: &Node, out: &mut BTreeSet<u32>) {
     if matches!(node.component, Component::MediaController) {
@@ -390,6 +486,21 @@ fn assign_ids_pass(node: &mut Node, next: &mut u32, reserved: &mut BTreeSet<u32>
             .filter(|id| *id != 0)
         {
             node.properties.insert(property_id::MEDIA_CONTROLLER_ID, id);
+        }
+    }
+    if !node.lazy_keys.is_empty() {
+        if let Some(blocks) = node.lazy_ids.clone() {
+            // Keep new blocks above every block this container already owns, so
+            // a new key never reuses a retired block's ids.
+            let high_water = max_lazy_block_end(node);
+            if high_water > *next {
+                *next = high_water;
+            }
+            for (index, child) in node.children.iter_mut().enumerate() {
+                let key = node.lazy_keys.get(index).copied().unwrap_or(0);
+                assign_keyed_child(child, key, &blocks, next, reserved);
+            }
+            return;
         }
     }
     for child in &mut node.children {

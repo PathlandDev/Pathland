@@ -168,10 +168,12 @@ fun LazyVStack(
     alignment: HorizontalAlignment? = null,
     spacing: Float? = null,
     content: PathlandScope.() -> Unit = {},
-): View = coreView(Components.LAZY_VSTACK, childrenOf(content).toList()) { node, _ ->
-    if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
-    if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
-}.registerChild()
+): View = lazyVStack(
+    alignment = alignment?.let { Signals.constant(it) },
+    spacingSignal = null,
+    spacingValue = spacing,
+    content = content,
+)
 
 fun LazyVStack(
     spacing: Int,
@@ -183,19 +185,23 @@ fun LazyVStack(
     spacing: Signal<Float>,
     alignment: HorizontalAlignment? = null,
     content: PathlandScope.() -> Unit = {},
-): View = coreView(Components.LAZY_VSTACK, childrenOf(content).toList()) { node, _ ->
-    if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
-    node.property(Properties.SPACING, spacing)
-}.registerChild()
+): View = lazyVStack(
+    alignment = alignment?.let { Signals.constant(it) },
+    spacingSignal = spacing,
+    spacingValue = null,
+    content = content,
+)
 
 fun LazyHStack(
     alignment: VerticalAlignment? = null,
     spacing: Float? = null,
     content: PathlandScope.() -> Unit = {},
-): View = coreView(Components.LAZY_HSTACK, childrenOf(content).toList()) { node, _ ->
-    if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
-    if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
-}.registerChild()
+): View = lazyHStack(
+    alignment = alignment?.let { Signals.constant(it) },
+    spacingSignal = null,
+    spacingValue = spacing,
+    content = content,
+)
 
 fun LazyHStack(
     spacing: Int,
@@ -207,10 +213,12 @@ fun LazyHStack(
     spacing: Signal<Float>,
     alignment: VerticalAlignment? = null,
     content: PathlandScope.() -> Unit = {},
-): View = coreView(Components.LAZY_HSTACK, childrenOf(content).toList()) { node, _ ->
-    if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
-    node.property(Properties.SPACING, spacing)
-}.registerChild()
+): View = lazyHStack(
+    alignment = alignment?.let { Signals.constant(it) },
+    spacingSignal = spacing,
+    spacingValue = null,
+    content = content,
+)
 
 fun LazyVGrid(
     columns: Int? = null,
@@ -218,12 +226,29 @@ fun LazyVGrid(
     alignment: Alignment? = null,
     spacing: Float? = null,
     content: PathlandScope.() -> Unit = {},
-): View = coreView(Components.LAZY_VGRID, childrenOf(content).toList()) { node, _ ->
-    if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
-    if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
-    if (tracks != null) node.property(Properties.GRID_TRACKS, Signals.constant(gridTracks(tracks)))
-    if (columns != null) node.property(Properties.GRID_COLUMNS, Signals.constant(columns))
-}.registerChild()
+): View {
+    val children = collectChildren(content)
+    val data = children.singleOrNull() as? ForEachView<*>
+    return if (data != null) {
+        LazyGridWindowView(
+            Components.LAZY_VGRID,
+            true,
+            data,
+            columns ?: 1,
+            alignment?.let { Signals.constant(it) },
+            null,
+            spacing,
+            tracks?.let { gridTracks(it) },
+        ).registerChild()
+    } else {
+        coreView(Components.LAZY_VGRID, children) { node, _ ->
+            if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
+            if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
+            if (tracks != null) node.property(Properties.GRID_TRACKS, Signals.constant(gridTracks(tracks)))
+            if (columns != null) node.property(Properties.GRID_COLUMNS, Signals.constant(columns))
+        }.registerChild()
+    }
+}
 
 fun LazyHGrid(
     rows: Int? = null,
@@ -231,14 +256,31 @@ fun LazyHGrid(
     alignment: Alignment? = null,
     spacing: Float? = null,
     content: PathlandScope.() -> Unit = {},
-): View = coreView(Components.LAZY_HGRID, childrenOf(content).toList()) { node, _ ->
-    if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
-    if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
-    if (tracks != null) node.property(Properties.GRID_TRACKS, Signals.constant(gridTracks(tracks)))
-    if (rows != null) node.property(Properties.GRID_ROWS, Signals.constant(rows))
-}.registerChild()
+): View {
+    val children = collectChildren(content)
+    val data = children.singleOrNull() as? ForEachView<*>
+    return if (data != null) {
+        LazyGridWindowView(
+            Components.LAZY_HGRID,
+            false,
+            data,
+            rows ?: 1,
+            alignment?.let { Signals.constant(it) },
+            null,
+            spacing,
+            tracks?.let { gridTracks(it) },
+        ).registerChild()
+    } else {
+        coreView(Components.LAZY_HGRID, children) { node, _ ->
+            if (alignment != null) node.property(Properties.ALIGNMENT, Signals.constant(alignment))
+            if (spacing != null) node.property(Properties.SPACING, Signals.constant(spacing))
+            if (tracks != null) node.property(Properties.GRID_TRACKS, Signals.constant(gridTracks(tracks)))
+            if (rows != null) node.property(Properties.GRID_ROWS, Signals.constant(rows))
+        }.registerChild()
+    }
+}
 
-private fun gridTracks(tracks: List<GridItem>): String = tracks.joinToString(",") { it.token }
+internal fun gridTracks(tracks: List<GridItem>): String = tracks.joinToString(",") { it.token }
 
 /* ------------------------------------------------------------------------- */
 /* ViewThatFits / Fit                                                         */

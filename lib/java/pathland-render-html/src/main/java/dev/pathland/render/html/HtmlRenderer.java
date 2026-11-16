@@ -305,8 +305,13 @@ public final class HtmlRenderer {
                         }
                         List<Float> values = listF32(strings, op.c());
                         if (values != null) {
-                            node.fitThresholds.clear();
-                            node.fitThresholds.addAll(values);
+                            if (property == Properties.ITEM_EXTENTS) {
+                                node.itemExtents.clear();
+                                node.itemExtents.addAll(values);
+                            } else {
+                                node.fitThresholds.clear();
+                                node.fitThresholds.addAll(values);
+                            }
                         }
                     } else {
                         node.properties.put(property, op.c());
@@ -497,6 +502,13 @@ public final class HtmlRenderer {
             childrenBuilder.append(renderNode(nodes, child, node.component, debug));
         }
         String children = childrenBuilder.toString();
+        int childCount = 0;
+        for (int child : node.children) {
+            RenderNode childNode = nodes.get(child);
+            if (childNode != null && childNode.component != Components.COMMENT) {
+                childCount++;
+            }
+        }
 
         StringBuilder dataId = new StringBuilder(" data-pathland-id=\"").append(id).append('"');
         dataId.append(slotAttrs(node));
@@ -530,10 +542,20 @@ public final class HtmlRenderer {
                     css + RenderNode.fillPropagation(nodes, id, node, false) + derived, event, aria);
             case Components.HSTACK -> element = wrapStack(id, "row", semantic, node, children,
                     css + RenderNode.fillPropagation(nodes, id, node, true) + derived, event, aria);
-            case Components.LAZY_VSTACK -> element = wrapStack(id, "column", semantic, node, children,
-                    css + RenderNode.fillPropagation(nodes, id, node, false) + derived, event, aria);
-            case Components.LAZY_HSTACK -> element = wrapStack(id, "row", semantic, node, children,
-                    css + RenderNode.fillPropagation(nodes, id, node, true) + derived, event, aria);
+            case Components.LAZY_VSTACK -> {
+                String stackCss = css + RenderNode.fillPropagation(nodes, id, node, false) + derived;
+                element = lazyWindowed(node)
+                        ? wrapLazyStack(id, "column", true, semantic, node, children, childCount,
+                                stackCss, event, aria)
+                        : wrapStack(id, "column", semantic, node, children, stackCss, event, aria);
+            }
+            case Components.LAZY_HSTACK -> {
+                String stackCss = css + RenderNode.fillPropagation(nodes, id, node, true) + derived;
+                element = lazyWindowed(node)
+                        ? wrapLazyStack(id, "row", false, semantic, node, children, childCount,
+                                stackCss, event, aria)
+                        : wrapStack(id, "row", semantic, node, children, stackCss, event, aria);
+            }
             case Components.PROXY_VIEW -> element = wrapStack(id, "column", semantic, node, children,
                     css + RenderNode.fillPropagation(nodes, id, node, false) + derived, event, aria);
             case Components.SIZE_THAT_FITS -> element = renderSizeThatFits(nodes, id, node, children,
@@ -908,7 +930,58 @@ public final class HtmlRenderer {
             effectiveColumns = baseColumns;
         }
         String gridCss = gridStyle(node, effectiveColumns);
-        String gridStyle = Format.styleAttr(gridCss + css);
+        String lazyPadding = "";
+        String lazyAttrs = "";
+        if (lazyWindowed(node)
+                && (node.component == Components.LAZY_VGRID
+                    || node.component == Components.LAZY_HGRID)) {
+            boolean vertical = node.component == Components.LAZY_VGRID;
+            int lazyTracks = Math.max(1, vertical
+                    ? (effectiveColumns == null ? 1 : effectiveColumns)
+                    : (RenderNode.gridCount(node, Properties.GRID_ROWS) == null
+                        ? 1
+                        : RenderNode.gridCount(node, Properties.GRID_ROWS)));
+            int childCount = 0;
+            for (int child : node.children) {
+                RenderNode childNode = nodes.get(child);
+                if (childNode != null && childNode.component != Components.COMMENT) {
+                    childCount++;
+                }
+            }
+            int count = node.u32Property(Properties.ITEM_COUNT, 0);
+            float extent = node.f32Property(Properties.ITEM_EXTENT, 0.0f);
+            int first = node.u32Property(Properties.FIRST_ITEM_INDEX, 0);
+            float spacing = Math.max(0.0f, node.f32Property(Properties.SPACING, 0.0f));
+            int units = (childCount + lazyTracks - 1) / lazyTracks;
+            float stride = extent + spacing;
+            float leading = first * stride;
+            float trailing = Math.max(0, count - first - units) * stride;
+            float baseTop = lazyBasePadding(node, Properties.PADDING_TOP);
+            float baseBottom = lazyBasePadding(node, Properties.PADDING_BOTTOM);
+            float baseLeft = lazyBasePadding(node, Properties.PADDING_LEFT);
+            float baseRight = lazyBasePadding(node, Properties.PADDING_RIGHT);
+            float extraTop = vertical ? leading : 0.0f;
+            float extraBottom = vertical ? trailing : 0.0f;
+            float extraLeft = vertical ? 0.0f : leading;
+            float extraRight = vertical ? 0.0f : trailing;
+            lazyPadding = "padding-top:" + Format.f32(baseTop + extraTop)
+                    + "px;padding-bottom:" + Format.f32(baseBottom + extraBottom)
+                    + "px;padding-left:" + Format.f32(baseLeft + extraLeft)
+                    + "px;padding-right:" + Format.f32(baseRight + extraRight) + "px;";
+            String axis = vertical ? "vertical" : "horizontal";
+            lazyAttrs = " data-pathland-lazy=\"" + axis + "\""
+                    + " data-pathland-lazy-grid=\"1\""
+                    + " data-pathland-lazy-tracks=\"" + lazyTracks + "\""
+                    + " data-pathland-item-count=\"" + count + "\""
+                    + " data-pathland-item-extent=\"" + Format.f32(extent) + "px\""
+                    + " data-pathland-first-item-index=\"" + first + "\""
+                    + " data-pathland-item-spacing=\"" + Format.f32(spacing) + "px\""
+                    + " data-pathland-base-padding-top=\"" + Format.f32(baseTop) + "px\""
+                    + " data-pathland-base-padding-right=\"" + Format.f32(baseRight) + "px\""
+                    + " data-pathland-base-padding-bottom=\"" + Format.f32(baseBottom) + "px\""
+                    + " data-pathland-base-padding-left=\"" + Format.f32(baseLeft) + "px\"";
+        }
+        String gridStyle = Format.styleAttr(gridCss + css + lazyPadding);
         int align = (int) node.f32Property(Properties.ALIGNMENT, 0.0f);
 
         StringBuilder inner = new StringBuilder();
@@ -958,7 +1031,8 @@ public final class HtmlRenderer {
                 }
             }
         }
-        return "<" + tag + dataId + event + aria + gridStyle + ">" + inner + "</" + tag + ">";
+        return "<" + tag + dataId + event + aria + gridStyle + lazyAttrs + ">" + inner
+                + "</" + tag + ">";
     }
 
     private static String cellShell(TreeMap<Integer, RenderNode> nodes, String cellHtml, int row,
@@ -1018,6 +1092,89 @@ public final class HtmlRenderer {
         }
         String zstyle = Format.styleAttr(zcss + css + derived);
         return "<" + tag + dataId + event + aria + zstyle + ">" + inner + "</" + tag + ">";
+    }
+
+    private static boolean lazyWindowed(RenderNode node) {
+        return node.u32Property(Properties.ITEM_COUNT, 0) > 0
+                && node.f32Property(Properties.ITEM_EXTENT, 0.0f) > 0.0f;
+    }
+
+    private static float lazyBasePadding(RenderNode node, int side) {
+        Float margins = node.contentMargins();
+        return node.f32Property(side, node.f32Property(Properties.PADDING,
+                margins == null ? 0.0f : margins));
+    }
+
+    private static String wrapLazyStack(int id, String direction, boolean vertical,
+            String semantic, RenderNode node, String children, int childCount,
+            String css, String event, String aria) {
+        String tag = semantic == null ? "div" : semantic;
+        Integer bits = node.properties.get(Properties.ALIGNMENT);
+        int alignment = bits == null ? 3 : ((int) Float.intBitsToFloat(bits)) & 0xFF;
+        String align = switch (alignment) {
+            case 0 -> "flex-start";
+            case 1 -> "center";
+            case 2 -> "flex-end";
+            default -> "flex-start";
+        };
+        int count = node.u32Property(Properties.ITEM_COUNT, 0);
+        float extent = node.f32Property(Properties.ITEM_EXTENT, 0.0f);
+        int first = node.u32Property(Properties.FIRST_ITEM_INDEX, 0);
+        float spacing = Math.max(0.0f, node.f32Property(Properties.SPACING, 0.0f));
+        float stride = extent + spacing;
+        List<Float> extents = node.itemExtents;
+        float firstOffset = node.f32Property(Properties.FIRST_ITEM_OFFSET, first * stride);
+        float totalExtent = node.f32Property(Properties.TOTAL_EXTENT,
+                count * extent + Math.max(0, count - 1) * spacing);
+        float windowExtent;
+        if (!extents.isEmpty()) {
+            float sum = 0.0f;
+            for (float value : extents) {
+                sum += value;
+            }
+            windowExtent = sum + Math.max(0, extents.size() - 1) * spacing;
+        } else {
+            windowExtent = childCount * extent + Math.max(0, childCount - 1) * spacing;
+        }
+        float leading = firstOffset;
+        float trailing = Math.max(0.0f, totalExtent - firstOffset - windowExtent);
+        float extraTop = vertical ? leading : 0.0f;
+        float extraBottom = vertical ? trailing : 0.0f;
+        float extraLeft = vertical ? 0.0f : leading;
+        float extraRight = vertical ? 0.0f : trailing;
+        // The virtual extent adds to the app's padding (an inset around the
+        // window). The base values ride on data attributes so the DOM client can
+        // recompute the virtual padding without double-counting on a delta.
+        float baseTop = lazyBasePadding(node, Properties.PADDING_TOP);
+        float baseBottom = lazyBasePadding(node, Properties.PADDING_BOTTOM);
+        float baseLeft = lazyBasePadding(node, Properties.PADDING_LEFT);
+        float baseRight = lazyBasePadding(node, Properties.PADDING_RIGHT);
+        String padding = "padding-top:" + Format.f32(baseTop + extraTop)
+                + "px;padding-bottom:" + Format.f32(baseBottom + extraBottom)
+                + "px;padding-left:" + Format.f32(baseLeft + extraLeft)
+                + "px;padding-right:" + Format.f32(baseRight + extraRight) + "px;";
+        String stackStyle = Format.styleAttr("display:flex;flex-direction:" + direction
+                + ";align-items:" + align + ";" + padding + css);
+        String axis = vertical ? "vertical" : "horizontal";
+        String extentsAttrs = "";
+        String csv = node.strings.get(Properties.ITEM_EXTENTS);
+        if (csv != null && !extents.isEmpty()) {
+            extentsAttrs = " data-pathland-item-extents=\"" + csv + "\""
+                    + " data-pathland-first-item-offset=\"" + Format.f32(firstOffset) + "px\""
+                    + " data-pathland-total-extent=\"" + Format.f32(totalExtent) + "px\"";
+        }
+        return "<" + tag + " data-pathland-id=\"" + id + "\"" + slotAttrs(node) + event + aria
+                + stackStyle + " data-pathland-lazy=\"" + axis + "\""
+                + " data-pathland-item-count=\"" + count + "\""
+                + " data-pathland-item-extent=\"" + Format.f32(extent) + "px\""
+                + " data-pathland-first-item-index=\"" + first + "\""
+                + " data-pathland-item-spacing=\"" + Format.f32(spacing) + "px\""
+                + " data-pathland-base-padding-top=\"" + Format.f32(baseTop) + "px\""
+                + " data-pathland-base-padding-right=\"" + Format.f32(baseRight) + "px\""
+                + " data-pathland-base-padding-bottom=\"" + Format.f32(baseBottom) + "px\""
+                + " data-pathland-base-padding-left=\"" + Format.f32(baseLeft) + "px\""
+                + extentsAttrs + ">"
+                + children + "</" + tag + ">";
     }
 
     private static String wrapStack(int id, String direction, String semantic, RenderNode node,

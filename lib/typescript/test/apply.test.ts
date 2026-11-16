@@ -931,7 +931,8 @@ describe("applyBatch · META + design tokens + string props", () => {
       r,
     );
     expect(span.style.webkitLineClamp).toBe("1");
-    expect((span.style as unknown as Record<string, string>).boxOrient).toBe("vertical");
+    expect(span.style.getPropertyValue("-webkit-box-orient")).toBe("vertical");
+    expect(span.style.getPropertyValue("box-orient")).toBe("");
     // `display:-webkit-box` is also set (real browsers reflect it); happy-dom's CSSOM
     // drops the vendor value, so it can't be asserted here.
   });

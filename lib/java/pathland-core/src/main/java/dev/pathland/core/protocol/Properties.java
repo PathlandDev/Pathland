@@ -30,6 +30,12 @@ public final class Properties {
     public static final int GRID_ROWS = 0x001F;
     public static final int GRID_TRACKS = 0x0020;
     public static final int SCROLL_AXIS = 0x0021;
+    public static final int ITEM_COUNT = 0x0022;
+    public static final int ITEM_EXTENT = 0x0023;
+    public static final int FIRST_ITEM_INDEX = 0x0024;
+    public static final int ITEM_EXTENTS = 0x0025;
+    public static final int FIRST_ITEM_OFFSET = 0x0026;
+    public static final int TOTAL_EXTENT = 0x0027;
     public static final int BACKGROUND_COLOR = 0x1001;
     public static final int IMAGE_SOURCE = 0x1002;
     public static final int PLAYBACK_STATE = 0x1035;

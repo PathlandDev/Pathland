@@ -14,6 +14,7 @@ data class RenderResult(
     val dateInputs: Map<Int, DateInput>,
     val mediaInputs: Map<Int, MediaInput>,
     val fitInputs: Map<Int, Consumer<Int>>,
+    val visibleRanges: Map<Int, VisibleRangeInput>,
     val navigateActions: Map<Int, Runnable>,
     val navigateHandler: Consumer<Event>?,
     val proxyViews: Map<Int, ProxyConfig>,
@@ -26,6 +27,7 @@ data class RenderResult(
     fun dateInputs(): Map<Int, DateInput> = dateInputs
     fun mediaInputs(): Map<Int, MediaInput> = mediaInputs
     fun fitInputs(): Map<Int, Consumer<Int>> = fitInputs
+    fun visibleRanges(): Map<Int, VisibleRangeInput> = visibleRanges
     fun navigateActions(): Map<Int, Runnable> = navigateActions
     fun navigateHandler(): Consumer<Event>? = navigateHandler
     fun proxyViews(): Map<Int, ProxyConfig> = proxyViews

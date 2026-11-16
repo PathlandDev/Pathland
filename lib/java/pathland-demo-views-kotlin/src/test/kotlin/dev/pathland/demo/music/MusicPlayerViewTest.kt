@@ -14,6 +14,7 @@ import dev.pathland.core.transport.Event
 import dev.pathland.core.transport.FrameOpcodeSink
 import dev.pathland.core.transport.ProtocolFrame
 import dev.pathland.view.engine.Emitter
+import dev.pathland.demo.music.library.LIBRARY_ROW_HEIGHT
 import dev.pathland.demo.music.service.MediaPlayerService
 import dev.pathland.view.engine.InputDispatcher
 import dev.pathland.view.engine.RenderResult
@@ -83,6 +84,18 @@ class MusicPlayerViewTest {
     }
 
     @Test
+    fun libraryUsesAWindowedList() {
+        val frame = mount().sink.frame()
+
+        assertEquals(1, countCreate(frame, Components.LAZY_VSTACK))
+        assertTrue(anySetProperty(frame, Properties.ITEM_COUNT, 1000))
+        assertTrue(anySetProperty(frame, Properties.ITEM_EXTENT, LIBRARY_ROW_HEIGHT))
+        assertTrue(anySetProperty(frame, Properties.FIRST_ITEM_INDEX, 0))
+        // Only the initial window (20 + overscan 2) is emitted, not 1000 rows.
+        assertTrue(countCreate(frame, Components.IMAGE) in 1..40)
+    }
+
+    @Test
     fun fitShowsTheSidebarWhenTheParentIsWideEnough() {
         val mounted = mount()
         val slotId = slotIdByMaxThreshold(mounted.sink.frame(), 1024f)
@@ -102,7 +115,9 @@ class MusicPlayerViewTest {
         val mounted = mount()
         val frame = mounted.sink.frame()
 
-        assertTrue(countCreate(frame, Components.BUTTON) >= 3)
+        // The narrow player bar has the play/pause transport button; the
+        // library rows are tappable HStacks, not buttons.
+        assertTrue(countCreate(frame, Components.BUTTON) >= 1)
         assertEquals(1, countCreate(frame, Components.SLIDER))
         assertTrue(anySlider(frame, 0f, 100f))
         assertTrue(anySetText(frame, "|"))

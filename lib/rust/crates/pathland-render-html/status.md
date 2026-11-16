@@ -180,7 +180,7 @@ Statelessness). Protocol contract: `spec/`.
   `SCROLLVIEW` is greedy on its `SCROLL_AXIS` only; fixed frames emit exact px
   boxes. Finite `MAX_*` bounds cap the resolved size, stop unbounded fill
   propagation, and let the parent's `ALIGNMENT` position the capped box.
-  Conformance cases C1–C6 and C13–C20 asserted in `lib.rs` tests.
+  Conformance cases C1–C6, C13–C20, and C22/C24 asserted in `lib.rs` tests.
 - **Fill propagation (spec/PRIMITIVES.md §stack layout model)**: implemented —
   `fills_axis` resolves a Hug stack/ZStack containing a `FILL` child / greedy
   primitive on an axis as `FILL`, emitting `width/height:100%` on that axis, and
@@ -403,6 +403,16 @@ contract both renderers must satisfy.
   its first child** (the spec-pinned single content). Conformance cases
   C11–C20 covered by the SSR tests + golden fixtures (incl. `gridrow`,
   `scrollaxis`, and `maxbounds`).
+- **Virtualized lazy stacks (ADR-0014)**: windowed `LAZY_VSTACK`/`LAZY_HSTACK`
+  render the full virtual extent as main-axis padding, place the emitted window,
+  and carry `data-pathland-lazy*` attributes for the DOM client's
+  `VISIBLE_RANGE` reporting. Covered by a unit test. App `PADDING` is added as
+  an inset around the virtual extent (the base values ride on data attributes
+  for the DOM client). Lazy stacks also support app-declared variable item
+  extents (`ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`, emitted as
+  `data-pathland-item-extents`/`-first-item-offset`/`-total-extent`).
+  `LAZY_VGRID`/`LAZY_HGRID` use the same row/column window (virtual padding +
+  `data-pathland-lazy-grid`/`-tracks`); C22/C24 are covered by the lazy tests.
 - `SHAPE` `Path` renders as an SVG placeholder (no path data wire property).
 - GAUGE/SHAPE visuals are CSS approximations, not pixel-exact.
 - **Parent-path token fallback is not implemented in CSS**: overriding a

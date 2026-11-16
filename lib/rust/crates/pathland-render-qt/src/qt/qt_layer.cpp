@@ -40,6 +40,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
@@ -111,6 +112,12 @@ enum {
     PL_PROP_GRID_COLUMNS = 0x001E,
     PL_PROP_GRID_ROWS = 0x001F,
     PL_PROP_SCROLL_AXIS = 0x0021,
+    PL_PROP_ITEM_COUNT = 0x0022,
+    PL_PROP_ITEM_EXTENT = 0x0023,
+    PL_PROP_FIRST_ITEM_INDEX = 0x0024,
+    PL_PROP_ITEM_EXTENTS = 0x0025,
+    PL_PROP_FIRST_ITEM_OFFSET = 0x0026,
+    PL_PROP_TOTAL_EXTENT = 0x0027,
     PL_PROP_BACKGROUND = 0x1001,
     PL_PROP_IMAGE_SOURCE = 0x1002,
     PL_PROP_BORDER_WIDTH = 0x1003,
@@ -336,6 +343,19 @@ struct LayerState {
     std::unordered_map<uint32_t, uint8_t> shape_kind;
     // SCROLL_AXIS per SCROLLVIEW (0 = vertical default, 1 = horizontal).
     std::unordered_map<uint32_t, uint8_t> scroll_axis;
+    // Windowed lazy stacks (ADR-0014): window metadata, renderer-owned spacer
+    // items, the attached scroll observer, and the last reported range.
+    std::unordered_map<uint32_t, uint32_t> lazy_count;
+    std::unordered_map<uint32_t, double> lazy_extent;
+    std::unordered_map<uint32_t, uint32_t> lazy_first;
+    std::unordered_map<uint32_t, double> lazy_spacing;
+    std::unordered_map<uint32_t, std::vector<double>> lazy_extents;
+    std::unordered_map<uint32_t, double> lazy_first_offset;
+    std::unordered_map<uint32_t, double> lazy_total_extent;
+    std::unordered_map<uint32_t, std::vector<QQuickItem *>> lazy_spacers;
+    std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> lazy_last;
+    // Windowed lazy grids: the inner QML Grid inside the virtual-extent wrapper.
+    std::unordered_map<uint32_t, QQuickItem *> lazy_grids;
     // EVENT_LISTENERS mask per node (raw pointer stream gating).
     std::unordered_map<uint32_t, uint32_t> listener_masks;
     // MEDIA_CONTROLLER: the last app-declared playback state (0 pause, 1 play),
@@ -505,9 +525,55 @@ QString qmlFor(uint16_t component, uint32_t id) {
     case PL_COMP_ZSTACK:
         return QStringLiteral("import QtQuick 2.15\nItem { objectName: \"pl%1\" }").arg(id);
     case PL_COMP_GRID:
-    case PL_COMP_LAZY_VGRID:
-    case PL_COMP_LAZY_HGRID:
         return QStringLiteral("import QtQuick 2.15\nGrid { objectName: \"pl%1\" }").arg(id);
+    case PL_COMP_LAZY_VGRID:
+        return QStringLiteral(
+                   "import QtQuick 2.15\n"
+                   "Item {\n"
+                   "  objectName: \"pl%1\"\n"
+                   "  property real plLeading: 0\n"
+                   "  property real plTrailing: 0\n"
+                   "  property real plPad: 0\n"
+                   "  property real plPadTop: 0\n"
+                   "  property real plPadRight: 0\n"
+                   "  property real plPadBottom: 0\n"
+                   "  property real plPadLeft: 0\n"
+                   "  implicitWidth: grid.implicitWidth + plPadLeft + plPadRight\n"
+                   "  implicitHeight: grid.implicitHeight + plLeading + plTrailing + plPadTop + plPadBottom\n"
+                   "  Grid {\n"
+                   "    id: grid\n"
+                   "    objectName: \"pl%1grid\"\n"
+                   "    width: Math.max(0, parent.width - plPadLeft - plPadRight)\n"
+                   "    x: plPadLeft\n"
+                   "    y: plLeading + plPadTop\n"
+                   "    flow: Grid.LeftToRight\n"
+                   "  }\n"
+                   "}")
+            .arg(id);
+    case PL_COMP_LAZY_HGRID:
+        return QStringLiteral(
+                   "import QtQuick 2.15\n"
+                   "Item {\n"
+                   "  objectName: \"pl%1\"\n"
+                   "  property real plLeading: 0\n"
+                   "  property real plTrailing: 0\n"
+                   "  property real plPad: 0\n"
+                   "  property real plPadTop: 0\n"
+                   "  property real plPadRight: 0\n"
+                   "  property real plPadBottom: 0\n"
+                   "  property real plPadLeft: 0\n"
+                   "  implicitWidth: grid.implicitWidth + plLeading + plTrailing + plPadLeft + plPadRight\n"
+                   "  implicitHeight: grid.implicitHeight + plPadTop + plPadBottom\n"
+                   "  Grid {\n"
+                   "    id: grid\n"
+                   "    objectName: \"pl%1grid\"\n"
+                   "    height: Math.max(0, parent.height - plPadTop - plPadBottom)\n"
+                   "    x: plLeading + plPadLeft\n"
+                   "    y: plPadTop\n"
+                   "    flow: Grid.TopToBottom\n"
+                   "  }\n"
+                   "}")
+            .arg(id);
     case PL_COMP_SCROLL:
         return QStringLiteral(
                    "import QtQuick 2.15\nimport QtQuick.Controls 2.15\n"
@@ -955,6 +1021,30 @@ QQuickItem *layoutOf(QQuickItem *item) {
     return nullptr;
 }
 
+bool isLazyGrid(uint32_t id) {
+    auto it = g.components.find(id);
+    return it != g.components.end() &&
+           (it->second == PL_COMP_LAZY_VGRID || it->second == PL_COMP_LAZY_HGRID);
+}
+
+// The inner QML `Grid` of a windowed lazy grid (the node widget is a wrapper
+// `Item`). Resolves lazily: the QML child may not exist yet at CREATE_NODE.
+QQuickItem *lazyGrid(uint32_t id) {
+    auto it = g.lazy_grids.find(id);
+    if (it != g.lazy_grids.end()) {
+        return it->second;
+    }
+    QQuickItem *item = findWidget(id);
+    if (!item) {
+        return nullptr;
+    }
+    QQuickItem *grid = item->findChild<QQuickItem *>(QStringLiteral("pl%1grid").arg(id));
+    if (grid) {
+        g.lazy_grids[id] = grid;
+    }
+    return grid;
+}
+
 // The `Layout` attached object for an item (Layout.fillWidth/fillHeight/
 // preferredWidth/…). Creates it on demand, as QML's `Layout.foo` would.
 QQuickLayoutAttached *layoutAttached(QQuickItem *item) {
@@ -963,6 +1053,230 @@ QQuickLayoutAttached *layoutAttached(QQuickItem *item) {
     }
     return qobject_cast<QQuickLayoutAttached *>(
         qmlAttachedPropertiesObject<QQuickLayout>(item, /*create=*/true));
+}
+
+// --- windowed lazy stacks (ADR-0014) ---------------------------------------
+
+QQuickItem *scrollAncestor(QQuickItem *item) {
+    for (QQuickItem *p = item ? item->parentItem() : nullptr; p; p = p->parentItem()) {
+        if (p->inherits("QQuickScrollView")) {
+            return p;
+        }
+    }
+    return nullptr;
+}
+
+QQuickItem *scrollContent(QQuickItem *sw) {
+    if (!sw) {
+        return nullptr;
+    }
+    return sw->property("contentItem").value<QQuickItem *>();
+}
+
+void reportLazyRange(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    auto ci = g.lazy_count.find(id);
+    auto ei = g.lazy_extent.find(id);
+    if (!item || ci == g.lazy_count.end() || ei == g.lazy_extent.end()) {
+        return;
+    }
+    const uint32_t count = ci->second;
+    const double extent = ei->second;
+    if (count == 0 || extent <= 0.0) {
+        return;
+    }
+    const double spacing = std::max(0.0, g.lazy_spacing.count(id) ? g.lazy_spacing[id] : 0.0);
+    const double stride = extent + spacing;
+    QQuickItem *sw = scrollAncestor(item);
+    QQuickItem *content = scrollContent(sw);
+    if (!sw || !content) {
+        return;
+    }
+    const bool vertical = g.components[id] == PL_COMP_LAZY_VSTACK ||
+                          g.components[id] == PL_COMP_LAZY_VGRID;
+    const QPointF origin = item->mapToItem(content, QPointF(0, 0));
+    const double offset = vertical ? origin.y() : origin.x();
+    const double viewStart = vertical ? content->property("contentY").toDouble()
+                                      : content->property("contentX").toDouble();
+    const double viewport = vertical ? sw->height() : sw->width();
+    const double start = viewStart - offset;
+    const double end = start + viewport;
+    uint32_t first;
+    uint32_t visible;
+    auto xi = g.lazy_extents.find(id);
+    if (xi != g.lazy_extents.end() && !xi->second.empty()) {
+        const auto &extents = xi->second;
+        const double firstOffset =
+            g.lazy_first_offset.count(id) ? g.lazy_first_offset[id] : 0.0;
+        const uint32_t windowFirst = g.lazy_first.count(id) ? g.lazy_first[id] : 0;
+        double cursor = firstOffset;
+        bool found = false;
+        uint32_t firstVisible = 0;
+        uint32_t lastVisible = 0;
+        for (size_t i = 0; i < extents.size(); ++i) {
+            const double itemStart = cursor;
+            const double itemEnd = cursor + extents[i];
+            if (itemEnd > start && itemStart < end) {
+                if (!found) {
+                    firstVisible = windowFirst + static_cast<uint32_t>(i);
+                    found = true;
+                }
+                lastVisible = windowFirst + static_cast<uint32_t>(i);
+            }
+            cursor = itemEnd + spacing;
+        }
+        if (found) {
+            first = firstVisible;
+            visible = lastVisible - firstVisible + 1;
+        } else {
+            const uint32_t estimate = static_cast<uint32_t>(
+                std::max(0.0, std::floor((start - firstOffset) / stride)));
+            first = std::min(count - 1, windowFirst + estimate);
+            visible = 1;
+        }
+    } else {
+        const uint32_t f = std::min(
+            count, static_cast<uint32_t>(std::max(0.0, std::floor(start / stride))));
+        const uint32_t l = std::min(
+            count, static_cast<uint32_t>(std::max(0.0, std::ceil(end / stride))));
+        first = f;
+        visible = l > f ? l - f : 0;
+    }
+    auto &previous = g.lazy_last[id];
+    if (previous.first == first && previous.second == visible) {
+        return;
+    }
+    previous = {first, visible};
+    if (g.bridge) {
+        g.bridge->visibleRange(id, first, visible);
+    }
+}
+
+void refreshLazyStack(uint32_t id) {
+    QQuickItem *item = findWidget(id);
+    auto ci = g.lazy_count.find(id);
+    auto ei = g.lazy_extent.find(id);
+    if (!item || ci == g.lazy_count.end() || ei == g.lazy_extent.end()) {
+        return;
+    }
+    const uint32_t count = ci->second;
+    const double extent = ei->second;
+    if (count == 0 || extent <= 0.0) {
+        return;
+    }
+    const bool grid = g.components[id] == PL_COMP_LAZY_VGRID ||
+                      g.components[id] == PL_COMP_LAZY_HGRID;
+    const bool vertical = g.components[id] == PL_COMP_LAZY_VSTACK ||
+                          g.components[id] == PL_COMP_LAZY_VGRID;
+    const double spacing = std::max(0.0, g.lazy_spacing.count(id) ? g.lazy_spacing[id] : 0.0);
+    const uint32_t first = g.lazy_first.count(id) ? g.lazy_first[id] : 0;
+    const size_t childCount = g.children_of.count(id) ? g.children_of[id].size() : 0;
+    const double stride = extent + spacing;
+    if (grid) {
+        QQuickItem *inner = lazyGrid(id);
+        if (!inner) {
+            return;
+        }
+        int tracks = vertical ? inner->property("columns").toInt()
+                              : inner->property("rows").toInt();
+        if (tracks <= 0) {
+            tracks = 1;
+        }
+        const uint32_t units =
+            static_cast<uint32_t>((childCount + static_cast<size_t>(tracks) - 1) /
+                                  static_cast<size_t>(tracks));
+        const double leading = first * stride;
+        const double trailing =
+            static_cast<double>(count > first + units ? count - first - units : 0) * stride;
+        item->setProperty("plLeading", leading);
+        item->setProperty("plTrailing", trailing);
+        reportLazyRange(id);
+        return;
+    }
+    QQuickItem *lay = layoutOf(item);
+    if (!lay) {
+        return;
+    }
+    const double firstOffset =
+        g.lazy_first_offset.count(id) ? g.lazy_first_offset[id] : first * stride;
+    const double totalExtent = g.lazy_total_extent.count(id)
+        ? g.lazy_total_extent[id]
+        : count * extent + (count > 0 ? count - 1 : 0) * spacing;
+    auto xi = g.lazy_extents.find(id);
+    double windowExtent;
+    if (xi != g.lazy_extents.end() && !xi->second.empty()) {
+        double sum = 0.0;
+        for (double value : xi->second) {
+            sum += value;
+        }
+        windowExtent = sum + (xi->second.size() > 0 ? xi->second.size() - 1 : 0) * spacing;
+    } else {
+        windowExtent = childCount * extent + (childCount > 0 ? childCount - 1 : 0) * spacing;
+    }
+    const double leading = std::max(0.0, firstOffset - spacing);
+    const double trailing =
+        std::max(0.0, totalExtent - firstOffset - windowExtent - spacing);
+
+    auto sit = g.lazy_spacers.find(id);
+    if (sit != g.lazy_spacers.end()) {
+        for (QQuickItem *w : sit->second) {
+            w->setParentItem(nullptr);
+            w->deleteLater();
+        }
+        sit->second.clear();
+    }
+    auto addSpacer = [&](double size, bool leadingSpacer) {
+        if (size <= 0.0) {
+            return;
+        }
+        auto *spacer = new QQuickItem();
+        spacer->setParentItem(lay);
+        if (QQuickLayoutAttached *a = layoutAttached(spacer)) {
+            if (vertical) {
+                a->setPreferredHeight(size);
+                a->setFillWidth(true);
+            } else {
+                a->setPreferredWidth(size);
+                a->setFillHeight(true);
+            }
+        }
+        if (leadingSpacer) {
+            const auto kids = lay->childItems();
+            if (kids.size() > 1) {
+                spacer->stackBefore(kids.first());
+            }
+        }
+        g.lazy_spacers[id].push_back(spacer);
+    };
+    addSpacer(leading, true);
+    addSpacer(trailing, false);
+
+    // The visible range is polled from the shell's idle tick (the scroll
+    // offsets have no stable cross-version signal in the Qt Quick Controls
+    // ScrollView); report once here so the first window is not delayed.
+    reportLazyRange(id);
+}
+
+void refreshLazyRanges() {
+    std::vector<uint32_t> ids;
+    ids.reserve(g.lazy_count.size());
+    for (const auto &kv : g.lazy_count) {
+        ids.push_back(kv.first);
+    }
+    for (uint32_t id : ids) {
+        reportLazyRange(id);
+    }
+}
+
+void refreshLazyStacks() {
+    std::vector<uint32_t> ids;
+    ids.reserve(g.lazy_count.size());
+    for (const auto &kv : g.lazy_count) {
+        ids.push_back(kv.first);
+    }
+    for (uint32_t id : ids) {
+        refreshLazyStack(id);
+    }
 }
 
 // The spec's stack model (spec/LAYOUT.md, spec/PRIMITIVES.md):
@@ -1911,6 +2225,18 @@ void applyPaddingEdges(uint32_t id) {
     const double bottom = p.has_bottom ? p.bottom : base;
     const double left = p.has_left ? p.left : base;
 
+    if (isLazyGrid(id)) {
+        // The lazy-grid wrapper owns the virtual extent, so padding is an
+        // inset applied inside the wrapper (the QML grid is offset by it),
+        // not outer margins.
+        item->setProperty("plPad", base);
+        item->setProperty("plPadTop", top);
+        item->setProperty("plPadRight", right);
+        item->setProperty("plPadBottom", bottom);
+        item->setProperty("plPadLeft", left);
+        return;
+    }
+
     if (layoutOf(item)) {
         // Stack / composite: inner padding (layout margins + hugged implicit size).
         item->setProperty("plPad", base);
@@ -1967,12 +2293,37 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
     }
     switch (prop) {
     case PL_PROP_SPACING: {
+        const double spacing = f32(value);
+        if (g.components[id] == PL_COMP_LAZY_VSTACK ||
+            g.components[id] == PL_COMP_LAZY_HSTACK ||
+            g.components[id] == PL_COMP_LAZY_VGRID ||
+            g.components[id] == PL_COMP_LAZY_HGRID) {
+            g.lazy_spacing[id] = spacing;
+        }
+        if (QQuickItem *grid = lazyGrid(id)) {
+            grid->setProperty("spacing", spacing);
+        }
         QQuickItem *lay = layoutOf(item);
         if (lay) {
-            lay->setProperty("spacing", static_cast<double>(f32(value)));
+            lay->setProperty("spacing", spacing);
         }
         break;
     }
+    case PL_PROP_ITEM_COUNT:
+        g.lazy_count[id] = value;
+        break;
+    case PL_PROP_ITEM_EXTENT:
+        g.lazy_extent[id] = f32(value);
+        break;
+    case PL_PROP_FIRST_ITEM_INDEX:
+        g.lazy_first[id] = value;
+        break;
+    case PL_PROP_FIRST_ITEM_OFFSET:
+        g.lazy_first_offset[id] = f32(value);
+        break;
+    case PL_PROP_TOTAL_EXTENT:
+        g.lazy_total_extent[id] = f32(value);
+        break;
     case PL_PROP_ALIGNMENT:
         // Stored here; `recomputeLayout` positions the children after the
         // frame's props have all landed (Fill(3)/absent = start, never stretch).
@@ -2235,11 +2586,20 @@ void applyProperty(uint32_t id, uint16_t prop, uint8_t value_type, uint32_t valu
         }
         break;
     }
-    case PL_PROP_GRID_COLUMNS:
-        if (item->property("columns").isValid()) {
-            item->setProperty("columns", static_cast<int>(f32(value)));
+    case PL_PROP_GRID_COLUMNS: {
+        QQuickItem *target = lazyGrid(id) ? lazyGrid(id) : item;
+        if (target->property("columns").isValid()) {
+            target->setProperty("columns", static_cast<int>(f32(value)));
         }
         break;
+    }
+    case PL_PROP_GRID_ROWS: {
+        QQuickItem *target = lazyGrid(id) ? lazyGrid(id) : item;
+        if (target->property("rows").isValid()) {
+            target->setProperty("rows", static_cast<int>(f32(value)));
+        }
+        break;
+    }
     // ── Media transport (spec/MEDIA.md) ────────────────────────────────
     case PL_PROP_PLAYBACK_STATE: {
         g.media_play_state[id] = value;
@@ -2323,6 +2683,18 @@ void applyStringProperty(uint32_t id, uint16_t prop, const char *str, uint32_t l
         g.fit_queries[id] = thresholds;
         g.fit_index.erase(id);
         reportFit(id, item->width());
+        break;
+    }
+    case PL_PROP_ITEM_EXTENTS: {
+        std::vector<double> extents;
+        for (const QString &part : value.split(',', Qt::SkipEmptyParts)) {
+            bool ok = false;
+            const double v = part.trimmed().toDouble(&ok);
+            if (ok) {
+                extents.push_back(v);
+            }
+        }
+        g.lazy_extents[id] = extents;
         break;
     }
     case PL_PROP_ICON_NAME:
@@ -2409,6 +2781,16 @@ void resetNode(uint32_t id) {
     g.height_hint.erase(id);
     g.shape_kind.erase(id);
     g.scroll_axis.erase(id);
+    g.lazy_spacers.erase(id);
+    g.lazy_grids.erase(id);
+    g.lazy_extents.erase(id);
+    g.lazy_first_offset.erase(id);
+    g.lazy_total_extent.erase(id);
+    g.lazy_count.erase(id);
+    g.lazy_extent.erase(id);
+    g.lazy_first.erase(id);
+    g.lazy_spacing.erase(id);
+    g.lazy_last.erase(id);
     g.hit_testing.erase(id);
     g.offset_x.erase(id);
     g.offset_y.erase(id);
@@ -2504,6 +2886,23 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
     if (g.nav_slots.count(parentId)) {
         reconcileNav(parentId); // destination subtree swap -> refresh/replace the top page
         return; // the destination is placed by the nav adapter, not visually here
+    }
+    if (QQuickItem *grid = lazyGrid(parentId)) {
+        // Cells live in the inner Grid; reattach in protocol order so the QML
+        // positioner's cell order matches the window.
+        std::vector<QQuickItem *> ordered;
+        for (uint32_t cid : g.children_of[parentId]) {
+            if (QQuickItem *c = findWidget(cid)) {
+                ordered.push_back(c);
+            }
+        }
+        for (QQuickItem *c : ordered) {
+            c->setParentItem(nullptr);
+        }
+        for (QQuickItem *c : ordered) {
+            c->setParentItem(grid);
+        }
+        return;
     }
 
     // GRID_ROW (spec/PRIMITIVES.md): a row's cells are flattened into the parent
@@ -2802,6 +3201,7 @@ int pathland_qt_layer_init(PathlandQtWake wake, PathlandQtTick tick,
     g.tick_timer->setInterval(0);
     g.tick_timer->setSingleShot(false);
     QObject::connect(g.tick_timer, &QTimer::timeout, g.app, [tick, user]() {
+        refreshLazyRanges();
         if (tick) {
             tick(user);
         }
@@ -2842,6 +3242,12 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
             if (item) {
                 g.widgets[c.a] = item;
                 g.components[c.a] = component;
+                if (component == PL_COMP_LAZY_VGRID || component == PL_COMP_LAZY_HGRID) {
+                    if (auto *grid = item->findChild<QQuickItem *>(
+                            QStringLiteral("pl%1grid").arg(c.a))) {
+                        g.lazy_grids[c.a] = grid;
+                    }
+                }
                 if (component == PL_COMP_SIZE_THAT_FITS) {
                     const uint32_t id = c.a;
                     QObject::connect(item, &QQuickItem::widthChanged, item,
@@ -2994,6 +3400,7 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
     // size props and RESETs have been applied (spec effective-fill + fill
     // propagation). This keeps the layout a pure function of the emitted tree.
     recomputeLayout();
+    refreshLazyStacks();
     g.apply_count += count;
 }
 
@@ -3019,6 +3426,16 @@ void pathland_qt_layer_reset(void) {
     g.height_hint.clear();
     g.shape_kind.clear();
     g.scroll_axis.clear();
+    g.lazy_count.clear();
+    g.lazy_extent.clear();
+    g.lazy_first.clear();
+    g.lazy_spacing.clear();
+    g.lazy_spacers.clear();
+    g.lazy_grids.clear();
+    g.lazy_extents.clear();
+    g.lazy_first_offset.clear();
+    g.lazy_total_extent.clear();
+    g.lazy_last.clear();
     g.hit_testing.clear();
     g.offset_x.clear();
     g.offset_y.clear();

@@ -73,7 +73,7 @@ use alloc::collections::BTreeMap;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::cell::RefCell;
+use core::cell::{Cell, RefCell};
 
 /// Re-exported for `vstack!`/`hstack!` macro hygiene (`$crate::Box`).
 pub use alloc::boxed::Box;
@@ -114,6 +114,40 @@ pub trait View {
     fn build(&self) -> Node {
         self.build_env(&mut Environment::default())
     }
+
+    /// A lazy-stack data source when this view is a `ForEach` (ADR-0014).
+    /// Lazy stacks consume the source instead of rendering it as a child.
+    fn lazy_source(&self) -> Option<&dyn LazySource> {
+        None
+    }
+}
+
+/// A windowed data source consumed by a `LazyVStack`/`LazyHStack` (ADR-0014).
+///
+/// The window is host-managed: `window()` returns the shared `(first, len)`
+/// cell the host updates on `VISIBLE_RANGE` before rebuilding/emitting the
+/// view tree.
+pub trait LazySource {
+    /// Total item count.
+    fn count(&self) -> usize;
+    /// The uniform main-axis item extent, if declared explicitly.
+    fn extent(&self) -> Option<f32>;
+    /// Per-item main-axis extents, if declared explicitly (variable-height stacks).
+    fn extents(&self) -> Option<&[f32]> {
+        None
+    }
+    /// The persistent key -> id-block map for keyed window reconcile.
+    fn id_map(&self) -> Option<Rc<RefCell<BTreeMap<u64, (u32, u32)>>>> {
+        None
+    }
+    /// Build one row view.
+    fn build(&self, index: usize) -> Box<dyn View>;
+    /// A stable key for the item at `index` (defaults to the index).
+    fn key(&self, index: usize) -> u64 {
+        index as u64
+    }
+    /// The shared window cell: `(first absolute index, item count)`.
+    fn window(&self) -> Rc<Cell<(usize, usize)>>;
 }
 
 /// A view decorator (SwiftUI `ViewModifier`): transforms a node's properties.
@@ -1462,6 +1496,8 @@ fn plain_node(component: Component, children: Vec<Node>, properties: BTreeMap<u1
         string_bindings: BTreeMap::new(),
         media_controller: None,
         gestures: Vec::new(),
+        lazy_keys: Vec::new(),
+        lazy_ids: None,
     }
 }
 
@@ -2599,6 +2635,61 @@ impl View for ScrollView {
 
 children_static!(ScrollView);
 
+fn build_lazy_grid(
+    component: Component,
+    vertical: bool,
+    config: &GridConfig,
+    source: &dyn LazySource,
+    env: &mut Environment,
+) -> Node {
+    let tracks = match if vertical { config.columns } else { config.rows } {
+        Some(Reactive::Static(value)) => (value as usize).max(1),
+        _ => panic!("a windowed lazy grid requires a static columns/rows count"),
+    };
+    let count = source.count();
+    let unit_count = if count == 0 {
+        0
+    } else {
+        (count + tracks - 1) / tracks
+    };
+    let extent = source
+        .extent()
+        .unwrap_or_else(|| infer_lazy_extent(source, vertical, env));
+    let (mut first, mut len) = source.window().get();
+    if unit_count == 0 {
+        first = 0;
+        len = 0;
+    } else {
+        first = first.min(unit_count - 1);
+        len = len.min(unit_count - first);
+    }
+    let mut node = plain_node(component, Vec::new(), BTreeMap::new());
+    grid_apply(config, &mut node);
+    node.properties.insert(property_id::ITEM_COUNT, unit_count as u32);
+    node.properties.insert(property_id::ITEM_EXTENT, extent.to_bits());
+    node.properties
+        .insert(property_id::FIRST_ITEM_INDEX, first as u32);
+    node.properties.insert(
+        property_id::EVENT_LISTENERS,
+        pathland_core::listener::VISIBLE_RANGE,
+    );
+    let mut keys = Vec::new();
+    for unit in first..first + len {
+        let start = unit * tracks;
+        for offset in 0..tracks {
+            let index = start + offset;
+            if index >= count {
+                break;
+            }
+            keys.push(source.key(index));
+            node.children.push(source.build(index).build_env(env));
+        }
+    }
+    node.lazy_keys = keys;
+    node.lazy_ids = source.id_map();
+    node
+}
+
 container_debug!(LazyVGrid);
 /// A virtualized vertical grid.
 #[derive(Default)]
@@ -2632,6 +2723,9 @@ impl Children for LazyVGrid {
 
 impl View for LazyVGrid {
     fn build_env(&self, _env: &mut Environment) -> Node {
+        if let Some(source) = self.children.iter().find_map(|c| c.lazy_source()) {
+            return build_lazy_grid(Component::LazyVGrid, true, &self.config, source, _env);
+        }
         let mut node = plain_node(
             Component::LazyVGrid,
             build_children(&self.children, _env),
@@ -2678,6 +2772,9 @@ impl Children for LazyHGrid {
 
 impl View for LazyHGrid {
     fn build_env(&self, _env: &mut Environment) -> Node {
+        if let Some(source) = self.children.iter().find_map(|c| c.lazy_source()) {
+            return build_lazy_grid(Component::LazyHGrid, false, &self.config, source, _env);
+        }
         let mut node = plain_node(
             Component::LazyHGrid,
             build_children(&self.children, _env),
@@ -2690,6 +2787,227 @@ impl View for LazyHGrid {
 
 view_statics!(LazyHGrid);
 children_static!(LazyHGrid);
+
+/// A lazy-stack data source (ADR-0014). Outside a lazy stack it renders every
+/// row eagerly (a `VStack`); a `LazyVStack`/`LazyHStack` consumes it as a
+/// windowed data source and builds only the rows in the shared window cell.
+///
+/// The host updates the window handle on `VISIBLE_RANGE`, then rebuilds and
+/// emits the tree:
+///
+/// ```ignore
+/// let foreach = ForEach::new(items, |item, i| Box::new(text(item)));
+/// let window = foreach.window_handle();
+/// let root = LazyVStack::children(vec![Box::new(foreach)]);
+/// // on Event::VisibleRange { first_index, count, .. }:
+/// window.set((first_index as usize, (count as usize) + 2));
+/// let node = root.build();
+/// engine.emit(&node, &mut guest)?;
+/// ```
+pub struct ForEach<T> {
+    items: Vec<T>,
+    content: Rc<dyn Fn(&T, usize) -> Box<dyn View>>,
+    key: Option<fn(&T) -> u64>,
+    extent: Option<f32>,
+    extents: Option<Vec<f32>>,
+    window: Rc<Cell<(usize, usize)>>,
+    ids: Rc<RefCell<BTreeMap<u64, (u32, u32)>>>,
+}
+
+impl<T: 'static> ForEach<T> {
+    /// A data source over `items` with a row builder.
+    pub fn new(items: Vec<T>, content: impl Fn(&T, usize) -> Box<dyn View> + 'static) -> Self {
+        Self {
+            items,
+            content: Rc::new(content),
+            key: None,
+            extent: None,
+            extents: None,
+            window: Rc::new(Cell::new((0, 22))),
+            ids: Rc::new(RefCell::new(BTreeMap::new())),
+        }
+    }
+
+    /// Declare a uniform main-axis item extent instead of inferring it from the
+    /// row's fixed `.frame(height/width)`.
+    pub fn item_extent(mut self, extent: f32) -> Self {
+        self.extent = Some(extent);
+        self.extents = None;
+        self
+    }
+
+    /// Declare one main-axis extent per item (variable-height stacks). The
+    /// engine emits `ITEM_EXTENTS` for the window plus the exact
+    /// `FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`; `ITEM_EXTENT` becomes the average.
+    /// A numeric `.spacing(…)` is required for exact offsets.
+    pub fn item_extents(mut self, extents: Vec<f32>) -> Self {
+        self.extents = Some(extents);
+        self.extent = None;
+        self
+    }
+
+    /// A stable item key (for host-side identity; the engine diff is
+    /// position-based today).
+    pub fn key(mut self, key: fn(&T) -> u64) -> Self {
+        self.key = Some(key);
+        self
+    }
+
+    /// The shared `(first absolute index, item count)` window cell.
+    pub fn window_handle(&self) -> Rc<Cell<(usize, usize)>> {
+        self.window.clone()
+    }
+}
+
+impl<T: 'static> View for ForEach<T> {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let mut node = Node::from_component(&Component::VStack);
+        for index in 0..self.items.len() {
+            node.children.push((self.content)(&self.items[index], index).build_env(env));
+        }
+        node
+    }
+
+    fn lazy_source(&self) -> Option<&dyn LazySource> {
+        Some(self)
+    }
+}
+
+impl<T: 'static> LazySource for ForEach<T> {
+    fn count(&self) -> usize {
+        self.items.len()
+    }
+    fn extent(&self) -> Option<f32> {
+        self.extent
+    }
+    fn extents(&self) -> Option<&[f32]> {
+        self.extents.as_deref()
+    }
+    fn id_map(&self) -> Option<Rc<RefCell<BTreeMap<u64, (u32, u32)>>>> {
+        Some(self.ids.clone())
+    }
+    fn build(&self, index: usize) -> Box<dyn View> {
+        (self.content)(&self.items[index], index)
+    }
+    fn key(&self, index: usize) -> u64 {
+        match self.key {
+            Some(key) => key(&self.items[index]),
+            None => index as u64,
+        }
+    }
+    fn window(&self) -> Rc<Cell<(usize, usize)>> {
+        self.window.clone()
+    }
+}
+
+fn infer_lazy_extent(source: &dyn LazySource, vertical: bool, env: &mut Environment) -> f32 {
+    let probe = source.build(0).build_env(env);
+    let property = if vertical {
+        property_id::HEIGHT
+    } else {
+        property_id::WIDTH
+    };
+    if let Some(bits) = probe.properties.get(&property) {
+        let value = f32::from_bits(*bits);
+        if value.is_finite() && value > 0.0 {
+            return value;
+        }
+    }
+    panic!(
+        "a windowed lazy stack requires each ForEach row to declare a fixed main-axis frame          (e.g. .frame(height: 44.0)) or ForEach::item_extent"
+    );
+}
+
+fn build_lazy_stack(
+    component: Component,
+    vertical: bool,
+    config: &StackConfig,
+    source: &dyn LazySource,
+    env: &mut Environment,
+) -> Node {
+    let count = source.count();
+    let extents = source.extents();
+    if let Some(values) = extents {
+        assert_eq!(
+            values.len(),
+            count,
+            "ForEach::item_extents length must match the item count"
+        );
+    }
+    let extent = match extents {
+        Some(values) if !values.is_empty() => {
+            values.iter().sum::<f32>() / values.len() as f32
+        }
+        _ => source
+            .extent()
+            .unwrap_or_else(|| infer_lazy_extent(source, vertical, env)),
+    };
+    let (mut first, mut len) = source.window().get();
+    if count == 0 {
+        first = 0;
+        len = 0;
+    } else {
+        first = first.min(count - 1);
+        len = len.min(count - first);
+    }
+    let mut properties = BTreeMap::new();
+    if let Some(a) = config.alignment {
+        properties.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
+    }
+    properties.insert(property_id::ITEM_COUNT, count as u32);
+    properties.insert(property_id::ITEM_EXTENT, extent.to_bits());
+    properties.insert(property_id::FIRST_ITEM_INDEX, first as u32);
+    properties.insert(
+        property_id::EVENT_LISTENERS,
+        pathland_core::listener::VISIBLE_RANGE,
+    );
+    let mut node = plain_node(component, Vec::new(), properties);
+    if let Some(s) = &config.spacing {
+        apply_length(&mut node, property_id::SPACING, s);
+    }
+    let spacing = node
+        .properties
+        .get(&property_id::SPACING)
+        .copied()
+        .map(f32::from_bits)
+        .unwrap_or(0.0)
+        .max(0.0);
+    let mut list_extents: Option<Vec<f32>> = None;
+    if let Some(values) = extents {
+        if count > 0 {
+            let first_offset = values[..first].iter().sum::<f32>() + spacing * first as f32;
+            let total_extent =
+                values.iter().sum::<f32>() + spacing * (count.saturating_sub(1)) as f32;
+            node.properties
+                .insert(property_id::FIRST_ITEM_OFFSET, first_offset.to_bits());
+            node.properties
+                .insert(property_id::TOTAL_EXTENT, total_extent.to_bits());
+            list_extents = Some(values[first..first + len].to_vec());
+        }
+    }
+    if let Some(values) = &list_extents {
+        node.list_properties
+            .insert(property_id::ITEM_EXTENTS, values.clone());
+    }
+    let main_property = if vertical {
+        property_id::HEIGHT
+    } else {
+        property_id::WIDTH
+    };
+    let mut keys = Vec::with_capacity(len);
+    for index in first..first + len {
+        let mut child = source.build(index).build_env(env);
+        if let Some(values) = extents {
+            child.properties.insert(main_property, values[index].to_bits());
+            child.property_bindings.remove(&main_property);
+        }
+        keys.push(source.key(index));
+        node.children.push(child);
+    }
+    node.lazy_keys = keys;
+    node.lazy_ids = source.id_map();
+    node
+}
 
 container_debug!(LazyVStack);
 /// A virtualized vertical stack.
@@ -2723,12 +3041,15 @@ impl Children for LazyVStack {
 }
 
 impl View for LazyVStack {
-    fn build_env(&self, _env: &mut Environment) -> Node {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        if let Some(source) = self.children.iter().find_map(|c| c.lazy_source()) {
+            return build_lazy_stack(Component::LazyVStack, true, &self.config, source, env);
+        }
         let mut p = BTreeMap::new();
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
         }
-        let mut node = plain_node(Component::LazyVStack, build_children(&self.children, _env), p);
+        let mut node = plain_node(Component::LazyVStack, build_children(&self.children, env), p);
         if let Some(s) = self.config.spacing {
             apply_length(&mut node, property_id::SPACING, &s);
         }
@@ -2771,12 +3092,15 @@ impl Children for LazyHStack {
 }
 
 impl View for LazyHStack {
-    fn build_env(&self, _env: &mut Environment) -> Node {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        if let Some(source) = self.children.iter().find_map(|c| c.lazy_source()) {
+            return build_lazy_stack(Component::LazyHStack, false, &self.config, source, env);
+        }
         let mut p = BTreeMap::new();
         if let Some(a) = self.config.alignment {
             p.insert(property_id::ALIGNMENT, (a.value() as f32).to_bits());
         }
-        let mut node = plain_node(Component::LazyHStack, build_children(&self.children, _env), p);
+        let mut node = plain_node(Component::LazyHStack, build_children(&self.children, env), p);
         if let Some(s) = self.config.spacing {
             apply_length(&mut node, property_id::SPACING, &s);
         }
@@ -4784,5 +5108,334 @@ mod media_tests {
             value_type::STRING,
             "the resource rides the STRING value type"
         );
+    }
+
+    #[test]
+    fn lazy_vstack_for_each_builds_only_the_window() {
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("item-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((10, 3));
+
+        let node = LazyVStack::children(vec![Box::new(foreach)]).build();
+        assert_eq!(node.component, Component::LazyVStack);
+        assert_eq!(
+            node.properties.get(&property_id::ITEM_COUNT).copied(),
+            Some(100)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::ITEM_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(44.0)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::FIRST_ITEM_INDEX)
+                .copied(),
+            Some(10)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::EVENT_LISTENERS)
+                .copied(),
+            Some(pathland_core::listener::VISIBLE_RANGE)
+        );
+        assert_eq!(node.children.len(), 3);
+        assert_eq!(
+            node.children[0].component,
+            Component::Text {
+                text: "item-10".into()
+            }
+        );
+        assert_eq!(
+            node.children[0]
+                .properties
+                .get(&property_id::HEIGHT)
+                .copied()
+                .map(f32::from_bits),
+            Some(44.0)
+        );
+    }
+
+    #[test]
+    fn lazy_vstack_for_each_uses_variable_extents() {
+        let extents = std::vec![40.0, 50.0, 60.0];
+        let foreach = ForEach::new((0..3).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("item-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        })
+        .item_extents(extents.clone());
+        let window = foreach.window_handle();
+        window.set((0, 3));
+
+        let node = LazyVStack::children(vec![Box::new(foreach)])
+            .with(|c| {
+                c.spacing(2.0);
+            })
+            .build();
+        assert_eq!(
+            node.properties.get(&property_id::ITEM_COUNT).copied(),
+            Some(3)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::ITEM_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(50.0),
+            "the default extent is the average"
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::FIRST_ITEM_OFFSET)
+                .copied()
+                .map(f32::from_bits),
+            Some(0.0)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::TOTAL_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(40.0 + 50.0 + 60.0 + 2.0 * 2.0)
+        );
+        assert_eq!(
+            node.list_properties.get(&property_id::ITEM_EXTENTS),
+            Some(&extents)
+        );
+        for (child, expected) in node.children.iter().zip(extents.iter()) {
+            assert_eq!(
+                child
+                    .properties
+                    .get(&property_id::HEIGHT)
+                    .copied()
+                    .map(f32::from_bits),
+                Some(*expected)
+            );
+        }
+    }
+
+    #[test]
+    fn lazy_vgrid_for_each_builds_a_row_window() {
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("cell-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((10, 3));
+
+        let node = LazyVGrid::children(vec![Box::new(foreach)])
+            .with(|c| {
+                c.columns(3.0);
+            })
+            .build();
+        assert_eq!(node.component, Component::LazyVGrid);
+        assert_eq!(
+            node.properties.get(&property_id::ITEM_COUNT).copied(),
+            Some(34),
+            "ceil(100 cells / 3 columns)"
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::ITEM_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(44.0)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::FIRST_ITEM_INDEX)
+                .copied(),
+            Some(10)
+        );
+        assert_eq!(node.children.len(), 9, "3 rows * 3 cells");
+        assert_eq!(
+            node.children[0].component,
+            Component::Text {
+                text: "cell-30".into()
+            }
+        );
+    }
+
+    #[test]
+    fn lazy_hgrid_for_each_builds_a_column_window() {
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("cell-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::width(80.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((2, 2));
+
+        let node = LazyHGrid::children(vec![Box::new(foreach)])
+            .with(|c| {
+                c.rows(3.0);
+            })
+            .build();
+        assert_eq!(node.component, Component::LazyHGrid);
+        assert_eq!(
+            node.properties.get(&property_id::ITEM_COUNT).copied(),
+            Some(34)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::ITEM_EXTENT)
+                .copied()
+                .map(f32::from_bits),
+            Some(80.0)
+        );
+        assert_eq!(
+            node.properties
+                .get(&property_id::FIRST_ITEM_INDEX)
+                .copied(),
+            Some(2)
+        );
+        assert_eq!(node.children.len(), 6, "2 columns * 3 cells");
+        assert_eq!(
+            node.children[0].component,
+            Component::Text {
+                text: "cell-6".into()
+            }
+        );
+    }
+
+    #[test]
+    fn lazy_window_slide_reemits_the_window() {
+        use pathland_core::{init_memory, Guest, Host, MemoryLayout};
+
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("item-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((0, 3));
+        let view = LazyVStack::children(vec![Box::new(foreach)]);
+        let mut tree = view.build();
+        assign_ids(&mut tree, &mut 1);
+
+        let mut engine = Engine::new();
+        let layout = MemoryLayout::default();
+        let mut mem = std::vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let _ = host.frames();
+        }
+
+        window.set((10, 3));
+        let mut tree = view.build();
+        assign_ids(&mut tree, &mut 1);
+        let delta: std::vec::Vec<_> = {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let frames = host.frames();
+            frames[0].opcodes().collect()
+        };
+
+        assert!(delta.iter().any(|op| {
+            op.category() == pathland_core::category::PARAMETER
+                && op.command() == pathland_core::parameter::SET_PROPERTY
+                && op.a() == 1
+                && (op.b() & 0xFFFF) == property_id::FIRST_ITEM_INDEX as u32
+        }), "the window start is re-emitted");
+        let text_updates = delta
+            .iter()
+            .filter(|op| {
+                op.category() == pathland_core::category::PARAMETER
+                    && op.command() == pathland_core::parameter::SET_TEXT
+            })
+            .count();
+        assert_eq!(text_updates, 3, "each window row's text is updated");
+    }
+
+    #[test]
+    fn lazy_window_slide_reconciles_by_item_key() {
+        use pathland_core::{category, init_memory, parameter, Guest, Host, MemoryLayout};
+
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |item, _| {
+            let label = std::format!("item-{item}");
+            Box::new(Text::new(&label).modifiers(Frame::height(44.0)))
+        });
+        let window = foreach.window_handle();
+        window.set((0, 4));
+        let view = LazyVStack::children(vec![Box::new(foreach)]);
+        let mut tree = view.build();
+        assign_ids(&mut tree, &mut 1);
+
+        let mut engine = Engine::new();
+        let layout = MemoryLayout::default();
+        let mut mem = std::vec![0u8; layout.total_bytes()];
+        init_memory(&mut mem, &layout);
+        {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let _ = host.frames();
+        }
+
+        // Slide by one: keys 1..3 stay in the window and keep their ids; only
+        // item-4 is created and item-0 deleted.
+        window.set((1, 4));
+        let mut tree = view.build();
+        assign_ids(&mut tree, &mut 1);
+        let (delta, texts) = {
+            let mut guest = Guest::new(&mut mem, &layout);
+            guest.begin_frame();
+            engine.emit(&tree, &mut guest).unwrap();
+            guest.end_frame();
+            let mut host = Host::new(&mut mem, &layout);
+            let frames = host.frames();
+            let frame = &frames[0];
+            let ops: std::vec::Vec<_> = frame.opcodes().collect();
+            let texts: std::vec::Vec<String> = ops
+                .iter()
+                .filter(|op| {
+                    op.category() == category::PARAMETER
+                        && op.command() == parameter::SET_TEXT
+                })
+                .map(|op| {
+                    std::string::String::from_utf8(frame.arena_get(op.b()).unwrap().to_vec())
+                        .unwrap()
+                })
+                .collect();
+            (ops, texts)
+        };
+
+        assert_eq!(
+            delta
+                .iter()
+                .filter(|op| {
+                    op.category() == category::TREE
+                        && op.command() == pathland_core::tree::CREATE_NODE
+                })
+                .count(),
+            1,
+            "only the newly entered row is created"
+        );
+        assert_eq!(
+            delta
+                .iter()
+                .filter(|op| {
+                    op.category() == category::TREE
+                        && op.command() == pathland_core::tree::DELETE_NODE
+                })
+                .count(),
+            1,
+            "only the evicted row is deleted"
+        );
+        assert_eq!(texts, std::vec![std::string::String::from("item-4")]);
     }
 }

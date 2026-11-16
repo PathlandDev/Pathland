@@ -23,3 +23,5 @@ package names, class structure, or formatting.
 - The manifest is emitted from explicit Rust constant bindings rather than
   reflection; adding a new Rust constant deliberately requires adding its
   manifest row so the output stays ordered and documented.
+- **Virtualized lazy stacks (ADR-0014)**: the lazy-window properties and
+  `VISIBLE_RANGE` event are in the manifest.

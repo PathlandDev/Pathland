@@ -43,3 +43,5 @@ Cross-renderer **golden conformance fixtures** for the HTML renderers.
 
 - Scenario coverage is a representative slice (the core shells + tokens); it is
   not exhaustive over every property/component combination.
+- No virtualized-lazy-stack fixture (virtual extent + window placement) yet
+  (ADR-0014).

@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class DslTest {
 
@@ -250,6 +252,161 @@ class DslTest {
             it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE
         })
         assertEquals("c", texts(delta).single())
+    }
+
+    @Test
+    fun lazyStackEmitsAWindowedDataSource() {
+        val items = signal((0 until 100).map { "item-$it" })
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+            },
+            Environment.DEFAULT,
+        )
+        val frame = sink.frame()
+        val props = frame.opcodes().filter {
+            it.category() == Categories.PARAMETER && it.command() == Commands.Parameter.SET_PROPERTY
+        }
+        fun property(id: Int): Int? = props.firstOrNull { (it.b() and 0xffff) == id }?.c()
+        assertEquals(100, property(Properties.ITEM_COUNT))
+        assertEquals(44f, Float.fromBits(property(Properties.ITEM_EXTENT)!!))
+        assertEquals(0, property(Properties.FIRST_ITEM_INDEX))
+        // Default first window (20) + overscan (2).
+        assertEquals(22, texts(frame).size)
+
+        result.visibleRanges()[result.rootId()]!!.onVisibleRange(50, 5)
+        val delta = sink.frame()
+        assertEquals(9, delta.opcodes().count {
+            it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE
+        })
+        assertEquals(48, delta.opcodes().first {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_PROPERTY &&
+                (it.b() and 0xffff) == Properties.FIRST_ITEM_INDEX
+        }.c())
+    }
+
+    @Test
+    fun lazyVGridEmitsARowWindow() {
+        val items = signal((0 until 100).map { "cell-$it" })
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            LazyVGrid(columns = 3, spacing = 0f) {
+                ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+            },
+            Environment.DEFAULT,
+        )
+        val frame = sink.frame()
+        val props = frame.opcodes().filter {
+            it.category() == Categories.PARAMETER && it.command() == Commands.Parameter.SET_PROPERTY
+        }
+        fun property(id: Int): Int? = props.firstOrNull { (it.b() and 0xffff) == id }?.c()
+        // ceil(100 cells / 3 columns) = 34 rows.
+        assertEquals(34, property(Properties.ITEM_COUNT))
+        assertEquals(44f, Float.fromBits(property(Properties.ITEM_EXTENT)!!))
+        assertEquals(0, property(Properties.FIRST_ITEM_INDEX))
+        // Default first window (20) + overscan (2) rows = 66 cells.
+        assertEquals(66, texts(frame).size)
+
+        result.visibleRanges()[result.rootId()]!!.onVisibleRange(10, 2)
+        val delta = sink.frame()
+        // Window 8..13 (overscan on both sides) = 6 rows = 18 cells; keys
+        // 24..41 are retained, the other 48 cells are deleted.
+        assertEquals(48, delta.opcodes().count {
+            it.category() == Categories.TREE && it.command() == Commands.Tree.DELETE_NODE
+        })
+        assertEquals(8, delta.opcodes().first {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_PROPERTY &&
+                (it.b() and 0xffff) == Properties.FIRST_ITEM_INDEX
+        }.c())
+    }
+
+    @Test
+    fun lazyStackSupportsVariableItemExtents() {
+        val items = (0 until 10).map { "item-$it" }
+        val extents = List(10) { 40f + it }
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        emitter.mount(
+            LazyVStack(spacing = 2f) {
+                ForEach(items, itemExtents = extents) { item, _ -> Text(item) }
+            },
+            Environment.DEFAULT,
+        )
+        val frame = sink.frame()
+        val props = frame.opcodes().filter {
+            it.category() == Categories.PARAMETER && it.command() == Commands.Parameter.SET_PROPERTY
+        }
+        fun property(id: Int): Int? = props.firstOrNull { (it.b() and 0xffff) == id }?.c()
+
+        assertEquals(10, property(Properties.ITEM_COUNT))
+        assertEquals(44.5f, Float.fromBits(property(Properties.ITEM_EXTENT)!!))
+        assertEquals(0f, Float.fromBits(property(Properties.FIRST_ITEM_OFFSET)!!))
+        // sum(40..49) + 9*2 = 463.
+        assertEquals(463f, Float.fromBits(property(Properties.TOTAL_EXTENT)!!))
+
+        val offset = props.first { (it.b() and 0xffff) == Properties.ITEM_EXTENTS }.c()
+        val strings = frame.strings()
+        val view = ByteBuffer.wrap(strings, offset, 4).order(ByteOrder.LITTLE_ENDIAN)
+        val count = view.int
+        assertEquals(10, count)
+        val values = FloatArray(count) { i ->
+            java.lang.Float.intBitsToFloat(
+                ByteBuffer.wrap(strings, offset + 4 + 4 * i, 4)
+                    .order(ByteOrder.LITTLE_ENDIAN)
+                    .int,
+            )
+        }
+        assertArrayEquals(extents.toFloatArray(), values, 0.001f)
+    }
+
+    @Test
+    fun lazyRowStateIsScopedByItemKeyAndSurvivesEviction() {
+        class Row : Component() {
+            var taps by state(0)
+
+            override fun body(): View = Button("tap $taps") { taps++ }
+        }
+
+        val items = (0 until 100).map { "item-$it" }
+        val store = InMemoryStateStore()
+        val session = PersistentState(store, "s")
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items, key = { it }) { _, _ -> Row().frame(height = 44f) }
+            },
+            Environment(session),
+        )
+        assertEquals("tap 0", texts(sink.frame()).first())
+
+        result.tapActions().values.first().run()
+        assertEquals("tap 1", texts(sink.frame()).first())
+
+        // Evict row 0, then scroll back: the recreated row restores its own
+        // keyed state, and row 1 remains independent.
+        result.visibleRanges()[result.rootId()]!!.onVisibleRange(50, 5)
+        sink.frame()
+        result.visibleRanges()[result.rootId()]!!.onVisibleRange(0, 5)
+        val back = sink.frame()
+        assertEquals(listOf("tap 1", "tap 0"), texts(back).take(2))
+        session.close()
+
+        // A new session over the same store reloads the keyed row state.
+        val restored = PersistentState(store, "s")
+        val (_, restoredFrame) = mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items, key = { it }) { _, _ -> Row().frame(height = 44f) }
+            },
+            Environment(restored),
+        )
+        assertEquals("tap 1", texts(restoredFrame).first())
+        restored.close()
     }
 
     @Test
