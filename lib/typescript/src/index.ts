@@ -419,8 +419,21 @@ function boot(): void {
       refreshLazyWindows(renderer);
     });
   };
+  let lazyFinalTimer = 0;
+  const scheduleLazyFinalReport = () => {
+    if (lazyFinalTimer) {
+      clearTimeout(lazyFinalTimer);
+    }
+    lazyFinalTimer = window.setTimeout(() => {
+      lazyFinalTimer = 0;
+      if (transport.open) {
+        refreshLazyWindows(renderer, true);
+      }
+    }, 150);
+  };
   document.addEventListener("scroll", (event) => {
     scheduleLazyRefresh();
+    scheduleLazyFinalReport();
     const scroller = event.target as Element | null;
     const node = nodeOf(scroller);
     if (!transport.open || !listens(node, LISTEN_SCROLL)) {
@@ -431,6 +444,19 @@ function boot(): void {
       encodeScroll(Number(node!.getAttribute("data-pathland-id")), el.scrollLeft, el.scrollTop),
     );
   }, true);
+  document.addEventListener(
+    "scrollend",
+    () => {
+      if (lazyFinalTimer) {
+        clearTimeout(lazyFinalTimer);
+        lazyFinalTimer = 0;
+      }
+      if (transport.open) {
+        refreshLazyWindows(renderer, true);
+      }
+    },
+    true,
+  );
   window.addEventListener("resize", scheduleLazyRefresh);
   document.addEventListener(
     "wheel",

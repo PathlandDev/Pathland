@@ -445,7 +445,9 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   support variable item extents (`data-pathland-item-extents` /
   `-first-item-offset` / `-total-extent`) for padding and visible-range
   mapping. Lazy grids use the same window with `data-pathland-lazy-tracks` and
-  grid a11y (`role=grid`/`gridcell`, row/column indices).
+  grid a11y (`role=grid`/`gridcell`, row/column indices). A `scrollend` listener
+  plus a 150 ms debounce forces a final `VISIBLE_RANGE` report so the engine can
+  release prefetched rows (ADR-0015).
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

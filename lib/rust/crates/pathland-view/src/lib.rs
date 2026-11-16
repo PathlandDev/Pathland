@@ -2811,7 +2811,84 @@ pub struct ForEach<T> {
     extent: Option<f32>,
     extents: Option<Vec<f32>>,
     window: Rc<Cell<(usize, usize)>>,
+    last_visible: Rc<Cell<Option<(usize, usize)>>>,
     ids: Rc<RefCell<BTreeMap<u64, (u32, u32)>>>,
+}
+
+/// A host-side handle that derives the lazy window from `VISIBLE_RANGE`
+/// reports. It keeps a small base margin and adds a bounded, directional
+/// prefetch from the observed report velocity (spec/LAYOUT.md §Virtual extent,
+/// ADR-0015).
+#[derive(Clone)]
+pub struct VisibleWindow {
+    window: Rc<Cell<(usize, usize)>>,
+    last: Rc<Cell<Option<(usize, usize)>>>,
+    total: usize,
+}
+
+const BASE_OVERSCAN: usize = 2;
+const MAX_PREFETCH_FLOOR: usize = 24;
+const LATENCY_BUDGET_MS: f32 = 120.0;
+
+fn ceil_usize(value: f32) -> usize {
+    if !(value > 0.0) {
+        return 0;
+    }
+    let floor = value as usize;
+    if value > floor as f32 {
+        floor + 1
+    } else {
+        floor
+    }
+}
+
+impl VisibleWindow {
+    /// The current `(first absolute index, item count)` window.
+    pub fn window(&self) -> (usize, usize) {
+        self.window.get()
+    }
+
+    /// Update the window from a renderer's visible-range report. `elapsed_ms`
+    /// is the time since the previous report; the host measures it.
+    pub fn set_visible_range(&self, first: usize, count: usize, elapsed_ms: f32) {
+        if self.total == 0 || count == 0 {
+            self.last.set(None);
+            self.window.set((0, 0));
+            return;
+        }
+        let previous = self.last.get();
+        let delta = match previous {
+            Some((p, _)) => first as isize - p as isize,
+            None => 0,
+        };
+        self.last.set(Some((first, count)));
+        let elapsed = if previous.is_none() {
+            0.0
+        } else {
+            elapsed_ms.max(0.1)
+        };
+        let velocity = if previous.is_none() || delta == 0 {
+            0.0
+        } else {
+            delta.unsigned_abs() as f32 / elapsed
+        };
+        let max_extra = (core::cmp::max(2 * count, MAX_PREFETCH_FLOOR) - BASE_OVERSCAN).max(0);
+        let extra = ceil_usize(velocity * LATENCY_BUDGET_MS).min(max_extra);
+        let start = first
+            .saturating_sub(BASE_OVERSCAN)
+            .saturating_sub(if delta < 0 { extra } else { 0 });
+        let end = first
+            .saturating_add(count)
+            .saturating_sub(1)
+            .saturating_add(BASE_OVERSCAN)
+            .saturating_add(if delta > 0 { extra } else { 0 })
+            .min(self.total - 1);
+        if end >= start {
+            self.window.set((start, end - start + 1));
+        } else {
+            self.window.set((0, 0));
+        }
+    }
 }
 
 impl<T: 'static> ForEach<T> {
@@ -2824,6 +2901,7 @@ impl<T: 'static> ForEach<T> {
             extent: None,
             extents: None,
             window: Rc::new(Cell::new((0, 22))),
+            last_visible: Rc::new(Cell::new(None)),
             ids: Rc::new(RefCell::new(BTreeMap::new())),
         }
     }
@@ -2846,8 +2924,7 @@ impl<T: 'static> ForEach<T> {
         self
     }
 
-    /// A stable item key (for host-side identity; the engine diff is
-    /// position-based today).
+    /// A stable item key used by the engine's keyed window reconcile.
     pub fn key(mut self, key: fn(&T) -> u64) -> Self {
         self.key = Some(key);
         self
@@ -2856,6 +2933,16 @@ impl<T: 'static> ForEach<T> {
     /// The shared `(first absolute index, item count)` window cell.
     pub fn window_handle(&self) -> Rc<Cell<(usize, usize)>> {
         self.window.clone()
+    }
+
+    /// A host-side handle that applies the engine's reactive prefetch policy on
+    /// `VISIBLE_RANGE` reports.
+    pub fn visible_handle(&self) -> VisibleWindow {
+        VisibleWindow {
+            window: self.window.clone(),
+            last: self.last_visible.clone(),
+            total: self.items.len(),
+        }
     }
 }
 
@@ -5217,6 +5304,23 @@ mod media_tests {
                 Some(*expected)
             );
         }
+    }
+
+    #[test]
+    fn lazy_visible_handle_prefetches_by_velocity() {
+        let foreach = ForEach::new((0..100).collect::<std::vec::Vec<_>>(), |_, _| {
+            Box::new(Text::new("x"))
+        });
+        let handle = foreach.visible_handle();
+        // The first report uses the base margin.
+        handle.set_visible_range(0, 5, 16.0);
+        assert_eq!(handle.window(), (0, 7));
+        // A fast jump derives the bounded, directional prefetch.
+        handle.set_visible_range(50, 5, 2.0);
+        assert_eq!(handle.window(), (48, 31));
+        // The final report (same range) decays to the base margin.
+        handle.set_visible_range(50, 5, 2.0);
+        assert_eq!(handle.window(), (48, 9));
     }
 
     #[test]

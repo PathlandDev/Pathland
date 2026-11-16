@@ -13,10 +13,51 @@ import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.view.engine.Emitter
 import dev.pathland.view.engine.PathlandNode
 import dev.pathland.view.engine.VisibleRangeInput
+import kotlin.math.abs
 import kotlin.math.ceil
 
-private const val OVERSCAN = 2
+private const val BASE_OVERSCAN = 2
+private const val MAX_PREFETCH_FLOOR = 24
+private const val LATENCY_BUDGET_MS = 120.0
 private const val DEFAULT_WINDOW = 20
+
+/**
+ * Derives the lazy window from the renderer's visible-range reports. The engine
+ * keeps a small base margin and adds a bounded, directional prefetch from the
+ * observed report velocity so rows arrive before they enter the viewport
+ * (spec/LAYOUT.md §Virtual extent, ADR-0015).
+ */
+private class LazyWindowTracker {
+    private var lastVisible: IntRange? = null
+    private var lastVisibleAt = 0L
+
+    fun window(firstVisible: Int, visibleCount: Int, total: Int): IntRange {
+        if (total <= 0 || visibleCount <= 0) {
+            lastVisible = null
+            return IntRange.EMPTY
+        }
+        val now = System.nanoTime()
+        val previous = lastVisible
+        val delta = if (previous == null) 0 else firstVisible - previous.first
+        val elapsedMs = if (previous == null) {
+            0.0
+        } else {
+            ((now - lastVisibleAt) / 1_000_000.0).coerceAtLeast(0.1)
+        }
+        lastVisible = firstVisible until (firstVisible + visibleCount)
+        lastVisibleAt = now
+
+        val velocity = if (previous == null || delta == 0) 0.0 else abs(delta) / elapsedMs
+        val maxExtra = (maxOf(2 * visibleCount, MAX_PREFETCH_FLOOR) - BASE_OVERSCAN)
+            .coerceAtLeast(0)
+        val extra = ceil(velocity * LATENCY_BUDGET_MS).toInt().coerceIn(0, maxExtra)
+        val start = (firstVisible - BASE_OVERSCAN - if (delta < 0) extra else 0)
+            .coerceAtLeast(0)
+        val end = (firstVisible + visibleCount - 1 + BASE_OVERSCAN +
+            if (delta > 0) extra else 0).coerceAtMost(total - 1)
+        return if (end >= start) start..end else IntRange.EMPTY
+    }
+}
 
 /**
  * A `ForEach` used as a lazy-stack data source. Outside a lazy stack it renders
@@ -80,6 +121,7 @@ internal class LazyStackView(
 ) : View {
 
     private var window: WritableSignal<IntRange>? = null
+    private val tracker = LazyWindowTracker()
 
     override fun renderNode(env: Environment): PathlandNode {
         val node = PathlandNode(component)
@@ -164,14 +206,7 @@ internal class LazyStackView(
         node.lazyWindow = windowSignal
         node.lazyExtent = extent
         node.visibleRangeInput = VisibleRangeInput { firstVisible, visibleCount ->
-            val total = data.count()
-            if (total == 0) {
-                windowSignal.set(IntRange.EMPTY)
-            } else {
-                val start = (firstVisible - OVERSCAN).coerceAtLeast(0)
-                val last = (firstVisible + visibleCount + OVERSCAN).coerceAtMost(total) - 1
-                windowSignal.set(if (last >= start) start..last else IntRange.EMPTY)
-            }
+            windowSignal.set(tracker.window(firstVisible, visibleCount, data.count()))
         }
 
         if (count == 0) {
@@ -219,7 +254,7 @@ internal class LazyStackView(
         } else {
             DEFAULT_WINDOW
         }
-        val items = (visible + OVERSCAN).coerceIn(1, count)
+        val items = (visible + BASE_OVERSCAN).coerceIn(1, count)
         return 0 until items
     }
 }
@@ -243,6 +278,7 @@ internal class LazyGridWindowView(
 ) : View {
 
     private var window: WritableSignal<IntRange>? = null
+    private val tracker = LazyWindowTracker()
 
     override fun renderNode(env: Environment): PathlandNode {
         val node = PathlandNode(component)
@@ -303,13 +339,7 @@ internal class LazyGridWindowView(
         node.lazyWindow = windowSignal
         node.lazyExtent = extent
         node.visibleRangeInput = VisibleRangeInput { firstVisible, visibleCount ->
-            if (unitCount == 0) {
-                windowSignal.set(IntRange.EMPTY)
-            } else {
-                val start = (firstVisible - OVERSCAN).coerceAtLeast(0)
-                val last = (firstVisible + visibleCount + OVERSCAN).coerceAtMost(unitCount) - 1
-                windowSignal.set(if (last >= start) start..last else IntRange.EMPTY)
-            }
+            windowSignal.set(tracker.window(firstVisible, visibleCount, unitCount))
         }
 
         if (unitCount == 0) {
@@ -358,7 +388,7 @@ internal class LazyGridWindowView(
         } else {
             DEFAULT_WINDOW
         }
-        val units = (visible + OVERSCAN).coerceIn(1, count)
+        val units = (visible + BASE_OVERSCAN).coerceIn(1, count)
         return 0 until units
     }
 }

@@ -2641,7 +2641,7 @@ function lazyVisibleRange(el: HTMLElement): { first: number; count: number } | n
  * range when it changed (spec/EVENTS.md §Visible range). Called after each
  * applied batch, after hydration, and on scroll/resize.
  */
-export function refreshLazyWindows(r: DomRenderer): void {
+export function refreshLazyWindows(r: DomRenderer, force = false): void {
   for (const el of document.querySelectorAll<HTMLElement>("[data-pathland-lazy]")) {
     refreshLazyPadding(el);
     const range = lazyVisibleRange(el);
@@ -2649,7 +2649,7 @@ export function refreshLazyWindows(r: DomRenderer): void {
       continue;
     }
     const previous = lazyRanges.get(el);
-    if (previous && previous.first === range.first && previous.count === range.count) {
+    if (!force && previous && previous.first === range.first && previous.count === range.count) {
       continue;
     }
     lazyRanges.set(el, range);

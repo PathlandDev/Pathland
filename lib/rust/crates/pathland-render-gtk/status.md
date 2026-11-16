@@ -330,7 +330,10 @@ compatibility.
   virtual extent with leading/trailing spacer boxes and reports
   `VISIBLE_RANGE` from the scroll adjustment (assuming the lazy box is the
   scroll view's direct content). Lazy stacks also use app-declared variable item
-  extents for spacers/range math. Lazy grids use a wrapper `GtkBox` with an
+  extents for spacers/range math. The JVM engine derives the reactive prefetch
+  from the reported range; the GTK reporter currently sends only on range
+  changes, so the final same-range decay report is DOM-only. Lazy grids use a
+  wrapper `GtkBox` with an
   inner `GtkGrid` and the same spacer/range machinery; auto-fit grids
   collapse to a single track (spec-permitted; measurement is a follow-up), and
   runtime scroll emission needs a visual check (headless tests cover the

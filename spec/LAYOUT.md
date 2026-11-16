@@ -231,7 +231,13 @@ container.
   conservative: it may include a partially scrolled item, but never excludes a
   visible one. The renderer reports `EVENT::VISIBLE_RANGE` for nodes with
   listener bit 10, at most once per frame and only when `(first, endExclusive)`
-  changes. The application owns overscan and may emit a larger window.
+  changes. A renderer SHOULD report the final range when a scroll gesture ends.
+- **Engine prefetch** — the engine MAY add a bounded, directional prefetch
+  margin around the reported range, derived from the report velocity (the
+  distance between successive reports over elapsed time). The margin is
+  engine-owned and not author-configured; a small base margin applies to the
+  first report and to slow scrolling. A report with no movement returns to the
+  base margin. The application may still emit a larger window.
 
 **Variable item extents.** A lazy **stack** (not a grid) MAY carry
 `ITEM_EXTENTS` (`0x0025`, LIST of F32), `FIRST_ITEM_OFFSET` (`0x0026`, F32), and
