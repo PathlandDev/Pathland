@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7K53GPGGSCXGH92NP5QADBJ",
+  "strategy": "manual-commit",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 6,
+  "files_touched": [
+    "AGENTS.md",
+    "docs/data-sources.md",
+    "docs/decisions/0016-async-paged-data-sources.md",
+    "docs/decisions/README.md",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/SessionSubscriptions.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/SessionSubscriptionsTest.java",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/subscription/SessionContext.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/AsyncDataSource.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/data/AsyncDataSourceTest.kt",
+    "lib/java/pathland-view-core/status.md",
+    "lib/java/pathland-view-data-coroutines/pom.xml",
+    "lib/java/pathland-view-data-coroutines/src/main/kotlin/dev/pathland/view/data/coroutines/AsyncDataSourceCoroutines.kt",
+    "lib/java/pathland-view-data-coroutines/src/test/kotlin/dev/pathland/view/data/coroutines/AsyncDataSourceCoroutinesTest.kt",
+    "lib/java/pathland-view-data-coroutines/status.md",
+    "lib/java/pom.xml"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1076963,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 18485248,
+    "output_tokens": 20189,
+    "api_call_count": 42
+  }
+}
