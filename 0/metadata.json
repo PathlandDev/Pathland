@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7K2MBTCSGEEHQBS934TG5N3",
+  "session_id": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-16T21:01:42.81735Z",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/decisions/0015-reactive-lazy-prefetch.md",
+    "docs/decisions/README.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "29c3256b8535",
+  "checkpoint_transcript_start": 989,
+  "transcript_lines_at_start": 989,
+  "compact_transcript_start": 989,
+  "token_usage": {
+    "input_tokens": 1806,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1569408,
+    "output_tokens": 534,
+    "api_call_count": 5
+  },
+  "session_metrics": {
+    "turn_count": 34
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-16T21:01:41.803841Z",
+    "agent_lines": 2,
+    "agent_removed": 2,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 2,
+    "total_lines_changed": 4,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}
