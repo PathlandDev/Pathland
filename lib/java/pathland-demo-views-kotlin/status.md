@@ -55,7 +55,8 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
   `ForEach` with a fixed 64 pt row extent; `MediaPlayerService` repeats the eight
   base tracks into a 1000-entry playlist. `TrackRowView` is a tappable `HStack`
   (not a button) highlighted by absolute index, so repeated tracks do not
-  all highlight together.
+  all highlight together. The engine's reactive prefetch keeps rows rendered
+  ahead of fast scrolling; the demo has no overscan setting.
 
 ## Verified by
 

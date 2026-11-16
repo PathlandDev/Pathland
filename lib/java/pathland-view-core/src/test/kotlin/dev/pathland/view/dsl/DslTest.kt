@@ -365,6 +365,70 @@ class DslTest {
     }
 
     @Test
+    fun lazyStackPrefetchesAheadByScrollVelocity() {
+        val items = (0 until 100).map { "item-$it" }
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+            },
+            Environment.DEFAULT,
+        )
+        sink.frame()
+        val ranges = result.visibleRanges()[result.rootId()]!!
+        // The first report uses the base margin.
+        ranges.onVisibleRange(0, 5)
+        sink.frame()
+        // A fast jump derives a bounded, directional prefetch (base 2 + extra 22).
+        Thread.sleep(2)
+        ranges.onVisibleRange(50, 5)
+        val frame = sink.frame()
+        assertEquals(
+            48,
+            frame.opcodes().first {
+                it.category() == Categories.PARAMETER &&
+                    it.command() == Commands.Parameter.SET_PROPERTY &&
+                    (it.b() and 0xffff) == Properties.FIRST_ITEM_INDEX
+            }.c(),
+        )
+        assertEquals(31, texts(frame).size)
+    }
+
+    @Test
+    fun lazyStackDecaysAfterAFinalReport() {
+        val items = (0 until 100).map { "item-$it" }
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            LazyVStack(spacing = 0f) {
+                ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+            },
+            Environment.DEFAULT,
+        )
+        sink.frame()
+        val ranges = result.visibleRanges()[result.rootId()]!!
+        ranges.onVisibleRange(50, 5)
+        sink.frame()
+        Thread.sleep(2)
+        ranges.onVisibleRange(60, 5)
+        sink.frame()
+        // The same range again is the renderer's final report: decay to base.
+        Thread.sleep(2)
+        ranges.onVisibleRange(60, 5)
+        val frame = sink.frame()
+        // The window start stays at 58; only the prefetched tail (67..88) is
+        // released, so the frame carries 22 deletes and no FIRST_ITEM_INDEX.
+        assertEquals(
+            22,
+            frame.opcodes().count {
+                it.category() == Categories.TREE &&
+                    it.command() == Commands.Tree.DELETE_NODE
+            },
+        )
+    }
+
+    @Test
     fun lazyRowStateIsScopedByItemKeyAndSurvivesEviction() {
         class Row : Component() {
             var taps by state(0)

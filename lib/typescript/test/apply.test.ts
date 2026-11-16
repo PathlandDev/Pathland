@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyBatch, setNodeText, setupMediaElement, updateNavBackButtons, unlockMedia, playMedia, retryPendingPlay, __setMediaLastReported, type DomRenderer } from "../src/apply";
+import { applyBatch, refreshLazyWindows, setNodeText, setupMediaElement, updateNavBackButtons, unlockMedia, playMedia, retryPendingPlay, __setMediaLastReported, type DomRenderer } from "../src/apply";
 import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
 import {
@@ -1523,5 +1523,28 @@ describe("applyBatch · semantic roles (generated role-spec)", () => {
     // synchronously, then the fetched pause glyph).
     expect(el.innerHTML).not.toContain('d="M19.376');
     await vi.waitFor(() => expect(el.innerHTML).toContain('d="M6 5H8V19H6V5'), { timeout: 2000 });
+  });
+});
+describe("lazy visible-range reporting", () => {
+  it("forces a final report even when the visible range is unchanged", () => {
+    document.body.innerHTML =
+      '<div data-pathland-id="1" data-pathland-lazy="vertical" ' +
+      'data-pathland-item-count="100" data-pathland-item-extent="44px" ' +
+      'data-event-listeners="1024" data-pathland-first-item-index="0"></div>';
+    const r = renderer();
+    let calls = 0;
+    r.onVisibleRangeEvent = () => {
+      calls++;
+    };
+
+    refreshLazyWindows(r);
+    expect(calls).toBe(1);
+    // A repeat report with the same range is coalesced.
+    refreshLazyWindows(r);
+    expect(calls).toBe(1);
+    // The end-of-scroll report bypasses the coalescing so the engine can
+    // release prefetched rows.
+    refreshLazyWindows(r, true);
+    expect(calls).toBe(2);
   });
 });

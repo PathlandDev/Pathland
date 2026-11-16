@@ -127,7 +127,10 @@ build) carries no JNA.
   Variable-height stacks are supported with app-declared `itemExtents`
   (`ITEM_EXTENTS`/`FIRST_ITEM_OFFSET`/`TOTAL_EXTENT`); grids use a uniform
   extent. Row-local `state(...)` is keyed by the `ForEach` item key and survives
-  window eviction. Gaps: focused-row pinning.
+  window eviction. The engine derives a bounded, directional prefetch from the
+  `VISIBLE_RANGE` report velocity and decays to the base margin on a final
+  report (ADR-0015); the author does not configure overscan. Gaps:
+  focused-row pinning.
 
 ## Package boundary
 

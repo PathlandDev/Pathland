@@ -275,8 +275,13 @@ its own native control geometry.
 - The renderer reports the **current** range after layout, scroll, resize, or a
   count change. It coalesces to at most one event per frame and emits only when
   the derived `(firstIndex, count)` changes. It never streams per-item events.
-- The application owns overscan: it may emit a larger window than the reported
-  range. The renderer reports the visible range, not the app's window.
+- The engine MAY prefetch a bounded, directional margin derived from the report
+  velocity; the margin is engine-owned and not author-configured
+  ([LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers)).
+  The application may still emit a larger window. The renderer reports the
+  visible range, not the app's window.
+- A renderer SHOULD report the final range when a scroll gesture ends so the
+  engine can release prefetched rows.
 - `count = 0` is valid (the container is empty or entirely off-screen).
 - The range math is specified in
   [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers).

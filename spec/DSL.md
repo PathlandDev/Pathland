@@ -542,6 +542,9 @@ Rules:
 - `FIRST_ITEM_INDEX` = the window start. The engine sets it; the author does not.
 - The DSL sets `EVENT_LISTENERS` bit 10 (`VISIBLE_RANGE`) and routes the event
   to the engine's internal window; the author does not manage a window signal.
+- The engine may prefetch a bounded, directional margin around the visible
+  range based on the report velocity; the author does not configure overscan.
+  A final range report at the end of a scroll returns to the small base margin.
 - The engine reconciles window children by absolute index, or by an optional
   `key` extractor (`ForEach(items, key = { it.id })`); without a key, identity
   is the absolute index.

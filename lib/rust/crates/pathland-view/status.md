@@ -169,7 +169,9 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   consume the same source with a row/column unit window. Window children are
   reconciled by item key: `ForEach` keeps a persistent `key → id block` map, so
   retained rows and their subtrees keep their ids across a slide (`assign_ids`
-  keeps new blocks above the map's high-water mark).
+  keeps new blocks above the map's high-water mark). `ForEach::visible_handle()`
+  exposes `VisibleWindow::set_visible_range(first, count, elapsed_ms)` with the
+  same velocity-based prefetch as the JVM engine (ADR-0015).
 
 ## Verified by
 
