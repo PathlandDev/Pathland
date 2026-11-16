@@ -1,6 +1,6 @@
 # ADR-0015: Engine-derived reactive prefetch for lazy windows
 
-**Status:** Proposed
+**Status:** Accepted
 **Recorded:** 2026-11-16
 **Scope:** Authoring DSL, engine lazy-window policy, renderer visible-range reporting
 **Supersedes:** None (refines the lazy-window policy described in `spec/LAYOUT.md`)
