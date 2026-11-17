@@ -453,7 +453,7 @@ public final class HtmlRenderer {
         for (var entry : nodes.entrySet()) {
             int id = entry.getKey();
             RenderNode node = entry.getValue();
-            if (node.component != Components.SIZE_THAT_FITS || !node.fitCandidatesValid()) {
+            if (node.component != Components.VIEW_THAT_FITS || !node.fitCandidatesValid()) {
                 continue;
             }
             int n = node.children.size();
@@ -558,7 +558,7 @@ public final class HtmlRenderer {
             }
             case Components.PROXY_VIEW -> element = wrapStack(id, "column", semantic, node, children,
                     css + RenderNode.fillPropagation(nodes, id, node, false) + derived, event, aria);
-            case Components.SIZE_THAT_FITS -> element = renderSizeThatFits(nodes, id, node, children,
+            case Components.VIEW_THAT_FITS -> element = renderViewThatFits(nodes, id, node, children,
                     dataId.toString(), css, derived.toString(), event, aria, debug);
             case Components.TEXT -> {
                 String tag = RoleSpec.textTag(kind, node.roleCode(), node.textStyleCode());
@@ -860,7 +860,7 @@ public final class HtmlRenderer {
         return element;
     }
 
-    private String renderSizeThatFits(TreeMap<Integer, RenderNode> nodes, int id, RenderNode node,
+    private String renderViewThatFits(TreeMap<Integer, RenderNode> nodes, int id, RenderNode node,
             String children, String dataId, String css, String derived, String event, String aria,
             boolean debug) {
         String fitAttr = "";

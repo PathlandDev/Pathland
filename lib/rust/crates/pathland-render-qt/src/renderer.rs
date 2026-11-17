@@ -602,7 +602,7 @@ mod tests {
                 tree::CREATE_NODE,
                 0,
                 1,
-                component_type::SIZE_THAT_FITS as u32,
+                component_type::VIEW_THAT_FITS as u32,
                 0,
             ),
             Opcode::new(

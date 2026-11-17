@@ -14,7 +14,7 @@ grid rows). Remaining work is tracked here and in `status.md`.
     `AudioOutput`.
   - `VIDEO` 0x0A → `VideoOutput`, bound via `MEDIA_CONTROLLER_ID`.
   - `PROXY_VIEW` 0x1E → transparent vertical container.
-  - `SIZE_THAT_FITS` 0x17 → greedy two-axis fill slot.
+  - `VIEW_THAT_FITS` 0x17 → greedy two-axis fill slot.
   - `GRID_ROW` 0x1D → row container whose cells flatten into the Grid.
 - **Visual styling layer** (demo parity with web/GTK):
   - container `BACKGROUND_COLOR` / `BORDER_*` / `BORDER_RADIUS` on a background
@@ -49,7 +49,7 @@ grid rows). Remaining work is tracked here and in `status.md`.
 
 ## Still missing / needs doing
 
-- [x] **`SIZE_THAT_FITS` / `FIT_CHANGED`** — shared `LIST` decode + width measure
+- [x] **`VIEW_THAT_FITS` / `FIT_CHANGED`** — shared `LIST` decode + width measure
       + `FIT_CHANGED`.
 - [x] **`GRID_ROW` flattening** — cells attach to the Grid; columns align.
 - [x] **Events** — hover/leave, keys (focused text input),

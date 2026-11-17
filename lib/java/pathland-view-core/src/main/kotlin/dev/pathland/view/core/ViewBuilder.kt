@@ -3,7 +3,12 @@ package dev.pathland.view.core
 import dev.pathland.view.engine.PathlandNode
 import java.util.ArrayList
 
-/** The chainable result of a view's static `make(...)` entry point. */
+/**
+ * The chainable result of a view's static `make(...)` entry point.
+ *
+ * It holds the mutable config and builds the view on `build()`; it also exposes
+ * `children(...)` for content-bearing views.
+ */
 class ViewBuilder<V, C>(
     private val view: V,
 ) : View where V : View, V : Configurable<C>, C : View.Config {

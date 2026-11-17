@@ -467,7 +467,7 @@ pub fn emit_constants_ts() -> String {
             ("SCROLLVIEW", fmt_u16(component_type::SCROLLVIEW)),
             ("LAZY_VGRID", fmt_u16(component_type::LAZY_VGRID)),
             ("LAZY_HGRID", fmt_u16(component_type::LAZY_HGRID)),
-            ("SIZE_THAT_FITS", fmt_u16(component_type::SIZE_THAT_FITS)),
+            ("VIEW_THAT_FITS", fmt_u16(component_type::VIEW_THAT_FITS)),
             ("LAZY_VSTACK", fmt_u16(component_type::LAZY_VSTACK)),
             ("LAZY_HSTACK", fmt_u16(component_type::LAZY_HSTACK)),
             ("GRID_ROW", fmt_u16(component_type::GRID_ROW)),

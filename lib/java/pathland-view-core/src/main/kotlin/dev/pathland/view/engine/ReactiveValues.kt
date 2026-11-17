@@ -5,7 +5,13 @@ import dev.pathland.core.protocol.WireValue
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 
-/** Converts a reactive signal's value into the typed property value stored on a node. */
+/**
+ * Converts a reactive signal's value into the typed property value stored on a
+ * node.
+ *
+ * It keeps property writes typed (F32/U32/U8/STRING/COLOR/…) so signal updates
+ * can be emitted as the correct wire value without re-running the view.
+ */
 object ReactiveValues {
     /** Read the signal for an initial render value without subscribing the component. */
     fun initial(property: Int, signal: Signal<*>): Any? =

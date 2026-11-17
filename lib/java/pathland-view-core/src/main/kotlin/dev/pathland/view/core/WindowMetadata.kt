@@ -5,13 +5,21 @@ import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.engine.PathlandNode
 import java.util.function.Consumer
 
-/** Window/surface presentation metadata (`windowMetadata(...)`). */
+/**
+ * Declares root-scoped window/surface presentation metadata.
+ *
+ * `title`/`description`/`locale` are signals mapped to
+ * `META::SET_WINDOW_METADATA`; the renderer translates them to its chrome
+ * (`<title>`, meta description, `<html lang>`, native window title). The
+ * metadata applies to the whole surface, not the wrapped subtree.
+ */
 class WindowMetadata private constructor(
     private val title: Signal<String>?,
     private val description: Signal<String>?,
     private val locale: Signal<String>?,
 ) : ViewModifier {
 
+    /** Window metadata values (title/description/locale) as literals or signals. */
     @PathlandDsl
     class Config {
         var title: Signal<String>? = null
@@ -55,6 +63,7 @@ class WindowMetadata private constructor(
 
     override fun body(content: View): View = WindowMetadataView(content, this)
 
+    /** Applies the declared root-scoped metadata to the environment during render. */
     private class WindowMetadataView(
         private val content: View,
         private val metadata: WindowMetadata,

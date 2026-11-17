@@ -3,7 +3,10 @@ package dev.pathland.view.core
 import dev.pathland.core.protocol.Properties
 import dev.pathland.core.protocol.WireValue
 
-/** The FontDesign wire enum; also a view modifier. */
+/**
+ * Selects the renderer's font category (`FONT_DESIGN`): default=0, serif=1,
+ * rounded=2, monospaced=3. Also a `ViewModifier`.
+ */
 enum class FontDesign(private val wire: Int) : ViewModifier, WireValue {
     DEFAULT(0),
     SERIF(1),

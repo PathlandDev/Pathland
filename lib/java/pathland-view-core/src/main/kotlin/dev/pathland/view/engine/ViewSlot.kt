@@ -7,7 +7,14 @@ import dev.pathland.view.core.signal.EffectRef
 import dev.pathland.view.core.signal.Tracked
 import java.util.ArrayList
 
-/** One component invocation in the emitter's render tree. */
+/**
+ * One component invocation in the emitter's render tree.
+ *
+ * A slot owns the view, its environment, the retained node, tracked signal
+ * dependencies, and child slots. The emitter reconciles a slot's fresh subtree
+ * against its retained node and re-renders only slots whose tracked signals
+ * changed.
+ */
 internal class ViewSlot(
     @JvmField val view: View,
     @JvmField val env: Environment,

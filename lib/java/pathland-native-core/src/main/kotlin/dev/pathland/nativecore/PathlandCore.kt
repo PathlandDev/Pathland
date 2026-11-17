@@ -8,13 +8,25 @@ import dev.pathland.core.protocol.Opcode
 import java.io.File
 import java.util.Locale
 
-/** JNA binding to the Rust `libpathland_core` cdylib (SPSC ring + opcode engine). */
+/**
+ * JNA binding to the Rust `libpathland_core` cdylib (SPSC ring + opcode engine).
+ *
+ * The binding is process-wide and linked lazily. Handles are raw host-owned
+ * pointers; each ring is single-producer/single-consumer and the Java side
+ * reuses one 16-byte opcode buffer per call (no per-op heap allocation).
+ */
 class PathlandCore private constructor() {
 
-    /** Thrown when the native library cannot be linked. */
+    /**
+     * Thrown when `libpathland_core` cannot be resolved or linked.
+     *
+     * The message points at `pathland.core.lib`/`java.library.path`; the optional
+     * cause carries the underlying JNA/linker failure.
+     */
     class NativeUnavailableException(message: String, cause: Throwable?) :
         IllegalStateException(message, cause)
 
+    /** The raw JNA method table of `libpathland_core` (ring host, arena, frames, events). */
     private interface NativePathlandCore : Library {
         fun pathland_core_create(): Pointer
         fun pathland_core_destroy(handle: Pointer)
@@ -110,6 +122,7 @@ class PathlandCore private constructor() {
     }
 
     companion object {
+        /** Holds the process-wide lazily-linked binding so linkage happens once. */
         private object Holder {
             val INSTANCE = PathlandCore()
         }

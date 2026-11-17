@@ -1,6 +1,13 @@
 package dev.pathland.view.core.signal
 
-/** A reactive effect (Angular-style `effect`). */
+/**
+ * A reactive effect: runs an action when any tracked dependency changes.
+ *
+ * Effects are scheduled through the global [Scheduler] and flush synchronously
+ * on the thread that writes a signal. Dependencies are re-collected on each
+ * run; an effect may opt into allowing signal writes. Errors are cached and
+ * rethrown on the next flush.
+ */
 internal class Effect(
     private val fn: Runnable,
     options: EffectOptions,

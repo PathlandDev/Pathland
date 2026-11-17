@@ -5,7 +5,16 @@ import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.view.engine.Emitter
 
-/** A media playback controller: owns a media resource and its transport as signals. */
+/**
+ * A non-visual media playback controller.
+ *
+ * It owns the media source and transport (playing/position/volume/muted/loop/
+ * rate) as signals, plus the renderer-reported playback/time/duration/volume.
+ * The app binds its own controls and `attach()` materializes the controller
+ * node; a `VIDEO` surface renders visuals, while audio has no view. The
+ * controller node id is pinned so a `VIEW_THAT_FITS` swap never restarts
+ * playback (spec/MEDIA.md).
+ */
 class MediaController {
 
     private var source: Signal<String> = Signals.constant("")

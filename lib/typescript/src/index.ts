@@ -159,7 +159,7 @@ function boot(): void {
       transport.send(batch);
     }
   };
-  // Fit changes from SIZE_THAT_FITS slots (spec/PRIMITIVES.md §SizeThatFits):
+  // Fit changes from VIEW_THAT_FITS slots (spec/PRIMITIVES.md §ViewThatFits):
   // the slotted candidate index reported only on transitions.
   renderer.onFitEvent = (batch) => {
     if (transport.open) {

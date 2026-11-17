@@ -1,9 +1,9 @@
-//! The `SizeThatFits` fit rule — the single spec'd selection algorithm every
-//! renderer and host share (spec/PRIMITIVES.md §SizeThatFits). Given the slot's
+//! The `ViewThatFits` fit rule — the single spec'd selection algorithm every
+//! renderer and host share (spec/PRIMITIVES.md §ViewThatFits). Given the slot's
 //! allocated width and the app-declared candidate thresholds (ascending), it
 //! returns the selected candidate index.
 
-/// The fit index for a `SizeThatFits` slot: the **largest threshold the given
+/// The fit index for a `ViewThatFits` slot: the **largest threshold the given
 /// width meets**, defaulting to index 0 when none do (the always-valid
 /// fallback). `thresholds` must be sorted ascending (the app's `FIT_QUERY`);
 /// equal thresholds pick the **lower** index (stable). An empty table always

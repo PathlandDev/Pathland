@@ -17,6 +17,7 @@ import java.util.ArrayDeque
 @PathlandDsl
 object PathlandScope
 
+/** The thread-local builder child stack the DSL uses to auto-register children. */
 internal object ViewScopes {
     private val stack = ThreadLocal.withInitial { ArrayDeque<MutableList<View>>() }
 

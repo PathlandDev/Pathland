@@ -9,7 +9,11 @@ import dev.pathland.view.dsl.computed
 import dev.pathland.view.dsl.fontSize
 import dev.pathland.view.dsl.foregroundStyle
 
-/** One "Up next" / "Then" track line in the now-playing sidebar. */
+/**
+ * One "Up next" / "Then" track line in the now-playing sidebar.
+ *
+ * Tapping the row selects that track in the shared player service.
+ */
 internal class UpNextRowView(private val offset: Int) : Component() {
 
     override fun body(): View {

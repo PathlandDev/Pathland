@@ -54,6 +54,7 @@
     <modules>
         <module>pathland-core</module>
         <module>pathland-view-core</module>
+        <module>pathland-view-data-coroutines</module>
         <module>pathland-native-core</module>
         <module>pathland-render-html</module>
         <module>pathland-server-core</module>

@@ -36,7 +36,7 @@ library). Protocol contract: `spec/`.
   attributes, `IS_SECURE` → password, `TOGGLE_STYLE` variants,
   `DATE_PICKER_MODE`, literal colors inline, attributed text, media
   surfaces/controllers, proxy views, grid rows/tracks, fit bands, and
-  size-that-fits snapshots.
+  view-that-fits snapshots.
 - **Built-in base design**: the generated `design/build/base.css` (synced into
   the Rust assets) is copied into the jar at build time and inlined by the
   default `render(...)`. `renderLinked(frame, root, cssBase)` /

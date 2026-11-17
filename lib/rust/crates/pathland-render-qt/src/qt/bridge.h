@@ -49,7 +49,7 @@ public slots:
     void mediaEnded(quint32 nodeId);
     void mediaVolume(quint32 nodeId, qreal volume);
     void mediaDuration(quint32 nodeId, qreal seconds);
-    // SIZE_THAT_FITS: the derived fit index (spec/PRIMITIVES.md).
+    // VIEW_THAT_FITS: the derived fit index (spec/PRIMITIVES.md).
     void fitChanged(quint32 nodeId, int index);
     // Windowed lazy stack: the visible absolute index range (ADR-0014).
     void visibleRange(quint32 nodeId, quint32 firstIndex, quint32 count);

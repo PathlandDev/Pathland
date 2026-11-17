@@ -441,7 +441,7 @@ are never chainable modifiers.
 | `0x1035`–`0x1037`, `0x103A`–`0x103E` | Media — `PLAYBACK_STATE` (U32), `MEDIA_POSITION` (F32), `MEDIA_VOLUME` (F32), `MEDIA_CONTROLLER_ID` (U32), `MEDIA_SOURCE` (STRING), `MEDIA_MUTED`/`MEDIA_LOOP` (U8), `MEDIA_RATE` (F32) — see PRIMITIVES.md + spec/MEDIA.md |
 | `0x1033`, `0x1034` | Unallocated (formerly `AUDIO_SOURCE`/`VIDEO_SOURCE`) |
 | `0x1038` | `ICON_NAME` (STRING; the canonical icon name — spec/ICONS.md) on an `ICON` node |
-| `0x1039` | `FIT_QUERY` (LIST of F32; a `SIZE_THAT_FITS` slot's candidate thresholds) — CONFORMANCE.md vector 28a |
+| `0x1039` | `FIT_QUERY` (LIST of F32; a `VIEW_THAT_FITS` slot's candidate thresholds) — CONFORMANCE.md vector 28a |
 | `0x103F`–`0x10FF` | Future styling properties (unallocated) |
 | `0x2001`–`0x200B` | Semantic (ROLE, STATE, ENABLED, SELECTED, EVENT_LISTENERS, VALUE, MIN_VALUE, MAX_VALUE, LABEL, PROMPT) |
 | `0x2009`, `0x200C`–`0x2014` | Control properties (allocated: STEP_VALUE, CONTROL_SIZE, IS_SECURE, PROGRESS, IS_INDETERMINATE, SELECTION, COLOR_VALUE, DATE_PICKER_MODE, PICKER_STYLE) — defined in PRIMITIVES.md controls. Note: a `DATE_PICKER`'s date is set via the `PARAMETER::SET_DATE` command (0x04), not a property; **`0x2011` is unallocated/reserved** (its former `DATE_VALUE` draft was dropped) |

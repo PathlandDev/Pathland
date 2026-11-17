@@ -512,7 +512,7 @@ The user changed the media volume (0..1, f32).
 
 ### 26a. EVENT:FIT_CHANGED (target=42, index=2)
 
-A `SIZE_THAT_FITS` slot reports its selected candidate index (f32).
+A `VIEW_THAT_FITS` slot reports its selected candidate index (f32).
 
 ```
 03 13 00 00 2A 00 00 00 00 00 00 40 00 00 00 00
@@ -576,7 +576,7 @@ A transition hint on the slot (enum code carried as an `F32` bit pattern):
 
 ### 28a. PARAMETER:SET_PROPERTY (id=1, propertyId=FIT_QUERY=0x1039, valueType=LIST=0x09, arenaRef=0)
 
-A `SIZE_THAT_FITS` slot's candidate threshold table. `C` is an arena offset; the
+A `VIEW_THAT_FITS` slot's candidate threshold table. `C` is an arena offset; the
 arena entry is a length-prefixed f32 array `[u32 count][f32 × count]`. The wire
 encoding is identical in the live (one selected child) and web-SSR snapshot
 (multiple children, container-query gated first paint) forms — the snapshot form
@@ -608,7 +608,7 @@ full-snapshot emission the slot's **child order equals this table order**):
 - `00 00 F0 43` = 480.0f (0x43F00000 LE)
 - `00 00 34 44` = 720.0f (0x44340000 LE)
 
-### 28b. `SIZE_THAT_FITS` full-snapshot child order + visibility contract
+### 28b. `VIEW_THAT_FITS` full-snapshot child order + visibility contract
 
 The full-snapshot (web SSR first document) form of a fit slot carries **every**
 candidate as a child, in `FIT_QUERY` order. The wire differs from the live form
@@ -626,7 +626,7 @@ candidate as a child, in `FIT_QUERY` order. The wire differs from the live form
 ```
 
 - `01 01 00 00 01 00 00 00 17 00 00 00 00 00 00 00` = `TREE:CREATE_NODE`
-  (id=1, `SIZE_THAT_FITS` 0x17)
+  (id=1, `VIEW_THAT_FITS` 0x17)
 - `02 01 00 00 01 00 00 00 39 10 09 00 00 00 00 00` = `PARAMETER:SET_PROPERTY`
   (id=1, `FIT_QUERY` 0x1039, LIST, arenaRef=0) — bytes per 28a
 - `01 01 00 00 02 00 00 00 10 00 00 00 00 00 00 00` = `TREE:CREATE_NODE`
@@ -640,7 +640,7 @@ candidate as a child, in `FIT_QUERY` order. The wire differs from the live form
 
 Arena: `[2][0.0][1024.0]` = `02 00 00 00 00 00 00 00 00 00 80 44`.
 
-**Contract** (spec/PRIMITIVES.md §SizeThatFits): child order 2, 3 equals the
+**Contract** (spec/PRIMITIVES.md §ViewThatFits): child order 2, 3 equals the
 `FIT_QUERY` order; the visible candidate is child 2 below 1024 and child 3 at
 `≥ 1024`; **exactly one** candidate is visible at any width; the `FIT_CHANGED`
 index equals this table index.

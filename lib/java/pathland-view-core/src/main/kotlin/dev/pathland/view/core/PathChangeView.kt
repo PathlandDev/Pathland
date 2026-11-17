@@ -3,7 +3,10 @@ package dev.pathland.view.core
 import dev.pathland.view.engine.PathlandNode
 import java.util.function.Consumer
 
-/** A view wrapped by `onPathChange`: records the listener on the built node. */
+/**
+ * A view wrapped by `onPathChange`: records the listener on the built node so
+ * the host can deliver platform path changes; it emits no protocol property.
+ */
 internal class PathChangeView(
     private val content: View,
     private val listener: Consumer<String>?,

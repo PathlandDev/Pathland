@@ -118,7 +118,13 @@ class StateSignal<T : Any> internal constructor(
         set(value) = set(value)
 }
 
-/** Property-delegate form of [StateSignal]. */
+/**
+ * The property-delegate form of [StateSignal].
+ *
+ * `provideDelegate` records the Kotlin property name as the default store key,
+ * so `by state(0)` persists under the property name; an explicit
+ * `state(0, "key")` wins.
+ */
 class StateDelegate<T : Any> internal constructor(
     val signal: StateSignal<T>,
 ) : ReadWriteProperty<Any?, T> {

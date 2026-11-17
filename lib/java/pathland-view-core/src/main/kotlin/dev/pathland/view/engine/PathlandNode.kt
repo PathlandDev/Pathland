@@ -12,12 +12,22 @@ import dev.pathland.core.transport.Event
 import java.util.LinkedHashMap
 import java.util.function.Consumer
 
-/** Receives a windowed lazy container's visible absolute index range. */
+/**
+ * Receives a windowed lazy container's visible absolute index range
+ * (`first`, `count`) from the renderer.
+ */
 fun interface VisibleRangeInput {
     fun onVisibleRange(firstIndex: Int, count: Int)
 }
 
-/** A node in the retained view tree. */
+/**
+ * A node in the application's retained view tree.
+ *
+ * It holds the component id, properties and signal bindings, text/attributed
+ * text, children, app-side gesture callbacks, and lazy-window metadata. The
+ * emitter diffs successive trees and emits only changed opcodes; renderers
+ * never see this type.
+ */
 class PathlandNode(
     @JvmField var component: Int,
 ) {

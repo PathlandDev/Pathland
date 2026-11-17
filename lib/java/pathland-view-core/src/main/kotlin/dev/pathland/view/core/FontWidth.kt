@@ -5,9 +5,14 @@ import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import java.util.function.Consumer
 
-/** Font width (0.5–1.5, 1.0 default). */
+/**
+ * Sets the font width expansion (`FONT_WIDTH`, 0.5–1.5; 1.0 default).
+ *
+ * Values are emitted as `F32` and inherited by text in the wrapped subtree.
+ */
 class FontWidth private constructor(private val config: Config) : ViewModifier {
 
+    /** Width values as literals or signals; 1.0 is normal, lower narrows, higher widens. */
     class Config {
         var value: Signal<Float>? = null
 

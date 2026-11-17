@@ -219,7 +219,7 @@ fn emit_manifest() -> String {
         ("SCROLLVIEW", component_type::SCROLLVIEW),
         ("LAZY_VGRID", component_type::LAZY_VGRID),
         ("LAZY_HGRID", component_type::LAZY_HGRID),
-        ("SIZE_THAT_FITS", component_type::SIZE_THAT_FITS),
+        ("VIEW_THAT_FITS", component_type::VIEW_THAT_FITS),
         ("LAZY_VSTACK", component_type::LAZY_VSTACK),
         ("LAZY_HSTACK", component_type::LAZY_HSTACK),
         ("GRID_ROW", component_type::GRID_ROW),

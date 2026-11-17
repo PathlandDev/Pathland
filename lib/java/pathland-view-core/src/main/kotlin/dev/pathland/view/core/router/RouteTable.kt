@@ -51,7 +51,12 @@ class RouteTable private constructor(
         }
     }
 
-    /** Builds a RouteTable. */
+        /**
+     * A fluent builder for a [RouteTable].
+     *
+     * Entries are matched in declaration order; each may carry a guard that can
+     * redirect instead of mounting. The fallback handles unmatched paths.
+     */
     class Builder {
         private val entries = ArrayList<Entry>()
         private var fallback: RouteHandler? = null
@@ -86,6 +91,7 @@ class RouteTable private constructor(
         fun build(): RouteTable = RouteTable(entries.toList(), fallback)
     }
 
+    /** One compiled route: its pattern, handler, optional guard, and optional redirect. */
     private class Entry(
         pattern: String,
         val handler: RouteHandler,
@@ -118,13 +124,16 @@ class RouteTable private constructor(
         }
     }
 
+    /** A compiled path segment: it matches one path component and may capture a param. */
     private sealed interface Segment {
         fun matches(part: String, params: MutableMap<String, String>): Boolean
 
+        /** A literal path segment that must match exactly (no capture). */
         class Literal(private val value: String) : Segment {
             override fun matches(part: String, params: MutableMap<String, String>): Boolean = value == part
         }
 
+        /** A named parameter segment that captures the matched value into `Params`. */
         class Param(private val name: String) : Segment {
             override fun matches(part: String, params: MutableMap<String, String>): Boolean {
                 params[name] = part

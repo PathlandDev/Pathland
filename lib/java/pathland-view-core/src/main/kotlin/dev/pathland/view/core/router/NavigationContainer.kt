@@ -11,12 +11,19 @@ import dev.pathland.view.engine.PathlandNode
 import java.util.Objects
 import java.util.function.Consumer
 
-/** The navigation slot: a structural container whose single child is the current route. */
+/**
+ * The navigation slot: a structural container whose single child is the current
+ * route.
+ *
+ * It renders the router's current destination and emits `ROUTE`, `NAV_DEPTH`,
+ * `NAV_CHROME`, and `TRANSITION` on the slot. The renderer may animate a
+ * destination swap; it never owns the route or the back stack.
+ */
 class NavigationContainer private constructor(
     private val config: Config,
 ) : View, Configurable<NavigationContainer.Config> {
 
-    /** NavigationContainer values. */
+    /** Container configuration: the router driving the slot and the chrome mode. */
     class Config : View.Config {
         var router: Router? = null
         var chrome: Chrome = Chrome.PLATFORM_DEFAULT

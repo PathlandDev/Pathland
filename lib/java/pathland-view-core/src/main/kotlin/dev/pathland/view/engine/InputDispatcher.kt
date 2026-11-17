@@ -4,7 +4,12 @@ import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.core.transport.Event
 import java.util.function.Consumer
 
-/** Routes raw input events into the app's bindings via a RenderResult's maps. */
+/**
+ * Routes raw input events into the app's bindings via a `RenderResult`'s maps.
+ *
+ * One `dispatch(Event)` call handles every event type (pointer, text, value,
+ * date, media, fit, visible range, navigation); unknown targets are ignored.
+ */
 class InputDispatcher(
     result: RenderResult,
     private val activePath: WritableSignal<String>,

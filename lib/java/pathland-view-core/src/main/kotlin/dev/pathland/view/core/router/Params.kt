@@ -3,7 +3,11 @@ package dev.pathland.view.core.router
 import java.util.Collections
 import java.util.Objects
 
-/** Path parameters captured from a route pattern, plus the matched path. */
+/**
+ * Path/query parameters captured from a route pattern, plus the matched path.
+ *
+ * Values are strings; typed accessors parse them for destination factories.
+ */
 class Params private constructor(
     private val values: Map<String, String>,
     private val matchedPath: String?,

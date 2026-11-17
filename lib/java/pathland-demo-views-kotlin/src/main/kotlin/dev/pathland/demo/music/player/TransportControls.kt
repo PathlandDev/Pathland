@@ -13,7 +13,12 @@ import dev.pathland.view.dsl.computed
 import dev.pathland.view.dsl.fontSize
 import dev.pathland.view.dsl.unaryPlus
 
-/** The previous / play-pause / next transport buttons. */
+/**
+ * The previous / play-pause / next transport buttons.
+ *
+ * Taps drive the shared `MediaPlayerService`; the play/pause icon follows the
+ * persisted playing signal.
+ */
 internal class TransportControls(
     private val wide: Boolean
 ) : Component() {

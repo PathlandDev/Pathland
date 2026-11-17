@@ -9,7 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,6 +48,9 @@ final class SessionSubscriptions implements SessionContext, SubscriptionSubscrib
 
     /** Latest unpublished value per subscription (latest-wins). */
     private final ConcurrentHashMap<SubscriptionKey, Pending> pending = new ConcurrentHashMap<>();
+
+    /** Cleanup callbacks run when the session closes (data sources, …). */
+    private final List<Runnable> closeTasks = Collections.synchronizedList(new ArrayList<>());
 
     SessionSubscriptions(
             PathlandSignalHub hub,
@@ -94,6 +99,23 @@ final class SessionSubscriptions implements SessionContext, SubscriptionSubscrib
             return;
         }
         actor.accept(task);
+    }
+
+    @Override
+    public boolean isLive() {
+        return hub != null;
+    }
+
+    @Override
+    public void onClose(Runnable task) {
+        if (task == null) {
+            return;
+        }
+        if (closed.get()) {
+            task.run();
+            return;
+        }
+        closeTasks.add(task);
     }
 
     @Override
@@ -167,6 +189,18 @@ final class SessionSubscriptions implements SessionContext, SubscriptionSubscrib
         locals.clear();
         pending.clear();
         scheduled.set(false);
+        List<Runnable> tasks;
+        synchronized (closeTasks) {
+            tasks = new ArrayList<>(closeTasks);
+            closeTasks.clear();
+        }
+        for (Runnable task : tasks) {
+            try {
+                task.run();
+            } catch (RuntimeException e) {
+                LOG.warn("session close task failed: {}", e.getMessage());
+            }
+        }
     }
 
     /** Whether this session's subscriptions are closed (test hook). */

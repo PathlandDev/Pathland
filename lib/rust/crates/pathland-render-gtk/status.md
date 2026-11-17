@@ -160,7 +160,7 @@ compatibility.
 - **App-driven media (spec/MEDIA.md)**: a **`MEDIA_CONTROLLER`** node (the
   playback owner; layout-transparent, **no widget**) gets a hidden **GStreamer
   `playbin` pipeline**, keyed by the **controller id** — so a `VIDEO` surface
-  appearing/disappearing (e.g. a `SIZE_THAT_FITS` swap) never restarts the
+  appearing/disappearing (e.g. a `VIEW_THAT_FITS` swap) never restarts the
   stream. Driven by the controller's transport properties: `MEDIA_SOURCE` sets
   the source URI (re-created on change, resuming if the app was playing),
   `PLAYBACK_STATE` → pipeline `Playing`/`Paused`, `MEDIA_POSITION` → seek
@@ -246,7 +246,7 @@ compatibility.
 
 ## Not implemented / gaps
 
-- **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY 0x1039 LIST / FIT_CHANGED 0x13) is
+- **`ViewThatFits` (VIEW_THAT_FITS 0x17 / FIT_QUERY 0x1039 LIST / FIT_CHANGED 0x13) is
   NOT implemented in the GTK renderer (removed)** — a fit slot node is unmapped (no
   widget), `FIT_QUERY` is not decoded, and no `FIT_CHANGED` is reported. The protocol,
   core, Java DSL, Rust DSL/engine, web (SSR + DOM) and server-routing surfaces are

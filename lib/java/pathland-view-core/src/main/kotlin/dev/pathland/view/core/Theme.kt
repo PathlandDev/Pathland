@@ -3,10 +3,17 @@ package dev.pathland.view.core
 import dev.pathland.core.protocol.ValueTypes
 import dev.pathland.core.transport.OpcodeSink
 
-/** A batch of global design-token overrides for a single scheme. */
+/**
+ * A batch of renderer-wide design-token overrides for one color scheme.
+ *
+ * Tokens are identified by their dot-separated catalog path (for example
+ * `color.primary` or `space.2`) and a wire value type. The fluent builders
+ * (`color`, `f32`, `u32`, `u8`, `string`) return `this` for chaining; the
+ * emitter turns the batch into `PARAMETER::SET_DESIGN_TOKEN` opcodes.
+ */
 class Theme : ThemeData {
 
-    /** A single token override (path, wire value type, typed value). */
+    /** One design-token override: its catalog path, wire type, and typed value. */
     data class TokenOverride(
         val path: String,
         val valueType: Int,

@@ -8,7 +8,14 @@ import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import java.util.function.Predicate
 
-/** The ergonomic facade for routing and navigation. */
+/**
+ * The ergonomic facade for routing and navigation.
+ *
+ * `navigator(path)` builds a route table seeded with an initial path and
+ * returns a [Router] wrapped in the `NavigationContainer`; `container(router)`
+ * wraps an existing router; `isActive` exposes a computed signal for link
+ * highlighting. Routing state is app-owned and never renderer state.
+ */
 object Navigation {
     /** The environment key for the active Router. */
     @JvmField
@@ -35,7 +42,12 @@ object Navigation {
     fun isActive(router: Router, path: String): Signal<Boolean> =
         Signals.computed { router.path() == path }
 
-    /** A fluent route list → seeded Router builder. */
+    /**
+     * A fluent route list → seeded [Router] builder.
+     *
+     * Routes are matched in declaration order; guards may redirect, and the
+     * fallback handles unmatched paths. `build()` returns the seeded router.
+     */
     @PathlandDsl
     class Builder internal constructor(private val initialPath: String) {
         private val table = RouteTable.builder()

@@ -79,7 +79,7 @@ MEDIA_CONTROLLER 0x30            non-visual; owns the resource + transport
   views whose actions/values write the controller's transport properties. Nothing
   in the protocol renders audio.
 - The application **SHOULD** place a controller at a stable position that no
-  structural swap removes — e.g. a sibling of (or ancestor of) the `SIZE_THAT_FITS`
+  structural swap removes — e.g. a sibling of (or ancestor of) the `VIEW_THAT_FITS`
   slot, or a child of the root. A controller inside a swapping branch would be
   created and destroyed with that branch, defeating the split.
 
@@ -235,7 +235,7 @@ last `MEDIA_VOLUME_CHANGED` must not re-apply. The guard is **per controller**.
 
 ## 5. Structural swaps (the motivating contract)
 
-The reason the controller exists. Consider a `SIZE_THAT_FITS` slot whose
+The reason the controller exists. Consider a `VIEW_THAT_FITS` slot whose
 candidates are two different **control layouts for the same track** — a compact
 player bar and a wide now-playing sidebar (ordinary application views: buttons, a
 seek slider, labels). Both write the same controller's transport signals:
@@ -243,7 +243,7 @@ seek slider, labels). Both write the same controller's transport signals:
 ```
 VStack
   MEDIA_CONTROLLER (id 9)        ← stable: outside the slot
-  SIZE_THAT_FITS (id 4)          ← the swapping slot
+  VIEW_THAT_FITS (id 4)          ← the swapping slot
     candidate 0: PlayerBar       → controls controller 9
     candidate 1: NowPlayingBar   → controls controller 9
 ```

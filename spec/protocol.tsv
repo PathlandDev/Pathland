@@ -26,7 +26,7 @@ component		GRID	0x0013
 component		SCROLLVIEW	0x0014
 component		LAZY_VGRID	0x0015
 component		LAZY_HGRID	0x0016
-component		SIZE_THAT_FITS	0x0017
+component		VIEW_THAT_FITS	0x0017
 component		LAZY_VSTACK	0x001B
 component		LAZY_HSTACK	0x001C
 component		GRID_ROW	0x001D

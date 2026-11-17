@@ -22,6 +22,20 @@ interface SessionContext {
     /** Run [task] on this session's actor (never on the caller's thread). */
     fun submit(task: Runnable)
 
+    /**
+     * Whether this session is live (a WebSocket/connection) rather than a
+     * one-shot SSR render. A live session can apply async results; an SSR
+     * session is discarded after the first render.
+     */
+    fun isLive(): Boolean = true
+
+    /**
+     * Register cleanup to run when the session closes (a data source's executor
+     * work, subscriptions, …). Idempotent per task; the task runs on the close
+     * thread.
+     */
+    fun onClose(task: Runnable) {}
+
     companion object {
         private val CURRENT = ThreadLocal<SessionContext?>()
 

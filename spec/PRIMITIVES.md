@@ -179,7 +179,7 @@ with SwiftUI's view categories and are the **single authoritative allocation**.
 | `0x14` | `SCROLLVIEW` | Scrollable content container |
 | `0x15` | `LAZY_VGRID` | Virtualized vertical grid container (windowed rendering for large datasets) |
 | `0x16` | `LAZY_HGRID` | Virtualized horizontal grid container |
-| `0x17` | `SIZE_THAT_FITS` | **Fit slot** — renders its single (currently-selected) child; the renderer measures its own allocated width against the `FIT_QUERY` threshold list and only the selected child is transmitted (see below) |
+| `0x17` | `VIEW_THAT_FITS` | **Fit slot** — renders its single (currently-selected) child; the renderer measures its own allocated width against the `FIT_QUERY` threshold list and only the selected child is transmitted (see below) |
 | `0x18`–`0x1A` | — | Formerly `List`/`NavigationStack`/`NavigationSplitView` (composites, removed) — never reused |
 | `0x1B` | `LAZY_VSTACK` | Virtualized vertical stack |
 | `0x1C` | `LAZY_HSTACK` | Virtualized horizontal stack |
@@ -327,7 +327,7 @@ with **no** media view, controlled by the application's own views.
 - **Layout**: **layout-transparent** — no native element, no box, no space, no
   spacing contribution (like `COMMENT` and the `PROXY_VIEW` passthrough,
   [LAYOUT.md](./LAYOUT.md)). Place it for **lifetime stability** (outside any
-  swapping branch such as a `SIZE_THAT_FITS` slot), not for layout.
+  swapping branch such as a `VIEW_THAT_FITS` slot), not for layout.
 - **Events**: the `MEDIA_*` family targets the controller id, gated by the
   transport properties bound on it (see [EVENTS.md](./EVENTS.md#media)).
 - **Independence**: attaching/detaching a `VIDEO` surface never starts, stops,
@@ -769,7 +769,11 @@ The horizontal form of `LAZY_VSTACK`: same window properties, virtual extent,
 and `VISIBLE_RANGE` reporting with the main axis horizontal (`ITEM_EXTENT` is a
 width). Without window properties it is an eager `HStack`.
 
-### SizeThatFits — `SIZE_THAT_FITS` 0x17
+### ViewThatFits — `VIEW_THAT_FITS` 0x17
+
+`ViewThatFits` is SwiftUI's adaptive container (choose the first candidate that
+fits); SwiftUI's `sizeThatFits` is a measurement API, **not** this component.
+The wire component is the fit slot described here.
 
 A **fit slot**: it shows **one child at a time — the currently selected
 candidate**. In the **live (delta) form** only that child is ever transmitted:

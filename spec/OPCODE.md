@@ -295,7 +295,7 @@ per-edge variants map to native padding, alongside
 | `PADDING_BOTTOM` | `0x1014` | F32 | Bottom padding |
 | `PADDING_LEFT` | `0x1015` | F32 | Left padding |
 | `BORDER_EDGES` | `0x1016` | U32 | Which border edges to draw (bitmask, see [`border_edges`] flags) |
-| `FIT_QUERY` | `0x1039` | LIST | A `SizeThatFits` slot's candidate fit-query: ascending `minWidth` thresholds (F32 elements) — the renderer measures its own allocated width and reports the fit index (see [`SizeThatFits`](./PRIMITIVES.md#size-that-fits--size-that-fits-0x17)) |
+| `FIT_QUERY` | `0x1039` | LIST | A `ViewThatFits` slot's candidate fit-query: ascending `minWidth` thresholds (F32 elements) — the renderer measures its own allocated width and reports the fit index (see [`ViewThatFits`](./PRIMITIVES.md#view-that-fits--view-that-fits-0x17)) |
 | `TRANSITION` | `0x1031` | F32 (enum code) | Presentation hint for structural swaps (a `NavigationContainer` destination swap, a reactive component-body branch change): `None`=0, `PlatformDefault`=1, `Fade`=2, `Slide`=3, `Scale`=4 — the renderer **may** animate, never stores navigation state |
 
 `BORDER_EDGES` is a u32 bitmask (`SET_PROPERTY` with the `U32` value type)
@@ -762,8 +762,8 @@ Because the ring and arena are plain memory, the guest publishes via a single re
 > id. `TREE` and `PARAMETER` opcodes reference each node id for exactly one node,
 > so every id-keyed consumer (the renderer's `id → element` map, `PLAYBACK_STATE`,
 > `MEDIA_*`, proxy remapping, …) stays unambiguous. A full-snapshot emission of a
-> subtree materialized more than once (e.g. a `SIZE_THAT_FITS` candidate shared
-> between branches, spec/PRIMITIVES.md §SizeThatFits) MUST give **every copy a
+> subtree materialized more than once (e.g. a `VIEW_THAT_FITS` candidate shared
+> between branches, spec/PRIMITIVES.md §ViewThatFits) MUST give **every copy a
 > distinct id** — no id is reused between copies, including identity-stable nodes.
 
 ---

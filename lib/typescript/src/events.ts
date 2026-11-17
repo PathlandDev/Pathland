@@ -164,7 +164,7 @@ export function encodeMediaDurationChanged(target: number, seconds: number): Uin
   return eventBatch(CMD_MEDIA_DURATION_CHANGED, target, bitsFromF32(seconds), 0);
 }
 
-/** A `SIZE_THAT_FITS` slot's selected candidate changed (B = index, f32). */
+/** A `VIEW_THAT_FITS` slot's selected candidate changed (B = index, f32). */
 export function encodeFittedChanged(target: number, index: number): Uint8Array {
   return eventBatch(CMD_FIT_CHANGED, target, bitsFromF32(index), 0);
 }

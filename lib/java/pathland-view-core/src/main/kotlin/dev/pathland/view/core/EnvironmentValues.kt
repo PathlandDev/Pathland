@@ -2,7 +2,13 @@ package dev.pathland.view.core
 
 import java.util.HashMap
 
-/** An immutable, hierarchical scope of environment values. */
+/**
+ * An immutable, hierarchical scope of environment values.
+ *
+ * Each scope adds one identity-keyed binding over its parent; lookups walk the
+ * chain so the nearest binding wins. Used for styles, platform values, and
+ * environment-scoped app values without emitting node properties.
+ */
 class EnvironmentValues private constructor(
     private val parent: EnvironmentValues?,
     private val key: EnvironmentKey<*>?,

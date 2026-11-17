@@ -153,8 +153,8 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   `Label`/`GridRow` components.
 - **State backends**: only the in-memory `StateStore` ships in Rust (the Java
   library has Redis + in-memory; File/SQLite/LocalStorage/NVS are future).
-- **`SizeThatFits` (SIZE_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED)** is
-  **authored** (`SizeThatFits::new(Vec<Fit>)` + `Fit::new(view, minWidth)` /
+- **`ViewThatFits` (VIEW_THAT_FITS 0x17 / FIT_QUERY LIST / FIT_CHANGED)** is
+  **authored** (`ViewThatFits::new(Vec<Fit>)` + `Fit::new(view, minWidth)` /
   `Fit::any`) emitting the slot + its single selected child + the `FIT_QUERY`
   list; **reactive selection is fixed** — only the Java DSL's structural slot
   reacts to `FIT_CHANGED`.
@@ -178,7 +178,7 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
 `cargo test -p pathland-view` — the three operations (static + chained, any
 order), per-view config, tuple/single modifier lists, custom modifiers,
 `assign_ids`, tap-gesture listener wiring, token refs, grid counts, named
-shapes, `SizeThatFits`, and the media surface (`Video` + `attach()`: the
+shapes, `ViewThatFits`, and the media surface (`Video` + `attach()`: the
 controller's node + transport bindings, the pinned/stable controller id across a
 structural swap, and its `MEDIA_CONTROLLER_ID` link, plus the reactive
 `MEDIA_SOURCE` re-emit). Workspace `cargo test` green; `lib/rust/check-wasm.sh`

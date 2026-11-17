@@ -312,7 +312,7 @@ Stacks, scroll, and other containers lay their children out inside; a Fixed box
 constrains them (scroll for `SCROLLVIEW`, otherwise overflow is visible unless
 `CLIPS_TO_BOUNDS` clips it).
 
-### Size that fits (`SIZE_THAT_FITS` 0x17)
+### View that fits (`VIEW_THAT_FITS` 0x17)
 
 A fit slot is **size-taking on both axes**: it stretches to its parent's
 proposal (`FILL` semantics — never hugs), because its **allocated width is the
@@ -320,9 +320,9 @@ unit of fitting**. It holds at most one (selected) child in the live form, laid
 out normally inside the box; a **full-snapshot emission** (the web SSR first
 document) carries every candidate and the renderer lays each one out, selecting
 the visible branch by CSS container queries keyed to the slot's own width (a
-no-JS correct first paint — see [PRIMITIVES.md](./PRIMITIVES.md#size-that-fits)).
+no-JS correct first paint — see [PRIMITIVES.md](./PRIMITIVES.md#view-that-fits)).
 The renderer measures its allocated width and derives the fit index (threshold
-rule in [PRIMITIVES.md](./PRIMITIVES.md#size-that-fits)). No content-based
+rule in [PRIMITIVES.md](./PRIMITIVES.md#view-that-fits)). No content-based
 measurement of candidates is ever done or transmitted — the query thresholds are
 app-declared, so the pick is a pure function of `(thresholds, allocated width)`.
 

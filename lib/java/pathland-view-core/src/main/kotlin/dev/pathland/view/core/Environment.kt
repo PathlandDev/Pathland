@@ -4,7 +4,13 @@ import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.state.PersistentState
 
-/** The rendering environment — the single inheritance/scoping mechanism. */
+/**
+ * The rendering environment — the single inheritance/scoping mechanism.
+ *
+ * It carries the session's `PersistentState` and the root-declared window
+ * metadata. Inheritable values live in a separate thread-local scope stack
+ * (`Environment.current()`); `within`/`restore` bracket each render.
+ */
 class Environment(private val state: PersistentState?) {
 
     private var windowMetadata: WindowMetadata? = null
@@ -56,6 +62,7 @@ class Environment(private val state: PersistentState?) {
             return Signal { value as T }
         }
 
+        /** A lazy environment signal: it captures the value at read time when the key is in scope. */
         private class EnvironmentSignal<T>(private val key: EnvironmentKey<T>) : Signal<T> {
             private var captured: Signal<T>? = null
 

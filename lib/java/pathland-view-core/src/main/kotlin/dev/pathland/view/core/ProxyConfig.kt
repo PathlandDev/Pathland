@@ -2,7 +2,13 @@ package dev.pathland.view.core
 
 import java.util.Objects
 
-/** The configuration of a ProxyView. */
+/**
+ * The immutable configuration of a `PROXY_VIEW`.
+ *
+ * Holds the origin server's base endpoint, the origin route to render, and the
+ * name of the credential the proxy presents. All three are app-configured; the
+ * origin endpoint is never taken from client input.
+ */
 data class ProxyConfig(
     val endpoint: String,
     val route: String?,

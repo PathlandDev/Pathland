@@ -2,9 +2,16 @@ package dev.pathland.view.core
 
 import java.util.function.Consumer
 
-/** Declares raw input listeners (`EVENT_LISTENERS` bitmask, OR-in). */
+/**
+ * ORs raw input listener bits into the wrapped node's `EVENT_LISTENERS`.
+ *
+ * Bits request pointer/key/focus/editing/scroll/wheel/visible-range events
+ * (spec/EVENTS.md). Listeners do not change layout or visuals; the renderer
+ * reports the events through the event ring or network batch.
+ */
 class PointerEvents private constructor(private val mask: Int) : ViewModifier {
 
+    /** Raw input listener mask configuration (`EVENT_LISTENERS` bits). */
     class Config {
         var mask: Int = 0
 

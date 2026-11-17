@@ -86,7 +86,7 @@ class DeltaBatcherTest {
 
     @Test
     void rebasesListTypedOffsets() {
-        // The LIST value type (e.g. a SIZE_THAT_FITS FIT_QUERY) references the
+        // The LIST value type (e.g. a VIEW_THAT_FITS FIT_QUERY) references the
         // string section by a relative offset — it must rebase past earlier
         // frames' strings just like STRING (a regression: it wasn't, so a merged
         // batch's FIT_QUERY pointed at garbage → "list length out of bounds").

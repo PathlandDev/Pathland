@@ -10,7 +10,14 @@ import java.util.ArrayDeque
 import java.util.Deque
 import java.util.Objects
 
-/** App-owned navigation state: a writable route signal plus a back-stack. */
+/**
+ * App-owned navigation state: a writable route signal plus a back-stack.
+ *
+ * `navigate`/`push`/`replace`/`pop`/`back` update the route signal and stack;
+ * the container emits `ROUTE`/`NAV_DEPTH`, and the renderer may animate the
+ * destination swap. The router is never persisted on native (per-session) and
+ * is mirrored to the browser URL by the DOM client.
+ */
 class Router {
     private val table: RouteTable
     private val stack: Deque<Route> = ArrayDeque()

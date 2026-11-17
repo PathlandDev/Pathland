@@ -72,7 +72,7 @@ typedef enum PathlandQtEventKind {
     PLQT_EV_MEDIA_ENDED = 10,     /* controller reached the end (no value)        */
     PLQT_EV_MEDIA_VOLUME = 11,    /* controller volume 0..1 (value)               */
     PLQT_EV_MEDIA_DURATION = 12,  /* controller duration, seconds (value)         */
-    PLQT_EV_FIT_CHANGED = 13,     /* SIZE_THAT_FITS derived fit index (value)     */
+    PLQT_EV_FIT_CHANGED = 13,     /* VIEW_THAT_FITS derived fit index (value)     */
     PLQT_EV_POINTER_ENTER = 14,   /* pointer entered a listener node (hover)      */
     PLQT_EV_POINTER_LEAVE = 15,   /* pointer left a listener node                 */
     PLQT_EV_KEY_DOWN = 16,        /* key pressed on the focused node              */

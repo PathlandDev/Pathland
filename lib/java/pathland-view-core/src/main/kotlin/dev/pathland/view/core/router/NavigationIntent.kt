@@ -3,7 +3,12 @@ package dev.pathland.view.core.router
 import dev.pathland.view.core.View
 import dev.pathland.view.core.ViewModifier
 
-/** The navigation action modifier: marks a view as a route-changer. */
+/**
+ * The navigation action modifier: marks a view as a route-changer.
+ *
+ * It records the `NavOp` and target on the node; the host routes a tap through
+ * the nearest enclosing router. It does not emit a protocol property itself.
+ */
 class NavigationIntent private constructor(
     private val to: String,
     private val op: NavOp,

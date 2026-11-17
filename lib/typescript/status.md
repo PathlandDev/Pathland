@@ -144,8 +144,8 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   This holds regardless of delta order: a fresh node (e.g. a `ViewThatFits`
   candidate swap) receives its properties **before** its children, so a label on
   an as-yet-empty container must not become a text node.
-- **SizeThatFits fit slots** (`src/apply.ts` + `elements.ts` + `src/events.ts`):
-  a `SIZE_THAT_FITS` node is a fill-sized `div.pathland-ftf` that is
+- **ViewThatFits fit slots** (`src/apply.ts` + `elements.ts` + `src/events.ts`):
+  a `VIEW_THAT_FITS` node is a fill-sized `div.pathland-ftf` that is
   **layout-transparent**: it forwards the parent flex container's
   `flex-direction`/`align-items`/`justify-content` (`inherit`) into its own box
   (mirrors the Rust SSR slot styles), so a slot-wrapped candidate keeps the
@@ -169,8 +169,8 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   band-crossing fit swap dropping a child INSIDE a candidate — the "all branches
   rendered" bug) leaves the gate intact, and an `INSERT_CHILD`/`CREATE_NODE` (a
   `META::RESYNC` replaying the tree) never tears it down — the SSR gate survives
-  the resync and keeps showing the width-correct candidate. Golden `sizethatfits`
-  (+ `sizethatfits-snapshot`) fixtures; the hydrate→downgrade case in
+  the resync and keeps showing the width-correct candidate. Golden `viewthatfits`
+  (+ `viewthatfits-snapshot`) fixtures; the hydrate→downgrade case in
   `ssr-conformance`; `test/fit.test.ts`.
 - **Logging** (`src/log.ts`, `src/describe.ts`): a tiny **zero-dependency**
   logger (levels + `[pathland:ns]` namespaces, default `info`; opt into

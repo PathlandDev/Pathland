@@ -66,6 +66,9 @@ dependency — framework glue lives in the starters.
   close/unsubscribe. `PathlandSession.submit(Runnable)` hands arbitrary work to the
   session actor from any thread; a session context is installed around every actor
   task (mount, dispatch, drain, theming) so `topic(...)` resolves during render.
+  `SessionContext.isLive()` distinguishes a live session from a one-shot SSR
+  render, and `SessionContext.onClose(...)` registers cleanup (data sources, …)
+  that `PathlandSession.close()` runs after unsubscribing.
   `PathlandHost.signalHub()`/`signalHub(mount)` expose the hub. Telemetry:
   `topics.published`/`coalesced`/`dropped`. See `docs/external-updates.md` and
   `TopicsTest`.
@@ -215,7 +218,7 @@ dependency — framework glue lives in the starters.
   registers the emitter's structural-reconcile callback
   (`Emitter.onStructureReconciled`) to `reconcileProxies()`, so a proxy lives
   **exactly while its node is in the retained tree** (spec/PROXY.md §7): a
-  `SizeThatFits` slot dropping the candidate that held it closes the origin
+  `ViewThatFits` slot dropping the candidate that held it closes the origin
   connection, and re-adding it opens a fresh one (re-seeded by `META::RESYNC`).
   The host's frames feed the session's `DeltaBatcher` (a single unified sequence);
   `dispatch` splits proxy-range events to the origin and everything else to the

@@ -4,7 +4,13 @@ import dev.pathland.view.core.ProxyConfig
 import dev.pathland.core.transport.Event
 import java.util.function.Consumer
 
-/** The result of mounting a view tree: root id plus live event-routing maps. */
+/**
+ * The result of mounting a view tree: the root id plus the live event-routing
+ * maps.
+ *
+ * Maps are keyed by node id and are the only host-facing surface for input
+ * events; forward decoded events to `InputDispatcher`.
+ */
 data class RenderResult(
     val rootId: Int,
     val tapActions: Map<Int, Runnable>,

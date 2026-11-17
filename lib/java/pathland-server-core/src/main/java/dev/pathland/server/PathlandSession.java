@@ -211,7 +211,7 @@ public final class PathlandSession {
             this.inputDispatcher = new InputDispatcher(result, activePath);
             this.rootId = result.rootId();
             this.proxyViews = result.proxyViews();
-            // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a SizeThatFits
+            // A structural reconcile may add/remove a PROXY_VIEW node (e.g. a ViewThatFits
             // slot dropping the candidate that held it) — reconcile the proxy sessions
             // against the live proxyViews map so a proxy lives exactly while its node is
             // in the retained tree (spec/PROXY.md §7).
@@ -308,7 +308,7 @@ public final class PathlandSession {
      * origin connection for every {@code PROXY_VIEW} node in the retained tree, and
      * close the connection of every node that left it (spec/PROXY.md §7). Driven by
      * the emitter's structural-reconcile callback, so a proxy lives exactly while its
-     * node is in the tree — e.g. a {@code SizeThatFits} slot dropping the candidate
+     * node is in the tree — e.g. a {@code ViewThatFits} slot dropping the candidate
      * that held it closes the origin connection, and re-adding it opens a fresh one.
      * The origin is given this session's window scope as its {@code wid}, so the
      * origin's persisted state is per-window.

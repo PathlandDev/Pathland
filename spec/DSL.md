@@ -250,8 +250,8 @@ canonical and always sufficient.
   `View` (`padding`, `foregroundStyle`, …), each delegating to the same
   construction path (spec §5.6). There is exactly one construction path; `View.of`
   remains the inline reactive-subtree factory, and data factories keep their `of`
-  constructors (`Color.of`, `Fit.of`, `EnvironmentKey.of`, `Route.of`,
-  `Params.of`, `Signals.*`).
+  constructors (`Color.of`, `EnvironmentKey.of`, `Route.of`, `Params.of`,
+  `Signals.*`); fit candidates use the `Fit(...)` factory.
 
 Eligible members (non-exhaustive; the companion tables list the surface):
 
@@ -379,7 +379,7 @@ VStack.make().children(
 modifiers, environment/tap/navigation wrappers — is one slot. Each child view
 rendered by a primitive is a **child slot**. A read in a child therefore
 re-renders only the child; a read in the parent re-renders the parent (and
-rebuilds its children, diffing them). `NavigationContainer`, `SizeThatFits`, and
+rebuilds its children, diffing them). `NavigationContainer`, `ViewThatFits`, and
 `View.of` are ordinary components, not a separate mechanism.
 
 **Emission contract:**
@@ -469,7 +469,7 @@ Containers are **content-bearing**: they expose `children(...)`.
 | `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { ForEach(items) { … } }` | `LazyHGrid(rows = 3, spacing = 8f) { ForEach(items) { item, _ -> Cell(item).frame(width = 44f) } }` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS`; column window (`ITEM_COUNT` = columns, `ITEM_EXTENT` = column width, `FIRST_ITEM_INDEX` = first column) |
 | `LazyVStack` | `LazyVStack(spacing:) { ForEach(items) { … } }` | `LazyVStack(spacing = 0) { ForEach(items) { item, _ -> Row(item).frame(height = 44f) } }` | `LAZY_VSTACK` 0x1B; `ITEM_COUNT` 0x0022, `ITEM_EXTENT` 0x0023, `FIRST_ITEM_INDEX` 0x0024; `ForEach` is the data source (§Virtualized lists) |
 | `LazyHStack` | `LazyHStack(spacing:) { ForEach(items) { … } }` | `LazyHStack(spacing = 0) { ForEach(items) { item, _ -> Cell(item).frame(width = 120f) } }` | `LAZY_HSTACK` 0x1C; same window properties; `ForEach` is the data source |
-| `SizeThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `SizeThatFits.make().children(Fit.of(view, minWidth))...` (candidates `Fit` declared in surface order; `FIT_QUERY` thresholds ascending; the slot shows one child — the selected candidate — the others never transmit in the live form; a full-snapshot/SSR emission carries every candidate for a no-JS first paint gated by CSS container queries — the DSL is unchanged) | `SIZE_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
+| `ViewThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `ViewThatFits { Fit(view, minWidth) }` / `ViewThatFits(Fit(view, minWidth), …)` (candidates are sorted by ascending `minWidth`, equal thresholds keeping surface order; `FIT_QUERY` carries the sorted thresholds; the slot shows one child — the selected candidate — the others never transmit in the live form; a full-snapshot/SSR emission carries every candidate for a no-JS first paint gated by CSS container queries — the DSL is unchanged) | `VIEW_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
 | `ProxyView` | `RemoteView(endpoint:route:)` (no SwiftUI equivalent) | `ProxyView.make(p -> p.endpoint(String).route(String).credential(String))` | `PROXY_VIEW` 0x1E; child = the **origin subtree root** (served by another Pathland server, id-remapped); see [PROXY.md](./PROXY.md) |
 
 **`ProxyView` (proxy view).** A container whose child subtree is served by
@@ -551,6 +551,13 @@ Rules:
 - Row-local component state (`by state(...)`) is scoped by the `ForEach` item key
   (or absolute index without a key) and survives window eviction: a re-created
   row rebinds to the same persisted state, and rows are independent.
+- Paged sources: `ForEach(source: PagedDataSource<T>, itemExtent, placeholder)`
+  loads pages on demand. Loaded rows render via the content; unloaded rows render
+  the placeholder (a spacer by default) at `itemExtent`. The engine calls the
+  source's prefetch for the initial and visible windows. `itemExtent` is
+  required because the full list is not known up front. The source exposes
+  `total`/`loading`/`error` signals; a page arrival re-renders only the lazy
+  slot. SSR starts in the loading state; the live session loads pages.
 - A full-snapshot/SSR emission carries the first window plus the full virtual
   extent; the client corrects the window after `META::ENVIRONMENT`.
 - `LazyVGrid`/`LazyHGrid` use the same data-source window with a **row** or
@@ -1078,7 +1085,7 @@ playback is stable across structural swaps.
 - **Audio has no view**: bind ordinary views (buttons/sliders) to the
   controller's signals. Include `controller.attach()` once in the tree — a
   non-visual marker that materializes the controller node — placed **outside**
-  any swapping branch (e.g. a `SizeThatFits` slot).
+  any swapping branch (e.g. a `ViewThatFits` slot).
 - **Video** is the only media view: `Video.make(controller)` renders the
   controller's output. `VideoStyle` supplies a custom control surface; the
   default `NativeVideoStyle` shows renderer-native controls.

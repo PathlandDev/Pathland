@@ -51,7 +51,12 @@ object Length {
     operator fun invoke(value: Float) = of(value)
 }
 
-/** A grid track spec (`flex`, `fixed:<points>`, or `adaptive:<points>`). */
+/**
+ * A grid track spec: `flex`, `fixed:<points>`, or `adaptive:<points>`.
+ *
+ * The list is encoded as the `GRID_TRACKS` string; omitted tracks use equal
+ * fractional sizing.
+ */
 class GridItem private constructor(val token: String) {
     companion object {
         fun flexible() = GridItem("flex")
@@ -208,7 +213,10 @@ fun Gauge(value: Signal<Float>, min: Float = 0f, max: Float = 1f): dev.pathland.
         node.property(Properties.MAX_VALUE, Signals.constant(max))
     }.registerChild()
 
-/** The picker presentation styles (SwiftUI `PickerStyle` parity). */
+/**
+ * The picker presentation styles (SwiftUI `PickerStyle` parity), sent through
+ * `PICKER_STYLE`; the renderer maps each to its native picker mode.
+ */
 enum class PickerStyle(private val wire: Int) : WireValue {
     MENU(0),
     SEGMENTED(1),
@@ -261,6 +269,20 @@ fun <T> ForEach(
     content: PathlandScope.(T, Int) -> Unit,
 ): dev.pathland.view.core.View =
     ForEachView(items, key, itemExtent, itemExtents, content).registerChild()
+
+/**
+ * A windowed `ForEach` over a [PagedDataSource]. Use it inside a lazy stack/grid;
+ * loaded rows render via [content], unloaded rows via [placeholder] (a spacer by
+ * default). A uniform [itemExtent] is required before the list is loaded.
+ */
+fun <T> ForEach(
+    source: dev.pathland.view.data.PagedDataSource<T>,
+    itemExtent: Float,
+    key: ((T) -> Any)? = null,
+    placeholder: (PathlandScope.(Int) -> Unit)? = null,
+    content: PathlandScope.(T, Int) -> Unit,
+): dev.pathland.view.core.View =
+    PagedForEachView(source, key, itemExtent, placeholder, content).registerChild()
 
 /* ------------------------------------------------------------------------- */
 /* Media                                                                      */

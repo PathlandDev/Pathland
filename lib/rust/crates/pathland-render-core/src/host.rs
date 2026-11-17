@@ -45,7 +45,7 @@ pub struct HostNode {
     pub token_refs: BTreeMap<u16, String>,
     /// `LIST`-typed properties decoded from the arena (propertyId → f32 values).
     ///
-    /// Today the only list is a `SIZE_THAT_FITS` slot's `FIT_QUERY` threshold
+    /// Today the only list is a `VIEW_THAT_FITS` slot's `FIT_QUERY` threshold
     /// table (ascending `f32`s, spec/PRIMITIVES.md). The renderer measures its
     /// allocated width and derives the fit index.
     pub lists: HashMap<u16, Vec<f32>>,
@@ -309,7 +309,7 @@ impl RenderTree {
                             }
                         } else if vt == value_type::LIST {
                             // An arena-backed `[u32 count][f32 × count]` array —
-                            // today a SIZE_THAT_FITS `FIT_QUERY` table.
+                            // today a VIEW_THAT_FITS `FIT_QUERY` table.
                             n.token_refs.remove(&prop_id);
                             if let Ok(bytes) = frame.arena_get(op.c()) {
                                 if let Some(values) = list_f32(bytes) {
@@ -839,7 +839,7 @@ mod tests {
                 tree::CREATE_NODE,
                 0,
                 1,
-                component_type::SIZE_THAT_FITS as u32,
+                component_type::VIEW_THAT_FITS as u32,
                 0,
             ),
             Opcode::new(

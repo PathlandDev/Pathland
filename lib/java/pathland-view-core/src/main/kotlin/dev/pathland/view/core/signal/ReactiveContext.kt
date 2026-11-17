@@ -2,7 +2,12 @@ package dev.pathland.view.core.signal
 
 import java.util.ArrayDeque
 
-/** The reactive evaluation context: a thread-local stack of consumers. */
+/**
+ * The reactive evaluation context: a thread-local stack of active consumers.
+ *
+ * A signal read records a producer edge on the top consumer, which is how the
+ * emitter/effects discover exactly what they depend on.
+ */
 internal object ReactiveContext {
     private val STACK: ThreadLocal<ArrayDeque<ReactiveNode>> =
         ThreadLocal.withInitial { ArrayDeque() }
