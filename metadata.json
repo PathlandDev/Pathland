@@ -1,0 +1,42 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7M8G89NJHBZ4QESFKMRBT6D",
+  "strategy": "manual-commit",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "AGENTS.md",
+    "docs/data-sources.md",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/library/LibraryView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/service/MediaPlayerService.kt",
+    "lib/java/pathland-demo-views-kotlin/status.md",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/AsyncDataSource.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/DataExecutors.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/PagedDataSource.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/LazyList.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/Views.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/data/PagedDataSourceTest.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/PagedForEachTest.kt",
+    "lib/java/pathland-view-core/status.md",
+    "lib/java/pathland-view-data-coroutines/src/main/kotlin/dev/pathland/view/data/coroutines/AsyncDataSourceCoroutines.kt",
+    "lib/java/pathland-view-data-coroutines/src/test/kotlin/dev/pathland/view/data/coroutines/AsyncDataSourceCoroutinesTest.kt",
+    "lib/java/pathland-view-data-coroutines/status.md",
+    "spec/DSL.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 1239784,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 28882048,
+    "output_tokens": 24020,
+    "api_call_count": 57
+  }
+}
