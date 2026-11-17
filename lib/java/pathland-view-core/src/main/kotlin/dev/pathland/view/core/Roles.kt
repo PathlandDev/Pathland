@@ -1,6 +1,12 @@
 package dev.pathland.view.core
 
-/** Protocol semantic-role codes for the ROLE property. */
+/**
+ * Protocol semantic-role codes for the `ROLE` property.
+ *
+ * These describe document structure (heading, list, listitem, navigation,
+ * main, …), not interactivity: buttons/toggles/sliders carry their control role
+ * intrinsically. The renderer maps a code to its native semantic element.
+ */
 object Roles {
     const val NONE = 0
     const val HEADER = 1

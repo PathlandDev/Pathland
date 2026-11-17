@@ -1,6 +1,12 @@
 package dev.pathland.view.core
 
-/** Predefined typographies for the TEXT_STYLE property. */
+/**
+ * A predefined typography selected by the `TEXT_STYLE` property.
+ *
+ * The SwiftUI-style scale runs from largeTitle=0 through caption2=10; the
+ * renderer resolves each step to its own font-size/weight/line-height tokens.
+ * The code is sent as `F32`.
+ */
 enum class TextStyle(private val code: Int) {
     LARGE_TITLE(0),
     TITLE(1),

@@ -2,7 +2,13 @@ package dev.pathland.view.core.signal
 
 import java.util.ArrayDeque
 
-/** Synchronous effect scheduler (flushes to quiescence at the outermost write). */
+/**
+ * Synchronous effect scheduler: the outermost signal write flushes effects to
+ * quiescence before returning.
+ *
+ * Nested writes are folded into the same flush; this keeps signal reads/writes
+ * and effect execution on the session thread in a deterministic order.
+ */
 internal object Scheduler {
     private val QUEUE = ArrayDeque<Effect>()
     private var flushing = false

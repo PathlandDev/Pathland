@@ -4,7 +4,13 @@ import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.engine.PathlandNode
 import dev.pathland.view.engine.ReactiveValues
 
-/** A view wrapped by property modifiers or a custom ViewModifier. */
+/**
+ * A view wrapped by property modifiers or a custom `ViewModifier`.
+ *
+ * It retains the inner view and a list of property applications (static values
+ * or signal bindings) and renders the inner node with those properties applied;
+ * custom modifiers may instead build an entirely new subtree.
+ */
 class Modified private constructor(
     private val inner: View,
     private val props: List<Prop>,

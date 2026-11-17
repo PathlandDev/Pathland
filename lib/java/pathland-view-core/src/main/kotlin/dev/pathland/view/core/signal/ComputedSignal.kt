@@ -3,7 +3,12 @@ package dev.pathland.view.core.signal
 import java.util.function.BiPredicate
 import java.util.function.Supplier
 
-/** A lazy, memoized derived signal (Angular-style `computed`). */
+/**
+ * A lazy, memoized derived signal (Angular-style `computed`).
+ *
+ * It recomputes only when one of its tracked dependencies is dirty, suppresses
+ * equal results, and rejects a dependency cycle with a clear error.
+ */
 internal class ComputedSignal<T>(
     private val fn: Supplier<T>,
     private val equal: BiPredicate<T, T>,

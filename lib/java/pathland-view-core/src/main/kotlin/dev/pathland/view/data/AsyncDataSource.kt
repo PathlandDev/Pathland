@@ -10,12 +10,22 @@ import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-/** A blocking load-all loader (JDBC/JPA, a blocking REST client, …). */
+/**
+ * A blocking load-all loader (JDBC/JPA or a blocking REST client).
+ *
+ * `AsyncDataSource.ofBlocking` runs it on an executor and applies the result on
+ * the session actor; use it only for small lists.
+ */
 fun interface ListLoader<T> {
     fun load(): List<T>
 }
 
-/** An async load-all loader (`CompletableFuture`/`CompletionStage`). */
+/**
+ * A `CompletionStage` load-all loader.
+ *
+ * The stage may complete on any thread; the source applies the result on the
+ * session actor. Use it for REST/WebClient/Mutiny sources.
+ */
 fun interface AsyncListLoader<T> {
     fun load(): CompletionStage<List<T>>
 }

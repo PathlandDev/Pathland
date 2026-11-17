@@ -10,7 +10,12 @@ import dev.pathland.core.protocol.ValueTypes
 import dev.pathland.core.transport.OpcodeSink
 import java.nio.charset.StandardCharsets
 
-/** An [OpcodeSink] that writes opcodes zero-copy into the Rust SPSC ring via JNA. */
+/**
+ * An `OpcodeSink` that writes opcodes zero-copy into the Rust SPSC ring via JNA.
+ *
+ * Frame boundaries call the native begin/end operations; strings are allocated
+ * into the shared bump arena. The host reads the same ring in place.
+ */
 class RingOpcodeSink : OpcodeSink, AutoCloseable {
     private val core: PathlandCore
     private val handle: Pointer

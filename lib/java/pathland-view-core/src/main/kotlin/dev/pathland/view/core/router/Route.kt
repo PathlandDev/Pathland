@@ -2,7 +2,12 @@ package dev.pathland.view.core.router
 
 import java.util.Objects
 
-/** A navigation route: the absolute path that identifies a destination. */
+/**
+ * A navigation route: the absolute path that identifies a destination.
+ *
+ * Path params and query values are parsed by the route table; the route itself
+ * carries the full path string (including any query).
+ */
 data class Route(val path: String) {
     init {
         Objects.requireNonNull(path, "path")

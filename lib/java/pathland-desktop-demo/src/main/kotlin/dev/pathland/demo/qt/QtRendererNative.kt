@@ -23,7 +23,12 @@ class QtRendererNative private constructor() {
         fun invoke()
     }
 
-    /** The C ABI surface, mapped by JNA onto the Rust cdylib. */
+    /**
+     * The C ABI surface of the Rust Qt renderer, mapped by JNA onto the cdylib.
+     *
+     * It starts the Qt event loop, attaches a shared ring, and installs the
+     * event/wake callback; the Kotlin host never touches Qt types directly.
+     */
     interface NativeQtRenderer : Library {
         fun pathland_qt_set_asset_root(dir: String)
         fun pathland_qt_run_ring(ring: Pointer, onEvent: EventCallback?, width: Int, height: Int)

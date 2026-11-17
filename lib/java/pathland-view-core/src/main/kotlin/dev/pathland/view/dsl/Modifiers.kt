@@ -39,7 +39,14 @@ private fun prop(property: Int, value: Any): ViewModifier = props(Modified.prop(
 
 private fun prop(property: Int, signal: Signal<*>): ViewModifier = props(Modified.prop(property, signal))
 
-/** A text/font specification value; also a modifier. */
+/**
+ * A text/font specification that is also a `ViewModifier`.
+ *
+ * Either selects a predefined `TextStyle` (`TEXT_STYLE`) or sets a family,
+ * size, weight, and design (`FONT_FAMILY`/`FONT_SIZE`/`FONT_WEIGHT`/
+ * `FONT_DESIGN`). The factory methods mirror the SwiftUI text styles and add
+ * custom/system variants.
+ */
 class Font private constructor(
     private val style: dev.pathland.view.core.TextStyle?,
     private val family: String?,
@@ -80,7 +87,16 @@ class Font private constructor(
     }
 }
 
+/**
+ * Adds inner padding around the wrapped view.
+ *
+ * A uniform inset emits `PADDING`; individual edges emit
+ * `PADDING_TOP`/`RIGHT`/`BOTTOM`/`LEFT`. Each value may be a literal, a signal
+ * (re-emitted as a property delta), or a design-token reference. Padding is a
+ * renderer-owned layout property; the engine never computes pixels.
+ */
 class Padding private constructor(private val config: Config) : ViewModifier {
+    /** A uniform inset or individual edges; the fluent calls clear the other form. */
     @PathlandDsl
     class Config {
         var uniform: Signal<Float>? = null
@@ -125,7 +141,15 @@ class Padding private constructor(private val config: Config) : ViewModifier {
     }
 }
 
+/**
+ * Constrains the wrapped view's box.
+ *
+ * Fixed `WIDTH`/`HEIGHT`, min/max bounds (`MIN_*`/`MAX_*`), and an optional
+ * content `ALIGNMENT` are emitted as properties. A frame allocates a box; it
+ * does not change the content's own layout or emit positions.
+ */
 class Frame private constructor(private val config: Config) : ViewModifier {
+    /** Width/height/min/max bounds and content alignment; a `Length` selects a token. */
     @PathlandDsl
     class Config {
         var width: Signal<Float>? = null
@@ -184,7 +208,14 @@ class Frame private constructor(private val config: Config) : ViewModifier {
     }
 }
 
+/**
+ * Draws a border and optional corner radius around the wrapped view.
+ *
+ * Emits `BORDER_COLOR`, `BORDER_WIDTH`, and `BORDER_RADIUS`; the renderer maps
+ * them to its native border/clip implementation.
+ */
 class Border private constructor(private val config: Config) : ViewModifier {
+    /** Color, width, and corner radius; a `Length` selects a design token. */
     @PathlandDsl
     class Config {
         var color: Signal<Color>? = null
@@ -217,7 +248,14 @@ class Border private constructor(private val config: Config) : ViewModifier {
     }
 }
 
+/**
+ * Applies a drop shadow to the wrapped view.
+ *
+ * Emits `SHADOW_COLOR`, `SHADOW_RADIUS`, `SHADOW_X`, and `SHADOW_Y`; the
+ * renderer draws it with its native effects pipeline.
+ */
 class Shadow private constructor(private val config: Config) : ViewModifier {
+    /** Color, blur radius, and x/y offset; omitted values use renderer defaults. */
     @PathlandDsl
     class Config {
         var color: Signal<Color>? = null
@@ -248,6 +286,12 @@ class Shadow private constructor(private val config: Config) : ViewModifier {
     }
 }
 
+/**
+ * Clips the wrapped view to a `ShapeKind`.
+ *
+ * Emits `CLIPS_TO_BOUNDS=1` plus `SHAPE_KIND`; the renderer maps the shape to
+ * its native clip (path shapes render as a placeholder).
+ */
 class ClipShape private constructor(private val shape: Signal<ShapeKind>) : ViewModifier {
     override fun body(content: View): View = Modified.props(
         content,
@@ -259,6 +303,7 @@ class ClipShape private constructor(private val shape: Signal<ShapeKind>) : View
         fun of(shape: Signal<ShapeKind>) = ClipShape(shape)
         fun of(configure: Config.() -> Unit) = ClipShape(Config().apply(configure).shape ?: Signals.constant(ShapeKind.RECTANGLE))
     }
+    /** The shape to clip to; a null selection falls back to a rectangle. */
     @PathlandDsl
     class Config {
         var shape: Signal<ShapeKind>? = null

@@ -4,7 +4,10 @@ import dev.pathland.core.protocol.Commands
 import dev.pathland.core.protocol.Properties
 import dev.pathland.view.engine.PathlandNode
 
-/** A view wrapped by `onTapGesture`: declares pointer listeners and records the action. */
+/**
+ * A view wrapped by `onTapGesture`: declares pointer-down/up listeners and
+ * records the tap action on the built node for the emitter's registry.
+ */
 internal class TapGestureView(private val content: View, private val action: Runnable?) : View {
     override fun renderNode(env: Environment): PathlandNode {
         val node = content.renderNode(env)

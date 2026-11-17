@@ -1,6 +1,11 @@
 package dev.pathland.view.core
 
-/** The canonical icon vocabulary for the Icon primitive (spec/ICONS.md). */
+/**
+ * The canonical icon vocabulary for the `ICON` primitive (spec/ICONS.md).
+ *
+ * Names are renderer-neutral; each renderer maps them to its own symbol or
+ * asset. They are not image asset references (`IMAGE_SOURCE`).
+ */
 enum class IconName(private val wire: String) {
     HOME("home"),
     SETTINGS("settings"),

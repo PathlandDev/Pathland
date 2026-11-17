@@ -19,7 +19,10 @@ import dev.pathland.view.dsl.frame
 import dev.pathland.view.dsl.lineLimit
 import dev.pathland.view.dsl.scaledToFit
 
-/** The current track's cover, title, and artist in the player bar. */
+/**
+ * The current track's cover, title, and artist in the player bar; it reads the
+ * service's current-track signal so it updates when playback advances.
+ */
 internal class TrackInfoView : Component() {
 
     override fun body(): View {

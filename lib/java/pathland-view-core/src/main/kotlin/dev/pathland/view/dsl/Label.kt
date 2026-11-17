@@ -8,6 +8,7 @@ import dev.pathland.core.protocol.Components
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 
+/** The label style used when no `LABEL_STYLE` environment value is set: icon + title. */
 private object FallbackLabelStyle : LabelStyle {
     override fun makeBody(config: LabelStyle.Configuration): View {
         val parts = buildList {
@@ -24,6 +25,7 @@ private object FallbackLabelStyle : LabelStyle {
     }
 }
 
+/** A label (icon + title) rendered through the active `LabelStyle`. */
 private class LabelView(
     private val title: Signal<String>?,
     private val icon: Signal<String>?,

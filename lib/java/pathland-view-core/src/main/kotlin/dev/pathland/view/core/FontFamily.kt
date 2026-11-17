@@ -6,15 +6,21 @@ import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import java.util.function.Consumer
 
-/** Font family (a STRING property). */
+/**
+ * Sets the font family (`FONT_FAMILY`, a STRING) for the wrapped subtree.
+ *
+ * Accepts a literal, a signal, or a `Token` design-token reference; a token is
+ * emitted as a `DESIGN_TOKEN` value and resolved by the renderer.
+ */
 class FontFamily private constructor(private val config: Config) : ViewModifier {
 
-    /** A font-family design-token reference. */
+    /** A design-token reference for `FONT_FAMILY`; the renderer resolves it. */
     data class Token(val token: String) : TokenPath {
         fun token(): String = token
         override fun tokenPath(): String = token
     }
 
+    /** A literal/signal family or a design-token reference; the forms are exclusive. */
     class Config {
         var value: Signal<String>? = null
         var token: Token? = null

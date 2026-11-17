@@ -10,7 +10,15 @@ import dev.pathland.view.core.subscription.GlobalSubject
 import dev.pathland.view.core.subscription.SessionContext
 import dev.pathland.view.core.subscription.Topic
 
-/** Factory for Angular-style reactive primitives. */
+/**
+ * Factory and utilities for the Angular-style reactive primitives.
+ *
+ * Writable signals are equality-suppressed; computed values are lazy and
+ * memoized; effects run synchronously on the session thread. The object also
+ * provides persisted-state (`state`) and topic (`topic`) helpers that resolve
+ * through the ambient session context, and `untracked`/`computed`/`effect`
+ * escape hatches used by the emitter and data sources.
+ */
 object Signals {
 
     /** A writable signal with `Objects.equals` equality. */

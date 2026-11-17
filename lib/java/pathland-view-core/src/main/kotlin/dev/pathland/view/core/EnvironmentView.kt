@@ -2,7 +2,13 @@ package dev.pathland.view.core
 
 import dev.pathland.view.engine.PathlandNode
 
-/** A view scoped to an environment value. */
+/**
+ * An internal scope wrapper that renders its content with one environment key
+ * bound to a value.
+ *
+ * The previous scope is restored after the render; environment values never
+ * become node properties.
+ */
 internal class EnvironmentView private constructor(
     private val content: View,
     private val key: EnvironmentKey<Any?>,

@@ -3,7 +3,10 @@ package dev.pathland.view.core
 import dev.pathland.core.protocol.Properties
 import dev.pathland.core.protocol.WireValue
 
-/** The FontWeight wire enum; also a view modifier. */
+/**
+ * A numeric font weight (`FONT_WEIGHT`): light=300, regular=400, medium=500,
+ * semibold=600, bold=700. The value is emitted as `F32`; also a modifier.
+ */
 enum class FontWeight(private val wire: Int) : ViewModifier, WireValue {
     LIGHT(300),
     REGULAR(400),

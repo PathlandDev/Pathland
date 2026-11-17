@@ -3,7 +3,10 @@ package dev.pathland.view.core
 import dev.pathland.core.protocol.Properties
 import dev.pathland.core.protocol.WireValue
 
-/** The ControlSize wire enum; also a view modifier. */
+/**
+ * A control density hint (`CONTROL_SIZE`): small=0, regular=1, large=2. The
+ * renderer maps it to native padding/font metrics; also a modifier.
+ */
 enum class ControlSize(private val wire: Int) : ViewModifier, WireValue {
     SMALL(0),
     REGULAR(1),

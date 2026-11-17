@@ -2,7 +2,13 @@ package dev.pathland.view.core
 
 import dev.pathland.core.transport.OpcodeSink
 
-/** A set of global, renderer-wide design-token overrides. */
+/**
+ * A renderer-wide design-token override payload.
+ *
+ * Implementations emit only `PARAMETER::SET_DESIGN_TOKEN` opcodes; the caller
+ * controls frame boundaries. The host supplies one when constructing the
+ * emitter, and `replaceTheme` resets then re-emits it.
+ */
 interface ThemeData {
     /** Emit the overrides into an already-open frame (no frame boundaries). */
     fun emitInto(sink: OpcodeSink)

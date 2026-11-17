@@ -10,7 +10,12 @@ import java.util.function.Supplier
  * override [renderNode] to materialize a [PathlandNode].
  */
 interface View {
-    /** The base marker for a view's value config. */
+    /**
+     * The base marker for a view's value configuration.
+     *
+     * Concrete views extend it with typed setters that their fluent builders
+     * and `Configurable`/`ViewBuilder` helpers expose.
+     */
     interface Config
 
     /** Declarative composition: a composite view returns its subtree here. */

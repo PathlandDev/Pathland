@@ -6,7 +6,13 @@ import dev.pathland.core.protocol.Properties
 import dev.pathland.core.protocol.TokenPath
 import dev.pathland.view.engine.PathlandNode
 
-/** An sRGB color (0xAARRGGBB) or a design-token reference. Also a solid-color View. */
+/**
+ * An sRGB color (`0xAARRGGBB`, D65) or a design-token reference.
+ *
+ * A non-null [token] means the property carries a `DESIGN_TOKEN` reference and
+ * the renderer resolves it. `Color` is also a solid-color view: rendering it
+ * emits a greedy `COLOR` node.
+ */
 data class Color(val argb: Int, val token: String?) : View, TokenPath, ColorValue {
     override fun argb(): Int = argb
     fun token(): String? = token

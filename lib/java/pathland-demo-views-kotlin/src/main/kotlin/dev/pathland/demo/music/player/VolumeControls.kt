@@ -12,7 +12,12 @@ import dev.pathland.view.dsl.Slider
 import dev.pathland.view.dsl.accessibilityLabel
 import dev.pathland.view.dsl.fontSize
 
-/** The volume icon and 0..1 slider in the player bar. */
+/**
+ * The volume icon and 0..1 slider in the player bar.
+ *
+ * The slider is bound to the service's volume signals; dragging updates the
+ * volume request and the controller reports the effective volume back.
+ */
 internal class VolumeControls : Component() {
 
     override fun body(): View {

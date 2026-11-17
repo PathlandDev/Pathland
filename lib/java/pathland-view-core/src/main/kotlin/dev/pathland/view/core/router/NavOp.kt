@@ -1,6 +1,9 @@
 package dev.pathland.view.core.router
 
-/** The navigation operation a declarative route-changing component requests. */
+/**
+ * The operation a declarative route-changing component requests
+ * (`NAVIGATE`/`PUSH`/`REPLACE`/`BACK`).
+ */
 enum class NavOp {
     NAVIGATE,
     PUSH,

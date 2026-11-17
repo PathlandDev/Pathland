@@ -4,7 +4,13 @@ import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 
-/** An in-memory, thread-safe [StateStore]. */
+/**
+ * An in-memory, thread-safe [StateStore].
+ *
+ * Keys are the session-scoped names produced by `PersistentState`; values are
+ * kept for the process lifetime. It is the default for tests and single-node
+ * sessions and is intentionally not durable.
+ */
 class InMemoryStateStore : StateStore {
     private val states: ConcurrentMap<String, Any> = ConcurrentHashMap()
 

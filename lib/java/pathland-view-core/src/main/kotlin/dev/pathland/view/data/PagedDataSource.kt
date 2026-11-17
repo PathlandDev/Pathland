@@ -21,12 +21,24 @@ data class Page<T>(
     val nextCursor: String? = null,
 )
 
-/** A blocking page loader (`offset`, `limit`). */
+/**
+ * A blocking page loader.
+ *
+ * `load(offset, limit)` returns one page; the source runs it on an executor so
+ * the session actor is never blocked. [Page.total] carries the full count for
+ * offset sources; null means the count is unknown and grows as pages arrive.
+ */
 fun interface PageLoader<T> {
     fun load(offset: Int, limit: Int): Page<T>
 }
 
-/** A `CompletionStage` page loader (`offset`, `limit`). */
+/**
+ * A `CompletionStage`-based page loader.
+ *
+ * The stage may complete on any thread; the source applies the page on the
+ * session actor. Use this for REST/WebClient/Mutiny sources; use [PageLoader]
+ * for blocking JDBC/JPA sources.
+ */
 fun interface AsyncPageLoader<T> {
     fun load(offset: Int, limit: Int): CompletionStage<Page<T>>
 }

@@ -51,7 +51,12 @@ object Length {
     operator fun invoke(value: Float) = of(value)
 }
 
-/** A grid track spec (`flex`, `fixed:<points>`, or `adaptive:<points>`). */
+/**
+ * A grid track spec: `flex`, `fixed:<points>`, or `adaptive:<points>`.
+ *
+ * The list is encoded as the `GRID_TRACKS` string; omitted tracks use equal
+ * fractional sizing.
+ */
 class GridItem private constructor(val token: String) {
     companion object {
         fun flexible() = GridItem("flex")
@@ -208,7 +213,10 @@ fun Gauge(value: Signal<Float>, min: Float = 0f, max: Float = 1f): dev.pathland.
         node.property(Properties.MAX_VALUE, Signals.constant(max))
     }.registerChild()
 
-/** The picker presentation styles (SwiftUI `PickerStyle` parity). */
+/**
+ * The picker presentation styles (SwiftUI `PickerStyle` parity), sent through
+ * `PICKER_STYLE`; the renderer maps each to its native picker mode.
+ */
 enum class PickerStyle(private val wire: Int) : WireValue {
     MENU(0),
     SEGMENTED(1),

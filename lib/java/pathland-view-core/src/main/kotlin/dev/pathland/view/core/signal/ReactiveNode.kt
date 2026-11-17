@@ -7,7 +7,7 @@ package dev.pathland.view.core.signal
 internal abstract class ReactiveNode(
     @JvmField val name: String?,
 ) {
-    /** A producer edge: the producer node plus its version when this node last read it. */
+    /** A producer edge: the producer plus its version at the consumer's last read. */
     internal class ProducerEdge(@JvmField val node: ReactiveNode) {
         @JvmField var lastSeenVersion: Long = node.version
     }

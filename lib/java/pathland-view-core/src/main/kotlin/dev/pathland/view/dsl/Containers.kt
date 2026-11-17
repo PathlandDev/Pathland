@@ -286,7 +286,10 @@ internal fun gridTracks(tracks: List<GridItem>): String = tracks.joinToString(",
 /* ViewThatFits / Fit                                                         */
 /* ------------------------------------------------------------------------- */
 
-/** A `ViewThatFits` candidate: a view plus the minimum width at which it is selected. */
+/**
+ * A `ViewThatFits` candidate: a view plus the minimum width at which it is
+ * selected. Candidates are ordered by ascending threshold.
+ */
 data class FitCandidate(val view: View, val minWidth: Float = 0f)
 
 /** A candidate with an explicit minimum width. */
@@ -308,6 +311,7 @@ fun Fit(minWidth: Float = 0f, content: PathlandScope.() -> Unit): FitCandidate {
     return FitCandidate(view, minWidth)
 }
 
+/** A `SIZE_THAT_FITS` slot: renders one selected candidate and reports `FIT_CHANGED`. */
 private class FitSlot(private val fits: List<FitCandidate>) : View {
     private val fitIndex = Signals.signal(0)
     private val fitReported = Signals.signal(false)
