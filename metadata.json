@@ -1,0 +1,57 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7MZWTZ7GRP7E18QW00TYM7V",
+  "strategy": "manual-commit",
+  "branch": "feat/lazy-stack-virtualization",
+  "checkpoints_count": 14,
+  "files_touched": [
+    "docs/data-sources.md",
+    "docs/decisions/0017-visible-range-coalescing.md",
+    "docs/decisions/README.md",
+    "lib/java/pathland-core/src/main/java/dev/pathland/core/transport/FrameCodec.java",
+    "lib/java/pathland-core/src/test/java/dev/pathland/core/transport/FrameCodecTest.java",
+    "lib/java/pathland-core/status.md",
+    "lib/java/pathland-demo-views-kotlin/status.md",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-05c1a3b75a6f.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-6aaead03a06f.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/VisibleRangeCoalescer.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/VisibleRangeCoalescerTest.java",
+    "lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/VisibleRangeRegistryTest.kt",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-05c1a3b75a6f.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-6aaead03a06f.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/PagedDataSource.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/LazyList.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/data/PagedDataSourceTest.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/PagedFastScrollTest.kt",
+    "lib/java/pathland-view-core/status.md",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/index.ts",
+    "lib/typescript/src/lazy-throttle.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/lazy-throttle.test.ts",
+    "spec/DSL.md",
+    "spec/EVENTS.md",
+    "spec/LAYOUT.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 3623477,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 56145024,
+    "output_tokens": 64544,
+    "api_call_count": 193
+  }
+}
