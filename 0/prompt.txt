@@ -1,1 +1,1 @@
-Accept this adr and commit
+commit and continue
