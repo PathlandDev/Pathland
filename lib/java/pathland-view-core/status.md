@@ -59,7 +59,7 @@ build) carries no JNA.
   Implements mount/id assignment, diff-based reactive emission, node-level binding
   effects, structural reconciliation, fit/media/navigation routing, and the
   zero-opcode unchanged recompute contract. A replaced child is relinked to its
-  real parent (not the tree root), so a `SIZE_THAT_FITS` swap cannot detach a
+  real parent (not the tree root), so a `VIEW_THAT_FITS` swap cannot detach a
   pinned root `MEDIA_CONTROLLER` or drop its media routing. Registered `MediaController`s are
   projected as pinned, non-visual root children; `unregisterMediaController`
   removes them without touching the app tree.

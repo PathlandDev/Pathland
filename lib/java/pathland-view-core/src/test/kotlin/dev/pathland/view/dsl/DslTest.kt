@@ -157,7 +157,7 @@ class DslTest {
         val created = frame.opcodes()
             .filter { it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE }
             .map { it.b() and 0xffff }
-        assertTrue(created.contains(Components.SIZE_THAT_FITS))
+        assertTrue(created.contains(Components.VIEW_THAT_FITS))
         assertEquals(1, result.proxyViews().size, "the proxy node exposes its config")
         assertEquals("https://origin.example", result.proxyViews().values.single().endpoint())
     }

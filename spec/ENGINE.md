@@ -138,7 +138,7 @@ a descendant identical emits no descendant opcodes.
 
 These are engine-owned surfaces with the same diff discipline:
 
-- **`SIZE_THAT_FITS`**: only the selected candidate is normally transmitted;
+- **`VIEW_THAT_FITS`**: only the selected candidate is normally transmitted;
   snapshot/SSR emission may include every candidate for first paint.
   `FIT_CHANGED` re-renders only the fit component.
 - **Media**: one non-visual `MEDIA_CONTROLLER` node per controller, stable id;

@@ -68,7 +68,7 @@ afterEach(() => {
   delete (globalThis as Record<string, unknown>).ResizeObserver;
 });
 
-describe("SizeThatFits · FIT_QUERY + local fit → FIT_CHANGED", () => {
+describe("ViewThatFits · FIT_QUERY + local fit → FIT_CHANGED", () => {
   it("readList decodes an `[count][f32×count]` arena entry", () => {
     const batch = parseBatch(buildBatch([], listEntry([0, 640])));
     // A batch with only an arena entry: parse the bytes directly.

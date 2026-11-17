@@ -119,7 +119,7 @@ pub enum Event {
     /// Draft command 0x14; `seconds` is the duration (f32). Reported when the
     /// resource loads and only when the value changes.
     MediaDurationChanged { target: u32, seconds: f32 },
-    /// A `SIZE_THAT_FITS` slot's selected candidate changed (host → guest).
+    /// A `VIEW_THAT_FITS` slot's selected candidate changed (host → guest).
     /// Draft command 0x13; `index` is the derived fit index (f32), reported once
     /// after the first measure and then only when it changes.
     FitChanged { target: u32, index: f32 },

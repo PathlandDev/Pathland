@@ -171,14 +171,14 @@ Design-token contract: `spec/TOKENS.md`.
     `source` to the referenced controller's `MediaPlayer` (a reference, not a
     parent/child edge).
   - `PROXY_VIEW` (0x1E) → a transparent vertical container.
-  - `SIZE_THAT_FITS` (0x17) → a greedy two-axis slot; its one selected child
+  - `VIEW_THAT_FITS` (0x17) → a greedy two-axis slot; its one selected child
     fills it.
   - `GRID_ROW` (0x1D) → a row-grouping container whose cells flatten into
     the parent Grid.
 - **Shared decode parity** (`pathland-render-core`): `LIST`-typed properties
   (`FIT_QUERY`) decode into `HostNode::lists`, and `PARAMETER::SET_DATE` into
   `HostNode::date` — so the Qt layer can measure fit slots and format dates.
-- **`SIZE_THAT_FITS` fit measurement**: the slot's `FIT_QUERY` thresholds reach
+- **`VIEW_THAT_FITS` fit measurement**: the slot's `FIT_QUERY` thresholds reach
   the C++ layer as CSV; a width change derives the fit index (largest
   `minWidth` ≤ allocated width; equal thresholds keep the lower index; empty
   table → 0) and reports `FIT_CHANGED` once after the first measure, then only
@@ -211,7 +211,7 @@ Design-token contract: `spec/TOKENS.md`.
   - **Layout defaults (spec/LAYOUT.md)**: the cross axis **hugs** by default
     (never CSS `align-items:stretch`); only an *effectively FILL* child stretches
     — explicit `WIDTH`/`HEIGHT=FILL`, a layout-greedy primitive (`SPACER` main,
-    `DIVIDER` cross, `COLOR`/`SIZE_THAT_FITS` both, `SCROLLVIEW` its
+    `DIVIDER` cross, `COLOR`/`VIEW_THAT_FITS` both, `SCROLLVIEW` its
     `SCROLL_AXIS` only), or **fill
     propagation** (a Hug stack/ZStack/proxy whose subtree carries a FILL
     child/greedy filler). An explicit fixed size **or `HUG_CONTENT`**
@@ -363,8 +363,8 @@ mute/loop/rate land on the MediaPlayer/AudioOutput), the demo's transport glyphs
 (`divider_is_an_axis_line_with_color_and_thickness`), media event
 decoding (`decode_maps_media_reports`), the shared decode parity
 (`decodes_list_and_date_values` in `pathland-render-core`; `list_property_is_forwarded_as_csv`,
-`date_change_is_forwarded_once`), `SIZE_THAT_FITS`
-(`size_that_fits_derives_index_from_width`, `fit_slot_shows_only_the_selected_child`,
+`date_change_is_forwarded_once`), `VIEW_THAT_FITS`
+(`view_that_fits_derives_index_from_width`, `fit_slot_shows_only_the_selected_child`,
 `fit_slot_swaps_the_selected_child`,
 `fit_changed_reports_once_then_only_on_band_crossing`), `GRID_ROW`
 (`grid_row_flattens_into_the_grid`), `DATE_PICKER`

@@ -32,7 +32,7 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 
 ## Implemented
 
-- **`MusicPlayerView`** — Apple Music-style root: one root `SizeThatFits`
+- **`MusicPlayerView`** — Apple Music-style root: one root `ViewThatFits`
   selects narrow (no volume, compact play-only transport), medium (volume), or
   wide (volume + `NowPlayingSidebar`), with the floating `PlayerBar`.
 - **Persisted player state** — owned by `MediaPlayerService` (`player.position`, `player.playing`,

@@ -148,7 +148,7 @@ class Emitter {
     fun currentSlotOldFitSelection(): Int? {
         val slot = renderStack.peek() ?: return null
         val hint = slot.oldNodeHint ?: return null
-        if (hint.component != Components.SIZE_THAT_FITS) return null
+        if (hint.component != Components.VIEW_THAT_FITS) return null
         return hint.fitSelection
     }
 
@@ -208,8 +208,8 @@ class Emitter {
         destroySlotBindings(slot)
         forgetSlotInputs(slot)
 
-        if (old != null && old.component == Components.SIZE_THAT_FITS &&
-            fresh.component == Components.SIZE_THAT_FITS &&
+        if (old != null && old.component == Components.VIEW_THAT_FITS &&
+            fresh.component == Components.VIEW_THAT_FITS &&
             old.children.count { !isControllerNode(it) } > 1 && newChildren.size == 1
         ) {
             reconcileSnapshotFit(slot, old, fresh, oldChildren, newChildren)

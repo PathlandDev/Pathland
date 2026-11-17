@@ -569,14 +569,14 @@ fn string_property_emits_with_string_value_type_and_diffs() {
 
 #[test]
 fn list_property_emits_fit_query_with_the_list_value_type() {
-    // A SIZE_THAT_FITS slot ({0, 640} thresholds) with its single selected child:
+    // A VIEW_THAT_FITS slot ({0, 640} thresholds) with its single selected child:
     // FIT_QUERY rides the LIST value type with a nonzero arena ref; an unchanged
     // list re-emits nothing on the next pass.
     let mut engine = Engine::new();
     let child = text_node("compact");
     let mut root = built(Node {
         id: 0,
-        component: Component::SizeThatFits,
+        component: Component::ViewThatFits,
         children: vec![child],
         properties: BTreeMap::new(),
         string_properties: BTreeMap::new(),
@@ -601,7 +601,7 @@ fn list_property_emits_fit_query_with_the_list_value_type() {
         .expect("slot created");
     assert_eq!(
         create.b() as u16,
-        component_type_id(&Component::SizeThatFits)
+        component_type_id(&Component::ViewThatFits)
     );
 
     let query = ops

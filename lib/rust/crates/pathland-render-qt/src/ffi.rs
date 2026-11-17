@@ -295,7 +295,7 @@ mod tests {
     use pathland_engine::Engine;
     use pathland_view::{
         assign_ids, button, hstack, spacer, text, vstack, Configurable, Fit, Node,
-        PointerEvents, SizeThatFits, Slider, View, ViewExt,
+        PointerEvents, ViewThatFits, Slider, View, ViewExt,
     };
     use pathland_view::{Component, Gauge, Menu, ProgressView, Stepper};
     use std::ffi::CStr;
@@ -1556,17 +1556,17 @@ mod tests {
         });
     }
 
-    /// The fit rule (spec/PRIMITIVES.md §SizeThatFits): the selected index is
+    /// The fit rule (spec/PRIMITIVES.md §ViewThatFits): the selected index is
     /// `max{ i : thresholds[i] <= width }` over the ascending `FIT_QUERY` table,
     /// equal thresholds pick the lower index, and the threshold-0 (or empty
     /// table) candidate is the fallback. The harness drives the measurement via
     /// the `report_fit` hook, since an offscreen layout has no real width.
     #[test]
-    fn size_that_fits_derives_index_from_width() {
+    fn view_that_fits_derives_index_from_width() {
         with_qt(|| unsafe {
             let create = |id: u32, query: &str| {
                 let cmds = [
-                    Command::create_node(id, 0x17), // SIZE_THAT_FITS
+                    Command::create_node(id, 0x17), // VIEW_THAT_FITS
                     Command::set_string_property(id, 0x1039, query), // FIT_QUERY
                 ];
                 pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
@@ -1600,7 +1600,7 @@ mod tests {
     }
 
     /// A fit slot shows exactly one child (the selected candidate) and that child
-    /// fills the slot's allocated box (spec/PRIMITIVES.md §SizeThatFits).
+    /// fills the slot's allocated box (spec/PRIMITIVES.md §ViewThatFits).
     #[test]
     fn fit_slot_shows_only_the_selected_child() {
         with_qt(|| {
@@ -1608,7 +1608,7 @@ mod tests {
                 pathland_view::Frame::new(Some(f32::INFINITY), Some(f32::INFINITY), None)
             };
             let mut root = vstack![
-                SizeThatFits::new(vec![
+                ViewThatFits::new(vec![
                     Fit::new(hstack![text("wide-l"), text("wide-r")], 640.0),
                     Fit::any(text("compact")),
                 ])
@@ -1659,7 +1659,7 @@ mod tests {
 
     /// On a band crossing the app swaps the slot's child with a `TREE` delta: the
     /// old candidate leaves, the new one takes the slot and fills it, and the slot
-    /// still shows exactly one child (spec/PRIMITIVES.md §SizeThatFits).
+    /// still shows exactly one child (spec/PRIMITIVES.md §ViewThatFits).
     #[test]
     fn fit_slot_swaps_the_selected_child() {
         with_qt(|| {
@@ -1668,7 +1668,7 @@ mod tests {
             };
             let build = |index: usize| {
                 let mut root = vstack![
-                    SizeThatFits::new(vec![
+                    ViewThatFits::new(vec![
                         Fit::new(hstack![text("wide-l"), text("wide-r")], 640.0),
                         Fit::any(text("compact")),
                     ])
@@ -1721,12 +1721,12 @@ mod tests {
     }
 
     /// `FIT_CHANGED` is reported once after the first measure, then only when the
-    /// derived fit index changes (spec/PRIMITIVES.md §SizeThatFits).
+    /// derived fit index changes (spec/PRIMITIVES.md §ViewThatFits).
     #[test]
     fn fit_changed_reports_once_then_only_on_band_crossing() {
         with_qt_events(|| unsafe {
             let cmds = [
-                Command::create_node(2, 0x17),                   // SIZE_THAT_FITS
+                Command::create_node(2, 0x17),                   // VIEW_THAT_FITS
                 Command::set_string_property(2, 0x1039, "0,640"), // FIT_QUERY
             ];
             pathland_qt_layer_apply(cmds.as_ptr(), cmds.len() as u32);
@@ -2028,7 +2028,7 @@ mod tests {
     }
 
     /// Regression for the MusicPlayerView root shape: a FILL-framed root stack
-    /// wrapping a FILL-framed `SIZE_THAT_FITS` slot must stretch to fill the
+    /// wrapping a FILL-framed `VIEW_THAT_FITS` slot must stretch to fill the
     /// window, not collapse to a small top-left box. Driven through the real
     /// diff (`apply_frame` emits `RESET_NODE`).
     #[test]
@@ -2041,9 +2041,9 @@ mod tests {
                     None,
                 )
             };
-            // Root VStack (FILL both) -> SizeThatFits (FILL both) -> content.
+            // Root VStack (FILL both) -> ViewThatFits (FILL both) -> content.
             let mut root = vstack![
-                SizeThatFits::new(vec![Fit::new(text("content"), 0.0)]).modifiers(fill()),
+                ViewThatFits::new(vec![Fit::new(text("content"), 0.0)]).modifiers(fill()),
             ]
             .modifiers(fill())
             .build();

@@ -103,7 +103,7 @@ pub mod event {
     /// **Draft.** A bound controller's volume changed (host → guest); `B` =
     /// volume (f32, 0..1).
     pub const MEDIA_VOLUME_CHANGED: u8 = 0x12;
-    /// **Draft.** A `SIZE_THAT_FITS` slot's selected candidate index changed
+    /// **Draft.** A `VIEW_THAT_FITS` slot's selected candidate index changed
     /// (host → guest); `B` = index (f32). Reported once after the first measure,
     /// then only when the derived fit index changes.
     pub const FIT_CHANGED: u8 = 0x13;
@@ -336,10 +336,10 @@ pub mod component_type {
     pub const LAZY_VGRID: u16 = 0x15;
     /// **Draft.** Virtualized horizontal grid.
     pub const LAZY_HGRID: u16 = 0x16;
-    /// **Draft.** Fit slot (`SizeThatFits`): shows its single selected child —
+    /// **Draft.** Fit slot (`ViewThatFits`): shows its single selected child —
     /// only the selected candidate is ever transmitted. The renderer measures
     /// its own allocated width against `FIT_QUERY` and reports `FIT_CHANGED`.
-    pub const SIZE_THAT_FITS: u16 = 0x17;
+    pub const VIEW_THAT_FITS: u16 = 0x17;
     // 0x18–0x1A reserved (formerly composite views, removed).
     /// **Draft.** Virtualized vertical stack.
     pub const LAZY_VSTACK: u16 = 0x1B;
@@ -601,7 +601,7 @@ pub mod property_id {
     /// by a `NavigationContainer`/`Conditional.when` slot; the renderer may
     /// animate the swap and must render normally when it ignores the hint.
     pub const TRANSITION: u16 = 0x1031;
-    /// **Draft.** A `SIZE_THAT_FITS` slot's candidate fit-query (LIST): the
+    /// **Draft.** A `VIEW_THAT_FITS` slot's candidate fit-query (LIST): the
     /// candidates' `minWidth` thresholds, ascending. The renderer measures its
     /// allocated width and reports the derived fit index (`FIT_CHANGED`).
     pub const FIT_QUERY: u16 = 0x1039;

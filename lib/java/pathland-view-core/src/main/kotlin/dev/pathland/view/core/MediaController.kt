@@ -12,7 +12,7 @@ import dev.pathland.view.engine.Emitter
  * rate) as signals, plus the renderer-reported playback/time/duration/volume.
  * The app binds its own controls and `attach()` materializes the controller
  * node; a `VIDEO` surface renders visuals, while audio has no view. The
- * controller node id is pinned so a `SIZE_THAT_FITS` swap never restarts
+ * controller node id is pinned so a `VIEW_THAT_FITS` swap never restarts
  * playback (spec/MEDIA.md).
  */
 class MediaController {

@@ -224,10 +224,10 @@ pub enum Component {
     /// Video playback **surface**: renders a `MEDIA_CONTROLLER`'s video output
     /// (referenced via `MEDIA_CONTROLLER_ID`).
     Video,
-    /// Fit slot (`SIZE_THAT_FITS`): shows its single (selected) child — only
+    /// Fit slot (`VIEW_THAT_FITS`): shows its single (selected) child — only
     /// the selected candidate is ever transmitted; the renderer measures its
     /// own allocated width against the `FIT_QUERY` list and reports `FIT_CHANGED`.
-    SizeThatFits,
+    ViewThatFits,
     /// Boolean control (`TOGGLE_STYLE`).
     Toggle,
     /// Numeric range control.
@@ -272,7 +272,7 @@ impl core::fmt::Debug for Component {
             Component::LazyHStack => f.write_str("LazyHStack"),
             Component::MediaController => f.write_str("MediaController"),
             Component::Video => f.write_str("Video"),
-            Component::SizeThatFits => f.write_str("SizeThatFits"),
+            Component::ViewThatFits => f.write_str("ViewThatFits"),
             Component::Toggle => f.write_str("Toggle"),
             Component::Slider => f.write_str("Slider"),
             Component::TextField => f.write_str("TextField"),
@@ -310,7 +310,7 @@ pub fn component_type_id(component: &Component) -> u16 {
         Component::LazyHStack => component_type::LAZY_HSTACK,
         Component::MediaController => component_type::MEDIA_CONTROLLER,
         Component::Video => component_type::VIDEO,
-        Component::SizeThatFits => component_type::SIZE_THAT_FITS,
+        Component::ViewThatFits => component_type::VIEW_THAT_FITS,
         Component::Toggle => component_type::TOGGLE,
         Component::Slider => component_type::SLIDER,
         Component::TextField => component_type::TEXT_FIELD,

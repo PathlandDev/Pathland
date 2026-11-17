@@ -311,7 +311,7 @@ destroyed, or swapped ([MEDIA.md §5](./MEDIA.md#5-structural-swaps-the-motivati
 | `MEDIA_ENDED` | 0x11 | controllerId | 0 | 0 | — | `AVPlayerItemDidPlayToEndTime` |
 | `MEDIA_VOLUME_CHANGED` | 0x12 | controllerId | volume (f32, 0..1) | 0 | — | `AVPlayer.volume` |
 | `MEDIA_DURATION_CHANGED` | 0x14 | controllerId | seconds (f32) | 0 | — | `AVPlayerItem.duration` |
-| `FIT_CHANGED` | 0x13 | targetId | fit index (f32) | 0 | — | a `SizeThatFits` slot's selected candidate |
+| `FIT_CHANGED` | 0x13 | targetId | fit index (f32) | 0 | — | a `ViewThatFits` slot's selected candidate |
 
 - **`MEDIA_TIME_UPDATED`**: the media's current playback position in seconds.
   Reported **~30×/s while playing (≈ every 33 ms of playback progress)** —
@@ -321,7 +321,7 @@ destroyed, or swapped ([MEDIA.md §5](./MEDIA.md#5-structural-swaps-the-motivati
 - **`MEDIA_DURATION_CHANGED`**: the resource's duration in seconds. Reported when
   the resource loads (or its duration becomes known), and only when it changes —
   never a stream. Gates the useful range of a seek control.
-- **`FIT_CHANGED`**: a `SIZE_THAT_FITS` slot's **selected candidate index** —
+- **`FIT_CHANGED`**: a `VIEW_THAT_FITS` slot's **selected candidate index** —
   the renderer measures its own allocated width against the slot's `FIT_QUERY`
   thresholds and reports the derived index. Emitted **once after the first
   measure, and then only when the derived index changes** (a band crossing) —

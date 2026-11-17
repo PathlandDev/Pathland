@@ -41,7 +41,7 @@ shared-renderer story. Protocol contract: `spec/`.
   `EVENT` opcodes into `dev.pathland.core.transport.Event`, resolving
   `TEXT_CHANGED`/`NAVIGATE` strings from the shared host → guest event arena
   (header `0x40`), plus `MEDIA_*` and `FIT_CHANGED` (routed to the emitter's fit
-  sink, so the `SizeThatFits` slot swaps to its wide candidate).
+  sink, so the `ViewThatFits` slot swaps to its wide candidate).
 - **`GtkHost`** (`main`) — Java host; mounts the Apple Music-style player,
   extracts the demo assets, runs GTK (1180×800), drains and dispatches events.
 - **`QtHost`** (`main`) — Kotlin host; mounts the player, extracts the demo

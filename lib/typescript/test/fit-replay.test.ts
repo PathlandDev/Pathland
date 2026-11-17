@@ -46,7 +46,7 @@ function rowSidebarCount(row: HTMLElement): number {
   return Array.from(row.children).filter((c) => (c.textContent ?? "").includes("Now Playing")).length;
 }
 
-describe("SizeThatFits swap replay (real MusicPlayerView frames)", () => {
+describe("ViewThatFits swap replay (real MusicPlayerView frames)", () => {
   it("wide swap appends the sidebar AFTER the main area (trailing, right)", () => {
     const r: DomRenderer = { byId: new Map() };
     const root = attachCompact(r);

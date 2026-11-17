@@ -36,7 +36,7 @@ import {
   COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_SCROLLVIEW,
-  COMPONENT_SIZE_THAT_FITS,
+  COMPONENT_VIEW_THAT_FITS,
   COMPONENT_SHAPE,
   COMPONENT_SPACER,
   COMPONENT_TEXT,
@@ -379,7 +379,7 @@ function applyLayout(r: DomRenderer): void {
       continue;
     }
     const comp = componentByNode.get(el) ?? 0;
-    if (comp === COMPONENT_SIZE_THAT_FITS) {
+    if (comp === COMPONENT_VIEW_THAT_FITS) {
       // A fit slot is size-taking on both axes (LAYOUT.md); its base style is
       // align-self:stretch, independent of fill propagation.
       el.style.alignSelf = "stretch";
@@ -427,7 +427,7 @@ export interface DomRenderer {
   onMediaEvent?: (batch: Uint8Array) => void;
   /**
    * Optional fit-event sink: the host wires it to `transport.send` so a
-   * `SIZE_THAT_FITS` slot can report its derived fit index (`FIT_CHANGED`).
+   * `VIEW_THAT_FITS` slot can report its derived fit index (`FIT_CHANGED`).
    */
   onFitEvent?: (batch: Uint8Array) => void;
   /**
@@ -1905,7 +1905,7 @@ export function __setMediaLastReported(el: HTMLMediaElement, seconds: number): v
   }
 }
 
-// --- SizeThatFits (FIT_QUERY → local fit → FIT_CHANGED only on transitions) ---
+// --- ViewThatFits (FIT_QUERY → local fit → FIT_CHANGED only on transitions) ---
 
 interface FitSlotState {
   thresholds: number[];
@@ -1913,7 +1913,7 @@ interface FitSlotState {
   observer: ResizeObserver | null;
 }
 
-/** Per-`SIZE_THAT_FITS` slot state: the candidate thresholds + last reported index. */
+/** Per-`VIEW_THAT_FITS` slot state: the candidate thresholds + last reported index. */
 const fitState = new WeakMap<HTMLElement, FitSlotState>();
 
 /** The fit rule (spec/PRIMITIVES.md): max i with thresholds[i] <= width;

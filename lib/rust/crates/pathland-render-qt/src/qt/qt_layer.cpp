@@ -67,7 +67,7 @@ enum {
     PL_COMP_SCROLL = 0x14,
     PL_COMP_LAZY_VGRID = 0x15,
     PL_COMP_LAZY_HGRID = 0x16,
-    PL_COMP_SIZE_THAT_FITS = 0x17,
+    PL_COMP_VIEW_THAT_FITS = 0x17,
     PL_COMP_LAZY_VSTACK = 0x1B,
     PL_COMP_LAZY_HSTACK = 0x1C,
     PL_COMP_GRID_ROW = 0x1D,
@@ -373,7 +373,7 @@ struct LayerState {
     // Local asset root for web-style `/_pathland/...` source paths (empty = use
     // sources as-is), set by a foreign host via pathland_qt_layer_set_asset_root.
     QString asset_root;
-    // SIZE_THAT_FITS: ascending candidate thresholds (`FIT_QUERY`) and the last
+    // VIEW_THAT_FITS: ascending candidate thresholds (`FIT_QUERY`) and the last
     // reported fit index (so FIT_CHANGED is reported only when it changes).
     std::unordered_map<uint32_t, std::vector<double>> fit_queries;
     std::unordered_map<uint32_t, int> fit_index;
@@ -605,7 +605,7 @@ QString qmlFor(uint16_t component, uint32_t id) {
         // A semantic icon: a Text item whose glyph is resolved from ICON_NAME
         // by the renderer (spec/ICONS.md — the glyph mapping is renderer-owned).
         return QStringLiteral("import QtQuick 2.15\nText { objectName: \"pl%1\" }").arg(id);
-    case PL_COMP_SIZE_THAT_FITS:
+    case PL_COMP_VIEW_THAT_FITS:
         // A fit slot: stretches to its parent and shows the one selected child.
         return QStringLiteral(
                    "import QtQuick 2.15\nItem { objectName: \"pl%1\"; clip: true }")
@@ -912,7 +912,7 @@ int deriveFitIndex(const std::vector<double> &thresholds, double width) {
         if (thresholds[i] > width) {
             break;
         }
-        // Equal thresholds keep the lower index (spec/PRIMITIVES.md §SizeThatFits).
+        // Equal thresholds keep the lower index (spec/PRIMITIVES.md §ViewThatFits).
         if (i == 0 || thresholds[i] != thresholds[i - 1]) {
             index = static_cast<int>(i);
         }
@@ -1286,7 +1286,7 @@ void refreshLazyStacks() {
 //   * only an "effectively FILL" child stretches on an axis:
 //       - explicit WIDTH/HEIGHT = FILL (-1),
 //       - a layout-greedy primitive (SPACER main, DIVIDER cross, COLOR/
-//         SCROLLVIEW/SIZE_THAT_FITS both),
+//         SCROLLVIEW/VIEW_THAT_FITS both),
 //       - fill propagation (a Hug stack/ZStack/proxy whose subtree carries a
 //         FILL child or greedy filler on that axis is itself FILL there).
 //
@@ -1300,7 +1300,7 @@ bool greedyFills(uint16_t component, bool main_axis) {
     case PL_COMP_DIVIDER:
         return !main_axis;
     case PL_COMP_COLOR:
-    case PL_COMP_SIZE_THAT_FITS:
+    case PL_COMP_VIEW_THAT_FITS:
         return true;
     default:
         return false;
@@ -2978,7 +2978,7 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
             anchors->setProperty("fill", QVariant::fromValue(g.root));
         }
     }
-    // Layout-greedy primitives (COLOR/SCROLLVIEW/SIZE_THAT_FITS) fill both
+    // Layout-greedy primitives (COLOR/SCROLLVIEW/VIEW_THAT_FITS) fill both
     // axes by nature. Inside a stack `recomputeLayout` derives this; for a
     // non-layout parent (e.g. a ZStack Item) anchor them to it. An explicit
     // WIDTH/HEIGHT (FIXED/FILL/HUG_CONTENT) overrides greed, so it is left to
@@ -2988,7 +2988,7 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
         (g.height_hint.count(childId) && g.height_hint[childId] != PL_SIZE_NONE);
     if ((g.components[childId] == PL_COMP_COLOR ||
          g.components[childId] == PL_COMP_SCROLL ||
-         g.components[childId] == PL_COMP_SIZE_THAT_FITS) &&
+         g.components[childId] == PL_COMP_VIEW_THAT_FITS) &&
         !explicit_size && !isLayout(attach) && !isPositioner(attach)) {
         QObject *anchors = child->property("anchors").value<QObject *>();
         if (anchors) {
@@ -3003,7 +3003,7 @@ void insertChild(uint32_t parentId, uint32_t childId, uint32_t index) {
         }
     }
     // A fit slot's one selected child occupies the whole slot.
-    if (g.components[parentId] == PL_COMP_SIZE_THAT_FITS) {
+    if (g.components[parentId] == PL_COMP_VIEW_THAT_FITS) {
         QObject *anchors = child->property("anchors").value<QObject *>();
         if (anchors) {
             anchors->setProperty("fill", QVariant::fromValue(attach));
@@ -3248,7 +3248,7 @@ void pathland_qt_layer_apply(const PathlandQtCommand *cmds, uint32_t count) {
                         g.lazy_grids[c.a] = grid;
                     }
                 }
-                if (component == PL_COMP_SIZE_THAT_FITS) {
+                if (component == PL_COMP_VIEW_THAT_FITS) {
                     const uint32_t id = c.a;
                     QObject::connect(item, &QQuickItem::widthChanged, item,
                                      [id, item]() { reportFit(id, item->width()); });

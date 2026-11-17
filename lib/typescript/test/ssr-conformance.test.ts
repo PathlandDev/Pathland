@@ -16,7 +16,7 @@ import { CAT_TREE, CMD_DELETE_NODE, CMD_REMOVE_CHILD } from "../src/constants";
 const FIXTURES = resolve(process.cwd(), "test/fixtures/ssr");
 
 /** Full-snapshot scenarios (applied to a fresh DOM and compared to SSR). */
-const FULL = ["counter", "form", "composite_controls", "layout", "gridrow", "gridtracks", "zstack2d", "tokens", "semantics", "icons", "sizethatfits", "media", "native_controls", "framebounds"] as const;
+const FULL = ["counter", "form", "composite_controls", "layout", "gridrow", "gridtracks", "zstack2d", "tokens", "semantics", "icons", "viewthatfits", "media", "native_controls", "framebounds"] as const;
 
 function plpl(name: string): Uint8Array {
   return new Uint8Array(readFileSync(resolve(FIXTURES, `${name}.plpl`)));
@@ -217,7 +217,7 @@ describe("SSR conformance (golden fixtures from pathland-html-golden)", () => {
     // re-creates the wrappers). The app's downgrade then removes the unselected
     // candidate (id 3) — the client must collapse the gate to the plain
     // single-child live form (no wrappers, no container).
-    const r = hydrate(html("sizethatfits-snapshot"));
+    const r = hydrate(html("viewthatfits-snapshot"));
     const slot = r.byId.get(1) as HTMLElement;
     expect(slot.hasAttribute("data-pathland-fit-cands")).toBe(true);
     expect(slot.querySelectorAll("[data-pathland-fit-cand]").length).toBe(2);

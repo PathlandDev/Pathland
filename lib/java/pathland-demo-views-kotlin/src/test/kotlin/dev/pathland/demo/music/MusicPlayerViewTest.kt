@@ -79,7 +79,7 @@ class MusicPlayerViewTest {
         assertTrue(anySetText(frame, "Library"))
         assertTrue(countCreate(frame, Components.IMAGE) >= 3)
         assertTrue(anySetPropertyString(frame, Properties.IMAGE_SOURCE, COVER))
-        assertEquals(1, countCreate(frame, Components.SIZE_THAT_FITS))
+        assertEquals(1, countCreate(frame, Components.VIEW_THAT_FITS))
         assertEquals(1, countCreate(frame, Components.MEDIA_CONTROLLER))
     }
 
@@ -107,7 +107,7 @@ class MusicPlayerViewTest {
         assertTrue(anySetText(wide, "Now Playing"))
         assertTrue(anySetText(wide, "Up Next"))
         assertEquals(0, countCreate(wide, Components.MEDIA_CONTROLLER))
-        assertEquals(0, countCreate(wide, Components.SIZE_THAT_FITS))
+        assertEquals(0, countCreate(wide, Components.VIEW_THAT_FITS))
     }
 
     @Test
@@ -334,7 +334,7 @@ class MusicPlayerViewTest {
             for (op: Opcode in frame.opcodes()) {
                 if (op.category() == Categories.TREE &&
                     op.command() == Commands.Tree.CREATE_NODE &&
-                    op.b() == Components.SIZE_THAT_FITS
+                    op.b() == Components.VIEW_THAT_FITS
                 ) {
                     val thresholds = fitThresholds(frame, op.a())
                     if (thresholds.last() == maxThreshold) return op.a()
@@ -543,7 +543,7 @@ class MusicPlayerViewTest {
         for (op: Opcode in frame.opcodes()) {
             if (op.category() == Categories.TREE &&
                 op.command() == Commands.Tree.CREATE_NODE &&
-                op.b() == Components.SIZE_THAT_FITS
+                op.b() == Components.VIEW_THAT_FITS
             ) {
                 val thresholds = fitThresholds(frame, op.a())
                 if (thresholds.last() == maxThreshold) return op.a()

@@ -132,7 +132,7 @@ class ProxyIntegrationTest {
     @Test
     void aProxyThatLeavesTheRetainedTreeClosesItsOriginAndReturnsOnReAdd() {
         // A PROXY_VIEW inside a structural slot (e.g. the wide candidate of a
-        // SizeThatFits slot): when the slot swaps it out the origin connection must
+        // ViewThatFits slot): when the slot swaps it out the origin connection must
         // close; re-adding it opens a fresh one (spec/PROXY.md §7).
         WritableSignal<Boolean> show = Signals.signal(true);
         PathlandApp app = () -> ServerFixtures.vstack(View.of(() -> show.get()

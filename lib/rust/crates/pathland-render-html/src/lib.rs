@@ -100,8 +100,8 @@ pub struct Node {
     pub item_extents: Vec<f32>,
 }
 
-/// Whether a `SIZE_THAT_FITS` node satisfies the **candidate-identity contract**
-/// (spec/PRIMITIVES.md §SizeThatFits): a full-snapshot slot has MORE THAN ONE
+/// Whether a `VIEW_THAT_FITS` node satisfies the **candidate-identity contract**
+/// (spec/PRIMITIVES.md §ViewThatFits): a full-snapshot slot has MORE THAN ONE
 /// child, exactly one ascending `FIT_QUERY` threshold per child (so child `i` ⇔
 /// candidate `i`). A frame that violates this (table length ≠ child count, or a
 /// non-ascending table) cannot be CSS-gated and is rendered as the threshold-0
@@ -127,13 +127,13 @@ fn fit_candidates_valid(node: &Node) -> bool {
 /// keeps its default `display:contents` (fallback) and candidates ≥ 1 keep
 /// `display:none`.
 ///
-/// The child at position `i` is candidate `i` (spec/PRIMITIVES.md §SizeThatFits
+/// The child at position `i` is candidate `i` (spec/PRIMITIVES.md §ViewThatFits
 /// candidate-identity contract): the slot's child order equals the `FIT_QUERY`
 /// order, so the band index and the child index are the same.
 fn fit_band_styles(nodes: &BTreeMap<u32, Node>) -> String {
     let mut rules = String::new();
     for (id, node) in nodes {
-        if node.component != component_type::SIZE_THAT_FITS || !fit_candidates_valid(node) {
+        if node.component != component_type::VIEW_THAT_FITS || !fit_candidates_valid(node) {
             continue;
         }
         let n = node.children.len();
@@ -1642,8 +1642,8 @@ impl HtmlRenderer {
                 // the proxying server spliced in, exactly like a stack with one child.
                 wrap_stack(id, "column", semantic, node, &children, &format!("{css}{}{derived}", fill_propagation(nodes, id, node, false)), &event, &aria)
             }
-            component_type::SIZE_THAT_FITS => {
-                // A fit slot (spec/PRIMITIVES.md §SizeThatFits): size-taking — it
+            component_type::VIEW_THAT_FITS => {
+                // A fit slot (spec/PRIMITIVES.md §ViewThatFits): size-taking — it
                 // fills the parent's proposal, and that measured width is the unit
                 // of fitting. `data-pathland-fit` mirrors the FIT_QUERY threshold
                 // table so the DOM client can derive the fit locally (and only
@@ -4084,7 +4084,7 @@ mod tests {
     fn fit_slot_forwards_parent_alignment_into_its_box() {
         use pathland_core::value_type;
 
-        // A `VStack(CENTER)` > SizeThatFits > HSTACK: the slot is a layout-transparent
+        // A `VStack(CENTER)` > ViewThatFits > HSTACK: the slot is a layout-transparent
         // container, so it must forward the parent's cross-axis alignment (`inherit`)
         // into its own box — otherwise its `align-self:stretch` box pins the candidate
         // to the start, regressing the centered player-bar groups (the reasons the
@@ -4102,7 +4102,7 @@ mod tests {
             ((value_type::F32 as u32) << 16) | property_id::ALIGNMENT as u32,
             1.0f32.to_bits(),
         ));
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::SIZE_THAT_FITS as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 2, component_type::VIEW_THAT_FITS as u32, 0));
         // FIT_QUERY (LIST) → arena `[count=2][0][640]` → `data-pathland-fit="0,640"`.
         let mut strings = Vec::new();
         strings.extend_from_slice(&2u32.to_le_bytes());
@@ -4146,7 +4146,7 @@ mod tests {
     fn snapshot_fit_slot_renders_all_candidates_with_container_query_rules() {
         use pathland_core::value_type;
 
-        // The SSR full-snapshot form (issue #141): a `SIZE_THAT_FITS` carrying
+        // The SSR full-snapshot form (issue #141): a `VIEW_THAT_FITS` carrying
         // MULTIPLE children (every candidate) renders each branch in a
         // `data-pathland-fit-cand`-gated wrapper, makes the slot a `@container`,
         // and emits the band rules in a `<style data-pathland-fit>` element — so a
@@ -4154,7 +4154,7 @@ mod tests {
         // child at position `i` is candidate `i` (child order = FIT_QUERY order).
         // The single-child (live) form stays a plain `pathland-ftf` (tested above).
         let mut opcodes = Vec::new();
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SIZE_THAT_FITS as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VIEW_THAT_FITS as u32, 0));
         // FIT_QUERY (LIST) → `[count=2][0][640]` → `data-pathland-fit="0,640"`.
         let mut strings = Vec::new();
         strings.extend_from_slice(&2u32.to_le_bytes());
@@ -4202,7 +4202,7 @@ mod tests {
         assert!(!rules.contains("[data-pathland-fit-cand] { display: none"), "the hide selector never targets all candidates: {rules}");
         // The live/single-child form still produces NO band rules.
         let mut single = Vec::new();
-        single.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SIZE_THAT_FITS as u32, 0));
+        single.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VIEW_THAT_FITS as u32, 0));
         single.push(Opcode::new(category::TREE, tree::INSERT_CHILD, 0, 1, 3, 0));
         single.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 3, component_type::VSTACK as u32, 0));
         let html_single = renderer.render_document(&single, &strings, 1);
@@ -4219,7 +4219,7 @@ mod tests {
         // band per distinct non-fallback threshold, each showing its candidate and
         // hiding the other two; no band for T_0 (the inline fallback).
         let mut opcodes = Vec::new();
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SIZE_THAT_FITS as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VIEW_THAT_FITS as u32, 0));
         let mut strings = Vec::new();
         strings.extend_from_slice(&3u32.to_le_bytes());
         strings.extend_from_slice(&0.0f32.to_le_bytes());
@@ -4266,7 +4266,7 @@ mod tests {
         // renderer must NOT emit wrappers/bands and must render the threshold-0
         // fallback child only — never ungated overlapping candidates.
         let mut opcodes = Vec::new();
-        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::SIZE_THAT_FITS as u32, 0));
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VIEW_THAT_FITS as u32, 0));
         let mut strings = Vec::new();
         strings.extend_from_slice(&1u32.to_le_bytes());
         strings.extend_from_slice(&0.0f32.to_le_bytes());

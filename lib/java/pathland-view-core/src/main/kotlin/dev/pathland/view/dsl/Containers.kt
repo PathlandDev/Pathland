@@ -311,13 +311,13 @@ fun Fit(minWidth: Float = 0f, content: PathlandScope.() -> Unit): FitCandidate {
     return FitCandidate(view, minWidth)
 }
 
-/** A `SIZE_THAT_FITS` slot: renders one selected candidate and reports `FIT_CHANGED`. */
+/** A `VIEW_THAT_FITS` slot: renders one selected candidate and reports `FIT_CHANGED`. */
 private class FitSlot(private val fits: List<FitCandidate>) : View {
     private val fitIndex = Signals.signal(0)
     private val fitReported = Signals.signal(false)
 
     override fun renderNode(env: Environment): PathlandNode {
-        val node = PathlandNode(Components.SIZE_THAT_FITS)
+        val node = PathlandNode(Components.VIEW_THAT_FITS)
         node.properties[Properties.FIT_QUERY] = FloatArray(fits.size) { fits[it].minWidth }
         val hint = Emitter.current()?.currentSlotOldFitSelection()
         if (hint != null && hint != fitIndex.get()) {
@@ -343,12 +343,12 @@ private class FitSlot(private val fits: List<FitCandidate>) : View {
     }
 }
 
-private fun sizeThatFits(fits: Array<FitCandidate>): View {
+private fun viewThatFits(fits: Array<FitCandidate>): View {
     val sorted = fits.sortedBy { it.minWidth }
     for (i in sorted.indices) {
         for (j in i + 1 until sorted.size) {
             check(sorted[i].view !== sorted[j].view) {
-                "a View instance can be used as the candidate of at most one SizeThatFits Fit"
+                "a View instance can be used as the candidate of at most one ViewThatFits Fit"
             }
         }
     }
@@ -357,10 +357,10 @@ private fun sizeThatFits(fits: Array<FitCandidate>): View {
 
 /** The first candidate that fits the available width (SwiftUI `ViewThatFits`). */
 fun ViewThatFits(content: PathlandScope.() -> Unit): View =
-    sizeThatFits(childrenOf(content).map { Fit(it) }.toTypedArray())
+    viewThatFits(childrenOf(content).map { Fit(it) }.toTypedArray())
 
 /** The first candidate that fits, with explicit min-width thresholds. */
-fun ViewThatFits(vararg fits: FitCandidate): View = sizeThatFits(arrayOf(*fits))
+fun ViewThatFits(vararg fits: FitCandidate): View = viewThatFits(arrayOf(*fits))
 
 /* ------------------------------------------------------------------------- */
 /* ProxyView                                                                  */

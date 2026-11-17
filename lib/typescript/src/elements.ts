@@ -24,7 +24,7 @@ import {
   COMPONENT_PICKER,
   COMPONENT_PROGRESS_VIEW,
   COMPONENT_SCROLLVIEW,
-  COMPONENT_SIZE_THAT_FITS,
+  COMPONENT_VIEW_THAT_FITS,
   COMPONENT_SHAPE,
   COMPONENT_SLIDER,
   COMPONENT_SPACER,
@@ -105,7 +105,7 @@ export function createElement(component: number): Node {
       el.dataset.pathlandScrollAxis = "vertical";
       return el;
     }
-    case COMPONENT_SIZE_THAT_FITS: {
+    case COMPONENT_VIEW_THAT_FITS: {
       // A fit slot: size-taking (fills the parent's proposal — the measured width
       // is the fitting unit) with a `data-pathland-fit`-reflected threshold table.
       // Layout-transparent: forwards the parent flex container's settings

@@ -8,7 +8,7 @@
 //!
 //! The view DSL materializes **one** non-visual `MEDIA_CONTROLLER` node per
 //! controller (via `attach()`), so playback identity is stable across structural
-//! swaps — a `SIZE_THAT_FITS` band change never restarts playback, and any number
+//! swaps — a `VIEW_THAT_FITS` band change never restarts playback, and any number
 //! of surfaces/control views referencing the same controller drive the same
 //! playback. **Audio has no view**: an audio playback is a controller plus
 //! ordinary views (buttons/sliders) bound to its transport signals.

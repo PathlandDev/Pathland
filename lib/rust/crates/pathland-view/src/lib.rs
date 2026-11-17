@@ -4040,13 +4040,13 @@ pub fn markdown_text(input: &str) -> Text {
 }
 
 // ---------------------------------------------------------------------------
-// SizeThatFits (fit slot)
+// ViewThatFits (fit slot)
 // ---------------------------------------------------------------------------
 
-/// A `SizeThatFits` candidate: a view plus the minimum container width at which
+/// A `ViewThatFits` candidate: a view plus the minimum container width at which
 /// it is selected. The candidates' thresholds form the wire `FIT_QUERY` table
 /// (ascending); the renderer measures its allocated width, derives the fit
-/// locally, and reports `FIT_CHANGED` (spec/PRIMITIVES.md §SizeThatFits).
+/// locally, and reports `FIT_CHANGED` (spec/PRIMITIVES.md §ViewThatFits).
 pub struct Fit {
     view: Box<dyn View>,
     min_width: f32,
@@ -4070,29 +4070,29 @@ impl Fit {
     }
 }
 
-/// The fit slot (`SIZE_THAT_FITS`): shows **one** candidate — the selected one
+/// The fit slot (`VIEW_THAT_FITS`): shows **one** candidate — the selected one
 /// — so only the selected child is ever transmitted. Candidates are held DSL-side;
 /// the emitted `FIT_QUERY` (ascending thresholds) lets the renderer pick.
 ///
 /// The Rust DSL currently holds a **fixed** selected index (reactive selection
 /// via `FIT_CHANGED` is the Java DSL's structural slot; the retained
-/// `Component::SizeThatFits` output is identical).
+/// `Component::ViewThatFits` output is identical).
 #[derive(Default)]
-pub struct SizeThatFits {
+pub struct ViewThatFits {
     fits: Vec<Fit>,
     fit_index: usize,
 }
 
-impl core::fmt::Debug for SizeThatFits {
+impl core::fmt::Debug for ViewThatFits {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("SizeThatFits")
+        f.debug_struct("ViewThatFits")
             .field("fits", &self.fits.len())
             .field("fit_index", &self.fit_index)
             .finish()
     }
 }
 
-impl SizeThatFits {
+impl ViewThatFits {
     /// A slot over the given candidates (author order = fit preference; the
     /// emitted `FIT_QUERY` is their ascending `minWidth`s, stable).
     pub fn new(fits: Vec<Fit>) -> Self {
@@ -4107,7 +4107,7 @@ impl SizeThatFits {
     }
 }
 
-impl View for SizeThatFits {
+impl View for ViewThatFits {
     fn build_env(&self, _env: &mut Environment) -> Node {
         let mut sorted: Vec<&Fit> = self.fits.iter().collect();
         sorted.sort_by(|a, b| {
@@ -4117,7 +4117,7 @@ impl View for SizeThatFits {
         });
         let thresholds: Vec<f32> = sorted.iter().map(|f| f.min_width).collect();
         let index = self.fit_index.min(sorted.len().saturating_sub(1));
-        let mut node = plain_node(Component::SizeThatFits, Vec::new(), BTreeMap::new());
+        let mut node = plain_node(Component::ViewThatFits, Vec::new(), BTreeMap::new());
         node.list_properties
             .insert(property_id::FIT_QUERY, thresholds);
         if let Some(fit) = sorted.get(index) {
@@ -4966,12 +4966,12 @@ mod tests {
 }
 
 #[cfg(test)]
-mod sizethatfits_tests {
+mod viewthatfits_tests {
     use super::*;
 
     #[test]
     fn fit_slot_builds_component_query_and_only_the_selected_child() {
-        let view = SizeThatFits::new(vec![
+        let view = ViewThatFits::new(vec![
             Fit::new(Text::new("wide"), 640.0),
             Fit::any(Text::new("compact")),
         ]);
@@ -4979,7 +4979,7 @@ mod sizethatfits_tests {
         let mut next = 1;
         pathland_engine::assign_ids(&mut root, &mut next);
 
-        assert_eq!(root.component, Component::SizeThatFits);
+        assert_eq!(root.component, Component::ViewThatFits);
         let query = root.list_properties.get(&property_id::FIT_QUERY).unwrap();
         assert_eq!(query.as_slice(), &[0.0, 640.0]);
         assert_eq!(root.children.len(), 1, "only the selected candidate builds");
@@ -4987,7 +4987,7 @@ mod sizethatfits_tests {
 
     #[test]
     fn with_fit_selects_the_requested_candidate() {
-        let view = SizeThatFits::new(vec![
+        let view = ViewThatFits::new(vec![
             Fit::new(Text::new("wide"), 640.0),
             Fit::any(Text::new("compact")),
         ])

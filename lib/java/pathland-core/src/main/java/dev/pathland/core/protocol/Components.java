@@ -23,7 +23,7 @@ public final class Components {
     public static final int SCROLLVIEW = 0x14;
     public static final int LAZY_VGRID = 0x15;
     public static final int LAZY_HGRID = 0x16;
-    public static final int SIZE_THAT_FITS = 0x17;
+    public static final int VIEW_THAT_FITS = 0x17;
     public static final int LAZY_VSTACK = 0x1B;
     public static final int LAZY_HSTACK = 0x1C;
     public static final int GRID_ROW = 0x1D;

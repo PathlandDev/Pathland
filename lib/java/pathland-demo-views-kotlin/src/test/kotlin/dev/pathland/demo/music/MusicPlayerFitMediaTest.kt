@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * Regression coverage for the responsive MusicPlayerView: crossing a
- * `SIZE_THAT_FITS` band must only swap application views. The pinned
+ * `VIEW_THAT_FITS` band must only swap application views. The pinned
  * `MEDIA_CONTROLLER` must keep its node id, its `MEDIA_SOURCE`, and its routing,
  * so the browser never tears down the controller's `<video>` element.
  */
@@ -62,7 +62,7 @@ class MusicPlayerFitMediaTest {
         for (op: Opcode in frame.opcodes()) {
             if (op.category() == Categories.TREE &&
                 op.command() == Commands.Tree.CREATE_NODE &&
-                op.b() == Components.SIZE_THAT_FITS
+                op.b() == Components.VIEW_THAT_FITS
             ) {
                 if (fitThresholds(frame, op.a()).last() == maxThreshold) return op.a()
             }

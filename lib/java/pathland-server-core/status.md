@@ -218,7 +218,7 @@ dependency — framework glue lives in the starters.
   registers the emitter's structural-reconcile callback
   (`Emitter.onStructureReconciled`) to `reconcileProxies()`, so a proxy lives
   **exactly while its node is in the retained tree** (spec/PROXY.md §7): a
-  `SizeThatFits` slot dropping the candidate that held it closes the origin
+  `ViewThatFits` slot dropping the candidate that held it closes the origin
   connection, and re-adding it opens a fresh one (re-seeded by `META::RESYNC`).
   The host's frames feed the session's `DeltaBatcher` (a single unified sequence);
   `dispatch` splits proxy-range events to the origin and everything else to the
