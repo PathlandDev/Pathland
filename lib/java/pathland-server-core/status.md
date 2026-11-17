@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** November 7, 2026
+**Last updated:** November 17, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -44,7 +44,12 @@ dependency — framework glue lives in the starters.
   windows of the same browser never share a UI model), lazy creation on first
   environment message, pending connections (each carrying the mount-prefixed state
   scope from the client's per-window `wid`),
-  `open(uiId, wid, conn)`/`environment`/`dispatch`/`resync`/`close`/`renderHtml`/`shutdown`. New:
+  `open(uiId, wid, conn)`/`environment`/`dispatch`/`resync`/`close`/`renderHtml`/`shutdown`.
+  Inbound `VISIBLE_RANGE` events are coalesced latest-wins per `(session, target)`
+  for ~50 ms (`VisibleRangeCoalescer`, ADR-0017); other events dispatch
+  immediately.   `VisibleRangeCoalescerTest` covers latest-wins/close, and
+  `VisibleRangeRegistryTest` proves a paged lazy list loads and renders only the
+  settled window after a burst. New:
   - `mountPath()`/`base()` — each app's framework base is `/<mount>/_pathland`
     (`/_pathland` for the root), emitted as `data-pathland-base` in SSR;
   - `stateScope(windowId)` — app-qualified state-store scope (`mount:wid`) so apps and

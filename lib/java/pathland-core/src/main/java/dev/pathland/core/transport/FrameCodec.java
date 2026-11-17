@@ -188,6 +188,9 @@ public final class FrameCodec {
             } else if (event.isDateChanged()) {
                 opcodes.add(new Opcode(Categories.EVENT, Commands.Event.DATE_CHANGED, 0,
                         event.target(), event.b(), event.c()));
+            } else if (event.isVisibleRange()) {
+                opcodes.add(new Opcode(Categories.EVENT, Commands.Event.VISIBLE_RANGE, 0,
+                        event.target(), event.b(), event.c()));
             } else if (event.isFocusChanged()
                     || event.isEditingChanged()
                     || event.isSubmit()) {

@@ -1,6 +1,6 @@
 # pathland-demo-views-kotlin — implementation status
 
-**Last updated:** November 13, 2026
+**Last updated:** November 17, 2026
 
 Kotlin-owned demo views over `pathland-view-core`, with no Java-DSL dependency.
 It owns the app-driven music player and the small sponsored-proxy ad app.
@@ -59,6 +59,9 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
   The live/SSR session uses the `PagedDataSource`; emitter-only unit-test mounts
   keep the in-memory list for determinism. The engine's reactive prefetch keeps
   rows rendered ahead of fast scrolling; the demo has no overscan setting.
+  Visible-range reports are coalesced latest-wins and stale pages are cached
+  without rendering, so a fast scrollbar drag back and forth reuses the visited
+  windows instead of showing blank rows and refetching (ADR-0017).
 
 ## Verified by
 

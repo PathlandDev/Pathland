@@ -99,6 +99,19 @@ class FrameCodecTest {
     }
 
     @Test
+    void encodesAVisibleRangeEventWithItsFirstIndexAndCount() {
+        byte[] bytes = FrameCodec.encodeEvents(
+                java.util.List.of(Event.visibleRange(42, 10, 20)));
+        java.util.List<Event> events = FrameCodec.decodeEvents(bytes);
+        assertEquals(1, events.size());
+        Event event = events.get(0);
+        assertTrue(event.isVisibleRange());
+        assertEquals(42, event.target());
+        assertEquals(10, event.visibleFirstIndex());
+        assertEquals(20, event.visibleCount());
+    }
+
+    @Test
     void decodesAVisibleRangeEvent() {
         ProtocolFrame frame = new ProtocolFrame(
                 java.util.List.of(new Opcode(

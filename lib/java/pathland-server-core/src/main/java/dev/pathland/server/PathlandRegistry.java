@@ -11,6 +11,7 @@ import dev.pathland.core.transport.FrameCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -80,6 +81,14 @@ public final class PathlandRegistry {
 
     /** Per-connection inbound message budget, checked before actor work is queued. */
     private final InboundRateLimiter inbound = new InboundRateLimiter();
+
+    /**
+     * Latest-wins coalescing for visible-range reports (ADR-0017). A scrollbar
+     * jump otherwise applies every intermediate window to the session's lazy
+     * data source. The sink re-enters the actor only for the surviving range.
+     */
+    private final VisibleRangeCoalescer visibleRanges =
+            new VisibleRangeCoalescer(VisibleRangeCoalescer.DEFAULT_DELAY_MILLIS, this::dispatchCoalescedRange);
 
     public PathlandRegistry(PathlandApp app, StateStore store) {
         this("/", app, store, false);
@@ -269,16 +278,42 @@ public final class PathlandRegistry {
         if (!allowInbound(sessionId, message.length, "event batch")) {
             return;
         }
-        execute(() -> {
-            List<Event> events;
-            try {
-                events = stripNavigateUrls(FrameCodec.decodeEvents(message));
-            } catch (RuntimeException e) {
-                LOG.warn("dropping malformed event batch: {}", e.getMessage());
-                return;
+        List<Event> events;
+        try {
+            events = stripNavigateUrls(FrameCodec.decodeEvents(message));
+        } catch (RuntimeException e) {
+            LOG.warn("dropping malformed event batch: {}", e.getMessage());
+            return;
+        }
+        telemetry.eventBatchReceived(mountPath, events.size());
+        List<Event> immediate = null;
+        for (Event event : events) {
+            if (event.isVisibleRange()) {
+                visibleRanges.offer(sessionId, event);
+            } else {
+                if (immediate == null) {
+                    immediate = new ArrayList<>();
+                }
+                immediate.add(event);
             }
-            telemetry.eventBatchReceived(mountPath, events.size());
-            session(sessionId, EnvironmentData.of("/")).dispatch(events);
+        }
+        if (immediate != null) {
+            List<Event> local = List.copyOf(immediate);
+            execute(() -> session(sessionId, EnvironmentData.of("/")).dispatch(local));
+        }
+    }
+
+    /**
+     * Dispatch a coalesced visible range to an existing session. Unlike the
+     * generic {@link #session} helper this never creates a session: a range that
+     * survives its interval for a closed connection is dropped.
+     */
+    private void dispatchCoalescedRange(String sessionId, Event event) {
+        execute(() -> {
+            PathlandSession session = sessions.get(sessionId);
+            if (session != null) {
+                session.dispatch(List.of(event));
+            }
         });
     }
 
@@ -296,6 +331,7 @@ public final class PathlandRegistry {
     /** Close and remove a session (and drop any pending connection). */
     public void close(String sessionId) {
         inbound.remove(sessionId);
+        visibleRanges.removeSession(sessionId);
         execute(() -> {
             pending.remove(sessionId);
             PathlandSession session = sessions.remove(sessionId);
@@ -329,6 +365,7 @@ public final class PathlandRegistry {
         if (!shuttingDown.compareAndSet(false, true)) {
             return;
         }
+        visibleRanges.close();
         Runnable closeAll = this::closeAllSessions;
         if (Boolean.TRUE.equals(onActor.get())) {
             // Re-entrant shutdown from an actor task: run inline (a submit+get would deadlock).
@@ -387,6 +424,7 @@ public final class PathlandRegistry {
     }
 
     private void closeAllSessions() {
+        visibleRanges.clear();
         for (PathlandSession session : sessions.values()) {
             session.close();
             telemetry.sessionClosed(mountPath);

@@ -1,6 +1,6 @@
 # pathland-core (JVM opcode/wire core) — implementation status
 
-**Last updated:** November 8, 2026
+**Last updated:** November 17, 2026
 
 The Pathland JVM opcode and wire core, written entirely in **Java 17** with no
 Kotlin source and no native dependency. It owns the 16-byte protocol constants,
@@ -45,8 +45,9 @@ module depend on this module.
 
 - **Virtualized lazy stacks (ADR-0014)**: the window properties, the
   `VISIBLE_RANGE` event, and listener bit 10 are in the protocol constants,
-  `ValueTypes.forProperty`, and `FrameCodec`. No conformance vector covers the
-  new event yet.
+  `ValueTypes.forProperty`, and `FrameCodec`; the event round-trips its first
+  index/count through `encodeEvents`/`decodeEvents`. No conformance vector covers
+  the new event yet.
 
 ## Boundaries
 

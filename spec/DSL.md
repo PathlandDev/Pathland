@@ -557,7 +557,11 @@ Rules:
   source's prefetch for the initial and visible windows. `itemExtent` is
   required because the full list is not known up front. The source exposes
   `total`/`loading`/`error` signals; a page arrival re-renders only the lazy
-  slot. SSR starts in the loading state; the live session loads pages.
+  slot. The engine applies only the latest reported window: a page result for a
+  window that is no longer current may be cached but never renders outside the
+  current window and does not publish a render version for it; a stale failure
+  does not change the source's visible loading/error state. SSR starts in the
+  loading state; the live session loads pages.
 - A full-snapshot/SSR emission carries the first window plus the full virtual
   extent; the client corrects the window after `META::ENVIRONMENT`.
 - `LazyVGrid`/`LazyHGrid` use the same data-source window with a **row** or

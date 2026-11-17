@@ -2461,26 +2461,34 @@ const LAZY_PADDING_PROP = {
   left: "paddingLeft",
 } as const;
 
+type LazyPaddingSide = "top" | "right" | "bottom" | "left";
+
 /**
  * The app's base padding for one edge. SSR emits it on
- * `data-pathland-base-padding-*`; a live-created element starts with only the
- * app padding and caches it on the first refresh.
+ * `data-pathland-base-padding-*`; a live-created element caches its computed
+ * base once on the first refresh. The virtual leading/trailing is added on top
+ * and must be able to shrink again when the window moves back up.
  */
-function lazyBase(
-  el: HTMLElement,
-  side: "top" | "right" | "bottom" | "left",
-  extra: number,
-): number {
+const lazyBasePaddings = new WeakMap<HTMLElement, Record<LazyPaddingSide, number>>();
+
+function lazyBase(el: HTMLElement, side: LazyPaddingSide): number {
   const attr = el.getAttribute(`data-pathland-base-padding-${side}`);
   if (attr != null) {
     const value = Number.parseFloat(attr);
     return Number.isFinite(value) ? value : 0;
   }
-  const computed = Number.parseFloat(getComputedStyle(el)[LAZY_PADDING_PROP[side]]) || 0;
-  if (!el.hasAttribute("data-pathland-lazy-padded")) {
-    return computed;
+  let bases = lazyBasePaddings.get(el);
+  if (!bases) {
+    const computed = getComputedStyle(el);
+    bases = {
+      top: Number.parseFloat(computed[LAZY_PADDING_PROP.top]) || 0,
+      right: Number.parseFloat(computed[LAZY_PADDING_PROP.right]) || 0,
+      bottom: Number.parseFloat(computed[LAZY_PADDING_PROP.bottom]) || 0,
+      left: Number.parseFloat(computed[LAZY_PADDING_PROP.left]) || 0,
+    };
+    lazyBasePaddings.set(el, bases);
   }
-  return Math.max(0, computed - extra);
+  return bases[side];
 }
 
 /** Recompute a windowed lazy stack's virtual padding from its current window. */
@@ -2554,15 +2562,15 @@ function refreshLazyPadding(el: HTMLElement): void {
     });
   }
   if (axis === "horizontal") {
-    el.style.paddingLeft = `${lazyBase(el, "left", leading) + leading}px`;
-    el.style.paddingRight = `${lazyBase(el, "right", trailing) + trailing}px`;
-    el.style.paddingTop = `${lazyBase(el, "top", 0)}px`;
-    el.style.paddingBottom = `${lazyBase(el, "bottom", 0)}px`;
+    el.style.paddingLeft = `${lazyBase(el, "left") + leading}px`;
+    el.style.paddingRight = `${lazyBase(el, "right") + trailing}px`;
+    el.style.paddingTop = `${lazyBase(el, "top")}px`;
+    el.style.paddingBottom = `${lazyBase(el, "bottom")}px`;
   } else {
-    el.style.paddingTop = `${lazyBase(el, "top", leading) + leading}px`;
-    el.style.paddingBottom = `${lazyBase(el, "bottom", trailing) + trailing}px`;
-    el.style.paddingLeft = `${lazyBase(el, "left", 0)}px`;
-    el.style.paddingRight = `${lazyBase(el, "right", 0)}px`;
+    el.style.paddingTop = `${lazyBase(el, "top") + leading}px`;
+    el.style.paddingBottom = `${lazyBase(el, "bottom") + trailing}px`;
+    el.style.paddingLeft = `${lazyBase(el, "left")}px`;
+    el.style.paddingRight = `${lazyBase(el, "right")}px`;
   }
   el.setAttribute("data-pathland-lazy-padded", "");
 }

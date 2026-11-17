@@ -180,6 +180,8 @@ internal class LazyStackView(
 
     private var window: WritableSignal<IntRange>? = null
     private val tracker = LazyWindowTracker()
+    /** A range reported before ITEM_COUNT was known; applied when the count arrives. */
+    private var pendingVisible: Pair<Int, Int>? = null
 
     override fun renderNode(env: Environment): PathlandNode {
         val node = PathlandNode(component)
@@ -214,7 +216,15 @@ internal class LazyStackView(
         var first = 0
         var end = -1
         if (count > 0) {
-            val initial = if (windowSignal.get().isEmpty()) {
+            val pending = pendingVisible
+            val initial = if (pending != null) {
+                Signals.untracked {
+                    windowSignal.set(tracker.window(pending.first, pending.second, count))
+                    pendingVisible = null
+                    true
+                }
+                windowSignal.get()
+            } else if (windowSignal.get().isEmpty()) {
                 Signals.untracked {
                     windowSignal.set(initialWindow(count, extent, vertical))
                     true
@@ -267,6 +277,15 @@ internal class LazyStackView(
             data.prefetch(first, end)
         }
         node.visibleRangeInput = VisibleRangeInput { firstVisible, visibleCount ->
+            if (data.count() <= 0) {
+                // Keep the requested range until the source reports ITEM_COUNT;
+                // otherwise the list would reset to the initial top window.
+                if (visibleCount > 0) {
+                    pendingVisible = firstVisible to visibleCount
+                }
+                return@VisibleRangeInput
+            }
+            pendingVisible = null
             val window = tracker.window(firstVisible, visibleCount, data.count())
             windowSignal.set(window)
             if (!window.isEmpty()) {
@@ -347,6 +366,8 @@ internal class LazyGridWindowView(
 
     private var window: WritableSignal<IntRange>? = null
     private val tracker = LazyWindowTracker()
+    /** A range reported before ITEM_COUNT was known; applied when the count arrives. */
+    private var pendingVisible: Pair<Int, Int>? = null
 
     override fun renderNode(env: Environment): PathlandNode {
         val node = PathlandNode(component)
@@ -382,7 +403,15 @@ internal class LazyGridWindowView(
         var first = 0
         var end = -1
         if (unitCount > 0) {
-            val initial = if (windowSignal.get().isEmpty()) {
+            val pending = pendingVisible
+            val initial = if (pending != null) {
+                Signals.untracked {
+                    windowSignal.set(tracker.window(pending.first, pending.second, unitCount))
+                    pendingVisible = null
+                    true
+                }
+                windowSignal.get()
+            } else if (windowSignal.get().isEmpty()) {
                 Signals.untracked {
                     windowSignal.set(initialWindow(unitCount, extent, vertical))
                     true
@@ -410,6 +439,13 @@ internal class LazyGridWindowView(
             data.prefetch(first * tracks, minOf(itemCount, (end + 1) * tracks) - 1)
         }
         node.visibleRangeInput = VisibleRangeInput { firstVisible, visibleCount ->
+            if (data.count() <= 0) {
+                if (visibleCount > 0) {
+                    pendingVisible = firstVisible to visibleCount
+                }
+                return@VisibleRangeInput
+            }
+            pendingVisible = null
             val window = tracker.window(firstVisible, visibleCount, unitCount)
             windowSignal.set(window)
             if (!window.isEmpty()) {

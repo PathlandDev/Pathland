@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 12, 2026
+**Last updated:** November 17, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written in Kotlin. It owns the `View` SPI and shared
@@ -38,8 +38,13 @@ build) carries no JNA.
 - **Data sources** (`dev.pathland.view.data`): `AsyncDataSource` loads a small
   list from a blocking or `CompletionStage` loader; `PagedDataSource` loads
   offset/limit pages with a bounded cache, in-flight dedupe, `total`/`loading`/
-  `error` signals, and window-driven `ensureLoaded`. Both apply results on the
-  session actor, refresh with a stale-result guard, and close with the session;
+  `error` signals, and window-driven `ensureLoaded`. A page result outside the
+  latest requested window is cached (bounded) but not published to the current
+  render; stale failures leave the visible loading/error state alone (ADR-0017;
+  `PagedDataSourceTest` covers stale success/failure, `PagedFastScrollTest`
+  covers fast back-and-forth and a range before the count). Both apply results
+  on the session actor, refresh with a stale-result guard, and close with the
+  session;
   SSR starts in the loading state and does not run async work. `ForEach(source)`
   renders loaded rows and placeholders; the lazy stack/grid call `prefetch` for
   the initial and adaptive windows. The optional
