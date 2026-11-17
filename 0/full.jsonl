@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 5.534463294000004,
+    "cost": 5.539709598000004,
     "tokens": {
-      "input": 20646857,
-      "output": 438353,
-      "reasoning": 780572,
+      "input": 20648981,
+      "output": 438567,
+      "reasoning": 780583,
       "cache": {
-        "read": 568693248,
+        "read": 570290816,
         "write": 0
       }
     },
     "time": {
       "created": 1794497947146,
-      "updated": 1794927123732
+      "updated": 1794927157452
     }
   },
   "messages": [
@@ -220341,21 +220341,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001847952,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 532963,
+          "input": 1276,
+          "output": 101,
+          "reasoning": 2,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 531584
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1794927123813
+          "created": 1794927123813,
+          "completed": 1794927148323
         },
+        "finish": "tool-calls",
         "id": "msg_1e9fe5d65002mAAHRKa54OlMvE",
         "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
       },
@@ -220383,22 +220386,214 @@
           "tool": "bash",
           "callID": "call_00_pdfoa0euisdcnfragnns46xs",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git commit -m \"fix(lazy-list): keep fast scrolling rendered in both directions\"",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland",
               "timeout": 120000
             },
+            "output": "[feat/lazy-stack-virtualization 5b771b49] fix(lazy-list): keep fast scrolling rendered in both directions\n 32 files changed, 1150 insertions(+), 92 deletions(-)\n create mode 100644 docs/decisions/0017-visible-range-coalescing.md\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-05c1a3b75a6f.js\n delete mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-6aaead03a06f.js\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/VisibleRangeCoalescer.java\n create mode 100644 lib/java/pathland-server-core/src/test/java/dev/pathland/server/VisibleRangeCoalescerTest.java\n create mode 100644 lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/VisibleRangeRegistryTest.kt\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-05c1a3b75a6f.js\n delete mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-6aaead03a06f.js\n create mode 100644 lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/PagedFastScrollTest.kt\n create mode 100644 lib/typescript/src/lazy-throttle.ts\n create mode 100644 lib/typescript/test/lazy-throttle.test.ts\n",
+            "metadata": {
+              "output": "[feat/lazy-stack-virtualization 5b771b49] fix(lazy-list): keep fast scrolling rendered in both directions\n 32 files changed, 1150 insertions(+), 92 deletions(-)\n create mode 100644 docs/decisions/0017-visible-range-coalescing.md\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-05c1a3b75a6f.js\n delete mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-6aaead03a06f.js\n create mode 100644 lib/java/pathland-server-core/src/main/java/dev/pathland/server/VisibleRangeCoalescer.java\n create mode 100644 lib/java/pathland-server-core/src/test/java/dev/pathland/server/VisibleRangeCoalescerTest.java\n create mode 100644 lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/VisibleRangeRegistryTest.kt\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-05c1a3b75a6f.js\n delete mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-6aaead03a06f.js\n create mode 100644 lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/PagedFastScrollTest.kt\n create mode 100644 lib/typescript/src/lazy-throttle.ts\n create mode 100644 lib/typescript/test/lazy-throttle.test.ts\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git commit -m \"fix(lazy-list): keep fast scrolling rendered in both directions\"",
             "time": {
-              "start": 1794927127415
+              "start": 1794927127415,
+              "end": 1794927148201
             }
           },
           "id": "prt_1e9fe6a9c001T1fZ5EggUhn7fY",
           "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
           "messageID": "msg_1e9fe5d65002mAAHRKa54OlMvE"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "b737c7a9645d616ede23076510761925dd63f340",
+          "type": "step-finish",
+          "tokens": {
+            "total": 532963,
+            "input": 1276,
+            "output": 101,
+            "reasoning": 2,
+            "cache": {
+              "write": 0,
+              "read": 531584
+            }
+          },
+          "cost": 0.001847952,
+          "id": "prt_1e9febce5001vkNfvooUF4miip",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e9fe5d65002mAAHRKa54OlMvE"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1e9fe0b44001RQUnguSR48PPl6",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001742808,
+        "tokens": {
+          "total": 533442,
+          "input": 620,
+          "output": 77,
+          "reasoning": 9,
+          "cache": {
+            "write": 0,
+            "read": 532736
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794927148462,
+          "completed": 1794927153054
+        },
+        "finish": "tool-calls",
+        "id": "msg_1e9febdae002qFOXM0Hl7gpew4",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "b737c7a9645d616ede23076510761925dd63f340",
+          "type": "step-start",
+          "id": "prt_1e9fecdf7001jN61tfJK5Zhy74",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e9febdae002qFOXM0Hl7gpew4"
+        },
+        {
+          "type": "reasoning",
+          "text": "Verify status clean except logo.svg, log.",
+          "time": {
+            "start": 1794927152633,
+            "end": 1794927152857
+          },
+          "id": "prt_1e9fecdf9001Q5vH2Mldb3Jzcm",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e9febdae002qFOXM0Hl7gpew4"
+        },
+        {
+          "type": "tool",
+          "tool": "bash",
+          "callID": "call_00_3qpbe0drhbm4f0iwtlw9639h",
+          "state": {
+            "status": "completed",
+            "input": {
+              "command": "git status --short && git log --oneline -1",
+              "workdir": "/Users/michael/Development/michaelkrog/Pathland"
+            },
+            "output": "?? logo.svg\n5b771b49 fix(lazy-list): keep fast scrolling rendered in both directions\n",
+            "metadata": {
+              "output": "?? logo.svg\n5b771b49 fix(lazy-list): keep fast scrolling rendered in both directions\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git status --short && git log --oneline -1",
+            "time": {
+              "start": 1794927152874,
+              "end": 1794927152923
+            }
+          },
+          "id": "prt_1e9fecedb001srGc2kNBsIKyyc",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e9febdae002qFOXM0Hl7gpew4"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "b737c7a9645d616ede23076510761925dd63f340",
+          "type": "step-finish",
+          "tokens": {
+            "total": 533442,
+            "input": 620,
+            "output": 77,
+            "reasoning": 9,
+            "cache": {
+              "write": 0,
+              "read": 532736
+            }
+          },
+          "cost": 0.001742808,
+          "id": "prt_1e9fecf60001mi2pv58y9YiyYZ",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e9febdae002qFOXM0Hl7gpew4"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1e9fe0b44001RQUnguSR48PPl6",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001655544,
+        "tokens": {
+          "total": 533512,
+          "input": 228,
+          "output": 36,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 533248
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794927153189,
+          "completed": 1794927157401
+        },
+        "finish": "stop",
+        "id": "msg_1e9fed02500223Ou3AP3zs44rZ",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "b737c7a9645d616ede23076510761925dd63f340",
+          "type": "step-start",
+          "id": "prt_1e9fedf8f001mAm170IwWT0gEI",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e9fed02500223Ou3AP3zs44rZ"
+        },
+        {
+          "type": "text",
+          "text": "Committed: `5b771b49 fix(lazy-list): keep fast scrolling rendered in both directions`\n\nOnly the pre-existing untracked `logo.svg` remains.",
+          "time": {
+            "start": 1794927157136,
+            "end": 1794927157280
+          },
+          "id": "prt_1e9fedf90001YPHqR2KJbeiuLr",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e9fed02500223Ou3AP3zs44rZ"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "b737c7a9645d616ede23076510761925dd63f340",
+          "type": "step-finish",
+          "tokens": {
+            "total": 533512,
+            "input": 228,
+            "output": 36,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 533248
+            }
+          },
+          "cost": 0.001655544,
+          "id": "prt_1e9fee05f001P73xr5XbPRFM9r",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e9fed02500223Ou3AP3zs44rZ"
         }
       ]
     }
