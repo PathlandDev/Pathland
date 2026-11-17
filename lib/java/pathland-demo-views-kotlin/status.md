@@ -52,11 +52,13 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
   persisted click counter (`ad.clicks`), fully Kotlin-owned and Java-mountable.
 - **Accessibility** — transport labels, slider labels, `MAIN`/`HEADER` roles.
 - **Windowed library** — `LibraryView` is a `ScrollView` over a `LazyVStack` +
-  `ForEach` with a fixed 64 pt row extent; `MediaPlayerService` repeats the eight
-  base tracks into a 1000-entry playlist. `TrackRowView` is a tappable `HStack`
-  (not a button) highlighted by absolute index, so repeated tracks do not
-  all highlight together. The engine's reactive prefetch keeps rows rendered
-  ahead of fast scrolling; the demo has no overscan setting.
+  paged `ForEach` with a fixed 64 pt row extent; `MediaPlayerService` repeats the
+  eight base tracks into a 1000-entry playlist and serves 50-row pages with a
+  small simulated latency. Loaded rows render `TrackRowView` (a tappable `HStack`
+  highlighted by absolute index); unloaded rows render a skeleton placeholder.
+  The live/SSR session uses the `PagedDataSource`; emitter-only unit-test mounts
+  keep the in-memory list for determinism. The engine's reactive prefetch keeps
+  rows rendered ahead of fast scrolling; the demo has no overscan setting.
 
 ## Verified by
 

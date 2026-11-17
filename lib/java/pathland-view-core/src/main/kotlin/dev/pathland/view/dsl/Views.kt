@@ -262,6 +262,20 @@ fun <T> ForEach(
 ): dev.pathland.view.core.View =
     ForEachView(items, key, itemExtent, itemExtents, content).registerChild()
 
+/**
+ * A windowed `ForEach` over a [PagedDataSource]. Use it inside a lazy stack/grid;
+ * loaded rows render via [content], unloaded rows via [placeholder] (a spacer by
+ * default). A uniform [itemExtent] is required before the list is loaded.
+ */
+fun <T> ForEach(
+    source: dev.pathland.view.data.PagedDataSource<T>,
+    itemExtent: Float,
+    key: ((T) -> Any)? = null,
+    placeholder: (PathlandScope.(Int) -> Unit)? = null,
+    content: PathlandScope.(T, Int) -> Unit,
+): dev.pathland.view.core.View =
+    PagedForEachView(source, key, itemExtent, placeholder, content).registerChild()
+
 /* ------------------------------------------------------------------------- */
 /* Media                                                                      */
 /* ------------------------------------------------------------------------- */

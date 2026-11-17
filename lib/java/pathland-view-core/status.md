@@ -36,11 +36,15 @@ build) carries no JNA.
   cleanup). Resolution is lazy when a root view's field initializer runs before
   the context is installed.
 - **Data sources** (`dev.pathland.view.data`): `AsyncDataSource` loads a small
-  list from a blocking or `CompletionStage` loader, applies results on the
-  session actor, exposes `items`/`loading`/`error`, refreshes with a stale-result
-  guard, and closes with the session. SSR starts in the loading state and does
-  not run async work. The optional `pathland-view-data-coroutines` module adds
-  `AsyncDataSource.fromSuspend`. Paged sources are planned (ADR-0016 Phase 2).
+  list from a blocking or `CompletionStage` loader; `PagedDataSource` loads
+  offset/limit pages with a bounded cache, in-flight dedupe, `total`/`loading`/
+  `error` signals, and window-driven `ensureLoaded`. Both apply results on the
+  session actor, refresh with a stale-result guard, and close with the session;
+  SSR starts in the loading state and does not run async work. `ForEach(source)`
+  renders loaded rows and placeholders; the lazy stack/grid call `prefetch` for
+  the initial and adaptive windows. The optional
+  `pathland-view-data-coroutines` module adds `fromSuspend` for both sources.
+  Cursor/`hasMore` pages and topic invalidation are planned (ADR-0016 Phase 3–4).
 - **State** (`dev.pathland.view.core.state`): `PersistentState`, untyped
   `StateStore`, in-memory store and provider. Kotlin `Component` state delegates
   bind directly before `body()`; the Java `State` field/binder machinery and

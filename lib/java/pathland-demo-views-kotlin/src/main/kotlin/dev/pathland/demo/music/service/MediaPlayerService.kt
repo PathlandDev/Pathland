@@ -7,6 +7,8 @@ import dev.pathland.view.core.MediaController
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.WritableSignal
+import dev.pathland.view.data.Page
+import dev.pathland.view.data.PagedDataSource
 
 /**
  * The demo's app-owned media-player service. It owns the playlist/track state,
@@ -29,6 +31,14 @@ internal class MediaPlayerService {
     /** The demo library: the base tracks repeated to [LIBRARY_SIZE] entries. */
     val tracks: List<Track> = List(LIBRARY_SIZE) { TRACKS[it % TRACKS.size] }
     val currentTrack: Signal<Track> = Signals.computed { at(trackIndex.get()) }
+
+    /**
+     * The paged library source used by the live/SSR session. Unit-test mounts
+     * (no session context) keep the in-memory [tracks] list instead.
+     */
+    val librarySource: PagedDataSource<Track> by lazy {
+        PagedDataSource.ofBlocking(LIBRARY_PAGE_SIZE, { offset, limit -> page(offset, limit) })
+    }
 
     init {
         controller.register()
@@ -66,6 +76,24 @@ internal class MediaPlayerService {
         controller.toggle()
     }
 
+    /**
+     * One page of the in-memory library (the demo's "database"). A small delay
+     * makes the loading/placeholder path visible in the browser.
+     */
+    fun page(offset: Int, limit: Int): Page<Track> {
+        if (PAGE_DELAY_MILLIS > 0) {
+            try {
+                Thread.sleep(PAGE_DELAY_MILLIS)
+            } catch (interrupted: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
+        val start = offset.coerceIn(0, tracks.size)
+        val end = (offset + limit).coerceIn(start, tracks.size)
+        val items = if (start == end) emptyList() else tracks.subList(start, end)
+        return Page(items, total = tracks.size, hasMore = end < tracks.size)
+    }
+
     /** The track at an index (wraps around; safe for any signed index). */
     private fun at(index: Int): Track = tracks[Math.floorMod(index, tracks.size)]
 
@@ -81,6 +109,12 @@ internal class MediaPlayerService {
     companion object {
         /** The number of repeated library entries (the demo's long list). */
         const val LIBRARY_SIZE = 1000
+
+        /** The paged library page size (rows loaded per page). */
+        const val LIBRARY_PAGE_SIZE = 50
+
+        /** A small simulated data-source latency for the demo's loading state. */
+        private const val PAGE_DELAY_MILLIS = 40L
 
         /** The environment key for the active [MediaPlayerService]. */
         val KEY: EnvironmentKey<MediaPlayerService> =

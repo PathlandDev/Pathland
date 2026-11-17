@@ -10,6 +10,7 @@ import dev.pathland.view.core.Viewport
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.WritableSignal
+import dev.pathland.view.data.PagedDataSource
 import dev.pathland.view.engine.Emitter
 import dev.pathland.view.engine.PathlandNode
 import dev.pathland.view.engine.VisibleRangeInput
@@ -64,7 +65,7 @@ private class LazyWindowTracker {
  * eagerly (a `VSTACK` of rows); inside one the engine materializes only the
  * visible window (spec/DSL.md §Virtualized lists).
  */
-internal class ForEachView<T>(
+internal open class ForEachView<T>(
     private val itemsSignal: Signal<List<T>>,
     private val keyOf: ((T) -> Any)?,
     internal val itemExtent: Float?,
@@ -72,17 +73,20 @@ internal class ForEachView<T>(
     private val content: PathlandScope.(T, Int) -> Unit,
 ) : View {
 
-    fun count(): Int = itemsSignal.get().size
+    open fun count(): Int = itemsSignal.get().size
 
-    fun row(index: Int): View {
+    open fun row(index: Int): View {
         val list = itemsSignal.get()
         return rowView { content(list[index], index) }
     }
 
-    fun key(index: Int): Any {
+    open fun key(index: Int): Any {
         val list = itemsSignal.get()
         return keyOf?.invoke(list[index]) ?: index
     }
+
+    /** Ask the data source to load the absolute item range `[first, last]`. */
+    open fun prefetch(first: Int, last: Int) = Unit
 
     /**
      * The environment a row renders in: its own persisted-state scope, keyed by
@@ -104,6 +108,60 @@ internal class ForEachView<T>(
         }
         return node
     }
+}
+
+/**
+ * A `ForEach` over a [PagedDataSource]. Only the loaded rows render; unloaded
+ * rows render the app's placeholder (or a spacer) at the same extent. The lazy
+ * stack calls [prefetch] for the initial and visible windows.
+ */
+internal class PagedForEachView<T>(
+    private val source: PagedDataSource<T>,
+    private val keyOf: ((T) -> Any)?,
+    itemExtent: Float,
+    private val placeholder: (PathlandScope.(Int) -> Unit)?,
+    private val content: PathlandScope.(T, Int) -> Unit,
+) : ForEachView<T>(
+    Signals.constant(emptyList()),
+    keyOf,
+    itemExtent,
+    null,
+    { _, _ -> },
+) {
+
+    override fun count(): Int = source.total.get()
+
+    override fun row(index: Int): View {
+        // Subscribe to page arrivals so the lazy slot re-renders when a page loads.
+        source.version.get()
+        val item = source.row(index)
+        return if (item == null) {
+            rowView {
+                if (placeholder != null) {
+                    placeholder.invoke(this, index)
+                } else {
+                    Spacer()
+                }
+            }
+        } else {
+            rowView { content(item, index) }
+        }
+    }
+
+    override fun key(index: Int): Any {
+        val item = source.row(index)
+        return if (item != null) keyOf?.invoke(item) ?: index else index
+    }
+
+    override fun prefetch(first: Int, last: Int) {
+        source.ensureLoaded(first, last)
+    }
+
+    override fun renderNode(env: Environment): PathlandNode =
+        throw IllegalStateException(
+            "a PagedDataSource ForEach must be used inside a LazyVStack/LazyHStack/" +
+                "LazyVGrid/LazyHGrid",
+        )
 }
 
 /**
@@ -205,11 +263,21 @@ internal class LazyStackView(
                 Commands.Listeners.VISIBLE_RANGE
         node.lazyWindow = windowSignal
         node.lazyExtent = extent
+        if (count > 0 && end >= first) {
+            data.prefetch(first, end)
+        }
         node.visibleRangeInput = VisibleRangeInput { firstVisible, visibleCount ->
-            windowSignal.set(tracker.window(firstVisible, visibleCount, data.count()))
+            val window = tracker.window(firstVisible, visibleCount, data.count())
+            windowSignal.set(window)
+            if (!window.isEmpty()) {
+                data.prefetch(window.first, window.last)
+            }
         }
 
         if (count == 0) {
+            // Let a paged source load the first page/count even before the
+            // window is known.
+            data.prefetch(0, DEFAULT_WINDOW - 1)
             node.lazyKeys = emptyList()
             node.lazyNodes = LinkedHashMap()
             return node
@@ -338,11 +406,22 @@ internal class LazyGridWindowView(
                 Commands.Listeners.VISIBLE_RANGE
         node.lazyWindow = windowSignal
         node.lazyExtent = extent
+        if (unitCount > 0 && end >= first) {
+            data.prefetch(first * tracks, minOf(itemCount, (end + 1) * tracks) - 1)
+        }
         node.visibleRangeInput = VisibleRangeInput { firstVisible, visibleCount ->
-            windowSignal.set(tracker.window(firstVisible, visibleCount, unitCount))
+            val window = tracker.window(firstVisible, visibleCount, unitCount)
+            windowSignal.set(window)
+            if (!window.isEmpty()) {
+                data.prefetch(
+                    window.first * tracks,
+                    minOf(itemCount, (window.last + 1) * tracks) - 1,
+                )
+            }
         }
 
         if (unitCount == 0) {
+            data.prefetch(0, DEFAULT_WINDOW * tracks - 1)
             node.lazyKeys = emptyList()
             node.lazyNodes = LinkedHashMap()
             return node

@@ -7,7 +7,6 @@ import dev.pathland.view.core.subscription.SessionContext
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Executor
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
@@ -129,18 +128,16 @@ class AsyncDataSource<T> private constructor(
     }
 
     companion object {
-        private val SHARED_IO: Executor = Executors.newCachedThreadPool { runnable ->
-            Thread(runnable, "pathland-data-io").apply { isDaemon = true }
-        }
-
         /** A blocking loader; runs on [executor]. */
         @JvmStatic
-        fun <T> ofBlocking(loader: ListLoader<T>, executor: Executor = SHARED_IO): AsyncDataSource<T> =
-            AsyncDataSource(loader, null, executor)
+        fun <T> ofBlocking(
+            loader: ListLoader<T>,
+            executor: Executor = DataExecutors.SHARED_IO,
+        ): AsyncDataSource<T> = AsyncDataSource(loader, null, executor)
 
         /** A `CompletionStage` loader. */
         @JvmStatic
         fun <T> ofAsync(loader: AsyncListLoader<T>): AsyncDataSource<T> =
-            AsyncDataSource(null, loader, SHARED_IO)
+            AsyncDataSource(null, loader, DataExecutors.SHARED_IO)
     }
 }

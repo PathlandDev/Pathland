@@ -551,6 +551,13 @@ Rules:
 - Row-local component state (`by state(...)`) is scoped by the `ForEach` item key
   (or absolute index without a key) and survives window eviction: a re-created
   row rebinds to the same persisted state, and rows are independent.
+- Paged sources: `ForEach(source: PagedDataSource<T>, itemExtent, placeholder)`
+  loads pages on demand. Loaded rows render via the content; unloaded rows render
+  the placeholder (a spacer by default) at `itemExtent`. The engine calls the
+  source's prefetch for the initial and visible windows. `itemExtent` is
+  required because the full list is not known up front. The source exposes
+  `total`/`loading`/`error` signals; a page arrival re-renders only the lazy
+  slot. SSR starts in the loading state; the live session loads pages.
 - A full-snapshot/SSR emission carries the first window plus the full virtual
   extent; the client corrects the window after `META::ENVIRONMENT`.
 - `LazyVGrid`/`LazyHGrid` use the same data-source window with a **row** or

@@ -13,7 +13,7 @@ Decision record: [ADR-0016](./decisions/0016-async-paged-data-sources.md).
 |---|---|
 | `AsyncDataSource<T>` (load-all) | Implemented |
 | Kotlin coroutines adapter (`pathland-view-data-coroutines`) | Implemented |
-| `PagedDataSource<T>` (offset/limit) + `ForEach(source)` | Planned (Phase 2) |
+| `PagedDataSource<T>` (offset/limit) + `ForEach(source)` | Implemented |
 | Cursor/`hasMore` pages | Planned (Phase 3) |
 | Invalidation via topics | Planned (Phase 4) |
 | Rust `pathland-view-data` crate | Planned (Phase 5) |
@@ -97,14 +97,14 @@ The adapter bridges through `CompletionStage`; the core stays coroutine-free.
 - Applications that need SSR data can call a synchronous preload explicitly
   (planned); the default is the loading state.
 
-## Paged lists (planned)
+## Paged lists: `PagedDataSource<T>`
 
-For large lists, a paged source will drive the lazy window:
+For large lists, a paged source drives the lazy window:
 
 ```kotlin
-val tracks = PagedDataSource(
+val tracks = PagedDataSource.ofBlocking(
     pageSize = 50,
-    load = { offset, limit -> repo.page(offset, limit) }, // Page<Track>
+    loader = { offset, limit -> repo.page(offset, limit) }, // Page<Track>
 )
 
 LazyVStack {
@@ -114,19 +114,30 @@ LazyVStack {
 }
 ```
 
-Planned behavior:
+Implemented behavior:
 
 - `Page<T>(items, total, hasMore, nextCursor)`.
-- Offset/limit and cursor/`hasMore` modes; a bounded page cache.
+- Offset/limit pages with a bounded page cache (20 pages) and in-flight dedupe.
 - The lazy stack calls `prefetch(first, last)` for the initial and adaptive
   windows; pages load ahead of the viewport.
-- Unloaded rows render a placeholder of the same main-axis extent; the virtual
-  extent and scrollbar stay correct.
-- `total` may grow for cursor sources; the scrollbar extends as pages arrive.
-- `refresh()`/invalidation via a topic version (Phase 4).
+- Unloaded rows render the placeholder at the same main-axis extent; the
+  virtual extent and scrollbar stay correct.
+- `total` is exact for offset sources; an unknown total grows as pages arrive
+  (cursor/`hasMore` sources; the cursor mode itself is Phase 3).
+- `refresh()` drops the cache and reloads the last requested window.
+- A live session loads pages asynchronously; SSR starts in the loading state.
+- `itemExtent` is required for paged sources (the full list is not known).
 
-## Quarkus examples (planned)
+The MusicPlayer demo's `LibraryView` uses a paged source over the in-memory
+`MediaPlayerService` (a 40 ms simulated latency, 50-row pages); unit-test
+mounts without a session context use the in-memory list for determinism.
 
+The coroutines adapter adds `PagedDataSource.fromSuspend(scope, pageSize) { … }`.
+
+## Quarkus examples
+
+- **In-memory repository (the demo):** `MediaPlayerService.page(offset, limit)`
+  returns a `Page`; the `LibraryView` wraps it in a `PagedDataSource`.
 - **Panache:** `query.page(offset / pageSize, pageSize).list()` plus
   `query.count()`; map to `Page`.
 - **JDBC:** `limit ? offset ?` plus a count query.
@@ -134,9 +145,6 @@ Planned behavior:
   `asCompletionStage()`.
 - **Executor:** pass a Quarkus managed executor to the data source; results are
   still applied on the session actor.
-
-The Quarkus demo will use an in-memory `TrackRepository` with a small delay to
-exercise the loading/placeholder path; the docs show Panache/JDBC/REST variants.
 
 ## Rust (planned)
 

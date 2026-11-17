@@ -7,9 +7,11 @@ Optional Kotlin coroutines adapter for the Pathland data sources
 
 - `AsyncDataSource.fromSuspend(scope) { … }` bridges a `suspend` load-all loader
   to the core `CompletionStage` API via `kotlinx-coroutines-jdk8`'s `future`.
+- `PagedDataSource.fromSuspend(scope, pageSize) { offset, limit -> … }` bridges a
+  `suspend` page loader.
 - Tested with an unconfined scope and a timeout.
 
 ## Planned
 
-- `PagedDataSource.fromSuspend` / cursor loaders (ADR-0016 Phase 2–3).
-- Flow-based paged helpers if the paged source lands.
+- Cursor loaders (ADR-0016 Phase 3).
+- Flow-based paged helpers.
