@@ -14,6 +14,7 @@ Decision record: [ADR-0016](./decisions/0016-async-paged-data-sources.md).
 | `AsyncDataSource<T>` (load-all) | Implemented |
 | Kotlin coroutines adapter (`pathland-view-data-coroutines`) | Implemented |
 | `PagedDataSource<T>` (offset/limit) + `ForEach(source)` | Implemented |
+| Latest-wins visible-range coalescing + stale-page caching | Implemented (ADR-0017) |
 | Cursor/`hasMore` pages | Planned (Phase 3) |
 | Invalidation via topics | Planned (Phase 4) |
 | Rust `pathland-view-data` crate | Planned (Phase 5) |
@@ -120,6 +121,14 @@ Implemented behavior:
 - Offset/limit pages with a bounded page cache (20 pages) and in-flight dedupe.
 - The lazy stack calls `prefetch(first, last)` for the initial and adaptive
   windows; pages load ahead of the viewport.
+- Visible-range reports are coalesced latest-wins (a client throttle plus a
+  server pass) and the source applies only its current window. A page result
+  that arrives after the window moved is cached (bounded) for a later return,
+  but does not publish a render version for the current window and cannot add
+  rows outside it; a stale failure leaves the visible loading/error state
+  alone. A fast scrollbar drag therefore loads the windows it visits without
+  showing blank rows when the user scrolls back
+  ([ADR-0017](./decisions/0017-visible-range-coalescing.md)).
 - Unloaded rows render the placeholder at the same main-axis extent; the
   virtual extent and scrollbar stay correct.
 - `total` is exact for offset sources; an unknown total grows as pages arrive

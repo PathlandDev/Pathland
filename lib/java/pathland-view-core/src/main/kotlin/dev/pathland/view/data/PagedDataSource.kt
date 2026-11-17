@@ -75,6 +75,9 @@ class PagedDataSource<T> private constructor(
     private val inFlight = HashSet<Int>()
     private var lastFirst = -1
     private var lastLast = -1
+    /** Page window requested by the latest [ensureLoaded]; stale completions are cached but not published. */
+    private var windowFirstPage = -1
+    private var windowLastPage = -1
     /** Whether a page has reported an exact total (offset source) vs a growing count. */
     private var knownTotal = false
 
@@ -129,6 +132,11 @@ class PagedDataSource<T> private constructor(
         if (lastPage < firstPage) {
             return
         }
+        // Only the latest requested window is current. A result that arrives after
+        // the window moved is cached for a later return but never published to the
+        // current render (ADR-0017).
+        windowFirstPage = firstPage
+        windowLastPage = lastPage
         for (page in firstPage..lastPage) {
             loadPage(page)
         }
@@ -151,6 +159,8 @@ class PagedDataSource<T> private constructor(
         generation.incrementAndGet()
         pages.clear()
         inFlight.clear()
+        windowFirstPage = -1
+        windowLastPage = -1
         knownTotal = false
         loadingSignal.set(true)
         errorSignal.set(null)
@@ -167,6 +177,8 @@ class PagedDataSource<T> private constructor(
         generation.incrementAndGet()
         pages.clear()
         inFlight.clear()
+        windowFirstPage = -1
+        windowLastPage = -1
     }
 
     private fun loadPage(page: Int) {
@@ -199,6 +211,11 @@ class PagedDataSource<T> private constructor(
     private fun applyPage(token: Long, page: Int, value: Page<T>?) {
         apply(token, page) {
             val result = value ?: Page(emptyList())
+            // Cache every completed page. A page that arrives while the window
+            // is elsewhere is kept for a later return instead of being fetched
+            // again (the fast back-and-forth case). Only a page that intersects
+            // the current window bumps the version, so cached stale rows never
+            // appear in the current window.
             pages[page] = result.items
             val loadedEnd = page * pageSize + result.items.size
             knownTotal = result.total != null
@@ -208,15 +225,21 @@ class PagedDataSource<T> private constructor(
                 result.hasMore || (result.total != null && nextTotal > loadedEnd),
             )
             loadingSignal.set(false)
-            errorSignal.set(null)
-            versionSignal.set(versionSignal.get() + 1)
+            if (pageInCurrentWindow(page)) {
+                errorSignal.set(null)
+                versionSignal.set(versionSignal.get() + 1)
+            }
         }
     }
 
     private fun applyError(token: Long, page: Int, failure: Throwable) {
         apply(token, page) {
-            loadingSignal.set(false)
-            errorSignal.set(failure)
+            // A failure outside the current window must not replace the visible
+            // window's state; the page is retried if the window returns.
+            if (pageInCurrentWindow(page)) {
+                loadingSignal.set(false)
+                errorSignal.set(failure)
+            }
         }
     }
 
@@ -239,6 +262,10 @@ class PagedDataSource<T> private constructor(
             block()
         }
     }
+
+    /** Whether [page] still belongs to the latest [ensureLoaded] window. */
+    private fun pageInCurrentWindow(page: Int): Boolean =
+        windowFirstPage >= 0 && page in windowFirstPage..windowLastPage
 
     companion object {
         private const val MAX_PAGES = 20

@@ -5,6 +5,7 @@
 
 import type { DomRenderer } from "./apply";
 import { hydrateFitElement, refreshFitSlots, refreshLazyWindows, retryPendingPlay, setupMediaElement, unlockMedia, updateNavBackButtons } from "./apply";
+import { createLazyRangeThrottle } from "./lazy-throttle";
 import { Transport, shouldInitialResync } from "./transport";
 import { log } from "./log";
 import { clearInFlightRange, markRangeInFlight } from "./inFlight";
@@ -409,31 +410,21 @@ function boot(): void {
   });
 
   // --- scroll / wheel (scroll containers) ---
-  let lazyRefreshRaf = 0;
+  // Scroll/resize reports are throttled locally with a trailing report and an
+  // end-of-gesture final report; the server also coalesces latest-wins. Batch
+  // application, hydration, and reconnect reports stay immediate.
+  const lazyReporter = createLazyRangeThrottle((force) => {
+    if (transport.open) {
+      refreshLazyWindows(renderer, force);
+    }
+  });
   const scheduleLazyRefresh = () => {
-    if (!transport.open || lazyRefreshRaf) {
-      return;
+    if (transport.open) {
+      lazyReporter.scroll();
     }
-    lazyRefreshRaf = requestAnimationFrame(() => {
-      lazyRefreshRaf = 0;
-      refreshLazyWindows(renderer);
-    });
-  };
-  let lazyFinalTimer = 0;
-  const scheduleLazyFinalReport = () => {
-    if (lazyFinalTimer) {
-      clearTimeout(lazyFinalTimer);
-    }
-    lazyFinalTimer = window.setTimeout(() => {
-      lazyFinalTimer = 0;
-      if (transport.open) {
-        refreshLazyWindows(renderer, true);
-      }
-    }, 150);
   };
   document.addEventListener("scroll", (event) => {
     scheduleLazyRefresh();
-    scheduleLazyFinalReport();
     const scroller = event.target as Element | null;
     const node = nodeOf(scroller);
     if (!transport.open || !listens(node, LISTEN_SCROLL)) {
@@ -444,19 +435,7 @@ function boot(): void {
       encodeScroll(Number(node!.getAttribute("data-pathland-id")), el.scrollLeft, el.scrollTop),
     );
   }, true);
-  document.addEventListener(
-    "scrollend",
-    () => {
-      if (lazyFinalTimer) {
-        clearTimeout(lazyFinalTimer);
-        lazyFinalTimer = 0;
-      }
-      if (transport.open) {
-        refreshLazyWindows(renderer, true);
-      }
-    },
-    true,
-  );
+  document.addEventListener("scrollend", () => lazyReporter.end(), true);
   window.addEventListener("resize", scheduleLazyRefresh);
   document.addEventListener(
     "wheel",

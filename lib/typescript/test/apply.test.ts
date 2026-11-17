@@ -19,6 +19,7 @@ import {
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
   CMD_SET_WINDOW_METADATA,
+  CMD_VISIBLE_RANGE,
   COMPONENT_BUTTON,
   COMPONENT_GRID,
   COMPONENT_LAZY_HGRID,
@@ -1546,5 +1547,79 @@ describe("lazy visible-range reporting", () => {
     // release prefetched rows.
     refreshLazyWindows(r, true);
     expect(calls).toBe(2);
+  });
+
+  it("reports the settled range after a fast back-and-forth scroll", () => {
+    document.body.innerHTML = "";
+    const scroller = document.createElement("div");
+    scroller.style.overflowY = "auto";
+    const lazy = document.createElement("div");
+    lazy.setAttribute("data-pathland-id", "1");
+    lazy.setAttribute("data-pathland-lazy", "vertical");
+    lazy.setAttribute("data-pathland-item-count", "1000");
+    lazy.setAttribute("data-pathland-item-extent", "20px");
+    lazy.setAttribute("data-pathland-item-spacing", "0px");
+    lazy.setAttribute("data-pathland-first-item-index", "0");
+    lazy.setAttribute("data-event-listeners", "1024");
+    scroller.appendChild(lazy);
+    document.body.appendChild(scroller);
+
+    let scrollTop = 0;
+    Object.defineProperty(scroller, "scrollTop", {
+      configurable: true,
+      get: () => scrollTop,
+      set: (value: number) => {
+        scrollTop = value;
+      },
+    });
+    Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 200 });
+    scroller.getBoundingClientRect = () =>
+      ({ top: 0, left: 0, right: 200, bottom: 200, width: 200, height: 200, x: 0, y: 0 }) as DOMRect;
+    lazy.getBoundingClientRect = () =>
+      ({ top: -scrollTop, left: 0, right: 200, bottom: -scrollTop + 200, width: 200, height: 200, x: 0, y: -scrollTop }) as DOMRect;
+
+    const r = renderer();
+    const ranges: Array<{ first: number; count: number }> = [];
+    r.onVisibleRangeEvent = (batch) => {
+      const op = parseBatch(batch).opcodes[0]!;
+      expect(op.command).toBe(CMD_VISIBLE_RANGE);
+      ranges.push({ first: op.b, count: op.c });
+    };
+
+    for (const top of [100, 10000, 500, 18000, 1000]) {
+      scroller.scrollTop = top;
+      refreshLazyWindows(r);
+    }
+
+    expect(ranges.at(-1)).toEqual({ first: 50, count: 10 });
+  });
+
+  it("shrinks the virtual padding when the window moves back up", () => {
+    document.body.innerHTML =
+      '<div data-pathland-id="1" data-pathland-lazy="vertical" ' +
+      'data-pathland-item-count="1000" data-pathland-item-extent="64px" ' +
+      'data-pathland-item-spacing="0px" data-pathland-first-item-index="0"></div>';
+    const el = document.querySelector<HTMLElement>("[data-pathland-lazy]")!;
+    const r = renderer();
+    const padding = () => ({
+      top: Number.parseFloat(el.style.paddingTop),
+      bottom: Number.parseFloat(el.style.paddingBottom),
+    });
+
+    // Establish the live element's base padding (it has no SSR data attrs).
+    refreshLazyWindows(r);
+
+    el.setAttribute("data-pathland-first-item-index", "138");
+    refreshLazyWindows(r);
+    expect(padding()).toEqual({ top: 138 * 64, bottom: (1000 - 138) * 64 });
+
+    // Scrolling back up shrinks the leading and grows the trailing padding.
+    el.setAttribute("data-pathland-first-item-index", "84");
+    refreshLazyWindows(r);
+    expect(padding()).toEqual({ top: 84 * 64, bottom: (1000 - 84) * 64 });
+
+    el.setAttribute("data-pathland-first-item-index", "138");
+    refreshLazyWindows(r);
+    expect(padding()).toEqual({ top: 138 * 64, bottom: (1000 - 138) * 64 });
   });
 });

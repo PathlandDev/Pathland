@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executor
 
 class PagedDataSourceTest {
@@ -118,6 +119,48 @@ class PagedDataSourceTest {
             source.ensureLoaded(0, 1)
             assertNull(source.error.get())
             assertEquals("i0", source.row(0))
+            source.close()
+        }
+    }
+
+    @Test
+    fun aPageOutsideTheCurrentWindowIsCachedWithoutRendering() {
+        withContext(TestContext()) {
+            val page0 = CompletableFuture<Page<String>>()
+            val page1 = CompletableFuture<Page<String>>()
+            val source = PagedDataSource.ofAsync(2) { offset, _ ->
+                if (offset == 0) page0 else page1
+            }
+            // init requested page 0; move the window to page 1 before it arrives.
+            source.ensureLoaded(2, 3)
+            page0.complete(Page(listOf("cached0", "cached1"), total = 10))
+            assertEquals("cached0", source.row(0), "a stale page is cached for a later return")
+            assertEquals(10, source.total.get(), "count metadata still applies")
+            assertFalse(source.loading.get())
+            assertEquals(0, source.version.get(), "a stale page does not publish a render version")
+
+            page1.complete(Page(listOf("i2", "i3"), total = 10))
+            assertEquals("i2", source.row(2))
+            assertEquals(1, source.version.get(), "the current window publishes the page")
+            source.close()
+        }
+    }
+
+    @Test
+    fun aFailedPageOutsideTheCurrentWindowDoesNotSetTheError() {
+        withContext(TestContext()) {
+            val page0 = CompletableFuture<Page<String>>()
+            val page1 = CompletableFuture<Page<String>>()
+            val source = PagedDataSource.ofAsync(2) { offset, _ ->
+                if (offset == 0) page0 else page1
+            }
+            source.ensureLoaded(2, 3)
+            page0.completeExceptionally(IllegalStateException("stale"))
+            assertNull(source.error.get(), "a stale failure is ignored")
+
+            page1.complete(Page(listOf("i2", "i3"), total = 10))
+            assertNull(source.error.get())
+            assertEquals("i2", source.row(2))
             source.close()
         }
     }

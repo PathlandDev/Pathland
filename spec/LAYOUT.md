@@ -232,6 +232,9 @@ container.
   visible one. The renderer reports `EVENT::VISIBLE_RANGE` for nodes with
   listener bit 10, at most once per frame and only when `(first, endExclusive)`
   changes. A renderer SHOULD report the final range when a scroll gesture ends.
+  The engine MAY coalesce successive reports for a target (latest wins) before
+  updating the window or a paged data source; a scrollbar jump need not load
+  every intermediate window's pages. The final report remains authoritative.
 - **Engine prefetch** — the engine MAY add a bounded, directional prefetch
   margin around the reported range, derived from the report velocity (the
   distance between successive reports over elapsed time). The margin is

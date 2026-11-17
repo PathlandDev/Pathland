@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** November 7, 2026
+**Last updated:** November 17, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -444,10 +444,15 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   App padding is preserved as an inset around the virtual extent. Lazy stacks
   support variable item extents (`data-pathland-item-extents` /
   `-first-item-offset` / `-total-extent`) for padding and visible-range
-  mapping. Lazy grids use the same window with `data-pathland-lazy-tracks` and
-  grid a11y (`role=grid`/`gridcell`, row/column indices). A `scrollend` listener
-  plus a 150 ms debounce forces a final `VISIBLE_RANGE` report so the engine can
-  release prefetched rows (ADR-0015).
+  mapping. A per-element base padding is recorded on the first refresh, so the
+  virtual leading/trailing can shrink again when the window moves back up
+  (without it the rows stayed below the viewport). Lazy grids use the same
+  window with `data-pathland-lazy-tracks` and grid a11y (`role=grid`/`gridcell`,
+  row/column indices). Scroll/resize-driven
+  reports are throttled to one per ~100 ms with a trailing report; a `scrollend`
+  listener plus a 150 ms debounce forces a final `VISIBLE_RANGE` report so the
+  engine can release prefetched rows (ADR-0015/ADR-0017). Batch application,
+  hydration, and reconnect reports stay immediate.
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.
@@ -462,7 +467,7 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
 
 ## Verified by
 
-`npm test` (vitest, 152 tests) + `npm run typecheck` (strict TS). CI runs the
+`npm test` (vitest, 303 tests) + `npm run typecheck` (strict TS). CI runs the
 web-client job (typecheck + test + build + copy-to-libs drift check) and the
 rust job verifies the generated TS + SSR golden fixtures are current
 (`cargo run -p pathland-ts-codegen` / `pathland-html-golden -- --emit` then

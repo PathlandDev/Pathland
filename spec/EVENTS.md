@@ -282,9 +282,16 @@ its own native control geometry.
   visible range, not the app's window.
 - A renderer SHOULD report the final range when a scroll gesture ends so the
   engine can release prefetched rows.
+- A host MAY coalesce successive reports for the same target during continuous
+  input, applying only the latest range to the window and data source. A
+  scrollbar jump therefore need not load every intermediate window's pages.
+  Coalescing does not change the event's meaning and does not replace the final
+  report; it is an implementation quality-of-service choice.
 - `count = 0` is valid (the container is empty or entirely off-screen).
 - The range math is specified in
   [LAYOUT.md §Virtual extent](./LAYOUT.md#virtual-extent-lazy-containers).
+  Coalescing rationale and implementation choices are recorded in
+  [ADR-0017](../docs/decisions/0017-visible-range-coalescing.md).
 
 ### Navigation
 
