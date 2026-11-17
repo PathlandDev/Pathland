@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 4.177072098000001,
+    "cost": 4.181155674000001,
     "tokens": {
-      "input": 15206547,
-      "output": 330928,
-      "reasoning": 522168,
+      "input": 15207803,
+      "output": 331226,
+      "reasoning": 522241,
       "cache": {
-        "read": 461410816,
+        "read": 462635008,
         "write": 0
       }
     },
     "time": {
       "created": 1794497947146,
-      "updated": 1794902591469
+      "updated": 1794902617752
     }
   },
   "messages": [
@@ -154477,21 +154477,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.00212757,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 612776,
+          "input": 599,
+          "output": 264,
+          "reasoning": 73,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 611840
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1794902591534
+          "created": 1794902591534,
+          "completed": 1794902612797
         },
+        "finish": "tool-calls",
         "id": "msg_1e888082e002EhNeyTDT8ipYmJ",
         "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
       },
@@ -154519,22 +154522,117 @@
           "tool": "bash",
           "callID": "call_00_1tnrun2p8c7y9ws0momac7e2",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -m \"feat(data): add paged data sources and the paged library demo\" -m \"ADR-0016 Phase 2: PagedDataSource loads offset/limit pages with a bounded cache, in-flight dedupe, total/loading/error signals, window-driven ensureLoaded, refresh, and SSR loading. ForEach(source) renders loaded rows and placeholder rows at the fixed itemExtent; lazy stacks/grids prefetch the initial and adaptive windows. The coroutines adapter adds PagedDataSource.fromSuspend. The MusicPlayer library now pages over the in-memory MediaPlayerService (50-row pages, 40 ms latency, skeleton placeholders), with the in-memory list kept for emitter-only unit tests. Includes PagedDataSource/PagedForEach tests, spec/status/docs updates.\" && git log --oneline -3",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland",
               "timeout": 180000
             },
+            "output": "[feat/lazy-stack-virtualization 2ab3026a] feat(data): add paged data sources and the paged library demo\n 17 files changed, 768 insertions(+), 45 deletions(-)\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/DataExecutors.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/PagedDataSource.kt\n create mode 100644 lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/data/PagedDataSourceTest.kt\n create mode 100644 lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/PagedForEachTest.kt\n2ab3026a feat(data): add paged data sources and the paged library demo\n928d72af feat(data): add async load-all data sources\n5a1b4bb3 docs: accept ADR-0015 reactive lazy prefetch\n",
+            "metadata": {
+              "output": "[feat/lazy-stack-virtualization 2ab3026a] feat(data): add paged data sources and the paged library demo\n 17 files changed, 768 insertions(+), 45 deletions(-)\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/DataExecutors.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/data/PagedDataSource.kt\n create mode 100644 lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/data/PagedDataSourceTest.kt\n create mode 100644 lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/PagedForEachTest.kt\n2ab3026a feat(data): add paged data sources and the paged library demo\n928d72af feat(data): add async load-all data sources\n5a1b4bb3 docs: accept ADR-0015 reactive lazy prefetch\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -m \"feat(data): add paged data sources and the paged library demo\" -m \"ADR-0016 Phase 2: PagedDataSource loads offset/limit pages with a bounded cache, in-flight dedupe, total/loading/error signals, window-driven ensureLoaded, refresh, and SSR loading. ForEach(source) renders loaded rows and placeholder rows at the fixed itemExtent; lazy stacks/grids prefetch the initial and adaptive windows. The coroutines adapter adds PagedDataSource.fromSuspend. The MusicPlayer library now pages over the in-memory MediaPlayerService (50-row pages, 40 ms latency, skeleton placeholders), with the in-memory list kept for emitter-only unit tests. Includes PagedDataSource/PagedForEach tests, spec/status/docs updates.\" && git log --oneline -3",
             "time": {
-              "start": 1794902597808
+              "start": 1794902597808,
+              "end": 1794902612659
             }
           },
           "id": "prt_1e8881b9d001BoVMAdqtU0TJF6",
           "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
           "messageID": "msg_1e888082e002EhNeyTDT8ipYmJ"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "bacdf89490b420d533f2db48d2076be9f38d95bb",
+          "type": "step-finish",
+          "tokens": {
+            "total": 612776,
+            "input": 599,
+            "output": 264,
+            "reasoning": 73,
+            "cache": {
+              "write": 0,
+              "read": 611840
+            }
+          },
+          "cost": 0.00212757,
+          "id": "prt_1e8885afb001ONZF7r5chp4KWD",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e888082e002EhNeyTDT8ipYmJ"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1e887e7bd001sMgKRrzEk1F5em",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001956006,
+        "tokens": {
+          "total": 613043,
+          "input": 657,
+          "output": 34,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 612352
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1794902613076,
+          "completed": 1794902617705
+        },
+        "finish": "stop",
+        "id": "msg_1e8885c5400291aX74v381t0kR",
+        "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1"
+      },
+      "parts": [
+        {
+          "snapshot": "bacdf89490b420d533f2db48d2076be9f38d95bb",
+          "type": "step-start",
+          "id": "prt_1e8886d25001XnmnPpQAJNBuob",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e8885c5400291aX74v381t0kR"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `2ab3026a` (`feat(data): add paged data sources and the paged library demo`). Working tree is clean.",
+          "time": {
+            "start": 1794902617390,
+            "end": 1794902617583
+          },
+          "id": "prt_1e8886d2d001TOU7YoPraw211H",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e8885c5400291aX74v381t0kR"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "bacdf89490b420d533f2db48d2076be9f38d95bb",
+          "type": "step-finish",
+          "tokens": {
+            "total": 613043,
+            "input": 657,
+            "output": 34,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 612352
+            }
+          },
+          "cost": 0.001956006,
+          "id": "prt_1e8886e2c001iShfJdC3sFqJzw",
+          "sessionID": "ses_e2f9659f5ffeVJ89gzfz47W4F1",
+          "messageID": "msg_1e8885c5400291aX74v381t0kR"
         }
       ]
     }
