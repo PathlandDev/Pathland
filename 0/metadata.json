@@ -1,0 +1,75 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7R12RZYFJ9E48RMAMFQX529",
+  "session_id": "ses_e10028065ffenP9DFSmfzTDtwn",
+  "strategy": "manual-commit",
+  "created_at": "2026-11-18T19:10:36.603831Z",
+  "branch": "fix/ws-reconnect-lazy-scramble",
+  "checkpoints_count": 2,
+  "save_step_count": 1,
+  "files_touched": [
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-05c1a3b75a6f.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-448f9c15c86f.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/PathlandRegistry.java",
+    "lib/java/pathland-server-core/src/main/java/dev/pathland/server/VisibleRangeCoalescer.java",
+    "lib/java/pathland-server-core/src/test/java/dev/pathland/server/VisibleRangeCoalescerTest.java",
+    "lib/java/pathland-server-core/src/test/kotlin/dev/pathland/server/VisibleRangeRegistryTest.kt",
+    "lib/java/pathland-server-core/status.md",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-05c1a3b75a6f.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-448f9c15c86f.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/src/index.ts",
+    "lib/typescript/src/transport.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "lib/typescript/test/transport.test.ts",
+    "spec/OPCODE.md"
+  ],
+  "agent": "OpenCode",
+  "model": "deepseek-v4.1-flash",
+  "turn_id": "7fb4a0b9f251",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 590045,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 26454784,
+    "output_tokens": 26022,
+    "api_call_count": 138
+  },
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-11-18T19:10:36.452365Z",
+    "agent_lines": 368,
+    "agent_removed": 34,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 368,
+    "total_lines_changed": 402,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 41,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "logo.svg": 41
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 409,
+      "agent_lines_removed": 34
+    }
+  ]
+}
