@@ -2,6 +2,8 @@ package dev.pathland.server;
 
 import dev.pathland.core.transport.Event;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -92,6 +94,29 @@ final class VisibleRangeCoalescer implements AutoCloseable {
     /** Drop pending ranges for a session that is closing. */
     void removeSession(String sessionId) {
         pending.keySet().removeIf(key -> key.sessionId().equals(sessionId));
+    }
+
+    /**
+     * Take the latest pending range for every target of {@code sessionId}.
+     *
+     * <p>A reconnect asks for a full snapshot, but the client's current
+     * {@code VISIBLE_RANGE} is coalesced for a short interval and would otherwise
+     * arrive after the snapshot — leaving a fresh session rendering its default
+     * top window while the browser is scrolled far down. The resync path drains
+     * the pending ranges and applies them before emitting the snapshot.
+     */
+    List<Event> drain(String sessionId) {
+        List<Event> drained = new ArrayList<>();
+        for (Key key : List.copyOf(pending.keySet())) {
+            if (!key.sessionId().equals(sessionId)) {
+                continue;
+            }
+            Pending removed = pending.remove(key);
+            if (removed != null && removed.event != null) {
+                drained.add(removed.event);
+            }
+        }
+        return drained;
     }
 
     /** Drop every pending range (registry shutdown). */

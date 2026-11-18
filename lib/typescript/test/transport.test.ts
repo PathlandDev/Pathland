@@ -163,6 +163,36 @@ describe("Transport", () => {
     transport.stop();
   });
 
+  it("discards the retained output before applying the first post-reconnect batch", async () => {
+    const renderer: DomRenderer = { byId: new Map() };
+    const root = document.createElement("div");
+    root.setAttribute("data-pathland-id", "1");
+    const stale = document.createElement("span");
+    stale.setAttribute("data-pathland-id", "2");
+    root.appendChild(stale);
+    document.body.appendChild(root);
+    renderer.byId.set(1, root);
+    renderer.byId.set(2, stale);
+
+    const transport = new Transport({ url: "ws://host/ws", renderer, createSocket: fakeFactory });
+    transport.start();
+    const first = FakeSocket.instances[0]!;
+    first.emitOpen();
+    // First connect is not a replacement: an ordinary delta must apply in place.
+    first.emitMessage(deltaBatch(1).buffer);
+    expect(renderer.byId.size).toBe(2);
+
+    first.close();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    const reconnected = FakeSocket.instances[FakeSocket.instances.length - 1]!;
+    reconnected.emitOpen();
+    reconnected.emitMessage(deltaBatch(1).buffer);
+
+    expect(renderer.byId.size).toBe(0); // the stale tree was discarded
+    expect(root.parentNode).toBeNull();
+    transport.stop();
+  });
+
   it("reports open status and sends encoded bytes", () => {
     const statuses: string[] = [];
     const renderer: DomRenderer = { byId: new Map() };

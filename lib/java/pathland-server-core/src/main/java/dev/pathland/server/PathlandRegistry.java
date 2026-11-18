@@ -251,6 +251,7 @@ public final class PathlandRegistry {
             PathlandSession existing = sessions.get(uiId);
             if (existing != null) {
                 existing.connect(connection);
+                applyPendingRanges(uiId, existing);
                 existing.resync();
                 return;
             }
@@ -324,8 +325,21 @@ public final class PathlandRegistry {
         }
         execute(() -> {
             telemetry.resyncRequested(mountPath);
-            session(sessionId, EnvironmentData.of("/")).resync();
+            PathlandSession session = session(sessionId, EnvironmentData.of("/"));
+            // Apply the client's latest visible range before the snapshot: the
+            // range is coalesced for a short interval and a reconnect would
+            // otherwise render a fresh session at its default top window.
+            applyPendingRanges(sessionId, session);
+            session.resync();
         });
+    }
+
+    /** Apply (on the actor thread) any coalesced visible ranges waiting for {@code sessionId}. */
+    private void applyPendingRanges(String sessionId, PathlandSession session) {
+        List<Event> ranges = visibleRanges.drain(sessionId);
+        if (!ranges.isEmpty()) {
+            session.dispatch(ranges);
+        }
     }
 
     /** Close and remove a session (and drop any pending connection). */

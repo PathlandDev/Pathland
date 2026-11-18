@@ -139,7 +139,10 @@ function boot(): void {
       // fit report emitted at boot (before the WS handshake) is dropped, so
       // without this a wide first load would never switch to the wide candidate.
       refreshFitSlots(renderer);
-      refreshLazyWindows(renderer);
+      // Force a report: the range cache lives per element, so a reconnect over an
+      // unchanged viewport would otherwise send nothing — and the server would
+      // snapshot a fresh session at the default top window instead of this one.
+      refreshLazyWindows(renderer, true);
       // Request a full snapshot only when the SSR could not render this window's
       // persisted state — a reload whose SSR was unscoped (no wid reached the server,
       // e.g. no service worker), or a stale ?wid= the SSR used but this window did not

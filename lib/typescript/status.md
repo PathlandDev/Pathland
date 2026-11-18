@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** November 17, 2026
+**Last updated:** November 18, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -308,8 +308,19 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   Sequence-gap and reconnect recovery are unaffected.
 - **Hydration-aware TREE reconciliation** (`src/apply.ts`): `CREATE_NODE` reuses an
   existing hydrated element (id already in the registry) and `INSERT_CHILD` skips
-  when the child is already in the parent's container — so a resync'd full
-  snapshot reconciles against the SSR DOM without clobbering or duplicating.
+  when the child is already in the parent's container — so a same-session snapshot
+  (initial SSR resync/gap replay) reconciles against the existing DOM without
+  clobbering or duplicating. A **reconnect** is different: it is a fresh
+  per-connection server session whose ids/lazy window describe a new tree, so
+  `resetRenderedOutput` discards the old rendered output before the replacement
+  snapshot is applied (stale lazy rows and media elements cannot survive); scroll
+  offsets are captured and restored as the rebuilt tree materializes.
+- **`META::RESYNC`** (`encodeResync`): the client requests a full snapshot after
+  **reconnect** (never on first connect — the UI is already the SSR HTML) and on
+  a sequence gap. The first post-reconnect/gap delta triggers the output
+  replacement above; on every connection open the client also **force-reports**
+  every lazy visible range so the server snapshots the window the browser is
+  actually showing, not a fresh session's default top window.
 - **Runtime shells mirror the Rust renderer** (`src/elements.ts`): runtime-created
   nodes carry the same `pathland-*` classes/structure as SSR (a reinstated
   `BUTTON` gets `pathland-button`, `GAUGE` gets its `pathland-gauge` bar shell);
@@ -362,8 +373,6 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   renderer cannot drift without a failing test. A `semantics` scenario pins the
   semantic-tag / ARIA behavior on both renderers. `npm run regen` regenerates
   the fixtures together with the generated TS.
-- **`META::RESYNC`** (`encodeResync`): the client requests a full snapshot after
-  **reconnect** (never on first connect — the UI is already the SSR HTML).
 - **Heartbeat + watchdog** (`transport.ts` + `encodePing`, spec/OPCODE.md §Transport
   heartbeat): the client sends a `META::PING` every **5 s** and treats the connection
   as dead when **no server batch of any kind** (deltas, `META::PONG`) arrives for
@@ -452,7 +461,9 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   reports are throttled to one per ~100 ms with a trailing report; a `scrollend`
   listener plus a 150 ms debounce forces a final `VISIBLE_RANGE` report so the
   engine can release prefetched rows (ADR-0015/ADR-0017). Batch application,
-  hydration, and reconnect reports stay immediate.
+  hydration, and reconnect reports stay immediate — a connection open force-reports
+  every lazy window (even when its range is unchanged) so a reconnecting server
+  session snapshots the current window rather than its default top window.
 - **Canonical keyCode table**: `KEY_DOWN`/`KEY_UP` use the DOM `event.keyCode`
   convention; the renderer-shared canonical set lives in the conformance
   vectors (grant WP2) — cross-check on landing.

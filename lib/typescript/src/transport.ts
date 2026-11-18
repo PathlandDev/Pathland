@@ -6,7 +6,7 @@
 
 import type { Batch } from "./plpl";
 import { MAX_OPCODES, MAX_STRING_BYTES, ProtocolError, parseBatch } from "./plpl";
-import { applyBatch, type DomRenderer } from "./apply";
+import { applyBatch, resetRenderedOutput, type DomRenderer } from "./apply";
 import { encodePing, encodeResync } from "./events";
 import { CAT_META, CMD_PONG, FLAG_HOST_TO_GUEST, HEADER_SIZE, OPCODE_SIZE, VERSION } from "./constants";
 import { log } from "./log";
@@ -80,6 +80,13 @@ export class Transport {
    * See spec/OPCODE.md §Sequence gap detection.
    */
   private expectedSequence: number | null = null;
+  /**
+   * A reconnect or sequence gap means the next delta batch answers a
+   * `META::RESYNC` with a snapshot of a fresh tree. The retained DOM describes
+   * the old tree (stale ids, an old lazy window), so it is discarded before the
+   * replacement snapshot is applied. Heartbeats do not consume the flag.
+   */
+  private replacementPending = false;
 
   constructor(options: TransportOptions) {
     this.options = options;
@@ -177,6 +184,10 @@ export class Transport {
       this.options.onStatus?.("open");
       this.options.onOpen?.(this);
       if (reconnected) {
+        // The server treats a reconnect as a fresh per-connection session, so the
+        // first delta batch is a snapshot of a new tree. Discard the old rendered
+        // output (stale ids / lazy window) before applying it.
+        this.replacementPending = true;
         log.debug("ws", "requesting RESYNC (missed deltas while disconnected)");
         this.send(encodeResync());
       }
@@ -258,6 +269,7 @@ export class Transport {
         `sequence gap: expected ${this.expectedSequence}, got ${batch.sequence} — requesting RESYNC`,
       );
       this.expectedSequence = null;
+      this.replacementPending = true;
       this.send(encodeResync());
       return;
     }
@@ -267,6 +279,13 @@ export class Transport {
     // DOM layout pass for it.
     if (isTransportHeartbeat(batch)) {
       return;
+    }
+    if (this.replacementPending && (batch.flags & FLAG_HOST_TO_GUEST) === 0) {
+      // The first real delta after a reconnect/gap is part of the replacement
+      // snapshot (or a delta that the snapshot supersedes). Reset the renderer's
+      // own output cache and rebuild from this batch on.
+      this.replacementPending = false;
+      resetRenderedOutput(this.options.renderer);
     }
     try {
       applyBatch(batch, this.options.renderer);
