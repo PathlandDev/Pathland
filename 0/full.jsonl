@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.22404928199999988,
+    "cost": 0.2262557099999999,
     "tokens": {
-      "input": 591295,
-      "output": 26257,
-      "reasoning": 64120,
+      "input": 593689,
+      "output": 26364,
+      "reasoning": 64153,
       "cache": {
-        "read": 27042944,
+        "read": 27630720,
         "write": 0
       }
     },
     "time": {
       "created": 1795027730330,
-      "updated": 1795029946255
+      "updated": 1795029954255
     }
   },
   "messages": [
@@ -25877,21 +25877,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001270992,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 295108,
+          "input": 2120,
+          "output": 91,
+          "reasoning": 33,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 292864
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1795029946181
+          "created": 1795029946181,
+          "completed": 1795029954243
         },
+        "finish": "tool-calls",
         "id": "msg_1f01f4f4500251rABuJrPXznSF",
         "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn"
       },
@@ -25919,21 +25922,116 @@
           "tool": "bash",
           "callID": "call_75a77fdf202a409f8097fd45",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add logo.svg && git commit -m \"chore: add project logo\" && git log --oneline -2",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland"
             },
+            "output": "[fix/ws-reconnect-lazy-scramble a404b4ac] chore: add project logo\n 1 file changed, 41 insertions(+)\n create mode 100644 logo.svg\na404b4ac chore: add project logo\n38886737 fix(reconnect): rebuild the DOM from the resync snapshot\n",
+            "metadata": {
+              "output": "[fix/ws-reconnect-lazy-scramble a404b4ac] chore: add project logo\n 1 file changed, 41 insertions(+)\n create mode 100644 logo.svg\na404b4ac chore: add project logo\n38886737 fix(reconnect): rebuild the DOM from the resync snapshot\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add logo.svg && git commit -m \"chore: add project logo\" && git log --oneline -2",
             "time": {
-              "start": 1795029949111
+              "start": 1795029949111,
+              "end": 1795029954127
             }
           },
           "id": "prt_1f01f599e001y79ki7R4dnKrgt",
           "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
           "messageID": "msg_1f01f4f4500251rABuJrPXznSF"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "7d0e4dac651be53e050b55c297c567b7fa9ac2dd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 295108,
+            "input": 2120,
+            "output": 91,
+            "reasoning": 33,
+            "cache": {
+              "write": 0,
+              "read": 292864
+            }
+          },
+          "cost": 0.001270992,
+          "id": "prt_1f01f6e85001l5fXAgxUsrMkdD",
+          "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
+          "messageID": "msg_1f01f4f4500251rABuJrPXznSF"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1f01f4af6001Cuc2lgaRhFISaD",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000935436,
+        "tokens": {
+          "total": 295202,
+          "input": 274,
+          "output": 16,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 294912
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1795029954254,
+          "completed": 1795029956599
+        },
+        "finish": "stop",
+        "id": "msg_1f01f6ece002jkMf8cxFl6KJFn",
+        "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn"
+      },
+      "parts": [
+        {
+          "snapshot": "7d0e4dac651be53e050b55c297c567b7fa9ac2dd",
+          "type": "step-start",
+          "id": "prt_1f01f7754001LmIUKuGV63wSG9",
+          "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
+          "messageID": "msg_1f01f6ece002jkMf8cxFl6KJFn"
+        },
+        {
+          "type": "text",
+          "text": "Committed `logo.svg` as `a404b4ac`.",
+          "time": {
+            "start": 1795029956441,
+            "end": 1795029956456
+          },
+          "id": "prt_1f01f7759001bxB7z0RlTTiyaF",
+          "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
+          "messageID": "msg_1f01f6ece002jkMf8cxFl6KJFn"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "7d0e4dac651be53e050b55c297c567b7fa9ac2dd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 295202,
+            "input": 274,
+            "output": 16,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 294912
+            }
+          },
+          "cost": 0.000935436,
+          "id": "prt_1f01f77b9001kJBY5a4k7eArfa",
+          "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
+          "messageID": "msg_1f01f6ece002jkMf8cxFl6KJFn"
         }
       ]
     }
