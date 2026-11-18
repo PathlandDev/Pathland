@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 0.22195630199999988,
+    "cost": 0.22404928199999988,
     "tokens": {
-      "input": 590045,
-      "output": 26022,
+      "input": 591295,
+      "output": 26257,
       "reasoning": 64120,
       "cache": {
-        "read": 26454784,
+        "read": 27042944,
         "write": 0
       }
     },
     "time": {
       "created": 1795027730330,
-      "updated": 1795029030550
+      "updated": 1795029036801
     }
   },
   "messages": [
@@ -25693,21 +25693,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.00110643,
         "tokens": {
-          "input": 0,
-          "output": 0,
+          "total": 294667,
+          "input": 709,
+          "output": 198,
           "reasoning": 0,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 293760
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1795029030549
+          "created": 1795029030549,
+          "completed": 1795029036791
         },
+        "finish": "tool-calls",
         "id": "msg_1f01156950024m3WY9MYSHerrj",
         "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn"
       },
@@ -25724,21 +25727,116 @@
           "tool": "bash",
           "callID": "call_28f67363cb2440e5a2c45153",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git commit -m \"fix(reconnect): rebuild the DOM from the resync snapshot\" -m \"A reconnect creates a fresh per-connection server session, so the resync snapshot's ids and lazy window describe a new tree. The DOM client merged it into the old output and never removed stale lazy rows, scrambling the list.\n\nDiscard the retained output on the first post-reconnect/gap delta and rebuild from the snapshot, restoring captured scroll offsets. Force-report lazy visible ranges on connection open and drain pending coalesced ranges before the server snapshots, so the replacement renders the window the client is actually showing.\" && git log --oneline -3",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland"
             },
+            "output": "[fix/ws-reconnect-lazy-scramble 38886737] fix(reconnect): rebuild the DOM from the resync snapshot\n 18 files changed, 368 insertions(+), 34 deletions(-)\n delete mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-05c1a3b75a6f.js\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-448f9c15c86f.js\n delete mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-05c1a3b75a6f.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-448f9c15c86f.js\n38886737 fix(reconnect): rebuild the DOM from the resync snapshot\n54f5de6d chore(release): v0.2.5\n3330808c Merge pull request #208 from PathlandDev/feat/lazy-stack-virtualization\n",
+            "metadata": {
+              "output": "[fix/ws-reconnect-lazy-scramble 38886737] fix(reconnect): rebuild the DOM from the resync snapshot\n 18 files changed, 368 insertions(+), 34 deletions(-)\n delete mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-05c1a3b75a6f.js\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-448f9c15c86f.js\n delete mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-05c1a3b75a6f.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-448f9c15c86f.js\n38886737 fix(reconnect): rebuild the DOM from the resync snapshot\n54f5de6d chore(release): v0.2.5\n3330808c Merge pull request #208 from PathlandDev/feat/lazy-stack-virtualization\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git commit -m \"fix(reconnect): rebuild the DOM from the resync snapshot\" -m \"A reconnect creates a fresh per-connection server session, so the resync snapshot's ids and lazy window describe a new tree. The DOM client merged it into the old output and never removed stale lazy rows, scrambling the list.\n\nDiscard the retained output on the first post-reconnect/gap delta and rebuild from the snapshot, restoring captured scroll offsets. Force-report lazy visible ranges on connection open and drain pending coalesced ranges before the server snapshots, so the replacement renders the window the client is actually showing.\" && git log --oneline -3",
             "time": {
-              "start": 1795029033878
+              "start": 1795029033878,
+              "end": 1795029036668
             }
           },
           "id": "prt_1f0115f1b00191z500uxR7qL9F",
           "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
           "messageID": "msg_1f01156950024m3WY9MYSHerrj"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "7d0e4dac651be53e050b55c297c567b7fa9ac2dd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 294667,
+            "input": 709,
+            "output": 198,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 293760
+            }
+          },
+          "cost": 0.00110643,
+          "id": "prt_1f0116eba001erW7hZLYPsY1qj",
+          "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
+          "messageID": "msg_1f01156950024m3WY9MYSHerrj"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1f01130630017SbgqokNzwBHox",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.00098655,
+        "tokens": {
+          "total": 294978,
+          "input": 541,
+          "output": 37,
+          "reasoning": 0,
+          "cache": {
+            "write": 0,
+            "read": 294400
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1795029036800,
+          "completed": 1795029039229
+        },
+        "finish": "stop",
+        "id": "msg_1f0116f00002JOb8T9QHgSR7lB",
+        "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn"
+      },
+      "parts": [
+        {
+          "snapshot": "7d0e4dac651be53e050b55c297c567b7fa9ac2dd",
+          "type": "step-start",
+          "id": "prt_1f011772e0012ilct6t2lwKH16",
+          "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
+          "messageID": "msg_1f0116f00002JOb8T9QHgSR7lB"
+        },
+        {
+          "type": "text",
+          "text": "Committed on `fix/ws-reconnect-lazy-scramble` (`38886737`), 18 files changed. `logo.svg` was left untracked.",
+          "time": {
+            "start": 1795029038923,
+            "end": 1795029039115
+          },
+          "id": "prt_1f011774b001R258ic6lkbdVC7",
+          "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
+          "messageID": "msg_1f0116f00002JOb8T9QHgSR7lB"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "7d0e4dac651be53e050b55c297c567b7fa9ac2dd",
+          "type": "step-finish",
+          "tokens": {
+            "total": 294978,
+            "input": 541,
+            "output": 37,
+            "reasoning": 0,
+            "cache": {
+              "write": 0,
+              "read": 294400
+            }
+          },
+          "cost": 0.00098655,
+          "id": "prt_1f0117848001zT4tDWoxxgZBZ7",
+          "sessionID": "ses_e10028065ffenP9DFSmfzTDtwn",
+          "messageID": "msg_1f0116f00002JOb8T9QHgSR7lB"
         }
       ]
     }
