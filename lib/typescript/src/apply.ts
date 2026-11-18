@@ -132,6 +132,13 @@ import { setIcon } from "./icons";
  *  spinner/progress morph) without baking it into the DOM. */
 const componentByNode = new WeakMap<Node, number>();
 
+/**
+ * Scroll offsets captured when the renderer discards its output for a reconnect
+ * replacement snapshot, keyed by node id. Restored as the replacement tree
+ * materializes (best-effort across batches), then removed.
+ */
+const pendingScrollRestore = new Map<number, { left: number; top: number }>();
+
 /** Flex stacks (main axis horizontal). */
 const STACK_MAIN_HORIZONTAL = new Set([COMPONENT_HSTACK, COMPONENT_LAZY_HSTACK]);
 /** Flex stacks (main axis vertical). */
@@ -569,19 +576,59 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   // align-self) — mirrors the Rust SSR renderer's whole-tree decisions.
   applyLayout(renderer);
   refreshLazyWindows(renderer);
+  // A reconnect replacement rebuilds the tree from scratch; restore any captured
+  // scroll offsets once their (re-created) elements exist, then re-report the
+  // lazy windows from the restored position.
+  if (restorePendingScroll(renderer)) {
+    refreshLazyWindows(renderer, true);
+  }
+}
+
+/**
+ * Discard the renderer's retained output (its own cache of the opcode stream).
+ *
+ * A reconnect creates a fresh server session, so the previous tree's ids and
+ * lazy window no longer describe the same nodes. The resync snapshot is a mount
+ * stream for the new tree; applying it as an in-place merge would leave stale
+ * rows (the scrambled lazy-list bug). Reset first, then rebuild from the
+ * snapshot. This clears rendered output only — application state lives on the
+ * server, and renderer-global theme/token overrides survive.
+ *
+ * `captureScroll` records scroll offsets for the replacement pass; an explicit
+ * `META::RESET` (the server asking for a clean slate) does not restore them.
+ */
+export function resetRenderedOutput(r: DomRenderer, captureScroll = true): void {
+  pendingScrollRestore.clear();
+  if (captureScroll) {
+    for (const [id, el] of r.byId) {
+      if (!(el instanceof HTMLElement)) {
+        continue;
+      }
+      const left = el.scrollLeft;
+      const top = el.scrollTop;
+      if ((left > 0 || top > 0) && Number.isFinite(left) && Number.isFinite(top)) {
+        pendingScrollRestore.set(id, { left, top });
+      }
+    }
+  }
+  for (const el of Array.from(r.byId.values())) {
+    if (el instanceof Element) {
+      purgeSubtreeRegistry(el, r);
+    }
+    if (el.parentNode) {
+      el.parentNode.removeChild(el);
+    }
+  }
+  r.byId.clear();
+  // Controller ids belong to the replaced tree; the new snapshot re-creates them.
+  mediaRegistry.clear();
 }
 
 function applyMeta(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   switch (op.command) {
-    case CMD_RESET: {
-      for (const el of Array.from(r.byId.values())) {
-        if (el.parentNode) {
-          el.parentNode.removeChild(el);
-        }
-      }
-      r.byId.clear();
+    case CMD_RESET:
+      resetRenderedOutput(r, false);
       break;
-    }
     case CMD_SET_COLOR_SCHEME: {
       const root = document.documentElement;
       if (op.a === COLOR_SCHEME_LIGHT) {
@@ -2642,6 +2689,44 @@ function lazyVisibleRange(el: HTMLElement): { first: number; count: number } | n
   const first = Math.max(0, Math.min(count, Math.floor(clampedStart / stride)));
   const last = Math.max(first, Math.min(count, Math.ceil(clampedEnd / stride)));
   return { first, count: Math.max(0, last - first) };
+}
+
+/**
+ * Restore scroll offsets captured by {@link resetRenderedOutput} once the
+ * replacement tree has materialized their elements. A snapshot may span several
+ * batches, and setting `scrollTop` before the virtual extent exists clamps it to
+ * zero, so an entry is kept for a later batch until the element can hold the
+ * saved offset.
+ *
+ * Returns true when at least one offset was applied (the caller then re-reports
+ * the lazy windows from the restored position).
+ */
+function restorePendingScroll(r: DomRenderer): boolean {
+  let restored = false;
+  for (const [id, position] of Array.from(pendingScrollRestore)) {
+    const el = r.byId.get(id);
+    if (!(el instanceof HTMLElement)) {
+      continue;
+    }
+    const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
+    const maxLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+    // Defer until the rebuilt element has enough content to hold the offset; a
+    // set before the replacement rows/padding exist clamps silently to zero.
+    const materialized =
+      (position.top === 0 || maxTop > 0) && (position.left === 0 || maxLeft > 0);
+    if (!materialized) {
+      continue;
+    }
+    if (position.top > 0) {
+      el.scrollTop = Math.min(position.top, maxTop);
+    }
+    if (position.left > 0) {
+      el.scrollLeft = Math.min(position.left, maxLeft);
+    }
+    pendingScrollRestore.delete(id);
+    restored = true;
+  }
+  return restored;
 }
 
 /**

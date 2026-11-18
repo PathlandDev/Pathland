@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyBatch, refreshLazyWindows, setNodeText, setupMediaElement, updateNavBackButtons, unlockMedia, playMedia, retryPendingPlay, __setMediaLastReported, type DomRenderer } from "../src/apply";
+import { applyBatch, refreshLazyWindows, resetRenderedOutput, setNodeText, setupMediaElement, updateNavBackButtons, unlockMedia, playMedia, retryPendingPlay, __setMediaLastReported, type DomRenderer } from "../src/apply";
 import { clearInFlightRange, markRangeInFlight } from "../src/inFlight";
 import { parseBatch } from "../src/plpl";
 import {
@@ -1621,5 +1621,68 @@ describe("lazy visible-range reporting", () => {
     el.setAttribute("data-pathland-first-item-index", "138");
     refreshLazyWindows(r);
     expect(padding()).toEqual({ top: 138 * 64, bottom: (1000 - 138) * 64 });
+  });
+});
+
+describe("reconnect replacement", () => {
+  it("drops the old retained tree so a replacement snapshot cannot merge stale rows", () => {
+    document.body.innerHTML = "";
+    const scroller = document.createElement("div");
+    scroller.setAttribute("data-pathland-id", "10");
+    const stale = document.createElement("div");
+    stale.setAttribute("data-pathland-id", "20");
+    stale.textContent = "old row";
+    scroller.appendChild(stale);
+    document.body.appendChild(scroller);
+
+    const r = renderer();
+    r.byId.set(10, scroller);
+    r.byId.set(20, stale);
+
+    resetRenderedOutput(r);
+
+    expect(r.byId.size).toBe(0);
+    expect(scroller.parentNode).toBeNull();
+    expect(document.querySelector('[data-pathland-id="20"]')).toBeNull();
+  });
+
+  it("captures scroll offsets and restores them as the replacement tree materializes", () => {
+    document.body.innerHTML = "";
+    const oldScroller = document.createElement("div");
+    oldScroller.setAttribute("data-pathland-id", "10");
+    document.body.appendChild(oldScroller);
+    let oldScrollTop = 300;
+    Object.defineProperty(oldScroller, "scrollTop", {
+      configurable: true,
+      get: () => oldScrollTop,
+      set: (value: number) => {
+        oldScrollTop = value;
+      },
+    });
+    const r = renderer();
+    r.byId.set(10, oldScroller);
+
+    resetRenderedOutput(r);
+
+    // The snapshot re-creates the scroller with the same id; once it can hold
+    // the saved offset, the next applied batch restores it.
+    const fresh = document.createElement("div");
+    fresh.setAttribute("data-pathland-id", "10");
+    document.body.appendChild(fresh);
+    r.byId.set(10, fresh);
+    let freshScrollTop = 0;
+    Object.defineProperty(fresh, "scrollTop", {
+      configurable: true,
+      get: () => freshScrollTop,
+      set: (value: number) => {
+        freshScrollTop = value;
+      },
+    });
+    Object.defineProperty(fresh, "scrollHeight", { configurable: true, value: 1000 });
+    Object.defineProperty(fresh, "clientHeight", { configurable: true, value: 200 });
+
+    applyBatch(parseBatch(buildBatch([[CAT_TREE, CMD_CREATE_NODE, 0, 99, COMPONENT_TEXT, 0]])), r);
+
+    expect(freshScrollTop).toBe(300);
   });
 });

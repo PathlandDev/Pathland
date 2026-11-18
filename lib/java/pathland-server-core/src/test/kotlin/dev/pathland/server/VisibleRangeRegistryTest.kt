@@ -78,6 +78,39 @@ class VisibleRangeRegistryTest {
         }
     }
 
+    @Test
+    fun resyncAppliesAPendingRangeBeforeTheSnapshot() {
+        val source = AtomicReference<PagedDataSource<String>>()
+        val app = PathlandApp {
+            val paged = PagedDataSource.ofBlocking(10, { offset, limit ->
+                val end = minOf(offset + limit, 1000)
+                Page((offset until end).map { "i$it" }, total = 1000)
+            })
+            source.set(paged)
+            LazyVStack(spacing = 0f) {
+                ForEach(paged, itemExtent = 20f) { item, _ -> Text(item) }
+            }
+        }
+        val registry = PathlandRegistry(app, InMemoryStateStore())
+        try {
+            val connection = RecordingConnection()
+            registry.open("ui", "w", connection)
+            registry.environment("ui", EnvironmentData.of("/"))
+            await { source.get()?.loading?.get() == false }
+
+            // A reconnect reports the visible range and requests RESYNC right
+            // after each other. The range is normally coalesced for ~50 ms, so
+            // without a drain the fresh session would snapshot its top window.
+            registry.dispatch("ui", FrameCodec.encodeEvents(listOf(Event.visibleRange(1, 800, 20))))
+            registry.resync("ui")
+
+            await { connection.maxFirstItemIndex()?.let { it >= 700 } == true }
+            await { connection.sawText("i800") }
+        } finally {
+            registry.shutdown()
+        }
+    }
+
     private fun await(timeoutMillis: Long = 5_000, condition: () -> Boolean) {
         val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
         while (!condition() && System.nanoTime() < deadline) {
@@ -114,6 +147,27 @@ class VisibleRangeRegistryTest {
                         (it.b() and 0xffff) == Properties.FIRST_ITEM_INDEX
                 }
                 ?.c()
+        }
+
+        fun maxFirstItemIndex(): Int? = frames
+            .mapNotNull { bytes ->
+                FrameCodec.decodeFrame(bytes).opcodes()
+                    .firstOrNull {
+                        it.category() == Categories.PARAMETER &&
+                            it.command() == Commands.Parameter.SET_PROPERTY &&
+                            (it.b() and 0xffff) == Properties.FIRST_ITEM_INDEX
+                    }
+                    ?.c()
+            }
+            .maxOrNull()
+
+        fun sawText(text: String): Boolean = frames.any { bytes ->
+            val frame = FrameCodec.decodeFrame(bytes)
+            frame.opcodes().any {
+                it.category() == Categories.PARAMETER &&
+                    it.command() == Commands.Parameter.SET_TEXT &&
+                    frame.stringAt(it.b()) == text
+            }
         }
     }
 }

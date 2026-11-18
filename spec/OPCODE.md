@@ -476,7 +476,7 @@ element.
 |---------|-------|---|---|---|-------------|
 | `RESET` | `0x01` | 0 | 0 | 0 | Host must clear all rendered output |
 | `ENVIRONMENT` | `0x02` | fieldId (u16, low) | field value | 0 | A platform environment field (host → guest) — see [Environment fields](#environment-fields) |
-| `RESYNC` | `0x03` | 0 | 0 | 0 | The host (renderer) requests a **full snapshot** of the current tree (host → guest). The guest answers with a single full-snapshot batch (the same TREE + PARAMETER stream as a mount). Used for reconnect/gap recovery and no-JS refresh. |
+| `RESYNC` | `0x03` | 0 | 0 | 0 | The host (renderer) requests a **full snapshot** of the current tree (host → guest). The guest answers with a single full-snapshot batch (the same TREE + PARAMETER stream as a mount). Used for reconnect/gap recovery and no-JS refresh. A reconnect may be served by a **new session** (fresh ids, a fresh lazy window); the snapshot is authoritative for that tree, so a renderer may discard its retained output before applying it. |
 | `PING` | `0x04` | 0 | 0 | 0 | A transport-liveness **heartbeat probe** (guest → host). No payload. **Network batch transport only** — a shared-memory ring consumer MUST NOT expect, emit, or relay it. See [Transport heartbeat](#transport-heartbeat). |
 | `PONG` | `0x05` | 0 | 0 | 0 | The reply to `META::PING` (host → guest). No payload. Network batch transport only. |
 | `SET_COLOR_SCHEME` | `0x06` | mode | 0 | 0 | **Draft.** Renderer-wide color-scheme override (guest → host): `0` = platform-derived (default), `1` = light, `2` = dark. The renderer re-resolves every token-referencing property; while forced, platform scheme changes are ignored. See [TOKENS.md](./TOKENS.md#color-schemes-light--dark). |
@@ -847,7 +847,10 @@ is stateless and the application owns the retained tree, so a `META::RESYNC`
 reconverges the consumer regardless of what was lost. **Acknowledgements and a
 retransmit queue are deliberately not part of the protocol** — they would add a
 per-session send buffer and an ack exchange to a design whose recovery is
-already a stateless snapshot.
+already a stateless snapshot. A reconnect may create a **new session** whose
+ids and lazy window describe a different tree than the renderer currently
+holds; the snapshot is authoritative, so the renderer MAY discard its retained
+output and rebuild from it (stale elements must not be merged into the new tree).
 
 ### Transport heartbeat
 
