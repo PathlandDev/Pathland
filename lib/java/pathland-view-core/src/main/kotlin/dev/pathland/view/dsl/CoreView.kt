@@ -1,5 +1,6 @@
 package dev.pathland.view.dsl
 
+import dev.pathland.core.protocol.Components
 import dev.pathland.view.core.Environment
 import dev.pathland.view.core.View
 import dev.pathland.view.engine.PathlandNode
@@ -19,7 +20,15 @@ internal class CoreView(
         val node = PathlandNode(component)
         configure(node, env)
         for (child in children) {
-            node.children.add(child.render(env))
+            // @ref spec/DSL.md#34-structural-reactivity-reactive-bodies--slots [implements]
+            // Eager ForEach rows are direct stack children.
+            if ((component == Components.VSTACK || component == Components.HSTACK) &&
+                child is ForEachView<*>
+            ) {
+                node.children.addAll(child.renderRows(env))
+            } else {
+                node.children.add(child.render(env))
+            }
         }
         return node
     }

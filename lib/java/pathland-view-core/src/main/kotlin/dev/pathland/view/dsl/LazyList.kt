@@ -62,8 +62,9 @@ private class LazyWindowTracker {
 
 /**
  * A `ForEach` used as a lazy-stack data source. Outside a lazy stack it renders
- * eagerly (a `VSTACK` of rows); inside one the engine materializes only the
- * visible window (spec/DSL.md §Virtualized lists).
+ * eagerly; in a regular stack its rows are expanded as direct children. Inside
+ * a lazy stack the engine materializes only the visible window
+ * (spec/DSL.md §Virtualized lists).
  */
 internal open class ForEachView<T>(
     private val itemsSignal: Signal<List<T>>,
@@ -72,6 +73,14 @@ internal open class ForEachView<T>(
     internal val itemExtents: List<Float>?,
     private val content: PathlandScope.(T, Int) -> Unit,
 ) : View {
+
+    /** Render eager rows directly into a stack parent rather than adding a wrapper stack. */
+    internal fun renderRows(env: Environment): List<PathlandNode> {
+        val list = itemsSignal.get()
+        return list.mapIndexed { index, item ->
+            rowView { content(item, index) }.render(rowEnvironment(env, index))
+        }
+    }
 
     open fun count(): Int = itemsSignal.get().size
 
@@ -100,12 +109,7 @@ internal open class ForEachView<T>(
 
     override fun renderNode(env: Environment): PathlandNode {
         val node = PathlandNode(Components.VSTACK)
-        val list = itemsSignal.get()
-        list.forEachIndexed { index, item ->
-            node.children.add(
-                rowView { content(item, index) }.render(rowEnvironment(env, index)),
-            )
-        }
+        node.children.addAll(renderRows(env))
         return node
     }
 }

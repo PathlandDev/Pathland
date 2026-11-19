@@ -255,6 +255,41 @@ class DslTest {
     }
 
     @Test
+    // @ref spec/DSL.md#34-structural-reactivity-reactive-bodies--slots [tests]
+    fun eagerForEachRowsAreDirectStackChildren() {
+        val (_, frame) = mount(
+            VStack(spacing = 8f) {
+                Text("before")
+                ForEach(listOf("one", "two")) { item, _ -> Text(item) }
+                Text("after")
+            },
+        )
+        val created = frame.opcodes()
+            .filter { it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE }
+            .map { it.b() and 0xffff }
+        assertEquals(
+            listOf(Components.VSTACK, Components.TEXT, Components.TEXT, Components.TEXT, Components.TEXT),
+            created,
+        )
+        assertEquals(listOf("before", "one", "two", "after"), texts(frame))
+
+        val (_, horizontalFrame) = mount(
+            HStack(spacing = 8f) {
+                Text("before")
+                ForEach(listOf("one", "two")) { item, _ -> Text(item) }
+                Text("after")
+            },
+        )
+        val horizontalComponents = horizontalFrame.opcodes()
+            .filter { it.category() == Categories.TREE && it.command() == Commands.Tree.CREATE_NODE }
+            .map { it.b() and 0xffff }
+        assertEquals(
+            listOf(Components.HSTACK, Components.TEXT, Components.TEXT, Components.TEXT, Components.TEXT),
+            horizontalComponents,
+        )
+    }
+
+    @Test
     fun lazyStackEmitsAWindowedDataSource() {
         val items = signal((0 until 100).map { "item-$it" })
         val sink = FrameOpcodeSink()

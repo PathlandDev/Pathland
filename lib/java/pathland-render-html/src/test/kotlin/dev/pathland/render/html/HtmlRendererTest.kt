@@ -36,6 +36,7 @@ import dev.pathland.view.dsl.signal
 import dev.pathland.view.dsl.windowMetadata
 import dev.pathland.view.engine.Emitter
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -71,6 +72,22 @@ class HtmlRendererTest {
         assertTrue(html.contains("<span data-pathland-id=\"4\">Increment</span>"),
             "the styled label renders as the button's child")
         assertTrue(html.contains("</button>"))
+    }
+
+    @Test
+    fun eagerForEachRowsShareTheParentStackSpacing() {
+        val root = VStack(spacing = 8f) {
+            Text("before")
+            ForEach(listOf("one", "two")) { item, _ -> Text(item) }
+            Text("after")
+        }
+        val html = renderer().render(frameOf(root), 1).substringAfter("<body>")
+
+        assertTrue(html.contains("gap:8px"), html)
+        assertEquals(1, "flex-direction:column".toRegex().findAll(html).count(), html)
+        assertTrue(html.indexOf("before") < html.indexOf("one"), html)
+        assertTrue(html.indexOf("one") < html.indexOf("two"), html)
+        assertTrue(html.indexOf("two") < html.indexOf("after"), html)
     }
 
     @Test

@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 17, 2026
+**Last updated:** November 19, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written in Kotlin. It owns the `View` SPI and shared
@@ -68,6 +68,10 @@ build) carries no JNA.
   pinned root `MEDIA_CONTROLLER` or drop its media routing. Registered `MediaController`s are
   projected as pinned, non-visual root children; `unregisterMediaController`
   removes them without touching the app tree.
+- **Eager `ForEach` in stacks**: `VStack`/`HStack` render eager rows as direct
+  children, so parent spacing applies between rows. The parent slot tracks the
+  collection signal and reconciles row changes; row state remains scoped by item
+  key (or index).
 - **Shared SPI/values** (`dev.pathland.view.core`): `View`, `ViewModifier`,
   `Configurable`, `ChildrenView`, `Modified`, `ViewBuilder`,
   `Environment*`, `Platform`, `Theme*`, `MediaController`, `WindowMetadata`,

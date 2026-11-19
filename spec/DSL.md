@@ -351,7 +351,7 @@ flow instead of a wrapper type:
 |----------------------------|----------|----------|-------|
 | `if cond { then } else { else }` in a result builder | plain `if` in `body()`; `View.of(() -> …)` for an inline expression | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
 | `switch value { case a -> v; default -> d }` | plain `switch` in `body()`; `View.of(() -> switch …)` inline | plain `if`/`match` in `build()` | `TREE` deltas (reconcile) |
-| `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach(items) { item, i -> … }` for a row-scoped component. Inside a `LazyVStack`/`LazyHStack` a `ForEach` is a windowed **data source** (§Virtualized lists) | plain `for` for static lists; `ForEach::new(items, \|item, i\| …)` for a lazy-stack data source (`ForEach` parity: reactive bodies Phase 2) | `TREE` deltas (reconcile) |
+| `ForEach(items) { … }` | plain `for`/stream for static lists; `ForEach(items) { item, i -> … }` for a row-scoped component. In eager `VStack`/`HStack` composition, rows become direct stack children. Inside a `LazyVStack`/`LazyHStack` a `ForEach` is a windowed **data source** (§Virtualized lists) | plain `for` for static lists; `ForEach::new(items, \|item, i\| …)` for a lazy-stack data source (`ForEach` parity: reactive bodies Phase 2) | `TREE` deltas (reconcile) |
 
 **Kotlin realization** — bare control flow in a component body:
 

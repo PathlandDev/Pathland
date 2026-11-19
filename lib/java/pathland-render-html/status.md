@@ -1,6 +1,6 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** November 7, 2026
+**Last updated:** November 19, 2026
 
 The **pure-Java HTML renderer** (`dev.pathland.render.html`) — a behavioural
 port of the Rust `pathland-render-html` crate. Stateless: each call decodes a
@@ -37,6 +37,8 @@ library). Protocol contract: `spec/`.
   `DATE_PICKER_MODE`, literal colors inline, attributed text, media
   surfaces/controllers, proxy views, grid rows/tracks, fit bands, and
   view-that-fits snapshots.
+- **Eager list spacing**: the HTML round-trip test verifies rows expanded by an
+  eager `ForEach` are direct children of their parent stack and share its CSS gap.
 - **Built-in base design**: the generated `design/build/base.css` (synced into
   the Rust assets) is copied into the jar at build time and inlined by the
   default `render(...)`. `renderLinked(frame, root, cssBase)` /
