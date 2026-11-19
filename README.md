@@ -89,7 +89,34 @@ The client applies them to native elements (60FPS)
 
 ## The whole app
 
-Add one dependency and one bean, and you have a working app.
+Pathland **0.2.5** is published to Maven Central under `dev.pathland` and requires
+Java 17 or newer. Add the starter for your host framework. The Spring Boot
+starter brings in the Pathland runtime, including `pathland-view-core`, transitively.
+
+**Spring Boot (`pom.xml`)**
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>dev.pathland</groupId>
+        <artifactId>pathland-spring-boot-starter</artifactId>
+        <version>0.2.5</version>
+    </dependency>
+</dependencies>
+```
+
+**Quarkus (`pom.xml`)** — the extension includes the view runtime and DSL:
+
+```xml
+<dependency>
+    <groupId>dev.pathland</groupId>
+    <artifactId>pathland-quarkus</artifactId>
+    <version>0.2.5</version>
+</dependency>
+```
+
+With the dependency in place, add a `PathlandApp` bean/implementation to mount
+your root view:
 
 **Spring Boot**
 
