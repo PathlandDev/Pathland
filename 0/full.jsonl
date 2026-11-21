@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 1.3795824060000008,
+    "cost": 1.383067488000001,
     "tokens": {
-      "input": 4677037,
-      "output": 141683,
-      "reasoning": 247028,
+      "input": 4679132,
+      "output": 142308,
+      "reasoning": 247193,
       "cache": {
-        "read": 148266752,
+        "read": 149165696,
         "write": 0
       }
     },
     "time": {
       "created": 1795157753627,
-      "updated": 1795287050496
+      "updated": 1795287069499
     }
   },
   "messages": [
@@ -62213,21 +62213,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001218756,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 300176,
+          "input": 1182,
+          "output": 240,
+          "reasoning": 2,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 298752
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1795287050495
+          "created": 1795287050495,
+          "completed": 1795287066719
         },
+        "finish": "tool-calls",
         "id": "msg_1ff7268ff002poWVH0lyRpCWxg",
         "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9"
       },
@@ -62255,21 +62258,274 @@
           "tool": "bash",
           "callID": "call_ba2fce903ff94cb0ab09f55f",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git add -A && git commit -F - <<'EOF'\nfix(focus): accept ADR-0018 and complete its clear/ordering contract\n\nAccept ADR-0018 and update its index, spec, and status references. A focused binding that becomes false now emits SET_FOCUS B=0 for that node, and the emitter orders focus requests after the target's tree/property ops so a moving focus cannot clear the new target. The DOM client clears the active element for A=0/B=0 and applies a request after a same-batch create/insert.\n\nAlso handle Home/End in the demo's roving library focus, add clear-focus and ordering coverage in Java/TS/Rust conformance, and rebuild the content-hashed DOM bundle.\nEOF\ngit status --short | head; git log --oneline -1",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland"
             },
+            "output": "[feat/keyboard-list-navigation d88922a5] fix(focus): accept ADR-0018 and complete its clear/ordering contract\n 21 files changed, 241 insertions(+), 54 deletions(-)\n rename lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/{dom-renderer-b4f3c1368dad.js => dom-renderer-b183eb8a5fac.js} (94%)\n rename lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/{dom-renderer-b4f3c1368dad.js => dom-renderer-b183eb8a5fac.js} (94%)\nd88922a5 fix(focus): accept ADR-0018 and complete its clear/ordering contract\n",
+            "metadata": {
+              "output": "[feat/keyboard-list-navigation d88922a5] fix(focus): accept ADR-0018 and complete its clear/ordering contract\n 21 files changed, 241 insertions(+), 54 deletions(-)\n rename lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/{dom-renderer-b4f3c1368dad.js => dom-renderer-b183eb8a5fac.js} (94%)\n rename lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/{dom-renderer-b4f3c1368dad.js => dom-renderer-b183eb8a5fac.js} (94%)\nd88922a5 fix(focus): accept ADR-0018 and complete its clear/ordering contract\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git add -A && git commit -F - <<'EOF'\nfix(focus): accept ADR-0018 and complete its clear/ordering contract\n\nAccept ADR-0018 and update its index, spec, and status references. A focused binding that becomes false now emits SET_FOCUS B=0 for that node, and the emitter orders focus requests after the target's tree/property ops so a moving focus cannot clear the new target. The DOM client clears the active element for A=0/B=0 and applies a request after a same-batch create/insert.\n\nAlso handle Home/End in the demo's roving library focus, add clear-focus and ordering coverage in Java/TS/Rust conformance, and rebuild the content-hashed DOM bundle.\nEOF\ngit status --short | head; git log --oneline -1",
             "time": {
-              "start": 1795287054141
+              "start": 1795287054141,
+              "end": 1795287066591
             }
           },
           "id": "prt_1ff727178001GS0ddiLAyvEFDE",
           "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
           "messageID": "msg_1ff7268ff002poWVH0lyRpCWxg"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "44f01c022b62ff3aae79baaa4dbe22afc2dbe5fe",
+          "type": "step-finish",
+          "tokens": {
+            "total": 300176,
+            "input": 1182,
+            "output": 240,
+            "reasoning": 2,
+            "cache": {
+              "write": 0,
+              "read": 298752
+            }
+          },
+          "cost": 0.001218756,
+          "id": "prt_1ff72a81c001y573btMExTA7od",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff7268ff002poWVH0lyRpCWxg"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1ff6a08d6001Hy2ir57Myzbmt0",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001084362,
+        "tokens": {
+          "total": 300553,
+          "input": 455,
+          "output": 187,
+          "reasoning": 7,
+          "cache": {
+            "write": 0,
+            "read": 299904
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1795287066754,
+          "completed": 1795287069461
+        },
+        "finish": "tool-calls",
+        "id": "msg_1ff72a8820022mc2S3D9EZop0P",
+        "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9"
+      },
+      "parts": [
+        {
+          "snapshot": "44f01c022b62ff3aae79baaa4dbe22afc2dbe5fe",
+          "type": "step-start",
+          "id": "prt_1ff72af4d001ZPCKNOCAprZCai",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff72a8820022mc2S3D9EZop0P"
+        },
+        {
+          "type": "reasoning",
+          "text": "Commit done. Update todo complete.",
+          "time": {
+            "start": 1795287068495,
+            "end": 1795287068574
+          },
+          "id": "prt_1ff72af4f00139B7bRvtQoQL2k",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff72a8820022mc2S3D9EZop0P"
+        },
+        {
+          "type": "tool",
+          "tool": "todowrite",
+          "callID": "call_c2530f05a9f74d13976b38c7",
+          "state": {
+            "status": "completed",
+            "input": {
+              "todos": [
+                {
+                  "content": "Define and implement clear-focus semantics in emitter/DSL and DOM",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Clarify focus-ordering contract in specs and add ordering tests",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Accept ADR-0018 and update index/spec/status references",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Run focused Rust/Java/TS tests and reference checks",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Commit the ADR acceptance and contract fixes",
+                  "status": "completed",
+                  "priority": "medium"
+                }
+              ]
+            },
+            "output": "[\n  {\n    \"content\": \"Define and implement clear-focus semantics in emitter/DSL and DOM\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Clarify focus-ordering contract in specs and add ordering tests\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Accept ADR-0018 and update index/spec/status references\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Run focused Rust/Java/TS tests and reference checks\",\n    \"status\": \"completed\",\n    \"priority\": \"high\"\n  },\n  {\n    \"content\": \"Commit the ADR acceptance and contract fixes\",\n    \"status\": \"completed\",\n    \"priority\": \"medium\"\n  }\n]",
+            "metadata": {
+              "todos": [
+                {
+                  "content": "Define and implement clear-focus semantics in emitter/DSL and DOM",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Clarify focus-ordering contract in specs and add ordering tests",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Accept ADR-0018 and update index/spec/status references",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Run focused Rust/Java/TS tests and reference checks",
+                  "status": "completed",
+                  "priority": "high"
+                },
+                {
+                  "content": "Commit the ADR acceptance and contract fixes",
+                  "status": "completed",
+                  "priority": "medium"
+                }
+              ],
+              "truncated": false
+            },
+            "title": "0 todos",
+            "time": {
+              "start": 1795287069329,
+              "end": 1795287069331
+            }
+          },
+          "id": "prt_1ff72af9f001vkRtZIlga02RLC",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff72a8820022mc2S3D9EZop0P"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "44f01c022b62ff3aae79baaa4dbe22afc2dbe5fe",
+          "type": "step-finish",
+          "tokens": {
+            "total": 300553,
+            "input": 455,
+            "output": 187,
+            "reasoning": 7,
+            "cache": {
+              "write": 0,
+              "read": 299904
+            }
+          },
+          "cost": 0.001084362,
+          "id": "prt_1ff72b2d8001SM59gcj5BxH8bY",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff72a8820022mc2S3D9EZop0P"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1ff6a08d6001Hy2ir57Myzbmt0",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.001181964,
+        "tokens": {
+          "total": 301100,
+          "input": 458,
+          "output": 198,
+          "reasoning": 156,
+          "cache": {
+            "write": 0,
+            "read": 300288
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1795287069498,
+          "completed": 1795287074787
+        },
+        "finish": "stop",
+        "id": "msg_1ff72b33a002xTeGM5bFXOY9zI",
+        "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9"
+      },
+      "parts": [
+        {
+          "snapshot": "44f01c022b62ff3aae79baaa4dbe22afc2dbe5fe",
+          "type": "step-start",
+          "id": "prt_1ff72bcba001GPeu4nAFHxbrv6",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff72b33a002xTeGM5bFXOY9zI"
+        },
+        {
+          "type": "reasoning",
+          "text": "Final response: concise summary, commit hash, tests, note no push, restart Quarkus. Mention ADR now accepted. Also maybe \"guidance\" resolved. Need not overdo. Include:\n- ADR-0018 accepted (status/index).\n- clear-focus: `.focused(false)` emits B=0; DOM A=0/B=0; order after target ops; Home/End.\n- Tests: Java modules, Rust core, TS 316, E2E 4 both browsers, references.\n- Commit d88922a5; working tree clean.\n- Server needs restart for new bundle b183.\n\nCheck working tree clean? `git status --short` after commit was empty (only log). Good.\n\nFinal < 15 lines.",
+          "time": {
+            "start": 1795287071932,
+            "end": 1795287073219
+          },
+          "id": "prt_1ff72bcbc001VS1Bjk6CoL871g",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff72b33a002xTeGM5bFXOY9zI"
+        },
+        {
+          "type": "text",
+          "text": "ADR-0018 is now **Accepted**, with the contract gaps closed.\n\n- `.focused(false)` now emits `SET_FOCUS B=0` for that node; the emitter orders requests after the target’s tree/property ops so a moving focus never clears the new target.\n- The DOM client supports `A=0/B=0` global clear and same-batch create/insert + focus.\n- Added Home/End handling to the demo list.\n- Added Java/TS/Rust clear-focus and ordering tests, updated specs/status, and regenerated the DOM bundle.\n- Verified: TypeScript 316 tests, Java view-core/demo tests, Rust core conformance, reference checks, and the Chromium/WebKit focus E2E suite.\n\nCommit: `d88922a5` — working tree clean, not pushed. Restart Quarkus to serve `dom-renderer-b183eb8a5fac.js`.",
+          "time": {
+            "start": 1795287073220,
+            "end": 1795287074650
+          },
+          "id": "prt_1ff72c1c4001gIktQ060O2biXw",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff72b33a002xTeGM5bFXOY9zI"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "44f01c022b62ff3aae79baaa4dbe22afc2dbe5fe",
+          "type": "step-finish",
+          "tokens": {
+            "total": 301100,
+            "input": 458,
+            "output": 198,
+            "reasoning": 156,
+            "cache": {
+              "write": 0,
+              "read": 300288
+            }
+          },
+          "cost": 0.001181964,
+          "id": "prt_1ff72c79f0012wpyCyzdWM4jCI",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff72b33a002xTeGM5bFXOY9zI"
         }
       ]
     }
