@@ -18,19 +18,19 @@
       "deletions": 0,
       "files": 0
     },
-    "cost": 1.2840034020000002,
+    "cost": 1.2859109640000002,
     "tokens": {
-      "input": 4556587,
-      "output": 124183,
-      "reasoning": 220322,
+      "input": 4558178,
+      "output": 124515,
+      "reasoning": 220616,
       "cache": {
-        "read": 131270784,
+        "read": 131701888,
         "write": 0
       }
     },
     "time": {
       "created": 1795157753627,
-      "updated": 1795285966438
+      "updated": 1795285981937
     }
   },
   "messages": [
@@ -55248,21 +55248,24 @@
           "cwd": "/Users/michael/Development/michaelkrog/Pathland",
           "root": "/Users/michael/Development/michaelkrog/Pathland"
         },
-        "cost": 0,
+        "cost": 0.001065138,
         "tokens": {
-          "input": 0,
-          "output": 0,
-          "reasoning": 0,
+          "total": 216438,
+          "input": 591,
+          "output": 291,
+          "reasoning": 260,
           "cache": {
-            "read": 0,
-            "write": 0
+            "write": 0,
+            "read": 215296
           }
         },
         "modelID": "deepseek-v4.1-flash",
         "providerID": "opencode-go",
         "time": {
-          "created": 1795285966437
+          "created": 1795285966437,
+          "completed": 1795285981905
         },
+        "finish": "tool-calls",
         "id": "msg_1ff61de65002x5994SMh3isbpW",
         "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9"
       },
@@ -55290,21 +55293,127 @@
           "tool": "bash",
           "callID": "call_3893e3c3e9b04085ae97bcce",
           "state": {
-            "metadata": {
-              "output": ""
-            },
-            "status": "running",
+            "status": "completed",
             "input": {
               "command": "git commit -F - <<'EOF'\nfeat(focus): add keyboard list navigation and app-driven focus\n\nAdd META::SET_FOCUS and canonical key events across the Rust/Java/TS protocol bindings. The Kotlin DSL gains .focusable/.focused/.onFocusChanged/.onKeyDown; the emitter routes focus/key inputs and emits focus requests after the frame's tree deltas. LazyVStack/LazyHStack accept a pinned index and visible-range hook so a roving row stays mounted.\n\nThe DOM client reports keys/focus only to nodes that explicitly declare the listener bits, preserves native focus across keyed window moves, reveals focused rows minimally (smooth unless reduced motion), and disables scroll anchoring on lazy scroll containers. SSR emits explicit native tab stops and honors SLIDER STEP_VALUE; the demo volume slider uses a 5% keyboard step.\n\nUpdate specs, ADR-0018, status, conformance, and SSR fixtures, and rebuild the content-hashed DOM bundle.\nEOF\ngit status --short | head -20; git log --oneline -1",
               "workdir": "/Users/michael/Development/michaelkrog/Pathland"
             },
+            "output": "[feat/keyboard-list-navigation b383a0e4] feat(focus): add keyboard list navigation and app-driven focus\n 79 files changed, 1623 insertions(+), 117 deletions(-)\n create mode 100644 docs/decisions/0018-app-driven-focus-requests.md\n delete mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-448f9c15c86f.js\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-b4f3c1368dad.js\n delete mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-448f9c15c86f.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-b4f3c1368dad.js\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/FocusEvents.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Keys.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/engine/KeyInput.kt\n create mode 100644 lib/typescript/e2e/focus.spec.ts\n create mode 100644 lib/typescript/test/keyboard.test.ts\nb383a0e4 feat(focus): add keyboard list navigation and app-driven focus\n",
+            "metadata": {
+              "output": "[feat/keyboard-list-navigation b383a0e4] feat(focus): add keyboard list navigation and app-driven focus\n 79 files changed, 1623 insertions(+), 117 deletions(-)\n create mode 100644 docs/decisions/0018-app-driven-focus-requests.md\n delete mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-448f9c15c86f.js\n create mode 100644 lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-b4f3c1368dad.js\n delete mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-448f9c15c86f.js\n create mode 100644 lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-b4f3c1368dad.js\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/FocusEvents.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/core/Keys.kt\n create mode 100644 lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/engine/KeyInput.kt\n create mode 100644 lib/typescript/e2e/focus.spec.ts\n create mode 100644 lib/typescript/test/keyboard.test.ts\nb383a0e4 feat(focus): add keyboard list navigation and app-driven focus\n",
+              "exit": 0,
+              "truncated": false
+            },
+            "title": "git commit -F - <<'EOF'\nfeat(focus): add keyboard list navigation and app-driven focus\n\nAdd META::SET_FOCUS and canonical key events across the Rust/Java/TS protocol bindings. The Kotlin DSL gains .focusable/.focused/.onFocusChanged/.onKeyDown; the emitter routes focus/key inputs and emits focus requests after the frame's tree deltas. LazyVStack/LazyHStack accept a pinned index and visible-range hook so a roving row stays mounted.\n\nThe DOM client reports keys/focus only to nodes that explicitly declare the listener bits, preserves native focus across keyed window moves, reveals focused rows minimally (smooth unless reduced motion), and disables scroll anchoring on lazy scroll containers. SSR emits explicit native tab stops and honors SLIDER STEP_VALUE; the demo volume slider uses a 5% keyboard step.\n\nUpdate specs, ADR-0018, status, conformance, and SSR fixtures, and rebuild the content-hashed DOM bundle.\nEOF\ngit status --short | head -20; git log --oneline -1",
             "time": {
-              "start": 1795285972891
+              "start": 1795285972891,
+              "end": 1795285981783
             }
           },
           "id": "prt_1ff61f0aa001i29UL1KNU3ssfb",
           "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
           "messageID": "msg_1ff61de65002x5994SMh3isbpW"
+        },
+        {
+          "reason": "tool-calls",
+          "snapshot": "1a2cc3f4a7b97707b842f61a86ff94affa931696",
+          "type": "step-finish",
+          "tokens": {
+            "total": 216438,
+            "input": 591,
+            "output": 291,
+            "reasoning": 260,
+            "cache": {
+              "write": 0,
+              "read": 215296
+            }
+          },
+          "cost": 0.001065138,
+          "id": "prt_1ff621a99001w1vltFqj7SE7gB",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff61de65002x5994SMh3isbpW"
+        }
+      ]
+    },
+    {
+      "info": {
+        "parentID": "msg_1ff6179ce001h63AbGoDfO7yQP",
+        "role": "assistant",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/Users/michael/Development/michaelkrog/Pathland",
+          "root": "/Users/michael/Development/michaelkrog/Pathland"
+        },
+        "cost": 0.000842424,
+        "tokens": {
+          "total": 216883,
+          "input": 1000,
+          "output": 41,
+          "reasoning": 34,
+          "cache": {
+            "write": 0,
+            "read": 215808
+          }
+        },
+        "modelID": "deepseek-v4.1-flash",
+        "providerID": "opencode-go",
+        "time": {
+          "created": 1795285981937,
+          "completed": 1795285984070
+        },
+        "finish": "stop",
+        "id": "msg_1ff621af1001e0uq9b1JL3Wwzq",
+        "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9"
+      },
+      "parts": [
+        {
+          "snapshot": "1a2cc3f4a7b97707b842f61a86ff94affa931696",
+          "type": "step-start",
+          "id": "prt_1ff6220b4001IqOv7i2dckEXYU",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff621af1001e0uq9b1JL3Wwzq"
+        },
+        {
+          "type": "reasoning",
+          "text": "Committed. Working tree clean? status output only commit lines, no status. Good. Need final concise: commit hash. Maybe mention all changes included. No push.",
+          "time": {
+            "start": 1795285983414,
+            "end": 1795285983732
+          },
+          "id": "prt_1ff6220b60017j0sDxrNz2ZMDo",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff621af1001e0uq9b1JL3Wwzq"
+        },
+        {
+          "type": "text",
+          "text": "Committed as `b383a0e4`:\n\n`feat(focus): add keyboard list navigation and app-driven focus`\n\n79 files changed; working tree is clean. Not pushed.",
+          "time": {
+            "start": 1795285983734,
+            "end": 1795285983960
+          },
+          "id": "prt_1ff6221f5001x2auj8htxOX0rS",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff621af1001e0uq9b1JL3Wwzq"
+        },
+        {
+          "reason": "stop",
+          "snapshot": "1a2cc3f4a7b97707b842f61a86ff94affa931696",
+          "type": "step-finish",
+          "tokens": {
+            "total": 216883,
+            "input": 1000,
+            "output": 41,
+            "reasoning": 34,
+            "cache": {
+              "write": 0,
+              "read": 215808
+            }
+          },
+          "cost": 0.000842424,
+          "id": "prt_1ff622312001x6b5B4xztqTlK9",
+          "sessionID": "ses_e084280e4ffeqlLkZz5tb2R6e9",
+          "messageID": "msg_1ff621af1001e0uq9b1JL3Wwzq"
         }
       ]
     }
