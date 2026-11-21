@@ -801,6 +801,41 @@ describe("applyBatch · META + design tokens + string props", () => {
     expect(style?.textContent).toContain(":root{--pl-font-body-family:'Inter';}");
   });
 
+  it("META SET_FOCUS A=0 clears the active focus target", () => {
+    const target = document.createElement("div");
+    target.setAttribute("tabindex", "0");
+    document.body.append(target);
+    const r = renderer();
+    r.byId.set(32, target);
+
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_FOCUS, 0, 32, 1, 0]])), r);
+    expect(document.activeElement).toBe(target);
+
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_FOCUS, 0, 0, 0, 0]])), r);
+    expect(document.activeElement).not.toBe(target);
+    target.remove();
+  });
+
+  it("applies SET_FOCUS after the target is created in the same batch", () => {
+    const parent = document.createElement("div");
+    parent.setAttribute("data-pathland-id", "32");
+    document.body.append(parent);
+    const r = renderer();
+    r.byId.set(32, parent);
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 33, COMPONENT_BUTTON],
+          [CAT_TREE, CMD_INSERT_CHILD, 0, 32, 33, 0],
+          [CAT_META, CMD_SET_FOCUS, 0, 33, 1, 0],
+        ]),
+      ),
+      r,
+    );
+    expect(document.activeElement).toBe(r.byId.get(33));
+    parent.remove();
+  });
+
   it("META SET_FOCUS focuses the target element", () => {
     const target = document.createElement("div");
     target.setAttribute("tabindex", "0");

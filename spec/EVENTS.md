@@ -190,9 +190,11 @@ Pointer events carry a viewport-relative point in **logical points** (`B`=x,
   controls remain non-focusable. Scroll containers are not tab stops
   (`tabindex="-1"`); a roving list row is the list's single tab stop.
 - **Focus requests**: the application moves focus with `META::SET_FOCUS`
-  (guest → host; see [OPCODE.md](./OPCODE.md#focus-requests)). Renderers apply
-  it after the frame's tree/property deltas and MUST focus a target that was
-  just made focusable in the same frame.
+  (guest → host; see [OPCODE.md](./OPCODE.md#focus-requests)). The emitter MUST
+  order the request after the target's tree/property deltas; renderers apply
+  opcodes in stream order and MUST focus a target that was just made focusable
+  in the same frame. `B = 0` clears that node's focus; `A = 0`, `B = 0` clears
+  the current focus.
 - **Focus reveal**: a renderer must reveal a newly focused node by scrolling
   only the nearest edge into view (one row, not the viewport center) and should
   animate the reveal unless the user requested reduced motion. Browser-native

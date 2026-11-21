@@ -122,9 +122,9 @@ build) carries no JNA.
 - **Keyboard focus + lazy pinning (ADR-0018, #204 JVM/web)**: `RenderResult`
   exposes `focusInputs`/`keyInputs`; `InputDispatcher` routes `FOCUS_CHANGED`
   and `KEY_DOWN`; the emitter emits `META::SET_FOCUS` for `.focused(...)` after
-  the frame's tree/property deltas. `LazyVStack`/`LazyHStack` accept a pinned
-  index (contiguous window union) and an `onVisibleRange` hook for app-side
-  clamp policy.
+  the target's tree/property deltas and emits a clear when the binding becomes
+  false. `LazyVStack`/`LazyHStack` accept a pinned index (contiguous window
+  union) and an `onVisibleRange` hook for app-side clamp policy.
 - **Persisted state**: `Component` base class + `val count by state(0)`
   (auto-keyed by property name) or `state(0, "key")`; a `mutableState(0)` signal
   form for two-way controls.

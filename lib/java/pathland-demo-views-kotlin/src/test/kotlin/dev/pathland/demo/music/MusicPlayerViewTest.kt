@@ -581,7 +581,8 @@ class MusicPlayerViewTest {
 
         val moved = mounted.sink.frame()
         val focusOp = moved.opcodes().single {
-            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS &&
+                it.b() != 0
         }
         assertTrue(focusOp.a() != focused.single(), "focus moved to the next row")
         assertEquals(1, focusOp.b())
@@ -592,5 +593,19 @@ class MusicPlayerViewTest {
             mounted.store.load("player.track:session-1", Integer::class.java).get(),
             "Enter plays the focused row",
         )
+
+        dispatcher.dispatch(Event.keyDown(focusOp.a(), Keys.END, 0, 0))
+        val end = mounted.sink.frame().opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS &&
+                it.b() != 0
+        }
+        assertTrue(end.a() != focusOp.a(), "End moves focus to the last row")
+
+        dispatcher.dispatch(Event.keyDown(end.a(), Keys.HOME, 0, 0))
+        val home = mounted.sink.frame().opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS &&
+                it.b() != 0
+        }
+        assertTrue(home.a() != end.a(), "Home moves focus away from the last row")
     }
 }

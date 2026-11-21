@@ -313,7 +313,7 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
 | `.allowsHitTesting(_:)` | `ALLOWS_HIT_TESTING` 0x102F | U8 (0/1) | one |
 | `.controlSize(_:)` | `CONTROL_SIZE` 0x200C | ENUM (`Small`=0, `Regular`=1, `Large`=2) | one |
 | `.focusable(_:)` | — (via `FOCUS` listener) | — | none (declares `EVENT_LISTENERS` bit 5; makes the node a focus target) |
-| `.focused(_:)` | — (via `META::SET_FOCUS`) | — | a focus request while the bound value is true |
+| `.focused(_:)` | — (via `META::SET_FOCUS`) | — | a focus request while the bound value is true; a true→false transition clears that node's focus |
 | `.onFocusChanged(_:)` | — (via `FOCUS` listener) | — | observer for `EVENT::FOCUS_CHANGED` |
 | `.onKeyDown` / `onKeyPress` | — (via `KEY_DOWN` listener) | — | none (declares `EVENT_LISTENERS` bit 3) |
 | `.accessibilityLabel(_:)` | `LABEL` 0x200A | STRING | one (arenaRef) |
@@ -335,8 +335,9 @@ plus accessibility. These are the "semantic" (`0x2000`) properties.
   `FOCUS` listener bit (`EVENT_LISTENERS`, bit 5) and observes
   `EVENT::FOCUS_CHANGED` — see [EVENTS.md](./EVENTS.md). Renderers expose a
   node with this bit as a native focus target/tab stop. `.focused` is the
-  app-driven focus request (`META::SET_FOCUS`); it does not itself retain
-  selection or application state. `.onKeyDown` declares the `KEY_DOWN` bit and
+  app-driven focus request (`META::SET_FOCUS`); a true→false transition emits a
+  clear for that node, and it does not itself retain selection or application
+  state. `.onKeyDown` declares the `KEY_DOWN` bit and
   receives canonical key events while the node is focused.
 - **`ROLE`** is **semantic structure only** — its enumerated values are defined
   in [OPCODE.md](./OPCODE.md#semantic-properties), not here. Interactive/control

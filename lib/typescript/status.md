@@ -26,7 +26,8 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   rich spans. Full rebuild on payload change; the optional surgical `Range`
   fast path is deferred.
 - **Window metadata**: the DOM client applies `META::SET_WINDOW_METADATA` at runtime — `TITLE` → `document.title`, `DESCRIPTION` → meta description, `LOCALE` → `<html lang>`; empty clears to the renderer default. `LABEL` also names buttons and slider inputs; the media shell is `aria-hidden`.
-- **Keyboard focus (ADR-0018)**: `META::SET_FOCUS` focuses/blurs a node by id.
+- **Keyboard focus (ADR-0018)**: `META::SET_FOCUS` focuses/blurs a node by id;
+  `A=0, B=0` clears the currently focused element.
   A node whose `EVENT_LISTENERS` carries the `FOCUS` bit gets `tabindex="0"`
   (and a `data-pathland-focusable` marker); removing it clears the tab stop.
   `FOCUS_CHANGED` is reported for any focused node (editing remains text-input

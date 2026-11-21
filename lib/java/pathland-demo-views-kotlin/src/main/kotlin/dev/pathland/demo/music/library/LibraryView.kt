@@ -167,6 +167,8 @@ internal class LibraryView : Component() {
         when (key.keyCode) {
             Keys.ARROW_UP -> service.focusedIndex.set((index - 1).coerceAtLeast(0))
             Keys.ARROW_DOWN -> service.focusedIndex.set((index + 1).coerceAtMost(total - 1))
+            Keys.HOME -> service.focusedIndex.set(0)
+            Keys.END -> service.focusedIndex.set((total - 1).coerceAtLeast(0))
             Keys.ENTER -> service.selectTrack(index)
             Keys.SPACE -> service.togglePlay()
         }

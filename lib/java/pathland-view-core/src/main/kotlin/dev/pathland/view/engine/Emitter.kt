@@ -549,10 +549,15 @@ class Emitter {
     fun renderFull() {
         check(mounted) { "Emitter not mounted" }
         guardUniqueIds()
+        val previousFocus = lastFocusedId
+        lastFocusedId = 0
         sink.beginFrame()
         emitTheme()
         emitWindowMetadata(true)
         emitNode(tree!!)
+        if (lastFocusedId == 0 && previousFocus != 0) {
+            sink.setFocus(previousFocus, false)
+        }
         sink.endFrame()
     }
 
@@ -1013,17 +1018,21 @@ class Emitter {
         } else {
             reconcileChildren(fresh, old.children, fresh.children, ops)
         }
+        // @ref spec/OPCODE.md#focus-requests [implements] — focus follows the target ops; false clears
         // Focus requests are appended after the row exists in this frame. If the
         // target is a newly materialized lazy row, its CREATE already ran above.
-        fresh.focusBinding?.let { focusBinding ->
-            val id = fresh.id
-            val focused = Signals.untracked { focusBinding.get() }
-            if (focused && lastFocusedId != id) {
-                ops.add(Runnable {
-                    sink.setFocus(id, true)
-                    lastFocusedId = id
-                })
+        // The focused id is updated when the op is scheduled so a later clear
+        // cannot blur a target that was requested earlier in the same frame.
+        val focusId = fresh.id
+        val focused = fresh.focusBinding?.let { Signals.untracked { it.get() } } == true
+        if (focused) {
+            if (lastFocusedId != focusId) {
+                lastFocusedId = focusId
+                ops.add(Runnable { sink.setFocus(focusId, true) })
             }
+        } else if (lastFocusedId == focusId) {
+            lastFocusedId = 0
+            ops.add(Runnable { sink.setFocus(focusId, false) })
         }
     }
 
@@ -1096,12 +1105,13 @@ class Emitter {
             ops.add(Runnable { sink.setDate(id, days, millis) })
         }
         if (node.focusBinding?.let { Signals.untracked { it.get() } } == true) {
-            ops.add(Runnable {
-                if (lastFocusedId != id) {
-                    sink.setFocus(id, true)
-                    lastFocusedId = id
-                }
-            })
+            if (lastFocusedId != id) {
+                lastFocusedId = id
+                ops.add(Runnable { sink.setFocus(id, true) })
+            }
+        } else if (lastFocusedId == id) {
+            lastFocusedId = 0
+            ops.add(Runnable { sink.setFocus(id, false) })
         }
         var childIndex = 0
         for (child in node.children) {

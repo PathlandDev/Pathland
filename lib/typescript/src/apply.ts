@@ -772,14 +772,29 @@ function applyMeta(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
       break;
     }
     case CMD_SET_FOCUS: {
+      // @ref spec/OPCODE.md#focus-requests [implements] — focus/clear by node id
       // Guest → host focus request (spec/EVENTS.md §Keyboard): focus by node id.
+      if (op.b === 0) {
+        if (op.a === 0) {
+          const active = document.activeElement;
+          if (
+            active instanceof HTMLElement &&
+            active !== document.body &&
+            active !== document.documentElement
+          ) {
+            active.blur();
+          }
+        } else {
+          const target = r.byId.get(op.a);
+          if (target instanceof HTMLElement && document.activeElement === target) {
+            target.blur();
+          }
+        }
+        break;
+      }
       const target = r.byId.get(op.a);
       if (target instanceof HTMLElement) {
-        if (op.b !== 0) {
-          focusAndReveal(target);
-        } else if (document.activeElement === target) {
-          target.blur();
-        }
+        focusAndReveal(target);
       }
       break;
     }

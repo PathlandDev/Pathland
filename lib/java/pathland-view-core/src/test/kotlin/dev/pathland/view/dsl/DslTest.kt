@@ -665,6 +665,82 @@ class DslTest {
         assertTrue(focusOp.a() != 0 && focusOp.a() != result.rootId())
     }
 
+
+    @Test
+    fun focusedTrueAfterMountFollowsTheTargetsTreeAndPropertyOps() {
+        val sink = FrameOpcodeSink()
+        Emitter(sink).mount(
+            VStack {
+                Text("a").focusable().focused(true)
+            },
+            Environment.DEFAULT,
+        )
+        val ops = sink.frame().opcodes()
+        val focusIndex = ops.indexOfFirst {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }
+        assertTrue(focusIndex >= 0)
+        val focus = ops[focusIndex]
+        assertEquals(1, focus.b())
+        val createIndex = ops.indexOfFirst {
+            it.category() == Categories.TREE &&
+                it.command() == Commands.Tree.CREATE_NODE &&
+                it.a() == focus.a()
+        }
+        val lastTargetOp = ops.indexOfLast {
+            it.a() == focus.a() &&
+                (it.category() == Categories.TREE || it.category() == Categories.PARAMETER)
+        }
+        assertTrue(createIndex >= 0, "the target is created in this frame")
+        assertTrue(lastTargetOp < focusIndex, "SET_FOCUS follows the target's ops: $ops")
+    }
+
+    @Test
+    fun focusedFalseClearsTheLastFocusRequest() {
+        val focus = signal(true)
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        emitter.mount(
+            VStack {
+                Text("a").focusable().focused(focus)
+            },
+            Environment.DEFAULT,
+        )
+        val target = sink.frame().opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }.a()
+
+        focus.value = false
+        val clear = sink.frame().opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }
+        assertEquals(target, clear.a())
+        assertEquals(0, clear.b())
+    }
+
+    @Test
+    fun movingFocusDoesNotClearTheNewTargetWhenItWasReconciledFirst() {
+        val first = signal(false)
+        val second = signal(true)
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        emitter.mount(
+            VStack {
+                Text("a").focusable().focused(first)
+                Text("b").focusable().focused(second)
+            },
+            Environment.DEFAULT,
+        )
+
+        first.value = true
+        second.value = false
+        val focusOps = sink.frame().opcodes().filter {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }
+        assertEquals(1, focusOps.size, "only the new target is requested")
+        assertEquals(1, focusOps.single().b())
+    }
+
     @Test
     fun lazyStackPinsAFarIndexIntoTheEmittedWindow() {
         val items = signal((0 until 100).map { "item-$it" })

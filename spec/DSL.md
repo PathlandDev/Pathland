@@ -1014,7 +1014,7 @@ anchors. Transforms do not affect layout.
 | `environment` | `.environment(_:_:)` | `.modifiers(environmentBinding(e -> e.key(EnvironmentKey).value(value)))` | environment-scoped (a typed `EnvironmentKey`, nearest-wins); no wire property |
 | `windowMetadata` | (platform shell metadata) | `.modifiers(windowMetadata(w -> w.title(signal).description(signal).locale(value)))` | `META::SET_WINDOW_METADATA` fields (`TITLE`/`DESCRIPTION`/`LOCALE`) — renderer maps them to its window chrome |
 | `focusable` | `.focusable(_:)` | `.focusable(enabled)` | **no property** — declares `FOCUS` listener bit 5; makes the node a tab stop |
-| `focused` | `.focused(_:)` | `.focused(signal)` / `.focused(boolean)` | `META::SET_FOCUS` while true |
+| `focused` | `.focused(_:)` | `.focused(signal)` / `.focused(boolean)` | `META::SET_FOCUS` while true; false clears that node |
 | `onFocusChanged` | `.onFocusChanged(_:)` | `.onFocusChanged { focused -> … }` | observes `FOCUS_CHANGED` (declares the `FOCUS` bit) |
 | `onKeyDown` | `onKeyPress` | `.onKeyDown { key -> … }` | declares `KEY_DOWN`; canonical `KeyEvent(keyCode, modifiers, repeat)` |
 | raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifiers(pointerEvents(p -> p.mask(int)))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |

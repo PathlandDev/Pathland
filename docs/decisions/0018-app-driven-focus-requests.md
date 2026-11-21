@@ -1,6 +1,6 @@
 # ADR-0018: App-driven focus requests for keyboard navigation
 
-**Status:** Proposed
+**Status:** Accepted
 **Recorded:** 2026-11-20
 **Scope:** Wire protocol (`META`), JVM/Rust/TypeScript bindings, authoring DSL, HTML/DOM renderers, lazy-stack focus pinning
 **Supersedes:** None (extends ADR-0004 and ADR-0014)
@@ -36,16 +36,20 @@ Alternative approaches were considered but are not the selected model here:
 Add a guest-to-host focus request and keep focus itself renderer-owned:
 
 - `META::SET_FOCUS` requests focus for one node (`A` = node id; `B` = 1 to focus,
-  0 to clear). It is applied after the frame's structural and property deltas so
-  the target can be materialized and focusable first.
+  0 to clear; `A = 0`, `B = 0` clears the current focus). It follows the
+  target's structural and property deltas in the emitted frame so the target
+  can be materialized and focusable first; renderers apply commands in stream
+  order.
 - Focus remains renderer state. Renderers continue to report actual focus with
   `EVENT::FOCUS_CHANGED` for nodes that declared the `FOCUS` listener bit.
 - Declaring the `FOCUS` listener bit makes a node focusable/tabbable; the app
   uses that to provide a single roving tab stop on the selected row.
+- A `.focused` binding going from true to false emits a clear request for that
+  node; an app may also request an explicit global clear.
 - Apps observe focus with `.onFocusChanged`, handle keys with `.onKeyDown`, and
   request focus by binding `.focused(...)` to the target row.
-- Canonical key codes are defined by the specification and shared by the DOM,
-  GTK, and Qt renderers.
+- Canonical key codes are defined by the specification; every renderer that
+  reports `KEY_DOWN`/`KEY_UP` maps its platform keys onto that set.
 - ADR-0014's focused-row pinning keeps the focused row in the lazy window. Apps
   must bound the pin so a far-away focused row cannot defeat virtualization.
 
@@ -70,7 +74,7 @@ contract"); this record only fixes the architectural direction.
 
 The SwiftUI `List` vs `ScrollView`/`LazyVStack` behavior and the demo's current
 structure are documented evidence. The choice of a focus request over the listed
-alternatives is a proposal, not an inferred historical decision.
+alternatives is recorded here, not inferred from historical code.
 
 ## Alternatives
 
@@ -92,8 +96,9 @@ alternatives is a proposal, not an inferred historical decision.
   focusability and key delivery; GTK and Qt parity are follow-ups.
 - Lazy stacks gain an app-supplied pin and a bounded union policy. Without the
   bound, pinning a far-away row emits the whole O(gap) window.
+- Focus clear is part of the request contract; a binding that becomes false must
+  emit a clear rather than relying on a later structural update.
 - Apps must keep focus and playback/selection distinct where they differ.
-- A Proposed decision does not change the current contract until accepted.
 
 ## Sources and current contract
 

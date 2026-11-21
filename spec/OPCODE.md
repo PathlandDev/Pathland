@@ -482,7 +482,7 @@ element.
 | `SET_COLOR_SCHEME` | `0x06` | mode | 0 | 0 | **Draft.** Renderer-wide color-scheme override (guest → host): `0` = platform-derived (default), `1` = light, `2` = dark. The renderer re-resolves every token-referencing property; while forced, platform scheme changes are ignored. See [TOKENS.md](./TOKENS.md#color-schemes-light--dark). |
 | `RESET_THEME` | `0x07` | 0 | 0 | 0 | **Draft.** Clear every application design-token override (base + `dark.*`) and re-resolve against renderer defaults (guest → host). Emit before a replacement theme's `SET_DESIGN_TOKEN` opcodes in the same frame. |
 | `SET_WINDOW_METADATA` | `0x08` | fieldId (u16, low) | field value | 0 | **Draft.** Presentation metadata for the host window/surface that owns the stream (guest → host) — see [Window metadata](#window-metadata). |
-| `SET_FOCUS` | `0x09` | targetId | focused (0/1) | 0 | **Draft.** Request keyboard focus for a node, or clear focus (guest → host). Applied after the frame's TREE/PARAMETER deltas; focus remains renderer state and is observed through `EVENT::FOCUS_CHANGED` — see [EVENTS.md §Keyboard](./EVENTS.md#keyboard). |
+| `SET_FOCUS` | `0x09` | targetId | focused (0/1) | 0 | **Draft.** Request keyboard focus for a node, or clear focus (guest → host). `SET_FOCUS` follows the target's TREE/PARAMETER ops in the same frame; focus remains renderer state and is observed through `EVENT::FOCUS_CHANGED` — see [EVENTS.md §Keyboard](./EVENTS.md#keyboard). |
 
 #### Environment fields
 
@@ -539,13 +539,15 @@ re-emitted in a full snapshot (`META::RESYNC`).
 
 `META::SET_FOCUS` is the app-driven focus request used by roving list focus and
 keyboard navigation (ADR-0018). `A` is the target node id; `B = 1` asks the
-renderer to focus it, `B = 0` clears focus (the app may pass `A = 0`). The
-target MUST be emitted no later than the same frame, and the renderer MUST apply
-the focus after that frame's TREE/PARAMETER deltas so the target exists and is
-focusable. Focus is exclusive renderer state; this command does not retain
-application state. A node becomes a keyboard focus target by declaring the
-`FOCUS` listener bit (`EVENT_LISTENERS` bit 5); renderers report actual focus
-changes with `EVENT::FOCUS_CHANGED` for those nodes.
+renderer to focus it, `B = 0` clears that node's focus. `A = 0`, `B = 0` clears
+whatever node currently has focus. The target MUST be emitted no later than the
+same frame, and the `SET_FOCUS` opcode MUST follow the target's TREE/PARAMETER
+ops so it exists and is focusable when applied. Renderers apply opcodes in
+stream order; ordering the request is the emitter's responsibility. Focus is
+exclusive renderer state; this command does not retain application state. A node
+becomes a keyboard focus target by declaring the `FOCUS` listener bit
+(`EVENT_LISTENERS` bit 5); renderers report actual focus changes with
+`EVENT::FOCUS_CHANGED` for those nodes.
 
 Semantics:
 

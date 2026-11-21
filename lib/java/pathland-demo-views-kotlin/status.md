@@ -64,7 +64,8 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
   windows instead of showing blank rows and refetching (ADR-0017).
   **Keyboard library navigation (ADR-0018)** — one roving `FOCUS` tab stop on the
   service's ephemeral `focusedIndex`; ↑/↓/Home/End move it, Enter plays, Space
-  toggles playback. `META::SET_FOCUS` moves native focus, `LazyVStack(pin=…)`
+  toggles playback. A focus move clears the previous row's focus request and
+  requests the new row in the same frame. `META::SET_FOCUS` moves native focus, `LazyVStack(pin=…)`
   keeps the focused row mounted, and the unfocused-list visible-range callback
   clamps a far pin to a visible row. Loaded and skeleton rows share the row
   shell; placeholder rows are keyboard-focusable too. Native player-bar controls
