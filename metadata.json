@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M7ZQ4Y2FT1WT0DDWA0Z6JPTC",
+  "strategy": "manual-commit",
+  "branch": "feat/keyboard-list-navigation",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "docs/decisions/0018-app-driven-focus-requests.md",
+    "docs/decisions/README.md",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/library/LibraryView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/MusicPlayerViewTest.kt",
+    "lib/java/pathland-demo-views-kotlin/status.md",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-b183eb8a5fac.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer-b4f3c1368dad.js",
+    "lib/java/pathland-quarkus/src/main/resources/META-INF/resources/_pathland/dom-renderer.current",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-b183eb8a5fac.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer-b4f3c1368dad.js",
+    "lib/java/pathland-spring-boot-starter/src/main/resources/static/_pathland/dom-renderer.current",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/engine/Emitter.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/DslTest.kt",
+    "lib/java/pathland-view-core/status.md",
+    "lib/rust/crates/pathland-core/src/conformance.rs",
+    "lib/typescript/src/apply.ts",
+    "lib/typescript/status.md",
+    "lib/typescript/test/apply.test.ts",
+    "spec/CONFORMANCE.md",
+    "spec/DSL.md",
+    "spec/EVENTS.md",
+    "spec/MODIFIERS.md",
+    "spec/OPCODE.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 118859,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 16564864,
+    "output_tokens": 17168,
+    "api_call_count": 64
+  }
+}
