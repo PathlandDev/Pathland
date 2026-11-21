@@ -1,0 +1,5 @@
+In the musicplayerdemo it is possible to navigagte to the tracklist by tabbing. But when the tracklist is in focus, it is not possible to navigate it by keyboard. That would be a natural thing. Is that nrmally supported by swiftui? How can we do so similarly?
+
+---
+
+We have this issue for focused row pinning: https://github.com/PathlandDev/Pathland/issues/204
