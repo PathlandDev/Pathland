@@ -14,7 +14,7 @@
 //! ```
 
 use pathland_core::{
-    category, color_scheme_mode, component_type, environment, event, flag, listener, meta,
+    category, color_scheme_mode, component_type, environment, event, flag, key, listener, meta,
     parameter, property_id, size, tree, value_type, value_type_for, window_field,
 };
 use std::fmt::Write;
@@ -293,8 +293,29 @@ fn emit_manifest() -> String {
         ("SET_COLOR_SCHEME", meta::SET_COLOR_SCHEME),
         ("RESET_THEME", meta::RESET_THEME),
         ("SET_WINDOW_METADATA", meta::SET_WINDOW_METADATA),
+        ("SET_FOCUS", meta::SET_FOCUS),
     ] {
         row(&mut out, "command", "Meta", name, &hex_u8(value));
+    }
+    out.push('\n');
+
+    for (name, value) in [
+        ("BACKSPACE", key::BACKSPACE),
+        ("TAB", key::TAB),
+        ("ENTER", key::ENTER),
+        ("ESCAPE", key::ESCAPE),
+        ("SPACE", key::SPACE),
+        ("PAGE_UP", key::PAGE_UP),
+        ("PAGE_DOWN", key::PAGE_DOWN),
+        ("END", key::END),
+        ("HOME", key::HOME),
+        ("ARROW_LEFT", key::ARROW_LEFT),
+        ("ARROW_UP", key::ARROW_UP),
+        ("ARROW_RIGHT", key::ARROW_RIGHT),
+        ("ARROW_DOWN", key::ARROW_DOWN),
+        ("DELETE", key::DELETE),
+    ] {
+        row(&mut out, "key", "Key", name, &hex_u16(value));
     }
     out.push('\n');
 

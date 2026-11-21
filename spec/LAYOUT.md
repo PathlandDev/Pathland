@@ -218,6 +218,10 @@ container.
   positioned by `ALIGNMENT`; a `Fill`-sized child stretches on the cross axis.
 - **Missing children** — the window need not cover every unit. Units with no
   emitted children are empty virtual space; the renderer never invents rows.
+- **Scroll stability** — a window slide must not move the absolute position of
+  surviving units. A renderer that compensates with leading/trailing virtual
+  space MUST also prevent browser scroll anchoring from second-guessing those
+  changes, so the viewport does not jump by the removed/added extent.
   Emitted children beyond `N` units are ignored.
 - **Fill propagation** — the virtual extent is the container's main-axis size;
   it does not propagate `Fill` from a window child on the main axis. Cross-axis
@@ -241,6 +245,16 @@ container.
   engine-owned and not author-configured; a small base margin applies to the
   first report and to slow scrolling. A report with no movement returns to the
   base margin. The application may still emit a larger window.
+
+**Focused-row pinning (ADR-0014/ADR-0018).** A lazy stack MAY carry an
+application-supplied pinned index. The emitted window is the contiguous union
+of the visible window and the pinned index; the pinned row stays materialized
+while the window slides so a focused native element is not deleted and
+recreated. The pin does not change the visible-range window or the scroll
+offset. Because the union is contiguous, apps MUST bound the pin (e.g. keep the
+roving focus on a visible row when the list is unfocused) so a far-away pin
+cannot force an O(gap) emission. Clearing the pin returns the window to the
+visible range.
 
 **Variable item extents.** A lazy **stack** (not a grid) MAY carry
 `ITEM_EXTENTS` (`0x0025`, LIST of F32), `FIRST_ITEM_OFFSET` (`0x0026`, F32), and

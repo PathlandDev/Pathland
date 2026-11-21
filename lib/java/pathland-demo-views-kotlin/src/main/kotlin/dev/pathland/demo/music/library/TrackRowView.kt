@@ -71,7 +71,10 @@ internal class TrackRowView(
                 .fontSize(13f)
                 .foregroundStyle(MusicPlayerView.SECONDARY_FG)
         }
-            .onTapGesture { service.selectTrack(index) }
+            .onTapGesture {
+                service.focusedIndex.set(index)
+                service.selectTrack(index)
+            }
             .accessibilityRole(Roles.LIST_ITEM)
             .background(bg)
             .foregroundStyle(fg)

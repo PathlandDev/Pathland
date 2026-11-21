@@ -1,6 +1,6 @@
 # pathland-demo-views-kotlin — implementation status
 
-**Last updated:** November 17, 2026
+**Last updated:** November 20, 2026
 
 Kotlin-owned demo views over `pathland-view-core`, with no Java-DSL dependency.
 It owns the app-driven music player and the small sponsored-proxy ad app.
@@ -62,6 +62,17 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
   Visible-range reports are coalesced latest-wins and stale pages are cached
   without rendering, so a fast scrollbar drag back and forth reuses the visited
   windows instead of showing blank rows and refetching (ADR-0017).
+  **Keyboard library navigation (ADR-0018)** — one roving `FOCUS` tab stop on the
+  service's ephemeral `focusedIndex`; ↑/↓/Home/End move it, Enter plays, Space
+  toggles playback. A focus move clears the previous row's focus request and
+  requests the new row in the same frame. `META::SET_FOCUS` moves native focus, `LazyVStack(pin=…)`
+  keeps the focused row mounted, and the unfocused-list visible-range callback
+  clamps a far pin to a visible row. Loaded and skeleton rows share the row
+  shell; placeholder rows are keyboard-focusable too. Native player-bar controls
+  are explicitly tabbable, so Tab leaves the list and reaches the transport
+  controls/seek slider under Safari's default keyboard-nav setting as well as
+  Chrome. The volume slider carries an explicit 5% `STEP_VALUE`, so each arrow
+  press moves it audibly; the seek slider stays continuous (1% per arrow).
 
 ## Verified by
 

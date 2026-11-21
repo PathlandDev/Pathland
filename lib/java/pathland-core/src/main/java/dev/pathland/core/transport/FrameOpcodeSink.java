@@ -178,4 +178,9 @@ public class FrameOpcodeSink implements OpcodeSink {
         writeString(value);
         push(Categories.META, Commands.Meta.SET_WINDOW_METADATA, 0, field, offset, 0);
     }
+
+    @Override
+    public void setFocus(int nodeId, boolean focused) {
+        push(Categories.META, Commands.Meta.SET_FOCUS, 0, nodeId, focused ? 1 : 0, 0);
+    }
 }

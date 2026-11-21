@@ -701,6 +701,9 @@ body {
   transition: background-color var(--pl-button-transition-duration), box-shadow var(--pl-button-transition-duration);
 }
 .pathland-button:hover { background-color: var(--pl-button-background-hover); }
+/* Any node made a keyboard focus target by its EVENT_LISTENERS FOCUS bit. */
+[data-pathland-focusable]:focus-visible { outline: var(--pl-control-focus-ring-width) solid var(--pl-control-accent); outline-offset: var(--pl-control-focus-ring-offset); }
+
 .pathland-button:focus-visible { outline: var(--pl-button-focus-ring-width) solid var(--pl-button-focus-ring-color); outline-offset: var(--pl-button-focus-ring-offset); }
 .pathland-button:disabled { opacity: var(--pl-opacity-disabled); pointer-events: none; }
 /* Semantic icons (ICON): the inline SVG is sized like text — `1em` follows the

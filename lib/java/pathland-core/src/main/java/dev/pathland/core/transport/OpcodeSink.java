@@ -46,6 +46,11 @@ public interface OpcodeSink {
         throw new UnsupportedOperationException("setWindowMetadata");
     }
 
+    /** Emit {@code META::SET_FOCUS} ({@code focused=false} clears focus). */
+    default void setFocus(int nodeId, boolean focused) {
+        throw new UnsupportedOperationException("setFocus");
+    }
+
     /** Whether this sink feeds a renderer that gates raw inputs on a {@code BINDING_ID}. */
     default boolean requiresBindingId() {
         return false;

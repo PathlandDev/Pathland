@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 19, 2026
+**Last updated:** November 20, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written in Kotlin. It owns the `View` SPI and shared
@@ -109,11 +109,22 @@ build) carries no JNA.
 - **Signals**: `signal`, `computed`, `constant`, `effect`, `untracked`,
   `topic(key, subject, initial)`, `Signal<T>.value`, `WritableSignal<T>.value`,
   `Signal<T>.map`, `readonly`.
+- **Slider step**: `Slider(value, range, onEditingChanged, step)` emits
+  `STEP_VALUE` when `step` is set; the renderers apply it to the native range
+  (absent = continuous `step="any"`).
 - **Modifier sugar**: `.padding`, `.frame`, `.offset`, `.position`, `.fixedSize`,
   layout priority/z-index/aspect ratio, the full text-formatting surface,
   foreground/background/border/corner radius/shadow, visual effects, transforms,
   visibility/disabled/hit-testing, accessibility, tap/pointer events,
-  environment binding, styles, window metadata, and navigation intents.
+  **`.focusable`/`.focused`/`.onFocusChanged`/`.onKeyDown`** (focus requests,
+  canonical keys), environment binding, styles, window metadata, and navigation
+  intents.
+- **Keyboard focus + lazy pinning (ADR-0018, #204 JVM/web)**: `RenderResult`
+  exposes `focusInputs`/`keyInputs`; `InputDispatcher` routes `FOCUS_CHANGED`
+  and `KEY_DOWN`; the emitter emits `META::SET_FOCUS` for `.focused(...)` after
+  the target's tree/property deltas and emits a clear when the binding becomes
+  false. `LazyVStack`/`LazyHStack` accept a pinned index (contiguous window
+  union) and an `onVisibleRange` hook for app-side clamp policy.
 - **Persisted state**: `Component` base class + `val count by state(0)`
   (auto-keyed by property name) or `state(0, "key")`; a `mutableState(0)` signal
   form for two-way controls.
@@ -149,8 +160,9 @@ build) carries no JNA.
   extent. Row-local `state(...)` is keyed by the `ForEach` item key and survives
   window eviction. The engine derives a bounded, directional prefetch from the
   `VISIBLE_RANGE` report velocity and decays to the base margin on a final
-  report (ADR-0015); the author does not configure overscan. Gaps:
-  focused-row pinning.
+  report (ADR-0015); the author does not configure overscan. Focused-row
+  pinning is implemented on the JVM/web path (issue #204); Qt and Rust DSL
+  parity remain follow-ups.
 
 ## Package boundary
 

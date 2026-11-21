@@ -1,6 +1,6 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** November 19, 2026
+**Last updated:** November 20, 2026
 
 The **pure-Java HTML renderer** (`dev.pathland.render.html`) — a behavioural
 port of the Rust `pathland-render-html` crate. Stateless: each call decodes a
@@ -10,6 +10,16 @@ is GraalVM native-image compatible (no reachability/resource config for a native
 library). Protocol contract: `spec/`.
 
 ## Implemented
+
+- **Keyboard focus attributes**: a node whose `EVENT_LISTENERS` carries the
+  `FOCUS` bit renders `tabindex="0" data-pathland-focusable=""`; scroll
+  containers render `tabindex="-1"` unless they themselves declare `FOCUS`.
+  Native control shells (button, text field/editor, slider, toggle, stepper
+  buttons, picker, date/color picker) render an explicit `tabindex="0"` so
+  Safari's default Tab policy still reaches them. `SLIDER` honors
+  `STEP_VALUE` (absent = continuous `step="any"`). Scroll containers emit
+  `overflow-anchor:none` so a lazy window's virtual padding updates stay
+  scroll-stable.
 
 - **Pure-Java renderer**: `HtmlRenderer.instance()` / `tryInstance()` /
   `isAvailable()` (always true); `render(frame, root)` /

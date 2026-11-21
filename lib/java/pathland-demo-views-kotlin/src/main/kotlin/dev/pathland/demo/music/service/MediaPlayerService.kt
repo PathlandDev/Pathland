@@ -27,6 +27,14 @@ internal class MediaPlayerService {
     val seekRequest: WritableSignal<Float> = Signals.state("player.seekRequest", 0f)
     val volumeRequest: WritableSignal<Float> = Signals.state("player.volumeRequest", 0.7f)
 
+    /**
+     * Ephemeral keyboard focus in the library (not persisted): the roving tab
+     * stop and lazy-window pin. Kept on the shared service so it survives the
+     * root `ViewThatFits` candidate swaps.
+     */
+    val focusedIndex: WritableSignal<Int> = Signals.signal(0)
+    val listFocused: WritableSignal<Boolean> = Signals.signal(false)
+
     val controller = MediaController()
     /** The demo library: the base tracks repeated to [LIBRARY_SIZE] entries. */
     val tracks: List<Track> = List(LIBRARY_SIZE) { TRACKS[it % TRACKS.size] }

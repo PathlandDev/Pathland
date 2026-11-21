@@ -19,6 +19,7 @@ import {
   CMD_RESET_THEME,
   CMD_SET_ATTRIBUTED_TEXT,
   CMD_SET_COLOR_SCHEME,
+  CMD_SET_FOCUS,
   CMD_SET_DATE,
   CMD_SET_DESIGN_TOKEN,
   CMD_SET_PROPERTY,
@@ -529,9 +530,81 @@ function validateParameter(op: Opcode, strings: Uint8Array): void {
   }
 }
 
+/** Browser focus captured across a batch so DOM moves do not drop the caret. */
+interface FocusSnapshot {
+  element: HTMLElement;
+  start: number | null;
+  end: number | null;
+  direction: "forward" | "backward" | "none" | null;
+}
+
+function captureFocus(): FocusSnapshot | null {
+  const active = document.activeElement;
+  if (
+    !(active instanceof HTMLElement) ||
+    active === document.body ||
+    active === document.documentElement ||
+    !active.isConnected
+  ) {
+    return null;
+  }
+  let start: number | null = null;
+  let end: number | null = null;
+  let direction: FocusSnapshot["direction"] = null;
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+    try {
+      start = active.selectionStart;
+      end = active.selectionEnd;
+      direction = active.selectionDirection;
+    } catch {
+      // Some input types (e.g. range, color) reject selection APIs.
+    }
+  }
+  return { element: active, start, end, direction };
+}
+
+/**
+ * Re-establish focus after a structural batch.
+ *
+ * A keyed lazy window slides by removing rows above the viewport and then
+ * MOVING every surviving row to its new index. Moving a focused element
+ * (removeChild + insertBefore) blurs it in Chromium/WebKit, so keyboard
+ * navigation inside a scrolling list would silently drop focus and the next
+ * arrow key would go nowhere. The app's explicit `SET_FOCUS` request still wins;
+ * otherwise we restore the element that was focused before the batch.
+ */
+function restoreFocus(
+  snapshot: FocusSnapshot | null,
+  explicit: HTMLElement | null | undefined,
+): void {
+  const target = explicit === undefined ? snapshot?.element ?? null : explicit;
+  if (!target || !target.isConnected) {
+    return;
+  }
+  if (document.activeElement !== target) {
+    target.focus({ preventScroll: true });
+  }
+  if (
+    snapshot &&
+    target === snapshot.element &&
+    snapshot.start !== null &&
+    snapshot.end !== null &&
+    (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)
+  ) {
+    try {
+      target.setSelectionRange(snapshot.start, snapshot.end, snapshot.direction ?? undefined);
+    } catch {
+      // The control type may not support selection ranges.
+    }
+  }
+}
+
 /** Apply every opcode in a batch to the DOM (TREE structure + PARAMETER/META deltas). */
 export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   validateBatch(batch, renderer);
+  const focusSnapshot = captureFocus();
+  // `undefined` = no focus request in this batch; `null` = explicit blur/invalid.
+  let explicitFocus: HTMLElement | null | undefined;
   // SSR snapshot fit slots (`data-pathland-fit-cands`) touched by a structural
   // removal in this batch. The gate is torn down AFTER the whole batch, gated on
   // the slot's FINAL state (issue #141): a removal that does NOT reduce the slot
@@ -551,6 +624,10 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
           break;
         case CAT_META:
           applyMeta(op, batch.strings, renderer);
+          if (op.command === CMD_SET_FOCUS) {
+            const target = op.b !== 0 ? renderer.byId.get(op.a) : null;
+            explicitFocus = target instanceof HTMLElement ? target : null;
+          }
           break;
         default:
           break;
@@ -575,6 +652,10 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   // Derived layout (fill propagation, ZStack sizing/positioning, cross-axis
   // align-self) — mirrors the Rust SSR renderer's whole-tree decisions.
   applyLayout(renderer);
+  // Restore focus before reporting lazy ranges: a row move must not turn into a
+  // spurious `FOCUS_CHANGED(false)` that lets a scroll report reset the app's
+  // focused index.
+  restoreFocus(focusSnapshot, explicitFocus);
   refreshLazyWindows(renderer);
   // A reconnect replacement rebuilds the tree from scratch; restore any captured
   // scroll offsets once their (re-created) elements exist, then re-report the
@@ -624,6 +705,29 @@ export function resetRenderedOutput(r: DomRenderer, captureScroll = true): void 
   mediaRegistry.clear();
 }
 
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * Focus a guest-requested target without the browser's default focus scrolling
+ * (Chromium centers the element, which reads as a half-viewport jump in a long
+ * list). Reveal it minimally instead: only the nearest edge scrolls, smoothly
+ * unless the user asked for reduced motion.
+ */
+function focusAndReveal(target: HTMLElement): void {
+  target.focus({ preventScroll: true });
+  if (typeof target.scrollIntoView === "function") {
+    target.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
+  }
+}
+
 function applyMeta(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
   switch (op.command) {
     case CMD_RESET:
@@ -664,6 +768,33 @@ function applyMeta(op: Opcode, strings: Uint8Array, r: DomRenderer): void {
           break;
         default:
           break;
+      }
+      break;
+    }
+    case CMD_SET_FOCUS: {
+      // @ref spec/OPCODE.md#focus-requests [implements] — focus/clear by node id
+      // Guest → host focus request (spec/EVENTS.md §Keyboard): focus by node id.
+      if (op.b === 0) {
+        if (op.a === 0) {
+          const active = document.activeElement;
+          if (
+            active instanceof HTMLElement &&
+            active !== document.body &&
+            active !== document.documentElement
+          ) {
+            active.blur();
+          }
+        } else {
+          const target = r.byId.get(op.a);
+          if (target instanceof HTMLElement && document.activeElement === target) {
+            target.blur();
+          }
+        }
+        break;
+      }
+      const target = r.byId.get(op.a);
+      if (target instanceof HTMLElement) {
+        focusAndReveal(target);
       }
       break;
     }
@@ -2543,6 +2674,13 @@ function refreshLazyPadding(el: HTMLElement): void {
   const axis = el.getAttribute("data-pathland-lazy");
   if (axis == null) {
     return;
+  }
+  // The virtual padding compensates for the window slide. Browser scroll
+  // anchoring would second-guess those padding changes and make the list jump;
+  // ensure it is off even when hydrating SSR markup from an older host.
+  const scroller = nearestScroller(el);
+  if (scroller) {
+    scroller.style.overflowAnchor = "none";
   }
   const count = lazyNumber(el, "pathlandItemCount");
   const extent = lazyNumber(el, "pathlandItemExtent");

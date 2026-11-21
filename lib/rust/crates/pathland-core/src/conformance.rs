@@ -349,6 +349,24 @@ pub(crate) const VECTORS: &[(&str, [u8; 16])] = &[
             0x00, 0x00, 0x00, 0x00, // C = 0
         ],
     ),
+    (
+        "META:SET_FOCUS (target=5, focused=1)",
+        [
+            0x04, 0x09, 0x00, 0x00, // category META, command SET_FOCUS
+            0x05, 0x00, 0x00, 0x00, // A = targetId = 5
+            0x01, 0x00, 0x00, 0x00, // B = focused = 1
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
+    (
+        "META:SET_FOCUS (target=5, focused=0)",
+        [
+            0x04, 0x09, 0x00, 0x00, // category META, command SET_FOCUS
+            0x05, 0x00, 0x00, 0x00, // A = targetId = 5
+            0x00, 0x00, 0x00, 0x00, // B = focused = 0 (clear)
+            0x00, 0x00, 0x00, 0x00, // C = 0
+        ],
+    ),
 ];
 
 #[cfg(test)]

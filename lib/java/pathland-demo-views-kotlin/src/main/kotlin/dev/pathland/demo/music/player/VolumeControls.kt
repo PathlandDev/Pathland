@@ -26,7 +26,7 @@ internal class VolumeControls : Component() {
 
         return HStack(alignment = VerticalAlignment.CENTER, spacing = 18f) {
             Icon(IconName.VOLUME).fontSize(16f)
-            Slider(volume, 0f..1f)
+            Slider(volume, 0f..1f, step = 0.05f)
                 .accessibilityLabel("Volume")
         }
     }

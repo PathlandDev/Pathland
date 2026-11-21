@@ -17,8 +17,8 @@
 use std::collections::BTreeMap;
 
 use pathland_core::{
-    Opcode, WindowMeta, border_edges, category, color_scheme_mode, component_type, meta, parameter,
-    property_id, size, tokens::Scheme, tokens::TokenValue, tree, value_type,
+    Opcode, WindowMeta, border_edges, category, color_scheme_mode, component_type, listener, meta,
+    parameter, property_id, size, tokens::Scheme, tokens::TokenValue, tree, value_type,
 };
 
 mod capi;
@@ -869,6 +869,9 @@ fn event_attrs(node: &Node) -> String {
     if let Some(m) = node.properties.get(&property_id::EVENT_LISTENERS) {
         if *m != 0 {
             attrs.push_str(&format!(" data-event-listeners=\"{m}\""));
+        }
+        if *m & listener::FOCUS != 0 {
+            attrs.push_str(" tabindex=\"0\" data-pathland-focusable=\"\"");
         }
     }
     if let Some(a) = node.properties.get(&property_id::ACTION_ID) {
@@ -1759,7 +1762,7 @@ impl HtmlRenderer {
                     children
                 };
                 let button_class = class_attr("pathland-button");
-                format!("<button{data_id}{event}{aria}{button_class}{style}>{body}</button>")
+                format!("<button{data_id} tabindex=\"0\"{event}{aria}{button_class}{style}>{body}</button>")
             }
             component_type::TOGGLE => {
                 let toggle_style = node.f32_property(property_id::TOGGLE_STYLE, 0.0).round() as u8;
@@ -1775,16 +1778,16 @@ impl HtmlRenderer {
                 let toggle_class = class_attr("pathland-toggle");
                 match toggle_style {
                     1 => format!(
-                        "<label{data_id}{event}{aria}{toggle_class}{style}><input type=\"checkbox\"{checked}>{body}</label>"
+                        "<label{data_id}{event}{aria}{toggle_class}{style}><input type=\"checkbox\" tabindex=\"0\"{checked}>{body}</label>"
                     ),
                     2 => {
                         let pressed = if node.checked() { "true" } else { "false" };
                         format!(
-                            "<button{data_id}{event}{aria} type=\"button\" aria-pressed=\"{pressed}\"{style}>{body}</button>"
+                            "<button{data_id} tabindex=\"0\"{event}{aria} type=\"button\" aria-pressed=\"{pressed}\"{style}>{body}</button>"
                         )
                     }
                     _ => format!(
-                        "<label{data_id}{event}{aria}{toggle_class}{style}><input type=\"checkbox\" role=\"switch\"{checked}>{body}</label>"
+                        "<label{data_id}{event}{aria}{toggle_class}{style}><input type=\"checkbox\" role=\"switch\" tabindex=\"0\"{checked}>{body}</label>"
                     ),
                 }
             }
@@ -1825,8 +1828,14 @@ impl HtmlRenderer {
                     .filter(|label| !label.is_empty())
                     .map(|label| format!(" aria-label=\"{}\"", escape_html_attr(label)))
                     .unwrap_or_default();
+                // STEP_VALUE opts into stepped mode; absent = continuous (`any`).
+                let step_attr = node
+                    .properties
+                    .get(&property_id::STEP_VALUE)
+                    .map(|bits| format!(" step=\"{}\"", f32::from_bits(*bits)))
+                    .unwrap_or_else(|| " step=\"any\"".to_string());
                 format!(
-                    "<label{data_id}{event}{aria}{slider_class}{style}><input type=\"range\" min=\"{min}\" max=\"{max}\" step=\"any\" value=\"{value}\"{input_aria} style=\"--pl-slider-fill:{fill}%\">{body}</label>"
+                    "<label{data_id}{event}{aria}{slider_class}{style}><input type=\"range\" tabindex=\"0\" min=\"{min}\" max=\"{max}\"{step_attr} value=\"{value}\"{input_aria} style=\"--pl-slider-fill:{fill}%\">{body}</label>"
                 )
             }
             component_type::TEXT_FIELD => {
@@ -1850,12 +1859,12 @@ impl HtmlRenderer {
                 };
                 let textfield_class = class_attr("pathland-textfield");
                 format!(
-                    "<label{data_id}{event}{aria}{textfield_class}{style}><span class=\"pathland-label\">{label}</span><input class=\"pathland-input pathland-control\" type=\"{input_type}\" value=\"{value}\" placeholder=\"{prompt}\"></label>"
+                    "<label{data_id}{event}{aria}{textfield_class}{style}><span class=\"pathland-label\">{label}</span><input class=\"pathland-input pathland-control\" tabindex=\"0\" type=\"{input_type}\" value=\"{value}\" placeholder=\"{prompt}\"></label>"
                 )
             }
             component_type::TEXT_EDITOR => {
                 let value = escape(node.text.as_deref().unwrap_or_default());
-                format!("<textarea{data_id}{event}{aria} class=\"pathland-input pathland-control\" rows=\"4\"{style}>{value}</textarea>")
+                format!("<textarea{data_id} tabindex=\"0\"{event}{aria} class=\"pathland-input pathland-control\" rows=\"4\"{style}>{value}</textarea>")
             }
             component_type::IMAGE => {
                 let src = escape(
@@ -2192,14 +2201,27 @@ if indeterminate {
                     " data-pathland-scroll-axis=\"{}\"",
                     if scroll_h { "horizontal" } else { "vertical" },
                 );
-                let combined = format!("{scroll_fill}overflow:auto;{css}{derived}");
+                let combined = format!(
+                    "{scroll_fill}overflow:auto;overflow-anchor:none;{css}{derived}",
+                );
                 let scroll_style = style_attr(&combined);
+                // A scroll container is not a list tab stop; the focused row owns
+                // the tab stop. Keep it programmatically focusable only.
+                let scroll_tab = if node
+                    .properties
+                    .get(&property_id::EVENT_LISTENERS)
+                    .map_or(true, |m| *m & listener::FOCUS == 0)
+                {
+                    " tabindex=\"-1\""
+                } else {
+                    ""
+                };
                 let content = node
                     .children
                     .first()
                     .map(|&c| self.render_node(nodes, c, Some(node.component)))
                     .unwrap_or_default();
-                format!("<{tag}{data_id}{axis_attr}{event}{aria}{scroll_style}>{content}</{tag}>")
+                format!("<{tag}{data_id}{axis_attr}{event}{scroll_tab}{aria}{scroll_style}>{content}</{tag}>")
             }
             component_type::ZSTACK => {
                 let tag = semantic.unwrap_or("div");
@@ -2277,7 +2299,7 @@ if indeterminate {
                 let display = format!("{}", (value * 100.0).round() / 100.0);
                 let stepper_class = class_attr("pathland-stepper");
                 format!(
-                    "<div{data_id}{event}{aria}{stepper_class}{style}><button type=\"button\" data-step=\"-1\">−</button><span>{display}</span><button type=\"button\" data-step=\"1\">+</button><span class=\"pathland-stepper-range\" hidden data-min=\"{min}\" data-max=\"{max}\" data-step=\"{step}\"></span></div>"
+                    "<div{data_id}{event}{aria}{stepper_class}{style}><button type=\"button\" tabindex=\"0\" data-step=\"-1\">−</button><span>{display}</span><button type=\"button\" tabindex=\"0\" data-step=\"1\">+</button><span class=\"pathland-stepper-range\" hidden data-min=\"{min}\" data-max=\"{max}\" data-step=\"{step}\"></span></div>"
                 )
             }
             component_type::DATE_PICKER => {
@@ -2303,7 +2325,7 @@ if indeterminate {
                     },
                     None => ("date", String::new()),
                 };
-                format!("<input{data_id}{event}{aria} class=\"pathland-date pathland-control\" type=\"{t}\" value=\"{value}\"{style}>")
+                format!("<input{data_id} tabindex=\"0\"{event}{aria} class=\"pathland-date pathland-control\" type=\"{t}\" value=\"{value}\"{style}>")
             }
             component_type::PICKER => {
                 let selected = node.u32_property(property_id::SELECTION, 0);
@@ -2326,7 +2348,7 @@ if indeterminate {
                         )
                     })
                     .collect();
-                format!("<select{data_id}{event}{aria} class=\"pathland-select pathland-control\"{style}>{options}</select>")
+                format!("<select{data_id} tabindex=\"0\"{event}{aria} class=\"pathland-select pathland-control\"{style}>{options}</select>")
             }
             component_type::MENU => {
                 // Composite shell matching the DOM client's `menuShell()`
@@ -2348,7 +2370,7 @@ if indeterminate {
                     (color >> 8) & 0xFF,
                     color & 0xFF
                 );
-                format!("<input{data_id}{event}{aria} class=\"pathland-color pathland-control\" type=\"color\" value=\"{hex}\"{style}>")
+                format!("<input{data_id} tabindex=\"0\"{event}{aria} class=\"pathland-color pathland-control\" type=\"color\" value=\"{hex}\"{style}>")
             }
             component_type::COMMENT => String::new(),
             _ => String::new(),
@@ -2850,7 +2872,7 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
 
-        assert!(html.contains("<input type=\"checkbox\" role=\"switch\" checked>"));
+        assert!(html.contains("<input type=\"checkbox\" role=\"switch\" tabindex=\"0\" checked>"));
         assert!(html.contains("<span class=\"pathland-text\">Enabled</span>"));
     }
 
@@ -2891,7 +2913,7 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
 
-        assert!(html.contains("<input type=\"checkbox\">"));
+        assert!(html.contains("<input type=\"checkbox\" tabindex=\"0\">"));
         assert!(!html.contains("<input type=\"checkbox\" role=\"switch\""));
         assert!(html.contains("<span class=\"pathland-text\">Email</span>"));
     }
@@ -2980,12 +3002,20 @@ mod tests {
             ((value_type::F32 as u32) << 16) | property_id::VALUE as u32,
             0.5f32.to_bits(),
         ));
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::F32 as u32) << 16) | property_id::STEP_VALUE as u32,
+            0.05f32.to_bits(),
+        ));
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
 
         assert!(html.contains(
-            "<input type=\"range\" min=\"0\" max=\"1\" step=\"any\" value=\"0.5\" style=\"--pl-slider-fill:50%\">"
+            "<input type=\"range\" tabindex=\"0\" min=\"0\" max=\"1\" step=\"0.05\" value=\"0.5\" style=\"--pl-slider-fill:50%\">"
         ));
         assert!(html.contains("<span class=\"pathland-text\">Volume</span>"));
     }
@@ -3077,7 +3107,7 @@ mod tests {
         assert!(html.contains("class=\"pathland-textfield\""));
         assert!(html.contains("<span class=\"pathland-label\">Name:</span>"));
         assert!(html.contains(
-            "<input class=\"pathland-input pathland-control\" type=\"text\" value=\"Bob\" placeholder=\"Enter\">"
+            "<input class=\"pathland-input pathland-control\" tabindex=\"0\" type=\"text\" value=\"Bob\" placeholder=\"Enter\">"
         ));
     }
 
@@ -3733,6 +3763,10 @@ mod tests {
         let renderer = HtmlRenderer::new();
         let scroll = renderer.render_document(&opcodes, &[], 1);
         assert!(scroll.contains("overflow:auto"), "scrollview inline");
+        assert!(
+            scroll.contains("overflow-anchor:none"),
+            "scrollview opts out of browser scroll anchoring (lazy window padding): {scroll}"
+        );
         assert!(scroll.contains("<span data-pathland-id=\"2\"></span>"));
         let zstack = renderer.render_document(&opcodes, &[], 3);
         assert!(zstack.contains("display:grid"), "zstack grid inline");
@@ -3806,7 +3840,7 @@ mod tests {
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
-        assert!(html.contains("<input data-pathland-id=\"1\" class=\"pathland-date pathland-control\" type=\"date\" value=\"2024-01-01\">"));
+        assert!(html.contains("<input data-pathland-id=\"1\" tabindex=\"0\" class=\"pathland-date pathland-control\" type=\"date\" value=\"2024-01-01\">"));
     }
 
     #[test]
@@ -3862,7 +3896,7 @@ mod tests {
         ));
 
         let renderer = HtmlRenderer::new();
-        assert!(renderer.render_document(&opcodes, &[], 1).contains("<input data-pathland-id=\"1\" class=\"pathland-color pathland-control\" type=\"color\" value=\"#0000ff\">"));
+        assert!(renderer.render_document(&opcodes, &[], 1).contains("<input data-pathland-id=\"1\" tabindex=\"0\" class=\"pathland-color pathland-control\" type=\"color\" value=\"#0000ff\">"));
         assert!(renderer.render_document(&opcodes, &[], 2).contains("background-color:rgba(0,0,255,1)"));
     }
 
@@ -3879,7 +3913,7 @@ mod tests {
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &strings, 1);
-        assert!(html.contains("<button data-pathland-id=\"1\" class=\"pathland-button\">"), "button uses the design-system class");
+        assert!(html.contains("<button data-pathland-id=\"1\" tabindex=\"0\" class=\"pathland-button\">"), "button uses the design-system class");
         assert!(html.contains("<span data-pathland-id=\"2\">A</span>"));
     }
 
@@ -4026,6 +4060,26 @@ mod tests {
         assert!(html.contains("data-event-listeners=\"5\""));
         assert!(html.contains("data-action-id=\"42\""));
         assert!(html.contains(" disabled"));
+    }
+
+    #[test]
+    fn focus_listener_makes_a_node_a_tab_stop() {
+        use pathland_core::value_type;
+
+        let mut opcodes = Vec::new();
+        opcodes.push(Opcode::new(category::TREE, tree::CREATE_NODE, 0, 1, component_type::VSTACK as u32, 0));
+        opcodes.push(Opcode::new(
+            category::PARAMETER,
+            parameter::SET_PROPERTY,
+            0,
+            1,
+            ((value_type::U32 as u32) << 16) | property_id::EVENT_LISTENERS as u32,
+            pathland_core::listener::FOCUS | pathland_core::listener::KEY_DOWN,
+        ));
+
+        let html = HtmlRenderer::new().render_document(&opcodes, &[], 1);
+        assert!(html.contains("tabindex=\"0\""), "FOCUS makes a tab stop: {html}");
+        assert!(html.contains("data-pathland-focusable=\"\""), "focus marker: {html}");
     }
 
     #[test]
@@ -4390,7 +4444,7 @@ mod tests {
 
         let renderer = HtmlRenderer::new();
         let html = renderer.render_document(&opcodes, &[], 1);
-        assert!(html.contains("<input class=\"pathland-input pathland-control\" type=\"password\""));
+        assert!(html.contains("<input class=\"pathland-input pathland-control\" tabindex=\"0\" type=\"password\""));
     }
 
     #[test]

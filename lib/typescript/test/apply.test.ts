@@ -16,6 +16,7 @@ import {
   CMD_SET_COLOR_SCHEME,
   CMD_SET_DATE,
   CMD_SET_DESIGN_TOKEN,
+  CMD_SET_FOCUS,
   CMD_SET_PROPERTY,
   CMD_SET_TEXT,
   CMD_SET_WINDOW_METADATA,
@@ -653,6 +654,78 @@ describe("applyBatch · TREE", () => {
     expect(stack.children[0]?.getAttribute("data-pathland-id")).toBe("3");
     expect(stack.children[1]?.getAttribute("data-pathland-id")).toBe("2");
   });
+
+  it("keeps browser focus when a batch moves the focused node", () => {
+    const stack = document.createElement("div");
+    stack.setAttribute("data-pathland-id", "1");
+    const first = document.createElement("button");
+    first.setAttribute("data-pathland-id", "2");
+    const second = document.createElement("button");
+    second.setAttribute("data-pathland-id", "3");
+    stack.append(first, second);
+    document.body.append(stack);
+    const r = renderer();
+    r.byId.set(1, stack);
+    r.byId.set(2, first);
+    r.byId.set(3, second);
+    first.focus();
+    expect(document.activeElement).toBe(first);
+
+    applyBatch(
+      parseBatch(buildBatch([[CAT_TREE, CMD_MOVE_CHILD, 0, 1, 3, 0]])),
+      r,
+    );
+
+    expect(stack.children[0]).toBe(second);
+    expect(document.activeElement).toBe(first);
+  });
+
+  it("SET_FOCUS wins over focus restoration", () => {
+    const stack = document.createElement("div");
+    stack.setAttribute("data-pathland-id", "1");
+    const first = document.createElement("button");
+    first.setAttribute("data-pathland-id", "2");
+    const second = document.createElement("button");
+    second.setAttribute("data-pathland-id", "3");
+    stack.append(first, second);
+    document.body.append(stack);
+    const r = renderer();
+    r.byId.set(1, stack);
+    r.byId.set(2, first);
+    r.byId.set(3, second);
+    first.focus();
+
+    applyBatch(
+      parseBatch(buildBatch([
+        [CAT_TREE, CMD_MOVE_CHILD, 0, 1, 2, 1],
+        [CAT_META, CMD_SET_FOCUS, 0, 3, 1],
+      ])),
+      r,
+    );
+
+    expect(document.activeElement).toBe(second);
+  });
+
+  it("SET_FOCUS avoids native focus centering and reveals minimally", () => {
+    const button = document.createElement("button");
+    button.setAttribute("data-pathland-id", "1");
+    document.body.append(button);
+    const focus = vi.fn();
+    button.focus = focus;
+    const reveal = vi.fn();
+    button.scrollIntoView = reveal;
+    const r = renderer();
+    r.byId.set(1, button);
+
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_FOCUS, 0, 1, 1]])), r);
+
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(reveal).toHaveBeenCalledWith({
+      block: "nearest",
+      inline: "nearest",
+      behavior: expect.stringMatching(/^(auto|smooth)$/),
+    });
+  });
 });
 
 describe("setNodeText", () => {
@@ -728,8 +801,59 @@ describe("applyBatch · META + design tokens + string props", () => {
     expect(style?.textContent).toContain(":root{--pl-font-body-family:'Inter';}");
   });
 
+  it("META SET_FOCUS A=0 clears the active focus target", () => {
+    const target = document.createElement("div");
+    target.setAttribute("tabindex", "0");
+    document.body.append(target);
+    const r = renderer();
+    r.byId.set(32, target);
+
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_FOCUS, 0, 32, 1, 0]])), r);
+    expect(document.activeElement).toBe(target);
+
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_FOCUS, 0, 0, 0, 0]])), r);
+    expect(document.activeElement).not.toBe(target);
+    target.remove();
+  });
+
+  it("applies SET_FOCUS after the target is created in the same batch", () => {
+    const parent = document.createElement("div");
+    parent.setAttribute("data-pathland-id", "32");
+    document.body.append(parent);
+    const r = renderer();
+    r.byId.set(32, parent);
+    applyBatch(
+      parseBatch(
+        buildBatch([
+          [CAT_TREE, CMD_CREATE_NODE, 0, 33, COMPONENT_BUTTON],
+          [CAT_TREE, CMD_INSERT_CHILD, 0, 32, 33, 0],
+          [CAT_META, CMD_SET_FOCUS, 0, 33, 1, 0],
+        ]),
+      ),
+      r,
+    );
+    expect(document.activeElement).toBe(r.byId.get(33));
+    parent.remove();
+  });
+
+  it("META SET_FOCUS focuses the target element", () => {
+    const target = document.createElement("div");
+    target.setAttribute("tabindex", "0");
+    document.body.append(target);
+    const r = renderer();
+    r.byId.set(31, target);
+
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_FOCUS, 0, 31, 1, 0]])), r);
+    expect(document.activeElement).toBe(target);
+
+    applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_FOCUS, 0, 31, 0, 0]])), r);
+    expect(document.activeElement).not.toBe(target);
+    target.remove();
+  });
+
   it("META::SET_COLOR_SCHEME sets/removes the document scheme attribute", () => {
     const r = renderer();
+
     applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_COLOR_SCHEME, 0, 2, 0, 0]])), r);
     expect(document.documentElement.dataset.pathlandScheme).toBe("dark");
     applyBatch(parseBatch(buildBatch([[CAT_META, CMD_SET_COLOR_SCHEME, 0, 1, 0, 0]])), r);

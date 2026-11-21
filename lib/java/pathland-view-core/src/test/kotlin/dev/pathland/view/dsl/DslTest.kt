@@ -5,12 +5,16 @@ import dev.pathland.core.protocol.Categories
 import dev.pathland.core.protocol.Commands
 import dev.pathland.core.protocol.Components
 import dev.pathland.view.core.Environment
+import dev.pathland.view.core.Keys
 import dev.pathland.core.protocol.Properties
 import dev.pathland.view.core.View
 import dev.pathland.view.engine.Emitter
 import dev.pathland.core.transport.FrameOpcodeSink
 import dev.pathland.core.protocol.Opcode
+import dev.pathland.core.transport.Event
 import dev.pathland.core.transport.ProtocolFrame
+import dev.pathland.view.engine.InputDispatcher
+import dev.pathland.view.engine.KeyEvent
 import dev.pathland.view.engine.RenderResult
 import dev.pathland.view.core.state.InMemoryStateStore
 import dev.pathland.view.core.state.PersistentState
@@ -599,4 +603,176 @@ class DslTest {
         assertTrue(properties(frame).contains(Properties.IS_SECURE), "SecureField emits IS_SECURE")
     }
 
+
+    @Test
+    fun onFocusChangedDeclaresTheListenerAndRoutesReports() {
+        var gained: Boolean? = null
+        val (result, frame) = mount(Text("row").onFocusChanged { gained = it })
+        val id = result.rootId()
+        val listeners = frame.opcodes().first {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_PROPERTY &&
+                it.a() == id && (it.b() and 0xffff) == Properties.EVENT_LISTENERS
+        }.c()
+        assertTrue(listeners and Commands.Listeners.FOCUS != 0)
+        assertTrue(result.focusInputs().containsKey(id))
+
+        result.focusInputs()[id]!!.accept(true)
+        assertEquals(true, gained)
+        result.focusInputs()[id]!!.accept(false)
+        assertEquals(false, gained)
+    }
+
+    @Test
+    fun onKeyDownDeclaresTheListenerAndRoutesCanonicalKeys() {
+        var received: KeyEvent? = null
+        val (result, frame) = mount(Text("row").onKeyDown { received = it })
+        val id = result.rootId()
+        val listeners = frame.opcodes().first {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_PROPERTY &&
+                it.a() == id && (it.b() and 0xffff) == Properties.EVENT_LISTENERS
+        }.c()
+        assertTrue(listeners and Commands.Listeners.KEY_DOWN != 0)
+
+        InputDispatcher(result, signal("/")).dispatch(Event.keyDown(id, Keys.ARROW_DOWN, 0, 0))
+        assertEquals(Keys.ARROW_DOWN, received?.keyCode)
+        assertEquals(false, received?.repeat)
+    }
+
+    @Test
+    fun focusedEmitsSetFocusForTheTargetNode() {
+        val focus = signal(false)
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        val result = emitter.mount(
+            VStack {
+                Text("a").focusable().focused(focus)
+                Text("b")
+            },
+            Environment.DEFAULT,
+        )
+        assertTrue(sink.frame().opcodes().none {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        })
+
+        focus.value = true
+        val delta = sink.frame()
+        val focusOp = delta.opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }
+        assertEquals(1, focusOp.b())
+        assertTrue(focusOp.a() != 0 && focusOp.a() != result.rootId())
+    }
+
+
+    @Test
+    fun focusedTrueAfterMountFollowsTheTargetsTreeAndPropertyOps() {
+        val sink = FrameOpcodeSink()
+        Emitter(sink).mount(
+            VStack {
+                Text("a").focusable().focused(true)
+            },
+            Environment.DEFAULT,
+        )
+        val ops = sink.frame().opcodes()
+        val focusIndex = ops.indexOfFirst {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }
+        assertTrue(focusIndex >= 0)
+        val focus = ops[focusIndex]
+        assertEquals(1, focus.b())
+        val createIndex = ops.indexOfFirst {
+            it.category() == Categories.TREE &&
+                it.command() == Commands.Tree.CREATE_NODE &&
+                it.a() == focus.a()
+        }
+        val lastTargetOp = ops.indexOfLast {
+            it.a() == focus.a() &&
+                (it.category() == Categories.TREE || it.category() == Categories.PARAMETER)
+        }
+        assertTrue(createIndex >= 0, "the target is created in this frame")
+        assertTrue(lastTargetOp < focusIndex, "SET_FOCUS follows the target's ops: $ops")
+    }
+
+    @Test
+    fun focusedFalseClearsTheLastFocusRequest() {
+        val focus = signal(true)
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        emitter.mount(
+            VStack {
+                Text("a").focusable().focused(focus)
+            },
+            Environment.DEFAULT,
+        )
+        val target = sink.frame().opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }.a()
+
+        focus.value = false
+        val clear = sink.frame().opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }
+        assertEquals(target, clear.a())
+        assertEquals(0, clear.b())
+    }
+
+    @Test
+    fun movingFocusDoesNotClearTheNewTargetWhenItWasReconciledFirst() {
+        val first = signal(false)
+        val second = signal(true)
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        emitter.mount(
+            VStack {
+                Text("a").focusable().focused(first)
+                Text("b").focusable().focused(second)
+            },
+            Environment.DEFAULT,
+        )
+
+        first.value = true
+        second.value = false
+        val focusOps = sink.frame().opcodes().filter {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS
+        }
+        assertEquals(1, focusOps.size, "only the new target is requested")
+        assertEquals(1, focusOps.single().b())
+    }
+
+    @Test
+    fun lazyStackPinsAFarIndexIntoTheEmittedWindow() {
+        val items = signal((0 until 100).map { "item-$it" })
+        val pin = signal<Int?>(null)
+        val sink = FrameOpcodeSink()
+        val emitter = Emitter(sink)
+        emitter.mount(
+            LazyVStack(spacing = 0f, pin = pin) {
+                ForEach(items) { item, _ -> Text(item).frame(height = 44f) }
+            },
+            Environment.DEFAULT,
+        )
+
+        pin.value = 50
+        val pinned = sink.frame()
+        assertTrue(texts(pinned).contains("item-50"), "the pinned row is emitted")
+        assertTrue(texts(pinned).contains("item-22"), "the contiguous union keeps the visible window")
+
+        pin.value = null
+        val unpinned = sink.frame()
+        assertTrue(texts(unpinned).none { it == "item-50" }, "clearing the pin returns to the visible window")
+    }
+
+    @Test
+    fun sliderStepEmitsStepValue() {
+        val value = signal(0.5f)
+        val (_, frame) = mount(Slider(value, 0f..1f, step = 0.05f))
+        val step = frame.opcodes().first {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_PROPERTY &&
+                (it.b() and 0xffff) == Properties.STEP_VALUE
+        }
+        assertEquals(0.05f, Float.fromBits(step.c()))
+    }
 }

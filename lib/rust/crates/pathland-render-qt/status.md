@@ -1,6 +1,6 @@
 # pathland-render-qt — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** November 20, 2026
 
 The **Qt Quick renderer**: maps opcode frames incrementally onto a Qt Quick
 scene graph (shared-memory desktop path). Protocol contract: `spec/`.
@@ -276,7 +276,8 @@ Design-token contract: `spec/TOKENS.md`.
 - **Keys/events beyond the focused text input**: keys are reported for a focused
   text input; keys on other focused controls, `SCROLL`/`WHEEL`, and
   `DATE_CHANGED` are not yet reported. Hover/leave use `POINTER_MOVE` (the
-  listener mask bit).
+  listener mask bit). `META::SET_FOCUS` is not applied and a `FOCUS`-listener
+  node is not made a tab stop (ADR-0018 follow-up).
 - **FILL inside plain positioners**: `GRID` (a `QQuickGrid`) rejects
   `anchors.fill` on its children, so a `WIDTH`/`HEIGHT` `FILL` inside a Grid
   defers and is skipped (the positioner sizes it). Stacks use `RowLayout`/

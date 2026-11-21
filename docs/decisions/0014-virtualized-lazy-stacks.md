@@ -86,10 +86,11 @@ Exact requirements live in `spec/PRIMITIVES.md`, `spec/LAYOUT.md`,
   renderers gain virtual-extent placement and range reporting.
 - Row-local component state is scoped by the `ForEach` item key and survives
   window eviction (follow-up implemented; spec/DSL.md §Virtualized lists).
-- Lazy grids and variable-height rows are implemented; native recycling, scroll
-  anchoring, and focused-row pinning remain follow-ups.
-- The app must keep a focused row inside its window; the renderer does not
-  auto-pin it.
+- Lazy grids and variable-height rows are implemented; native recycling and
+  scroll anchoring remain follow-ups. Focused-row pinning is implemented on the
+  JVM/web path (ADR-0018); Qt/Rust DSL parity remains on issue #204.
+- The app supplies the pinned index and must bound it; the renderer does not
+  auto-pin a focused row or choose a clamp policy.
 
 ## Sources and current contract
 

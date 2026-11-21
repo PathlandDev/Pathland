@@ -1,6 +1,6 @@
 # pathland-render-gtk — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** November 20, 2026
 
 The **GTK4 renderer**: maps opcode frames incrementally onto native GTK widgets
 (shared-memory desktop path). Protocol contract: `spec/`. Design-token contract:
@@ -245,6 +245,12 @@ compatibility.
     prevents a control-echo loop when the host writes the same value back.
 
 ## Not implemented / gaps
+
+- **Keyboard focus (ADR-0018)**: `META::SET_FOCUS` is not applied, a
+  `FOCUS`-listener node is not made focusable, and per-node `KEY_DOWN`/`KEY_UP`
+  events are not reported (only window-level Escape/BackSpace). Focus observation
+  for nodes that are focusable natively exists; full roving-row keyboard
+  navigation is a follow-up.
 
 - **`ViewThatFits` (VIEW_THAT_FITS 0x17 / FIT_QUERY 0x1039 LIST / FIT_CHANGED 0x13) is
   NOT implemented in the GTK renderer (removed)** — a fit slot node is unmapped (no

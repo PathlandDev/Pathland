@@ -156,6 +156,33 @@ pub mod meta {
     /// the browser mapping is `<title>` / `<meta name="description">` /
     /// `<html lang>`, not the protocol definition.
     pub const SET_WINDOW_METADATA: u8 = 0x08;
+    /// **Draft.** `A = nodeId, B = focused (0/1)` — request keyboard focus for a
+    /// node, or clear focus (guest → host; spec/EVENTS.md §Keyboard). The
+    /// renderer applies it after the frame's tree/property deltas. Focus itself
+    /// remains renderer state and is observed through `EVENT::FOCUS_CHANGED`.
+    pub const SET_FOCUS: u8 = 0x09;
+}
+
+/// Canonical, platform-independent logical key codes carried in
+/// `EVENT::KEY_DOWN`/`KEY_UP` (spec/EVENTS.md §Keyboard).
+///
+/// Renderers map native scancodes/key codes onto this table. Letters and digits
+/// use their ASCII uppercase code point.
+pub mod key {
+    pub const BACKSPACE: u16 = 0x08;
+    pub const TAB: u16 = 0x09;
+    pub const ENTER: u16 = 0x0D;
+    pub const ESCAPE: u16 = 0x1B;
+    pub const SPACE: u16 = 0x20;
+    pub const PAGE_UP: u16 = 0x21;
+    pub const PAGE_DOWN: u16 = 0x22;
+    pub const END: u16 = 0x23;
+    pub const HOME: u16 = 0x24;
+    pub const ARROW_LEFT: u16 = 0x25;
+    pub const ARROW_UP: u16 = 0x26;
+    pub const ARROW_RIGHT: u16 = 0x27;
+    pub const ARROW_DOWN: u16 = 0x28;
+    pub const DELETE: u16 = 0x2E;
 }
 
 /// Window/surface metadata field ids for `META::SET_WINDOW_METADATA`

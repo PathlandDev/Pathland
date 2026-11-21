@@ -590,7 +590,7 @@ content (their style turns it into the control's child, [§5.7](#57-styleable-co
 | `SecureField` | `SecureField("…", text: writable)` | `TextField.make(t -> t.placeholder(String).text(writable).secure(true))` | `TEXT_FIELD` 0x21 + `IS_SECURE` 0x200D |
 | `TextEditor` | `TextEditor(text: writable)` | `TextEditor.make(t -> t.text(WritableSignal<String>))` | `TEXT_EDITOR` 0x22 |
 | `Toggle` | `Toggle("label", isOn: writable)` | `Toggle.make(t -> t.style(ToggleStyle).label(String).isOn(WritableSignal<Boolean>))` | `TOGGLE` 0x24; `VALUE_CHANGED` → value input; `TOGGLE_STYLE` 0x2018 |
-| `Slider` | `Slider(value: writable, in: min...max)` | `Slider.make(s -> s.value(WritableSignal<Float>).min(float).max(float).onEditingChanged(Consumer<Boolean>))` | `SLIDER` 0x25; `VALUE_CHANGED` → value input |
+| `Slider` | `Slider(value: writable, in: min...max)` | `Slider(value, range, onEditingChanged, step)` → `STEP_VALUE` when `step` is set; `VALUE_CHANGED` → value input | `SLIDER` 0x25; absent step = continuous (`step="any"`) |
 | `Stepper` | `Stepper("label", value: writable, in: min...max, step:)` | `Stepper.make(s -> s.value(WritableSignal<Float>).min(float).max(float).step(float).label(String))` | `STEPPER` 0x26; `VALUE_CHANGED` → value input |
 | `DatePicker` | `DatePicker("label", selection: writable, displayedComponents:)` | `DatePicker.make(d -> d.mode(DatePickerMode).selection(WritableSignal<Integer>))` | `DATE_PICKER` 0x27; `DATE_CHANGED` → date input; value via `PARAMETER::SET_DATE` |
 | `Picker` | `Picker("label", selection: writable) { options }` | **content-bearing** — `Picker.make(p -> p.style(PickerStyle).selection(WritableSignal<Integer>)).children(View... options)` | `PICKER` 0x28; `VALUE_CHANGED` (index) → value input |
@@ -1013,14 +1013,17 @@ anchors. Transforms do not affect layout.
 | `videoStyle` | `.videoStyle(_:)` | `.modifiers(VideoStyle)` | environment-scoped (`Environment.VIDEO_STYLE` key, nearest-wins); the style supplies the `VIDEO` surface's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
 | `environment` | `.environment(_:_:)` | `.modifiers(environmentBinding(e -> e.key(EnvironmentKey).value(value)))` | environment-scoped (a typed `EnvironmentKey`, nearest-wins); no wire property |
 | `windowMetadata` | (platform shell metadata) | `.modifiers(windowMetadata(w -> w.title(signal).description(signal).locale(value)))` | `META::SET_WINDOW_METADATA` fields (`TITLE`/`DESCRIPTION`/`LOCALE`) — renderer maps them to its window chrome |
-| `focusable` | `.focusable(_:)` | (via the `PointerEvents` modifier) | **no property** — declares `FOCUS` listener bit 5; observe `FOCUS_CHANGED` |
+| `focusable` | `.focusable(_:)` | `.focusable(enabled)` | **no property** — declares `FOCUS` listener bit 5; makes the node a tab stop |
+| `focused` | `.focused(_:)` | `.focused(signal)` / `.focused(boolean)` | `META::SET_FOCUS` while true; false clears that node |
+| `onFocusChanged` | `.onFocusChanged(_:)` | `.onFocusChanged { focused -> … }` | observes `FOCUS_CHANGED` (declares the `FOCUS` bit) |
+| `onKeyDown` | `onKeyPress` | `.onKeyDown { key -> … }` | declares `KEY_DOWN`; canonical `KeyEvent(keyCode, modifiers, repeat)` |
 | raw listeners | `.pointerEvents(mask)` / `.pointer_events(mask)` | `.modifiers(pointerEvents(p -> p.mask(int)))` | `EVENT_LISTENERS` 0x2005 (u32 bitmask, bits per EVENTS.md) |
 
 **Notes**: `visible(boolean)` is a Pathland extra (SwiftUI only has
 `.hidden()` — `Visible`/`Hidden`). `accessibilityRole`/`accessibilityState`
-take raw `int` codes today rather than a typed enum. Raw input listeners are
-exposed through the `PointerEvents` modifier value — there is no per-event sugar
-(e.g. a `.focusable` or `.onSubmit` that sets the matching bit). `environment`
+take raw `int` codes today rather than a typed enum. Raw input listeners remain
+available through `PointerEvents`; focus and key handling are exposed through
+the `.focusable`/`.focused`/`.onFocusChanged`/`.onKeyDown` sugar. `environment`
 is the one inheritance/scoping modifier
 ([§6 rule 6](#6-authoring-conventions)), alongside the style modifiers.
 

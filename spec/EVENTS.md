@@ -177,6 +177,52 @@ Pointer events carry a viewport-relative point in **logical points** (`B`=x,
 - **Focus**: keyboard events are reported to the focused node (the node that
   most recently gained focus), or to the node that declared the listener and
   has keyboard focus. See `FOCUS_CHANGED` below.
+- **Focusable nodes**: a node that declares the `FOCUS` listener bit is a
+  keyboard focus target. Renderers MUST expose it as a native focusable element
+  (a tab stop unless the app keeps only one roving target) and report
+  `FOCUS_CHANGED` for it. A node that only declares `KEY_DOWN`/`KEY_UP` is not
+  itself a tab stop; it receives keys while focused by another means.
+- **Native controls are explicitly tabbable**: renderers MUST give their native
+  focusable control shells (button, text field/editor, slider, toggle, stepper,
+  picker, date/color picker) an explicit `tabindex="0"`. Safari's default
+  keyboard navigation skips buttons and links unless this attribute is present;
+  the attribute keeps the control in the tab order on every browser. Disabled
+  controls remain non-focusable. Scroll containers are not tab stops
+  (`tabindex="-1"`); a roving list row is the list's single tab stop.
+- **Focus requests**: the application moves focus with `META::SET_FOCUS`
+  (guest → host; see [OPCODE.md](./OPCODE.md#focus-requests)). The emitter MUST
+  order the request after the target's tree/property deltas; renderers apply
+  opcodes in stream order and MUST focus a target that was just made focusable
+  in the same frame. `B = 0` clears that node's focus; `A = 0`, `B = 0` clears
+  the current focus.
+- **Focus reveal**: a renderer must reveal a newly focused node by scrolling
+  only the nearest edge into view (one row, not the viewport center) and should
+  animate the reveal unless the user requested reduced motion. Browser-native
+  focus scrolling (which centers in Chromium) is not acceptable for long lists.
+- **Focus preservation**: renderers MUST preserve an existing focus target
+  across structural deltas that move or re-insert it (a keyed lazy window can
+  reorder the focused row). A move is not a focus change: the renderer MUST NOT
+  report a spurious `FOCUS_CHANGED` for it, and MUST keep native focus so the
+  next key reaches the same node. An explicit `SET_FOCUS` in the same batch
+  still wins.
+- **Default handling**: when a focused node declares `KEY_DOWN`, the renderer
+  routes the key to the app and suppresses the platform's default for the
+  arrow keys, `Enter`, and `Space`. `Tab` keeps native focus traversal so users
+  can leave the list; Home/End/Paging are not captured by this revision (a
+  per-key capture declaration is a follow-up), so they keep native scrolling.
+
+**Canonical key codes** (`B` low u16). Letters/digits use their ASCII uppercase
+code point; renderers map native key codes onto this table:
+
+| Key | Code | Key | Code |
+|-----|------|-----|------|
+| `Backspace` | `0x08` | `Home` | `0x24` |
+| `Tab` | `0x09` | `ArrowLeft` | `0x25` |
+| `Enter` | `0x0D` | `ArrowUp` | `0x26` |
+| `Escape` | `0x1B` | `ArrowRight` | `0x27` |
+| `Space` | `0x20` | `ArrowDown` | `0x28` |
+| `PageUp` | `0x21` | `Delete` | `0x2E` |
+| `PageDown` | `0x22` | `End` | `0x23` |
 
 ### Value
 
@@ -239,7 +285,9 @@ its own native control geometry.
   only on commit.
 - **`FOCUS_CHANGED`**: `B` = 1 gained focus, 0 lost focus. The renderer reports
   it for nodes that declared the `FOCUS` listener bit (bit 5). Focus is what
-  routes subsequent `KEY_*` events.
+  routes subsequent `KEY_*` events. It is renderer state, not application
+  state; an app requests a change with `META::SET_FOCUS` and observes the
+  result here.
 - **`EDITING_CHANGED`**: `B` = 1 editing session began, 0 ended. Reported for
   nodes that declared the `EDITING` listener bit (bit 6).
 - **`SUBMIT`**: the user committed the field (Enter). Reported for nodes that
@@ -418,6 +466,12 @@ DSL surfaces:
   content is a `ForEach`; the engine owns the window and re-renders it. The
   author does not wire the event or a window signal (spec/DSL.md
   §Virtualized lists).
+
+An absent/zero mask means **no** events. Keyboard and focus gating MUST be
+strict: a renderer must not send `KEY_*` messages, or suppress a control's native
+key behavior, unless the node's mask explicitly contains the matching bit.
+(Some clients use a permissive fallback for legacy pointer HTML; it must never
+apply to keyboard or focus.)
 
 ---
 

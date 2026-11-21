@@ -22,6 +22,7 @@ import {
   PROP_SHADOW_COLOR,
   PROP_SHADOW_RADIUS,
   PROP_SPACING,
+  PROP_STEP_VALUE,
   PROP_STATE,
   PROP_TEXT_ALIGNMENT,
   PROP_TEXT_CASE,
@@ -191,6 +192,17 @@ describe("semantic + control variants", () => {
     expect(el.getAttribute("data-event-listeners")).toBe("12");
   });
 
+  it("a FOCUS listener makes a node a tab stop and removing it clears the tab stop", () => {
+    const el = document.createElement("div");
+    applyProperty(el, PROP_EVENT_LISTENERS, VAL_U32, 0x20); // FOCUS
+    expect(el.getAttribute("tabindex")).toBe("0");
+    expect(el.hasAttribute("data-pathland-focusable")).toBe(true);
+
+    applyProperty(el, PROP_EVENT_LISTENERS, VAL_U32, 0x0c); // pointer/key only
+    expect(el.hasAttribute("tabindex")).toBe(false);
+    expect(el.hasAttribute("data-pathland-focusable")).toBe(false);
+  });
+
   it("action-id -> data-action-id", () => {
     const el = document.createElement("div");
     applyProperty(el, PROP_ACTION_ID, VAL_U32, 77);
@@ -268,6 +280,13 @@ describe("semantic + control variants", () => {
     expect(div.getAttribute("aria-disabled")).toBe("true");
     applyEnabled(div, 1);
     expect(div.hasAttribute("aria-disabled")).toBe(false);
+  });
+
+  it("step-value sets the native range step (and stepper metadata)", () => {
+    const label = document.createElement("label");
+    label.innerHTML = '<input type="range" step="any">';
+    applyProperty(label, PROP_STEP_VALUE, VAL_F32, bitsFromF32(0.05));
+    expect(label.querySelector("input")!.step).toBe("0.05");
   });
 });
 

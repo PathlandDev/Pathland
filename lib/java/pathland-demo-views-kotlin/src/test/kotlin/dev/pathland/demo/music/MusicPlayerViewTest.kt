@@ -6,6 +6,7 @@ import dev.pathland.core.protocol.Commands
 import dev.pathland.core.protocol.Components
 import dev.pathland.core.protocol.Opcode
 import dev.pathland.core.protocol.Properties
+import dev.pathland.view.core.Keys
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.state.InMemoryStateStore
 import dev.pathland.view.core.state.PersistentState
@@ -134,6 +135,7 @@ class MusicPlayerViewTest {
         val medium = mounted.sink.frame()
         assertTrue(anySlider(medium, 0f, 1f))
         assertTrue(anySliderValue(medium, 0.7f))
+        assertTrue(anySetProperty(medium, Properties.STEP_VALUE, 0.05f), "volume has a usable 5% keyboard step")
 
         mounted.result.fitInputs()[rootSlot]!!.accept(2)
         val withSidebar = mounted.sink.frame()
@@ -560,5 +562,50 @@ class MusicPlayerViewTest {
 
     private companion object {
         const val COVER = "/_pathland/assets/albumart/thumbs/cover1.jpg"
+    }
+
+    @Test
+    fun keyboardArrowsMoveRovingFocusAndEnterPlays() {
+        val mounted = mount()
+        val frame = mounted.sink.frame()
+        val focused = frame.opcodes().filter {
+            it.category() == Categories.PARAMETER &&
+                it.command() == Commands.Parameter.SET_PROPERTY &&
+                (it.b() and 0xffff) == Properties.EVENT_LISTENERS &&
+                (it.c() and Commands.Listeners.FOCUS) != 0
+        }.map { it.a() }
+        assertEquals(1, focused.size, "exactly one roving tab stop")
+
+        val dispatcher = InputDispatcher(mounted.result, Signals.signal("/"))
+        dispatcher.dispatch(Event.keyDown(focused.single(), Keys.ARROW_DOWN, 0, 0))
+
+        val moved = mounted.sink.frame()
+        val focusOp = moved.opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS &&
+                it.b() != 0
+        }
+        assertTrue(focusOp.a() != focused.single(), "focus moved to the next row")
+        assertEquals(1, focusOp.b())
+
+        dispatcher.dispatch(Event.keyDown(focusOp.a(), Keys.ENTER, 0, 0))
+        assertEquals(
+            1,
+            mounted.store.load("player.track:session-1", Integer::class.java).get(),
+            "Enter plays the focused row",
+        )
+
+        dispatcher.dispatch(Event.keyDown(focusOp.a(), Keys.END, 0, 0))
+        val end = mounted.sink.frame().opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS &&
+                it.b() != 0
+        }
+        assertTrue(end.a() != focusOp.a(), "End moves focus to the last row")
+
+        dispatcher.dispatch(Event.keyDown(end.a(), Keys.HOME, 0, 0))
+        val home = mounted.sink.frame().opcodes().single {
+            it.category() == Categories.META && it.command() == Commands.Meta.SET_FOCUS &&
+                it.b() != 0
+        }
+        assertTrue(home.a() != end.a(), "Home moves focus away from the last row")
     }
 }

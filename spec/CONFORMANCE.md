@@ -230,6 +230,32 @@ All multi-byte fields little-endian. `A`/`B`/`C` may carry `f32` bit patterns.
 - `00 00 00 00` B = 0
 - `00 00 00 00` C = 0
 
+### 13c. META:SET_FOCUS (target=5, focused=1)
+
+```
+04 09 00 00 05 00 00 00 01 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `09` command = SET_FOCUS (guest → host: focus a node)
+- `00 00` flags = 0
+- `05 00 00 00` A = target node id = 5
+- `01 00 00 00` B = focused = 1 (0 clears)
+- `00 00 00 00` C = 0
+
+### 13d. META:SET_FOCUS (target=5, focused=0)
+
+```
+04 09 00 00 05 00 00 00 00 00 00 00 00 00 00 00
+```
+
+- `04` category = META
+- `09` command = SET_FOCUS (guest → host: clear a node's focus)
+- `00 00` flags = 0
+- `05 00 00 00` A = target node id = 5
+- `00 00 00 00` B = focused = 0 (clear)
+- `00 00 00 00` C = 0
+
 > Heartbeat scope: `META::PING`/`META::PONG` are **network batch transport only**
 > (see [OPCODE.md §Transport heartbeat](./OPCODE.md#transport-heartbeat)). A
 > shared-memory ring consumer MUST NOT emit, expect, or relay them; they carry no

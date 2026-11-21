@@ -1,6 +1,6 @@
 # pathland-core (JVM opcode/wire core) — implementation status
 
-**Last updated:** November 17, 2026
+**Last updated:** November 20, 2026
 
 The Pathland JVM opcode and wire core, written entirely in **Java 17** with no
 Kotlin source and no native dependency. It owns the 16-byte protocol constants,
@@ -12,12 +12,12 @@ module depend on this module.
 ## Implemented
 
 - **Protocol** (`dev.pathland.core.protocol`): `Components`, `Properties`,
-  `Commands` (incl. `SET_ATTRIBUTED_TEXT`), `Categories`, `ValueTypes`, `Opcode`,
+  `Commands` (incl. `SET_ATTRIBUTED_TEXT`, `Meta.SET_FOCUS`, `Key` codes), `Categories`, `ValueTypes`, `Opcode`,
   `ValueEncoder`, `WireValue`, `TokenPath`, `ColorValue`. `ColorValue` is the
   small SPI that lets the wire layer encode colors without importing the
   view-side `Color` type.
 - **Transport** (`dev.pathland.core.transport`): `ProtocolFrame`, `FrameCodec`,
-  `Event`, `EnvironmentData`, `OpcodeSink`, `FrameOpcodeSink`.
+  `Event`, `EnvironmentData`, `OpcodeSink` (`setFocus`), `FrameOpcodeSink`.
   **Hardened (issue #63)**: `FrameCodec.parse` reads the attacker-controlled
   `opcodeCount`/`stringsLen` as unsigned `long` values and validates them
   against the actual message length before allocating; string offsets are

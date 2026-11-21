@@ -138,4 +138,8 @@ class RingOpcodeSink : OpcodeSink, AutoCloseable {
         val ref = core.arenaAlloc(handle, value.toByteArray(StandardCharsets.UTF_8))
         push(Categories.META, Commands.Meta.SET_WINDOW_METADATA, 0, field, ref, 0)
     }
+
+    override fun setFocus(nodeId: Int, focused: Boolean) {
+        push(Categories.META, Commands.Meta.SET_FOCUS, 0, nodeId, if (focused) 1 else 0, 0)
+    }
 }

@@ -55,6 +55,12 @@ class PathlandNode(
     @JvmField var valueInput: Consumer<Float>? = null
     @JvmField var fitSelection: Int = 0
     @JvmField var editingInput: Consumer<Boolean>? = null
+    /** Receives the renderer's `FOCUS_CHANGED` report (`true` = gained). */
+    @JvmField var focusInput: Consumer<Boolean>? = null
+    /** A declarative focus request: true asks the renderer to focus this node. */
+    @JvmField var focusBinding: Signal<Boolean>? = null
+    /** Receives `KEY_DOWN` for a node that declared the `KEY_DOWN` listener bit. */
+    @JvmField var keyInput: KeyInput? = null
     @JvmField var dateInput: DateInput? = null
     @JvmField var mediaInput: MediaInput? = null
     @JvmField var mediaControllerRef: MediaController? = null
