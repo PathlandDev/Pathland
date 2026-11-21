@@ -66,6 +66,7 @@ public final class Commands {
         public static final int SET_COLOR_SCHEME = 0x06;
         public static final int RESET_THEME = 0x07;
         public static final int SET_WINDOW_METADATA = 0x08;
+        public static final int SET_FOCUS = 0x09;
 
         private Meta() {
         }
@@ -110,6 +111,27 @@ public final class Commands {
         public static final int NAVIGATE_URL = 0x0001;
 
         private Flags() {
+        }
+    }
+
+    /** Canonical logical key codes carried by {@code EVENT::KEY_DOWN}/ {@code KEY_UP}. */
+    public static final class Key {
+        public static final int BACKSPACE = 0x08;
+        public static final int TAB = 0x09;
+        public static final int ENTER = 0x0D;
+        public static final int ESCAPE = 0x1B;
+        public static final int SPACE = 0x20;
+        public static final int PAGE_UP = 0x21;
+        public static final int PAGE_DOWN = 0x22;
+        public static final int END = 0x23;
+        public static final int HOME = 0x24;
+        public static final int ARROW_LEFT = 0x25;
+        public static final int ARROW_UP = 0x26;
+        public static final int ARROW_RIGHT = 0x27;
+        public static final int ARROW_DOWN = 0x28;
+        public static final int DELETE = 0x2E;
+
+        private Key() {
         }
     }
 

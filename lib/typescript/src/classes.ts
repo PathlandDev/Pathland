@@ -273,13 +273,16 @@ export function updateRangeFill(input: HTMLInputElement): void {
 }
 
 function applyStepValue(el: HTMLElement, value: number): void {
+  // F32 wire values carry binary rounding noise; render the shortest sane form
+  // so a runtime-created control matches the SSR's `step="0.05"`.
+  const step = Number(value.toPrecision(6)).toString();
   const range = el.querySelector<HTMLInputElement>("input[type=range]");
   if (range) {
-    range.step = String(value);
+    range.step = step;
   }
   const meta = el.querySelector<HTMLElement>(".pathland-stepper-range");
   if (meta) {
-    meta.dataset.step = String(value);
+    meta.dataset.step = step;
   }
 }
 
@@ -533,6 +536,20 @@ const HANDLERS: Record<number, Handler> = {
       el.removeAttribute("data-event-listeners");
     } else {
       el.setAttribute("data-event-listeners", String(mask));
+    }
+    // @ref spec/EVENTS.md#keyboard [implements] — FOCUS listener is a tab stop
+    // A node that declares FOCUS is a keyboard tab stop (spec/EVENTS.md §Text).
+    // The focused row uses this for a single roving tab stop; other rows omit it.
+    if ((mask & P.LISTEN_FOCUS) !== 0) {
+      el.setAttribute("tabindex", "0");
+      el.setAttribute("data-pathland-focusable", "");
+    } else if (el.hasAttribute("data-pathland-focusable")) {
+      if (el.hasAttribute("data-pathland-scroll-axis")) {
+        el.setAttribute("tabindex", "-1");
+      } else {
+        el.removeAttribute("tabindex");
+      }
+      el.removeAttribute("data-pathland-focusable");
     }
   },
   [P.PROP_MIN_VALUE]: (el, vt, c) => applyRangeBounds(el, P.PROP_MIN_VALUE, f32(vt, c)),

@@ -31,7 +31,7 @@ class ProtocolManifestTest {
 
     private static final String COMMANDS = "dev.pathland.core.protocol.Commands$";
     private static final Set<String> KINDS = Set.of(
-            "category", "component", "command", "field", "flag", "listener",
+            "category", "component", "command", "field", "flag", "key", "listener",
             "size", "value_type", "property", "property_value_type");
 
     @Test
@@ -119,6 +119,7 @@ class ProtocolManifestTest {
             case "value_type" -> ValueTypes.class;
             case "command", "field", "flag", "listener", "size" ->
                     Class.forName(COMMANDS + row.group());
+            case "key" -> Class.forName(COMMANDS + "Key");
             default -> throw new IllegalArgumentException("unknown manifest kind: " + row.kind());
         };
     }

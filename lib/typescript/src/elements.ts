@@ -102,7 +102,12 @@ export function createElement(component: number): Node {
       // cross-axis stretch when appropriate; applyLayout derives main-axis
       // flex from SCROLL_AXIS and the parent's orientation.
       el.style.overflow = "auto";
+      // Virtualized content compensates with leading/trailing padding; browser
+      // scroll anchoring would fight that and make a window slide jump.
+      el.style.overflowAnchor = "none";
       el.dataset.pathlandScrollAxis = "vertical";
+      // Not a list tab stop; the focused row owns it (spec/EVENTS.md §Keyboard).
+      el.setAttribute("tabindex", "-1");
       return el;
     }
     case COMPONENT_VIEW_THAT_FITS: {
@@ -129,6 +134,8 @@ export function createElement(component: number): Node {
     case COMPONENT_BUTTON: {
       const el = document.createElement("button");
       el.className = "pathland-button"; // mirror the Rust renderer's SSR class
+      // Explicit tabindex keeps native controls in Safari's default tab order.
+      el.setAttribute("tabindex", "0");
       return el;
     }
     case COMPONENT_IMAGE: {
@@ -223,6 +230,7 @@ export function createElement(component: number): Node {
       const el = document.createElement("textarea");
       el.className = "pathland-input pathland-control";
       el.setAttribute("rows", "4"); // mirrors the Rust SSR renderer
+      el.setAttribute("tabindex", "0");
       return el;
     }
     case COMPONENT_TEXT_FIELD:
@@ -236,6 +244,7 @@ export function createElement(component: number): Node {
     case COMPONENT_PICKER: {
       const el = document.createElement("select");
       el.className = "pathland-select pathland-control";
+      el.setAttribute("tabindex", "0");
       return el;
     }
     case COMPONENT_MENU:
@@ -244,12 +253,14 @@ export function createElement(component: number): Node {
       const el = document.createElement("input");
       el.type = "color";
       el.className = "pathland-color pathland-control";
+      el.setAttribute("tabindex", "0");
       return el;
     }
     case COMPONENT_DATE_PICKER: {
       const el = document.createElement("input");
       el.type = "date";
       el.className = "pathland-date pathland-control";
+      el.setAttribute("tabindex", "0");
       return el;
     }
     case COMPONENT_COMMENT:
@@ -279,6 +290,7 @@ function textFieldShell(): HTMLElement {
   const input = document.createElement("input");
   input.type = "text";
   input.className = "pathland-input pathland-control";
+  input.setAttribute("tabindex", "0");
   label.append(span, input);
   return label;
 }
@@ -289,6 +301,7 @@ function toggleShell(): HTMLElement {
   label.className = "pathland-toggle";
   const input = document.createElement("input");
   input.type = "checkbox";
+  input.setAttribute("tabindex", "0");
   const span = document.createElement("span");
   span.className = "pathland-text";
   label.append(input, span);
@@ -302,6 +315,7 @@ function sliderShell(): HTMLElement {
   const input = document.createElement("input");
   input.type = "range";
   input.step = "any";
+  input.setAttribute("tabindex", "0");
   input.style.setProperty("--pl-slider-fill", "0%");
   const span = document.createElement("span");
   span.className = "pathland-text";
@@ -317,11 +331,13 @@ function stepperShell(): HTMLElement {
   minus.type = "button";
   minus.dataset.step = "-1";
   minus.textContent = "−";
+  minus.setAttribute("tabindex", "0");
   const value = document.createElement("span");
   const plus = document.createElement("button");
   plus.type = "button";
   plus.dataset.step = "1";
   plus.textContent = "+";
+  plus.setAttribute("tabindex", "0");
   const range = document.createElement("span");
   range.className = "pathland-stepper-range";
   range.hidden = true;

@@ -10,6 +10,9 @@ import dev.pathland.view.core.EnvironmentKey
 import dev.pathland.view.core.FontDesign
 import dev.pathland.view.core.FontStyle
 import dev.pathland.view.core.FontWeight
+import dev.pathland.view.core.FocusableView
+import dev.pathland.view.core.FocusRequestView
+import dev.pathland.view.core.KeyDownView
 import dev.pathland.view.core.LabelStyle
 import dev.pathland.view.core.Length
 import dev.pathland.view.core.Modified
@@ -29,6 +32,8 @@ import dev.pathland.core.protocol.Commands
 import dev.pathland.core.protocol.Properties
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
+import dev.pathland.view.engine.KeyEvent
+import dev.pathland.view.engine.KeyInput
 import java.util.function.Consumer
 
 private fun props(vararg props: Modified.Prop): ViewModifier = object : ViewModifier {
@@ -446,6 +451,35 @@ fun View.accessibilityRole(role: Int): View {
 }
 fun View.accessibilityState(state: Int): View = modified(prop(Properties.STATE, state.toFloat()))
 fun View.onTapGesture(action: () -> Unit): View = modified(TapGesture.with(Runnable(action)))
+
+/** Make this view a keyboard focus target (a tab stop); declares the `FOCUS` listener. */
+fun View.focusable(enabled: Boolean = true): View =
+    modified(object : ViewModifier {
+        override fun body(content: View): View = FocusableView(content, enabled, null)
+    })
+
+/** Observe renderer focus changes; also makes the view a focus target. */
+fun View.onFocusChanged(listener: (Boolean) -> Unit): View =
+    modified(object : ViewModifier {
+        override fun body(content: View): View =
+            FocusableView(content, true, Consumer { listener(it) })
+    })
+
+/** Request renderer focus while [focused] is true (the `@FocusState` analog). */
+fun View.focused(focused: Signal<Boolean>): View =
+    modified(object : ViewModifier {
+        override fun body(content: View): View = FocusRequestView(content, focused)
+    })
+
+/** Request renderer focus while [focused] is true. */
+fun View.focused(focused: Boolean): View = focused(Signals.constant(focused))
+
+/** Handle canonical `KEY_DOWN` events for this view (also declares the listener). */
+fun View.onKeyDown(handler: (KeyEvent) -> Unit): View =
+    modified(object : ViewModifier {
+        override fun body(content: View): View =
+            KeyDownView(content, KeyInput { handler(it) })
+    })
 fun View.pointerEvents(mask: Int): View = modified(PointerEvents.with(mask))
 fun View.pathChange(listener: (String) -> Unit): View =
     modified(PathChange.with { c -> c.listener { listener(it) } })

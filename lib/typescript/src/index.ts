@@ -42,6 +42,16 @@ import {
   LISTEN_POINTER_UP,
   LISTEN_SCROLL,
   LISTEN_WHEEL,
+  KEY_ARROW_DOWN,
+  KEY_ARROW_LEFT,
+  KEY_ARROW_RIGHT,
+  KEY_ARROW_UP,
+  KEY_END,
+  KEY_HOME,
+  KEY_PAGE_DOWN,
+  KEY_PAGE_UP,
+  KEY_ENTER,
+  KEY_SPACE,
 } from "./constants";
 import { eventNodeOf, nodeOf } from "./dom-target";
 import { setupServiceWorker } from "./service-worker";
@@ -62,6 +72,21 @@ function listens(node: HTMLElement | null, bit: number): boolean {
   return (Number(raw) & bit) !== 0;
 }
 
+/**
+ * Strict listener gating for keyboard/focus events: the node MUST carry an
+ * `data-event-listeners` mask with the bit set. The permissive fallback in
+ * `listens` is for legacy pointer HTML only — treating an absent mask as
+ * "listens to every key" would swallow native arrow keys on ordinary controls
+ * (e.g. a slider with no declared listeners).
+ */
+function explicitlyListens(node: HTMLElement | null, bit: number): boolean {
+  if (!node) {
+    return false;
+  }
+  const raw = node.getAttribute("data-event-listeners");
+  return raw !== null && (Number(raw) & bit) !== 0;
+}
+
 function modifiersOf(e: KeyboardEvent): number {
   let m = 0;
   if (e.shiftKey) m |= 0x01;
@@ -72,7 +97,49 @@ function modifiersOf(e: KeyboardEvent): number {
 }
 
 function keyCodeOf(e: KeyboardEvent): number {
-  return typeof e.keyCode === "number" && e.keyCode !== 0 ? e.keyCode : e.key.charCodeAt(0);
+  switch (e.key) {
+    case "ArrowLeft":
+      return KEY_ARROW_LEFT;
+    case "ArrowUp":
+      return KEY_ARROW_UP;
+    case "ArrowRight":
+      return KEY_ARROW_RIGHT;
+    case "ArrowDown":
+      return KEY_ARROW_DOWN;
+    case "Home":
+      return KEY_HOME;
+    case "End":
+      return KEY_END;
+    case "PageUp":
+      return KEY_PAGE_UP;
+    case "PageDown":
+      return KEY_PAGE_DOWN;
+    case "Enter":
+      return KEY_ENTER;
+    case " ":
+      return KEY_SPACE;
+    default:
+      break;
+  }
+  if (e.key.length === 1) {
+    return e.key.toUpperCase().charCodeAt(0);
+  }
+  return typeof e.keyCode === "number" && e.keyCode !== 0 ? e.keyCode : 0;
+}
+
+/** Navigation keys a listening node owns; Tab always keeps native traversal. */
+function consumesKey(keyCode: number): boolean {
+  switch (keyCode) {
+    case KEY_ARROW_LEFT:
+    case KEY_ARROW_UP:
+    case KEY_ARROW_RIGHT:
+    case KEY_ARROW_DOWN:
+    case KEY_ENTER:
+    case KEY_SPACE:
+      return true;
+    default:
+      return false;
+  }
 }
 
 function boot(): void {
@@ -357,19 +424,24 @@ function boot(): void {
     }
   });
 
+  // @ref spec/EVENTS.md#keyboard [implements] — canonical keys to the focused node
   // --- keyboard (reported to the focused node) ---
   document.addEventListener("keydown", (event) => {
     const node = nodeOf(document.activeElement);
-    if (!transport.open || !listens(node, LISTEN_KEY_DOWN)) {
+    if (!transport.open || !explicitlyListens(node, LISTEN_KEY_DOWN)) {
       return;
     }
+    const code = keyCodeOf(event);
+    if (consumesKey(code) && !isTextInput(document.activeElement)) {
+      event.preventDefault();
+    }
     transport.send(
-      encodeKeyDown(Number(node!.getAttribute("data-pathland-id")), keyCodeOf(event), modifiersOf(event), event.repeat),
+      encodeKeyDown(Number(node!.getAttribute("data-pathland-id")), code, modifiersOf(event), event.repeat),
     );
   });
   document.addEventListener("keyup", (event) => {
     const node = nodeOf(document.activeElement);
-    if (!transport.open || !listens(node, LISTEN_KEY_UP)) {
+    if (!transport.open || !explicitlyListens(node, LISTEN_KEY_UP)) {
       return;
     }
     transport.send(
@@ -377,13 +449,17 @@ function boot(): void {
     );
   });
 
-  // --- focus / editing (text inputs + editors) ---
+  // --- focus / editing (any focusable node + text inputs/editors) ---
   function focusTarget(event: FocusEvent): HTMLElement | null {
-    const input = event.target as Element | null;
-    if (!input || (!input.matches("input[type=text],input[type=password],textarea"))) {
+    const target = event.target as Element | null;
+    if (!target) {
       return null;
     }
-    return nodeOf(input);
+    return nodeOf(target);
+  }
+  function isTextInput(target: EventTarget | null): boolean {
+    return target instanceof Element
+      && target.matches("input[type=text],input[type=password],textarea");
   }
   document.addEventListener("focusin", (event) => {
     const node = focusTarget(event);
@@ -391,10 +467,10 @@ function boot(): void {
       return;
     }
     const id = Number(node.getAttribute("data-pathland-id"));
-    if (listens(node, LISTEN_FOCUS)) {
+    if (explicitlyListens(node, LISTEN_FOCUS)) {
       transport.send(encodeFocusChanged(id, true));
     }
-    if (listens(node, LISTEN_EDITING)) {
+    if (isTextInput(event.target) && explicitlyListens(node, LISTEN_EDITING)) {
       transport.send(encodeEditingChanged(id, true));
     }
   });
@@ -404,10 +480,10 @@ function boot(): void {
       return;
     }
     const id = Number(node.getAttribute("data-pathland-id"));
-    if (listens(node, LISTEN_FOCUS)) {
+    if (explicitlyListens(node, LISTEN_FOCUS)) {
       transport.send(encodeFocusChanged(id, false));
     }
-    if (listens(node, LISTEN_EDITING)) {
+    if (isTextInput(event.target) && explicitlyListens(node, LISTEN_EDITING)) {
       transport.send(encodeEditingChanged(id, false));
     }
   });

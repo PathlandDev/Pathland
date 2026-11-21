@@ -1,6 +1,6 @@
 # pathland-core — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** November 20, 2026
 
 The **protocol core**: 16-byte opcode, SPSC ring buffers (both directions),
 bump arenas (both directions), memory layout, typed events, and the golden
@@ -9,6 +9,7 @@ tracks what this crate implements.
 
 ## Implemented
 
+- **Focus request + keys** (`META::SET_FOCUS` 0x09, draft): guest → host node focus request (`A=nodeId`, `B=1/0`), plus the canonical `key` code table in `constants::key` and its manifest rows. Conformance vector 13c; spec/OPCODE.md §Focus requests, spec/EVENTS.md §Keyboard.
 - **Window/surface metadata** (`META::SET_WINDOW_METADATA` 0x08, draft): an extensible field family (`TITLE`, `DESCRIPTION`, `LOCALE`) for the hosting window/surface, plus the shared no_std `WindowMeta` decoder helper. Spec + conformance vectors 44–45.
 
 - **Component types** (`constants.rs::component_type`): the full grouped map —

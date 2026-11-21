@@ -19,6 +19,8 @@ class InputDispatcher(
     private val textInputs = result.textInputs
     private val valueInputs = result.valueInputs
     private val editingInputs = result.editingInputs
+    private val focusInputs = result.focusInputs
+    private val keyInputs = result.keyInputs
     private val dateInputs = result.dateInputs
     private val mediaInputs = result.mediaInputs
     private val fitInputs = result.fitInputs
@@ -41,6 +43,14 @@ class InputDispatcher(
             event.isTextChanged -> textInputs[event.target()]?.accept(event.text()!!)
             event.isValueChanged -> valueInputs[event.target()]?.accept(event.value())
             event.isEditingChanged -> editingInputs[event.target()]?.accept(event.b() != 0)
+            event.isFocusChanged -> focusInputs[event.target()]?.accept(event.b() != 0)
+            event.isKeyDown -> keyInputs[event.target()]?.onKeyDown(
+                KeyEvent(
+                    event.keyCode(),
+                    event.modifiers(),
+                    event.flags() and dev.pathland.core.protocol.Commands.Flags.KEY_REPEAT != 0,
+                ),
+            )
             event.isDateChanged -> dateInputs[event.target()]?.accept(event.days(), event.millisOfDay())
             event.isMediaPlayStateChanged -> mediaInputs[event.target()]?.onPlayStateChanged(event.mediaPlaying())
             event.isMediaTimeUpdated -> mediaInputs[event.target()]?.onTimeUpdated(event.mediaValue())

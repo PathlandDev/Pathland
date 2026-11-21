@@ -26,6 +26,7 @@ additional mandatory behavior or replace either source of truth.
 | [0015](0015-reactive-lazy-prefetch.md) | Engine-derived reactive prefetch for lazy windows | Accepted |
 | [0016](0016-async-paged-data-sources.md) | Framework-neutral async and paged data sources for lists | Proposed |
 | [0017](0017-visible-range-coalescing.md) | Latest-wins coalescing of lazy visible-range reports | Proposed |
+| [0018](0018-app-driven-focus-requests.md) | App-driven focus requests for keyboard navigation | Proposed |
 
 ## Conventions
 

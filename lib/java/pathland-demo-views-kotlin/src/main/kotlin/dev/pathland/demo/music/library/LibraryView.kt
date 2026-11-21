@@ -1,14 +1,17 @@
 package dev.pathland.demo.music.library
 
 import dev.pathland.demo.music.MusicPlayerView
+import dev.pathland.demo.music.service.MediaPlayerService
 import dev.pathland.demo.music.service.mediaPlayerService
 import dev.pathland.view.core.Color
 import dev.pathland.view.core.FontWeight
 import dev.pathland.view.core.HorizontalAlignment
+import dev.pathland.view.core.Keys
 import dev.pathland.view.core.Roles
 import dev.pathland.view.core.VerticalAlignment
 import dev.pathland.view.core.View
 import dev.pathland.view.core.subscription.SessionContext
+import dev.pathland.view.core.signal.Signal
 import dev.pathland.core.protocol.Commands
 import dev.pathland.view.dsl.Divider
 import dev.pathland.view.dsl.ForEach
@@ -21,12 +24,18 @@ import dev.pathland.view.dsl.Spacer
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.VStack
 import dev.pathland.view.dsl.accessibilityRole
+import dev.pathland.view.dsl.computed
+import dev.pathland.view.dsl.focusable
+import dev.pathland.view.dsl.focused
 import dev.pathland.view.dsl.font
 import dev.pathland.view.dsl.fontSize
 import dev.pathland.view.dsl.fontWeight
 import dev.pathland.view.dsl.foregroundStyle
 import dev.pathland.view.dsl.frame
+import dev.pathland.view.dsl.onFocusChanged
+import dev.pathland.view.dsl.onKeyDown
 import dev.pathland.view.dsl.padding
+import dev.pathland.view.engine.KeyEvent
 
 /** The fixed main-axis height of a library row (the lazy window's extent). */
 internal const val LIBRARY_ROW_HEIGHT = 64f
@@ -78,18 +87,42 @@ internal class LibraryView : Component() {
                     Text("Loading library…")
                         .foregroundStyle(MusicPlayerView.SECONDARY_FG)
                 } else {
-                    LazyVStack(spacing = 0f) {
+                    val total = source?.total?.get() ?: service.tracks.size
+                    val pin: Signal<Int?> = computed { service.focusedIndex.get() }
+                    LazyVStack(
+                        spacing = 0f,
+                        pin = pin,
+                        onVisibleRange = { first, count ->
+                            // While the list is not focused, keep the roving tab
+                            // stop on a visible row so the pin never spans a far
+                            // O(gap) window.
+                            if (!service.listFocused.get() && count > 0) {
+                                val current = service.focusedIndex.get()
+                                if (current !in first until (first + count)) {
+                                    service.focusedIndex.set(first.coerceIn(0, total - 1))
+                                }
+                            }
+                        },
+                    ) {
                         if (source != null) {
                             ForEach(
                                 source,
                                 itemExtent = LIBRARY_ROW_HEIGHT,
-                                placeholder = { TrackRowSkeleton() },
+                                placeholder = { index ->
+                                    focusableRow(service, index, total) {
+                                        TrackRowSkeleton().frame(height = LIBRARY_ROW_HEIGHT)
+                                    }
+                                },
                             ) { track, index ->
-                                TrackRowView(track, index).frame(height = LIBRARY_ROW_HEIGHT)
+                                focusableRow(service, index, total) {
+                                    TrackRowView(track, index).frame(height = LIBRARY_ROW_HEIGHT)
+                                }
                             }
                         } else {
                             ForEach(service.tracks) { track, index ->
-                                TrackRowView(track, index).frame(height = LIBRARY_ROW_HEIGHT)
+                                focusableRow(service, index, total) {
+                                    TrackRowView(track, index).frame(height = LIBRARY_ROW_HEIGHT)
+                                }
                             }
                         }
                     }
@@ -97,5 +130,45 @@ internal class LibraryView : Component() {
             }
         }.padding(24f)
             .frame(width = Commands.Size.FILL, height = Commands.Size.FILL)
+    }
+
+    /**
+     * The row shell shared by loaded and placeholder rows: a single roving tab
+     * stop at [service].focusedIndex, arrow/Enter keyboard navigation, and focus
+     * observation for lazy-window pinning (#204).
+     */
+    // @ref spec/EVENTS.md#keyboard [implements] — roving row focus + key handling
+    private fun focusableRow(
+        service: MediaPlayerService,
+        index: Int,
+        total: Int,
+        content: () -> View,
+    ): View {
+        val focused = computed { service.focusedIndex.get() == index }
+        val isFocused = focused.get()
+        var row: View = content()
+            .focusable(isFocused)
+            .focused(focused)
+            .onKeyDown { key -> handleKey(service, index, total, key) }
+        if (isFocused) {
+            row = row.onFocusChanged { gained ->
+                if (gained) {
+                    service.listFocused.set(true)
+                    service.focusedIndex.set(index)
+                } else if (service.focusedIndex.get() == index) {
+                    service.listFocused.set(false)
+                }
+            }
+        }
+        return row
+    }
+
+    private fun handleKey(service: MediaPlayerService, index: Int, total: Int, key: KeyEvent) {
+        when (key.keyCode) {
+            Keys.ARROW_UP -> service.focusedIndex.set((index - 1).coerceAtLeast(0))
+            Keys.ARROW_DOWN -> service.focusedIndex.set((index + 1).coerceAtMost(total - 1))
+            Keys.ENTER -> service.selectTrack(index)
+            Keys.SPACE -> service.togglePlay()
+        }
     }
 }

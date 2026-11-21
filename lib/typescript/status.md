@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** November 18, 2026
+**Last updated:** November 20, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -26,6 +26,14 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   rich spans. Full rebuild on payload change; the optional surgical `Range`
   fast path is deferred.
 - **Window metadata**: the DOM client applies `META::SET_WINDOW_METADATA` at runtime — `TITLE` → `document.title`, `DESCRIPTION` → meta description, `LOCALE` → `<html lang>`; empty clears to the renderer default. `LABEL` also names buttons and slider inputs; the media shell is `aria-hidden`.
+- **Keyboard focus (ADR-0018)**: `META::SET_FOCUS` focuses/blurs a node by id.
+  A node whose `EVENT_LISTENERS` carries the `FOCUS` bit gets `tabindex="0"`
+  (and a `data-pathland-focusable` marker); removing it clears the tab stop.
+  `FOCUS_CHANGED` is reported for any focused node (editing remains text-input
+  only). `KEY_DOWN`/`KEY_UP` map native keys to the canonical table and
+  suppress the platform default for arrows/Home/End/Paging/Enter/Space while
+  leaving Tab native. Scroll containers are `tabindex="-1"` so the focused row
+  owns the tab stop.
 
 - **Single source, unified**: `src/` is the one client; `npm run build` emits
   `dist/pathland-dom-renderer.js` (IIFE, minified via esbuild), and

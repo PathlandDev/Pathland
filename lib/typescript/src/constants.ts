@@ -38,6 +38,23 @@ export const CMD_PONG = 0x05;
 export const CMD_SET_COLOR_SCHEME = 0x06;
 export const CMD_RESET_THEME = 0x07;
 export const CMD_SET_WINDOW_METADATA = 0x08;
+export const CMD_SET_FOCUS = 0x09;
+
+// Canonical logical key codes (spec/EVENTS.md §Keyboard).
+export const KEY_BACKSPACE = 0x08;
+export const KEY_TAB = 0x09;
+export const KEY_ENTER = 0x0d;
+export const KEY_ESCAPE = 0x1b;
+export const KEY_SPACE = 0x20;
+export const KEY_PAGE_UP = 0x21;
+export const KEY_PAGE_DOWN = 0x22;
+export const KEY_END = 0x23;
+export const KEY_HOME = 0x24;
+export const KEY_ARROW_LEFT = 0x25;
+export const KEY_ARROW_UP = 0x26;
+export const KEY_ARROW_RIGHT = 0x27;
+export const KEY_ARROW_DOWN = 0x28;
+export const KEY_DELETE = 0x2e;
 
 // META::SET_COLOR_SCHEME modes
 export const COLOR_SCHEME_PLATFORM = 0x00000000;

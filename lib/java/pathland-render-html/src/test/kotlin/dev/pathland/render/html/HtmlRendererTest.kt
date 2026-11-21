@@ -20,6 +20,7 @@ import dev.pathland.view.dsl.Image
 import dev.pathland.view.dsl.Picker
 import dev.pathland.view.dsl.PickerStyle
 import dev.pathland.view.dsl.ProgressView
+import dev.pathland.view.dsl.ScrollView
 import dev.pathland.view.dsl.Slider
 import dev.pathland.view.dsl.Text
 import dev.pathland.view.dsl.TextEditor
@@ -30,6 +31,7 @@ import dev.pathland.view.dsl.accessibilityLabel
 import dev.pathland.view.dsl.accessibilityRole
 import dev.pathland.view.dsl.borderedButtonStyle
 import dev.pathland.view.dsl.buttonStyle
+import dev.pathland.view.dsl.focusable
 import dev.pathland.view.dsl.font
 import dev.pathland.view.dsl.scaledToFill
 import dev.pathland.view.dsl.signal
@@ -179,7 +181,7 @@ class HtmlRendererTest {
         val choice = signal(0)
         val root = VStack {
             Toggle(label = "Go", isOn = on, style = ToggleStyle.CHECKBOX)
-            Slider(value, 0f..1f)
+            Slider(value, 0f..1f, step = 0.05f)
             Picker(choice, PickerStyle.MENU) {
                 Text("A")
                 Text("B")
@@ -193,6 +195,7 @@ class HtmlRendererTest {
 
         assertTrue(html.contains("type=\"checkbox\""), "toggle checkbox")
         assertTrue(html.contains("type=\"range\""), "slider")
+        assertTrue(html.contains("step=\"0.05\""), "slider step value")
         assertTrue(html.contains("value=\"0\" selected>A</option>"), "picker options (first)")
         assertTrue(html.contains("value=\"1\">B</option>"), "picker options (second)")
         assertTrue(html.contains("<progress"), "progress bar")
@@ -361,4 +364,20 @@ class HtmlRendererTest {
         assertTrue(json.contains("\\u003C/script\\u003E"), json)
     }
 
+
+    @Test
+    fun focusListenerRendersATabStop() {
+        val html = renderer().render(frameOf(VStack { Text("row").focusable() }), 1)
+        assertTrue(html.contains("data-pathland-focusable=\"\""))
+        assertTrue(html.contains("tabindex=\"0\""))
+    }
+
+    @Test
+    fun scrollViewOptsOutOfScrollAnchoring() {
+        val root = ScrollView {
+            Text("content")
+        }
+        val html = renderer().render(frameOf(root), 1)
+        assertTrue(html.contains("overflow:auto;overflow-anchor:none"), "scrollview inline")
+    }
 }

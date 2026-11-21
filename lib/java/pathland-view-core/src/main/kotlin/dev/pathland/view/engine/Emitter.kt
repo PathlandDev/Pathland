@@ -55,6 +55,8 @@ class Emitter {
     private val textInputs = LinkedHashMap<Int, Consumer<String>>()
     private val valueInputs = LinkedHashMap<Int, Consumer<Float>>()
     private val editingInputs = LinkedHashMap<Int, Consumer<Boolean>>()
+    private val focusInputs = LinkedHashMap<Int, Consumer<Boolean>>()
+    private val keyInputs = LinkedHashMap<Int, KeyInput>()
     private val dateInputs = LinkedHashMap<Int, DateInput>()
     private val mediaInputs = LinkedHashMap<Int, MediaInput>()
     private val fitInputs = LinkedHashMap<Int, Consumer<Int>>()
@@ -69,6 +71,7 @@ class Emitter {
     private var navigateHandler: Consumer<Event>? = null
     private var nextId = 1
     private var rootId = 0
+    private var lastFocusedId = 0
     private var mounted = false
     private var tree: PathlandNode? = null
     private var env: Environment? = null
@@ -370,6 +373,8 @@ class Emitter {
         node.textInput?.let { textInputs[node.id] = it }
         node.valueInput?.let { valueInputs[node.id] = it }
         node.editingInput?.let { editingInputs[node.id] = it }
+        node.focusInput?.let { focusInputs[node.id] = it }
+        node.keyInput?.let { keyInputs[node.id] = it }
         node.dateInput?.let { dateInputs[node.id] = it }
         node.mediaInput?.let { mediaInputs[node.id] = it }
         node.fitInput?.let { inner ->
@@ -437,6 +442,8 @@ class Emitter {
         textInputs.remove(node.id)
         valueInputs.remove(node.id)
         editingInputs.remove(node.id)
+        focusInputs.remove(node.id)
+        keyInputs.remove(node.id)
         dateInputs.remove(node.id)
         mediaInputs.remove(node.id)
         fitInputs.remove(node.id)
@@ -481,6 +488,8 @@ class Emitter {
         textInputs.clear()
         valueInputs.clear()
         editingInputs.clear()
+        focusInputs.clear()
+        keyInputs.clear()
         dateInputs.clear()
         mediaInputs.clear()
         fitInputs.clear()
@@ -505,6 +514,8 @@ class Emitter {
             Collections.unmodifiableMap(textInputs),
             Collections.unmodifiableMap(valueInputs),
             Collections.unmodifiableMap(editingInputs),
+            Collections.unmodifiableMap(focusInputs),
+            Collections.unmodifiableMap(keyInputs),
             Collections.unmodifiableMap(dateInputs),
             Collections.unmodifiableMap(mediaInputs),
             Collections.unmodifiableMap(fitInputs),
@@ -814,6 +825,11 @@ class Emitter {
             if (text != null && text.isNotEmpty()) sink.setText(node.id, text)
         }
         if (node.dateBinding != null) sink.setDate(node.id, node.days, node.millisOfDay)
+        // @ref spec/OPCODE.md#focus-requests [implements] — focus request rides the same frame
+        if (node.focusBinding?.let { Signals.untracked { it.get() } } == true) {
+            sink.setFocus(node.id, true)
+            lastFocusedId = node.id
+        }
         var childIndex = 0
         for (child in node.children) emitNode(child, node.id, childIndex++)
     }
@@ -997,6 +1013,18 @@ class Emitter {
         } else {
             reconcileChildren(fresh, old.children, fresh.children, ops)
         }
+        // Focus requests are appended after the row exists in this frame. If the
+        // target is a newly materialized lazy row, its CREATE already ran above.
+        fresh.focusBinding?.let { focusBinding ->
+            val id = fresh.id
+            val focused = Signals.untracked { focusBinding.get() }
+            if (focused && lastFocusedId != id) {
+                ops.add(Runnable {
+                    sink.setFocus(id, true)
+                    lastFocusedId = id
+                })
+            }
+        }
     }
 
     /**
@@ -1066,6 +1094,14 @@ class Emitter {
             val days = node.days
             val millis = node.millisOfDay
             ops.add(Runnable { sink.setDate(id, days, millis) })
+        }
+        if (node.focusBinding?.let { Signals.untracked { it.get() } } == true) {
+            ops.add(Runnable {
+                if (lastFocusedId != id) {
+                    sink.setFocus(id, true)
+                    lastFocusedId = id
+                }
+            })
         }
         var childIndex = 0
         for (child in node.children) {

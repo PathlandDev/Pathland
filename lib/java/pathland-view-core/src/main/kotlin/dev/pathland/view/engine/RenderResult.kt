@@ -17,6 +17,8 @@ data class RenderResult(
     val textInputs: Map<Int, Consumer<String>>,
     val valueInputs: Map<Int, Consumer<Float>>,
     val editingInputs: Map<Int, Consumer<Boolean>>,
+    val focusInputs: Map<Int, Consumer<Boolean>>,
+    val keyInputs: Map<Int, KeyInput>,
     val dateInputs: Map<Int, DateInput>,
     val mediaInputs: Map<Int, MediaInput>,
     val fitInputs: Map<Int, Consumer<Int>>,
@@ -30,6 +32,8 @@ data class RenderResult(
     fun textInputs(): Map<Int, Consumer<String>> = textInputs
     fun valueInputs(): Map<Int, Consumer<Float>> = valueInputs
     fun editingInputs(): Map<Int, Consumer<Boolean>> = editingInputs
+    fun focusInputs(): Map<Int, Consumer<Boolean>> = focusInputs
+    fun keyInputs(): Map<Int, KeyInput> = keyInputs
     fun dateInputs(): Map<Int, DateInput> = dateInputs
     fun mediaInputs(): Map<Int, MediaInput> = mediaInputs
     fun fitInputs(): Map<Int, Consumer<Int>> = fitInputs

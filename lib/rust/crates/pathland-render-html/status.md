@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** November 7, 2026
+**Last updated:** November 20, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -15,6 +15,16 @@ Statelessness). Protocol contract: `spec/`.
 > source of the committed golden fixtures.
 
 ## Implemented
+
+- **Keyboard focus attributes**: a node whose `EVENT_LISTENERS` carries the
+  `FOCUS` bit renders `tabindex="0" data-pathland-focusable=""`; scroll
+  containers render `tabindex="-1"` unless they themselves declare `FOCUS`.
+  Native control shells (button, text field/editor, slider, toggle, stepper
+  buttons, picker, date/color picker) render an explicit `tabindex="0"` so
+  Safari's default Tab policy still reaches them. `SLIDER` honors
+  `STEP_VALUE` (absent = continuous `step="any"`). Scroll containers emit
+  `overflow-anchor:none` so a lazy window's virtual padding updates stay
+  scroll-stable.
 
 - **Window metadata → head**: `TITLE` → `<title>`, `DESCRIPTION` → `<meta name="description">`, `LOCALE` → `<html lang>` (default `en`/`Pathland`); values escaped. Also: generic `LABEL` → `aria-label` (icon buttons), slider names on the inner input, `aria-hidden` on the non-visual media shell.
 - **SEO document metadata (issue #45)**: `DocumentMeta` is a per-render host

@@ -167,56 +167,88 @@ fun ScrollView(
 fun LazyVStack(
     alignment: HorizontalAlignment? = null,
     spacing: Float? = null,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = lazyVStack(
     alignment = alignment?.let { Signals.constant(it) },
     spacingSignal = null,
     spacingValue = spacing,
+    pin = pin,
+    onVisibleRange = onVisibleRange,
     content = content,
 )
 
 fun LazyVStack(
     spacing: Int,
     alignment: HorizontalAlignment? = null,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
     content: PathlandScope.() -> Unit = {},
-): View = LazyVStack(alignment = alignment, spacing = spacing.toFloat(), content = content)
+): View = LazyVStack(
+    alignment = alignment,
+    spacing = spacing.toFloat(),
+    pin = pin,
+    onVisibleRange = onVisibleRange,
+    content = content,
+)
 
 fun LazyVStack(
     spacing: Signal<Float>,
     alignment: HorizontalAlignment? = null,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = lazyVStack(
     alignment = alignment?.let { Signals.constant(it) },
     spacingSignal = spacing,
     spacingValue = null,
+    pin = pin,
+    onVisibleRange = onVisibleRange,
     content = content,
 )
 
 fun LazyHStack(
     alignment: VerticalAlignment? = null,
     spacing: Float? = null,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = lazyHStack(
     alignment = alignment?.let { Signals.constant(it) },
     spacingSignal = null,
     spacingValue = spacing,
+    pin = pin,
+    onVisibleRange = onVisibleRange,
     content = content,
 )
 
 fun LazyHStack(
     spacing: Int,
     alignment: VerticalAlignment? = null,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
     content: PathlandScope.() -> Unit = {},
-): View = LazyHStack(alignment = alignment, spacing = spacing.toFloat(), content = content)
+): View = LazyHStack(
+    alignment = alignment,
+    spacing = spacing.toFloat(),
+    pin = pin,
+    onVisibleRange = onVisibleRange,
+    content = content,
+)
 
 fun LazyHStack(
     spacing: Signal<Float>,
     alignment: VerticalAlignment? = null,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = lazyHStack(
     alignment = alignment?.let { Signals.constant(it) },
     spacingSignal = spacing,
     spacingValue = null,
+    pin = pin,
+    onVisibleRange = onVisibleRange,
     content = content,
 )
 

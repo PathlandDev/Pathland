@@ -595,7 +595,7 @@ public final class HtmlRenderer {
                 String body = node.children.isEmpty()
                         ? Format.escape(node.text == null ? "" : node.text)
                         : children;
-                element = "<button" + dataId + event + aria + Format.classAttr("pathland-button")
+                element = "<button" + dataId + " tabindex=\"0\"" + event + aria + Format.classAttr("pathland-button")
                         + style + ">" + body + "</button>";
             }
             case Components.TOGGLE -> {
@@ -608,14 +608,14 @@ public final class HtmlRenderer {
                 String toggleClass = Format.classAttr("pathland-toggle");
                 if (toggleStyle == 1) {
                     element = "<label" + dataId + event + aria + toggleClass + style
-                            + "><input type=\"checkbox\"" + checked + ">" + body + "</label>";
+                            + "><input type=\"checkbox\" tabindex=\"0\"" + checked + ">" + body + "</label>";
                 } else if (toggleStyle == 2) {
                     String pressed = node.checked() ? "true" : "false";
-                    element = "<button" + dataId + event + aria + " type=\"button\" aria-pressed=\""
+                    element = "<button" + dataId + " tabindex=\"0\"" + event + aria + " type=\"button\" aria-pressed=\""
                             + pressed + "\"" + style + ">" + body + "</button>";
                 } else {
                     element = "<label" + dataId + event + aria + toggleClass + style
-                            + "><input type=\"checkbox\" role=\"switch\"" + checked + ">" + body
+                            + "><input type=\"checkbox\" role=\"switch\" tabindex=\"0\"" + checked + ">" + body
                             + "</label>";
                 }
             }
@@ -640,9 +640,12 @@ public final class HtmlRenderer {
                 String inputAria = label != null && !label.isEmpty()
                         ? " aria-label=\"" + Format.escapeHtmlAttr(label) + "\""
                         : "";
+                String stepAttr = node.properties.containsKey(Properties.STEP_VALUE)
+                        ? " step=\"" + Format.f32(node.f32Property(Properties.STEP_VALUE, 1.0f)) + "\""
+                        : " step=\"any\"";
                 element = "<label" + dataId + event + aria + sliderClass + style
-                        + "><input type=\"range\" min=\"" + Format.f32(min) + "\" max=\""
-                        + Format.f32(max) + "\" step=\"any\" value=\"" + Format.f32(value) + "\""
+                        + "><input type=\"range\" tabindex=\"0\" min=\"" + Format.f32(min) + "\" max=\""
+                        + Format.f32(max) + "\"" + stepAttr + " value=\"" + Format.f32(value) + "\""
                         + inputAria + " style=\"--pl-slider-fill:" + fill + "%\">" + body
                         + "</label>";
             }
@@ -655,13 +658,13 @@ public final class HtmlRenderer {
                 String textFieldClass = Format.classAttr("pathland-textfield");
                 element = "<label" + dataId + event + aria + textFieldClass + style
                         + "><span class=\"pathland-label\">" + label
-                        + "</span><input class=\"pathland-input pathland-control\" type=\""
+                        + "</span><input class=\"pathland-input pathland-control\" tabindex=\"0\" type=\""
                         + inputType + "\" value=\"" + value + "\" placeholder=\"" + prompt
                         + "\"></label>";
             }
             case Components.TEXT_EDITOR -> {
                 String value = Format.escape(node.text == null ? "" : node.text);
-                element = "<textarea" + dataId + event + aria
+                element = "<textarea" + dataId + " tabindex=\"0\"" + event + aria
                         + " class=\"pathland-input pathland-control\" rows=\"4\"" + style + ">"
                         + value + "</textarea>";
             }
@@ -772,12 +775,16 @@ public final class HtmlRenderer {
                     scrollFill = "";
                 }
                 String axis = scrollHorizontal ? "horizontal" : "vertical";
-                String scrollStyle = Format.styleAttr(scrollFill + "overflow:auto;" + css + derived);
+                String scrollStyle = Format.styleAttr(
+                        scrollFill + "overflow:auto;overflow-anchor:none;" + css + derived);
                 String content = node.children.isEmpty()
                         ? ""
                         : renderNode(nodes, node.children.get(0), node.component, debug);
+                Integer scrollListeners = node.properties.get(Properties.EVENT_LISTENERS);
+                String scrollTab = scrollListeners == null
+                        || (scrollListeners & Commands.Listeners.FOCUS) == 0 ? " tabindex=\"-1\"" : "";
                 element = "<" + tag + dataId + " data-pathland-scroll-axis=\"" + axis + "\""
-                        + event + aria + scrollStyle + ">" + content + "</" + tag + ">";
+                        + event + scrollTab + aria + scrollStyle + ">" + content + "</" + tag + ">";
             }
             case Components.ZSTACK -> element = renderZStack(nodes, id, node, dataId.toString(),
                     css, derived.toString(), event, aria, semantic, debug);
@@ -788,9 +795,9 @@ public final class HtmlRenderer {
                 float step = node.f32Property(Properties.STEP_VALUE, 1.0f);
                 String display = Format.f32(Math.round(value * 100.0f) / 100.0f);
                 element = "<div" + dataId + event + aria + Format.classAttr("pathland-stepper")
-                        + style + "><button type=\"button\" data-step=\"-1\">−</button><span>"
+                        + style + "><button type=\"button\" tabindex=\"0\" data-step=\"-1\">−</button><span>"
                         + display
-                        + "</span><button type=\"button\" data-step=\"1\">+</button><span class=\"pathland-stepper-range\" hidden data-min=\""
+                        + "</span><button type=\"button\" tabindex=\"0\" data-step=\"1\">+</button><span class=\"pathland-stepper-range\" hidden data-min=\""
                         + Format.f32(min) + "\" data-max=\"" + Format.f32(max) + "\" data-step=\""
                         + Format.f32(step) + "\"></span></div>";
             }
@@ -817,7 +824,7 @@ public final class HtmlRenderer {
                                 date[0], date[1], date[2]);
                     }
                 }
-                element = "<input" + dataId + event + aria
+                element = "<input" + dataId + " tabindex=\"0\"" + event + aria
                         + " class=\"pathland-date pathland-control\" type=\"" + type
                         + "\" value=\"" + value + "\"" + style + ">";
             }
@@ -833,7 +840,7 @@ public final class HtmlRenderer {
                             .append(i).append('"').append(selectedAttr).append('>')
                             .append(Format.escape(label)).append("</option>");
                 }
-                element = "<select" + dataId + event + aria
+                element = "<select" + dataId + " tabindex=\"0\"" + event + aria
                         + " class=\"pathland-select pathland-control\"" + style + ">" + options
                         + "</select>";
             }
@@ -847,7 +854,7 @@ public final class HtmlRenderer {
                 int color = node.u32Property(Properties.COLOR_VALUE, 0xFF000000);
                 String hex = String.format(java.util.Locale.ROOT, "#%02x%02x%02x",
                         (color >>> 16) & 0xFF, (color >>> 8) & 0xFF, color & 0xFF);
-                element = "<input" + dataId + event + aria
+                element = "<input" + dataId + " tabindex=\"0\"" + event + aria
                         + " class=\"pathland-color pathland-control\" type=\"color\" value=\""
                         + hex + "\"" + style + ">";
             }
@@ -1310,6 +1317,9 @@ public final class HtmlRenderer {
         if (listeners != null && listeners != 0) {
             attrs.append(" data-event-listeners=\"").append(Integer.toUnsignedString(listeners))
                     .append('"');
+        }
+        if (listeners != null && (listeners & Commands.Listeners.FOCUS) != 0) {
+            attrs.append(" tabindex=\"0\" data-pathland-focusable=\"\"");
         }
         Integer action = node.properties.get(Properties.ACTION_ID);
         if (action != null) {

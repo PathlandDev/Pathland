@@ -180,6 +180,8 @@ internal class LazyStackView(
     private val alignment: Signal<*>?,
     private val spacingSignal: Signal<Float>?,
     private val spacingValue: Float?,
+    private val pin: Signal<Int?>? = null,
+    private val visibleRangeListener: ((Int, Int) -> Unit)? = null,
 ) : View {
 
     private var window: WritableSignal<IntRange>? = null
@@ -243,6 +245,15 @@ internal class LazyStackView(
                 Signals.untracked { windowSignal.set(first..end); true }
             }
         }
+        // @ref spec/LAYOUT.md#virtual-extent-lazy-containers [implements] — focused-row pin
+            // Union the app's pinned index into the emitted window without changing
+        // the visible-range window.
+        val pinned = pin?.get()
+        if (count > 0 && pinned != null) {
+            val index = pinned.coerceIn(0, count - 1)
+            if (index < first) first = index
+            if (index > end) end = index
+        }
 
         val firstOffset = if (extents != null) {
             var sum = 0f
@@ -295,6 +306,7 @@ internal class LazyStackView(
             if (!window.isEmpty()) {
                 data.prefetch(window.first, window.last)
             }
+            visibleRangeListener?.invoke(firstVisible, visibleCount)
         }
 
         if (count == 0) {
@@ -516,12 +528,14 @@ internal fun lazyVStack(
     alignment: Signal<*>?,
     spacingSignal: Signal<Float>?,
     spacingValue: Float?,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
     content: PathlandScope.() -> Unit,
 ): View {
     val children = collectChildren(content)
     val data = children.singleOrNull() as? ForEachView<*>
     return if (data != null) {
-        LazyStackView(Components.LAZY_VSTACK, true, data, alignment, spacingSignal, spacingValue)
+        LazyStackView(Components.LAZY_VSTACK, true, data, alignment, spacingSignal, spacingValue, pin, onVisibleRange)
             .registerChild()
     } else {
         coreView(Components.LAZY_VSTACK, children) { node, _ ->
@@ -538,12 +552,14 @@ internal fun lazyHStack(
     alignment: Signal<*>?,
     spacingSignal: Signal<Float>?,
     spacingValue: Float?,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
     content: PathlandScope.() -> Unit,
 ): View {
     val children = collectChildren(content)
     val data = children.singleOrNull() as? ForEachView<*>
     return if (data != null) {
-        LazyStackView(Components.LAZY_HSTACK, false, data, alignment, spacingSignal, spacingValue)
+        LazyStackView(Components.LAZY_HSTACK, false, data, alignment, spacingSignal, spacingValue, pin, onVisibleRange)
             .registerChild()
     } else {
         coreView(Components.LAZY_HSTACK, children) { node, _ ->

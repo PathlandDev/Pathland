@@ -229,7 +229,7 @@ from the primitives in this file, so no component IDs are allocated:
 
 | SwiftUI view | Composition |
 |--------------|-------------|
-| `List` | `ScrollView` + `VStack` of rows; row selection via `SELECTED` per row |
+| `List` | `ScrollView` + `VStack` of rows; row selection via `SELECTED` per row. Keyboard navigation is app-composed: one roving row declares `FOCUS`/`KEY_DOWN`, handles arrows, and requests focus with `META::SET_FOCUS` (ADR-0018). |
 | `NavigationStack` | app-held navigation state emitting the current destination into a stable `Group` slot (a reactive component slot, [DSL.md §3.4](./DSL.md#34-structural-reactivity-reactive-bodies--slots)); the slot's child swaps on route change, producing `TREE` deltas |
 | `NavigationSplitView` | `HStack` (sidebar + detail) |
 | `Label` | `HStack` + `IMAGE` (or `ICON`) + `TEXT` |
@@ -987,7 +987,7 @@ A continuous or stepped numeric range control.
 | `VALUE` | 0x2006 | F32 | Current value |
 | `MIN_VALUE` | 0x2007 | F32 | Inclusive minimum |
 | `MAX_VALUE` | 0x2008 | F32 | Inclusive maximum |
-| `STEP_VALUE` | 0x2009 | F32 | Stepped mode increment (default 1.0 if absent; absent = continuous) |
+| `STEP_VALUE` | 0x2009 | F32 | Stepped mode increment. When present, renderers set the native range's `step`; when absent the slider is continuous (`step="any"`). |
 | `BINDING_ID` | 0x2017 | U32 | Two-way binding id (numeric value) |
 | `ENABLED`/`STATE` | 0x2003/0x2002 | — | Enabled / accessibility state |
 

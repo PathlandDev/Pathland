@@ -83,6 +83,22 @@ command	Meta	PONG	0x05
 command	Meta	SET_COLOR_SCHEME	0x06
 command	Meta	RESET_THEME	0x07
 command	Meta	SET_WINDOW_METADATA	0x08
+command	Meta	SET_FOCUS	0x09
+
+key	Key	BACKSPACE	0x0008
+key	Key	TAB	0x0009
+key	Key	ENTER	0x000D
+key	Key	ESCAPE	0x001B
+key	Key	SPACE	0x0020
+key	Key	PAGE_UP	0x0021
+key	Key	PAGE_DOWN	0x0022
+key	Key	END	0x0023
+key	Key	HOME	0x0024
+key	Key	ARROW_LEFT	0x0025
+key	Key	ARROW_UP	0x0026
+key	Key	ARROW_RIGHT	0x0027
+key	Key	ARROW_DOWN	0x0028
+key	Key	DELETE	0x002E
 
 field	WindowFields	TITLE	0x0001
 field	WindowFields	DESCRIPTION	0x0002

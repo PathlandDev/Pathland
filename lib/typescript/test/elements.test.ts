@@ -55,7 +55,7 @@ const EXPECTED: Array<[number, string, string | null, (el: HTMLElement) => boole
   [COMPONENT_GRID, "DIV", null, (el) => el.style.display === "grid" && el.style.justifyItems === "start" && el.style.alignItems === "start"],
   [COMPONENT_LAZY_VGRID, "DIV", null, (el) => el.style.display === "grid" && el.style.justifyItems === "start"],
   [COMPONENT_LAZY_HGRID, "DIV", null, (el) => el.style.display === "grid" && el.style.gridAutoFlow === "column"],
-  [COMPONENT_SCROLLVIEW, "DIV", null, (el) => el.style.overflow === "auto"],
+  [COMPONENT_SCROLLVIEW, "DIV", null, (el) => el.style.overflow === "auto" && el.style.overflowAnchor === "none"],
   [COMPONENT_TEXT_FIELD, "LABEL", "pathland-textfield", () => undefined],
   [COMPONENT_TEXT_EDITOR, "TEXTAREA", "pathland-input", () => undefined],
   [COMPONENT_TOGGLE, "LABEL", "pathland-toggle", () => undefined],
@@ -89,5 +89,28 @@ describe("createElement runtime shells (drift guard vs the Rust renderer)", () =
 
   it("COMMENT is an inert comment node", () => {
     expect(createElement(COMPONENT_COMMENT).nodeType).toBe(Node.COMMENT_NODE);
+  });
+
+  it("native controls are explicitly tabbable (Safari-safe)", () => {
+    for (const component of [
+      COMPONENT_BUTTON,
+      COMPONENT_TEXT_FIELD,
+      COMPONENT_TEXT_EDITOR,
+      COMPONENT_TOGGLE,
+      COMPONENT_SLIDER,
+      COMPONENT_STEPPER,
+      COMPONENT_PICKER,
+      COMPONENT_DATE_PICKER,
+      COMPONENT_COLOR_PICKER,
+    ]) {
+      const shell = createElement(component) as HTMLElement;
+      const controls = shell.matches("button,input,select,textarea")
+        ? [shell]
+        : Array.from(shell.querySelectorAll<HTMLElement>("button,input,select,textarea"));
+      expect(controls.length, `component 0x${component.toString(16)} has a native control`).toBeGreaterThan(0);
+      for (const control of controls) {
+        expect(control.getAttribute("tabindex"), `component 0x${component.toString(16)} control tabindex`).toBe("0");
+      }
+    }
   });
 });

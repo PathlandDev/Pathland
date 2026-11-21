@@ -373,6 +373,7 @@ fun Slider(
     value: WritableSignal<Float>,
     range: ClosedFloatingPointRange<Float>? = null,
     onEditingChanged: ((Boolean) -> Unit)? = null,
+    step: Float? = null,
 ): dev.pathland.view.core.View =
     coreView(Components.SLIDER) { node, _ ->
         node.property(Properties.VALUE, value)
@@ -381,6 +382,7 @@ fun Slider(
             node.properties[Properties.MIN_VALUE] = range.start
             node.properties[Properties.MAX_VALUE] = range.endInclusive
         }
+        if (step != null) node.properties[Properties.STEP_VALUE] = step
         if (onEditingChanged != null) {
             val current = node.properties[Properties.EVENT_LISTENERS] as? Int ?: 0
             node.properties[Properties.EVENT_LISTENERS] = current or Commands.Listeners.EDITING
