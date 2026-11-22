@@ -1,0 +1,43 @@
+{
+  "cli_version": "0.9.0",
+  "checkpoint_id": "01M827XD1PEN35H6A3B5H0YEYT",
+  "strategy": "manual-commit",
+  "branch": "feat/keyboard-list-navigation",
+  "checkpoints_count": 17,
+  "files_touched": [
+    "design/html/components.css",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/MusicPlayerView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/library/LibraryView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/main/kotlin/dev/pathland/demo/music/library/TrackRowView.kt",
+    "lib/java/pathland-demo-views-kotlin/src/test/kotlin/dev/pathland/demo/music/library/TrackRowViewTest.kt",
+    "lib/java/pathland-demo-views-kotlin/status.md",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/Containers.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/LazyList.kt",
+    "lib/java/pathland-view-core/src/main/kotlin/dev/pathland/view/dsl/LazySelection.kt",
+    "lib/java/pathland-view-core/src/test/kotlin/dev/pathland/view/dsl/LazySelectionTest.kt",
+    "lib/java/pathland-view-core/status.md",
+    "lib/rust/crates/pathland-render-html/assets/base.css",
+    "lib/rust/crates/pathland-render-html/assets/base.css.name",
+    "lib/typescript/e2e/focus.spec.ts",
+    "lib/typescript/test/fixtures/ssr/document_meta.document.html",
+    "spec/DSL.md",
+    "spec/LAYOUT.md",
+    "spec/PRIMITIVES.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 2043463,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 51861376,
+    "output_tokens": 55947,
+    "api_call_count": 129
+  }
+}
