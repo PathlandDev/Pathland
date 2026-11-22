@@ -182,7 +182,13 @@ internal class LazyStackView(
     private val spacingValue: Float?,
     private val pin: Signal<Int?>? = null,
     private val visibleRangeListener: ((Int, Int) -> Unit)? = null,
+    private val selection: LazySelection? = null,
 ) : View {
+    init {
+        require(selection == null || pin == null) {
+            "LazySelection owns the focused-item pin; do not pass pin and selection together"
+        }
+    }
 
     private var window: WritableSignal<IntRange>? = null
     private val tracker = LazyWindowTracker()
@@ -246,9 +252,14 @@ internal class LazyStackView(
             }
         }
         // @ref spec/LAYOUT.md#virtual-extent-lazy-containers [implements] — focused-row pin
-            // Union the app's pinned index into the emitted window without changing
+        // Union the selected/pinned item into the emitted window without changing
         // the visible-range window.
-        val pinned = pin?.get()
+        val geometry = LazySelectionGeometry(LazySelectionKind.STACK, vertical, 1)
+        val pinned = if (selection != null) {
+            selection.pinUnit(selection.selectedIndex.get(), count, geometry)
+        } else {
+            pin?.get()
+        }
         if (count > 0 && pinned != null) {
             val index = pinned.coerceIn(0, count - 1)
             if (index < first) first = index
@@ -301,11 +312,13 @@ internal class LazyStackView(
                 return@VisibleRangeInput
             }
             pendingVisible = null
-            val window = tracker.window(firstVisible, visibleCount, data.count())
+            val count = data.count()
+            val window = tracker.window(firstVisible, visibleCount, count)
             windowSignal.set(window)
             if (!window.isEmpty()) {
                 data.prefetch(window.first, window.last)
             }
+            selection?.clampVisible(firstVisible, visibleCount, count, geometry)
             visibleRangeListener?.invoke(firstVisible, visibleCount)
         }
 
@@ -324,7 +337,9 @@ internal class LazyStackView(
         for (index in first..end) {
             val key = data.key(index)
             keys.add(key)
-            val child = data.row(index).render(data.rowEnvironment(env, index))
+            val rowView = data.row(index)
+            val decorated = selection?.decorate(index, rowView, geometry, count) ?: rowView
+            val child = decorated.render(data.rowEnvironment(env, index))
             val rowExtent = extents?.get(index) ?: extent
             child.properties[mainProperty] = rowExtent
             child.propertyBindings.remove(mainProperty)
@@ -378,7 +393,15 @@ internal class LazyGridWindowView(
     private val spacingSignal: Signal<Float>?,
     private val spacingValue: Float?,
     private val gridTracks: String?,
+    private val pin: Signal<Int?>? = null,
+    private val visibleRangeListener: ((Int, Int) -> Unit)? = null,
+    private val selection: LazySelection? = null,
 ) : View {
+    init {
+        require(selection == null || pin == null) {
+            "LazySelection owns the focused-item pin; do not pass pin and selection together"
+        }
+    }
 
     private var window: WritableSignal<IntRange>? = null
     private val tracker = LazyWindowTracker()
@@ -443,6 +466,20 @@ internal class LazyGridWindowView(
             }
         }
 
+        val geometry = LazySelectionGeometry(LazySelectionKind.GRID, vertical, tracks)
+        val pinnedUnit = if (selection != null) {
+            selection.pinUnit(selection.selectedIndex.get(), itemCount, geometry)
+        } else {
+            pin?.get()?.let { index ->
+                if (itemCount <= 0) null else index.coerceIn(0, itemCount - 1) / tracks
+            }
+        }
+        if (unitCount > 0 && pinnedUnit != null) {
+            val unit = pinnedUnit.coerceIn(0, unitCount - 1)
+            if (unit < first) first = unit
+            if (unit > end) end = unit
+        }
+
         node.properties[Properties.ITEM_COUNT] = unitCount
         node.properties[Properties.ITEM_EXTENT] = extent
         node.properties[Properties.FIRST_ITEM_INDEX] = first
@@ -470,6 +507,8 @@ internal class LazyGridWindowView(
                     minOf(itemCount, (window.last + 1) * tracks) - 1,
                 )
             }
+            selection?.clampVisible(firstVisible, visibleCount, data.count(), geometry)
+            visibleRangeListener?.invoke(firstVisible, visibleCount)
         }
 
         if (unitCount == 0) {
@@ -488,7 +527,9 @@ internal class LazyGridWindowView(
                 if (index >= itemCount) break
                 val key = data.key(index)
                 keys.add(key)
-                val child = data.row(index).render(data.rowEnvironment(env, index))
+                val rowView = data.row(index)
+                val decorated = selection?.decorate(index, rowView, geometry, itemCount) ?: rowView
+                val child = decorated.render(data.rowEnvironment(env, index))
                 node.children.add(child)
                 nodes[key] = child
             }
@@ -530,12 +571,16 @@ internal fun lazyVStack(
     spacingValue: Float?,
     pin: Signal<Int?>? = null,
     onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit,
 ): View {
     val children = collectChildren(content)
     val data = children.singleOrNull() as? ForEachView<*>
+    require(selection == null || data != null) {
+        "LazyVStack with selection requires exactly one ForEach data source"
+    }
     return if (data != null) {
-        LazyStackView(Components.LAZY_VSTACK, true, data, alignment, spacingSignal, spacingValue, pin, onVisibleRange)
+        LazyStackView(Components.LAZY_VSTACK, true, data, alignment, spacingSignal, spacingValue, pin, onVisibleRange, selection)
             .registerChild()
     } else {
         coreView(Components.LAZY_VSTACK, children) { node, _ ->
@@ -554,12 +599,16 @@ internal fun lazyHStack(
     spacingValue: Float?,
     pin: Signal<Int?>? = null,
     onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit,
 ): View {
     val children = collectChildren(content)
     val data = children.singleOrNull() as? ForEachView<*>
+    require(selection == null || data != null) {
+        "LazyHStack with selection requires exactly one ForEach data source"
+    }
     return if (data != null) {
-        LazyStackView(Components.LAZY_HSTACK, false, data, alignment, spacingSignal, spacingValue, pin, onVisibleRange)
+        LazyStackView(Components.LAZY_HSTACK, false, data, alignment, spacingSignal, spacingValue, pin, onVisibleRange, selection)
             .registerChild()
     } else {
         coreView(Components.LAZY_HSTACK, children) { node, _ ->

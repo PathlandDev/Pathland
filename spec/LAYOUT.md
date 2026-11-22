@@ -246,7 +246,7 @@ container.
   first report and to slow scrolling. A report with no movement returns to the
   base margin. The application may still emit a larger window.
 
-**Focused-row pinning (ADR-0014/ADR-0018).** A lazy stack MAY carry an
+**Focused-row pinning (ADR-0014/ADR-0018).** A lazy container MAY carry an
 application-supplied pinned index. The emitted window is the contiguous union
 of the visible window and the pinned index; the pinned row stays materialized
 while the window slides so a focused native element is not deleted and
@@ -255,6 +255,12 @@ offset. Because the union is contiguous, apps MUST bound the pin (e.g. keep the
 roving focus on a visible row when the list is unfocused) so a far-away pin
 cannot force an O(gap) emission. Clearing the pin returns the window to the
 visible range.
+
+For a lazy grid, the pin is the **unit** (row/column) containing the selected
+item: VGrid `item / columns`, HGrid `item / rows`. The DSL's `LazySelection`
+performs that conversion, unions the selected unit into the window, and clamps
+the roving tab stop from the visible unit range while the container is
+unfocused. The clamp never emits `SET_FOCUS`.
 
 **Variable item extents.** A lazy **stack** (not a grid) MAY carry
 `ITEM_EXTENTS` (`0x0025`, LIST of F32), `FIRST_ITEM_OFFSET` (`0x0026`, F32), and

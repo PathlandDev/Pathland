@@ -39,6 +39,7 @@ class MusicPlayerView @JvmOverloads constructor(
         // Gray-600: >= 4.5:1 on white, the sidebar, the selected row, and the player bar.
         val SECONDARY_FG: Color = Color.rgb(0x4B, 0x55, 0x63)
         val ACTIVE_ROW_BG: Color = Color.rgb(0xE8, 0xEF, 0xFF)
+        val INACTIVE_ROW_BG: Color = Color.rgb(0xE5, 0xE5, 0xEA)
         val ACTIVE_ROW_FG: Color = Color.rgb(0x1A, 0x3A, 0x8C)
         val SIDEBAR_BG: Color = Color.rgb(0xF6, 0xF7, 0xFA)
         val BAR_BORDER: Color = Color.rgb(0xFF, 0xFF, 0xFF)

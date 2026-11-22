@@ -465,10 +465,10 @@ Containers are **content-bearing**: they expose `children(...)`.
 | `Grid` | `Grid(columns:rows:alignment:spacing:) { … }` | `Grid.make(g -> g.columns(int).rows(int).tracks(List<GridItem>).alignment(Alignment).spacing(float)).children(View...)` | `GRID` 0x13; `GRID_COLUMNS` 0x001E, `GRID_ROWS` 0x001F, `GRID_TRACKS` 0x0020 |
 | `GridRow` | `GridRow { … }` | `GridRow.make().children(View...)` | `GRID_ROW` 0x1D (structural — a grid child whose children are one row's cells; renders nothing outside a `GRID`) |
 | `ScrollView` | `ScrollView { … }` | `ScrollView.make().children(View...)` | `SCROLLVIEW` 0x14 |
-| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { ForEach(items) { … } }` | `LazyVGrid(columns = 3, spacing = 8f) { ForEach(items) { item, _ -> Cell(item).frame(height = 44f) } }` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS`; row window (`ITEM_COUNT` = rows, `ITEM_EXTENT` = row height, `FIRST_ITEM_INDEX` = first row) |
-| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { ForEach(items) { … } }` | `LazyHGrid(rows = 3, spacing = 8f) { ForEach(items) { item, _ -> Cell(item).frame(width = 44f) } }` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS`; column window (`ITEM_COUNT` = columns, `ITEM_EXTENT` = column width, `FIRST_ITEM_INDEX` = first column) |
-| `LazyVStack` | `LazyVStack(spacing:) { ForEach(items) { … } }` | `LazyVStack(spacing = 0) { ForEach(items) { item, _ -> Row(item).frame(height = 44f) } }` | `LAZY_VSTACK` 0x1B; `ITEM_COUNT` 0x0022, `ITEM_EXTENT` 0x0023, `FIRST_ITEM_INDEX` 0x0024; `ForEach` is the data source (§Virtualized lists) |
-| `LazyHStack` | `LazyHStack(spacing:) { ForEach(items) { … } }` | `LazyHStack(spacing = 0) { ForEach(items) { item, _ -> Cell(item).frame(width = 120f) } }` | `LAZY_HSTACK` 0x1C; same window properties; `ForEach` is the data source |
+| `LazyVGrid` | `LazyVGrid(columns:alignment:spacing:) { ForEach(items) { … } }` | `LazyVGrid(columns = 3, spacing = 8f, selection = LazySelection(...)) { ForEach(items) { item, _ -> Cell(item).frame(height = 44f) } }` | `LAZY_VGRID` 0x15; `GRID_COLUMNS`, `GRID_TRACKS`; row window (`ITEM_COUNT` = rows, `ITEM_EXTENT` = row height, `FIRST_ITEM_INDEX` = first row) |
+| `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { ForEach(items) { … } }` | `LazyHGrid(rows = 3, spacing = 8f, selection = LazySelection(...)) { ForEach(items) { item, _ -> Cell(item).frame(width = 44f) } }` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS`; column window (`ITEM_COUNT` = columns, `ITEM_EXTENT` = column width, `FIRST_ITEM_INDEX` = first column) |
+| `LazyVStack` | `LazyVStack(spacing:) { ForEach(items) { … } }` | `LazyVStack(spacing = 0, selection = LazySelection(...)) { ForEach(items) { item, _ -> Row(item).frame(height = 44f) } }` | `LAZY_VSTACK` 0x1B; `ITEM_COUNT` 0x0022, `ITEM_EXTENT` 0x0023, `FIRST_ITEM_INDEX` 0x0024; `ForEach` is the data source (§Virtualized lists) |
+| `LazyHStack` | `LazyHStack(spacing:) { ForEach(items) { … } }` | `LazyHStack(spacing = 0, selection = LazySelection(...)) { ForEach(items) { item, _ -> Cell(item).frame(width = 120f) } }` | `LAZY_HSTACK` 0x1C; same window properties; `ForEach` is the data source |
 | `ViewThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `ViewThatFits { Fit(view, minWidth) }` / `ViewThatFits(Fit(view, minWidth), …)` (candidates are sorted by ascending `minWidth`, equal thresholds keeping surface order; `FIT_QUERY` carries the sorted thresholds; the slot shows one child — the selected candidate — the others never transmit in the live form; a full-snapshot/SSR emission carries every candidate for a no-JS first paint gated by CSS container queries — the DSL is unchanged) | `VIEW_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
 | `ProxyView` | `RemoteView(endpoint:route:)` (no SwiftUI equivalent) | `ProxyView.make(p -> p.endpoint(String).route(String).credential(String))` | `PROXY_VIEW` 0x1E; child = the **origin subtree root** (served by another Pathland server, id-remapped); see [PROXY.md](./PROXY.md) |
 
@@ -564,12 +564,22 @@ Rules:
   loading state; the live session loads pages.
 - A full-snapshot/SSR emission carries the first window plus the full virtual
   extent; the client corrects the window after `META::ENVIRONMENT`.
+- Selection: all four lazy containers accept an optional `LazySelection`
+  (`selectedIndex` + `focusState` + activation/key callbacks). It supplies one
+  roving tab stop, tap-to-select, arrow/Home/End/Enter navigation, and
+  focused-item pinning. `focusState` gates `META::SET_FOCUS`, so a scroll-driven
+  selection clamp never steals focus; while unfocused, the clamp keeps the tab
+  stop on a visible item. A selection cannot be combined with an explicit `pin`.
+  Stack navigation is 1D along its axis; grid navigation moves by one row or
+  column and stops at edges. Home/End select the first/last item.
 - `LazyVGrid`/`LazyHGrid` use the same data-source window with a **row** or
   **column** unit: `ITEM_COUNT` is the row/column count, `ITEM_EXTENT` the row
   height/column width, and `FIRST_ITEM_INDEX` the first visible row/column. The
   emitted children are the cells of the visible units (row-major for VGrid,
   column-major for HGrid). The grid's `columns`/`rows` (or `GRID_TRACKS`)
-  define the cells per unit. Rust: `LazyVGrid::children(vec![ForEach…])
+  define the cells per unit. Selection requires a concrete track count: an
+  `adaptive` `GridItem` track is unsupported for selectable grids until the
+  renderer-derived track count is available. Rust: `LazyVGrid::children(vec![ForEach…])
   .with(|c| c.columns(n))` (and `LazyHGrid`/`rows`) consume the same window.
 
 The window math, child placement, and visible-range derivation are specified in
