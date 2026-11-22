@@ -95,3 +95,101 @@ test("keyboard scrolling advances one row instead of jumping half a viewport", a
     previous = current;
   }
 });
+
+test("clicking a row immediately after wheel scrolling keeps it in view", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/");
+  await page.waitForSelector("[data-pathland-focusable]", { timeout: 20_000 });
+  await page.waitForTimeout(1500);
+
+  const box = await page.evaluate(() => {
+    const lazy = document.querySelector<HTMLElement>("[data-pathland-lazy]");
+    let scroller = lazy?.parentElement ?? null;
+    while (
+      scroller &&
+      !(getComputedStyle(scroller).overflowY === "auto" && scroller.scrollHeight > scroller.clientHeight)
+    ) {
+      scroller = scroller.parentElement;
+    }
+    if (!scroller) return null;
+    const r = scroller.getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  });
+  if (!box) throw new Error("no lazy scroller");
+
+  await page.mouse.move(box.left + box.width / 2, box.top + 80);
+  await page.mouse.wheel(0, 900);
+  // Wait for the lazy window to materialize rows at the new position, then
+  // arm a fresh trailing report with a tiny scroll and click immediately.
+  await page.waitForFunction(() => {
+    const lazy = document.querySelector<HTMLElement>("[data-pathland-lazy]");
+    let scroller = lazy?.parentElement ?? null;
+    while (
+      scroller &&
+      !(getComputedStyle(scroller).overflowY === "auto" && scroller.scrollHeight > scroller.clientHeight)
+    ) {
+      scroller = scroller.parentElement;
+    }
+    if (!lazy || !scroller) return false;
+    const r = scroller.getBoundingClientRect();
+    return Array.from(lazy.children).some((row) => {
+      const b = row.getBoundingClientRect();
+      return b.top >= r.top && b.top < r.bottom;
+    });
+  }, null, { timeout: 5_000 });
+
+  const target = await page.evaluate(() => {
+    const lazy = document.querySelector<HTMLElement>("[data-pathland-lazy]");
+    let scroller = lazy?.parentElement ?? null;
+    while (
+      scroller &&
+      !(getComputedStyle(scroller).overflowY === "auto" && scroller.scrollHeight > scroller.clientHeight)
+    ) {
+      scroller = scroller.parentElement;
+    }
+    if (!lazy || !scroller) return null;
+    const r = scroller.getBoundingClientRect();
+    const rows = Array.from(lazy.children)
+      .map((row) => {
+        const b = row.getBoundingClientRect();
+        return {
+          pos: Number(row.getAttribute("aria-posinset") ?? 0),
+          center: b.top + b.height / 2,
+          top: b.top,
+        };
+      })
+      .filter((row) => row.top >= r.top && row.top < r.bottom);
+    const row = rows[Math.max(0, Math.floor(rows.length / 2))];
+    if (!row) return null;
+    return { pos: row.pos, x: r.left + r.width / 2, y: row.center };
+  });
+  if (!target) throw new Error("no clickable row");
+
+  await page.mouse.click(target.x, target.y);
+  await page.waitForTimeout(800);
+
+  const after = await page.evaluate((pos) => {
+    const lazy = document.querySelector<HTMLElement>("[data-pathland-lazy]");
+    let scroller = lazy?.parentElement ?? null;
+    while (
+      scroller &&
+      !(getComputedStyle(scroller).overflowY === "auto" && scroller.scrollHeight > scroller.clientHeight)
+    ) {
+      scroller = scroller.parentElement;
+    }
+    const active = document.activeElement as HTMLElement | null;
+    const row = lazy?.querySelector<HTMLElement>(`[aria-posinset="${pos}"]`);
+    const box = scroller?.getBoundingClientRect();
+    const rect = row?.getBoundingClientRect();
+    return {
+      activePos: Number(active?.getAttribute("aria-posinset") ?? 0),
+      rowTop: rect && box ? Math.round(rect.top - box.top) : null,
+      viewportHeight: box?.height ?? 0,
+    };
+  }, target.pos);
+
+  expect(after.activePos).toBe(target.pos);
+  expect(after.rowTop, "clicked row stays mounted").not.toBeNull();
+  expect(after.rowTop!).toBeGreaterThanOrEqual(-1);
+  expect(after.rowTop!).toBeLessThanOrEqual(after.viewportHeight);
+});

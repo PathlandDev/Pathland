@@ -169,6 +169,7 @@ fun LazyVStack(
     spacing: Float? = null,
     pin: Signal<Int?>? = null,
     onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = lazyVStack(
     alignment = alignment?.let { Signals.constant(it) },
@@ -176,6 +177,7 @@ fun LazyVStack(
     spacingValue = spacing,
     pin = pin,
     onVisibleRange = onVisibleRange,
+    selection = selection,
     content = content,
 )
 
@@ -184,12 +186,14 @@ fun LazyVStack(
     alignment: HorizontalAlignment? = null,
     pin: Signal<Int?>? = null,
     onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = LazyVStack(
     alignment = alignment,
     spacing = spacing.toFloat(),
     pin = pin,
     onVisibleRange = onVisibleRange,
+    selection = selection,
     content = content,
 )
 
@@ -198,6 +202,7 @@ fun LazyVStack(
     alignment: HorizontalAlignment? = null,
     pin: Signal<Int?>? = null,
     onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = lazyVStack(
     alignment = alignment?.let { Signals.constant(it) },
@@ -205,6 +210,7 @@ fun LazyVStack(
     spacingValue = null,
     pin = pin,
     onVisibleRange = onVisibleRange,
+    selection = selection,
     content = content,
 )
 
@@ -213,6 +219,7 @@ fun LazyHStack(
     spacing: Float? = null,
     pin: Signal<Int?>? = null,
     onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = lazyHStack(
     alignment = alignment?.let { Signals.constant(it) },
@@ -220,6 +227,7 @@ fun LazyHStack(
     spacingValue = spacing,
     pin = pin,
     onVisibleRange = onVisibleRange,
+    selection = selection,
     content = content,
 )
 
@@ -228,12 +236,14 @@ fun LazyHStack(
     alignment: VerticalAlignment? = null,
     pin: Signal<Int?>? = null,
     onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = LazyHStack(
     alignment = alignment,
     spacing = spacing.toFloat(),
     pin = pin,
     onVisibleRange = onVisibleRange,
+    selection = selection,
     content = content,
 )
 
@@ -242,6 +252,7 @@ fun LazyHStack(
     alignment: VerticalAlignment? = null,
     pin: Signal<Int?>? = null,
     onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit = {},
 ): View = lazyHStack(
     alignment = alignment?.let { Signals.constant(it) },
@@ -249,6 +260,7 @@ fun LazyHStack(
     spacingValue = null,
     pin = pin,
     onVisibleRange = onVisibleRange,
+    selection = selection,
     content = content,
 )
 
@@ -257,20 +269,32 @@ fun LazyVGrid(
     tracks: List<GridItem>? = null,
     alignment: Alignment? = null,
     spacing: Float? = null,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit = {},
 ): View {
     val children = collectChildren(content)
     val data = children.singleOrNull() as? ForEachView<*>
+    val adaptive = hasAdaptiveTracks(tracks)
+    if (selection != null) {
+        require(data != null) { lazySelectionRequiresForEach("LazyVGrid") }
+        require(!adaptive) { adaptiveSelectionError() }
+    }
+    val trackCount = gridTrackCount(tracks, columns, adaptive)
     return if (data != null) {
         LazyGridWindowView(
-            Components.LAZY_VGRID,
-            true,
-            data,
-            columns ?: 1,
-            alignment?.let { Signals.constant(it) },
-            null,
-            spacing,
-            tracks?.let { gridTracks(it) },
+            component = Components.LAZY_VGRID,
+            vertical = true,
+            data = data,
+            tracks = trackCount,
+            alignment = alignment?.let { Signals.constant(it) },
+            spacingSignal = null,
+            spacingValue = spacing,
+            gridTracks = tracks?.let { gridTracks(it) },
+            pin = pin,
+            visibleRangeListener = onVisibleRange,
+            selection = selection,
         ).registerChild()
     } else {
         coreView(Components.LAZY_VGRID, children) { node, _ ->
@@ -287,20 +311,32 @@ fun LazyHGrid(
     tracks: List<GridItem>? = null,
     alignment: Alignment? = null,
     spacing: Float? = null,
+    pin: Signal<Int?>? = null,
+    onVisibleRange: ((Int, Int) -> Unit)? = null,
+    selection: LazySelection? = null,
     content: PathlandScope.() -> Unit = {},
 ): View {
     val children = collectChildren(content)
     val data = children.singleOrNull() as? ForEachView<*>
+    val adaptive = hasAdaptiveTracks(tracks)
+    if (selection != null) {
+        require(data != null) { lazySelectionRequiresForEach("LazyHGrid") }
+        require(!adaptive) { adaptiveSelectionError() }
+    }
+    val trackCount = gridTrackCount(tracks, rows, adaptive)
     return if (data != null) {
         LazyGridWindowView(
-            Components.LAZY_HGRID,
-            false,
-            data,
-            rows ?: 1,
-            alignment?.let { Signals.constant(it) },
-            null,
-            spacing,
-            tracks?.let { gridTracks(it) },
+            component = Components.LAZY_HGRID,
+            vertical = false,
+            data = data,
+            tracks = trackCount,
+            alignment = alignment?.let { Signals.constant(it) },
+            spacingSignal = null,
+            spacingValue = spacing,
+            gridTracks = tracks?.let { gridTracks(it) },
+            pin = pin,
+            visibleRangeListener = onVisibleRange,
+            selection = selection,
         ).registerChild()
     } else {
         coreView(Components.LAZY_HGRID, children) { node, _ ->
@@ -311,6 +347,19 @@ fun LazyHGrid(
         }.registerChild()
     }
 }
+
+private fun hasAdaptiveTracks(tracks: List<GridItem>?): Boolean =
+    tracks?.any { it.token.startsWith("adaptive:") } == true
+
+private fun gridTrackCount(tracks: List<GridItem>?, count: Int?, adaptive: Boolean): Int =
+    if (tracks != null && !adaptive && tracks.isNotEmpty()) tracks.size else count ?: 1
+
+private fun adaptiveSelectionError(): String =
+    "LazySelection requires a concrete track count; adaptive GridItem tracks are not " +
+        "supported for selectable lazy grids yet"
+
+private fun lazySelectionRequiresForEach(container: String): String =
+    "$container with selection requires exactly one ForEach data source"
 
 internal fun gridTracks(tracks: List<GridItem>): String = tracks.joinToString(",") { it.token }
 

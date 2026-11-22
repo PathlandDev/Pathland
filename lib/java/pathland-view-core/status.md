@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 20, 2026
+**Last updated:** November 22, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written in Kotlin. It owns the `View` SPI and shared
@@ -82,7 +82,10 @@ build) carries no JNA.
   byte-for-byte. The canonical order lives in `spec/ENGINE.md`.
 - **Tests**: `pathland-view-core` owns the signal/state and Kotlin DSL tests
   (which exercise the emitter end-to-end); `pathland-core` owns the
-  protocol-manifest, frame-codec, and Markdown tests.
+  protocol-manifest, frame-codec, and Markdown tests. `LazySelectionTest`
+  covers focus gating, tap/focus ordering, pinning, clamping, 1D/2D navigation,
+  concrete grid tracks, adaptive-grid rejection, and the selection/pin conflict
+  for all four lazy containers.
 
 ## Authoring DSL (`dev.pathland.view.dsl`)
 
@@ -125,6 +128,12 @@ build) carries no JNA.
   the target's tree/property deltas and emits a clear when the binding becomes
   false. `LazyVStack`/`LazyHStack` accept a pinned index (contiguous window
   union) and an `onVisibleRange` hook for app-side clamp policy.
+- **`LazySelection`**: all four lazy containers accept an app-owned
+  `selectedIndex` + `focusState`; the DSL supplies a roving tab stop,
+  tap-to-select, 1D/2D arrow + Home/End + Enter navigation, focused-item pinning,
+  the unfocused visible-range clamp, and `SET_FOCUS` gating. Lazy grids map the
+  selected item to its window unit and stop at row/column edges; adaptive grid
+  tracks reject selection until a concrete track count is available.
 - **Persisted state**: `Component` base class + `val count by state(0)`
   (auto-keyed by property name) or `state(0, "key")`; a `mutableState(0)` signal
   form for two-way controls.

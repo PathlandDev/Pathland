@@ -724,6 +724,8 @@ body {
 .pathland-button:hover { background-color: var(--pl-button-background-hover); }
 /* Any node made a keyboard focus target by its EVENT_LISTENERS FOCUS bit. */
 [data-pathland-focusable]:focus-visible { outline: var(--pl-control-focus-ring-width) solid var(--pl-control-accent); outline-offset: var(--pl-control-focus-ring-offset); }
+/* Lazy list rows use their selected background as the focus indicator. */
+[data-pathland-focusable][role="listitem"]:focus-visible { outline: none; }
 
 .pathland-button:focus-visible { outline: var(--pl-button-focus-ring-width) solid var(--pl-button-focus-ring-color); outline-offset: var(--pl-button-focus-ring-offset); }
 .pathland-button:disabled { opacity: var(--pl-opacity-disabled); pointer-events: none; }
