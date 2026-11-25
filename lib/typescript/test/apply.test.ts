@@ -1770,6 +1770,54 @@ describe("reconnect replacement", () => {
     expect(document.querySelector('[data-pathland-id="20"]')).toBeNull();
   });
 
+  it("reinserts a replacement root at the captured mount position", () => {
+    document.body.innerHTML = "";
+    const mount = document.createElement("div");
+    mount.id = "mount";
+    const before = document.createElement("span");
+    before.id = "before";
+    const root = document.createElement("div");
+    root.setAttribute("data-pathland-id", "1");
+    const stale = document.createElement("span");
+    stale.setAttribute("data-pathland-id", "2");
+    stale.textContent = "old";
+    root.appendChild(stale);
+    const after = document.createElement("span");
+    after.id = "after";
+    mount.append(before, root, after);
+    document.body.appendChild(mount);
+
+    const r = renderer();
+    r.byId.set(1, root);
+    r.byId.set(2, stale);
+
+    resetRenderedOutput(r);
+    applyBatch(
+      parseBatch(
+        buildBatch(
+          [
+            [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_VSTACK],
+            [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT],
+            [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2, 0],
+            [CAT_PARAMETER, CMD_SET_TEXT, 0, 2, 0, 0],
+          ],
+          stringEntry("rebuilt"),
+        ),
+      ),
+      r,
+    );
+
+    const replacement = mount.querySelector<HTMLElement>('[data-pathland-id="1"]');
+    expect(replacement).not.toBeNull();
+    expect(replacement).not.toBe(root);
+    expect(replacement!.isConnected).toBe(true);
+    expect(replacement!.textContent).toBe("rebuilt");
+    expect(mount.children[0]).toBe(before);
+    expect(mount.children[1]).toBe(replacement);
+    expect(mount.children[2]).toBe(after);
+    expect(root.parentNode).toBeNull();
+  });
+
   it("captures scroll offsets and restores them as the replacement tree materializes", () => {
     document.body.innerHTML = "";
     const oldScroller = document.createElement("div");

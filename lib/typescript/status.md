@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** November 20, 2026
+**Last updated:** November 25, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -314,6 +314,8 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   (`src/transport.ts`) then skips the client's initial `META::RESYNC` — the live
   session shares the scope. A reload whose SSR could **not** be scoped (no `wid`
   reached the server) or a stale `?wid=` the window did not adopt still resyncs.
+  That initial request is emitted on the **first socket open only**; `Transport`
+  owns the reconnect/gap RESYNC, so a reconnect never sends two snapshots.
   Sequence-gap and reconnect recovery are unaffected.
 - **Hydration-aware TREE reconciliation** (`src/apply.ts`): `CREATE_NODE` reuses an
   existing hydrated element (id already in the registry) and `INSERT_CHILD` skips
@@ -322,8 +324,12 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   clobbering or duplicating. A **reconnect** is different: it is a fresh
   per-connection server session whose ids/lazy window describe a new tree, so
   `resetRenderedOutput` discards the old rendered output before the replacement
-  snapshot is applied (stale lazy rows and media elements cannot survive); scroll
-  offsets are captured and restored as the rebuilt tree materializes.
+  snapshot is applied (stale lazy rows and media elements cannot survive). The
+  snapshot has no `INSERT_CHILD` for the root, so the client captures the old
+  root's mount position and reinserts the replacement root before layout; scroll
+  offsets are captured and restored as the rebuilt tree materializes. Without
+  that root anchor, the complete replacement tree exists only detached and the
+  page stays blank.
 - **`META::RESYNC`** (`encodeResync`): the client requests a full snapshot after
   **reconnect** (never on first connect — the UI is already the SSR HTML) and on
   a sequence gap. The first post-reconnect/gap delta triggers the output

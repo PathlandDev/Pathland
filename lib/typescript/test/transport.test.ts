@@ -3,10 +3,15 @@ import { Transport, shouldInitialResync } from "../src/transport";
 import {
   CAT_META,
   CAT_PARAMETER,
+  CAT_TREE,
+  CMD_CREATE_NODE,
+  CMD_INSERT_CHILD,
   CMD_PING,
   CMD_PONG,
   CMD_RESYNC,
   CMD_SET_TEXT,
+  COMPONENT_TEXT,
+  COMPONENT_VSTACK,
   HEADER_SIZE,
   MAGIC,
   OPCODE_SIZE,
@@ -14,6 +19,7 @@ import {
 } from "../src/constants";
 import { parseBatch } from "../src/plpl";
 import type { DomRenderer } from "../src/apply";
+import { buildBatch, stringEntry } from "./plpl.test";
 
 /** Minimal fake WebSocket for transport tests (happy-dom has no WebSocket global). */
 class FakeSocket {
@@ -87,6 +93,21 @@ function deltaBatch(sequence: number): Uint8Array {
   view.setUint32(HEADER_SIZE + OPCODE_SIZE, strings.length, true);
   out.set(strings, HEADER_SIZE + OPCODE_SIZE + 4);
   return out;
+}
+
+/** A guest → host full replacement snapshot: root -> text "rebuilt". */
+function snapshotBatch(sequence: number): Uint8Array {
+  const batch = buildBatch(
+    [
+      [CAT_TREE, CMD_CREATE_NODE, 0, 1, COMPONENT_VSTACK, 0],
+      [CAT_TREE, CMD_CREATE_NODE, 0, 2, COMPONENT_TEXT, 0],
+      [CAT_TREE, CMD_INSERT_CHILD, 0, 1, 2, 0],
+      [CAT_PARAMETER, CMD_SET_TEXT, 0, 2, 0, 0],
+    ],
+    stringEntry("rebuilt"),
+  );
+  new DataView(batch.buffer).setUint32(8, sequence, true);
+  return batch;
 }
 
 describe("Transport", () => {
@@ -186,10 +207,15 @@ describe("Transport", () => {
     await new Promise((resolve) => setTimeout(resolve, 700));
     const reconnected = FakeSocket.instances[FakeSocket.instances.length - 1]!;
     reconnected.emitOpen();
-    reconnected.emitMessage(deltaBatch(1).buffer);
+    reconnected.emitMessage(snapshotBatch(1).buffer);
 
-    expect(renderer.byId.size).toBe(0); // the stale tree was discarded
-    expect(root.parentNode).toBeNull();
+    expect(renderer.byId.size).toBe(2);
+    expect(root.parentNode).toBeNull(); // the stale root was discarded
+    const replacement = document.querySelector<HTMLElement>('[data-pathland-id="1"]');
+    expect(replacement).not.toBeNull();
+    expect(replacement).not.toBe(root);
+    expect(replacement!.isConnected).toBe(true);
+    expect(replacement!.textContent).toBe("rebuilt");
     transport.stop();
   });
 
