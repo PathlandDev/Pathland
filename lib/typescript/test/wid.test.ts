@@ -9,7 +9,8 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildBatch, stringEntry } from "./plpl.test";
-import { CAT_PARAMETER, CMD_SET_PROPERTY, PROP_ROUTE, VAL_STRING } from "../src/constants";
+import { parseBatch } from "../src/plpl";
+import { CAT_PARAMETER, CMD_RESYNC, CMD_SET_PROPERTY, PROP_ROUTE, VAL_STRING } from "../src/constants";
 
 const WID_KEY = "pathland.wid";
 
@@ -99,6 +100,22 @@ describe("per-window id (wid)", () => {
     expect(new URL(second.url).searchParams.get("wid")).toBe(wid);
     second.emitOpen();
     expect(second.sent).toHaveLength(2); // environment + RESYNC
+  });
+
+  it("a reconnect sends the transport RESYNC exactly once", async () => {
+    const first = await boot();
+    first.emitOpen();
+    first.onclose?.();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+
+    const reconnected = FakeSocket.instances.at(-1)!;
+    expect(reconnected).not.toBe(first);
+    reconnected.emitOpen();
+    const resyncs = reconnected.sent.filter((bytes) => {
+      const batch = parseBatch(bytes);
+      return batch.opcodes.some((op) => op.command === CMD_RESYNC);
+    });
+    expect(resyncs).toHaveLength(1);
   });
 
   it("a load whose URL carries a stale wid strips it from the URL and requests RESYNC", async () => {

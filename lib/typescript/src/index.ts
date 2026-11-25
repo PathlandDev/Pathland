@@ -192,6 +192,9 @@ function boot(): void {
   const ssrScoped = document.documentElement.dataset.pathlandSsrScoped != null;
   // The SSR title is the renderer default a later WINDOW_TITLE clear restores.
   const renderer: DomRenderer = { byId, defaultTitle: document.title };
+  // The transport owns reconnect RESYNC. The initial unscoped-SSR resync must
+  // therefore run on the first open only, or a reconnect sends two requests.
+  let firstOpen = true;
   const transport = new Transport({
     url: `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${base}/ws?wid=${wid}`,
     renderer,
@@ -215,10 +218,11 @@ function boot(): void {
       // e.g. no service worker), or a stale ?wid= the SSR used but this window did not
       // adopt. A scoped SSR (e.g. the service worker attached the wid) needs none: the
       // live session shares the same scope.
-      if (shouldInitialResync(isReload, urlHadWid, ssrScoped)) {
+      if (firstOpen && shouldInitialResync(isReload, urlHadWid, ssrScoped)) {
         log.debug("route", "unscoped SSR — requesting RESYNC for this window's persisted state");
         t.send(encodeResync());
       }
+      firstOpen = false;
     },
   });
   transport.start();

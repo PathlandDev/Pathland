@@ -140,6 +140,20 @@ const componentByNode = new WeakMap<Node, number>();
  */
 const pendingScrollRestore = new Map<number, { left: number; top: number }>();
 
+/** Where a discarded rendered root should be reattached after a replacement. */
+interface RootAnchor {
+  parent: Node;
+  index: number;
+}
+
+/**
+ * The top-level root's mount position captured by {@link resetRenderedOutput},
+ * keyed by renderer so independent renderers/tests never share it. The first
+ * node created after the reset becomes the replacement root candidate.
+ */
+const rootAnchors = new WeakMap<DomRenderer, RootAnchor>();
+const rootCandidates = new WeakMap<DomRenderer, Node>();
+
 /** Flex stacks (main axis horizontal). */
 const STACK_MAIN_HORIZONTAL = new Set([COMPONENT_HSTACK, COMPONENT_LAZY_HSTACK]);
 /** Flex stacks (main axis vertical). */
@@ -649,6 +663,11 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   for (const slot of touchedFitGates) {
     reconcileFitGate(slot);
   }
+  // A reconnect replacement builds a detached tree (the snapshot has no
+  // INSERT_CHILD for the root). Reattach the replacement root before layout and
+  // lazy-window measurement, otherwise the page stays blank even though the
+  // entire new tree exists in `byId`.
+  restoreReplacementRoot(renderer);
   // Derived layout (fill propagation, ZStack sizing/positioning, cross-axis
   // align-self) — mirrors the Rust SSR renderer's whole-tree decisions.
   applyLayout(renderer);
@@ -665,6 +684,46 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
   }
 }
 
+/** The outermost rendered element: attached first, detached as a fallback. */
+function renderedRoot(r: DomRenderer): Node | null {
+  const registered = new Set<Node>(r.byId.values());
+  let detached: Node | null = null;
+  for (const node of r.byId.values()) {
+    if (!node.parentNode) {
+      detached ??= node;
+      continue;
+    }
+    if (!registered.has(node.parentNode)) {
+      return node;
+    }
+  }
+  return detached;
+}
+
+/** Insert the first node created after a reset at its captured root position. */
+function restoreReplacementRoot(r: DomRenderer): void {
+  const anchor = rootAnchors.get(r);
+  const candidate = rootCandidates.get(r);
+  rootCandidates.delete(r);
+  if (!candidate) {
+    return;
+  }
+  if (candidate.parentNode) {
+    rootAnchors.delete(r);
+    return;
+  }
+  if (!Array.from(r.byId.values()).includes(candidate)) {
+    return;
+  }
+  rootAnchors.delete(r);
+  if (!anchor) {
+    return;
+  }
+  const parent = anchor.parent.isConnected ? anchor.parent : document.body;
+  const index = Math.max(0, Math.min(anchor.index, parent.childNodes.length));
+  parent.insertBefore(candidate, parent.childNodes[index] ?? null);
+}
+
 /**
  * Discard the renderer's retained output (its own cache of the opcode stream).
  *
@@ -679,6 +738,17 @@ export function applyBatch(batch: Batch, renderer: DomRenderer): void {
  * `META::RESET` (the server asking for a clean slate) does not restore them.
  */
 export function resetRenderedOutput(r: DomRenderer, captureScroll = true): void {
+  const root = renderedRoot(r);
+  if (root) {
+    const parent = root.parentNode;
+    rootAnchors.set(r, {
+      parent: parent ?? document.body,
+      index: parent ? Array.prototype.indexOf.call(parent.childNodes, root) : document.body.childNodes.length,
+    });
+  } else {
+    rootAnchors.delete(r);
+  }
+  rootCandidates.delete(r);
   pendingScrollRestore.clear();
   if (captureScroll) {
     for (const [id, el] of r.byId) {
@@ -901,6 +971,9 @@ function applyTree(op: Opcode, r: DomRenderer, touchedFitGates: Set<HTMLElement>
           (el as HTMLElement).setAttribute("data-pathland-id", String(op.a));
         }
         r.byId.set(op.a, el);
+        if (rootAnchors.has(r) && !rootCandidates.has(r) && !el.parentNode) {
+          rootCandidates.set(r, el);
+        }
       }
       if (el.nodeType === Node.ELEMENT_NODE) {
         componentByNode.set(el, op.b);
