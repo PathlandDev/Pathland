@@ -1,0 +1,1 @@
+I want to look into having a list view similar to the on i swiftui. It must support similar liststyles (same way as button suport buttonstyles) and the html renderer must support darkmode as well.
