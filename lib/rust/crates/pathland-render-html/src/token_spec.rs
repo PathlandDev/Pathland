@@ -84,7 +84,12 @@ pub const LENGTH_PREFIX_SUFFIX: &[(&str, &str)] = &[
 ];
 
 /// Exact-length token paths.
-pub const LENGTH_EXACT: &[&str] = &["font.body.size", "font.caption.size"];
+pub const LENGTH_EXACT: &[&str] = &[
+    "font.body.size",
+    "font.caption.size",
+    "list.group.inset",
+    "list.group.radius",
+];
 
 /// `elevation.<low|high>.<component>`: these suffixes are lengths.
 pub const LENGTH_ELEVATION_SUFFIXES: &[&str] = &[".radius", ".x", ".y", ".blur"];

@@ -33,6 +33,7 @@ import dev.pathland.view.dsl.borderedButtonStyle
 import dev.pathland.view.dsl.buttonStyle
 import dev.pathland.view.dsl.focusable
 import dev.pathland.view.dsl.font
+import dev.pathland.view.dsl.listStyle
 import dev.pathland.view.dsl.scaledToFill
 import dev.pathland.view.dsl.signal
 import dev.pathland.view.dsl.windowMetadata
@@ -122,6 +123,52 @@ class HtmlRendererTest {
         assertTrue(html.contains("data-pathland-first-item-index=\"0\""), html)
         // Default first window (20) + overscan (2) rows, so trailing = (34-22)*52.
         assertTrue(html.contains("padding-bottom:624px"), html)
+    }
+
+    @Test
+    fun rendersListStylesWithTokenizedDarkModeChrome() {
+        val selection = dev.pathland.view.dsl.LazySelection(signal(0), signal(false))
+        val root = dev.pathland.view.dsl.List(
+            listOf("one", "two", "three"),
+            itemExtent = 44f,
+            selection = selection,
+        ) { item, _ -> Text(item) }
+            .listStyle(dev.pathland.view.dsl.InsetGroupedListStyle)
+
+        val renderer = renderer()
+        val html = renderer.render(frameOf(root), 1)
+        assertTrue(html.contains("data-pathland-lazy=\"vertical\""), html)
+        assertTrue(html.contains("<ul "), "semantic list: $html")
+        assertTrue(html.contains("<li "), "semantic rows: $html")
+        assertTrue(html.contains("var(--pl-list-group-background"), "group token: $html")
+        assertTrue(html.contains("var(--pl-list-separator"), "separator token: $html")
+        assertTrue(html.contains("var(--pl-list-row-selected-background"), "selection token: $html")
+
+        val css = renderer.baseCss()
+        assertTrue(css.contains("--pl-list-background"), "list light token: $css")
+        assertTrue(css.contains("--pl-dark-list-background"), "list forced-dark token: $css")
+        assertTrue(css.contains("@media (prefers-color-scheme: dark)"), "dark mode media")
+    }
+
+    @Test
+    fun rendersSidebarLabelTokensFromTheListStyle() {
+        val selection = dev.pathland.view.dsl.LazySelection(signal(0), signal(false))
+        val root = dev.pathland.view.dsl.List(selection = selection) {
+            dev.pathland.view.dsl.Label("Library") {
+                dev.pathland.view.dsl.Icon(dev.pathland.view.core.IconName.FOLDER)
+            }
+            dev.pathland.view.dsl.Label("Songs") {
+                dev.pathland.view.dsl.Icon(dev.pathland.view.core.IconName.MUSIC)
+            }
+        }.listStyle(dev.pathland.view.dsl.SidebarListStyle)
+
+        val html = renderer().render(frameOf(root), 1)
+        assertTrue(html.contains("var(--pl-list-sidebar-selected-foreground"), html)
+        assertTrue(html.contains("var(--pl-list-sidebar-icon-foreground"), html)
+        assertTrue(html.contains("var(--pl-list-sidebar-selected-icon-foreground"), html)
+        assertTrue(html.contains("calc(var(--pl-space-base) * 6)"), "24pt icon: $html")
+        assertTrue(html.contains("calc(var(--pl-space-base) * 3)"), "12pt gap: $html")
+        assertTrue(html.contains("var(--pl-control-font-size"), "14pt label: $html")
     }
 
     @Test

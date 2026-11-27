@@ -8,7 +8,7 @@ export const FORCED_DARK_VAR_PREFIX = "--pl-dark-";
 export const SPACE_FAMILY = "space.";
 export const LENGTH_PREFIXES: readonly string[] = ["space.", "radius.", "border.width.", "size.control.", "control.padding.", "control.height", "control.border.", "control.radius", "control.line-height", "control.focus.ring.", "control.icon.", "control.swatch.inset", "button.padding.", "button.border.", "button.radius", "button.height", "button.line-height", "button.focus.ring.", "input.padding.", "input.focus.ring.", "input.swatch.inset", "input.radius", "icon.", "toggle.gap", "toggle.checkbox.size", "toggle.switch.", "toggle.thumb.", "toggle.focus.ring.", "slider.gap", "slider.height", "slider.track.", "slider.thumb.", "slider.focus.ring.", "progress.height", "progress.radius", "gauge.height", "gauge.radius", "stepper.gap", "stepper.button.size", "stepper.border.width", "stepper.radius", "spinner.size", "spinner.border.width", "menu.min-width", "menu.border.width", "menu.radius", "picker.radius", "color.swatch.inset"];
 export const LENGTH_PREFIX_SUFFIX: ReadonlyArray<readonly [string, string]> = [["control.font.", ".size"], ["button.font.", ".size"], ["input.font.", ".size"], ["label.font.", ".size"], ["font.heading.", ".size"]];
-export const LENGTH_EXACT: readonly string[] = ["font.body.size", "font.caption.size"];
+export const LENGTH_EXACT: readonly string[] = ["font.body.size", "font.caption.size", "list.group.inset", "list.group.radius"];
 export const LENGTH_ELEVATION_SUFFIXES: readonly string[] = [".radius", ".x", ".y", ".blur"];
 
 /** The canonical CSS custom property for a token path: `--pl-` prefix, `.` → `-`.

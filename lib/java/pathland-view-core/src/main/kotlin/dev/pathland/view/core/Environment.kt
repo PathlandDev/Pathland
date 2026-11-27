@@ -36,6 +36,9 @@ class Environment(private val state: PersistentState?) {
         @JvmField
         val VIDEO_STYLE: EnvironmentKey<VideoStyle> = EnvironmentKey.of("videoStyle")
 
+        @JvmField
+        val LIST_STYLE: EnvironmentKey<ListStyle> = EnvironmentKey.of("listStyle")
+
         private val VALUES: ThreadLocal<EnvironmentValues> =
             ThreadLocal.withInitial { EnvironmentValues.empty() }
 

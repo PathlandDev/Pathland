@@ -111,8 +111,11 @@ platform's system text color for `color.text.primary`).
 | `color.border` | Default border / outline color |
 | `color.accent` | Accent for controls (focus, selection, toggle fill) |
 
-Tier 2: `color.separator` (hairline dividers), and status colors
-`color.success`, `color.warning`, `color.danger`, `color.info`.
+Tier 2: `color.separator` (hairline dividers), `color.selection` (accent
+selection highlight), `color.selection.subtle` (neutral selected surface),
+`color.text.body` (default body/navigation text), `color.icon.muted` (muted
+icons), `color.text.onSelection` (content on a selected surface), and status
+colors `color.success`, `color.warning`, `color.danger`, `color.info`.
 
 ### Typography — Tier 1 core
 
@@ -241,6 +244,19 @@ Small sets; only where a component's semantics genuinely differ from
 `menu.radius`.
 
 **Label** (Tier 2): `label.foreground`, `label.font.size`.
+
+**Lists** (Tier 1): `list.background`, `list.row.background`,
+`list.row.selected.background`, `list.separator`, `list.group.background`,
+`list.group.inset`, `list.group.radius`, `list.sidebar.background`,
+`list.sidebar.selected.background`, `list.sidebar.selected.foreground`,
+`list.sidebar.foreground`, `list.sidebar.icon.foreground`,
+`list.sidebar.selected.icon.foreground`.
+
+The built-in `List` styles reference these paths, so the renderer's light/dark
+resolution themes the list without re-emission (spec/DSL.md §5.7).
+`SidebarListStyle` also scopes a sidebar label style over its rows: icon `space.6`,
+gap `space.3`, label `control.font.size`/semibold, and the sidebar color tokens
+above.
 
 ---
 

@@ -1,0 +1,15 @@
+{
+  "list.background": { "$value": "{color.background}", "$type": "color" },
+  "list.row.background": { "$value": "{color.surface}", "$type": "color" },
+  "list.row.selected.background": { "$value": "{color.selection}", "$type": "color" },
+  "list.separator": { "$value": "{color.separator}", "$type": "color" },
+  "list.group.background": { "$value": "{color.surface}", "$type": "color" },
+  "list.group.inset": { "$value": "{base.space.4}", "$type": "dimension" },
+  "list.group.radius": { "$value": "{base.radius.lg}", "$type": "dimension" },
+  "list.sidebar.background": { "$value": "{color.surface}", "$type": "color" },
+  "list.sidebar.selected.background": { "$value": "{color.selection.subtle}", "$type": "color" },
+  "list.sidebar.selected.foreground": { "$value": "{color.text.onSelection}", "$type": "color" },
+  "list.sidebar.foreground": { "$value": "{color.text.body}", "$type": "color" },
+  "list.sidebar.icon.foreground": { "$value": "{color.icon.muted}", "$type": "color" },
+  "list.sidebar.selected.icon.foreground": { "$value": "{color.text.onSelection}", "$type": "color" }
+}

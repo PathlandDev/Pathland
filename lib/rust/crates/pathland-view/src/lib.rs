@@ -266,6 +266,15 @@ pub trait ViewExt: View + Sized {
             style: Rc::new(style),
         }
     }
+
+    /// Scope a [`ListStyle`] down this subtree (the active style for any
+    /// `List` whose rows it decorates).
+    fn list_style(self, style: impl ListStyle + 'static) -> WithListStyle<Self> {
+        WithListStyle {
+            view: self,
+            style: Rc::new(style),
+        }
+    }
 }
 
 impl<T: View> ViewExt for T {}
@@ -283,6 +292,7 @@ impl<T: View> ViewExt for T {}
 pub struct Environment {
     button_style: Option<Rc<dyn ButtonStyle>>,
     video_style: Option<Rc<dyn VideoStyle>>,
+    list_style: Option<Rc<dyn ListStyle>>,
 }
 
 impl Environment {
@@ -303,6 +313,13 @@ impl Environment {
         self.video_style
             .clone()
             .unwrap_or_else(|| Rc::new(NativeVideoStyle))
+    }
+
+    /// The active list style (defaults to [`PlainListStyle`]).
+    pub fn list_style(&self) -> Rc<dyn ListStyle> {
+        self.list_style
+            .clone()
+            .unwrap_or_else(|| Rc::new(PlainListStyle))
     }
 }
 
@@ -388,6 +405,324 @@ impl<V: View> View for WithVideoStyle<V> {
 }
 
 impl<V: Configurable> Configurable for WithVideoStyle<V> {
+    type Config = V::Config;
+    fn config(&self) -> &Self::Config {
+        self.view.config()
+    }
+    fn config_mut(&mut self) -> &mut Self::Config {
+        self.view.config_mut()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// List style
+// ---------------------------------------------------------------------------
+
+const LIST_ROW_PADDING_VERTICAL: f32 = 10.0;
+const LIST_ROW_PADDING_HORIZONTAL: f32 = 16.0;
+const LIST_SEPARATOR_WIDTH: f32 = 1.0;
+const LIST_SEPARATOR_INSET: f32 = 16.0;
+const LIST_SIDEBAR_PADDING_VERTICAL: f32 = 8.0;
+const LIST_SIDEBAR_PADDING_HORIZONTAL: f32 = 8.0;
+const LIST_SIDEBAR_ROW_GAP_OUTER: f32 = 2.0;
+const LIST_ROW_OVERHEAD: f32 = LIST_ROW_PADDING_VERTICAL * 2.0 + LIST_SEPARATOR_WIDTH;
+const LIST_SIDEBAR_ROW_OVERHEAD: f32 =
+    LIST_SIDEBAR_PADDING_VERTICAL * 2.0 + LIST_SIDEBAR_ROW_GAP_OUTER * 2.0;
+
+/// Per-row data handed to a [`ListStyle`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ListRowConfig {
+    /// Absolute row index.
+    pub index: usize,
+    /// Total row count.
+    pub item_count: usize,
+    /// Whether the row is selected. The Rust DSL has no selection state yet;
+    /// the field keeps the style contract aligned with the JVM DSL.
+    pub selected: bool,
+}
+
+// @ref spec/DSL.md#57-styleable-controls-the-style-contract [implements] — ListStyle
+/// A list style: decorates the row container and each row of a [`List`].
+///
+/// `make_body` receives the built row container; `make_row` decorates one row
+/// before it enters the list. Styles never change the list's data source or
+/// windowing (spec/DSL.md §ListStyle).
+pub trait ListStyle {
+    /// Wrap the list's row container (scroll content chrome).
+    fn make_body(&self, rows: Node, item_count: usize) -> Node {
+        let _ = item_count;
+        rows
+    }
+
+    /// Decorate a single row before it enters the list.
+    fn make_row(&self, content: Node, config: &ListRowConfig) -> Node {
+        let _ = config;
+        content
+    }
+
+    /// Extra main-axis extent each row gains from this style's chrome.
+    fn row_extent_overhead(&self) -> f32 {
+        0.0
+    }
+
+    /// The scroll viewport background; `None` uses `list.background`.
+    fn viewport_background(&self) -> Option<Color> {
+        None
+    }
+}
+
+fn list_token(node: &mut Node, property: u16, path: &str) {
+    node.token_properties.insert(property, String::from(path));
+}
+
+fn list_row_padding(node: &mut Node, vertical: f32, horizontal: f32) {
+    node.properties
+        .insert(property_id::PADDING_TOP, vertical.to_bits());
+    node.properties
+        .insert(property_id::PADDING_RIGHT, horizontal.to_bits());
+    node.properties
+        .insert(property_id::PADDING_BOTTOM, vertical.to_bits());
+    node.properties
+        .insert(property_id::PADDING_LEFT, horizontal.to_bits());
+}
+
+fn list_divider() -> Node {
+    let mut divider = plain_node(Component::Divider, Vec::new(), BTreeMap::new());
+    list_token(&mut divider, property_id::COLOR, "list.separator");
+    divider
+}
+
+fn list_separator(inset: bool) -> Node {
+    let divider = list_divider();
+    if !inset {
+        return divider;
+    }
+    let mut row = plain_node(Component::VStack, vec![divider], BTreeMap::new());
+    row.properties
+        .insert(property_id::PADDING_LEFT, LIST_SEPARATOR_INSET.to_bits());
+    row
+}
+
+fn list_row(
+    content: Node,
+    config: &ListRowConfig,
+    selected_background: &str,
+    padding_vertical: f32,
+    padding_horizontal: f32,
+    separator_inset: bool,
+    separators: bool,
+) -> Node {
+    let mut row = content;
+    list_row_padding(&mut row, padding_vertical, padding_horizontal);
+    row.properties
+        .insert(property_id::WIDTH, pathland_core::size::FILL.to_bits());
+    row.property_bindings.remove(&property_id::WIDTH);
+    if config.selected {
+        list_token(&mut row, property_id::BACKGROUND_COLOR, selected_background);
+    }
+    row.properties
+        .insert(property_id::SELECTED, u32::from(config.selected));
+    row.property_bindings.remove(&property_id::SELECTED);
+
+    let row = if !separators || config.index + 1 >= config.item_count {
+        row
+    } else {
+        plain_node(
+            Component::VStack,
+            vec![row, list_separator(separator_inset)],
+            BTreeMap::new(),
+        )
+    };
+    let mut row = row;
+    row.properties.insert(
+        property_id::ROLE,
+        (pathland_core::role::LIST_ITEM as f32).to_bits(),
+    );
+    row
+}
+
+/// The default list style: rows with separators and no grouped surface.
+pub struct PlainListStyle;
+
+impl ListStyle for PlainListStyle {
+    fn row_extent_overhead(&self) -> f32 {
+        LIST_ROW_OVERHEAD
+    }
+
+    fn make_row(&self, content: Node, config: &ListRowConfig) -> Node {
+        list_row(
+            content,
+            config,
+            "list.row.selected.background",
+            LIST_ROW_PADDING_VERTICAL,
+            LIST_ROW_PADDING_HORIZONTAL,
+            false,
+            true,
+        )
+    }
+}
+
+/// A grouped list: the full-width surface behind the rows.
+pub struct GroupedListStyle;
+
+impl ListStyle for GroupedListStyle {
+    fn row_extent_overhead(&self) -> f32 {
+        LIST_ROW_OVERHEAD
+    }
+
+    fn make_row(&self, content: Node, config: &ListRowConfig) -> Node {
+        list_row(
+            content,
+            config,
+            "list.row.selected.background",
+            LIST_ROW_PADDING_VERTICAL,
+            LIST_ROW_PADDING_HORIZONTAL,
+            true,
+            true,
+        )
+    }
+
+    fn make_body(&self, rows: Node, _item_count: usize) -> Node {
+        let mut rows = rows;
+        list_token(&mut rows, property_id::BACKGROUND_COLOR, "list.group.background");
+        rows
+    }
+}
+
+/// An inset grouped list: a rounded surface inset from the viewport edges.
+pub struct InsetGroupedListStyle;
+
+impl ListStyle for InsetGroupedListStyle {
+    fn row_extent_overhead(&self) -> f32 {
+        LIST_ROW_OVERHEAD
+    }
+
+    fn make_row(&self, content: Node, config: &ListRowConfig) -> Node {
+        list_row(
+            content,
+            config,
+            "list.row.selected.background",
+            LIST_ROW_PADDING_VERTICAL,
+            LIST_ROW_PADDING_HORIZONTAL,
+            true,
+            true,
+        )
+    }
+
+    fn make_body(&self, rows: Node, _item_count: usize) -> Node {
+        let mut card = rows;
+        list_token(
+            &mut card,
+            property_id::BACKGROUND_COLOR,
+            "list.group.background",
+        );
+        card.properties.insert(property_id::CLIPS_TO_BOUNDS, 1);
+        CornerRadius(Length::token("list.group.radius")).apply(&mut card);
+        let mut outer = plain_node(Component::VStack, vec![card], BTreeMap::new());
+        Padding(Length::token("list.group.inset")).apply(&mut outer);
+        outer
+    }
+}
+
+/// An inset list: full-width rows with inset separators and no grouped card.
+pub struct InsetListStyle;
+
+impl ListStyle for InsetListStyle {
+    fn row_extent_overhead(&self) -> f32 {
+        LIST_ROW_OVERHEAD
+    }
+
+    fn make_row(&self, content: Node, config: &ListRowConfig) -> Node {
+        list_row(
+            content,
+            config,
+            "list.row.selected.background",
+            LIST_ROW_PADDING_VERTICAL,
+            LIST_ROW_PADDING_HORIZONTAL,
+            true,
+            true,
+        )
+    }
+}
+
+/// A sidebar list: compact rows, no separators, accent selection.
+pub struct SidebarListStyle;
+
+impl ListStyle for SidebarListStyle {
+    fn row_extent_overhead(&self) -> f32 {
+        LIST_SIDEBAR_ROW_OVERHEAD
+    }
+
+    fn make_row(&self, content: Node, config: &ListRowConfig) -> Node {
+        let mut row = list_row(
+            content,
+            config,
+            "list.sidebar.selected.background",
+            LIST_SIDEBAR_PADDING_VERTICAL,
+            LIST_SIDEBAR_PADDING_HORIZONTAL,
+            false,
+            false,
+        );
+        row.properties.remove(&property_id::ROLE);
+        row.properties.remove(&property_id::SELECTED);
+        CornerRadius(Length::token("control.radius")).apply(&mut row);
+
+        let mut outer = plain_node(Component::VStack, vec![row], BTreeMap::new());
+        outer
+            .properties
+            .insert(property_id::PADDING_TOP, LIST_SIDEBAR_ROW_GAP_OUTER.to_bits());
+        outer.properties.insert(
+            property_id::PADDING_BOTTOM,
+            LIST_SIDEBAR_ROW_GAP_OUTER.to_bits(),
+        );
+        outer
+            .properties
+            .insert(property_id::WIDTH, pathland_core::size::FILL.to_bits());
+        outer.properties.insert(
+            property_id::SELECTED,
+            u32::from(config.selected),
+        );
+        outer.properties.insert(
+            property_id::ROLE,
+            (pathland_core::role::LIST_ITEM as f32).to_bits(),
+        );
+        outer
+    }
+
+    fn make_body(&self, rows: Node, _item_count: usize) -> Node {
+        let mut rows = rows;
+        list_token(
+            &mut rows,
+            property_id::BACKGROUND_COLOR,
+            "list.sidebar.background",
+        );
+        ForegroundStyle(Color::token("list.sidebar.foreground")).apply(&mut rows);
+        rows
+    }
+
+    fn viewport_background(&self) -> Option<Color> {
+        Some(Color::token("list.sidebar.background"))
+    }
+}
+
+/// A view wrapped by a scoped [`ListStyle`] (applied via
+/// [`ViewExt::list_style`]).
+pub struct WithListStyle<V> {
+    view: V,
+    style: Rc<dyn ListStyle>,
+}
+
+impl<V: View> View for WithListStyle<V> {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let previous = env.list_style.take();
+        env.list_style = Some(self.style.clone());
+        let node = self.view.build_env(env);
+        env.list_style = previous;
+        node
+    }
+}
+
+impl<V: Configurable> Configurable for WithListStyle<V> {
     type Config = V::Config;
     fn config(&self) -> &Self::Config {
         self.view.config()
@@ -1270,6 +1605,20 @@ pub fn Opacity(value: impl IntoReactive<f32>) -> Opacity {
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Hidden;
 
+/// Selected state (semantic `SELECTED`). Raw or signal.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Selected {
+    value: Reactive<bool>,
+}
+
+/// A selected-state value (`true`/`false` or a bound signal).
+#[allow(non_snake_case)]
+pub fn Selected(value: impl IntoReactive<bool>) -> Selected {
+    Selected {
+        value: value.into_reactive(),
+    }
+}
+
 /// Border (SwiftUI `.border(color:width:)`), raw or signal.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Border {
@@ -1414,6 +1763,22 @@ impl ViewModifier for Opacity {
 impl ViewModifier for Hidden {
     fn apply(&self, node: &mut Node) {
         node.properties.insert(property_id::VISIBLE, 0);
+    }
+}
+
+impl ViewModifier for Selected {
+    fn apply(&self, node: &mut Node) {
+        match &self.value {
+            Reactive::Static(value) => {
+                node.properties
+                    .insert(property_id::SELECTED, u32::from(*value));
+                node.property_bindings.remove(&property_id::SELECTED);
+            }
+            Reactive::Signal(id) => {
+                node.properties.remove(&property_id::SELECTED);
+                node.property_bindings.insert(property_id::SELECTED, *id);
+            }
+        }
     }
 }
 
@@ -2635,6 +3000,107 @@ impl View for ScrollView {
 
 children_static!(ScrollView);
 
+// @ref spec/DSL.md#list-composite [implements] — the List composite
+/// A SwiftUI-shaped list composite: `ScrollView + LazyVStack` of rows styled by
+/// the active [`ListStyle`] (spec/DSL.md §List).
+///
+/// With a `ForEach` child the list is windowed; the `ForEach` must declare
+/// `item_extent`/`item_extents` because the style adds row chrome. Without a
+/// lazy source the list is eager.
+#[derive(Default)]
+pub struct List {
+    children: Vec<Box<dyn View>>,
+}
+
+impl List {
+    /// An empty list.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Children for List {
+    fn set_children(&mut self, children: Vec<Box<dyn View>>) {
+        self.children = children;
+    }
+}
+
+fn finish_list(style: &dyn ListStyle, rows: Node) -> Node {
+    let mut scroll = plain_node(Component::ScrollView, vec![rows], BTreeMap::new());
+    let background = style
+        .viewport_background()
+        .unwrap_or_else(|| Color::token("list.background"));
+    Background(background).apply(&mut scroll);
+    scroll
+}
+
+fn build_lazy_list(style: &dyn ListStyle, source: &dyn LazySource, env: &mut Environment) -> Node {
+    let count = source.count();
+    if count > 0 && source.extent().is_none() && source.extents().is_none() {
+        panic!(
+            "a List requires ForEach::item_extent/item_extents so the virtualized list keeps stable row geometry"
+        );
+    }
+    let decorate = |mut node: Node, index: usize, item_count: usize| -> Node {
+        node = style.make_row(
+            node,
+            &ListRowConfig {
+                index,
+                item_count,
+                selected: false,
+            },
+        );
+        node
+    };
+    let mut rows = build_lazy_stack_with(
+        Component::LazyVStack,
+        true,
+        &StackConfig::default(),
+        source,
+        env,
+        style.row_extent_overhead(),
+        Some(&decorate),
+    );
+    rows.properties.insert(
+        property_id::ROLE,
+        (pathland_core::role::LIST as f32).to_bits(),
+    );
+    let rows = style.make_body(rows, count);
+    finish_list(style, rows)
+}
+
+impl View for List {
+    fn build_env(&self, env: &mut Environment) -> Node {
+        let style = env.list_style();
+        if let Some(source) = self.children.iter().find_map(|c| c.lazy_source()) {
+            return build_lazy_list(style.as_ref(), source, env);
+        }
+        let count = self.children.len();
+        let mut rows = Vec::with_capacity(count);
+        for (index, child) in self.children.iter().enumerate() {
+            let row = style.make_row(
+                child.build_env(env),
+                &ListRowConfig {
+                    index,
+                    item_count: count,
+                    selected: false,
+                },
+            );
+            rows.push(row);
+        }
+        let mut container = plain_node(Component::VStack, rows, BTreeMap::new());
+        container.properties.insert(
+            property_id::ROLE,
+            (pathland_core::role::LIST as f32).to_bits(),
+        );
+        let rows = style.make_body(container, count);
+        finish_list(style.as_ref(), rows)
+    }
+}
+
+container_debug!(List);
+children_static!(List);
+
 fn build_lazy_grid(
     component: Component,
     vertical: bool,
@@ -3012,6 +3478,20 @@ fn build_lazy_stack(
     source: &dyn LazySource,
     env: &mut Environment,
 ) -> Node {
+    build_lazy_stack_with(component, vertical, config, source, env, 0.0, None)
+}
+
+/// Build a windowed lazy stack with an optional row decorator and extra
+/// per-row extent (the `List` style chrome).
+fn build_lazy_stack_with(
+    component: Component,
+    vertical: bool,
+    config: &StackConfig,
+    source: &dyn LazySource,
+    env: &mut Environment,
+    row_overhead: f32,
+    decorate: Option<&dyn Fn(Node, usize, usize) -> Node>,
+) -> Node {
     let count = source.count();
     let extents = source.extents();
     if let Some(values) = extents {
@@ -3023,11 +3503,12 @@ fn build_lazy_stack(
     }
     let extent = match extents {
         Some(values) if !values.is_empty() => {
-            values.iter().sum::<f32>() / values.len() as f32
+            values.iter().sum::<f32>() / values.len() as f32 + row_overhead
         }
         _ => source
             .extent()
-            .unwrap_or_else(|| infer_lazy_extent(source, vertical, env)),
+            .unwrap_or_else(|| infer_lazy_extent(source, vertical, env))
+            + row_overhead,
     };
     let (mut first, mut len) = source.window().get();
     if count == 0 {
@@ -3062,14 +3543,22 @@ fn build_lazy_stack(
     let mut list_extents: Option<Vec<f32>> = None;
     if let Some(values) = extents {
         if count > 0 {
-            let first_offset = values[..first].iter().sum::<f32>() + spacing * first as f32;
-            let total_extent =
-                values.iter().sum::<f32>() + spacing * (count.saturating_sub(1)) as f32;
+            let first_offset = values[..first].iter().sum::<f32>()
+                + row_overhead * first as f32
+                + spacing * first as f32;
+            let total_extent = values.iter().sum::<f32>()
+                + row_overhead * count as f32
+                + spacing * (count.saturating_sub(1)) as f32;
             node.properties
                 .insert(property_id::FIRST_ITEM_OFFSET, first_offset.to_bits());
             node.properties
                 .insert(property_id::TOTAL_EXTENT, total_extent.to_bits());
-            list_extents = Some(values[first..first + len].to_vec());
+            list_extents = Some(
+                values[first..first + len]
+                    .iter()
+                    .map(|value| value + row_overhead)
+                    .collect(),
+            );
         }
     }
     if let Some(values) = &list_extents {
@@ -3084,8 +3573,18 @@ fn build_lazy_stack(
     let mut keys = Vec::with_capacity(len);
     for index in first..first + len {
         let mut child = source.build(index).build_env(env);
+        if let Some(decorate) = decorate {
+            child = decorate(child, index, count);
+        }
         if let Some(values) = extents {
-            child.properties.insert(main_property, values[index].to_bits());
+            child
+                .properties
+                .insert(main_property, (values[index] + row_overhead).to_bits());
+            child.property_bindings.remove(&main_property);
+        } else if row_overhead > 0.0 {
+            child
+                .properties
+                .insert(main_property, extent.to_bits());
             child.property_bindings.remove(&main_property);
         }
         keys.push(source.key(index));
@@ -5020,6 +5519,127 @@ mod scrollview_tests {
     fn vertical_axis_is_the_default_and_omits_the_property() {
         let node = ScrollView::new().build();
         assert!(node.properties.get(&property_id::SCROLL_AXIS).is_none());
+    }
+}
+
+#[cfg(test)]
+mod list_tests {
+    use super::*;
+
+    #[test]
+    fn static_list_is_a_scroll_view_over_semantic_rows() {
+        let node = List::children(vec![Box::new(text("a")), Box::new(text("b"))]).build();
+        assert_eq!(node.component, Component::ScrollView);
+        assert_eq!(
+            node.token_properties.get(&property_id::BACKGROUND_COLOR),
+            Some(&String::from("list.background"))
+        );
+        let rows = &node.children[0];
+        assert_eq!(rows.component, Component::VStack);
+        assert_eq!(
+            rows.properties.get(&property_id::ROLE).copied(),
+            Some((pathland_core::role::LIST as f32).to_bits())
+        );
+        assert_eq!(rows.children.len(), 2);
+        let first = &rows.children[0];
+        assert_eq!(
+            first.properties.get(&property_id::ROLE).copied(),
+            Some((pathland_core::role::LIST_ITEM as f32).to_bits())
+        );
+        assert_eq!(first.children.len(), 2, "row + separator");
+        assert_eq!(
+            first.children[1].token_properties.get(&property_id::COLOR),
+            Some(&String::from("list.separator"))
+        );
+    }
+
+    #[test]
+    fn inset_grouped_list_uses_group_tokens() {
+        let node = List::children(vec![Box::new(text("a"))])
+            .list_style(InsetGroupedListStyle)
+            .build();
+        let outer = &node.children[0];
+        assert_eq!(
+            outer.token_properties.get(&property_id::PADDING),
+            Some(&String::from("list.group.inset"))
+        );
+        let card = &outer.children[0];
+        assert_eq!(
+            card.token_properties.get(&property_id::BACKGROUND_COLOR),
+            Some(&String::from("list.group.background"))
+        );
+        assert_eq!(
+            card.token_properties.get(&property_id::BORDER_RADIUS),
+            Some(&String::from("list.group.radius"))
+        );
+        assert_eq!(
+            card.properties.get(&property_id::CLIPS_TO_BOUNDS).copied(),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn sidebar_list_uses_sidebar_tokens() {
+        let node = List::children(vec![Box::new(text("a"))])
+            .list_style(SidebarListStyle)
+            .build();
+        assert_eq!(
+            node.token_properties.get(&property_id::BACKGROUND_COLOR),
+            Some(&String::from("list.sidebar.background"))
+        );
+        let rows = &node.children[0];
+        assert_eq!(
+            rows.token_properties.get(&property_id::BACKGROUND_COLOR),
+            Some(&String::from("list.sidebar.background"))
+        );
+        assert_eq!(
+            rows.token_properties.get(&property_id::COLOR),
+            Some(&String::from("list.sidebar.foreground"))
+        );
+    }
+
+    #[test]
+    fn lazy_list_adds_the_style_overhead_to_the_item_extent() {
+        let items: Vec<u32> = (0..4).collect();
+        let foreach = ForEach::new(items, |_, _| Box::new(text("row"))).item_extent(44.0);
+        let node = List::children(vec![Box::new(foreach)]).build();
+        let lazy = &node.children[0];
+        assert_eq!(lazy.component, Component::LazyVStack);
+        assert_eq!(
+            lazy.properties.get(&property_id::ITEM_EXTENT).copied(),
+            Some((44.0 + LIST_ROW_OVERHEAD).to_bits())
+        );
+        assert_eq!(
+            lazy.properties.get(&property_id::ROLE).copied(),
+            Some((pathland_core::role::LIST as f32).to_bits())
+        );
+        assert_eq!(
+            lazy.children[0].properties.get(&property_id::ROLE).copied(),
+            Some((pathland_core::role::LIST_ITEM as f32).to_bits())
+        );
+    }
+
+    #[test]
+    fn selected_modifier_sets_the_semantic_property() {
+        let node = text("a").modifiers(Selected(true)).build();
+        assert_eq!(
+            node.properties.get(&property_id::SELECTED).copied(),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn list_style_is_environment_scoped() {
+        let node = vstack![List::children(vec![Box::new(text("a"))])
+            .list_style(SidebarListStyle)]
+        .list_style(InsetGroupedListStyle)
+        .build();
+        let list = &node.children[0];
+        let rows = &list.children[0];
+        assert_eq!(
+            rows.token_properties.get(&property_id::BACKGROUND_COLOR),
+            Some(&String::from("list.sidebar.background"))
+        );
     }
 }
 

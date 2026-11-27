@@ -1,6 +1,6 @@
 # pathland-demo-views-kotlin — implementation status
 
-**Last updated:** November 22, 2026
+**Last updated:** November 26, 2026
 
 Kotlin-owned demo views over `pathland-view-core`, with no Java-DSL dependency.
 It owns the app-driven music player and the small sponsored-proxy ad app.
@@ -16,7 +16,8 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 - `music/service/` — `MediaPlayerService`: per-session player state, playlist,
   `MediaController`, and the environment key shared by the views.
 - `music/lyrics/` — `SubtitlePill`.
-- `music/sidebar/` — `NowPlayingSidebar`, `UpNextRowView`.
+- `music/sidebar/` — `NavigationSidebar` (left), `NowPlayingSidebar` (right),
+  `UpNextRowView`.
 - `ad/` — `AdView`.
 
 ## Shared demo support
@@ -33,8 +34,18 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 ## Implemented
 
 - **`MusicPlayerView`** — Apple Music-style root: one root `ViewThatFits`
-  selects narrow (no volume, compact play-only transport), medium (volume), or
-  wide (volume + `NowPlayingSidebar`), with the floating `PlayerBar`.
+  selects narrow (no nav, no volume, compact play-only transport), medium
+  (left `NavigationSidebar` + volume), or wide (left nav + volume +
+  `NowPlayingSidebar`), with the floating `PlayerBar`. The medium threshold is
+  960 pt and wide is 1200 pt so the full player bar fits beside the 220 pt nav
+  (and 280 pt now-playing) sidebar; Now Playing is wide-only.
+- **`NavigationSidebar`** — a static left navigation list (Library, Playlists,
+  Artists, Albums, Songs) authored with the DSL `List` + `SidebarListStyle`.
+  Rows are `Label`s; the list style supplies the Tailwind-aligned sidebar
+  label/icon layout and default/selected color tokens. Selection is local
+  visual feedback only (tap/arrow highlight); it does not navigate or filter
+  yet. The selected index/focus live on the shared service so they survive root
+  fit-candidate swaps.
 - **Persisted player state** — owned by `MediaPlayerService` (`player.position`, `player.playing`,
   `player.track`, `player.volume`, `player.seekRequest`, `player.volumeRequest`)
   and created with `Signals.state` while the framework's session state is active.
@@ -83,8 +94,9 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
 
 `mvn test -pl pathland-demo-views-kotlin` — `LyricsTest`, `SeekControlTest`,
 `MediaPlayerServiceTest` (persisted keys, select/next/previous, the 1000-entry
-repeated library), `MusicPlayerViewTest` (tree/render, fit swaps, media state,
-seek echo guard, snapshot emission, sponsored proxy, and the bounded lazy
-library window), `MusicPlayerFitMediaTest` (the pinned media controller survives SSR
+repeated library), `MusicPlayerViewTest` (tree/render, fit swaps, medium nav
+layout, wide-only Now Playing, media state, seek echo guard, snapshot emission,
+sponsored proxy, and the bounded lazy library window), `MusicPlayerFitMediaTest`
+(the pinned media controller survives SSR
 snapshot→live and repeated fit crossings; media routing and play stay bound),
 and `AdViewTest` (button click / persisted counter delta).

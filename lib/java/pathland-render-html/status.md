@@ -1,6 +1,6 @@
 # pathland-render-html (Java) — implementation status
 
-**Last updated:** November 20, 2026
+**Last updated:** November 26, 2026
 
 The **pure-Java HTML renderer** (`dev.pathland.render.html`) — a behavioural
 port of the Rust `pathland-render-html` crate. Stateless: each call decodes a
@@ -49,6 +49,11 @@ library). Protocol contract: `spec/`.
   view-that-fits snapshots.
 - **Eager list spacing**: the HTML round-trip test verifies rows expanded by an
   eager `ForEach` are direct children of their parent stack and share its CSS gap.
+- **List composite + dark mode**: the DSL `List`/`ListStyle` emits ordinary
+  primitives plus `ROLE=LIST`/`LIST_ITEM`, so the renderer produces semantic
+  `<ul>`/`<li>` with no List-specific code. Built-in styles reference the
+  `list.*` tokens; `HtmlRendererTest.rendersListStylesWithTokenizedDarkModeChrome`
+  checks the token refs and the light/forced-dark `--pl-list-*` CSS defaults.
 - **Built-in base design**: the generated `design/build/base.css` (synced into
   the Rust assets) is copied into the jar at build time and inlined by the
   default `render(...)`. `renderLinked(frame, root, cssBase)` /

@@ -11,8 +11,8 @@
 //! same maps the HTML renderers implement.
 
 use pathland_core::{color_scheme_mode,
-    category, component_type, environment, event, flag, listener, meta, parameter, property_id, role,
-    text_style, tree, value_type, window_field,
+    category, component_type, environment, event, flag, key, listener, meta, parameter, property_id,
+    role, text_style, tree, value_type, window_field,
 };
 use pathland_render_html::{role_spec, token_spec};
 use std::fmt::Write;
@@ -44,6 +44,10 @@ fn fmt_u16(v: u16) -> String {
 
 fn fmt_u32(v: u32) -> String {
     format!("{v:#010x}")
+}
+
+fn fmt_key(v: u16) -> String {
+    format!("{v:#04x}")
 }
 
 fn write_consts(out: &mut String, prefix: &str, items: &[(&str, String)]) {
@@ -175,6 +179,24 @@ pub fn emit_constants_ts() -> String {
         ("SET_COLOR_SCHEME", fmt_u8(meta::SET_COLOR_SCHEME)),
         ("RESET_THEME", fmt_u8(meta::RESET_THEME)),
         ("SET_WINDOW_METADATA", fmt_u8(meta::SET_WINDOW_METADATA)),
+        ("SET_FOCUS", fmt_u8(meta::SET_FOCUS)),
+    ]);
+    out.push_str("\n// Canonical logical key codes (spec/EVENTS.md §Keyboard).\n");
+    write_consts(&mut out, "KEY_", &[
+        ("BACKSPACE", fmt_key(key::BACKSPACE)),
+        ("TAB", fmt_key(key::TAB)),
+        ("ENTER", fmt_key(key::ENTER)),
+        ("ESCAPE", fmt_key(key::ESCAPE)),
+        ("SPACE", fmt_key(key::SPACE)),
+        ("PAGE_UP", fmt_key(key::PAGE_UP)),
+        ("PAGE_DOWN", fmt_key(key::PAGE_DOWN)),
+        ("END", fmt_key(key::END)),
+        ("HOME", fmt_key(key::HOME)),
+        ("ARROW_LEFT", fmt_key(key::ARROW_LEFT)),
+        ("ARROW_UP", fmt_key(key::ARROW_UP)),
+        ("ARROW_RIGHT", fmt_key(key::ARROW_RIGHT)),
+        ("ARROW_DOWN", fmt_key(key::ARROW_DOWN)),
+        ("DELETE", fmt_key(key::DELETE)),
     ]);
     out.push_str("\n// META::SET_COLOR_SCHEME modes\n");
     write_consts(&mut out, "COLOR_SCHEME_", &[

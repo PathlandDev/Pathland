@@ -78,6 +78,7 @@ class MusicPlayerViewTest {
         assertTrue(anySetText(frame, "The Foundation"))
         assertFalse(anySetText(frame, "Now Playing"))
         assertTrue(anySetText(frame, "Library"))
+        assertFalse(anySetText(frame, "Playlists"), "narrow layout has no navigation sidebar")
         assertTrue(countCreate(frame, Components.IMAGE) >= 3)
         assertTrue(anySetPropertyString(frame, Properties.IMAGE_SOURCE, COVER))
         assertEquals(1, countCreate(frame, Components.VIEW_THAT_FITS))
@@ -99,7 +100,7 @@ class MusicPlayerViewTest {
     @Test
     fun fitShowsTheSidebarWhenTheParentIsWideEnough() {
         val mounted = mount()
-        val slotId = slotIdByMaxThreshold(mounted.sink.frame(), 1024f)
+        val slotId = slotIdByMaxThreshold(mounted.sink.frame(), 1200f)
         assertFalse(anySetText(mounted.sink.frame(), "Now Playing"))
 
         mounted.result.fitInputs()[slotId]!!.accept(2)
@@ -109,6 +110,24 @@ class MusicPlayerViewTest {
         assertTrue(anySetText(wide, "Up Next"))
         assertEquals(0, countCreate(wide, Components.MEDIA_CONTROLLER))
         assertEquals(0, countCreate(wide, Components.VIEW_THAT_FITS))
+    }
+
+    @Test
+    fun mediumLayoutShowsTheNavigationSidebarWithoutNowPlaying() {
+        val mounted = mount()
+        val slotId = slotIdByMaxThreshold(mounted.sink.frame(), 1200f)
+
+        mounted.result.fitInputs()[slotId]!!.accept(1)
+        val medium = mounted.sink.frame()
+
+        assertTrue(anySetText(medium, "Playlists"))
+        assertTrue(anySetText(medium, "Artists"))
+        assertTrue(anySetText(medium, "Albums"))
+        assertTrue(anySetText(medium, "Songs"))
+        assertTrue(anyProperty(medium, Properties.SELECTED))
+        assertTrue(anyProperty(medium, Properties.ROLE))
+        assertFalse(anySetText(medium, "Now Playing"))
+        assertFalse(anySetText(medium, "Up Next"))
     }
 
     @Test
@@ -130,7 +149,7 @@ class MusicPlayerViewTest {
         assertTrue(anySetProperty(frame, Properties.PLAYBACK_STATE, 0))
         assertTrue(anySetProperty(frame, Properties.MEDIA_POSITION, 0f))
 
-        val rootSlot = slotIdByMaxThreshold(frame, 1024f)
+        val rootSlot = slotIdByMaxThreshold(frame, 1200f)
         mounted.result.fitInputs()[rootSlot]!!.accept(1)
         val medium = mounted.sink.frame()
         assertTrue(anySlider(medium, 0f, 1f))
@@ -149,8 +168,9 @@ class MusicPlayerViewTest {
         val frame = mounted.sink.frame()
 
         assertTrue(anySetText(frame, "Library"))
+        assertTrue(anySetText(frame, "Playlists"))
         assertTrue(anySetText(frame, "Now Playing"))
-        val rootSlot = slotIdByMaxThreshold(frame, 1024f)
+        val rootSlot = slotIdByMaxThreshold(frame, 1200f)
         assertEquals(3, childCount(frame, rootSlot))
     }
 
@@ -272,7 +292,7 @@ class MusicPlayerViewTest {
         val state = PersistentState(store, "session-1")
         val sink = FrameOpcodeSink()
         val result = Emitter(sink).mount(MusicPlayerView.make(), Environment(state))
-        val rootSlot = slotIdByMaxThreshold(sink.frame(), 1024f)
+        val rootSlot = slotIdByMaxThreshold(sink.frame(), 1200f)
         result.fitInputs()[rootSlot]!!.accept(1)
         val volumeId = volumeSliderId(sink.frame())
         val dispatcher = InputDispatcher(result, Signals.signal("/"))
@@ -309,7 +329,7 @@ class MusicPlayerViewTest {
         }
         applyNew()
 
-        val rootSlot = findSlot(sink.frames, 1024f)
+        val rootSlot = findSlot(sink.frames, 1200f)
         assertEquals(5, model.sliderCount(), "snapshot carries narrow, medium, and wide candidates")
 
         repeat(3) { cycle ->

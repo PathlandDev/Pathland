@@ -1,6 +1,6 @@
 # @pathland/dom-renderer (lib/typescript) — implementation status
 
-**Last updated:** November 25, 2026
+**Last updated:** November 26, 2026
 
 The **Pathland DOM renderer** — the web client. A vanilla-TypeScript hydration
 client (no runtime dependencies) that is the single source of the client,
@@ -126,6 +126,10 @@ replacing the duplicated `app.js` files in the demos. Protocol contract:
   is derived from the component when known (fresh nodes) and from the element tag
   when hydrating (SSR nodes have no component). Interactive/control roles are not
   in the catalog — a reserved code is a graceful no-op.
+- **List composite**: no client-specific List code. The DSL emits
+  `ROLE=LIST`/`LIST_ITEM`, so hydrated rows retag to `<ul>`/`<li>` in place;
+  `list.*` chrome is ordinary `PROP_*` values with token refs, resolved by the
+  generic token pipeline (light + dark) without re-emission.
 - **Predefined typography visual** (`src/typography.ts`): a `PROP_TEXT_STYLE`
   delta applies the renderer-owned default size/weight (`applyTextStyle`) in
   addition to the heading semantics above. Explicit `PROP_FONT_SIZE`/

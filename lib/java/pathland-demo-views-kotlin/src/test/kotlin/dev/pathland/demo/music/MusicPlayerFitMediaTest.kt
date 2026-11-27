@@ -132,7 +132,7 @@ class MusicPlayerFitMediaTest {
     fun snapshotFitDowngradeKeepsThePinnedController() {
         val mounted = mountSnapshot()
         val id = controllerId(mounted.initial)
-        val slot = fitSlotId(mounted.initial, 1024f)
+        val slot = fitSlotId(mounted.initial, 1200f)
         assertTrue(mounted.result.mediaInputs().containsKey(id), "the controller media sink is registered")
 
         val deltas = applyFit(mounted, slot, 2)
@@ -148,7 +148,7 @@ class MusicPlayerFitMediaTest {
     fun everyFitCrossingKeepsTheSamePinnedController() {
         val mounted = mountSnapshot()
         val id = controllerId(mounted.initial)
-        val slot = fitSlotId(mounted.initial, 1024f)
+        val slot = fitSlotId(mounted.initial, 1200f)
         for (index in listOf(2, 0, 1, 2, 0)) {
             val deltas = applyFit(mounted, slot, index)
             assertControllerNotTornDown(deltas, id)
@@ -163,7 +163,7 @@ class MusicPlayerFitMediaTest {
     fun transportStillWorksAfterAFitCrossing() {
         val mounted = mountSnapshot()
         val id = controllerId(mounted.initial)
-        val slot = fitSlotId(mounted.initial, 1024f)
+        val slot = fitSlotId(mounted.initial, 1200f)
         for (index in listOf(2, 0, 2)) applyFit(mounted, slot, index)
 
         val dispatcher = InputDispatcher(mounted.result, Signals.signal("/"))

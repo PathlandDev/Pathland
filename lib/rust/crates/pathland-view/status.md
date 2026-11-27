@@ -1,6 +1,6 @@
 # pathland-view (Rust DSL) — implementation status
 
-**Last updated:** November 12, 2026
+**Last updated:** November 26, 2026
 
 The SwiftUI-style **view DSL** (`no_std`) building `pathland_engine::Node`
 trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
@@ -101,7 +101,13 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   subtree; `ButtonStyle` (`make_body(&ButtonConfig) -> Option<Box<dyn View>>`)
   supplies a button's content (Composite Override Mode), applied with
   `ViewExt::button_style(style)`. Built-ins `PlainButtonStyle` (native path) and
-  `BorderedButtonStyle`; custom styles implement the trait.
+  `BorderedButtonStyle`. `ListStyle` supplies a `List`'s row/container chrome
+  (`PlainListStyle`, `GroupedListStyle`, `InsetGroupedListStyle`,
+  `InsetListStyle`, `SidebarListStyle`), applied with `ViewExt::list_style`.
+  `SidebarListStyle` uses 8pt row padding, a 2pt transparent row gap (4pt
+  between rows), and `control.radius` rounding. Custom styles implement the
+  trait. The Rust list has no selection state or `Label` styling yet (the JVM
+  `LazySelection`/`LabelStyle` path is JVM/web only).
 - **Structural reactivity + navigation (Phase 4)**: `Conditional::when(signal,
   then, else)` builds the selected branch (the host rebuilds + re-emits; the
   engine reconciles into `TREE` deltas). Navigation: `Params` + `RouteTable`
@@ -145,9 +151,9 @@ trees. Protocol contract: `spec/`, authoring surface: `spec/DSL.md`.
   for Toggle/Slider/TextField/Picker; Stepper/TextEditor/DatePicker/ColorPicker
   sink wiring lands in the DSL but the renderer side for some controls is still
   to come. Date/color two-way is not wired (needs `SET_DATE`).
-- **Styles**: `ButtonStyle` + `VideoStyle` (there is no `Label` view in the Rust
-  DSL, so `LabelStyle` has no target). The environment carries the button- and
-  video-style slots (no arbitrary typed keys).
+- **Styles**: `ButtonStyle` + `VideoStyle` + `ListStyle` (there is no `Label`
+  view in the Rust DSL, so `LabelStyle` has no target). The environment carries
+  the button-, video-, and list-style slots (no arbitrary typed keys).
 - **Navigation**: links hold a router explicitly (no nearest-enclosing-router
   resolution / `NavigationIntent`); `NAVIGATE` event routing is app-side; no
   `Label`/`GridRow` components.

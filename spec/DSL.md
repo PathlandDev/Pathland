@@ -469,6 +469,7 @@ Containers are **content-bearing**: they expose `children(...)`.
 | `LazyHGrid` | `LazyHGrid(rows:alignment:spacing:) { ForEach(items) { … } }` | `LazyHGrid(rows = 3, spacing = 8f, selection = LazySelection(...)) { ForEach(items) { item, _ -> Cell(item).frame(width = 44f) } }` | `LAZY_HGRID` 0x16; `GRID_ROWS`, `GRID_TRACKS`; column window (`ITEM_COUNT` = columns, `ITEM_EXTENT` = column width, `FIRST_ITEM_INDEX` = first column) |
 | `LazyVStack` | `LazyVStack(spacing:) { ForEach(items) { … } }` | `LazyVStack(spacing = 0, selection = LazySelection(...)) { ForEach(items) { item, _ -> Row(item).frame(height = 44f) } }` | `LAZY_VSTACK` 0x1B; `ITEM_COUNT` 0x0022, `ITEM_EXTENT` 0x0023, `FIRST_ITEM_INDEX` 0x0024; `ForEach` is the data source (§Virtualized lists) |
 | `LazyHStack` | `LazyHStack(spacing:) { ForEach(items) { … } }` | `LazyHStack(spacing = 0, selection = LazySelection(...)) { ForEach(items) { item, _ -> Cell(item).frame(width = 120f) } }` | `LAZY_HSTACK` 0x1C; same window properties; `ForEach` is the data source |
+| `List` | `List(items) { … }` / `List { … }` | `List(items, itemExtent = …, selection = LazySelection(...)) { item, _ -> Row(item) }` / `List { Row(…) }`; `.listStyle(InsetGroupedListStyle)` | **composite** — `SCROLLVIEW` + `LAZY_VSTACK` (extent declared) or `VSTACK` (static), `ROLE=LIST`/`LIST_ITEM`; the active `ListStyle` supplies row chrome ([§5.7](#57-styleable-controls-the-style-contract)). No new component id. |
 | `ViewThatFits` | `ViewThatFits { … }` / `ViewThatFits(in: .horizontal) { … }` | `ViewThatFits { Fit(view, minWidth) }` / `ViewThatFits(Fit(view, minWidth), …)` (candidates are sorted by ascending `minWidth`, equal thresholds keeping surface order; `FIT_QUERY` carries the sorted thresholds; the slot shows one child — the selected candidate — the others never transmit in the live form; a full-snapshot/SSR emission carries every candidate for a no-JS first paint gated by CSS container queries — the DSL is unchanged) | `VIEW_THAT_FITS` 0x17; `FIT_QUERY` 0x1039 (LIST); reacts to `FIT_CHANGED` 0x13 by swapping the slot's child (`TREE` deltas) |
 | `ProxyView` | `RemoteView(endpoint:route:)` (no SwiftUI equivalent) | `ProxyView.make(p -> p.endpoint(String).route(String).credential(String))` | `PROXY_VIEW` 0x1E; child = the **origin subtree root** (served by another Pathland server, id-remapped); see [PROXY.md](./PROXY.md) |
 
@@ -507,6 +508,27 @@ per-track sizes (SwiftUI `GridItem` / Compose `GridCells` parity) —
 the counts; a count is the `N`×`flexible` sugar. CSS-grid-native — renderers
 without a native per-track equivalent size tracks naturally (renderer status,
 spec/PRIMITIVES.md §grid model).
+
+#### List (composite)
+
+`List` is the SwiftUI-shaped row container. It is **not** a protocol component:
+it composes `SCROLLVIEW` + `LAZY_VSTACK` (when a row extent is declared) or
+`SCROLLVIEW` + `VSTACK` (static content), sets `ROLE=LIST` on the row container
+and `ROLE=LIST_ITEM` on each row, and lets the nearest `ListStyle` decorate the
+container and rows ([§5.7](#57-styleable-controls-the-style-contract)).
+
+- **Lazy form:** `List(items, itemExtent = …, selection = …) { item, index -> … }`
+  or a `Signal<List<T>>` item source. `itemExtent`/`itemExtents` describe the
+  **row content** extent; the active style adds its own chrome
+  (`rowExtentOverhead`) so the emitted `ITEM_EXTENT` stays stable.
+- **Static form:** `List { … }` uses eager rows and needs no extent.
+- **Styles:** `PlainListStyle` (default), `GroupedListStyle`,
+  `InsetGroupedListStyle`, `InsetListStyle`, `SidebarListStyle`; application
+  styles implement `ListStyle`. Apply with `.listStyle(style)`; nearest wins.
+- **Dark mode:** built-in styles reference `list.*` design tokens, so the
+  renderer resolves their light/dark values without re-emission.
+- **Scope:** flat rows only for now; section headers/footers are app-composed or
+  a future extension.
 
 #### Virtualized lists (`LazyVStack` / `LazyHStack`)
 
@@ -1017,10 +1039,12 @@ anchors. Transforms do not affect layout.
 | `accessibilityLabel` | `.accessibilityLabel(_:)` | `.modifiers(accessibilityLabel(a -> a.text(String)))` | `LABEL` 0x200A |
 | `accessibilityRole` | `.accessibilityRole(_:)` | `.modifiers(accessibilityRole(a -> a.role(int)))` | `ROLE` 0x2001 |
 | `accessibilityState` | `.accessibilityState(_:)` | `.modifiers(accessibilityState(a -> a.state(int)))` | `STATE` 0x2002 |
+| `selected` | `.selected(_:)` | `.selected(boolean)` / `.selected(signal)` | `SELECTED` 0x2004 |
 | `modifier` (custom) | `.modifier(_:)` | `.modifiers(ViewModifier)` | composes core modifiers |
 | `buttonStyle` | `.buttonStyle(_:)` | `.modifiers(ButtonStyle)` | environment-scoped (`Environment.BUTTON_STYLE` key, nearest-wins); the style supplies the button's content ([§5.7](#57-styleable-controls-the-style-contract)) |
 | `labelStyle` | `.labelStyle(_:)` | `.modifiers(LabelStyle)` | environment-scoped (`Environment.LABEL_STYLE` key, nearest-wins); DSL-only control flow — no wire property |
 | `videoStyle` | `.videoStyle(_:)` | `.modifiers(VideoStyle)` | environment-scoped (`Environment.VIDEO_STYLE` key, nearest-wins); the style supplies the `VIDEO` surface's control content ([§5.7](#57-styleable-controls-the-style-contract)) |
+| `listStyle` | `.listStyle(_:)` | `.listStyle(ListStyle)` | environment-scoped (`Environment.LIST_STYLE` key, nearest-wins); the style supplies the list's row/container chrome ([§5.7](#57-styleable-controls-the-style-contract)) |
 | `environment` | `.environment(_:_:)` | `.modifiers(environmentBinding(e -> e.key(EnvironmentKey).value(value)))` | environment-scoped (a typed `EnvironmentKey`, nearest-wins); no wire property |
 | `windowMetadata` | (platform shell metadata) | `.modifiers(windowMetadata(w -> w.title(signal).description(signal).locale(value)))` | `META::SET_WINDOW_METADATA` fields (`TITLE`/`DESCRIPTION`/`LOCALE`) — renderer maps them to its window chrome |
 | `focusable` | `.focusable(_:)` | `.focusable(enabled)` | **no property** — declares `FOCUS` listener bit 5; makes the node a tab stop |
@@ -1126,7 +1150,7 @@ VStack.make().children(
 
 A **style** customizes a view or control's *content*; the control owns its
 *component and interaction*. This is one contract for every styleable surface
-(`ButtonStyle`, `LabelStyle`, `VideoStyle`, …), and it is the
+(`ButtonStyle`, `LabelStyle`, `VideoStyle`, `ListStyle`, …), and it is the
 author-facing shape of the protocol's **Composite Override Mode**
 ([PRIMITIVES.md §2](./PRIMITIVES.md#2-dual-mode-rendering-pipeline--platform-delegation)).
 
@@ -1188,6 +1212,20 @@ Canonical signatures (SwiftUI-shaped) and the realization:
 | `Button` | `ButtonStyle { makeBody(config) -> View }` | the `Button.Config` (title, action, content) | `PlainButtonStyle` (label) |
 | `Label` | `LabelStyle { makeBody(config) -> View }` | the `Label.Config` (title, icon) | `DefaultLabelStyle` (title + icon) |
 | `Video` | `VideoStyle { makeBody(config) -> View }` | the `VideoStyle.Configuration` (its `MediaController`) | `NativeVideoStyle` (no content) |
+| `List` | `ListStyle { makeBody(config) -> View; makeRow(content, config) -> View }` | the `ListStyle.Configuration` (rows, count) and per-row `RowConfiguration` (index, count, selected) | `PlainListStyle` (row separators + selection; no grouped surface) |
+
+**`ListStyle` delta.** A list style has two hooks because it decorates a
+container *and* each row: `makeBody(Configuration)` wraps the row container
+(group surfaces, insets), and `makeRow(content, RowConfiguration)` decorates one
+row (padding, separators, selected background). `rowExtentOverhead` declares the
+extra main-axis size a row gains from that chrome; the `List` adds it to the
+app-declared row content extent. The `List` itself still owns the scroll
+container, windowing, roles, and `LazySelection` wiring.
+
+A list style MAY scope a `LabelStyle` over its row content. `SidebarListStyle`
+does: it supplies the sidebar label layout (24pt icon, 12pt icon/title gap,
+14pt semibold title, selected/default icon and text colors) to any `Label` in
+the row. An explicit `.labelStyle(...)` closer to the `Label` still wins.
 
 ```java
 // Button: the control wires the action; the style decorates the label/content.
@@ -1209,9 +1247,11 @@ enum BadgeLabelStyle implements LabelStyle { INSTANCE;
 ```
 
 The Kotlin DSL ships `PlainButtonStyle`/`BorderedButtonStyle`,
-`DefaultLabelStyle`/`TitleOnlyLabelStyle`/`IconOnlyLabelStyle`, and
-`NativeVideoStyle`; application-authored styles implement the
-same interfaces. **Delta:** SwiftUI's `LabelStyleConfiguration.title`/`.icon`
+`DefaultLabelStyle`/`TitleOnlyLabelStyle`/`IconOnlyLabelStyle`,
+`NativeVideoStyle`, and `PlainListStyle`/`GroupedListStyle`/
+`InsetGroupedListStyle`/`InsetListStyle`/`SidebarListStyle`;
+application-authored styles implement the same interfaces. **Delta:** SwiftUI's
+`LabelStyleConfiguration.title`/`.icon`
 are always-present views; Pathland passes `null` for an absent part (a style
 checks `hasTitle()`/`hasIcon()`). Because styles are modifiers, a style is
 applied with `.modifiers(<Style>)`.

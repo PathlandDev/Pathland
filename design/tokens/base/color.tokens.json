@@ -28,6 +28,8 @@
   "base.color.white-a10": { "$value": "rgb(255 255 255 / 0.1)", "$type": "color" },
   "base.color.white-a15": { "$value": "rgb(255 255 255 / 0.15)", "$type": "color" },
   "base.color.white-a20": { "$value": "rgb(255 255 255 / 0.2)", "$type": "color" },
+  "base.color.blue.600-a12": { "$value": "rgb(37 99 235 / 0.12)", "$type": "color" },
+  "base.color.blue.400-a18": { "$value": "rgb(96 165 250 / 0.18)", "$type": "color" },
   "base.color.black-a05": { "$value": "rgb(0 0 0 / 0.05)", "$type": "color" },
   "base.color.black-a15": { "$value": "rgb(0 0 0 / 0.15)", "$type": "color" },
   "base.color.black-a35": { "$value": "rgb(0 0 0 / 0.35)", "$type": "color" },

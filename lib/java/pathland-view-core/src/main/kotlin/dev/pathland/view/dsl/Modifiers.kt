@@ -15,6 +15,7 @@ import dev.pathland.view.core.FocusRequestView
 import dev.pathland.view.core.KeyDownView
 import dev.pathland.view.core.LabelStyle
 import dev.pathland.view.core.Length
+import dev.pathland.view.core.ListStyle
 import dev.pathland.view.core.Modified
 import dev.pathland.view.core.PathlandDsl
 import dev.pathland.view.core.PathChange
@@ -486,6 +487,12 @@ fun View.pathChange(listener: (String) -> Unit): View =
 fun View.buttonStyle(style: ButtonStyle): View = modified(style)
 fun View.labelStyle(style: LabelStyle): View = modified(style)
 fun View.videoStyle(style: VideoStyle): View = modified(style)
+fun View.listStyle(style: ListStyle): View = modified(style)
+
+/** Mark a row as selected (the semantic `SELECTED` property). */
+fun View.selected(selected: Signal<Boolean>): View =
+    modified(prop(Properties.SELECTED, selected))
+fun View.selected(selected: Boolean): View = selected(Signals.constant(selected))
 fun View.windowMetadata(configure: WindowMetadata.Config.() -> Unit): View =
     modified(WindowMetadata.with { c -> c.configure() })
 fun <T> View.environment(key: EnvironmentKey<T>, value: T): View =

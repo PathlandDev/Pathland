@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 22, 2026
+**Last updated:** November 26, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written in Kotlin. It owns the `View` SPI and shared
@@ -85,7 +85,8 @@ build) carries no JNA.
   protocol-manifest, frame-codec, and Markdown tests. `LazySelectionTest`
   covers focus gating, tap/focus ordering, pinning, clamping, 1D/2D navigation,
   concrete grid tracks, adaptive-grid rejection, and the selection/pin conflict
-  for all four lazy containers.
+  for all four lazy containers. `ListTest` covers the composite rows, style
+  scoping, tokenized chrome (incl. dark-mode tokens), and lazy extent overhead.
 
 ## Authoring DSL (`dev.pathland.view.dsl`)
 
@@ -95,7 +96,16 @@ build) carries no JNA.
   `Divider`, `Spacer`, `ProgressView`, `Gauge`, `Label`, `Group`.
 - **Containers**: `VStack`, `HStack`, `ZStack`, `Grid`, `GridRow`, `ScrollView`,
   `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `ViewThatFits`/`Fit`,
-  `ProxyView`, `ForEach`.
+  `ProxyView`, `ForEach`, and the composite `List`.
+- **Styles**: `ButtonStyle`, `LabelStyle`, `VideoStyle`, and `ListStyle` are
+  environment-scoped (nearest wins). Built-in list styles: `PlainListStyle`,
+  `GroupedListStyle`, `InsetGroupedListStyle`, `InsetListStyle`, and
+  `SidebarListStyle`; `List` emits `ROLE=LIST`/`LIST_ITEM`, `SELECTED` rows, and
+  adds the active style's row chrome to the lazy item extent. `SidebarListStyle`
+  also scopes a sidebar label style over its rows (24pt icon, 12pt icon/title
+  gap, 14pt semibold title, default/selected icon and text tokens, rounded
+  selection, 8pt row padding). Lazy `List` requires `itemExtent`/`itemExtents`;
+  static `List { … }` is eager.
 - **Controls**: `Button` (title or label subtree), `TextField`, `SecureField`,
   `TextEditor`, `Toggle`, `Slider`, `Stepper`, `DatePicker`, `Picker`, `Menu`,
   `ColorPicker`.

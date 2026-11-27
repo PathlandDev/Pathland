@@ -1,6 +1,6 @@
 # pathland-render-core — implementation status
 
-**Last updated:** October 27, 2026
+**Last updated:** November 26, 2026
 
 The **toolkit-free renderer core shared by every Pathland renderer** (GTK4, Qt,
 …): opcode-frame decode into a retained native-element description
@@ -46,7 +46,8 @@ The **toolkit-free renderer core shared by every Pathland renderer** (GTK4, Qt,
   - `reset_theme()` / `META::RESET_THEME` clears base + `dark.*` overrides and
     re-resolves against renderer defaults.
   - `concrete_default_tables` now covers the full `TIER1_TOKENS` catalog in
-    both schemes (coverage-tested).
+    both schemes (coverage-tested), including the `list.*` palette/geometry
+    tokens used by the DSL `List` styles.
 - **`render_tree_from_frame`** — decode a fresh tree from one frame.
 - **`describe`** — one-opcode human-readable line (debugging aid).
 

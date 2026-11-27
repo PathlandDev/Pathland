@@ -29,6 +29,16 @@
     "$type": "color",
     "$extensions": { "pathland": { "dark": "{base.color.gray.400}" } }
   },
+  "color.text.body": {
+    "$value": "{base.color.gray.700}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.gray.400}" } }
+  },
+  "color.icon.muted": {
+    "$value": "{base.color.gray.400}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.gray.400}" } }
+  },
   "color.text.onPrimary": {
     "$value": "{base.color.white}",
     "$type": "color",
@@ -49,6 +59,21 @@
     "$value": "{base.color.gray.200}",
     "$type": "color",
     "$extensions": { "pathland": { "dark": "{base.color.gray.700}" } }
+  },
+  "color.selection": {
+    "$value": "{base.color.blue.600-a12}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.blue.400-a18}" } }
+  },
+  "color.selection.subtle": {
+    "$value": "{base.color.gray.50}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.white-a05}" } }
+  },
+  "color.text.onSelection": {
+    "$value": "{base.color.indigo.600}",
+    "$type": "color",
+    "$extensions": { "pathland": { "dark": "{base.color.white}" } }
   },
   "color.success": {
     "$value": "{base.color.green.600}",

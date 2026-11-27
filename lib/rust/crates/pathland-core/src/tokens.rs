@@ -159,6 +159,20 @@ pub const TIER1_TOKENS: &[&str] = &[
     "progress.fill",
     "gauge.track",
     "gauge.fill",
+    // Lists.
+    "list.background",
+    "list.row.background",
+    "list.row.selected.background",
+    "list.separator",
+    "list.group.background",
+    "list.group.inset",
+    "list.group.radius",
+    "list.sidebar.background",
+    "list.sidebar.selected.background",
+    "list.sidebar.selected.foreground",
+    "list.sidebar.foreground",
+    "list.sidebar.icon.foreground",
+    "list.sidebar.selected.icon.foreground",
 ];
 
 /// The four lookup tables a renderer consults, in resolution order:

@@ -229,10 +229,16 @@ from the primitives in this file, so no component IDs are allocated:
 
 | SwiftUI view | Composition |
 |--------------|-------------|
-| `List` | `ScrollView` + `LazyVStack` of rows; row selection via `SELECTED` per row. Keyboard navigation is app-composed at the protocol level: one roving row declares `FOCUS`/`KEY_DOWN`, handles arrows, and requests focus with `META::SET_FOCUS` (ADR-0018). The JVM DSL packages this as `LazySelection` on any lazy stack/grid. |
+| `List` | `ScrollView` + `LazyVStack` (or eager `VStack`) of rows; the DSL sets `ROLE=LIST` on the row container and `ROLE=LIST_ITEM` + `SELECTED` per row. Row chrome comes from the environment-scoped `ListStyle` (spec/DSL.md §5.7); no protocol component or list-widget mapping is implied. Keyboard navigation is app-composed at the protocol level: one roving row declares `FOCUS`/`KEY_DOWN`, handles arrows, and requests focus with `META::SET_FOCUS` (ADR-0018). The JVM DSL packages this as `LazySelection` on any lazy stack/grid. |
 | `NavigationStack` | app-held navigation state emitting the current destination into a stable `Group` slot (a reactive component slot, [DSL.md §3.4](./DSL.md#34-structural-reactivity-reactive-bodies--slots)); the slot's child swaps on route change, producing `TREE` deltas |
 | `NavigationSplitView` | `HStack` (sidebar + detail) |
 | `Label` | `HStack` + `IMAGE` (or `ICON`) + `TEXT` |
+
+**Native list widgets.** Because `List` is a composite, renderers map it onto
+their ordinary scroll/stack primitives, not `SwiftUI.List`, `GtkListBox`, or
+`QListView`. The web renderer's `ROLE` mapping still produces semantic
+`<ul>`/`<li>` elements; a host-native list widget would require a future
+protocol component and its own ADR.
 
 ---
 

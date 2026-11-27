@@ -1,6 +1,6 @@
 # pathland-render-html (Rust) — implementation status
 
-**Last updated:** November 20, 2026
+**Last updated:** November 26, 2026
 
 The **server-side / remote-projection HTML renderer**: a **stateless, streaming**
 pure function of the opcode stream producing declarative HTML. Each render call
@@ -276,9 +276,11 @@ Statelessness). Protocol contract: `spec/`.
     the **shared control core** (`--pl-control-*`, `--pl-button-*`,
     `--pl-input-*`), and the component tokens (`--pl-toggle-*`,
     `--pl-slider-*`, `--pl-progress-*`, `--pl-gauge-*`, `--pl-stepper-*`,
-    `--pl-picker-*`, `--pl-menu-*`, `--pl-label-*`, `--pl-size-control-*`),
-    all with light + dark values. `.pathland-*` rules reference the canonical
-    variables, so `SET_DESIGN_TOKEN` overrides retheme components.
+    `--pl-picker-*`, `--pl-menu-*`, `--pl-label-*`, `--pl-list-*`,
+    `--pl-size-control-*`), all with light + dark values. `.pathland-*` rules
+    reference the canonical variables, so `SET_DESIGN_TOKEN` overrides retheme
+    components. The DSL `List` composite has no renderer-specific code: it emits
+    its rows/roles/token refs and dark mode follows the same scheme pipeline.
   - **Forced scheme**: `META::SET_COLOR_SCHEME` sets `data-pathland-scheme` on
     `<html>`; the platform-dark media rule is scoped to
     `:root:not([data-pathland-scheme])` and the dark values are repeated under

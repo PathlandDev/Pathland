@@ -35,6 +35,13 @@ internal class MediaPlayerService {
     val focusedIndex: WritableSignal<Int> = Signals.signal(0)
     val listFocused: WritableSignal<Boolean> = Signals.signal(false)
 
+    /**
+     * Ephemeral selection in the left navigation sidebar (not persisted). Kept
+     * on the shared service so it survives the root `ViewThatFits` swaps.
+     */
+    val navIndex: WritableSignal<Int> = Signals.signal(0)
+    val navFocused: WritableSignal<Boolean> = Signals.signal(false)
+
     val controller = MediaController()
     /** The demo library: the base tracks repeated to [LIBRARY_SIZE] entries. */
     val tracks: List<Track> = List(LIBRARY_SIZE) { TRACKS[it % TRACKS.size] }
