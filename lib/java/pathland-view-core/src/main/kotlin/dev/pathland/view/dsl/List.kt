@@ -186,7 +186,7 @@ private class SidebarLabelStyle(private val selected: Signal<Boolean>) : LabelSt
         val iconForeground = Signals.computed {
             if (selected.get()) listSidebarSelectedIconForeground() else listSidebarIconForeground()
         }
-        val iconSize = Length.token("space.6")
+        val iconSize = Length.token("space.4")
         val icon = config.icon()
             ?.fontSize(iconSize)
             ?.frame {

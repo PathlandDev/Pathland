@@ -19,6 +19,7 @@ import dev.pathland.core.transport.ProtocolFrame;
 import dev.pathland.core.transport.FrameOpcodeSink;
 import dev.pathland.view.engine.InputDispatcher;
 import dev.pathland.view.engine.RenderResult;
+import dev.pathland.view.core.signal.EffectRef;
 import dev.pathland.view.core.signal.Signals;
 import dev.pathland.view.core.signal.WritableSignal;
 import dev.pathland.view.core.subscription.SessionContext;
@@ -71,6 +72,9 @@ public final class PathlandSession {
     private final PersistentState state;
     private final WritableSignal<String> activePath;
     private final WritableSignal<Viewport> viewport;
+    private final WritableSignal<ThemeMode> colorScheme;
+    private EffectRef colorSchemeEffect;
+    private ThemeMode appliedColorScheme = ThemeMode.PLATFORM;
     private final String stateScope;
 
     private final String base;
@@ -170,6 +174,7 @@ public final class PathlandSession {
         // app reads it, and a bound Router re-routes guard-aware on external changes.
         this.activePath = Signals.signal(env.route());
         this.viewport = Signals.signal(new Viewport(-1f, -1f));
+        this.colorScheme = Signals.signal(ThemeMode.PLATFORM);
 
         this.sink = new FrameOpcodeSink() {
             @Override
@@ -206,7 +211,9 @@ public final class PathlandSession {
             RenderResult result = emitter.mount(
                     app.newRoot().modifiers(
                             EnvironmentBinding.with(e -> e.key(Platform.ACTIVE_PATH).value(activePath)),
-                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport))),
+                            EnvironmentBinding.with(e -> e.key(Platform.VIEWPORT).value(viewport)),
+                            EnvironmentBinding.with(e -> e.key(Platform.COLOR_SCHEME)
+                                    .value(new Platform.ColorSchemeControl(colorScheme)))),
                     new Environment(state));
             this.inputDispatcher = new InputDispatcher(result, activePath);
             this.rootId = result.rootId();
@@ -220,6 +227,17 @@ public final class PathlandSession {
         } finally {
             SessionContext.restore(previous);
         }
+
+        // The host owns the theme-mode preference signal injected above; emit the
+        // protocol command only when it changes (the initial PLATFORM value needs no
+        // frame).
+        this.colorSchemeEffect = Signals.effect(() -> {
+            ThemeMode mode = colorScheme.get();
+            if (mode != appliedColorScheme) {
+                appliedColorScheme = mode;
+                emitter.setColorScheme(mode);
+            }
+        });
     }
 
     /**
@@ -279,7 +297,7 @@ public final class PathlandSession {
      * {@code DARK}); the renderer re-resolves tokens with no node re-emission.
      */
     public void setColorScheme(ThemeMode mode) {
-        runWithContext(() -> emitter.setColorScheme(mode));
+        runWithContext(() -> colorScheme.set(mode));
     }
 
     public void applyEnvironment(EnvironmentData env) {
@@ -576,6 +594,10 @@ public final class PathlandSession {
             proxyHost = null;
         }
         state.close();
+        if (colorSchemeEffect != null) {
+            colorSchemeEffect.destroy();
+            colorSchemeEffect = null;
+        }
         emitter.destroy();
         batcher.close();
         connection = null;

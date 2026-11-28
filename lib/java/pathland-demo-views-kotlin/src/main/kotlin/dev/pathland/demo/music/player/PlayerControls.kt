@@ -42,6 +42,7 @@ internal class PlayerControls(
                     Text("|").fontSize(18f).foregroundStyle(MusicPlayerView.SECONDARY_FG)
                     VolumeControls()
                 }
+                ThemeModeButton()
                 Spacer()
             }
             Slider(

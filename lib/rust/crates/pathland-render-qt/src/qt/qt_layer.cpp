@@ -260,6 +260,8 @@ QString iconGlyph(const QString &name) {
         {QStringLiteral("success"), QStringLiteral("\u2714")},
         {QStringLiteral("heart"), QStringLiteral("\u2665")},
         {QStringLiteral("star"), QStringLiteral("\u2605")},
+        {QStringLiteral("sun"), QStringLiteral("\u2600")},
+        {QStringLiteral("moon"), QStringLiteral("\u263E")},
         {QStringLiteral("bell"), QStringLiteral("\U0001F514")},
         {QStringLiteral("cloud"), QStringLiteral("\u2601")},
         {QStringLiteral("user"), QStringLiteral("\U0001F464")},

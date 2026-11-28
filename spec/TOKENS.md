@@ -254,7 +254,7 @@ Small sets; only where a component's semantics genuinely differ from
 
 The built-in `List` styles reference these paths, so the renderer's light/dark
 resolution themes the list without re-emission (spec/DSL.md §5.7).
-`SidebarListStyle` also scopes a sidebar label style over its rows: icon `space.6`,
+`SidebarListStyle` also scopes a sidebar label style over its rows: icon `space.4`,
 gap `space.3`, label `control.font.size`/semibold, and the sidebar color tokens
 above.
 

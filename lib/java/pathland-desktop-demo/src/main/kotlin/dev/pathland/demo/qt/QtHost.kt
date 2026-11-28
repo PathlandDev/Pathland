@@ -6,6 +6,9 @@ import dev.pathland.demo.assets.DemoAssets
 import dev.pathland.demo.desktop.RingEventReader
 import dev.pathland.demo.music.MusicPlayerView
 import dev.pathland.view.core.Environment
+import dev.pathland.view.core.EnvironmentBinding
+import dev.pathland.view.core.Platform
+import dev.pathland.view.core.ThemeMode
 import dev.pathland.nativecore.PathlandCore
 import dev.pathland.nativecore.RingOpcodeSink
 import dev.pathland.view.core.signal.Signals
@@ -42,9 +45,26 @@ object QtHost {
             val state = PersistentState(InMemoryStateStore(), "desktop")
             // A placeholder host path signal: MusicPlayerView has no router.
             val activePath = Signals.signal("/")
+            val colorScheme = Signals.signal(ThemeMode.PLATFORM)
 
             val emitter = Emitter(sink, DemoTheme.adaptive())
-            val result = emitter.mount(MusicPlayerView.make(), Environment(state))
+            val result = emitter.mount(
+                MusicPlayerView.make().modifiers(
+                    EnvironmentBinding.with { e ->
+                        e.key(Platform.COLOR_SCHEME)
+                            .value(Platform.ColorSchemeControl(colorScheme))
+                    },
+                ),
+                Environment(state),
+            )
+            var appliedScheme = ThemeMode.PLATFORM
+            Signals.effect {
+                val mode = colorScheme.get()
+                if (mode != appliedScheme) {
+                    appliedScheme = mode
+                    emitter.setColorScheme(mode)
+                }
+            }
             val dispatcher = InputDispatcher(result, activePath)
             val reader = RingEventReader(core.ringPtr(handle), core.ringLen(handle))
 

@@ -2,7 +2,10 @@
 
 package dev.pathland.server
 
+import dev.pathland.view.core.Environment
 import dev.pathland.view.core.MediaController
+import dev.pathland.view.core.Platform
+import dev.pathland.view.core.ThemeMode
 import dev.pathland.view.core.View
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.WritableSignal
@@ -16,6 +19,7 @@ import dev.pathland.view.dsl.unaryPlus
 import dev.pathland.view.dsl.value
 import dev.pathland.view.dsl.windowMetadata
 import dev.pathland.view.dsl.computed
+import java.util.concurrent.atomic.AtomicReference
 
 /** A Kotlin-authored single text view for the Java server tests. */
 fun text(value: String): View = Text(value)
@@ -68,6 +72,15 @@ fun counter(): View {
     val count = dev.pathland.view.core.signal.Signals.signal(0)
     return Button(computed { "n=${count.get()}" }) { count.update { v -> v + 1 } }
 }
+
+/** Capture the host-provided `Platform.COLOR_SCHEME` signal for a session test. */
+fun captureColorScheme(target: AtomicReference<WritableSignal<ThemeMode>>): View =
+    object : Component() {
+        override fun body(): View {
+            target.set(Environment.value(Platform.COLOR_SCHEME).get().mode)
+            return Text("scheme")
+        }
+    }
 
 /** The reactive proxy/plain-text subtree used by the proxy lifecycle test. */
 fun proxyDemo(show: Signal<Boolean>): View = VStack {

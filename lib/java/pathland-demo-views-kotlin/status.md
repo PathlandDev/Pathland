@@ -1,6 +1,6 @@
 # pathland-demo-views-kotlin — implementation status
 
-**Last updated:** November 26, 2026
+**Last updated:** November 27, 2026
 
 Kotlin-owned demo views over `pathland-view-core`, with no Java-DSL dependency.
 It owns the app-driven music player and the small sponsored-proxy ad app.
@@ -39,6 +39,11 @@ It owns the app-driven music player and the small sponsored-proxy ad app.
   `NowPlayingSidebar`), with the floating `PlayerBar`. The medium threshold is
   960 pt and wide is 1200 pt so the full player bar fits beside the 220 pt nav
   (and 280 pt now-playing) sidebar; Now Playing is wide-only.
+- **Theme mode button** — the player bar's color-mode button cycles
+  system → light → dark → system. `MediaPlayerService.colorScheme` is the
+  host-provided `Platform.COLOR_SCHEME` signal (or a local fallback); the host
+  emits `META::SET_COLOR_SCHEME`, and the icon switches between `settings`,
+  `sun`, and `moon` with a matching accessible label.
 - **`NavigationSidebar`** — a static left navigation list (Library, Playlists,
   Artists, Albums, Songs) authored with the DSL `List` + `SidebarListStyle`.
   Rows are `Label`s; the list style supplies the Tailwind-aligned sidebar

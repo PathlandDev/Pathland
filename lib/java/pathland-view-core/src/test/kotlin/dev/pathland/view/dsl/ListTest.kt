@@ -108,7 +108,7 @@ class ListTest {
         assertTrue(tokens.contains("list.sidebar.icon.foreground"), "icon: $tokens")
         assertTrue(tokens.contains("list.sidebar.selected.icon.foreground"), "selected icon: $tokens")
         assertTrue(tokens.contains("space.3"), "label gap: $tokens")
-        assertTrue(tokens.contains("space.6"), "icon size: $tokens")
+        assertTrue(tokens.contains("space.4"), "icon size: $tokens")
         assertTrue(tokens.contains("control.font.size"), "label font size: $tokens")
     }
 

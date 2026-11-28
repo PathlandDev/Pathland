@@ -44,6 +44,8 @@ enum class IconName(private val wire: String) {
     SUCCESS("success"),
     HEART("heart"),
     STAR("star"),
+    SUN("sun"),
+    MOON("moon"),
     USER("user"),
     USERS("users"),
     LOCK("lock"),

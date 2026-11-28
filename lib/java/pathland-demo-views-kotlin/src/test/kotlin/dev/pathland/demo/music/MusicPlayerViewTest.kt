@@ -7,6 +7,7 @@ import dev.pathland.core.protocol.Components
 import dev.pathland.core.protocol.Opcode
 import dev.pathland.core.protocol.Properties
 import dev.pathland.view.core.Keys
+import dev.pathland.view.core.ThemeMode
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.state.InMemoryStateStore
 import dev.pathland.view.core.state.PersistentState
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.Test
 class MusicPlayerViewTest {
 
     private data class Mounted(
+        val view: MusicPlayerView,
         val result: RenderResult,
         val sink: FrameOpcodeSink,
         val store: StateStore,
@@ -52,8 +54,9 @@ class MusicPlayerViewTest {
         val sink = FrameOpcodeSink()
         val emitter = Emitter(sink)
         if (snapshot) emitter.snapshotEmission(true)
-        val result = emitter.mount(MusicPlayerView.make(), Environment(state))
-        return Mounted(result, sink, store)
+        val view = MusicPlayerView.make()
+        val result = emitter.mount(view, Environment(state))
+        return Mounted(view, result, sink, store)
     }
 
     private fun mountAd(): Mounted {
@@ -61,11 +64,12 @@ class MusicPlayerViewTest {
         val sink = FrameOpcodeSink()
         val emitter = Emitter(sink)
         emitter.snapshotEmission(true)
+        val view = MusicPlayerView.make("http://localhost:8080/ad")
         val result = emitter.mount(
-            MusicPlayerView.make("http://localhost:8080/ad"),
+            view,
             Environment(PersistentState(store, "session-1")),
         )
-        return Mounted(result, sink, store)
+        return Mounted(view, result, sink, store)
     }
 
     @Test
@@ -160,6 +164,24 @@ class MusicPlayerViewTest {
         val withSidebar = mounted.sink.frame()
         assertTrue(anySetText(withSidebar, "Now Playing"))
         assertTrue(anySetText(withSidebar, "Up Next"))
+    }
+
+    @Test
+    fun themeModeButtonCyclesSystemLightDark() {
+        val mounted = mount()
+        val initial = mounted.sink.frame()
+        assertTrue(anySetPropertyString(initial, Properties.ICON_NAME, "settings"))
+        assertTrue(anySetPropertyString(initial, Properties.LABEL, "Color mode: System"))
+
+        mounted.view.colorScheme().set(ThemeMode.LIGHT)
+        val light = mounted.sink.frame()
+        assertTrue(anySetPropertyString(light, Properties.ICON_NAME, "sun"))
+        assertTrue(anySetPropertyString(light, Properties.LABEL, "Color mode: Light"))
+
+        mounted.view.colorScheme().set(ThemeMode.DARK)
+        val dark = mounted.sink.frame()
+        assertTrue(anySetPropertyString(dark, Properties.ICON_NAME, "moon"))
+        assertTrue(anySetPropertyString(dark, Properties.LABEL, "Color mode: Dark"))
     }
 
     @Test

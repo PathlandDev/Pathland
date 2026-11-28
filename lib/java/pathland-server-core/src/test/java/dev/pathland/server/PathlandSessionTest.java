@@ -5,6 +5,7 @@ import dev.pathland.core.protocol.Categories;
 import dev.pathland.core.protocol.Commands;
 import dev.pathland.view.core.Environment;
 import dev.pathland.view.core.Platform;
+import dev.pathland.view.core.ThemeMode;
 import dev.pathland.core.protocol.Properties;
 import dev.pathland.view.core.View;
 import dev.pathland.core.transport.ProtocolFrame;
@@ -66,6 +67,26 @@ class PathlandSessionTest {
         session.applyEnvironment(EnvironmentData.of("/kitchen"));
         session.resync();
         session.close(); // idempotent
+        session.close();
+    }
+
+    @Test
+    void viewColorSchemeSignalEmitsSetColorScheme() {
+        AtomicReference<WritableSignal<ThemeMode>> scheme = new AtomicReference<>();
+        PathlandApp app = () -> ServerFixtures.captureColorScheme(scheme);
+        PathlandSession session = new PathlandSession("scheme", STORE, app, EnvironmentData.of("/"));
+        RecordingConnection connection = new RecordingConnection();
+        session.connect(connection);
+
+        assertNotNull(scheme.get(), "the host color-scheme signal is injected into the view environment");
+        scheme.get().set(ThemeMode.LIGHT);
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (!framesHaveColorScheme(connection, 1) && System.nanoTime() < deadline) {
+            sleep(10);
+        }
+        assertTrue(framesHaveColorScheme(connection, 1), describe(connection));
+
         session.close();
     }
 
@@ -331,6 +352,24 @@ class PathlandSessionTest {
         session.close();
         assertTrue(position.get() == 30f, "the media report reached the bound signal");
         assertTrue(framesHaveValue(conn), "a seek-bar VALUE delta is sent: " + describe(conn));
+    }
+
+    private static boolean framesHaveColorScheme(RecordingConnection conn, int mode) {
+        for (byte[] bytes : conn.frames()) {
+            try {
+                ProtocolFrame frame = FrameCodec.decodeFrame(bytes);
+                for (Opcode op : frame.opcodes()) {
+                    if (op.category() == Categories.META
+                            && op.command() == Commands.Meta.SET_COLOR_SCHEME
+                            && op.a() == mode) {
+                        return true;
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // a partial/undecodable batch — keep scanning
+            }
+        }
+        return false;
     }
 
     private static boolean framesHaveValue(RecordingConnection conn) {

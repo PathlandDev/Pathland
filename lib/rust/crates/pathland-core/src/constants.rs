@@ -888,6 +888,8 @@ pub mod icon {
     pub const SUCCESS: &str = "success";
     pub const HEART: &str = "heart";
     pub const STAR: &str = "star";
+    pub const SUN: &str = "sun";
+    pub const MOON: &str = "moon";
     pub const USER: &str = "user";
     pub const USERS: &str = "users";
     pub const LOCK: &str = "lock";
@@ -907,7 +909,7 @@ pub mod icon {
         CHEVRON_UP, CHEVRON_DOWN, ARROW_LEFT, ARROW_RIGHT, ADD, REMOVE, CHECK,
         EDIT, DELETE, SAVE, SHARE, DOWNLOAD, UPLOAD, REFRESH, PLAY, PAUSE, STOP,
         SKIP_BACK, SKIP_FORWARD, VOLUME, VOLUME_MUTE, SHUFFLE, REPEAT, INFO,
-        WARNING, ERROR, SUCCESS, HEART, STAR, USER, USERS, LOCK, LOGOUT, BELL,
+        WARNING, ERROR, SUCCESS, HEART, STAR, SUN, MOON, USER, USERS, LOCK, LOGOUT, BELL,
         FOLDER, FILE, IMAGE, MUSIC, GRID, LIST, FILTER,
     ];
 

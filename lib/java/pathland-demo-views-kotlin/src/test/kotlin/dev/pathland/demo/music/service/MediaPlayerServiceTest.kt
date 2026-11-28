@@ -1,5 +1,6 @@
 package dev.pathland.demo.music.service
 
+import dev.pathland.view.core.ThemeMode
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -28,6 +29,21 @@ class MediaPlayerServiceTest {
         assertEquals(MediaPlayerService.LIBRARY_SIZE, service.tracks.size)
         assertTrue(service.tracks[8] === MediaPlayerService.TRACKS[0])
         assertTrue(service.tracks[999] === MediaPlayerService.TRACKS[7])
+    }
+
+    @Test
+    fun colorSchemeCyclesSystemLightDark() {
+        val service = MediaPlayerService()
+        assertEquals(ThemeMode.PLATFORM, service.colorScheme.get())
+
+        service.cycleColorScheme()
+        assertEquals(ThemeMode.LIGHT, service.colorScheme.get())
+
+        service.cycleColorScheme()
+        assertEquals(ThemeMode.DARK, service.colorScheme.get())
+
+        service.cycleColorScheme()
+        assertEquals(ThemeMode.PLATFORM, service.colorScheme.get())
     }
 
     @Test

@@ -2861,6 +2861,8 @@ fn gtk_icon_name(name: &str) -> Option<&'static str> {
         pathland_core::icon::SUCCESS => "emblem-ok-symbolic",
         pathland_core::icon::HEART => "emblem-favorite-symbolic",
         pathland_core::icon::STAR => "non-starred-symbolic",
+        pathland_core::icon::SUN => "weather-clear-symbolic",
+        pathland_core::icon::MOON => "weather-clear-night-symbolic",
         pathland_core::icon::USER => "avatar-default-symbolic",
         pathland_core::icon::USERS => "system-users-symbolic",
         pathland_core::icon::LOCK => "changes-prevent-symbolic",

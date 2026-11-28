@@ -4,6 +4,7 @@ import dev.pathland.demo.music.model.Track
 import dev.pathland.view.core.Environment
 import dev.pathland.view.core.EnvironmentKey
 import dev.pathland.view.core.MediaController
+import dev.pathland.view.core.ThemeMode
 import dev.pathland.view.core.signal.Signal
 import dev.pathland.view.core.signal.Signals
 import dev.pathland.view.core.signal.WritableSignal
@@ -18,7 +19,10 @@ import dev.pathland.view.data.PagedDataSource
  * The service is created once per root/session; it must never be a global
  * singleton (signals are single-threaded and per-session).
  */
-internal class MediaPlayerService {
+internal class MediaPlayerService(
+    /** Host-provided color-scheme preference; a local signal for standalone tests. */
+    val colorScheme: WritableSignal<ThemeMode> = Signals.signal(ThemeMode.PLATFORM),
+) {
 
     val trackIndex: WritableSignal<Int> = Signals.state("player.track", 0)
     val playing: WritableSignal<Boolean> = Signals.state("player.playing", false)
@@ -89,6 +93,17 @@ internal class MediaPlayerService {
 
     fun togglePlay() {
         controller.toggle()
+    }
+
+    /** Cycle the color-scheme preference: System → Light → Dark → System. */
+    fun cycleColorScheme() {
+        colorScheme.set(
+            when (colorScheme.get()) {
+                ThemeMode.PLATFORM -> ThemeMode.LIGHT
+                ThemeMode.LIGHT -> ThemeMode.DARK
+                ThemeMode.DARK -> ThemeMode.PLATFORM
+            },
+        )
     }
 
     /**

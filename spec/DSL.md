@@ -1223,7 +1223,7 @@ app-declared row content extent. The `List` itself still owns the scroll
 container, windowing, roles, and `LazySelection` wiring.
 
 A list style MAY scope a `LabelStyle` over its row content. `SidebarListStyle`
-does: it supplies the sidebar label layout (24pt icon, 12pt icon/title gap,
+does: it supplies the sidebar label layout (16pt icon, 12pt icon/title gap,
 14pt semibold title, selected/default icon and text colors) to any `Label` in
 the row. An explicit `.labelStyle(...)` closer to the `Label` still wins.
 

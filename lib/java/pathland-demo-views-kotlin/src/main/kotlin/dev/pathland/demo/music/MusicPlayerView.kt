@@ -5,8 +5,13 @@ import dev.pathland.demo.music.service.MediaPlayerService
 import dev.pathland.demo.music.sidebar.NavigationSidebar
 import dev.pathland.demo.music.sidebar.NowPlayingSidebar
 import dev.pathland.view.core.Color
+import dev.pathland.view.core.Environment
+import dev.pathland.view.core.Platform
 import dev.pathland.view.core.Roles
+import dev.pathland.view.core.ThemeMode
 import dev.pathland.view.core.View
+import dev.pathland.view.core.signal.Signals
+import dev.pathland.view.core.signal.WritableSignal
 import dev.pathland.core.protocol.Commands
 import dev.pathland.view.dsl.Component
 import dev.pathland.view.dsl.Fit
@@ -56,7 +61,14 @@ class MusicPlayerView @JvmOverloads constructor(
         fun make(adUrl: String?): MusicPlayerView = MusicPlayerView(adUrl)
     }
 
-    private val service by lazy { MediaPlayerService() }
+    private val service by lazy {
+        val hostColorScheme: Platform.ColorSchemeControl? =
+            Environment.value(Platform.COLOR_SCHEME).get()
+        MediaPlayerService(hostColorScheme?.mode ?: Signals.signal(ThemeMode.PLATFORM))
+    }
+
+    /** The session's theme-mode signal (host-provided when available). */
+    internal fun colorScheme(): WritableSignal<ThemeMode> = service.colorScheme
 
     override fun body(): View {
         val mediaPlayer = service

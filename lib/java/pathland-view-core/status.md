@@ -1,6 +1,6 @@
 # pathland-view-core (JVM engine + DSL) — implementation status
 
-**Last updated:** November 26, 2026
+**Last updated:** November 27, 2026
 
 The shared, framework-agnostic JVM engine, runtime and authoring DSL for the
 Pathland protocol, written in Kotlin. It owns the `View` SPI and shared
@@ -76,7 +76,10 @@ build) carries no JNA.
   `Configurable`, `ChildrenView`, `Modified`, `ViewBuilder`,
   `Environment*`, `Platform`, `Theme*`, `MediaController`, `WindowMetadata`,
   `ProxyConfig`, `Color`, `Length`, shared enums, style protocols, and modifier
-  wrappers.
+  wrappers. `Platform.COLOR_SCHEME` carries the host-owned
+  `WritableSignal<ThemeMode>` (wrapped in `Platform.ColorSchemeControl`) so a
+  view can request platform/light/dark; the host emits
+  `META::SET_COLOR_SCHEME`.
 - **Shared engine traces**: the Kotlin DSL tests run the mount/text/property
   scenarios against the Rust-emitted PLPL fixtures under `spec/engine-traces/`,
   byte-for-byte. The canonical order lives in `spec/ENGINE.md`.
@@ -102,7 +105,7 @@ build) carries no JNA.
   `GroupedListStyle`, `InsetGroupedListStyle`, `InsetListStyle`, and
   `SidebarListStyle`; `List` emits `ROLE=LIST`/`LIST_ITEM`, `SELECTED` rows, and
   adds the active style's row chrome to the lazy item extent. `SidebarListStyle`
-  also scopes a sidebar label style over its rows (24pt icon, 12pt icon/title
+  also scopes a sidebar label style over its rows (16pt icon, 12pt icon/title
   gap, 14pt semibold title, default/selected icon and text tokens, rounded
   selection, 8pt row padding). Lazy `List` requires `itemExtent`/`itemExtents`;
   static `List { … }` is eager.

@@ -166,7 +166,7 @@ class HtmlRendererTest {
         assertTrue(html.contains("var(--pl-list-sidebar-selected-foreground"), html)
         assertTrue(html.contains("var(--pl-list-sidebar-icon-foreground"), html)
         assertTrue(html.contains("var(--pl-list-sidebar-selected-icon-foreground"), html)
-        assertTrue(html.contains("calc(var(--pl-space-base) * 6)"), "24pt icon: $html")
+        assertTrue(html.contains("calc(var(--pl-space-base) * 4)"), "16pt icon: $html")
         assertTrue(html.contains("calc(var(--pl-space-base) * 3)"), "12pt gap: $html")
         assertTrue(html.contains("var(--pl-control-font-size"), "14pt label: $html")
     }
@@ -333,6 +333,8 @@ class HtmlRendererTest {
             "canonical name -> the full inline svg shell: $home")
         assertTrue(home!!.endsWith("</svg>"), "closed svg: $home")
         assertTrue(home.length > 40, "a real glyph path is inlined: $home")
+        assertTrue(renderer.iconSvg("sun")!!.contains("3.51472"), "Remix sun-fill glyph")
+        assertTrue(renderer.iconSvg("moon")!!.contains("11.3807"), "Remix moon-fill glyph")
 
         val unknown = renderer.iconSvg("definitely-not-an-icon")
         assertTrue(unknown != null && unknown.contains("<circle"), "fallback glyph: $unknown")

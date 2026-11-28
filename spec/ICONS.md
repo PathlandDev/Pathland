@@ -42,6 +42,7 @@ however they own the mapping does, and the vocabulary can grow.
 - **Media**: `play` `pause` `stop` `skip-back` `skip-forward` `volume`
   `volume-mute` `shuffle` `repeat` `music`
 - **Status**: `info` `warning` `error` `success` `heart` `star` `bell` `cloud`
+- **Appearance**: `sun` `moon`
 - **People**: `user` `users`
 - **System**: `settings` `grid` `list` `filter`
 - **Content**: `folder` `file` `image`

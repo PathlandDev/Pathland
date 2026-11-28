@@ -1,6 +1,6 @@
 # pathland-server-core — implementation status
 
-**Last updated:** November 18, 2026
+**Last updated:** November 27, 2026
 
 The transport-agnostic Pathland server runtime: one app instance per session (SSR +
 live 16-byte opcode deltas + environment), the session registry, and the **multi-app
@@ -96,7 +96,10 @@ dependency — framework glue lives in the starters.
   Runtime theming: `setTheme(ThemeData)`, `resetTheme()`, and
   `setColorScheme(ThemeMode)` emit one `META::RESET_THEME` +
   `SET_DESIGN_TOKEN` frame or `META::SET_COLOR_SCHEME` to the live client
-  (renderer state; no tree re-emission). The SSR document keeps the mount
+  (renderer state; no tree re-emission). The session also binds
+  `Platform.COLOR_SCHEME` (a `WritableSignal<ThemeMode>`) into the root
+  environment and emits `META::SET_COLOR_SCHEME` when a view changes it;
+  `setColorScheme` drives the same signal. The SSR document keeps the mount
   theme until a resync/reload.
   `sendBatch` drops the connection on any send failure (a client reconnect then
   re-syncs via `META::RESYNC` instead of silently stalling on an "open" socket);

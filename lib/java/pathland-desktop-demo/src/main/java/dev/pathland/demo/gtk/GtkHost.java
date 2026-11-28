@@ -5,6 +5,9 @@ import dev.pathland.demo.assets.DemoAssets;
 import dev.pathland.demo.desktop.RingEventReader;
 import dev.pathland.demo.music.MusicPlayerView;
 import dev.pathland.view.core.Environment;
+import dev.pathland.view.core.EnvironmentBinding;
+import dev.pathland.view.core.Platform;
+import dev.pathland.view.core.ThemeMode;
 import dev.pathland.view.engine.Emitter;
 import dev.pathland.view.engine.InputDispatcher;
 import dev.pathland.view.engine.RenderResult;
@@ -64,11 +67,22 @@ public final class GtkHost {
             // A placeholder host path signal: MusicPlayerView has no router, so the
             // dispatcher's NAVIGATE handling is never exercised with a URL.
             WritableSignal<String> activePath = Signals.signal("/");
+            WritableSignal<ThemeMode> colorScheme = Signals.signal(ThemeMode.PLATFORM);
 
             Emitter emitter = new Emitter(sink, DemoTheme.adaptive());
             RenderResult result = emitter.mount(
-                    MusicPlayerView.make(),
+                    MusicPlayerView.make().modifiers(
+                            EnvironmentBinding.with(e -> e.key(Platform.COLOR_SCHEME)
+                                    .value(new Platform.ColorSchemeControl(colorScheme)))),
                     new Environment(state));
+            ThemeMode[] appliedScheme = {ThemeMode.PLATFORM};
+            Signals.effect(() -> {
+                ThemeMode mode = colorScheme.get();
+                if (mode != appliedScheme[0]) {
+                    appliedScheme[0] = mode;
+                    emitter.setColorScheme(mode);
+                }
+            });
             InputDispatcher dispatcher = new InputDispatcher(result, activePath);
             RingEventReader reader =
                     new RingEventReader(core.ringPtr(handle), core.ringLen(handle));
